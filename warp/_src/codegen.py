@@ -984,6 +984,29 @@ class _LValueOrigin:
 
         return expr
 
+    def emit_lvalue_materialized_views(
+        self,
+        adjoint: bool = False,
+        adj=None,
+        prelude: list[str] | None = None,
+    ) -> str:
+        if prelude is None or not any(step.kind == "view" for step in self.steps):
+            return self.emit_lvalue(adjoint)
+
+        if self.root_is_ref_parameter:
+            root_expr = self.root.emit("adj") if adjoint else self.root.emit()
+            expr = f"*({root_expr})"
+        else:
+            expr = self.root.emit("adj" if adjoint else "var")
+
+        for step in self.steps:
+            if step.kind == "view":
+                expr = self._emit_materialized_view(adj, prelude, expr, step)
+            else:
+                expr = self._emit_step_lvalue(expr, step)
+
+        return expr
+
     @classmethod
     def _emit_materialized_view(cls, adj, prelude: list[str], base_expr: str, step: _LValueStep) -> str:
         name = f"_wp_ref_view_{adj.label_count}"
@@ -1748,7 +1771,8 @@ class SlotAccessPlan(NamedTuple):
     root_var: Var
     array_indices_ast: list  # list[ast.expr]: outer array subscripts, left-to-right
     access_parts: list  # list[str | ast.expr]: str text segments + index AST nodes
-    slot_type: object  # informational leaf type; already validated against rhs_type
+    slot_type: object  # informational leaf type; optionally validated against rhs_type
+    root_is_adjoint: bool = False
 
 
 class _SharedFunctionSource:
@@ -3648,7 +3672,17 @@ class Adjoint:
                 attr_name = aggregate.label + "." + node.attr
                 attr_type = _aggregate_vars(aggregate.type)[node.attr].type
 
-                return Var(attr_name, attr_type)
+                attr = Var(attr_name, attr_type)
+                if isinstance(aggregate, Var):
+                    attr_var = aggregate.type.vars[node.attr]
+                    field_origin = adj.array_field_ref_origin(aggregate, (attr_var.label,))
+                    if field_origin is not None:
+                        attr.ref_origin = field_origin
+                    elif origin := adj.reference_origin_for_var(aggregate):
+                        attr.ref_origin = origin.extend_field(node.attr)
+                    adj.deterministic.propagate_attribute_reference(attr, aggregate, attr_var, attr_type)
+                    adj.apply_struct_array_field_metadata(attr, aggregate, (attr_var.label,))
+                return attr
 
             aggregate_type = strip_reference(aggregate.type)
 
@@ -3673,6 +3707,11 @@ class Adjoint:
                 if origin := adj.reference_origin_for_var(aggregate):
                     out.ref_origin = origin.extend_field(component)
 
+                if hasattr(aggregate, "array_root"):
+                    out.array_root = aggregate.array_root
+                    out.array_indices = aggregate.array_indices
+                    out.array_access_prefix = f"{getattr(aggregate, 'array_access_prefix', '')}.{component}"
+
                 return out
 
             else:
@@ -3692,14 +3731,20 @@ class Adjoint:
                 # Array descriptor fields, such as ``shape``, must be taken from
                 # the descriptor Var itself; replaying an origin may reconstruct
                 # an rvalue view like ``wp::view(...).shape``.
-                origin = None if is_array(aggregate_type) else adj.reference_origin_for_var(aggregate)
+                field_origin = adj.array_field_ref_origin(aggregate, (attr_var.label,))
+                origin = field_origin
+                if origin is None and not is_array(aggregate_type):
+                    origin = adj.reference_origin_for_var(aggregate)
 
                 if origin is not None:
-                    attr.ref_origin = origin.extend_field(
-                        attr_var.label,
-                        pointer_cast=cast,
-                        adjoint_pointer_cast=adj_cast,
-                    )
+                    if field_origin is None:
+                        attr.ref_origin = origin.extend_field(
+                            attr_var.label,
+                            pointer_cast=cast,
+                            adjoint_pointer_cast=adj_cast,
+                        )
+                    else:
+                        attr.ref_origin = origin
                     adj.add_forward(f"{attr.emit()} = {attr.ref_origin.emit_pointer()};")
                 elif is_reference(aggregate.type):
                     adj.add_forward(f"{attr.emit()} = {cast}&({aggregate.emit()}->{attr_var.label});")
@@ -3707,11 +3752,17 @@ class Adjoint:
                     adj.add_forward(f"{attr.emit()} = {cast}&({aggregate.emit()}.{attr_var.label});")
 
                 adj.deterministic.propagate_attribute_reference(attr, aggregate, attr_var, attr_type)
+                adj.apply_struct_array_field_metadata(attr, aggregate, (attr_var.label,))
 
                 if adj.is_differentiable_value_type(strip_reference(attr_type)):
                     adj.add_reverse(f"{aggregate.emit_adj()}.{attr_var.label} += {adj_cast}{attr.emit_adj()};")
                 else:
                     adj.add_reverse(f"{aggregate.emit_adj()}.{attr_var.label} = {adj_cast}{attr.emit_adj()};")
+
+                if hasattr(aggregate, "array_root"):
+                    attr.array_root = aggregate.array_root
+                    attr.array_indices = aggregate.array_indices
+                    attr.array_access_prefix = f"{getattr(aggregate, 'array_access_prefix', '')}.{attr_var.label}"
 
                 return attr
 
@@ -4597,10 +4648,18 @@ class Adjoint:
             if len(indices) == target_type.ndim and all(
                 warp._src.types.type_is_int(strip_reference(x.type)) for x in indices
             ):
+                indices = tuple(adj.load(x) for x in indices)
                 # handles array loads (where each dimension has an index specified)
                 out = adj.add_builtin_call("address", [target, *indices])
                 if origin := adj.reference_origin_for_var(target):
                     out.ref_origin = origin.extend_array(indices)
+
+                if warp._src.types.matches_array_class(target_type, warp._src.types.array) and (
+                    type_is_composite(target_type.dtype) or isinstance(target_type.dtype, Struct)
+                ):
+                    out.array_root = target
+                    out.array_indices = tuple(indices)
+                    out.array_access_prefix = ""
 
                 if adj.builder_options.get("verify_autograd_array_access", False):
                     target.mark_read()
@@ -4661,6 +4720,14 @@ class Adjoint:
                     and index_types_are_int
                 ):
                     out.ref_origin = origin.extend_index(indices[0])
+
+            if hasattr(target, "array_root"):
+                slot_access = adj._composite_subscript_slot_access(target_type, indices)
+                if slot_access is not None:
+                    access_cpp, _ = slot_access
+                    out.array_root = target.array_root
+                    out.array_indices = target.array_indices
+                    out.array_access_prefix = f"{getattr(target, 'array_access_prefix', '')}{access_cpp}"
 
         return out
 
@@ -5059,11 +5126,7 @@ class Adjoint:
         if hasattr(node.value, "attr") and node.value.attr == "adjoint":
             # handle adjoint of a variable, i.e. wp.adjoint[var]
             node.slice.is_adjoint = True
-            var = adj.eval(node.slice)
-            var_name = var.label
-            var = Var(f"adj_{var_name}", type=var.type, constant=None, prefix=False)
-            adj.deterministic.mark_adjoint_target(var, var_name)
-            return var
+            return adj.make_adjoint_target_var(adj.eval(node.slice))
 
         target, indices = adj.eval_subscript(node)
 
@@ -5093,6 +5156,182 @@ class Adjoint:
             )
 
         adj.add_forward(f"*{ref_var.emit()} = {value.emit()};")
+
+    def clear_array_slot_metadata(adj, value):
+        """Detach array-slot provenance when binding a value to a local."""
+        if not isinstance(value, Var) or is_array(strip_reference(value.type)):
+            return value
+
+        for name in ("array_root", "array_indices", "array_access_prefix"):
+            if hasattr(value, name):
+                delattr(value, name)
+        return value
+
+    def _struct_array_field_paths(adj, struct_type, prefix=()):
+        """Yield array-typed field paths inside ``struct_type``."""
+        if not isinstance(struct_type, Struct):
+            return
+
+        for field_name, field_var in struct_type.vars.items():
+            field_path = (*prefix, field_name)
+            field_type = strip_reference(field_var.type)
+            if is_array(field_type):
+                yield field_path, field_type
+            elif isinstance(field_type, Struct):
+                yield from adj._struct_array_field_paths(field_type, field_path)
+
+    @staticmethod
+    def _origin_with_field_path(origin, field_path):
+        for field_name in field_path:
+            origin = origin.extend_field(field_name)
+        return origin
+
+    def _base_struct_alias_origin(adj, src):
+        if getattr(src, "ref_origin", None) is not None:
+            return src.ref_origin
+        if any(src is arg for arg in adj.args):
+            return _LValueOrigin.from_local(src)
+        return None
+
+    def propagate_struct_array_alias_metadata(adj, out, src):
+        """Carry array-field storage provenance through struct aliases."""
+        if not isinstance(out, Var) or not isinstance(src, Var):
+            return out
+
+        out_type = strip_reference(out.type)
+        src_type = strip_reference(src.type)
+        if not isinstance(out_type, Struct) or not isinstance(src_type, Struct):
+            return out
+
+        inherited_origins = getattr(src, "array_field_ref_origins", {})
+        inherited_det_targets = getattr(src, "array_field_deterministic_targets", {})
+        base_origin = adj._base_struct_alias_origin(src)
+        base_root_label = getattr(src, "deterministic_ref_root_label", None)
+        base_attr_path = tuple(getattr(src, "deterministic_ref_attr_path", ()))
+        if base_root_label is None and any(src is arg for arg in adj.args):
+            base_root_label = src.label
+
+        origins = {}
+        det_targets = {}
+        for field_path, array_type in adj._struct_array_field_paths(out_type):
+            if field_path in inherited_origins:
+                origins[field_path] = inherited_origins[field_path]
+            elif base_origin is not None:
+                origins[field_path] = adj._origin_with_field_path(base_origin, field_path)
+
+            if field_path in inherited_det_targets:
+                det_targets[field_path] = inherited_det_targets[field_path]
+            elif base_root_label is not None:
+                det_targets[field_path] = (base_root_label, (*base_attr_path, *field_path), array_type)
+
+        if origins:
+            out.array_field_ref_origins = origins
+        if det_targets:
+            out.array_field_deterministic_targets = det_targets
+
+        return out
+
+    @staticmethod
+    def array_field_ref_origin(aggregate, field_path):
+        return getattr(aggregate, "array_field_ref_origins", {}).get(tuple(field_path))
+
+    def apply_struct_array_field_metadata(adj, attr, aggregate, field_path):
+        """Apply field-specific array provenance after a struct attribute read."""
+        field_path = tuple(field_path)
+        origin = adj.array_field_ref_origin(aggregate, field_path)
+        if origin is not None:
+            attr.ref_origin = origin
+
+        det_targets = getattr(aggregate, "array_field_deterministic_targets", {})
+        if field_path in det_targets:
+            root_label, attr_path, array_type = det_targets[field_path]
+            attr.deterministic_ref_root_label = root_label
+            attr.deterministic_ref_attr_path = tuple(attr_path)
+            attr.deterministic_ref_array_type = array_type
+
+        nested_origins = {}
+        for path, nested_origin in getattr(aggregate, "array_field_ref_origins", {}).items():
+            if len(path) > len(field_path) and path[: len(field_path)] == field_path:
+                nested_origins[path[len(field_path) :]] = nested_origin
+        if nested_origins:
+            attr.array_field_ref_origins = nested_origins
+
+        nested_det_targets = {}
+        for path, target in det_targets.items():
+            if len(path) > len(field_path) and path[: len(field_path)] == field_path:
+                nested_det_targets[path[len(field_path) :]] = target
+        if nested_det_targets:
+            attr.array_field_deterministic_targets = nested_det_targets
+
+        return attr
+
+    def propagate_array_alias_metadata(adj, out, src):
+        """Carry array storage provenance through descriptor aliases."""
+        if not isinstance(out, Var) or not isinstance(src, Var):
+            return out
+        if not is_array(strip_reference(out.type)):
+            return out
+
+        out.ref_origin = getattr(src, "ref_origin", None)
+        for name in (
+            "deterministic_ref_root_label",
+            "deterministic_ref_attr_path",
+            "deterministic_ref_array_type",
+            "deterministic_view_parent",
+            "deterministic_view_indices",
+            "deterministic_adjoint_target",
+            "deterministic_adjoint_root_label",
+        ):
+            if hasattr(src, name):
+                setattr(out, name, getattr(src, name))
+
+        if (
+            not hasattr(out, "deterministic_ref_root_label")
+            and not hasattr(out, "deterministic_view_parent")
+            and not getattr(out, "deterministic_adjoint_target", False)
+            and any(src is arg for arg in adj.args)
+        ):
+            out.deterministic_ref_root_label = src.label
+            out.deterministic_ref_attr_path = ()
+            out.deterministic_ref_array_type = strip_reference(src.type)
+
+        return out
+
+    def make_adjoint_target_var(adj, src_var):
+        """Return the storage expression represented by ``wp.adjoint[src_var]``."""
+        if not isinstance(src_var, Var):
+            return None
+
+        src_type = strip_reference(src_var.type)
+        if not is_array(src_type):
+            return Var(f"adj_{src_var.label}", type=src_var.type, constant=None, prefix=False)
+
+        view_parent = getattr(src_var, "deterministic_view_parent", None)
+        if view_parent is not None:
+            adj_parent = adj.make_adjoint_target_var(view_parent)
+            if adj_parent is None:
+                return None
+            view_indices = tuple(adj.load(idx) for idx in getattr(src_var, "deterministic_view_indices", ()))
+            out = adj.add_builtin_call("view", (adj_parent, *view_indices))
+            adj.deterministic.track_view(out, adj_parent, view_indices)
+            return out
+
+        origin = getattr(src_var, "ref_origin", None)
+        if origin is not None:
+            out = Var(origin.emit_lvalue(adjoint=True), type=src_type, constant=None, prefix=False)
+        else:
+            out = Var(f"adj_{src_var.label}", type=src_type, constant=None, prefix=False)
+
+        root_label = getattr(src_var, "deterministic_ref_root_label", None)
+        if root_label is not None:
+            out.deterministic_adjoint_target = True
+            out.deterministic_adjoint_root_label = root_label
+            out.deterministic_ref_attr_path = tuple(getattr(src_var, "deterministic_ref_attr_path", ()))
+            out.deterministic_ref_array_type = src_type
+        elif origin is None or not any(step.kind == "view" for step in origin.steps):
+            adj.deterministic.mark_adjoint_target(out, src_var.label)
+
+        return out
 
     def emit_Assign(adj, node):
         if len(node.targets) != 1:
@@ -5152,10 +5391,21 @@ class Adjoint:
                 # storing any ref target so tuple assignment keeps its
                 # simultaneous semantics, e.g. `old, x = x, 2.0`.
                 out = tuple(
-                    adj.load(value) if isinstance(value, Var) and is_reference(value.type) else value for value in rhs
+                    adj.add_builtin_call("copy", [value])
+                    if isinstance(value, Var) and is_reference(value.type)
+                    else value
+                    for value in rhs
                 )
             else:
-                out = rhs
+                out = tuple(
+                    adj.add_builtin_call("copy", [value])
+                    if isinstance(value, Var) and is_reference(value.type)
+                    else value
+                    for value in rhs
+                )
+            out = tuple(
+                adj.propagate_array_alias_metadata(value, rhs_value) for value, rhs_value in zip(out, rhs, strict=True)
+            )
 
             for name, rhs in zip(names, out, strict=True):
                 # A tuple-unpack target that is a wp.ref[T] parameter mutates
@@ -5166,6 +5416,7 @@ class Adjoint:
                     adj.store_ref_param_value(name, rhs)
                     continue
 
+                local_rhs = adj.clear_array_slot_metadata(rhs)
                 if name in adj.symbols:
                     if isinstance(adj.symbols[name], warp._src.context.GradWrapper):
                         raise WarpCodegenError(
@@ -5176,14 +5427,14 @@ class Adjoint:
 
                     # Sibling query-kind types may rebind over one another: a later
                     # branch merge decays the symbol to their shared erased parent.
-                    if not types_equal(rhs.type, adj.symbols[name].type) and not type_erasure_join(
-                        rhs.type, adj.symbols[name].type
+                    if not types_equal(local_rhs.type, adj.symbols[name].type) and not type_erasure_join(
+                        local_rhs.type, adj.symbols[name].type
                     ):
                         raise WarpCodegenTypeError(
-                            f"Error, assigning to existing symbol {name} ({adj.symbols[name].type}) with different type ({rhs.type})"
+                            f"Error, assigning to existing symbol {name} ({adj.symbols[name].type}) with different type ({local_rhs.type})"
                         )
 
-                adj.symbols[name] = rhs
+                adj.symbols[name] = local_rhs
 
         # handles the case where we are assigning to an array index (e.g.: arr[i] = 2.0)
         elif isinstance(lhs, ast.Subscript):
@@ -5191,7 +5442,9 @@ class Adjoint:
                 # handle adjoint of a variable, i.e. wp.adjoint[var]
                 lhs.slice.is_adjoint = True
                 src_var = adj.eval(lhs.slice)
-                var = Var(f"adj_{src_var.label}", type=src_var.type, constant=None, prefix=False)
+                var = adj.make_adjoint_target_var(src_var)
+                if var is None:
+                    return
                 adj.add_forward(f"{var.emit()} = {rhs.emit()};")
                 return
 
@@ -5201,9 +5454,24 @@ class Adjoint:
             if adj._try_lower_array_slot_write(lhs, rhs):
                 return
 
+            # Materialize an rhs reference (e.g. ``src[j]`` -> ``address(src, j)``)
+            # before evaluating the (possibly side-effecting) target index
+            # expression. Python evaluates the rhs of a plain assignment before
+            # the assignment target, so ``dst[mutate(src)] = src[0]`` must store
+            # the original ``src[0]``. ``_store_subscript`` would otherwise route
+            # the rhs reference through a builtin call that loads it only after
+            # the target index has been emitted. Use ``copy`` (not ``load``):
+            # ``load``'s adjoint is a nop, which would drop the read-side
+            # gradient for ``dst[i] = src[j]``; ``copy`` keeps the adjoint chain
+            # back to the source array intact (matching the slot fast path).
+            if is_reference(rhs.type):
+                rhs = adj.add_builtin_call("copy", [rhs])
+
             target, indices = adj.eval_subscript(lhs)
             target_type = strip_reference(target.type)
             indices = adj.eval_indices(target_type, indices)
+            if adj._try_lower_evaluated_array_slot_write(target, indices, rhs):
+                return
             adj._store_subscript(lhs, target, indices, rhs)
 
         elif isinstance(lhs, ast.Name):
@@ -5276,7 +5544,11 @@ class Adjoint:
                 out = rhs
 
             if isinstance(out, Var) and is_array(out.type):
-                out.ref_origin = getattr(rhs, "ref_origin", None)
+                adj.propagate_array_alias_metadata(out, rhs)
+            elif isinstance(out, Var) and isinstance(strip_reference(out.type), Struct):
+                adj.propagate_struct_array_alias_metadata(out, rhs)
+            else:
+                out = adj.clear_array_slot_metadata(out)
 
             # update symbol map (assumes lhs is a Name node)
             adj.symbols[name] = out
@@ -5286,7 +5558,12 @@ class Adjoint:
             # wp.adjoint[var].field reaches here but declines because root name "wp" is not a symbol.
             if adj._try_lower_array_slot_write(lhs, rhs):
                 return
-            adj._store_attribute(lhs, adj.resolve_attribute_store_aggregate(lhs.value), rhs)
+            if isinstance(rhs, Var) and is_reference(rhs.type):
+                rhs = adj.add_builtin_call("copy", [rhs])
+            aggregate = adj.resolve_attribute_store_aggregate(lhs.value)
+            if adj._try_lower_evaluated_array_slot_attribute_write(lhs, aggregate, rhs):
+                return
+            adj._store_attribute(lhs, aggregate, rhs)
 
         else:
             raise WarpCodegenError("Error, unsupported assignment statement.")
@@ -5319,6 +5596,8 @@ class Adjoint:
           - ``arr[i].x`` — vec/quat component via attribute (leaf SCALAR).
           - ``arr[i][k]`` — vec/quat scalar subscript (leaf SCALAR).
           - ``arr[i][r, c]`` — mat element subscript (leaf SCALAR).
+          - ``arr[i][r][c]`` - mat row then scalar subscript (leaf SCALAR).
+          - ``arr[i][r]`` - mat row subscript (leaf COMPOSITE: vec).
           - ``arr[i].p`` / ``arr[i].q`` — transform translation / rotation
             (leaf is COMPOSITE: vec3 or quat).
           - ``arr[i].field`` — struct field (leaf SCALAR or COMPOSITE).
@@ -5333,7 +5612,7 @@ class Adjoint:
           - Arrays other than plain ``wp.array`` (indexed, fabric, fixed):
             those have no ``adj_array_store_slot`` overload (the slot call
             would fail to compile for them).
-          - Vec/quat/mat slices (writing a sub-vec, a row, or a sub-mat):
+          - Vec/quat/mat non-row slices (writing a sub-vec or sub-mat):
             the slot is a composite that isn't trivially addressable as
             a single reference via the lambda pattern.
           - Chains that traverse an array field of a struct
@@ -5346,48 +5625,425 @@ class Adjoint:
         plan = adj._classify_slot_access(lhs, rhs.type)
         if plan is None:
             return False
+        root_var = adj._slot_plan_root_var(plan)
+        if root_var is None:
+            return False
 
+        # Materialize an rhs reference (e.g. ``src[i]`` -> ``address(src, i)``)
+        # BEFORE evaluating the slot-index expressions. Python evaluates the
+        # rhs of a plain assignment before the assignment target, so a
+        # side-effecting index expression must not be able to alter the value
+        # the rhs reads (e.g. ``dst[mutate(src)].x = src[0]`` must read the
+        # original ``src[0]``). Deferring the copy into _emit_array_slot_write
+        # would read the slot after _eval_array_slot_access has run the index
+        # expressions. Using ``copy`` (not ``load``) keeps the read-side
+        # adjoint chain intact.
+        if is_reference(rhs.type):
+            rhs = adj.add_builtin_call("copy", [rhs])
+
+        array_index_vars, access_cpp = adj._eval_array_slot_access(plan.array_indices_ast, plan.access_parts)
+
+        return adj._emit_array_slot_write(root_var, array_index_vars, access_cpp, rhs, plan.slot_type)
+
+    def _try_lower_array_slot_atomic_augassign(adj, lhs, eval_rhs, op):
+        """Lower array-rooted composite slot augmented assignments atomically.
+
+        ``eval_rhs`` is a thunk that evaluates the right-hand side on demand.
+        It is invoked only after the slot indices have been evaluated, so a
+        side-effecting target index expression is emitted before the rhs,
+        matching Python's augmented-assignment evaluation order.
+        """
+        plan = adj._classify_slot_access(lhs, None)
+        if plan is None:
+            return False
+        root_var = adj._slot_plan_root_var(plan)
+        if root_var is None:
+            return False
+
+        op_name = adj._atomic_slot_augassign_op_name(op)
+        if op_name is None:
+            # Keep unsupported ops like ``/=`` on the existing load-op-store
+            # path, matching whole-array augmented assignment behavior.
+            return False
+
+        if not adj._is_supported_atomic_slot_type(plan.slot_type, op):
+            # Keep non-atomic slot types on the existing load-op-store path,
+            # matching whole-array augmented assignment behavior.
+            return False
+
+        array_index_vars, access_cpp = adj._eval_array_slot_access(plan.array_indices_ast, plan.access_parts)
+        return adj._try_emit_array_slot_atomic_augassign(
+            root_var, array_index_vars, access_cpp, eval_rhs, plan.slot_type, op_name
+        )
+
+    def _eval_array_slot_access(adj, array_indices_ast, access_parts):
+        # Evaluate indices AFTER committing to the fast path, in Python
+        # left-to-right order: array subscripts outermost first, then the
+        # composite-component chain inner subscripts in order. Reference-typed
+        # indices (e.g. ``arr[idx[0]].x``, where ``idx[0]`` is an array read)
+        # must be loaded to a value before being emitted into ``wp::index(...)``
+        # and the access lambda: unlike the generic store path, these indices
+        # are emitted as raw C++ rather than passed through a builtin call that
+        # would load them, so a bare reference would be a pointer where an
+        # integer is expected and fail to compile.
+        array_index_vars = []
+        for n in array_indices_ast:
+            idx_var = adj.load(adj.eval(n))
+            if not adj._is_integer_index_var(idx_var):
+                idx_type = getattr(idx_var, "type", type(idx_var))
+                raise WarpCodegenTypeError(
+                    f"Array slot write indices must be integers, got {type_repr(strip_reference(idx_type))}"
+                )
+            array_index_vars.append(idx_var)
+
+        access_cpp_parts = []
+        for part in access_parts:
+            if isinstance(part, str):
+                access_cpp_parts.append(part)
+            else:
+                idx_var = adj.load(adj.eval(part))
+                if not adj._is_integer_index_var(idx_var):
+                    raise WarpCodegenTypeError(
+                        f"Composite slot write indices must be integers, got {type_repr(strip_reference(idx_var.type))}"
+                    )
+                access_cpp_parts.append(idx_var.emit())
+
+        return array_index_vars, "".join(access_cpp_parts)
+
+    def _is_integer_index_var(adj, index):
+        return hasattr(index, "type") and warp._src.types.type_is_int(strip_reference(index.type))
+
+    def _slot_plan_root_var(adj, plan):
+        if not plan.root_is_adjoint:
+            return plan.root_var
+        return adj.make_adjoint_target_var(plan.root_var)
+
+    def _atomic_slot_augassign_op_name(adj, op):
+        if isinstance(op, ast.Add):
+            return "add"
+        if isinstance(op, ast.Sub):
+            return "sub"
+        if isinstance(op, ast.BitAnd):
+            return "and"
+        if isinstance(op, ast.BitOr):
+            return "or"
+        if isinstance(op, ast.BitXor):
+            return "xor"
+        return None
+
+    def _is_supported_atomic_slot_type(adj, slot_type, op):
+        scalar_type = getattr(slot_type, "_wp_scalar_type_", slot_type)
+        if isinstance(op, str):
+            op_name = op
+        else:
+            op_name = adj._atomic_slot_augassign_op_name(op)
+
+        if op_name in ("add", "sub"):
+            supported_atomic_types = (int32, uint32, int64, uint64, float16, bfloat16, float32, float64)
+        elif op_name in ("and", "or", "xor"):
+            supported_atomic_types = (int32, uint32, int64, uint64)
+        else:
+            return False
+        return any(types_equal_generic(scalar_type, t) for t in supported_atomic_types)
+
+    def _composite_subscript_slot_access(adj, target_type, indices):
+        if type_is_matrix(target_type):
+            if len(indices) == 1:
+                indices = tuple(adj.load(idx) for idx in indices)
+                if not adj._is_integer_index_var(indices[0]):
+                    return None
+                return f".row_ref({indices[0].emit()})", getattr(target_type, "_wp_row_type_", None)
+            if len(indices) == 2:
+                indices = tuple(adj.load(idx) for idx in indices)
+                if not all(adj._is_integer_index_var(idx) for idx in indices):
+                    return None
+                return (
+                    f".element_ref({indices[0].emit()}, {indices[1].emit()})",
+                    getattr(target_type, "_wp_scalar_type_", None),
+                )
+        elif type_is_vector(target_type) or type_is_quaternion(target_type) or type_is_transformation(target_type):
+            if len(indices) != 1:
+                return None
+            indices = tuple(adj.load(idx) for idx in indices)
+            if not adj._is_integer_index_var(indices[0]):
+                return None
+            # Route through component_ref() so negative indices are normalized;
+            # raw operator[] would index before storage.
+            return f".component_ref({indices[0].emit()})", getattr(target_type, "_wp_scalar_type_", None)
+
+        return None
+
+    def _composite_attribute_slot_access(adj, attr, aggregate_type):
+        if type_is_vector(aggregate_type) or type_is_quaternion(aggregate_type):
+            index = adj.vector_component_index(attr, aggregate_type)
+            return f".component_ref({index.emit()})", getattr(aggregate_type, "_wp_scalar_type_", None)
+        if type_is_transformation(aggregate_type):
+            component = adj.transform_component(attr)
+            scalar_t = getattr(aggregate_type, "_wp_scalar_type_", None)
+            if scalar_t is None:
+                return None
+            slot_type = vector(length=3, dtype=scalar_t) if component == "p" else quaternion(dtype=scalar_t)
+            return f".{component}", slot_type
+        if isinstance(aggregate_type, Struct):
+            if attr not in aggregate_type.vars:
+                return None
+            attr_var = aggregate_type.vars[attr]
+            if is_array(attr_var.type):
+                return None
+            return f".{attr_var.label}", attr_var.type
+
+        return None
+
+    def _evaluated_array_slot_context(adj, carrier):
+        if not isinstance(carrier, Var):
+            return None
+
+        root_var = getattr(carrier, "array_root", None)
+        if not isinstance(root_var, Var):
+            return None
+
+        root_type = strip_reference(root_var.type)
+        if not warp._src.types.matches_array_class(root_type, warp._src.types.array):
+            return None
+        if root_type.dtype in warp._src.types.non_atomic_types:
+            return None
+
+        array_index_vars = getattr(carrier, "array_indices", None)
+        if array_index_vars is None:
+            return None
+        array_index_vars = tuple(adj.load(idx) for idx in array_index_vars)
+        if not all(adj._is_integer_index_var(idx) for idx in array_index_vars):
+            return None
+
+        return root_var, array_index_vars, getattr(carrier, "array_access_prefix", "")
+
+    def _try_lower_evaluated_array_slot_write(adj, target, indices, rhs, *, emit_reverse=True):
+        """Lower an array-rooted composite slot write using evaluated indices.
+
+        ``emit_AugAssign`` has already evaluated the LHS through
+        ``eval_subscript()`` before it reaches this path. Re-walking the
+        original AST would re-run index expressions, so this helper uses
+        the array-root metadata attached to the evaluated reference.
+        """
+        context = adj._evaluated_array_slot_context(target)
+        if context is None:
+            return False
+        root_var, array_index_vars, access_cpp = context
+
+        target_type = strip_reference(target.type)
+        slot_access = adj._composite_subscript_slot_access(target_type, indices)
+        if slot_access is None:
+            return False
+        suffix_cpp, slot_type = slot_access
+        access_cpp += suffix_cpp
+
+        if slot_type is None:
+            return False
+
+        if not types_equal(strip_reference(rhs.type), slot_type):
+            return False
+
+        return adj._emit_array_slot_write(
+            root_var, array_index_vars, access_cpp, rhs, slot_type, emit_reverse=emit_reverse
+        )
+
+    def _try_lower_evaluated_array_slot_atomic_augassign(adj, target, indices, eval_rhs, op):
+        """Lower evaluated array-rooted composite subscript augmented assignment."""
+        context = adj._evaluated_array_slot_context(target)
+        if context is None:
+            return False
+        root_var, array_index_vars, access_cpp = context
+
+        target_type = strip_reference(target.type)
+        slot_access = adj._composite_subscript_slot_access(target_type, indices)
+        if slot_access is None:
+            return False
+        suffix_cpp, slot_type = slot_access
+        if slot_type is None:
+            return False
+
+        op_name = adj._atomic_slot_augassign_op_name(op)
+        if op_name is None:
+            return False
+
+        return adj._try_emit_array_slot_atomic_augassign(
+            root_var, array_index_vars, access_cpp + suffix_cpp, eval_rhs, slot_type, op_name
+        )
+
+    def _try_lower_evaluated_array_slot_attribute_write(adj, lhs, aggregate, rhs, *, emit_reverse=True):
+        """Lower an array-rooted composite attribute write using an evaluated aggregate."""
+        context = adj._evaluated_array_slot_context(aggregate)
+        if context is None:
+            return False
+        root_var, array_index_vars, access_cpp = context
+
+        aggregate_type = strip_reference(aggregate.type)
+        slot_access = adj._composite_attribute_slot_access(lhs.attr, aggregate_type)
+        if slot_access is None:
+            return False
+        suffix_cpp, slot_type = slot_access
+        access_cpp += suffix_cpp
+
+        if slot_type is None:
+            return False
+
+        if not types_equal(strip_reference(rhs.type), slot_type):
+            return False
+
+        return adj._emit_array_slot_write(
+            root_var, array_index_vars, access_cpp, rhs, slot_type, emit_reverse=emit_reverse
+        )
+
+    def _try_lower_evaluated_array_slot_attribute_atomic_augassign(adj, lhs, aggregate, eval_rhs, op):
+        """Lower evaluated array-rooted composite attribute augmented assignment."""
+        context = adj._evaluated_array_slot_context(aggregate)
+        if context is None:
+            return False
+        root_var, array_index_vars, access_cpp = context
+
+        aggregate_type = strip_reference(aggregate.type)
+        slot_access = adj._composite_attribute_slot_access(lhs.attr, aggregate_type)
+        if slot_access is None:
+            return False
+        suffix_cpp, slot_type = slot_access
+        access_cpp += suffix_cpp
+
+        if slot_type is None:
+            return False
+
+        op_name = adj._atomic_slot_augassign_op_name(op)
+        if op_name is None:
+            return False
+
+        return adj._try_emit_array_slot_atomic_augassign(
+            root_var, array_index_vars, access_cpp, eval_rhs, slot_type, op_name
+        )
+
+    def _try_emit_array_slot_atomic_augassign(
+        adj, root_var, array_index_vars, access_cpp, eval_rhs, slot_type, op_name
+    ):
+        """Validate and emit a composite slot atomic augmented assignment."""
+        root_type = strip_reference(root_var.type)
+        if not warp._src.types.matches_array_class(root_type, warp._src.types.array):
+            return False
+        if root_type.dtype in warp._src.types.non_atomic_types:
+            return False
+
+        if not adj._is_supported_atomic_slot_type(slot_type, op_name):
+            return False
+
+        rhs = eval_rhs()
+        return adj._emit_array_slot_atomic_augassign(root_var, array_index_vars, access_cpp, rhs, slot_type, op_name)
+
+    def _array_slot_root_expr(adj, root_var):
+        """Return a C++ array descriptor expression for a slot root."""
+        if is_reference(root_var.type):
+            return f"*({root_var.emit()})"
+        return root_var.emit()
+
+    def _array_slot_root_adj_expr(adj, root_var):
+        """Return the C++ adjoint array descriptor expression for a slot root."""
+        if origin := adj.reference_origin_for_var(root_var):
+            prelude = []
+            expr = origin.emit_lvalue_materialized_views(adjoint=True, adj=adj, prelude=prelude)
+            return expr, prelude
+        return root_var.emit_adj(), []
+
+    def _emit_array_slot_write(adj, root_var, array_index_vars, access_cpp, rhs, slot_type, *, emit_reverse=True):
         # ``src[i]`` arrives as ``address(src, i)``; route it through ``copy``
         # so the rhs has a working adjoint chain back to the source array
         # (``load`` would route through a nop adjoint and drop the read-side
         # gradient).
         if is_reference(rhs.type):
             rhs = adj.add_builtin_call("copy", [rhs])
+        rhs_value_type = strip_reference(rhs.type)
+        if not types_equal(rhs_value_type, slot_type):
+            raise WarpCodegenTypeError(
+                f"Composite slot assignment expects value of type {type_repr(slot_type)}, "
+                f"got {type_repr(rhs_value_type)}"
+            )
 
-        # Committed: evaluate indices in Python left-to-right order
-        # (outer array subscripts first, then composite-chain subscripts).
-        array_indices_cpp = ", ".join(adj.eval(n).emit() for n in plan.array_indices_ast)
-        access_cpp = "".join(p if isinstance(p, str) else adj.eval(p).emit() for p in plan.access_parts)
-
-        arr_cpp = plan.root_var.emit()
-        adj_arr_cpp = plan.root_var.emit_adj()
+        arr_cpp = adj._array_slot_root_expr(root_var)
+        adj_arr_cpp, adj_arr_prelude = adj._array_slot_root_adj_expr(root_var)
         rhs_cpp = rhs.emit()
         adj_rhs_cpp = rhs.emit_adj()
+        array_indices_cpp = ", ".join(v.emit() for v in array_index_vars)
 
-        # Forward: one slot store (wrapped for deterministic atomic mode).
+        # Forward: one slot store. Like array_store(), this mutates memory and
+        # must not replay during backward.
         slot_lvalue = f"wp::index({arr_cpp}, {array_indices_cpp}){access_cpp}"
-        adj.add_forward(adj.deterministic.wrap_slot_store(slot_lvalue, rhs_cpp))
+        fwd_store = adj.deterministic.wrap_slot_store(slot_lvalue, rhs_cpp)
+        adj.deterministic.mark_store_target(root_var)
+        adj.add_forward(fwd_store, replay=f"// {fwd_store}")
 
-        # Reverse: single call to the slot-level adj_array_store variant,
-        # with the composite-component access encoded as a short lambda.
-        # The grad-routing (adj_buf vs buf.grad) and RETAIN_GRAD handling
-        # live in the native helper, matching adj_array_store's existing
-        # logic scoped to the single slot.
-        adj.add_reverse(
-            f"wp::adj_array_store_slot({arr_cpp}, {adj_arr_cpp}, {adj_rhs_cpp}, "
-            f"[&](auto& _e) -> auto& {{ return _e{access_cpp}; }}, {array_indices_cpp});"
-        )
+        if emit_reverse:
+            # The native helper handles grad-routing and RETAIN_GRAD for this
+            # one overwritten slot, matching adj_array_store's existing logic.
+            adj.add_reverse(
+                f"wp::adj_array_store_slot({arr_cpp}, {adj_arr_cpp}, {adj_rhs_cpp}, "
+                f"[&](auto& _e) -> auto& {{ return _e{access_cpp}; }}, {array_indices_cpp});"
+            )
+            for stmt in reversed(adj_arr_prelude):
+                adj.add_reverse(stmt)
 
-        adj._mark_array_write(plan.root_var)
+        adj._mark_array_write(root_var)
         return True
 
-    def _classify_slot_access(adj, lhs, rhs_type):
+    def _emit_array_slot_atomic_augassign(adj, root_var, array_index_vars, access_cpp, rhs, slot_type, op_name):
+        if is_reference(rhs.type):
+            rhs = adj.add_builtin_call("copy", [rhs])
+        rhs_value_type = strip_reference(rhs.type)
+        if not types_equal(rhs_value_type, slot_type):
+            raise WarpCodegenTypeError(
+                f"Composite slot augmented assignment expects value of type {type_repr(slot_type)}, "
+                f"got {type_repr(rhs_value_type)}"
+            )
+
+        arr_cpp = adj._array_slot_root_expr(root_var)
+        adj_arr_cpp, adj_arr_prelude = adj._array_slot_root_adj_expr(root_var)
+        rhs_cpp = rhs.emit()
+        adj_rhs_cpp = rhs.emit_adj()
+        array_indices_cpp = ", ".join(v.emit() for v in array_index_vars)
+        access_lambda = f"[&](auto& _e) -> auto& {{ return _e{access_cpp}; }}"
+        suffix = f", {array_indices_cpp}" if array_indices_cpp else ""
+
+        stmt = f"wp::array_atomic_{op_name}_slot({arr_cpp}, {rhs_cpp}, {access_lambda}{suffix});"
+        scalar_type = getattr(slot_type, "_wp_scalar_type_", slot_type)
+        if adj.deterministic.enabled:
+            if adj.deterministic.emit_adjoint_slot_scatter(
+                root_var, array_index_vars, access_cpp, rhs, slot_type, op_name, stmt
+            ):
+                return True
+            if op_name in ("add", "sub") and type_is_float(scalar_type):
+                raise WarpCodegenError(
+                    "Deterministic mode does not yet support floating-point composite slot augmented assignment "
+                    "atomics."
+                )
+            stmt = adj.deterministic.wrap_side_effect_call(stmt)
+
+        adj.add_forward(stmt, replay=f"// {stmt}")
+        adj.add_reverse(
+            f"wp::adj_array_atomic_{op_name}_slot({arr_cpp}, {adj_arr_cpp}, {adj_rhs_cpp}, {access_lambda}{suffix});"
+        )
+        for stmt in reversed(adj_arr_prelude):
+            adj.add_reverse(stmt)
+
+        if adj.builder_options.get("verify_autograd_array_access", False):
+            kernel_name = adj.fun_name
+            filename = adj.filename
+            lineno = adj.lineno + adj.fun_lineno
+            root_var.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
+
+        return True
+
+    def _classify_slot_access(adj, lhs, rhs_type=None):
         """Pure analysis of an array slot-write LHS — emits no IR.
 
         Returns a ``SlotAccessPlan`` if ``lhs`` is an array-rooted composite-
         component write the fast path can lower, else ``None``. Performs only
-        AST-shape and type checks; the caller evaluates indices and emits IR
-        after acceptance, so a decline never pollutes the IR.
+        AST-shape checks and, when ``rhs_type`` is provided, type checks; the
+        caller evaluates indices and emits IR after acceptance, so a decline
+        never pollutes the IR.
         """
         # Walk LHS leaf-to-root, then validate root.
         chain = []
@@ -5397,13 +6053,28 @@ class Adjoint:
             node = node.value
         if not isinstance(node, ast.Name):
             return None
-        # ``wp``-rooted chains (e.g. ``wp.adjoint[var].field``) decline here:
-        # the module alias ``wp`` is never a key in ``adj.symbols``. Plain and
-        # augmented ``wp.adjoint[var]`` writes are also intercepted upstream in
-        # emit_Assign before this fast path is reached.
-        if node.id not in adj.symbols:
+        chain.reverse()
+        root_is_adjoint = False
+        if node.id in adj.symbols:
+            root_var = adj.symbols[node.id]
+        elif (
+            len(chain) >= 2
+            and isinstance(chain[0], ast.Attribute)
+            and chain[0].attr == "adjoint"
+            and isinstance(chain[1], ast.Subscript)
+            and chain[1].value is chain[0]
+        ):
+            if not isinstance(chain[1].slice, ast.Name):
+                return None
+            src_var = adj.symbols.get(chain[1].slice.id)
+            if not isinstance(src_var, Var):
+                return None
+            root_var = src_var
+            root_is_adjoint = True
+            chain = chain[2:]
+        else:
             return None
-        root_var = adj.symbols[node.id]
+
         # ``adj.symbols`` may also hold ``GradWrapper`` and other non-Var values.
         if not isinstance(root_var, Var):
             return None
@@ -5414,7 +6085,6 @@ class Adjoint:
             return None
 
         # Consume ``ndim`` outermost subscripts as the array indices.
-        chain.reverse()
         needed = root_type.ndim
         array_indices_ast = []
         consumed = 0
@@ -5442,7 +6112,9 @@ class Adjoint:
         # Member-access fragments below encode native layout: vec_t uses .c[i],
         # mat_t uses .data[r][c], quat_t uses named .x/.y/.z/.w, transform_t .p/.q.
         # The same access string drives both the forward store and the reverse lambda.
-        for step in remaining:
+        step_index = 0
+        while step_index < len(remaining):
+            step = remaining[step_index]
             if isinstance(step, ast.Attribute):
                 if type_is_vector(current_type):
                     dim = current_type._shape_[0]
@@ -5472,20 +6144,53 @@ class Adjoint:
                 elif isinstance(current_type, Struct):
                     if step.attr not in current_type.vars:
                         return None
-                    access_parts.append(f".{step.attr}")
-                    current_type = current_type.vars[step.attr].type
+                    attr_var = current_type.vars[step.attr]
+                    access_parts.append(f".{attr_var.label}")
+                    current_type = attr_var.type
                     # Array-field chains (``state.v[i] = rhs``) are plain
                     # array writes; let the legacy path handle them.
                     if is_array(current_type):
                         return None
                 else:
                     return None
+                step_index += 1
             else:  # ast.Subscript
                 if type_is_matrix(current_type):
-                    if not isinstance(step.slice, ast.Tuple) or len(step.slice.elts) != 2:
-                        return None
-                    access_parts.extend([".data[", step.slice.elts[0], "][", step.slice.elts[1], "]"])
-                    current_type = getattr(current_type, "_wp_scalar_type_", None)
+                    if isinstance(step.slice, ast.Tuple):
+                        slice_elts = step.slice.elts
+                        if len(slice_elts) != 2:
+                            return None
+                        if any(isinstance(elt, ast.Slice) for elt in slice_elts):
+                            return None
+                        access_parts.extend([".element_ref(", slice_elts[0], ", ", slice_elts[1], ")"])
+                        current_type = getattr(current_type, "_wp_scalar_type_", None)
+                        step_index += 1
+                    else:
+                        if isinstance(step.slice, ast.Slice):
+                            return None
+
+                        # Chained matrix row+column syntax, ``mat[r][c]``,
+                        # must normalize both indices. Lower it through the
+                        # matrix element helper instead of ``row_ref(r)[c]``;
+                        # vector subscript does not normalize negative indices.
+                        if step_index + 1 < len(remaining):
+                            next_step = remaining[step_index + 1]
+                            if isinstance(next_step, ast.Subscript):
+                                if isinstance(next_step.slice, ast.Tuple) or isinstance(next_step.slice, ast.Slice):
+                                    return None
+                                access_parts.extend([".element_ref(", step.slice, ", ", next_step.slice, ")"])
+                                current_type = getattr(current_type, "_wp_scalar_type_", None)
+                                step_index += 2
+                                if current_type is None:
+                                    return None
+                                continue
+
+                        # Single-index subscript: mat[r] to row write via row_ref().
+                        # row_ref() returns vec_t<Cols, Type>& which adj_array_store_slot
+                        # can accumulate into directly.
+                        access_parts.extend([".row_ref(", step.slice, ")"])
+                        current_type = getattr(current_type, "_wp_row_type_", None)
+                        step_index += 1
                 elif (
                     type_is_vector(current_type)
                     or type_is_quaternion(current_type)
@@ -5493,18 +6198,23 @@ class Adjoint:
                 ):
                     if isinstance(step.slice, ast.Tuple):
                         return None
-                    access_parts.extend(["[", step.slice, "]"])
+                    if isinstance(step.slice, ast.Slice):
+                        return None
+                    # Route through component_ref() so negative indices are
+                    # normalized; raw operator[] would index before storage.
+                    access_parts.extend([".component_ref(", step.slice, ")"])
                     current_type = getattr(current_type, "_wp_scalar_type_", None)
+                    step_index += 1
                 else:
                     return None
             if current_type is None:
                 return None
 
         slot_type = current_type
-        if not types_equal(strip_reference(rhs_type), slot_type):
+        if rhs_type is not None and not types_equal(strip_reference(rhs_type), slot_type):
             return None
 
-        return SlotAccessPlan(root_var, array_indices_ast, access_parts, slot_type)
+        return SlotAccessPlan(root_var, array_indices_ast, access_parts, slot_type, root_is_adjoint)
 
     def _mark_array_write(adj, target):
         """Record an array write for the autograd access verifier.
@@ -5862,11 +6572,27 @@ class Adjoint:
                 adj.symbols[lhs.id] = result
             return
 
-        # Evaluate RHS once for non-Name targets.
-        rhs = adj.eval(node.value)
+        # Evaluate the RHS lazily (once, on first use) for non-Name targets.
+        # Python evaluates an augmented assignment's target -- including any
+        # side-effecting index subexpressions -- before the RHS, so the RHS
+        # must not be emitted until the target and its indices have been
+        # evaluated. Each path below evaluates its indices first, then calls
+        # ``eval_rhs()``.
+        _rhs_cache = []
+
+        def eval_rhs():
+            if not _rhs_cache:
+                _rhs_cache.append(adj.eval(node.value))
+            return _rhs_cache[0]
+
+        if isinstance(lhs, (ast.Attribute, ast.Subscript)) and adj._try_lower_array_slot_atomic_augassign(
+            lhs, eval_rhs, node.op
+        ):
+            return
 
         def apply_op(current):
             """Compute ``current <op> rhs`` using user-defined overloads or builtins."""
+            rhs = eval_rhs()
             op_name = builtin_operators[type(node.op)]
             try:
                 user_func = adj.resolve_external_reference(op_name)
@@ -5876,14 +6602,35 @@ class Adjoint:
                 pass
             return adj.add_builtin_call(op_name, [current, rhs])
 
+        def unsupported_differentiable_slot_augassign(result, target):
+            """Return whether an array-rooted fallback would silently drop adjoints."""
+            if isinstance(node.op, (ast.Add, ast.Sub, ast.BitAnd, ast.BitOr, ast.BitXor)):
+                return False
+            if not (adj.custom_reverse_mode or adj.force_adjoint_codegen or adj.used_by_backward_kernel):
+                return False
+            if not isinstance(target, Var) or not hasattr(target, "array_root"):
+                return False
+            return adj.is_differentiable_value_type(strip_reference(result.type))
+
+        def reject_differentiable_slot_augassign(result, target):
+            if unsupported_differentiable_slot_augassign(result, target):
+                raise WarpCodegenError(
+                    "Differentiable composite slot augmented assignments with this operator are not supported "
+                    "with backward code generation enabled. Use an explicit out-of-place expression or mark the "
+                    "kernel with enable_backward=False for forward-only code."
+                )
+
         def augassign_subscript(target, indices):
             """Load current value via pre-evaluated target/indices, apply op, store back."""
+            indices = tuple(adj.load(idx) for idx in indices)
+            if adj._try_lower_evaluated_array_slot_atomic_augassign(target, indices, eval_rhs, node.op):
+                return
+
             target_type = strip_reference(target.type)
 
             with adj.suppress_read_tracking():
                 if is_reference(target.type):
-                    current_ref = adj.add_builtin_call("indexref", [target, *indices])
-                    current = adj.load(current_ref)
+                    current = adj.add_builtin_call("extract", [target, *indices])
                 elif is_array(target_type):
                     current = adj.add_builtin_call("address", [target, *indices])
                 elif is_tile(target_type):
@@ -5892,17 +6639,23 @@ class Adjoint:
                     current = adj.add_builtin_call("extract", [target, *indices])
 
             result = apply_op(current)
-            adj._store_subscript(lhs, target, indices, result)
+            reject_differentiable_slot_augassign(result, target)
+            if not adj._try_lower_evaluated_array_slot_write(target, indices, result):
+                adj._store_subscript(lhs, target, indices, result)
 
         def augassign_attribute():
             """Load current value of attribute target, apply op, store back."""
             aggregate = adj.resolve_attribute_store_aggregate(lhs.value)
+            if adj._try_lower_evaluated_array_slot_attribute_atomic_augassign(lhs, aggregate, eval_rhs, node.op):
+                return
 
             with adj.suppress_read_tracking():
                 current = adj.emit_Attribute(lhs, aggregate=aggregate)
 
             result = apply_op(current)
-            adj._store_attribute(lhs, aggregate, result)
+            reject_differentiable_slot_augassign(result, aggregate)
+            if not adj._try_lower_evaluated_array_slot_attribute_write(lhs, aggregate, result):
+                adj._store_attribute(lhs, aggregate, result)
 
         if isinstance(lhs, ast.Subscript):
             # wp.adjoint[var] appears in custom grad functions; handle the
@@ -5914,7 +6667,9 @@ class Adjoint:
                 result = apply_op(current)
                 lhs.slice.is_adjoint = True
                 src_var = adj.eval(lhs.slice)
-                var = Var(f"adj_{src_var.label}", type=src_var.type, constant=None, prefix=False)
+                var = adj.make_adjoint_target_var(src_var)
+                if var is None:
+                    return
                 adj.add_forward(f"{var.emit()} = {result.emit()};")
                 return
 
@@ -5946,19 +6701,19 @@ class Adjoint:
                 # The Python expression has no visible return value, so the
                 # generated atomic return is intentionally discarded.
                 if isinstance(node.op, ast.Add):
-                    adj.add_builtin_call("atomic_add", [target, *indices, rhs], return_value_used=False)
+                    adj.add_builtin_call("atomic_add", [target, *indices, eval_rhs()], return_value_used=False)
                     adj._mark_array_write(target)
                 elif isinstance(node.op, ast.Sub):
-                    adj.add_builtin_call("atomic_sub", [target, *indices, rhs], return_value_used=False)
+                    adj.add_builtin_call("atomic_sub", [target, *indices, eval_rhs()], return_value_used=False)
                     adj._mark_array_write(target)
                 elif isinstance(node.op, ast.BitAnd):
-                    adj.add_builtin_call("atomic_and", [target, *indices, rhs], return_value_used=False)
+                    adj.add_builtin_call("atomic_and", [target, *indices, eval_rhs()], return_value_used=False)
                     adj._mark_array_write(target)
                 elif isinstance(node.op, ast.BitOr):
-                    adj.add_builtin_call("atomic_or", [target, *indices, rhs], return_value_used=False)
+                    adj.add_builtin_call("atomic_or", [target, *indices, eval_rhs()], return_value_used=False)
                     adj._mark_array_write(target)
                 elif isinstance(node.op, ast.BitXor):
-                    adj.add_builtin_call("atomic_xor", [target, *indices, rhs], return_value_used=False)
+                    adj.add_builtin_call("atomic_xor", [target, *indices, eval_rhs()], return_value_used=False)
                     adj._mark_array_write(target)
                 else:
                     log_debug(f"Warning: in-place op {node.op} is not differentiable")
@@ -5971,20 +6726,24 @@ class Adjoint:
                 or type_is_matrix(target_type)
                 or type_is_transformation(target_type)
             ):
+                # When the target is a reference (i.e. an array element accessed via
+                # arr[i]), the ``*_inplace`` builtins operate on a loaded copy and
+                # silently discard the result. Fall back to the load-op-store path
+                # so that _store_subscript (and its _try_lower_array_slot_write fast
+                # path) can write the result back to the actual array element.
                 if is_reference(target.type):
                     augassign_subscript(target, indices)
                     return
-
                 if isinstance(node.op, ast.Add):
-                    adj.add_builtin_call("add_inplace", [target, *indices, rhs])
+                    adj.add_builtin_call("add_inplace", [target, *indices, eval_rhs()])
                 elif isinstance(node.op, ast.Sub):
-                    adj.add_builtin_call("sub_inplace", [target, *indices, rhs])
+                    adj.add_builtin_call("sub_inplace", [target, *indices, eval_rhs()])
                 elif isinstance(node.op, ast.BitAnd):
-                    adj.add_builtin_call("bit_and_inplace", [target, *indices, rhs])
+                    adj.add_builtin_call("bit_and_inplace", [target, *indices, eval_rhs()])
                 elif isinstance(node.op, ast.BitOr):
-                    adj.add_builtin_call("bit_or_inplace", [target, *indices, rhs])
+                    adj.add_builtin_call("bit_or_inplace", [target, *indices, eval_rhs()])
                 elif isinstance(node.op, ast.BitXor):
-                    adj.add_builtin_call("bit_xor_inplace", [target, *indices, rhs])
+                    adj.add_builtin_call("bit_xor_inplace", [target, *indices, eval_rhs()])
                 else:
                     log_debug(f"Warning: in-place op {node.op} is not differentiable")
                     augassign_subscript(target, indices)
@@ -6003,15 +6762,15 @@ class Adjoint:
                         "supported. Read the view, update it, and assign it back explicitly."
                     )
                 if isinstance(node.op, ast.Add):
-                    adj.add_builtin_call("tile_add_inplace", [target, *indices, rhs])
+                    adj.add_builtin_call("tile_add_inplace", [target, *indices, eval_rhs()])
                 elif isinstance(node.op, ast.Sub):
-                    adj.add_builtin_call("tile_sub_inplace", [target, *indices, rhs])
+                    adj.add_builtin_call("tile_sub_inplace", [target, *indices, eval_rhs()])
                 elif isinstance(node.op, ast.BitAnd):
-                    adj.add_builtin_call("tile_bit_and_inplace", [target, *indices, rhs])
+                    adj.add_builtin_call("tile_bit_and_inplace", [target, *indices, eval_rhs()])
                 elif isinstance(node.op, ast.BitOr):
-                    adj.add_builtin_call("tile_bit_or_inplace", [target, *indices, rhs])
+                    adj.add_builtin_call("tile_bit_or_inplace", [target, *indices, eval_rhs()])
                 elif isinstance(node.op, ast.BitXor):
-                    adj.add_builtin_call("tile_bit_xor_inplace", [target, *indices, rhs])
+                    adj.add_builtin_call("tile_bit_xor_inplace", [target, *indices, eval_rhs()])
                 else:
                     log_debug(f"Warning: in-place op {node.op} is not differentiable")
                     augassign_subscript(target, indices)

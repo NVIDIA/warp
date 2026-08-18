@@ -21,7 +21,7 @@ class TestStruct:
     field: wp.float32
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def finite_kernel(foos: wp.array[TestStruct]):
     i = wp.tid()
     foos[i].field += wp.float32(1.0)
@@ -45,7 +45,7 @@ def test_finite(test, device):
             raise AssertionError(f"Unexpected result, got: {f} expected: {expected}")
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def nan_kernel(foos: wp.array[TestStruct]):
     i = wp.tid()
     foos[i].field /= wp.float32(0.0)  # Division by zero produces Not-a-Number (NaN)

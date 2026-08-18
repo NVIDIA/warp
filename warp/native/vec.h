@@ -83,6 +83,16 @@ template <unsigned Length, typename Type> struct vec_t {
         assert(index < Length);
         return c[index];
     }
+
+    // Mutable component reference with Python-style negative indexing.
+    inline CUDA_CALLABLE Type& component_ref(int index)
+    {
+        if (index < 0) {
+            index += Length;
+        }
+        assert(index >= 0 && index < (int)Length);
+        return c[index];
+    }
 };
 
 using vec2b = vec_t<2, int8>;

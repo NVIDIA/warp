@@ -195,6 +195,11 @@ def scatter_cpp_type(target: ScatterTarget) -> str:
     return f"wp::det_scatter_buf_t<{target.value_ctype}>"
 
 
+def _null_scatter_arg(target: ScatterTarget) -> str:
+    """Return a typed null scatter helper expression for generated calls."""
+    return f"{scatter_cpp_type(target)}{{nullptr, nullptr, nullptr, 0}}"
+
+
 def counter_cpp_type(_target: CounterTarget) -> str:
     """Return the C++ helper type for a counter target."""
     return "wp::det_counter_buf_t"
@@ -302,6 +307,7 @@ class DeterministicMeta:
     counter_records_per_thread: dict[CounterTarget, int] = field(default_factory=dict)
     counter_replay_targets: set[CounterTarget] = field(default_factory=set)
     store_targets_seen: set[ArrayStoreTarget] = field(default_factory=set)
+    adjoint_store_targets_in_body: set[ArrayStoreTarget] = field(default_factory=set)
     side_effect_atomic_targets: set[SideEffectAtomicTarget] = field(default_factory=set)
     needs_context: bool = False
     # Set by Adjoint.build() once the body has been pre-scanned.
@@ -333,6 +339,7 @@ class DeterministicMeta:
         for target, count in other.counter_records_per_thread.items():
             self.add_counter_target(target, records_per_thread=count)
         self.store_targets_seen |= other.store_targets_seen
+        self.adjoint_store_targets_in_body |= other.adjoint_store_targets_in_body
         self.side_effect_atomic_targets |= other.side_effect_atomic_targets
 
     @property
@@ -387,6 +394,7 @@ class DeterministicCodegen:
                 determinism_mode=deterministic_mode,
                 max_records=builder_options.get("deterministic_max_records", 0),
                 has_consumed_atomic=_deterministic_has_consumed_atomic_impl(self.adj.tree, self.adj, seen=None),
+                adjoint_store_targets_in_body=_deterministic_adjoint_store_targets(self.adj.tree),
                 has_side_effect_store=self.adj.is_user_function
                 and _deterministic_has_propagating_side_effect(self.adj.tree),
             )
@@ -445,19 +453,25 @@ class DeterministicCodegen:
     def call_args(self, func, bound_args):
         if func.is_builtin():
             return []
-        return self.helper_args_for_meta(getattr(func.adj, "det_meta", None), bound_args)
+        return self.helper_args_for_meta(getattr(func.adj, "det_meta", None), bound_args, for_backward=False)
 
     def replay_call_args(self, func, bound_args, default_args):
         if func.custom_replay_func is None:
             return default_args
-        return self.helper_args_for_meta(getattr(func.custom_replay_func.adj, "det_meta", None), bound_args)
+        return self.helper_args_for_meta(
+            getattr(func.custom_replay_func.adj, "det_meta", None), bound_args, for_backward=False
+        )
 
     def reverse_call_args(self, func, bound_args, default_args):
-        if func.custom_grad_func is None:
+        if func.is_builtin():
             return default_args
-        return self.helper_args_for_meta(getattr(func.custom_grad_func.adj, "det_meta", None), bound_args)
+        if func.custom_grad_func is None:
+            return self.helper_args_for_meta(getattr(func.adj, "det_meta", None), bound_args, for_backward=True)
+        return self.helper_args_for_meta(
+            getattr(func.custom_grad_func.adj, "det_meta", None), bound_args, for_backward=True
+        )
 
-    def helper_args_for_meta(self, meta, bound_args):
+    def helper_args_for_meta(self, meta, bound_args, *, for_backward: bool):
         """Return helper arguments to pass into a deterministic ``@wp.func``."""
         if self.adj.det_meta is None or meta is None or not meta.needs_deterministic:
             return []
@@ -489,6 +503,10 @@ class DeterministicCodegen:
 
         for target in meta.scatter_targets:
             mapped_label, mapped_attr_path = _deterministic_map_target(target, bound_args)
+            if for_backward and self._scatter_target_needs_call_fallback(target, mapped_label, mapped_attr_path):
+                det_args.append(_null_scatter_arg(target))
+                continue
+
             mapped_target = _deterministic_find_target(
                 self.adj.det_meta.scatter_targets,
                 mapped_label,
@@ -515,6 +533,20 @@ class DeterministicCodegen:
             det_args.append(mapped_target.helper_name if mapped_target is not None else target.helper_name)
 
         return det_args
+
+    def _scatter_target_needs_call_fallback(self, target, mapped_label, mapped_attr_path) -> bool:
+        """Return whether a callee scatter must run inline to preserve caller order."""
+        if self.adj.det_meta is None or not getattr(target, "use_backward", False):
+            return False
+
+        attr_path = tuple(mapped_attr_path)
+        primal_store = ArrayStoreTarget(mapped_label, attr_path, False)
+        adjoint_store = ArrayStoreTarget(mapped_label, attr_path, True)
+        return (
+            primal_store in self.adj.det_meta.store_targets_seen
+            or adjoint_store in self.adj.det_meta.store_targets_seen
+            or adjoint_store in self.adj.det_meta.adjoint_store_targets_in_body
+        )
 
     def wrap_unintercepted_side_effect_atomic(
         self,
@@ -623,6 +655,96 @@ class DeterministicCodegen:
             f"{flat_idx_expr}, {adj_output}, {fallback_call});"
         )
 
+    def emit_adjoint_slot_scatter(self, root_var, array_index_vars, access_cpp, rhs, slot_type, op_name, fallback_stmt):
+        """Emit deterministic scatter for composite slots in ``wp.adjoint[array]``."""
+        del slot_type
+
+        if not self.enabled or op_name not in ("add", "sub"):
+            return False
+
+        from warp._src.codegen import Var, WarpCodegenError  # noqa: PLC0415
+
+        view_prefix_vars = []
+        target_var = root_var
+        while getattr(target_var, "deterministic_view_parent", None) is not None:
+            view_prefix_vars = list(target_var.deterministic_view_indices) + view_prefix_vars
+            target_var = target_var.deterministic_view_parent
+
+        try:
+            target_info = _deterministic_target_info(target_var)
+            if target_info is None:
+                return False
+
+            target_root_label, target_attr_path, arr_type, target_is_adjoint = target_info
+            if not target_is_adjoint or not is_array(arr_type):
+                return False
+
+            value_dtype = arr_type.dtype
+            scalar_dtype = getattr(value_dtype, "_wp_scalar_type_", value_dtype)
+            if scalar_dtype not in float_types:
+                return False
+
+            if not any(arg.label == target_root_label for arg in self.adj.args):
+                raise WarpCodegenError(
+                    f"Deterministic mode could not map atomic target '{target_root_label}' "
+                    "for composite slot augmented assignment to a kernel argument."
+                )
+
+            store_target = ArrayStoreTarget(target_root_label, tuple(target_attr_path), True)
+            if (
+                store_target in self.adj.det_meta.store_targets_seen
+                or store_target in self.adj.det_meta.adjoint_store_targets_in_body
+            ):
+                stmt = self.wrap_side_effect_call(fallback_stmt)
+                self.adj.add_forward(stmt, replay=f"// {fallback_stmt}")
+                return True
+
+            value_ctype = Var.dtype_to_ctype(value_dtype)
+            target = get_or_create_scatter_target(
+                self.adj.det_registry,
+                self.adj.det_meta,
+                target_root_label,
+                value_dtype,
+                value_ctype,
+                scalar_dtype,
+                REDUCE_OP_ADD,
+                attr_path=target_attr_path,
+                adjoint=True,
+                use_forward=False,
+                use_backward=True,
+            )
+            warp_scalar_type_to_id(scalar_dtype)
+        except WarpCodegenError:
+            raise
+        except (AttributeError, KeyError, TypeError, ValueError) as e:
+            raise WarpCodegenError(
+                f"Deterministic mode could not lower composite slot augmented assignment: {e}"
+            ) from e
+
+        target_expr = _deterministic_array_expr(self.adj, target_root_label, target_attr_path, adjoint=True)
+        if target_expr is None:
+            return False
+
+        idx_loaded_list = [self.adj.load(var) for var in view_prefix_vars] + [
+            self.adj.load(var) for var in array_index_vars
+        ]
+        flat_idx_expr = _deterministic_flat_index_expr(
+            self.adj, target_expr, idx_loaded_list, f"array_atomic_{op_name}_slot", value_ctype
+        )
+
+        delta = self.adj.add_var(value_dtype)
+        rhs_expr = rhs.emit()
+        if op_name == "sub":
+            rhs_expr = f"-({rhs_expr})"
+        self.adj.add_forward(f"{delta.emit()} = {value_ctype}{{}};")
+        self.adj.add_forward(f"{delta.emit()}{access_cpp} = {rhs_expr};")
+        self.adj.add_forward(
+            f"WP_DET_SCATTER_OR_FALLBACK(det_ctx, {target.helper_name}, {flat_idx_expr}, "
+            f"{delta.emit()}, {fallback_stmt});",
+            replay="// deterministic scatter replay (skipped)",
+        )
+        return True
+
     def function_args(self):
         """Return hidden deterministic parameters for generated ``@wp.func`` calls."""
         if self.adj.det_meta is None or not self.adj.det_meta.needs_deterministic:
@@ -703,12 +825,33 @@ class DeterministicCodegen:
         )
 
     def wrap_slot_store(self, slot_lvalue: str, value_expr: str) -> str:
+        """Return a deterministic-context guarded slot-store statement."""
         if self.needs_store_guard():
             self.adj.det_meta.needs_context = True
             return f"WP_DET_SLOT_STORE_IF_ACTIVE(det_ctx, {slot_lvalue}, {value_expr});"
-        return f"{slot_lvalue} = {value_expr};"
+        return f"wp::store(&({slot_lvalue}), {value_expr});"
+
+    def mark_store_target(self, target) -> None:
+        """Record an array target whose backward adjoints must not be deferred."""
+        if self.adj.det_meta is None:
+            return
+
+        store_target_var = target
+        while getattr(store_target_var, "deterministic_view_parent", None) is not None:
+            store_target_var = store_target_var.deterministic_view_parent
+
+        store_target_info = _deterministic_target_info(store_target_var)
+        if store_target_info is None:
+            return
+
+        target_root_label, target_attr_path, target_type, target_is_adjoint = store_target_info
+        if is_array(target_type):
+            self.adj.det_meta.store_targets_seen.add(
+                ArrayStoreTarget(target_root_label, tuple(target_attr_path), bool(target_is_adjoint))
+            )
 
     def add_array_store(self, target, indices, rhs) -> None:
+        """Emit a deterministic guarded whole-array store."""
         self.adj.det_meta.needs_context = True
         _add_deterministic_array_store(self.adj, target, indices, rhs)
 
@@ -740,6 +883,7 @@ class DeterministicCodegen:
             out.deterministic_adjoint_root_label = getattr(target, "deterministic_adjoint_root_label", None)
 
     def mark_adjoint_target(self, var, root_label: str) -> None:
+        """Mark ``var`` as an adjoint view of the array named by ``root_label``."""
         var.deterministic_adjoint_target = True
         var.deterministic_adjoint_root_label = root_label
 
@@ -940,6 +1084,8 @@ def _deterministic_contains_atomic_call(node):
 def _deterministic_contains_subscript_target(node):
     if isinstance(node, ast.Subscript):
         return True
+    if isinstance(node, ast.Attribute):
+        return _deterministic_contains_subscript_target(node.value)
     if isinstance(node, (ast.Tuple, ast.List)):
         return any(_deterministic_contains_subscript_target(element) for element in node.elts)
     return False
@@ -961,12 +1107,154 @@ def _deterministic_has_propagating_side_effect(tree):
     return False
 
 
+def _deterministic_is_wp_adjoint(node):
+    """Return whether ``node`` is the ``wp.adjoint`` attribute expression."""
+    return (
+        isinstance(node, ast.Attribute)
+        and node.attr == "adjoint"
+        and isinstance(node.value, ast.Name)
+        and node.value.id == "wp"
+    )
+
+
+def _deterministic_expr_target_path(node, aliases):
+    """Return ``(root_label, attr_path, adjoint)`` for a target expression."""
+    if isinstance(node, ast.Name):
+        return aliases.get(node.id, (node.id, (), False))
+    if isinstance(node, ast.Attribute):
+        base = _deterministic_expr_target_path(node.value, aliases)
+        if base is None:
+            return None
+        root_label, attr_path, adjoint = base
+        return root_label, (*attr_path, node.attr), adjoint
+    if isinstance(node, ast.Subscript):
+        if _deterministic_is_wp_adjoint(node.value):
+            base = _deterministic_expr_target_path(node.slice, aliases)
+            if base is None:
+                return None
+            root_label, attr_path, _ = base
+            return root_label, attr_path, True
+        return _deterministic_expr_target_path(node.value, aliases)
+    return None
+
+
+def _deterministic_adjoint_store_target(node, aliases):
+    """Return the adjoint array target overwritten by ``node``, if any."""
+    while isinstance(node, ast.Attribute | ast.Subscript):
+        if isinstance(node, ast.Subscript) and _deterministic_is_wp_adjoint(node.value):
+            target_path = _deterministic_expr_target_path(node.slice, aliases)
+            if target_path is None:
+                return None
+            root_label, attr_path, _ = target_path
+            return ArrayStoreTarget(root_label, tuple(attr_path), True)
+
+        target_path = _deterministic_expr_target_path(node.value, aliases)
+        if target_path is not None:
+            root_label, attr_path, adjoint = target_path
+            if adjoint:
+                return ArrayStoreTarget(root_label, tuple(attr_path), True)
+
+        node = node.value
+
+    target_path = _deterministic_expr_target_path(node, aliases)
+    if target_path is not None:
+        root_label, attr_path, adjoint = target_path
+        if adjoint:
+            return ArrayStoreTarget(root_label, tuple(attr_path), True)
+    return None
+
+
+def _deterministic_collect_alias_targets(target, names):
+    """Collect direct local names bound by an assignment target."""
+    if isinstance(target, ast.Name):
+        names.add(target.id)
+    elif isinstance(target, (ast.Tuple, ast.List)):
+        for element in target.elts:
+            _deterministic_collect_alias_targets(element, names)
+
+
+def _deterministic_update_aliases_from_assign(target, value, aliases):
+    """Update local array aliases after a supported assignment."""
+    target_names = set()
+    _deterministic_collect_alias_targets(target, target_names)
+    for name in target_names:
+        aliases.pop(name, None)
+
+    if isinstance(target, ast.Name):
+        value_path = _deterministic_expr_target_path(value, aliases)
+        if value_path is not None:
+            aliases[target.id] = value_path
+    elif isinstance(target, (ast.Tuple, ast.List)) and isinstance(value, (ast.Tuple, ast.List)):
+        for target_elt, value_elt in zip(target.elts, value.elts, strict=False):
+            _deterministic_update_aliases_from_assign(target_elt, value_elt, aliases)
+
+
+def _deterministic_bind_alias_target(target, value_path, aliases):
+    """Bind a direct assignment target to a precomputed target path."""
+    if isinstance(target, ast.Name):
+        aliases[target.id] = value_path
+
+
+def _deterministic_statement_children(node):
+    """Yield nested statement blocks that need independent alias scans."""
+    for field_name in ("body", "orelse", "finalbody"):
+        child = getattr(node, field_name, None)
+        if child:
+            yield child
+    handlers = getattr(node, "handlers", ())
+    for handler in handlers:
+        yield handler.body
+
+
+def _deterministic_scan_adjoint_store_targets(statements, aliases):
+    """Return adjoint array targets overwritten in ``statements``."""
+    targets = set()
+    for statement in statements:
+        if isinstance(statement, ast.Assign):
+            for target in statement.targets:
+                store_target = _deterministic_adjoint_store_target(target, aliases)
+                if store_target is not None:
+                    targets.add(store_target)
+            if len(statement.targets) == 1:
+                _deterministic_update_aliases_from_assign(statement.targets[0], statement.value, aliases)
+            else:
+                target_names = set()
+                for target in statement.targets:
+                    _deterministic_collect_alias_targets(target, target_names)
+                for name in target_names:
+                    aliases.pop(name, None)
+                value_path = _deterministic_expr_target_path(statement.value, aliases)
+                if value_path is not None:
+                    for target in statement.targets:
+                        _deterministic_bind_alias_target(target, value_path, aliases)
+        elif isinstance(statement, ast.AnnAssign):
+            store_target = _deterministic_adjoint_store_target(statement.target, aliases)
+            if store_target is not None:
+                targets.add(store_target)
+            if statement.value is not None:
+                _deterministic_update_aliases_from_assign(statement.target, statement.value, aliases)
+        elif isinstance(statement, ast.AugAssign):
+            _deterministic_update_aliases_from_assign(statement.target, ast.Constant(None), aliases)
+
+        for child_statements in _deterministic_statement_children(statement):
+            targets |= _deterministic_scan_adjoint_store_targets(child_statements, aliases.copy())
+
+    return targets
+
+
+def _deterministic_adjoint_store_targets(tree):
+    """Return adjoint arrays directly overwritten in the function body."""
+    body = getattr(tree, "body", ())
+    return _deterministic_scan_adjoint_store_targets(body, {})
+
+
 def _deterministic_has_consumed_atomic(tree):
     """Return whether codegen will treat any atomic return value as consumed."""
     return _deterministic_has_consumed_atomic_impl(tree, adj=None, seen=None)
 
 
 def _deterministic_collect_target_names(target, names):
+    """Collect local names introduced by assignment-like targets."""
     if isinstance(target, ast.Name):
         names.add(target.id)
     elif isinstance(target, (ast.Tuple, ast.List)):
@@ -975,6 +1263,7 @@ def _deterministic_collect_target_names(target, names):
 
 
 def _deterministic_local_names(tree):
+    """Return local names that should shadow external function lookup."""
     names = set()
 
     for node in ast.walk(tree):
@@ -1006,6 +1295,7 @@ def _deterministic_local_names(tree):
 
 
 def _deterministic_call_path(node):
+    """Return the dotted call path represented by ``node``."""
     path = []
 
     while isinstance(node, ast.Attribute):
@@ -1021,6 +1311,7 @@ def _deterministic_call_path(node):
 
 
 def _deterministic_resolve_static_call(adj, node, local_names, local_aliases=None):
+    """Resolve statically-known Python call targets used by deterministic scans."""
     if adj is None:
         return None
 
@@ -1061,6 +1352,7 @@ def _deterministic_resolve_static_call(adj, node, local_names, local_aliases=Non
 
 
 def _deterministic_function_aliases(adj, tree, local_names):
+    """Return local aliases that bind directly to Warp functions."""
     aliases = {}
     if adj is None:
         return aliases
@@ -1433,16 +1725,7 @@ def _add_deterministic_array_store(adj, target, indices, rhs):
             loaded_arg = adj.load(func_arg)
         fwd_args.append(strip_reference(loaded_arg))
 
-    store_target_var = target
-    while getattr(store_target_var, "deterministic_view_parent", None) is not None:
-        store_target_var = store_target_var.deterministic_view_parent
-    store_target_info = _deterministic_target_info(store_target_var)
-    if store_target_info is not None:
-        target_root_label, target_attr_path, target_type, target_is_adjoint = store_target_info
-        if is_array(target_type):
-            adj.det_meta.store_targets_seen.add(
-                ArrayStoreTarget(target_root_label, tuple(target_attr_path), bool(target_is_adjoint))
-            )
+    adj.deterministic.mark_store_target(target)
 
     store_args = adj.format_forward_call_args(fwd_args, use_initializer_list)
     guarded_store_call = f"WP_DET_STORE_IF_ACTIVE(det_ctx, {store_args});"

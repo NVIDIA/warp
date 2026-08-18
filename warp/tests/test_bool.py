@@ -135,6 +135,7 @@ def test_bool_constant_mat(test, device):
 
 
 vec3bool_type = wp.types.vector(length=3, dtype=bool)
+vec2bool_type = wp.types.vector(length=2, dtype=bool)
 
 
 @wp.kernel
@@ -188,6 +189,28 @@ def test_bool_mat_typing(test, device):
     wp.launch(test_bool_mat_anonymous_typing, (1,), inputs=[], device=device)
 
 
+@wp.kernel
+def bool_mat_assign_kernel(array_out: wp.array[mat22bool_type], local_out: wp.array[mat22bool_type]):
+    row = vec2bool_type(True, False)
+    array_out[0][1] = row
+
+    local = mat22bool_type()
+    local[1] = row
+    local[0, 1] = True
+    local_out[0] = local
+
+
+def test_bool_mat_assign(test, device):
+    """Verify bool matrix rows and elements can be assigned."""
+    array_out = wp.zeros(1, dtype=mat22bool_type, device=device)
+    local_out = wp.zeros(1, dtype=mat22bool_type, device=device)
+
+    wp.launch(bool_mat_assign_kernel, 1, outputs=[array_out, local_out], device=device)
+
+    assert_np_equal(array_out.numpy(), np.array([[[False, False], [True, False]]], dtype=np.bool_))
+    assert_np_equal(local_out.numpy(), np.array([[[False, True], [True, False]]], dtype=np.bool_))
+
+
 @wp.func
 def bool_vec_assign():
     v = vec3bool_type(True, False, True)
@@ -231,6 +254,7 @@ add_function_test(TestBool, "test_bool_constant_vec", test_bool_constant_vec, de
 add_function_test(TestBool, "test_bool_constant_mat", test_bool_constant_mat, devices=devices)
 add_function_test(TestBool, "test_bool_vec_typing", test_bool_vec_typing, devices=devices)
 add_function_test(TestBool, "test_bool_mat_typing", test_bool_mat_typing, devices=devices)
+add_function_test(TestBool, "test_bool_mat_assign", test_bool_mat_assign, devices=devices)
 add_function_test(TestBool, "test_bool_vec_assign", test_bool_vec_assign, devices=devices)
 
 
