@@ -186,6 +186,11 @@ def test_surface_nets_functional(test, device):
     # error contract
     with test.assertRaises(ValueError):
         wp.geometry.IsoSurfaceNets.extract(wp.zeros(shape=8, dtype=wp.float32, device=device))
+    # a single-node axis spans no cells, so it is rejected up front rather than
+    # failing later on a zero-length scan buffer
+    for shape in ((1, 8, 8), (8, 1, 8), (8, 8, 1), (0, 8, 8)):
+        with test.assertRaisesRegex(ValueError, "at least 2 nodes on each axis"):
+            wp.geometry.IsoSurfaceNets.extract(wp.zeros(shape=shape, dtype=wp.float32, device=device))
     with test.assertRaises(TypeError):
         wp.geometry.IsoSurfaceNets.extract(wp.zeros(shape=(8, 8, 8), dtype=wp.float64, device=device))
     with test.assertRaises(ValueError):

@@ -211,6 +211,27 @@ def test_marching_cubes_empty_output(test, device):
     test.assertEqual(verts_np.shape[0], 0)  # no vertices
 
 
+def test_marching_cubes_degenerate_field(test, device):
+    """Check that fields too thin to span a cell are rejected up front."""
+
+    # A grid needs two nodes on an axis to span one cell, so a single-node axis
+    # has nothing to extract from. Without validation these reach the extraction
+    # kernels and fail on a zero-length scan buffer instead.
+    for shape in ((1, 8, 8), (8, 1, 8), (8, 8, 1), (1, 1, 1), (0, 8, 8)):
+        field = wp.zeros(shape=shape, dtype=wp.float32, device=device)
+        with test.assertRaisesRegex(ValueError, "at least 2 nodes on each axis"):
+            wp.geometry.IsoSurfaceMarchingCubes.extract(field, threshold=0.0)
+
+        # the stateful interface routes through the same validation
+        iso = wp.geometry.IsoSurfaceMarchingCubes(nx=shape[0], ny=shape[1], nz=shape[2])
+        with test.assertRaisesRegex(ValueError, "at least 2 nodes on each axis"):
+            iso.surface(field=field, threshold=0.0)
+
+    # two nodes on every axis is the smallest field that does extract
+    field = wp.zeros(shape=(2, 2, 2), dtype=wp.float32, device=device)
+    wp.geometry.IsoSurfaceMarchingCubes.extract(field, threshold=0.0)
+
+
 def test_marching_cubes_differentiable(test, device):
     """Check that marching cubes has reasonable gradients.
 
@@ -452,6 +473,9 @@ add_function_test(TestMarchingCubes, "test_marching_cubes_functional", test_marc
 add_function_test(TestMarchingCubes, "test_marching_cubes_nonuniform", test_marching_cubes_nonuniform, devices=devices)
 add_function_test(
     TestMarchingCubes, "test_marching_cubes_empty_output", test_marching_cubes_empty_output, devices=devices
+)
+add_function_test(
+    TestMarchingCubes, "test_marching_cubes_degenerate_field", test_marching_cubes_degenerate_field, devices=devices
 )
 add_function_test(
     TestMarchingCubes, "test_marching_cubes_differentiable", test_marching_cubes_differentiable, devices=devices

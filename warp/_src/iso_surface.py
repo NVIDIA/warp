@@ -9,17 +9,23 @@ import warp as wp
 
 
 def validate_field(field: wp.array) -> None:
-    """Validate that ``field`` is a non-empty 3D array of ``wp.float32`` values.
+    """Validate that ``field`` is a 3D array of ``wp.float32`` values spanning at least one cell.
 
     Raises:
-        ValueError: If ``field`` is not a 3D array or is empty.
+        ValueError: If ``field`` is not a 3D array, or has fewer than two nodes
+            on any axis.
         TypeError: If the ``field`` data type is not ``wp.float32``.
     """
     if len(field.shape) != 3:
         raise ValueError(f"Expected a 3D array for 'field', but got an array with shape {field.shape}.")
 
-    if field.size == 0:
-        raise ValueError("The 'field' array cannot be empty.")
+    # A field needs two nodes on every axis to span a single cell. Anything thinner
+    # (including an empty array) has no cells to extract from, and would otherwise
+    # fail later with an opaque error from a zero-length scan buffer.
+    if any(n < 2 for n in field.shape):
+        raise ValueError(
+            f"Expected 'field' to have at least 2 nodes on each axis, but got an array with shape {field.shape}."
+        )
 
     if field.dtype != wp.float32:
         raise TypeError(f"Expected a dtype of wp.float32 for 'field', but got {field.dtype}.")
@@ -218,6 +224,7 @@ class IsoSurfaceBase(ABC):
             :class:`warp.geometry.IsoSurfaceNets`).
 
         Raises:
-            ValueError: If ``field`` is not a 3D array or is empty.
+            ValueError: If ``field`` is not a 3D array, or has fewer than
+                two nodes on any axis.
             TypeError: If the ``field`` data type is not ``wp.float32``.
         """

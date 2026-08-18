@@ -1009,8 +1009,8 @@ class IsoSurfaceNets(IsoSurfaceBase):
             quad, by referencing vertices in the ``vertices`` array.
 
         Raises:
-            ValueError: If ``field`` is not a 3D array or is empty, or if
-                ``topology`` is not a valid face type.
+            ValueError: If ``field`` is not a 3D array, has fewer than two
+                nodes on any axis, or if ``topology`` is not a valid face type.
             TypeError: If the ``field`` data type is not ``wp.float32``.
         """
         # Do some validation

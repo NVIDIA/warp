@@ -840,7 +840,8 @@ class IsoSurfaceMarchingCubes(IsoSurfaceBase):
             ``vertices`` array.
 
         Raises:
-            ValueError: If ``field`` is not a 3D array or is empty.
+            ValueError: If ``field`` is not a 3D array, or has fewer than
+                two nodes on any axis.
             TypeError: If the ``field`` data type is not ``wp.float32``.
         """
         # Do some validation
