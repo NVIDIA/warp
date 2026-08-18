@@ -204,6 +204,7 @@ warp/examples/tile
     api_reference/warp_optim
     api_reference/warp_render
     api_reference/warp_sparse
+    api_reference/warp_stf_experimental
     api_reference/warp_types
     api_reference/warp_utils
 

@@ -134,6 +134,9 @@ nitpick_ignore_regex = [
         r"py:obj",
         r".*\.(conjugate|bit_length|bit_count|to_bytes|from_bytes|as_integer_ratio|is_integer|real|imag|numerator|denominator)",
     ),
+    # STF docs are importable without cuda.stf installed, but autosummary may
+    # still try to resolve root-level aliases through the mocked dependency.
+    (r"py:func", r"warp\.stf_experimental\.(context|is_available|task|warmup|dump_dot)"),
 ]
 
 
@@ -233,7 +236,7 @@ autodoc_default_options = {
 }
 
 # Mock external dependencies that might not be installed.
-autodoc_mock_imports = ["jax", "paddle", "pxr", "torch"]
+autodoc_mock_imports = ["cuda", "cuda.stf", "cuda.stf._experimental", "jax", "paddle", "pxr", "torch"]
 
 # Merge the ``__init__`` docstring into the class description. Many Warp classes
 # (e.g. ``warp.array``, ``warp.Mesh``, ``warp.fem`` geometries) document their

@@ -17,6 +17,8 @@ Guides in this section
   device work with Warp timers, NVTX, and NVIDIA profiling tools.
 * :doc:`Deterministic Execution <execution_and_performance/deterministic_execution>`:
   Reproducibility guarantees, limitations, and performance tradeoffs.
+* :doc:`Task Parallelism with CUDASTF <execution_and_performance/stf_task_graphs>`:
+  Experimental task-parallel programming model built on CUDASTF task graphs.
 
 .. toctree::
    :hidden:
@@ -26,3 +28,4 @@ Guides in this section
    execution_and_performance/memory_management
    execution_and_performance/profiling
    execution_and_performance/deterministic_execution
+   execution_and_performance/stf_task_graphs

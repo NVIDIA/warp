@@ -17,6 +17,7 @@ To skip tests if the optional dependencies are not found, use the following keys
 - {"usd_required": True} (requires usd-core)
 - {"torch_required": True} (requires torch)
 - {"pillow_required": True} (requires pillow)
+- {"stf_required": True} (requires cuda.stf via warp.stf_experimental)
 
 Use the "num_frames" and "train_iters" keys to control the number of steps.
 
@@ -105,6 +106,17 @@ def add_example_test(
                 import PIL  # noqa: PLC0415,F401
             except ImportError:
                 test.skipTest("Requires pillow")
+
+        # Mark the test as skipped if cuda.stf / warp.stf_experimental is unavailable
+        stf_required = options.pop("stf_required", False)
+        if stf_required:
+            try:
+                from warp import stf_experimental as wp_stf  # noqa: PLC0415
+
+                if not wp_stf.is_available():
+                    test.skipTest("Requires cuda.stf (warp.stf_experimental not available)")
+            except ImportError:
+                test.skipTest("Requires cuda.stf (warp.stf_experimental not available)")
 
         env_vars = os.environ.copy()
 
@@ -368,6 +380,40 @@ add_example_test(
     TestTileExamples,
     name="tile.example_tile_stream_compaction",
     devices=cuda_test_devices,
+)
+
+
+class TestInteropExamples(unittest.TestCase):
+    pass
+
+
+add_example_test(
+    TestInteropExamples,
+    name="interop.example_stf_task_graph",
+    devices=cuda_test_devices,
+    test_options={"stf_required": True},
+)
+
+
+add_example_test(
+    TestInteropExamples,
+    name="interop.example_stf_cg",
+    devices=cuda_test_devices,
+    test_options={"stf_required": True},
+)
+
+add_example_test(
+    TestInteropExamples,
+    name="interop.example_stf_cg_stackable",
+    devices=cuda_test_devices,
+    test_options={"stf_required": True},
+)
+
+add_example_test(
+    TestInteropExamples,
+    name="interop.example_stf_cg_token",
+    devices=cuda_test_devices,
+    test_options={"stf_required": True},
 )
 
 
