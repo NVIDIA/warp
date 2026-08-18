@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
+import ast
 import sys
 import unittest
 
@@ -10,6 +11,7 @@ import numpy as np
 import warp as wp
 import warp.tests.deterministic.test_deterministic_counter as counter_module
 import warp.tests.deterministic.test_deterministic_scatter as scatter_module
+from warp._src import deterministic as wp_deterministic
 from warp.tests.deterministic.common import (
     DeterministicTestBase,
     _reference_scatter_add_float32,
@@ -55,6 +57,33 @@ def vec3_gather_address_kernel(
     """Vector-valued gather covering cloth/particle-style position gradients."""
     tid = wp.tid()
     output[tid] = values[source_indices[tid]]
+
+
+@wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
+def slot_store_then_vec3_read_kernel(
+    values: wp.array[wp.vec3],
+    src: wp.array[wp.float32],
+    output: wp.array[wp.vec3],
+):
+    """Overwrite one component before reading the same array element."""
+    values[0].y = src[0]
+    output[0] = values[0]
+
+
+@wp.func
+def _det_read_vec(values: wp.array[wp.vec3]) -> wp.vec3:
+    return values[0]
+
+
+@wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
+def slot_store_then_call_read_kernel(
+    values: wp.array[wp.vec3],
+    src: wp.array[wp.float32],
+    output: wp.array[wp.vec3],
+):
+    """Overwrite one component before calling a vector read helper."""
+    values[0].y = src[0]
+    output[0] = _det_read_vec(values)
 
 
 @wp.kernel
@@ -103,6 +132,77 @@ def _adj_det_lookup_value(values: wp.array[wp.float32], index: int, adj_ret: wp.
     wp.adjoint[values][index] += adj_ret
 
 
+@wp.func
+def _det_lookup_vec_x(values: wp.array[wp.vec3], index: int) -> wp.float32:
+    return values[index].x
+
+
+@wp.func_grad(_det_lookup_vec_x)
+def _adj_det_lookup_vec_x(values: wp.array[wp.vec3], index: int, adj_ret: wp.float32):
+    wp.adjoint[values][index].x += adj_ret
+
+
+@wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
+def slot_store_then_custom_component_read_kernel(
+    values: wp.array[wp.vec3],
+    src: wp.array[wp.float32],
+    output: wp.array[wp.float32],
+):
+    """Overwrite one component before calling a custom-adjoint read helper."""
+    values[0].x = src[0]
+    output[0] = _det_lookup_vec_x(values, 0)
+
+
+@wp.func
+def _det_lookup_vec_x_then_clear(values: wp.array[wp.vec3], index: int) -> wp.float32:
+    return values[index].x
+
+
+@wp.func_grad(_det_lookup_vec_x_then_clear)
+def _adj_det_lookup_vec_x_then_clear(values: wp.array[wp.vec3], index: int, adj_ret: wp.float32):
+    wp.adjoint[values][index].x += adj_ret
+    wp.adjoint[values][index].x = 0.0
+
+
+@wp.func
+def _det_lookup_vec_x_then_clear_adjoint_alias(values: wp.array[wp.vec3], index: int) -> wp.float32:
+    return values[index].x
+
+
+@wp.func_grad(_det_lookup_vec_x_then_clear_adjoint_alias)
+def _adj_det_lookup_vec_x_then_clear_adjoint_alias(values: wp.array[wp.vec3], index: int, adj_ret: wp.float32):
+    adj_values = wp.adjoint[values]
+    adj_values[index].x += adj_ret
+    adj_values[index].x = 0.0
+
+
+@wp.struct
+class DetVecArrayFieldHolder:
+    values: wp.array[wp.vec3]
+
+
+@wp.func
+def _det_lookup_holder_vec_x(holder: DetVecArrayFieldHolder, index: int) -> wp.float32:
+    return holder.values[index].x
+
+
+@wp.func_grad(_det_lookup_holder_vec_x)
+def _adj_det_lookup_holder_vec_x(holder: DetVecArrayFieldHolder, index: int, adj_ret: wp.float32):
+    wp.adjoint[holder.values][index].x += adj_ret
+
+
+@wp.func
+def _det_lookup_holder_alias_vec_x(holder: DetVecArrayFieldHolder, index: int) -> wp.float32:
+    values = holder.values
+    return values[index].x
+
+
+@wp.func_grad(_det_lookup_holder_alias_vec_x)
+def _adj_det_lookup_holder_alias_vec_x(holder: DetVecArrayFieldHolder, index: int, adj_ret: wp.float32):
+    values = holder.values
+    wp.adjoint[values][index].x += adj_ret
+
+
 @wp.kernel
 def custom_adjoint_lookup_kernel(
     values: wp.array[wp.float32],
@@ -124,6 +224,85 @@ def custom_adjoint_gather_kernel(
     """Use a custom adjoint that scatters per-lane output gradients."""
     tid = wp.tid()
     output[tid] = _det_lookup_value(values, indices[tid])
+
+
+@wp.kernel
+def custom_adjoint_component_gather_kernel(
+    values: wp.array[wp.vec3],
+    indices: wp.array[wp.int32],
+    output: wp.array[wp.float32],
+):
+    """Use a custom adjoint that scatters into one vector component."""
+    tid = wp.tid()
+    output[tid] = _det_lookup_vec_x(values, indices[tid])
+
+
+@wp.kernel
+def custom_adjoint_component_clear_gather_kernel(
+    values: wp.array[wp.vec3],
+    indices: wp.array[wp.int32],
+    output: wp.array[wp.float32],
+):
+    """Use a custom adjoint component scatter followed by an overwrite."""
+    tid = wp.tid()
+    output[tid] = _det_lookup_vec_x_then_clear(values, indices[tid])
+
+
+@wp.kernel
+def custom_adjoint_component_clear_alias_gather_kernel(
+    values: wp.array[wp.vec3],
+    indices: wp.array[wp.int32],
+    output: wp.array[wp.float32],
+):
+    """Use an adjoint alias followed by a component overwrite."""
+    tid = wp.tid()
+    output[tid] = _det_lookup_vec_x_then_clear_adjoint_alias(values, indices[tid])
+
+
+@wp.kernel
+def custom_adjoint_component_struct_field_gather_kernel(
+    holder: DetVecArrayFieldHolder,
+    indices: wp.array[wp.int32],
+    output: wp.array[wp.float32],
+):
+    """Use a struct-field array in a custom adjoint component scatter."""
+    tid = wp.tid()
+    output[tid] = _det_lookup_holder_vec_x(holder, indices[tid])
+
+
+@wp.kernel
+def custom_adjoint_component_struct_field_alias_gather_kernel(
+    holder: DetVecArrayFieldHolder,
+    indices: wp.array[wp.int32],
+    output: wp.array[wp.float32],
+):
+    """Use a struct-field array alias in a custom adjoint component scatter."""
+    tid = wp.tid()
+    output[tid] = _det_lookup_holder_alias_vec_x(holder, indices[tid])
+
+
+@wp.func
+def _det_lookup_view_vec_x_then_clear(values: wp.array2d[wp.vec3], index: int) -> wp.float32:
+    view = values[0]
+    return view[index].x
+
+
+@wp.func_grad(_det_lookup_view_vec_x_then_clear)
+def _adj_det_lookup_view_vec_x_then_clear(values: wp.array2d[wp.vec3], index: int, adj_ret: wp.float32):
+    view = values[0]
+    wp.adjoint[view][index].x += adj_ret
+    wp.adjoint[view][index].x = 0.0
+
+
+@wp.kernel
+def custom_adjoint_component_view_clear_gather_kernel(
+    values: wp.array2d[wp.vec3],
+    indices: wp.array[wp.int32],
+    output: wp.array[wp.float32],
+):
+    """Use a view adjoint scatter followed by a component overwrite."""
+    tid = wp.tid()
+    output[tid] = _det_lookup_view_vec_x_then_clear(values, indices[tid])
 
 
 @wp.func
@@ -356,6 +535,49 @@ def test_deterministic_backward_vec3_address_scatter(test, device):
         np.testing.assert_array_equal(result, expected)
 
 
+def test_deterministic_slot_store_orders_adjoint_read(test, device):
+    """Verify slot stores route later read adjoints before deferred reductions."""
+    for label, kernel in (
+        ("same body", slot_store_then_vec3_read_kernel),
+        ("function call", slot_store_then_call_read_kernel),
+    ):
+        with test.subTest(label):
+            values = wp.array([[2.0, 3.0, 4.0]], dtype=wp.vec3, device=device, requires_grad=True)
+            src = wp.array([7.0], dtype=wp.float32, device=device, requires_grad=True)
+            output = wp.zeros(1, dtype=wp.vec3, device=device, requires_grad=True)
+
+            tape = wp.Tape()
+            with tape:
+                wp.launch(kernel, dim=1, inputs=[values, src], outputs=[output], device=device)
+
+            tape.backward(grads={output: wp.ones_like(output)})
+
+            np.testing.assert_allclose(output.numpy(), np.array([[2.0, 7.0, 4.0]], dtype=np.float32), rtol=0, atol=0)
+            np.testing.assert_allclose(src.grad.numpy(), np.array([1.0], dtype=np.float32), rtol=0, atol=0)
+            np.testing.assert_allclose(
+                values.grad.numpy(), np.array([[1.0, 0.0, 1.0]], dtype=np.float32), rtol=0, atol=0
+            )
+
+
+def test_deterministic_slot_store_orders_custom_adjoint_call(test, device):
+    """Verify slot stores route later custom-adjoint calls before deferred reductions."""
+    values = wp.array([[2.0, 3.0, 4.0]], dtype=wp.vec3, device=device, requires_grad=True)
+    src = wp.array([7.0], dtype=wp.float32, device=device, requires_grad=True)
+    output = wp.zeros(1, dtype=wp.float32, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(
+            slot_store_then_custom_component_read_kernel, dim=1, inputs=[values, src], outputs=[output], device=device
+        )
+
+    tape.backward(grads={output: wp.ones_like(output)})
+
+    np.testing.assert_allclose(output.numpy(), np.array([7.0], dtype=np.float32), rtol=0, atol=0)
+    np.testing.assert_allclose(src.grad.numpy(), np.array([1.0], dtype=np.float32), rtol=0, atol=0)
+    np.testing.assert_allclose(values.grad.numpy(), np.array([[0.0, 0.0, 0.0]], dtype=np.float32), rtol=0, atol=0)
+
+
 def test_deterministic_backward_missing_adjoint_target(test, device):
     """Verify backward deterministic reductions ignore array reads with no grad buffer."""
     n = 2048
@@ -513,6 +735,138 @@ def test_deterministic_custom_adjoint_gather_atomic(test, device):
         np.testing.assert_array_equal(result, expected)
 
 
+def test_deterministic_custom_adjoint_component_atomic(test, device):
+    """Verify custom adjoints atomically update ``wp.adjoint[array]`` components."""
+    n = 2048
+    value_count = 31
+    rng = np.random.default_rng(307)
+    values_np = rng.random((value_count, 3), dtype=np.float32)
+    indices_np = rng.integers(0, value_count, size=n, dtype=np.int32)
+    grad_np = rng.random(n, dtype=np.float32)
+
+    expected = np.zeros((value_count, 3), dtype=np.float32)
+    expected[:, 0] = _reference_scatter_add_float32(grad_np, indices_np, value_count)
+
+    values = wp.array(values_np, dtype=wp.vec3, device=device, requires_grad=True)
+    indices = wp.array(indices_np, dtype=wp.int32, device=device)
+    output_grad = wp.array(grad_np, dtype=wp.float32, device=device)
+
+    old_det = _get_test_module_options()["deterministic"]
+    try:
+        _set_test_module_options({"deterministic": wp.DeterministicMode.GPU_TO_GPU})
+        results = []
+        for _ in range(3):
+            values.grad.zero_()
+            output = wp.zeros(n, dtype=wp.float32, device=device, requires_grad=True)
+            tape = wp.Tape()
+            with tape:
+                wp.launch(
+                    custom_adjoint_component_gather_kernel,
+                    dim=n,
+                    inputs=[values, indices],
+                    outputs=[output],
+                    device=device,
+                )
+            tape.backward(grads={output: output_grad})
+            results.append(tape.gradients[values].numpy().copy())
+    finally:
+        _set_test_module_options({"deterministic": old_det})
+
+    for result in results:
+        np.testing.assert_array_equal(result, expected)
+
+
+def test_deterministic_custom_adjoint_component_store_order(test, device):
+    """Verify adjoint component overwrites stay ordered after ``+=``."""
+    n = 128
+    value_count = 17
+    indices_np = (np.arange(n, dtype=np.int32) * 5) % value_count
+    indices = wp.array(indices_np, dtype=wp.int32, device=device)
+    output_grad = wp.ones(n, dtype=wp.float32, device=device)
+
+    old_det = _get_test_module_options()["deterministic"]
+    try:
+        _set_test_module_options({"deterministic": wp.DeterministicMode.GPU_TO_GPU})
+        for label, kernel in (
+            ("direct", custom_adjoint_component_clear_gather_kernel),
+            ("adjoint alias", custom_adjoint_component_clear_alias_gather_kernel),
+        ):
+            with test.subTest(label):
+                values = wp.zeros(value_count, dtype=wp.vec3, device=device, requires_grad=True)
+                output = wp.zeros(n, dtype=wp.float32, device=device, requires_grad=True)
+
+                tape = wp.Tape()
+                with tape:
+                    wp.launch(kernel, dim=n, inputs=[values, indices], outputs=[output], device=device)
+                tape.backward(grads={output: output_grad})
+
+                np.testing.assert_array_equal(
+                    tape.gradients[values].numpy(), np.zeros((value_count, 3), dtype=np.float32)
+                )
+
+        with test.subTest("view"):
+            values = wp.zeros((1, value_count), dtype=wp.vec3, device=device, requires_grad=True)
+            output = wp.zeros(n, dtype=wp.float32, device=device, requires_grad=True)
+
+            tape = wp.Tape()
+            with tape:
+                wp.launch(
+                    custom_adjoint_component_view_clear_gather_kernel,
+                    dim=n,
+                    inputs=[values, indices],
+                    outputs=[output],
+                    device=device,
+                )
+            tape.backward(grads={output: output_grad})
+
+            np.testing.assert_array_equal(
+                tape.gradients[values].numpy(), np.zeros((1, value_count, 3), dtype=np.float32)
+            )
+    finally:
+        _set_test_module_options({"deterministic": old_det})
+
+
+def test_deterministic_custom_adjoint_component_struct_field_atomic(test, device):
+    """Verify struct-field adjoint arrays reduce component gradients deterministically."""
+    n = 2048
+    value_count = 31
+    rng = np.random.default_rng(308)
+    values_np = rng.random((value_count, 3), dtype=np.float32)
+    indices_np = rng.integers(0, value_count, size=n, dtype=np.int32)
+    grad_np = rng.random(n, dtype=np.float32)
+
+    expected = np.zeros((value_count, 3), dtype=np.float32)
+    expected[:, 0] = _reference_scatter_add_float32(grad_np, indices_np, value_count)
+
+    values = wp.array(values_np, dtype=wp.vec3, device=device, requires_grad=True)
+    holder = DetVecArrayFieldHolder()
+    holder.values = values
+    indices = wp.array(indices_np, dtype=wp.int32, device=device)
+    output_grad = wp.array(grad_np, dtype=wp.float32, device=device)
+
+    old_det = _get_test_module_options()["deterministic"]
+    try:
+        _set_test_module_options({"deterministic": wp.DeterministicMode.GPU_TO_GPU})
+        for kernel in (
+            custom_adjoint_component_struct_field_gather_kernel,
+            custom_adjoint_component_struct_field_alias_gather_kernel,
+        ):
+            results = []
+            for _ in range(3):
+                values.grad.zero_()
+                output = wp.zeros(n, dtype=wp.float32, device=device, requires_grad=True)
+                tape = wp.Tape()
+                with tape:
+                    wp.launch(kernel, dim=n, inputs=[holder, indices], outputs=[output], device=device)
+                tape.backward(grads={output: output_grad})
+                results.append(tape.gradients[values].numpy().copy())
+
+            for result in results:
+                np.testing.assert_array_equal(result, expected)
+    finally:
+        _set_test_module_options({"deterministic": old_det})
+
+
 def test_deterministic_custom_adjoint_store_function(test, device):
     """Verify custom adjoints on functions with deterministic store context compile."""
     n = 32
@@ -630,6 +984,25 @@ class TestDeterministicBackward(DeterministicTestBase):
 
     deterministic_modules = (_THIS_MODULE, scatter_module, counter_module)
 
+    def test_adjoint_store_scan_preserves_chained_aliases(self):
+        """Verify chained adjoint aliases remain visible to the store pre-scan."""
+        tree = ast.parse(
+            """
+def adjoint_body(values, index, adj_ret):
+    adj_values = alias_values = wp.adjoint[values]
+    alias_values[index].x += adj_ret
+    adj_values[index].x = 0.0
+"""
+        ).body[0]
+        aliases = {}
+
+        targets = wp_deterministic._deterministic_scan_adjoint_store_targets(tree.body, aliases)
+
+        expected_alias = ("values", (), True)
+        self.assertEqual(aliases["adj_values"], expected_alias)
+        self.assertEqual(aliases["alias_values"], expected_alias)
+        self.assertIn(wp_deterministic.ArrayStoreTarget("values", (), True), targets)
+
 
 def _add(name, devices=cuda_devices):
     add_function_test(TestDeterministicBackward, name, globals()[name], devices=devices)
@@ -640,10 +1013,15 @@ for _name in (
     "test_deterministic_backward_address_scatter",
     "test_deterministic_backward_strided_adjoint_address_scatter",
     "test_deterministic_backward_vec3_address_scatter",
+    "test_deterministic_slot_store_orders_adjoint_read",
     "test_deterministic_backward_missing_adjoint_target",
     "test_deterministic_custom_replay_counter",
     "test_deterministic_custom_adjoint_array_atomic",
     "test_deterministic_custom_adjoint_gather_atomic",
+    "test_deterministic_custom_adjoint_component_atomic",
+    "test_deterministic_slot_store_orders_custom_adjoint_call",
+    "test_deterministic_custom_adjoint_component_store_order",
+    "test_deterministic_custom_adjoint_component_struct_field_atomic",
     "test_deterministic_custom_adjoint_store_function",
     "test_deterministic_scratch_overwrite_replay_gradient",
 ):

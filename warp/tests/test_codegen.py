@@ -1615,6 +1615,98 @@ def test_augassign_no_double_eval_both(test, device):
 
 
 @wp.func
+def store_index_mutate_src(scratch: wp.array[float]) -> int:
+    # Side effect: overwrite scratch[0] (which the rhs reads) and return index 0.
+    scratch[0] = 7.0
+    return 0
+
+
+@wp.kernel
+def assign_rhs_before_target_index_kernel(
+    dst: wp.array[float],
+    scratch: wp.array[float],
+):
+    # Plain array store: Python evaluates the rhs (scratch[0]) before the
+    # assignment target's index expression (which mutates scratch[0]), so
+    # dst[0] must receive the original scratch[0].
+    dst[store_index_mutate_src(scratch)] = scratch[0]
+
+
+def test_assign_rhs_before_target_index(test, device):
+    """Verify plain assignment evaluates RHS before target indices."""
+    dst = wp.zeros(1, dtype=float, device=device)
+    scratch = wp.array([3.0], dtype=float, device=device)
+
+    wp.launch(assign_rhs_before_target_index_kernel, dim=1, inputs=[dst, scratch], device=device)
+
+    test.assertAlmostEqual(dst.numpy()[0], 3.0, msg="rhs was read after the target index expression mutated it")
+    test.assertAlmostEqual(scratch.numpy()[0], 7.0)
+
+
+@wp.kernel
+def array_copy_grad_kernel(dst: wp.array[float], src: wp.array[float]):
+    i = wp.tid()
+    dst[i] = src[i]
+
+
+def test_assign_array_copy_preserves_gradient(test, device):
+    """Verify array-to-array assignment preserves source gradients."""
+    # A bare array-to-array store `dst[i] = src[i]` materializes the rhs
+    # reference before storing. That materialization must be differentiable
+    # (copy), not a non-differentiable load -- otherwise the read-side gradient
+    # to src is silently dropped while the forward result stays correct.
+    n = 4
+    src = wp.array([1.0, 2.0, 3.0, 4.0], dtype=float, requires_grad=True, device=device)
+    dst = wp.zeros(n, dtype=float, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(array_copy_grad_kernel, dim=n, inputs=[dst, src], device=device)
+
+    dst.grad = wp.array([1.0, 1.0, 1.0, 1.0], dtype=float, device=device)
+    tape.backward()
+
+    assert_np_equal(dst.numpy(), np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float32))
+    assert_np_equal(src.grad.numpy(), np.array([1.0, 1.0, 1.0, 1.0], dtype=np.float32))
+
+
+@wp.func
+def augassign_index_bump(state: wp.array[int]) -> int:
+    # Returns the current index and bumps state[0]; the rhs reads state[0] after.
+    i = state[0]
+    state[0] = 1
+    return i
+
+
+@wp.func
+def augassign_rhs_read_state(state: wp.array[int]) -> float:
+    return float(state[0]) * 100.0
+
+
+@wp.kernel
+def augassign_slot_target_before_rhs_kernel(
+    dst: wp.array[wp.mat33],
+    state: wp.array[int],
+):
+    # The row-index expression has a side effect the RHS reads, so the
+    # target/index must be evaluated before the RHS.
+    dst[augassign_index_bump(state)][1] += wp.vec3(augassign_rhs_read_state(state), 0.0, 0.0)
+
+
+def test_augassign_slot_target_before_rhs(test, device):
+    """Verify slot augmented assignment evaluates target before RHS."""
+    dst = wp.zeros(2, dtype=wp.mat33, device=device)
+    state = wp.zeros(1, dtype=int, device=device)
+
+    wp.launch(augassign_slot_target_before_rhs_kernel, dim=1, inputs=[dst, state], device=device)
+
+    # Index first (-> row 0 of dst[0], state -> 1), then rhs reads state == 1 -> 100.
+    expected = np.zeros((2, 3, 3), dtype=np.float32)
+    expected[0, 1, 0] = 100.0
+    assert_np_equal(dst.numpy(), expected)
+
+
+@wp.func
 def func_to_local_double(a: float):
     return a * 2.0
 
@@ -2791,6 +2883,24 @@ add_function_test(
     TestCodeGen,
     "test_augassign_no_double_eval_both",
     test_augassign_no_double_eval_both,
+    devices=devices,
+)
+add_function_test(
+    TestCodeGen,
+    "test_assign_rhs_before_target_index",
+    test_assign_rhs_before_target_index,
+    devices=devices,
+)
+add_function_test(
+    TestCodeGen,
+    "test_assign_array_copy_preserves_gradient",
+    test_assign_array_copy_preserves_gradient,
+    devices=devices,
+)
+add_function_test(
+    TestCodeGen,
+    "test_augassign_slot_target_before_rhs",
+    test_augassign_slot_target_before_rhs,
     devices=devices,
 )
 add_function_test(TestCodeGen, "test_assign_function_to_local", test_assign_function_to_local, devices=devices)

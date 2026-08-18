@@ -14811,6 +14811,34 @@ def matrix_index_row_value_func(arg_types: Mapping[str, type], arg_values: Mappi
     return Reference(row_type)
 
 
+def matrix_index_row_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    func_args = (Reference(args["a"]), args["i"])
+    template_args = ()
+    return (func_args, template_args)
+
+
+# implements &(*matrix)[i] = row
+add_builtin(
+    "indexref",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": Int},
+    value_func=matrix_index_row_value_func,
+    dispatch_func=matrix_index_row_dispatch_func,
+    hidden=True,
+    group="Utility",
+    skip_replay=True,
+    is_differentiable=False,
+)
+# implements &(*bool_matrix)[i] = bool_row (bool is not part of Scalar)
+add_builtin(
+    "indexref",
+    input_types={"a": matrix(shape=(Any, Any), dtype=bool), "i": Int},
+    value_func=matrix_index_row_value_func,
+    dispatch_func=matrix_index_row_dispatch_func,
+    hidden=True,
+    group="Utility",
+    skip_replay=True,
+    is_differentiable=False,
+)
 # implements &(*matrix)[i, j]
 add_builtin(
     "indexref",
@@ -15118,6 +15146,16 @@ add_builtin(
     skip_replay=True,
     is_differentiable=False,
 )
+# implements &bool_matrix[i] = bool_row (bool is not part of Scalar)
+add_builtin(
+    "index",
+    input_types={"a": matrix(shape=(Any, Any), dtype=bool), "i": int},
+    value_func=matrix_index_row_value_func,
+    hidden=True,
+    group="Utility",
+    skip_replay=True,
+    is_differentiable=False,
+)
 
 
 def matrix_index_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
@@ -15131,6 +15169,16 @@ def matrix_index_value_func(arg_types: Mapping[str, type], arg_values: Mapping[s
 add_builtin(
     "index",
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "j": int},
+    value_func=matrix_index_value_func,
+    hidden=True,
+    group="Utility",
+    skip_replay=True,
+    is_differentiable=False,
+)
+# implements &bool_matrix[i,j] = bool (bool is not part of Scalar)
+add_builtin(
+    "index",
+    input_types={"a": matrix(shape=(Any, Any), dtype=bool), "i": int, "j": int},
     value_func=matrix_index_value_func,
     hidden=True,
     group="Utility",
@@ -15246,10 +15294,35 @@ add_builtin(
 )
 
 
+# implements bool_matrix[i] = bool_row (bool is not part of Scalar)
+add_builtin(
+    "assign_inplace",
+    input_types={"a": matrix(shape=(Any, Any), dtype=bool), "i": Any, "value": Any},
+    constraint=matrix_vector_sametype,
+    value_type=None,
+    dispatch_func=matrix_assign_dispatch_func,
+    hidden=True,
+    export=False,
+    group="Utility",
+)
+
+
 # implements matrix[i,j] = value
 add_builtin(
     "assign_inplace",
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": Any, "j": Any, "value": Any},
+    value_type=None,
+    dispatch_func=matrix_assign_dispatch_func,
+    hidden=True,
+    export=False,
+    group="Utility",
+)
+
+
+# implements bool_matrix[i,j] = bool (bool is not part of Scalar)
+add_builtin(
+    "assign_inplace",
+    input_types={"a": matrix(shape=(Any, Any), dtype=bool), "i": Any, "j": Any, "value": Any},
     value_type=None,
     dispatch_func=matrix_assign_dispatch_func,
     hidden=True,
@@ -15275,10 +15348,34 @@ add_builtin(
 )
 
 
+# implements bool_matrix[i] = bool_row (bool is not part of Scalar)
+add_builtin(
+    "assign_copy",
+    input_types={"a": matrix(shape=(Any, Any), dtype=bool), "i": Any, "value": Any},
+    value_func=matrix_assign_copy_value_func,
+    dispatch_func=matrix_assign_dispatch_func,
+    hidden=True,
+    export=False,
+    group="Utility",
+)
+
+
 # implements matrix[i,j] = value
 add_builtin(
     "assign_copy",
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": Any, "j": Any, "value": Any},
+    value_func=matrix_assign_copy_value_func,
+    dispatch_func=matrix_assign_dispatch_func,
+    hidden=True,
+    export=False,
+    group="Utility",
+)
+
+
+# implements bool_matrix[i,j] = bool (bool is not part of Scalar)
+add_builtin(
+    "assign_copy",
+    input_types={"a": matrix(shape=(Any, Any), dtype=bool), "i": Any, "j": Any, "value": Any},
     value_func=matrix_assign_copy_value_func,
     dispatch_func=matrix_assign_dispatch_func,
     hidden=True,

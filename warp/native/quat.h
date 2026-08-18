@@ -81,6 +81,16 @@ template <typename Type> struct quat_t {
             return x;
         }
     }
+
+    // Mutable component reference with Python-style negative indexing.
+    inline CUDA_CALLABLE Type& component_ref(int index)
+    {
+        if (index < 0) {
+            index += 4;
+        }
+        assert(index >= 0 && index < 4);
+        return (*this)[index];
+    }
 };
 
 using quat = quat_t<float>;
