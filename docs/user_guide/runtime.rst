@@ -2997,14 +2997,12 @@ neural implicits, or any field that is cheaper to evaluate in bulk.
         threshold=0.0,
         device="cuda:0",
     )
-    print(f"extracted a non-empty mesh: {verts.shape[0] > 0}")
-    print(f"indices are a flat triangle list: {indices.shape[0] % 3 == 0}")
+    print(f"extracted {verts.shape[0]} vertices and {indices.shape[0] // 3} triangles")
 
 .. testoutput::
     :skipif: wp.get_cuda_device_count() == 0
 
-    extracted a non-empty mesh: True
-    indices are a flat triangle list: True
+    extracted 77094 vertices and 154184 triangles
 
 At a given depth the output is equivalent to
 :class:`wp.geometry.IsoSurfaceMarchingCubes
