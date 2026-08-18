@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import unittest
+from typing import Any
 
 import numpy as np
 
@@ -25,6 +26,12 @@ def bounded_kernel(a: wp.array[float]):
 def lazy_kernel(a: wp.array[float]):
     tid = wp.tid()
     a[tid] = float(tid) + 1.0
+
+
+@wp.kernel
+def generic_kernel(a: wp.array[Any]):
+    tid = wp.tid()
+    a[tid] = a[tid]
 
 
 def test_suggested_block_size_basic(test, device):
@@ -78,14 +85,22 @@ def test_suggested_block_size_kernel_constructor(test, device):
     test.assertGreater(min_grid_size, 0)
 
 
+def test_suggested_block_size_rejects_generic_parent(test, device):
+    """Generic kernel parents produce an actionable overload-selection error."""
+    with test.assertRaisesRegex(RuntimeError, "requires a concrete overload.*wp.overload"):
+        wp.get_suggested_block_size(generic_kernel, device)
+
+
 devices = get_selected_cuda_test_devices()
 
 
 class TestOccupancy(unittest.TestCase):
     def test_suggested_block_size_cpu(self):
         """CPU fallback returns (1, 1)."""
-        result = wp.get_suggested_block_size(simple_kernel, "cpu")
-        self.assertEqual(result, (1, 1))
+        for kernel in (simple_kernel, generic_kernel):
+            with self.subTest(kernel=kernel.key):
+                result = wp.get_suggested_block_size(kernel, "cpu")
+                self.assertEqual(result, (1, 1))
 
 
 add_function_test(TestOccupancy, "test_suggested_block_size_basic", test_suggested_block_size_basic, devices=devices)
@@ -111,6 +126,12 @@ add_function_test(
     TestOccupancy,
     "test_suggested_block_size_kernel_constructor",
     test_suggested_block_size_kernel_constructor,
+    devices=devices,
+)
+add_function_test(
+    TestOccupancy,
+    "test_suggested_block_size_rejects_generic_parent",
+    test_suggested_block_size_rejects_generic_parent,
     devices=devices,
 )
 

@@ -5400,19 +5400,42 @@ bool wp_cuda_configure_kernel_shared_memory(void* kernel, int size)
     return true;
 }
 
-int wp_cuda_get_kernel_static_shared_memory(void* context, void* kernel)
+static int get_cuda_kernel_attribute(void* context, void* kernel, CUfunction_attribute attribute)
 {
     if (!kernel)
         return -1;
 
     ContextGuard guard(context);
 
-    int static_smem_bytes = 0;
-    CUresult res = cuFuncGetAttribute_f(&static_smem_bytes, CU_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES, (CUfunction)kernel);
-    if (res != CUDA_SUCCESS)
+    int value = 0;
+    if (!check_cu(cuFuncGetAttribute_f(&value, attribute, (CUfunction)kernel)))
         return -1;
 
-    return static_smem_bytes;
+    return value;
+}
+
+int wp_cuda_get_kernel_static_shared_memory(void* context, void* kernel)
+{
+    return get_cuda_kernel_attribute(context, kernel, CU_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES);
+}
+
+bool wp_cuda_get_kernel_properties(void* context, void* kernel, int* properties, int property_count)
+{
+    constexpr int kernel_property_count = 2;
+    if (!kernel || !properties || property_count != kernel_property_count)
+        return false;
+
+    ContextGuard guard(context);
+    int queried_properties[kernel_property_count] = {};
+
+    if (!check_cu(cuFuncGetAttribute_f(&queried_properties[0], CU_FUNC_ATTRIBUTE_NUM_REGS, (CUfunction)kernel)))
+        return false;
+    if (!check_cu(cuFuncGetAttribute_f(&queried_properties[1], CU_FUNC_ATTRIBUTE_LOCAL_SIZE_BYTES, (CUfunction)kernel)))
+        return false;
+
+    properties[0] = queried_properties[0];
+    properties[1] = queried_properties[1];
+    return true;
 }
 
 bool wp_cuda_set_kernel_cluster_attrs(void* kernel, int cx, int cy, int cz)
