@@ -1292,6 +1292,186 @@ def test_tile_custom_grad_shared_forward(test, device):
     test.assertLess(hooks.backward_smem_bytes, 2 * hooks.forward_smem_bytes + scratch_bytes)
 
 
+_WP_GRAD_SHARED_M = 16
+_WP_GRAD_SHARED_BLOCK_DIM = 32
+_WP_GRAD_SHARED_PROVIDER = wp.Module("tile_wp_grad_custom_grad_shared_provider")
+_WP_GRAD_NESTED_SHARED_PROVIDER = wp.Module("tile_wp_grad_nested_shared_provider")
+
+
+@wp.func(module=_WP_GRAD_SHARED_PROVIDER)
+def wp_grad_custom_shared_objective(x: float):
+    return x * x
+
+
+@wp.func_grad(wp_grad_custom_shared_objective)
+def adj_wp_grad_custom_shared_objective(x: float, adj_ret: float):
+    scratch = wp.tile_ones(shape=(_WP_GRAD_SHARED_M, _WP_GRAD_SHARED_M), dtype=float, storage="shared")
+    wp.adjoint[x] += (2.0 * x + wp.tile_sum(scratch)[0] * 0.0) * adj_ret
+
+
+@wp.kernel(module="unique", enable_backward=False)
+def evaluate_wp_grad_custom_shared(x: wp.array[float], out: wp.array[float]):
+    out[0] = wp.grad(wp_grad_custom_shared_objective)(x[0])
+
+
+@wp.func(module=_WP_GRAD_SHARED_PROVIDER)
+def call_wp_grad_custom_shared(x: float):
+    return wp.grad(wp_grad_custom_shared_objective)(x)
+
+
+@wp.kernel(module="unique", enable_backward=False)
+def evaluate_wp_grad_custom_shared_helper(x: wp.array[float], out: wp.array[float]):
+    out[0] = call_wp_grad_custom_shared(x[0])
+
+
+@wp.func(module=_WP_GRAD_SHARED_PROVIDER)
+def call_wp_grad_custom_shared_backward(x: float):
+    return wp.grad(wp_grad_custom_shared_objective)(x)
+
+
+@wp.kernel(module="unique")
+def evaluate_wp_grad_custom_shared_helper_backward(x: wp.array[float], out: wp.array[float]):
+    out[0] = call_wp_grad_custom_shared_backward(x[0])
+
+
+@wp.kernel(module="unique")
+def evaluate_wp_grad_custom_shared_backward(x: wp.array[float], out: wp.array[float]):
+    out[0] = wp.grad(wp_grad_custom_shared_objective)(x[0])
+
+
+@wp.func(module=_WP_GRAD_NESTED_SHARED_PROVIDER)
+def wp_grad_nested_shared_inner(x: float):
+    return x * x
+
+
+@wp.func_grad(wp_grad_nested_shared_inner)
+def adj_wp_grad_nested_shared_inner(x: float, adj_ret: float):
+    scratch = wp.tile_ones(shape=(_WP_GRAD_SHARED_M, _WP_GRAD_SHARED_M), dtype=float, storage="shared")
+    wp.adjoint[x] += (2.0 * x + wp.tile_sum(scratch)[0] * 0.0) * adj_ret
+
+
+@wp.func(module=_WP_GRAD_NESTED_SHARED_PROVIDER)
+def wp_grad_nested_shared_middle(x: float):
+    return x
+
+
+@wp.func_grad(wp_grad_nested_shared_middle)
+def adj_wp_grad_nested_shared_middle(x: float, adj_ret: float):
+    wp.adjoint[x] += wp.grad(wp_grad_nested_shared_inner)(x) * adj_ret
+
+
+@wp.func(module=_WP_GRAD_NESTED_SHARED_PROVIDER)
+def wp_grad_nested_shared_outer(x: float):
+    return x
+
+
+@wp.func_grad(wp_grad_nested_shared_outer)
+def adj_wp_grad_nested_shared_outer(x: float, adj_ret: float):
+    wp.adjoint[x] += wp.grad(wp_grad_nested_shared_middle)(x) * adj_ret
+
+
+@wp.kernel(module="unique", enable_backward=False)
+def evaluate_wp_grad_nested_shared(x: wp.array[float], out: wp.array[float]):
+    out[0] = wp.grad(wp_grad_nested_shared_outer)(x[0])
+
+
+def test_tile_wp_grad_custom_grad_shared(test, device):
+    """Include a custom gradient's tile storage in explicit-gradient forward shared memory."""
+    module_exec = evaluate_wp_grad_custom_shared.module.load(device, _WP_GRAD_SHARED_BLOCK_DIM)
+    hooks = module_exec.get_kernel_hooks(evaluate_wp_grad_custom_shared)
+    required = _WP_GRAD_SHARED_M * _WP_GRAD_SHARED_M * 4
+
+    test.assertGreaterEqual(hooks.forward_smem_bytes, required)
+
+
+def test_tile_wp_grad_custom_grad_shared_helper(test, device):
+    """Propagate an explicit gradient's tile storage through an ordinary helper call."""
+    module_exec = evaluate_wp_grad_custom_shared_helper.module.load(device, _WP_GRAD_SHARED_BLOCK_DIM)
+    hooks = module_exec.get_kernel_hooks(evaluate_wp_grad_custom_shared_helper)
+    required = _WP_GRAD_SHARED_M * _WP_GRAD_SHARED_M * 4
+    test.assertGreaterEqual(hooks.forward_smem_bytes, required)
+
+    x = wp.array([3.0], dtype=float, device=device)
+    out = wp.zeros_like(x)
+    wp.launch_tiled(
+        evaluate_wp_grad_custom_shared_helper,
+        dim=1,
+        inputs=[x],
+        outputs=[out],
+        block_dim=_WP_GRAD_SHARED_BLOCK_DIM,
+        device=device,
+    )
+    np.testing.assert_allclose(out.numpy(), [6.0])
+
+
+def test_tile_wp_grad_custom_grad_shared_helper_backward(test, device):
+    """Propagate an explicit gradient's tile storage through a helper during backward replay."""
+    module_exec = evaluate_wp_grad_custom_shared_helper_backward.module.load(device, _WP_GRAD_SHARED_BLOCK_DIM)
+    hooks = module_exec.get_kernel_hooks(evaluate_wp_grad_custom_shared_helper_backward)
+    required = _WP_GRAD_SHARED_M * _WP_GRAD_SHARED_M * 4
+    test.assertGreaterEqual(hooks.forward_smem_bytes, required)
+    test.assertGreaterEqual(hooks.backward_smem_bytes, required)
+
+    x = wp.array([3.0], dtype=float, device=device, requires_grad=True)
+    out = wp.zeros(1, dtype=float, device=device, requires_grad=True)
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            evaluate_wp_grad_custom_shared_helper_backward,
+            dim=1,
+            inputs=[x],
+            outputs=[out],
+            block_dim=_WP_GRAD_SHARED_BLOCK_DIM,
+            device=device,
+        )
+
+    tape.backward(grads={out: wp.ones_like(out)})
+    np.testing.assert_allclose(out.numpy(), [6.0])
+
+
+def test_tile_wp_grad_custom_grad_shared_backward(test, device):
+    """Reserve an explicit gradient's tile storage while replaying a backward kernel."""
+    module_exec = evaluate_wp_grad_custom_shared_backward.module.load(device, _WP_GRAD_SHARED_BLOCK_DIM)
+    hooks = module_exec.get_kernel_hooks(evaluate_wp_grad_custom_shared_backward)
+    required = _WP_GRAD_SHARED_M * _WP_GRAD_SHARED_M * 4
+    test.assertGreaterEqual(hooks.forward_smem_bytes, required)
+    test.assertGreaterEqual(hooks.backward_smem_bytes, required)
+
+    x = wp.array([3.0], dtype=float, device=device, requires_grad=True)
+    out = wp.zeros(1, dtype=float, device=device, requires_grad=True)
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            evaluate_wp_grad_custom_shared_backward,
+            dim=1,
+            inputs=[x],
+            outputs=[out],
+            block_dim=_WP_GRAD_SHARED_BLOCK_DIM,
+            device=device,
+        )
+
+    tape.backward(grads={out: wp.ones_like(out)})
+    np.testing.assert_allclose(out.numpy(), [6.0])
+
+
+def test_tile_wp_grad_nested_custom_grad_shared(test, device):
+    """Discover and size a multi-hop chain of explicit custom gradients."""
+    module_exec = evaluate_wp_grad_nested_shared.module.load(device, _WP_GRAD_SHARED_BLOCK_DIM)
+    hooks = module_exec.get_kernel_hooks(evaluate_wp_grad_nested_shared)
+    required = _WP_GRAD_SHARED_M * _WP_GRAD_SHARED_M * 4
+    test.assertGreaterEqual(hooks.forward_smem_bytes, required)
+
+    x = wp.array([3.0], dtype=float, device=device)
+    out = wp.zeros_like(x)
+    wp.launch_tiled(
+        evaluate_wp_grad_nested_shared,
+        dim=1,
+        inputs=[x],
+        outputs=[out],
+        block_dim=_WP_GRAD_SHARED_BLOCK_DIM,
+        device=device,
+    )
+    np.testing.assert_allclose(out.numpy(), [6.0])
+
+
 class TestTileSharedMemoryMessages(unittest.TestCase):
     """Message formatting for over-budget shared memory requests, independent of any device."""
 
@@ -1435,6 +1615,36 @@ add_function_test(
     TestTileSharedMemory,
     "test_tile_custom_grad_shared_forward",
     test_tile_custom_grad_shared_forward,
+    devices=devices,
+)
+add_function_test(
+    TestTileSharedMemory,
+    "test_tile_wp_grad_custom_grad_shared",
+    test_tile_wp_grad_custom_grad_shared,
+    devices=devices,
+)
+add_function_test(
+    TestTileSharedMemory,
+    "test_tile_wp_grad_custom_grad_shared_helper",
+    test_tile_wp_grad_custom_grad_shared_helper,
+    devices=devices,
+)
+add_function_test(
+    TestTileSharedMemory,
+    "test_tile_wp_grad_custom_grad_shared_helper_backward",
+    test_tile_wp_grad_custom_grad_shared_helper_backward,
+    devices=devices,
+)
+add_function_test(
+    TestTileSharedMemory,
+    "test_tile_wp_grad_custom_grad_shared_backward",
+    test_tile_wp_grad_custom_grad_shared_backward,
+    devices=devices,
+)
+add_function_test(
+    TestTileSharedMemory,
+    "test_tile_wp_grad_nested_custom_grad_shared",
+    test_tile_wp_grad_nested_custom_grad_shared,
     devices=devices,
 )
 add_function_test(

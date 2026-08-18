@@ -24,12 +24,17 @@ def scale(
     y[0] = x[0] ** 2.0
 
 
+@wp.func
+def square_func(x: float):
+    return x * x
+
+
 @wp.kernel(enable_backward=True)
 def scale_1(
     x: wp.array[float],
     y: wp.array[float],
 ):
-    y[0] = x[0] ** 2.0
+    y[0] = square_func(x[0])
 
 
 @wp.kernel(enable_backward=False)
@@ -74,6 +79,7 @@ def test_options_backward_2(test, device):
 
 
 def test_options_backward_3(test, device):
+    """An explicit kernel override must enable adjoints for user-function helpers."""
     x = wp.array([3.0], dtype=float, requires_grad=True, device=device)
     y = wp.zeros_like(x)
 

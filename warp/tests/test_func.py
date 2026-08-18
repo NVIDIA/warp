@@ -343,6 +343,125 @@ def test_grad(test, device):
     assert_np_equal(z.numpy(), 3.0 * x_np)
 
 
+def test_grad_rejects_higher_order(test, device):
+    """Reject taking ``wp.grad()`` of a function that calls ``wp.grad()``."""
+
+    @wp.func(module="unique")
+    def inner(x: float):
+        return x * x
+
+    @wp.func(module="unique")
+    def target(x: float):
+        return wp.grad(inner)(x)
+
+    @wp.kernel(module="unique", enable_backward=False)
+    def evaluate(out: wp.array[float]):
+        out[0] = wp.grad(target)(3.0)
+
+    with test.assertRaisesRegex(wp.WarpCodegenError, "higher-order gradients are not supported"):
+        wp.launch(evaluate, dim=1, outputs=[wp.zeros(1, dtype=float, device=device)], device=device)
+
+
+def test_grad_rejects_transitive_higher_order(test, device):
+    """Reject gradients that transitively differentiate through ``wp.grad()``."""
+
+    @wp.func(module="unique")
+    def inner(x: float):
+        return x * x
+
+    @wp.func(module="unique")
+    def helper(x: float):
+        return wp.grad(inner)(x)
+
+    @wp.func(module="unique")
+    def target(x: float):
+        return helper(x)
+
+    @wp.kernel(module="unique", enable_backward=False)
+    def evaluate(out: wp.array[float]):
+        out[0] = wp.grad(target)(3.0)
+
+    with test.assertRaisesRegex(wp.WarpCodegenError, "higher-order gradients are not supported"):
+        wp.launch(evaluate, dim=1, outputs=[wp.zeros(1, dtype=float, device=device)], device=device)
+
+
+def test_grad_allows_nested_target_with_custom_grad(test, device):
+    """Allow ``wp.grad()`` of a nested-gradient target with a custom gradient."""
+
+    @wp.func(module="unique")
+    def inner(x: float):
+        return x * x
+
+    @wp.func(module="unique")
+    def target(x: float):
+        return wp.grad(inner)(x)
+
+    @wp.func_grad(target)
+    def adj_target(x: float, adj_ret: float):
+        wp.adjoint[x] += 2.0 * adj_ret
+
+    @wp.kernel(module="unique", enable_backward=False)
+    def evaluate(out: wp.array[float]):
+        out[0] = wp.grad(target)(3.0)
+
+    out = wp.zeros(1, dtype=float, device=device)
+    wp.launch(evaluate, dim=1, outputs=[out], device=device)
+    np.testing.assert_allclose(out.numpy(), [2.0])
+
+
+def test_grad_allows_transitive_custom_gradient(test, device):
+    """Allow gradients through a nested helper that supplies a custom gradient."""
+
+    @wp.func(module="unique")
+    def inner(x: float):
+        return x * x
+
+    @wp.func(module="unique")
+    def helper(x: float):
+        return wp.grad(inner)(x)
+
+    @wp.func_grad(helper)
+    def adj_helper(x: float, adj_ret: float):
+        wp.adjoint[x] += 2.0 * adj_ret
+
+    @wp.func(module="unique")
+    def target(x: float):
+        return helper(x)
+
+    @wp.kernel(module="unique", enable_backward=False)
+    def evaluate(out: wp.array[float]):
+        out[0] = wp.grad(target)(3.0)
+
+    out = wp.zeros(1, dtype=float, device=device)
+    wp.launch(evaluate, dim=1, outputs=[out], device=device)
+    np.testing.assert_allclose(out.numpy(), [2.0])
+
+
+def test_grad_propagates_adjoint_requirement(test, device):
+    """Propagate explicit-gradient adjoints after an earlier forward call."""
+
+    module = wp.Module(f"test_grad_propagates_adjoint_requirement_{device.alias.replace(':', '_')}")
+
+    @wp.func(module=module)
+    def inner(x: float):
+        return x * x
+
+    @wp.func(module=module)
+    def target(x: float):
+        return inner(x)
+
+    @wp.kernel(module=module, enable_backward=False)
+    def evaluate(primal: wp.array[float], gradient: wp.array[float]):
+        primal[0] = target(3.0)
+        gradient[0] = wp.grad(target)(3.0)
+
+    primal = wp.zeros(1, dtype=float, device=device)
+    gradient = wp.zeros(1, dtype=float, device=device)
+    wp.launch(evaluate, dim=1, outputs=[primal, gradient], device=device)
+    np.testing.assert_allclose(primal.numpy(), [9.0])
+    np.testing.assert_allclose(gradient.numpy(), [6.0])
+
+
 @wp.func
 def safe_sqrt(x: float):
     return wp.sqrt(x)
@@ -664,6 +783,36 @@ add_kernel_test(
     TestFunc, kernel=test_return_annotation_none, name="test_return_annotation_none", dim=1, devices=devices
 )
 add_function_test(TestFunc, func=test_grad, name="test_grad", devices=devices)
+add_function_test(
+    TestFunc,
+    func=test_grad_rejects_higher_order,
+    name="test_grad_rejects_higher_order",
+    devices=devices,
+)
+add_function_test(
+    TestFunc,
+    func=test_grad_rejects_transitive_higher_order,
+    name="test_grad_rejects_transitive_higher_order",
+    devices=devices,
+)
+add_function_test(
+    TestFunc,
+    func=test_grad_allows_nested_target_with_custom_grad,
+    name="test_grad_allows_nested_target_with_custom_grad",
+    devices=devices,
+)
+add_function_test(
+    TestFunc,
+    func=test_grad_allows_transitive_custom_gradient,
+    name="test_grad_allows_transitive_custom_gradient",
+    devices=devices,
+)
+add_function_test(
+    TestFunc,
+    func=test_grad_propagates_adjoint_requirement,
+    name="test_grad_propagates_adjoint_requirement",
+    devices=devices,
+)
 add_function_test(TestFunc, func=test_grad_in_func_grad, name="test_grad_in_func_grad", devices=devices)
 
 
