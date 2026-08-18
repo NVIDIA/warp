@@ -2629,6 +2629,130 @@ def test_transform_default_q_arg(test, device):
     transform_default_q_arg_func()
 
 
+transform_constructor_vec7 = wp.types.vector(7, float)
+
+
+@wp.func
+def transform_constructor_fill_func():
+    t = wp.transform(1.5)
+
+    wp.expect_eq(
+        t[:] == transform_constructor_vec7(1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5),
+        True,
+    )
+
+
+@wp.kernel
+def transform_constructor_fill_kernel(
+    out_f: wp.array[wp.transformf],
+    out_d: wp.array[wp.transformd],
+    out_h: wp.array[wp.transformh],
+):
+    transform_constructor_fill_func()
+
+    out_f[0] = wp.transform(1.5)
+    out_d[0] = wp.transformd(wp.float64(2.5))
+    out_h[0] = wp.transformh(wp.float16(3.5))
+
+
+@wp.kernel
+def transform_constructor_fill_backward_kernel(value: wp.array[float], out: wp.array[float]):
+    t = wp.transform(value[0])
+
+    out[0] = t[0] + 2.0 * t[1] + 3.0 * t[2] + 4.0 * t[3] + 5.0 * t[4] + 6.0 * t[5] + 7.0 * t[6]
+
+
+@wp.kernel
+def transform_constructor_copy_kernel(
+    src_f: wp.array[wp.transformf],
+    src_d: wp.array[wp.transformd],
+    out_f: wp.array[wp.transformf],
+    out_generic: wp.array[wp.transformf],
+    out_d: wp.array[wp.transformd],
+):
+    out_f[0] = wp.transform(src_f[0])
+    out_d[0] = wp.transformd(src_d[0])
+
+    # The generic form has no typed target, so the `dtype` must be inferred
+    # from the source rather than taken to be the transform type itself.
+    out_generic[0] = wp.types.transformation(src_f[0])
+
+
+@wp.kernel
+def transform_constructor_copy_backward_kernel(src: wp.array[wp.transformf], out: wp.array[float]):
+    t = wp.transform(src[0])
+
+    out[0] = t[0] + 2.0 * t[1] + 3.0 * t[2] + 4.0 * t[3] + 5.0 * t[4] + 6.0 * t[5] + 7.0 * t[6]
+
+
+def test_transform_constructor_fill(test, device):
+    out_f = wp.empty(1, dtype=wp.transformf, device=device)
+    out_d = wp.empty(1, dtype=wp.transformd, device=device)
+    out_h = wp.empty(1, dtype=wp.transformh, device=device)
+
+    wp.launch(transform_constructor_fill_kernel, 1, outputs=(out_f, out_d, out_h), device=device)
+
+    np.testing.assert_allclose(out_f.numpy(), np.full((1, 7), 1.5, dtype=np.float32))
+    np.testing.assert_allclose(out_d.numpy(), np.full((1, 7), 2.5, dtype=np.float64))
+    np.testing.assert_allclose(out_h.numpy(), np.full((1, 7), 3.5, dtype=np.float16))
+
+    # Python scope must agree with kernel scope on this form.
+    transform_constructor_fill_func()
+
+
+def test_transform_constructor_fill_backward(test, device):
+    value = wp.array((1.5,), dtype=float, requires_grad=True, device=device)
+    out = wp.zeros(1, dtype=float, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(transform_constructor_fill_backward_kernel, 1, inputs=(value,), outputs=(out,), device=device)
+
+    tape.backward(loss=out)
+
+    assert_np_equal(out.numpy(), np.array((1.5 * 28.0,), dtype=float))
+    assert_np_equal(value.grad.numpy(), np.array((28.0,), dtype=float))
+
+
+def test_transform_constructor_copy(test, device):
+    values = np.array(((1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0),), dtype=np.float32)
+
+    src_f = wp.array(values, dtype=wp.transformf, device=device)
+    src_d = wp.array(values.astype(np.float64), dtype=wp.transformd, device=device)
+    out_f = wp.empty(1, dtype=wp.transformf, device=device)
+    out_generic = wp.empty(1, dtype=wp.transformf, device=device)
+    out_d = wp.empty(1, dtype=wp.transformd, device=device)
+
+    wp.launch(
+        transform_constructor_copy_kernel,
+        1,
+        inputs=(src_f, src_d),
+        outputs=(out_f, out_generic, out_d),
+        device=device,
+    )
+
+    assert_np_equal(out_f.numpy(), values)
+    assert_np_equal(out_generic.numpy(), values)
+    assert_np_equal(out_d.numpy(), values.astype(np.float64))
+
+
+def test_transform_constructor_copy_backward(test, device):
+    values = np.array(((1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0),), dtype=np.float32)
+    weights = np.arange(1.0, 8.0, dtype=np.float32).reshape(1, 7)
+
+    src = wp.array(values, dtype=wp.transformf, requires_grad=True, device=device)
+    out = wp.zeros(1, dtype=float, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(transform_constructor_copy_backward_kernel, 1, inputs=(src,), outputs=(out,), device=device)
+
+    tape.backward(loss=out)
+
+    assert_np_equal(out.numpy(), np.array(((values * weights).sum(),), dtype=float))
+    assert_np_equal(src.grad.numpy(), weights)
+
+
 devices = get_test_devices()
 
 
@@ -2807,6 +2931,49 @@ class TestSpatial(unittest.TestCase):
                 self.assertRaisesRegex(TypeError, r"^got an unexpected keyword argument 'pos'$"),
             ):
                 transform_type(*components, pos=(8.0, 9.0, 10.0))
+
+    def test_transform_constructor_invalid_kernel_arity(self):
+        """Unsupported argument counts must be reported, not reach an internal error."""
+
+        @wp.kernel(module="unique")
+        def kernel_two_values():
+            wp.transform(1.0, 2.0)
+
+        @wp.kernel(module="unique")
+        def kernel_three_values():
+            wp.transform(1.0, 2.0, 3.0)
+
+        with (
+            self.subTest(count=2),
+            self.assertRaisesRegex(
+                RuntimeError,
+                r"incompatible number of values given \(2\) when constructing a transform; expected 0, 1, or 7$",
+            ),
+        ):
+            wp.launch(kernel_two_values, dim=1, device="cpu")
+
+        with (
+            self.subTest(count=3),
+            self.assertRaisesRegex(
+                RuntimeError,
+                r"incompatible number of values given \(3\) when constructing a transform; expected 0, 1, or 7$",
+            ),
+        ):
+            wp.launch(kernel_three_values, dim=1, device="cpu")
+
+    def test_transform_constructor_copy_dtype_mismatch(self):
+        """Copy construction is only defined between matching dtypes."""
+
+        @wp.kernel(module="unique")
+        def kernel():
+            wp.transformd(wp.transform(1.0))
+
+        with self.assertRaisesRegex(
+            RuntimeError,
+            r"copy constructing a transform requires matching source and target dtypes, "
+            r"got `float32` and `float64`$",
+        ):
+            wp.launch(kernel, dim=1, device="cpu")
 
 
 for dtype in np_float_types:
@@ -3025,6 +3192,20 @@ add_function_test(
     TestSpatial, "test_transform_slicing_assign_backward", test_transform_slicing_assign_backward, devices=devices
 )
 add_function_test(TestSpatial, "test_transform_default_q_arg", test_transform_default_q_arg, devices=devices)
+add_function_test(TestSpatial, "test_transform_constructor_fill", test_transform_constructor_fill, devices=devices)
+add_function_test(
+    TestSpatial,
+    "test_transform_constructor_fill_backward",
+    test_transform_constructor_fill_backward,
+    devices=devices,
+)
+add_function_test(TestSpatial, "test_transform_constructor_copy", test_transform_constructor_copy, devices=devices)
+add_function_test(
+    TestSpatial,
+    "test_transform_constructor_copy_backward",
+    test_transform_constructor_copy_backward,
+    devices=devices,
+)
 
 
 if __name__ == "__main__":

@@ -136,7 +136,12 @@ template <typename Type> struct transform_t {
         , q(q)
     {
     }
-    CUDA_CALLABLE inline transform_t(Type) { }  // helps uniform initialization
+    // fill constructor, e.g.: `wp.transform(123)`
+    CUDA_CALLABLE inline transform_t(Type s)
+        : p(s)
+        , q(s, s, s, s)
+    {
+    }
 
     template <typename OtherType> inline explicit CUDA_CALLABLE transform_t(const transform_t<OtherType>& other)
     {
@@ -971,6 +976,30 @@ CUDA_CALLABLE inline void adj_transform_t(
 {
     adj_p += adj_ret.p;
     adj_q += adj_ret.q;
+}
+
+// adjoint for the fill constructor
+template <typename Type>
+CUDA_CALLABLE inline void adj_transform_t(Type s, Type& adj_s, const transform_t<Type>& adj_ret)
+{
+    // `transform_t::operator[]` indexes into `p` alone, so the components are
+    // summed explicitly rather than through a seven-element loop.
+    adj_s += adj_ret.p[0];
+    adj_s += adj_ret.p[1];
+    adj_s += adj_ret.p[2];
+    adj_s += adj_ret.q[0];
+    adj_s += adj_ret.q[1];
+    adj_s += adj_ret.q[2];
+    adj_s += adj_ret.q[3];
+}
+
+// adjoint for the copy constructor
+template <typename Type>
+CUDA_CALLABLE inline void
+adj_transform_t(const transform_t<Type>& other, transform_t<Type>& adj_other, const transform_t<Type>& adj_ret)
+{
+    adj_other.p += adj_ret.p;
+    adj_other.q += adj_ret.q;
 }
 
 template <typename Type>

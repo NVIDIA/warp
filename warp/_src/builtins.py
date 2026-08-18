@@ -1887,18 +1887,30 @@ def transformation_value_func(arg_types: Mapping[str, type], arg_values: Mapping
         if dtype is None:
             dtype = float32
     elif variadic_arg_count == 1:
-        # Initialization by filling a value, e.g.: `wp.transform(123)`,
-        # `wp.transformation(123)`.
         value_type = variadic_arg_types[0]
-        if dtype is None:
-            dtype = value_type
-        elif not warp._src.types.scalars_equal(value_type, dtype):
-            _check_vars_match_dtype(
-                arg_values,
-                variadic_arg_types,
-                dtype,
-                f"the value used to fill this transform is expected to be of the type `{dtype.__name__}`",
-            )
+        if type_is_transformation(value_type):
+            # Copy constructor, e.g.: `wp.transform(other_xform)`,
+            # `wp.transformation(other_xform)`.
+            source_dtype = value_type._wp_scalar_type_
+            if dtype is None:
+                dtype = source_dtype
+            elif not warp._src.types.scalars_equal(source_dtype, dtype):
+                raise RuntimeError(
+                    "copy constructing a transform requires matching source and target dtypes, "
+                    f"got `{source_dtype.__name__}` and `{dtype.__name__}`"
+                )
+        else:
+            # Initialization by filling a value, e.g.: `wp.transform(123)`,
+            # `wp.transformation(123)`.
+            if dtype is None:
+                dtype = value_type
+            elif not warp._src.types.scalars_equal(value_type, dtype):
+                _check_vars_match_dtype(
+                    arg_values,
+                    variadic_arg_types,
+                    dtype,
+                    f"the value used to fill this transform is expected to be of the type `{dtype.__name__}`",
+                )
     elif variadic_arg_count == 7:
         # Initializing by value, e.g.: `wp.transform(1, 2, 3, 4, 5, 6, 7)`.
         if dtype is not None:
@@ -1913,6 +1925,11 @@ def transformation_value_func(arg_types: Mapping[str, type], arg_values: Mapping
                 dtype = scalar_infer_type(variadic_arg_types)
             except RuntimeError:
                 raise RuntimeError("all values given when constructing a transform must have the same type") from None
+    else:
+        raise RuntimeError(
+            f"incompatible number of values given ({variadic_arg_count}) "
+            "when constructing a transform; expected 0, 1, or 7"
+        )
 
     if dtype is None:
         raise RuntimeError("could not infer the `dtype` argument when calling the `wp.transform()` function")
@@ -1949,12 +1966,13 @@ def transformation_dispatch_func(input_types: Mapping[str, type], return_type: A
 
     dtype = return_type._wp_scalar_type_
 
-    variadic_args = args.get("args", ())
-    variadic_arg_count = len(variadic_args)
+    variadic_args = args.get("args")
 
-    if variadic_arg_count == 7:
+    if variadic_args is not None:
+        # Variadic overload, e.g.: `wp.transform(1.5)`, `wp.transform(1, 2, 3, 4, 5, 6, 7)`.
         func_args = tuple(_cast_scalar_constant(a, dtype) for a in variadic_args)
     else:
+        # `p`/`q` overload, e.g.: `wp.transform(wp.vec3(), wp.quat())`.
         func_args = tuple(v for k, v in args.items() if k != "dtype")
         if "p" in args and "q" not in args:
             quat_ident = warp._src.codegen.Var(
