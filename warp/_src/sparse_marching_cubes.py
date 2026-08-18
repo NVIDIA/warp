@@ -18,8 +18,6 @@ For a dense field already resident in memory, use
 :class:`warp.geometry.IsoSurfaceMarchingCubes` instead.
 """
 
-from __future__ import annotations
-
 import math
 from collections.abc import Callable
 

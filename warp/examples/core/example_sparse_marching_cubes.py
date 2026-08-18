@@ -20,6 +20,9 @@
 #   * Pass --opengl to open an interactive window (non-headless).
 #   * Pass --mode dense to extract the identical surface with the dense
 #     wp.geometry.IsoSurfaceMarchingCubes instead, for a comparison.
+#   * Pass --show-cells to also draw the octree leaf cells as a voxel cage
+#     around the surface -- the thin shell the sparse method instantiates,
+#     versus the full volume a dense grid would.
 #
 # Note: requires a CUDA-capable device for interactive resolutions, and
 # usd-core to load the bunny asset.
@@ -32,6 +35,31 @@ import warp as wp
 import warp.examples
 import warp.geometry
 import warp.render
+
+# Unit-cube corner offsets and the 12 triangles (2 per face) used to turn a
+# list of octree cell origins into a single voxel mesh for --show-cells.
+_CUBE_CORNERS = np.array(
+    [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0], [0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1]], dtype=np.float32
+)
+_CUBE_FACES = np.array(
+    [
+        [0, 2, 1], [0, 3, 2], [4, 5, 6], [4, 6, 7],
+        [0, 1, 5], [0, 5, 4], [2, 3, 7], [2, 7, 6],
+        [1, 2, 6], [1, 6, 5], [3, 0, 4], [3, 4, 7],
+    ],
+    dtype=np.int32,
+)  # fmt: skip
+
+
+CELL_COLOR = (0.30, 0.55, 0.90)
+
+
+def voxel_mesh(origins, width):
+    """Build one (V, F) triangle mesh containing a cube per cell origin."""
+    n = origins.shape[0]
+    verts = (origins[:, None, :] + width * _CUBE_CORNERS[None, :, :]).reshape(-1, 3)
+    faces = (_CUBE_FACES[None, :, :] + 8 * np.arange(n, dtype=np.int32)[:, None, None]).reshape(-1)
+    return verts, faces
 
 
 @wp.kernel(enable_backward=False)
@@ -61,9 +89,24 @@ def bunny_field_kernel(mesh_id: wp.uint64, field: wp.array3d(dtype=float), origi
 
 
 class Example:
-    def __init__(self, stage_path="example_sparse_marching_cubes.usd", mode="sparse", opengl=False, verbose=False):
+    def __init__(
+        self,
+        stage_path="example_sparse_marching_cubes.usd",
+        mode="sparse",
+        opengl=False,
+        verbose=False,
+        show_cells=False,
+        cell_depth=5,
+    ):
         self.verbose = verbose
         self.mode = mode
+
+        # Drawing the leaf cells at the full extraction depth would swamp the
+        # surface, so the cage is built at its own coarser depth.
+        self.show_cells = show_cells
+        self.cell_depth = cell_depth
+        self.cell_verts = None
+        self.cell_indices = None
 
         # Cubic domain around the normalized bunny, and the octree depth. A
         # depth of 8 matches a dense grid of 256^3 cells (257^3 corner
@@ -160,6 +203,12 @@ class Example:
             self.verts = verts
             self.indices = indices
 
+            if self.show_cells:
+                cell_origins, cell_width = wp.geometry.lipschitz_octree(
+                    self._make_evaluator(angle), self.origin, self.root_width, self.cell_depth
+                )
+                self.cell_verts, self.cell_indices = voxel_mesh(cell_origins.numpy(), cell_width)
+
             if self.verbose:
                 resolution = stats["resolution"]
                 dense_evals = (resolution + 1) ** 3
@@ -180,6 +229,14 @@ class Example:
             colors=self.color,
             update_topology=True,
         )
+        if self.cell_verts is not None:
+            renderer.render_mesh(
+                "octree_cells",
+                self.cell_verts,
+                self.cell_indices,
+                colors=CELL_COLOR,
+                update_topology=True,
+            )
         renderer.end_frame()
 
     def render(self):
@@ -211,12 +268,28 @@ if __name__ == "__main__":
         help="Extraction method. Both produce the same surface; use 'dense' to capture a comparison.",
     )
     parser.add_argument("--opengl", action="store_true", help="Open an interactive OpenGL window (non-headless).")
+    parser.add_argument(
+        "--show-cells",
+        action="store_true",
+        help="Also draw the octree leaf cells as a voxel cage around the surface.",
+    )
+    parser.add_argument("--cell-depth", type=int, default=5, help="Octree depth used for the --show-cells cage.")
     parser.add_argument("--verbose", action="store_true", help="Print out additional status messages during execution.")
 
     args = parser.parse_known_args()[0]
 
+    if args.cell_depth < 0:
+        parser.error("--cell-depth must be non-negative")
+
     with wp.ScopedDevice(args.device):
-        example = Example(stage_path=args.stage_path, mode=args.mode, opengl=args.opengl, verbose=args.verbose)
+        example = Example(
+            stage_path=args.stage_path,
+            mode=args.mode,
+            opengl=args.opengl,
+            verbose=args.verbose,
+            show_cells=args.show_cells,
+            cell_depth=args.cell_depth,
+        )
         for _ in range(args.num_frames):
             example.step()
             example.render()

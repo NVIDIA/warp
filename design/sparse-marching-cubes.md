@@ -2,7 +2,7 @@
 
 **Status**: Implemented
 
-**Issue**: No tracking issue; prompted by an internal user request (see Motivation).
+**Issue**: No tracking issue; prompted by an external user request (see Motivation).
 
 ## Motivation
 
@@ -13,7 +13,7 @@ high resolutions this is wasteful, because a surface is a 2D object: only
 `O(R^2)` cells actually straddle it, and the remaining `~R^3` interior/exterior
 samples contribute nothing to the output.
 
-An internal user (surfacing very high-resolution custom sparse data structures)
+An external user (surfacing very high-resolution custom sparse data structures)
 asked for isosurface extraction that takes an **implicit function** -- something
 that can evaluate the field at a point -- rather than a pre-filled dense grid,
 so the extractor itself decides where to sample. This is the common shape for

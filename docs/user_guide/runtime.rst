@@ -2997,14 +2997,14 @@ neural implicits, or any field that is cheaper to evaluate in bulk.
         threshold=0.0,
         device="cuda:0",
     )
-    print(verts.shape[0] > 0)
-    print(indices.shape[0] % 3 == 0)
+    print(f"extracted a non-empty mesh: {verts.shape[0] > 0}")
+    print(f"indices are a flat triangle list: {indices.shape[0] % 3 == 0}")
 
 .. testoutput::
     :skipif: wp.get_cuda_device_count() == 0
 
-    True
-    True
+    extracted a non-empty mesh: True
+    indices are a flat triangle list: True
 
 At a given depth the output is equivalent to
 :class:`wp.geometry.IsoSurfaceMarchingCubes
@@ -3021,7 +3021,92 @@ an explicit list of occupied cells and their sampled corner values.
 simply chains the
 two. Calling the extraction stage directly is convenient when the occupied cells
 are already known -- for example a marked band of voxels around an object from a
-vision or generative model.
+vision or generative model, or a custom sparse data structure that already tracks
+which voxels are near the surface.
+
+Extracting from an explicit cell set
+""""""""""""""""""""""""""""""""""""
+
+:func:`wp.geometry.sparse_marching_cubes_from_cells
+<warp.geometry.sparse_marching_cubes_from_cells>` takes the occupied cells as an
+``(N, 3)`` array of integer cell subscripts, plus an ``(N, 8)`` array holding the
+field value at each cell's 8 corners, ordered by
+:attr:`~warp.geometry.IsoSurfaceMarchingCubes.CUBE_CORNER_OFFSETS`. A cell at
+subscript ``(i, j, k)`` covers the box whose minimum corner is
+``origin + cell_width * (i, j, k)``. Subscripts may be negative and need not be
+contiguous, so cells can come straight from a sparse structure without
+renumbering. Corners shared between neighboring cells are de-duplicated
+internally, so the result is watertight even though each cell supplies its own
+eight values.
+
+The cells a closed surface passes through form a face-connected shell, so they
+can be gathered with a breadth-first search from a single seed cell. The search
+only ever touches the shell and its immediate neighbors, never the volume it
+encloses:
+
+.. testcode::
+
+    from collections import deque
+
+    import numpy as np
+    import warp.geometry
+
+    # A sphere of radius 0.5, on cells of width 1/16 with subscript (0, 0, 0) at the origin.
+    origin = np.array((0.0, 0.0, 0.0))
+    cell_width = 1.0 / 16
+    offsets = np.array(wp.geometry.IsoSurfaceMarchingCubes.CUBE_CORNER_OFFSETS)
+    neighbors = [(1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1)]
+
+    def corner_values(cell):
+        """Sample the sphere SDF at the 8 corners of one cell."""
+        p = origin + cell_width * (np.array(cell) + offsets)
+        return np.linalg.norm(p, axis=1) - 0.5
+
+    def straddles(values):
+        """Report whether the isosurface passes through the cell."""
+        return values.min() < 0.0 <= values.max()
+
+    # Seed the search by stepping out from the sphere's center until a cell crosses it.
+    seed = (0, 0, 0)
+    while not straddles(corner_values(seed)):
+        seed = (seed[0] + 1, seed[1], seed[2])
+
+    # Flood-fill the shell, expanding only from cells the surface passes through.
+    found, visited, queue = {}, {seed}, deque([seed])
+    while queue:
+        cell = queue.popleft()
+        values = corner_values(cell)
+        if not straddles(values):
+            continue
+        found[cell] = values
+        for dx, dy, dz in neighbors:
+            neighbor = (cell[0] + dx, cell[1] + dy, cell[2] + dz)
+            if neighbor not in visited:
+                visited.add(neighbor)
+                queue.append(neighbor)
+
+    cells = np.array(list(found), dtype=np.int32)
+    values = np.array(list(found.values()), dtype=np.float32)
+
+    verts, indices = wp.geometry.sparse_marching_cubes_from_cells(
+        cells, values, origin=origin, cell_width=cell_width, threshold=0.0
+    )
+
+    radial_error = np.abs(np.linalg.norm(verts.numpy(), axis=1) - 0.5).max()
+    print(f"evaluated {len(visited)} cells to find the {len(cells)} the surface crosses")
+    print(f"extracted {indices.shape[0] // 3} triangles")
+    print(f"vertices lie on the sphere: {radial_error < 0.01}")
+
+.. testoutput::
+
+    evaluated 2504 cells to find the 1160 the surface crosses
+    extracted 2312 triangles
+    vertices lie on the sphere: True
+
+Note that the sphere spans 32 cells per axis here, so a dense grid covering it
+would hold 32,768 cells -- more than ten times what the search evaluated, and the
+gap grows with resolution. The subscripts are also centered on the origin and
+therefore negative on one side, which the extractor handles directly.
 
 .. list-table::
     :header-rows: 1
@@ -3040,10 +3125,10 @@ dense grid at depth 8 and 27x faster at depth 9, and beyond that the dense grid
 no longer fits in memory.
 
 See :github:`warp/examples/core/example_sparse_marching_cubes.py` for a complete
-usage example (with an interactive rendering mode), and
+usage example, with an interactive rendering mode and a ``--show-cells`` option
+that draws the octree leaf cells as a voxel cage around the surface, and
 :github:`warp/examples/benchmarks/benchmark_sparse_marching_cubes.py` for a fair
-sparse-versus-dense comparison. The figures above were produced by
-:github:`warp/examples/core/example_sparse_marching_cubes_polyscope.py`.
+sparse-versus-dense comparison.
 
 Custom Marching Cubes Implementations
 #####################################
