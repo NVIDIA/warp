@@ -3448,6 +3448,39 @@ inline CUDA_CALLABLE Type ddot(const mat_t<Rows, Cols, Type>& a, const mat_t<Row
     return r;
 }
 
+// HIPRTC segfaults while optimizing the mat44 int8/uint8 ddot specialization, so we
+// force optnone as a workaround (CUDA_CALLABLE expands to __host__ __device__ on HIP,
+// which does not conflict with optnone). Bounded to the affected ROCm releases via the
+// upper HIP_VERSION guard; narrow or remove it once the HIPRTC fix lands.
+// TODO(ROCm): track the upstream HIPRTC optimizer fix and reference its issue id here.
+#if defined(__HIP_DEVICE_COMPILE__) && HIP_VERSION < 80000000
+template <>
+inline CUDA_CALLABLE
+    __attribute__((optnone)) int8 ddot<4, 4, int8>(const mat_t<4, 4, int8>& a, const mat_t<4, 4, int8>& b)
+{
+    int8 r(0);
+    for (unsigned i = 0; i < 4; ++i) {
+        for (unsigned j = 0; j < 4; ++j) {
+            r = muladd<int8>(a.data[i][j], b.data[i][j], r);
+        }
+    }
+    return r;
+}
+
+template <>
+inline CUDA_CALLABLE __attribute__((optnone)) uint8
+ddot<4, 4, uint8>(const mat_t<4, 4, uint8>& a, const mat_t<4, 4, uint8>& b)
+{
+    uint8 r(0);
+    for (unsigned i = 0; i < 4; ++i) {
+        for (unsigned j = 0; j < 4; ++j) {
+            r = muladd<uint8>(a.data[i][j], b.data[i][j], r);
+        }
+    }
+    return r;
+}
+#endif
+
 template <unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE Type tensordot(const mat_t<Rows, Cols, Type>& a, const mat_t<Rows, Cols, Type>& b)
 {

@@ -9,6 +9,17 @@
 #include "cuBQL/bvh.h"
 #include "cuBQL/traversal/shrinkingRadiusQuery.h"
 
+// The findClosest* queries are forward-declared __host__ __device__ (so the
+// CPU sample can call them) but defined __device__-only. nvcc tolerates that
+// decl/def host/device-attribute mismatch; HIP/clang rejects it. On the HIP
+// device path align the forward declarations to the device-only definitions.
+// Outside HIP (CUDA and the plain-C++ CPU build) the spelling is unchanged.
+#if defined(__HIPCC__)
+# define __cubql_findClosest_decl __cubql_device
+#else
+# define __cubql_findClosest_decl __cubql_both
+#endif
+
 namespace cuBQL {
   namespace points {
 
@@ -34,7 +45,7 @@ namespace cuBQL {
       not)
     */
     template<typename T, int D>
-    inline __cubql_both
+    inline __cubql_findClosest_decl
     int findClosest(/*! binary bvh built over the given points[]
                       specfied below */
                     BinaryBVH<T,D> bvhOverPoints,
@@ -65,7 +76,7 @@ namespace cuBQL {
       not)
     */
     template<typename T, int D, int W>
-    inline __cubql_both
+    inline __cubql_findClosest_decl
     int findClosest(/*! binary bvh built over the given points[]
                       specfied below */
                     WideBVH<T,D,W> bvhOverPoints,
@@ -81,7 +92,7 @@ namespace cuBQL {
 
 
     template<typename T, int D>
-    inline __cubql_both
+    inline __cubql_findClosest_decl
     int findClosest_exludeID(/*! primitive ID to _exclude_ from queries */
                              int idOfPointtoExclude,
                              /*! binary bvh built over the given points[]

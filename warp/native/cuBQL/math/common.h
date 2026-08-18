@@ -28,8 +28,52 @@
 #  include <hip/hip_runtime.h>
 #  include <hip/driver_types.h>
 #  include <hip/hip_runtime.h>
+// cuBQL spells the device runtime API as cudaXxx (call sites and the
+// CUBQL_CUDA_CALL(call) -> cuda##call token-paste macro). HIP does not
+// provide the cudaXxx aliases, so map the exact set cuBQL uses onto the
+// hipXxx equivalents. Confined to the __HIPCC__ path so the CUDA build is
+// unchanged.
+using cudaError_t  = hipError_t;
+using cudaStream_t = hipStream_t;
+using cudaEvent_t  = hipEvent_t;
+using cudaMemPool_t = hipMemPool_t;
+#  define cudaSuccess                      hipSuccess
+#  define cudaMemcpyDeviceToHost           hipMemcpyDeviceToHost
+#  define cudaMemcpyHostToDevice           hipMemcpyHostToDevice
+#  define cudaMemcpyDeviceToDevice         hipMemcpyDeviceToDevice
+#  define cudaMemcpyDefault                hipMemcpyDefault
+#  define cudaMemPoolAttrReleaseThreshold  hipMemPoolAttrReleaseThreshold
+#  define cudaGetErrorString               hipGetErrorString
+#  define cudaGetLastError                 hipGetLastError
+#  define cudaDeviceSynchronize            hipDeviceSynchronize
+#  define cudaStreamSynchronize            hipStreamSynchronize
+#  define cudaGetDevice                    hipGetDevice
+#  define cudaSetDevice                    hipSetDevice
+#  define cudaGetDeviceCount               hipGetDeviceCount
+#  define cudaMalloc                       hipMalloc
+#  define cudaMallocHost                   hipHostMalloc
+#  define cudaFree                         hipFree
+#  define cudaFreeHost                     hipHostFree
+#  define cudaMallocManaged                hipMallocManaged
+#  define cudaMallocAsync                  hipMallocAsync
+#  define cudaFreeAsync                    hipFreeAsync
+#  define cudaMemcpy                       hipMemcpy
+#  define cudaMemcpyAsync                  hipMemcpyAsync
+#  define cudaMemcpyFromSymbol             hipMemcpyFromSymbol
+#  define cudaMemcpyToSymbol               hipMemcpyToSymbol
+#  define cudaMemset                       hipMemset
+#  define cudaMemsetAsync                  hipMemsetAsync
+#  define cudaDeviceGetDefaultMemPool      hipDeviceGetDefaultMemPool
+#  define cudaMemPoolSetAttribute          hipMemPoolSetAttribute
+#  define cudaEventCreate                  hipEventCreate
+#  define cudaEventDestroy                 hipEventDestroy
+#  define cudaEventRecord                  hipEventRecord
+#  define cudaEventSynchronize             hipEventSynchronize
+#  define cudaEventElapsedTime             hipEventElapsedTime
 #elif defined(__CUDACC__)
 #  include <cuda_runtime.h>
+// on cuda 13.2/gcc 15.2/ubuntu 25.10 we need to include that before cuda.h gets included
+#  include <cub/cub.cuh>
 #endif
 
 #ifdef _WIN32
@@ -334,8 +378,8 @@ namespace cuBQL {
 
 #define CUBQL_CUDA_SYNC_CHECK()                                 \
   {                                                             \
-    cudaDeviceSynchronize();                                    \
-    cudaError_t rc = cudaGetLastError();                        \
+    cudaError_t rc = cudaDeviceSynchronize();                   \
+    rc = cudaGetLastError();                                    \
     if (rc != cudaSuccess) {                                    \
       fprintf(stderr, "error (%s: line %d): %s\n",              \
               __FILE__, __LINE__, cudaGetErrorString(rc));      \

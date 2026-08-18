@@ -137,10 +137,6 @@ namespace cuBQL {
       }
       while (numWritten < N) {
         target.children[numWritten].bounds.set_empty();
-        // lower
-        //   = make_float3(+INFINITY,+INFINITY,+INFINITY);
-        // target.children[numWritten].bounds.upper
-        //   = make_float3(-INFINITY,-INFINITY,-INFINITY);
         target.children[numWritten].offset = (uint32_t)-1;
         target.children[numWritten].count  = (uint32_t)-1;
         target.children[numWritten].valid  = 0;

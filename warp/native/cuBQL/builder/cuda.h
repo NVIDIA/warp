@@ -9,10 +9,9 @@
 # include <cuda_runtime_api.h>
 #endif
 # include "cuBQL/math/box.h"
-# include <map>
+# include <mutex>
 
 namespace cuBQL {
-
   // ------------------------------------------------------------------
   /*! defines a 'memory resource' that can be used for allocating gpu
     memory; this allows the user to switch between usign
@@ -46,6 +45,7 @@ namespace cuBQL {
     DeviceMemoryResource()
     {}
     void malloc(void** ptr, size_t size, cudaStream_t s) override {
+      CUBQL_CUDA_CALL(StreamSynchronize(s));
       CUBQL_CUDA_CALL(Malloc(ptr, size));
     }
     void free(void* ptr, cudaStream_t s) override
@@ -54,7 +54,10 @@ namespace cuBQL {
     }
   };
   
-#if CUDART_VERSION >= 11020
+// hipMallocAsync and the hipMemPool API are available on ROCm; on the HIP
+// toolchain CUDART_VERSION is undefined (0), so select the async path
+// explicitly there. The CUDA arm keeps its >= 11020 floor unchanged.
+#if defined(__HIPCC__) || CUDART_VERSION >= 11020
   /* Allocator that uses cudaMallocAsync to allocate memory. This can
      be much faster than cudaMalloc because it doesn't require a
      device sync for each malloc; but .. CAREFUL: to get memory to be
@@ -64,23 +67,29 @@ namespace cuBQL {
      associated. If you pass the default stream 0, your mallocs will
      always happen on the first device! */
   struct AsyncGpuMemoryResource final : GpuMemoryResource {
-    AsyncGpuMemoryResource(int devID)
+    AsyncGpuMemoryResource()
     {
-      static bool memPoolInitialized = false;
-      if (!memPoolInitialized) {
-        CUBQL_CUDA_CALL(GetDeviceCount(&numDevices));
-        for (int i=0;i<numDevices;i++) {
+      // Configure the default memory pool on all visible devices the first
+      // time an instance of this object is created. The operation is thread-safe.
+      static std::once_flag s_initializedFlag;
+
+      std::call_once(s_initializedFlag, [this]() {
+        CUBQL_CUDA_CALL(GetDeviceCount(&s_numDevices));
+
+        for (int iDevice = 0; iDevice < s_numDevices; iDevice++) {
           cudaMemPool_t mempool;
-          cudaDeviceGetDefaultMemPool(&mempool, devID);
+          CUBQL_CUDA_CALL(DeviceGetDefaultMemPool(&mempool, iDevice));
           uint64_t threshold = UINT64_MAX;
-          cudaMemPoolSetAttribute(mempool, cudaMemPoolAttrReleaseThreshold, &threshold);
+          CUBQL_CUDA_CALL
+            (MemPoolSetAttribute(mempool,
+                                 cudaMemPoolAttrReleaseThreshold,
+                                 &threshold));
         }
-        memPoolInitialized = true;;
-      }
+      } );
     }
     void malloc(void** ptr, size_t size, cudaStream_t s) override {
 #ifndef NDEBUG
-      if (numDevices > 1 && s == 0)
+      if (s_numDevices > 1 && s == 0)
         std::cerr << "@cuBQL: warning; async memory allocator used with default stream."
                   << std::endl;
 #endif
@@ -90,19 +99,17 @@ namespace cuBQL {
     {
       CUBQL_CUDA_CALL(FreeAsync(ptr, s));
     }
-    int numDevices = 0;
+
+  private:
+    static inline int s_numDevices = 0;
   };
 
   /* by default let's use cuda malloc async, which is much better and
      faster than regular malloc; but that's available on cuda 11, so
      let's add a fall back for older cuda's, too */
   inline GpuMemoryResource &defaultGpuMemResource() {
-    static std::map<int,AsyncGpuMemoryResource*> asyncMemPerDevice;
-    int devID;
-    CUBQL_CUDA_CALL(GetDevice(&devID));
-    if (asyncMemPerDevice[devID] == nullptr)
-      asyncMemPerDevice[devID] = new AsyncGpuMemoryResource(devID);
-    return *asyncMemPerDevice[devID];
+    static AsyncGpuMemoryResource memResource;
+    return memResource;
   }
 #else
   inline GpuMemoryResource &defaultGpuMemResource() {

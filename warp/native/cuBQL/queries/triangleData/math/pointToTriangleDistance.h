@@ -15,7 +15,7 @@ namespace cuBQL {
 
     struct PointToTriangleTestResult {
       /*! (square!) distance between query point and closest point on triangle.*/
-      float sqrDist = PosInfTy();
+      float sqrDist = CUBQL_INF;//PosInfTy();
       /*! the actual 3D point that's closest on the triangle */
       vec3f P;
     };

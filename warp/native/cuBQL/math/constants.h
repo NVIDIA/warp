@@ -8,6 +8,23 @@
 #if defined(__CUDACC__) && !defined(CUDART_INF_F)
 #include <math_constants.h>
 #endif
+#if defined(__HIPCC__)
+// CUDA's <math_constants.h> (the CUDART_* device float constants) has no HIP
+// analogue; provide the ones cuBQL uses so the shared device code compiles
+// unchanged on the HIP path.
+# ifndef CUDART_INF_F
+#  define CUDART_INF_F __builtin_huge_valf()
+# endif
+# ifndef CUDART_INF
+#  define CUDART_INF   __builtin_huge_val()
+# endif
+# ifndef CUDART_NAN_F
+#  define CUDART_NAN_F __builtin_nanf("")
+# endif
+# ifndef CUDART_NAN
+#  define CUDART_NAN   __builtin_nan("")
+# endif
+#endif
 
 #ifndef M_PI
 #define M_PI 3.141593f

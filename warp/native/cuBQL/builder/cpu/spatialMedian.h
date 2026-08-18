@@ -132,6 +132,21 @@ namespace cuBQL {
           if (box.empty()) continue;
           primIDs.push_back(i);
         }
+
+        if (primIDs.empty()) {
+          // if we had no valid input prims whatsoever
+          bvh.nodes = new typename BinaryBVH<T,D>::Node[1];
+          bvh.nodes[0].bounds = box3f();
+          bvh.nodes[0].admin.offset = 0;
+          bvh.nodes[0].admin.count = 1;
+          bvh.primIDs = new uint32_t[numPrims];
+          for (int i=0;i<numPrims;i++)
+            bvh.primIDs[i] = i;
+          bvh.numPrims = numPrims;
+          bvh.numNodes = 1;
+          return;
+        }
+        
         std::vector<int>  altPrimIDs(primIDs.size());
         std::vector<Topo> topo(1);
         

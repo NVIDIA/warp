@@ -1065,11 +1065,13 @@ namespace cuBQL {
     {
       size_t cub_tempMemSize = 0;
       // query temp mem size
+      // hipCUB miscompiles a partial-range radix sort (begin_bit=32); sort the
+      // full [0,64) range - the key in the high bits still dominates ordering.
       cub::DeviceRadixSort::SortKeys
         (nullptr,cub_tempMemSize,
          /*key+values in:*/   d_keysValues_in,
          /*key+values out:*/  d_keysValues_out,
-         N,32,64,s);
+         N,0,64,s);
       
       // allocate temp mem and output arrays
       void     *d_tempMem = 0;
@@ -1080,7 +1082,7 @@ namespace cuBQL {
         (d_tempMem,cub_tempMemSize,
          /*key+values in:*/   d_keysValues_in,
          /*key+values out:*/  d_keysValues_out,
-         N,32,64,s);
+         N,0,64,s);
       
       _FREE(d_tempMem,s,memResource);
     }                      

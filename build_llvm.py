@@ -3,6 +3,7 @@
 
 """Functions to build Clang/LLVM from source and to build the CPU-only Warp library."""
 
+import copy
 import hashlib
 import io
 import os
@@ -497,8 +498,13 @@ def build_warp_clang_for_arch(args, lib_name: str, arch: str) -> None:
             if sys.platform != "darwin":
                 libs.append("-lrt")
 
+        clang_args = copy.copy(args)
+        # warp-clang is CPU-only; disable HIP to avoid GPU source checks.
+        if getattr(clang_args, "enable_hip", False):
+            clang_args.enable_hip = False
+
         build_dll_for_arch(
-            args,
+            clang_args,
             dll_path=clang_dll_path,
             cpp_paths=clang_cpp_paths,
             cu_paths=None,

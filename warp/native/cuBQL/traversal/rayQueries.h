@@ -8,6 +8,8 @@
 #include "cuBQL/math/Ray.h"
 #include "cuBQL/traversal/fixedBoxQuery.h"
 
+#define CUBQL_DIST_STACK 1
+
 namespace cuBQL {
 
   // ******************************************************************
@@ -21,25 +23,25 @@ namespace cuBQL {
     _terminate_ a traveral, but ordering child nodes is not required
     because ordering shouldn't matter */
   namespace fixedRayQuery {
-    template<typename Lambda, typename T, int D>
+    template<typename Lambda, typename T>
     inline __cubql_both
     void forEachLeaf(const Lambda &lambdaToExecuteForEachCandidate,
-                     cuBQL::bvh_t<T, D> bvh,
-                     cuBQL::ray3f ray,
+                     cuBQL::BinaryBVH<T, 3> bvh,
+                     cuBQL::ray_t<T> ray,
                      bool dbg=false);
 
-    template<typename Lambda, typename T, int D, int W>
+    template<typename Lambda, typename T, int W>
     inline __cubql_both
     void forEachLeaf(const Lambda &lambdaToExecuteForEachCandidate,
-                     cuBQL::WideBVH<T, D, W> bvh,
-                     cuBQL::ray3f ray,
+                     cuBQL::WideBVH<T, 3, W> bvh,
+                     cuBQL::ray_t<T> ray,
                      bool dbg=false);
     
-    template<typename Lambda, typename bvh_t>
+    template<typename Lambda, typename bvh_t, typename T>
     inline __cubql_both
     void forEachPrim(const Lambda &lambdaToExecuteForEachCandidate,
                      bvh_t bvh,
-                     cuBQL::ray3f ray,
+                     cuBQL::ray_t<T> ray,
                      bool dbg=false);
     
     /*! traverse BVH with given fixed-length, axis-aligned ray, and
@@ -84,31 +86,31 @@ namespace cuBQL {
     /*! single level BVH ray traversal, provided lambda covers what
       happens when a ray wants to intersect a given prim within that
       bvh */
-    template<typename Lambda, typename T, int D, typename ray_t>
+    template<typename Lambda, typename T>
     inline __cubql_both
     float forEachLeaf(const Lambda &lambdaToCallOnEachLeaf,
-                      bvh_t<T, D> bvh,
-                      ray_t ray,
+                      BinaryBVH<T, 3> bvh,
+                      ray_t<T> ray,
                       bool dbg=false);
 
     /*! single level BVH ray traversal, provided lambda covers what
       happens when a ray wants to intersect a given prim within that
       bvh */
-    template<typename Lambda, typename T, int D, int W, typename ray_t>
+    template<typename Lambda, typename T, int W>
     inline __cubql_both
     float forEachLeaf(const Lambda &lambdaToCallOnEachLeaf,
-                      WideBVH<T, D, W> bvh,
-                      ray_t ray,
+                      WideBVH<T, 3, W> bvh,
+                      ray_t<T> ray,
                       bool dbg=false);
     
     /*! single level BVH ray traversal, provided lambda covers what
       happens when a ray wants to intersect a given prim within that
       bvh */
-    template<typename Lambda, typename bvh_t, typename ray_t>
+    template<typename Lambda, typename bvh_t, typename T>
     inline __cubql_both
     void forEachPrim(const Lambda &lambdaToExecuteForEachCandidate,
                      bvh_t bvh,
-                     ray_t &ray,
+                     ray_t<T> &ray,
                      bool dbg=false);
     
     namespace twoLevel {
@@ -127,14 +129,14 @@ namespace cuBQL {
       template<typename EnterBlasLambda,
                typename LeaveBlasLambda,
                typename ProcessLeafLambda,
-               typename bvh_t, typename ray_t>
+               typename T>
       inline __cubql_both
       void forEachLeaf(const EnterBlasLambda   &enterBlas,
                        const LeaveBlasLambda   &leaveBlas,
                        const ProcessLeafLambda &processLeaf,
-                       bvh_t bvh,
+                       BinaryBVH<T,3> bvh,
                        /*! REFERENCE to a ray, so 'enterBlas()' can modify it */
-                       ray_t &ray,
+                       ray_t<T> &ray,
                        bool dbg=false);
       
       /*! two-level BVH ray traversal, where the BVH is made up of a
@@ -152,14 +154,14 @@ namespace cuBQL {
       template<typename EnterBlasLambda,
                typename LeaveBlasLambda,
                typename IntersectPrimLambda,
-               typename bvh_t, typename ray_t>
+               typename T>
       inline __cubql_both
       void forEachPrim(const EnterBlasLambda     &enterBlas,
                        const LeaveBlasLambda     &leaveBlas,
                        const IntersectPrimLambda &intersectPrim,
-                       bvh_t bvh,
+                       BinaryBVH<T,3> bvh,
                        /*! REFERENCE to a ray, so 'enterBlas()' can modify it */
-                       ray_t &ray,
+                       ray_t<T> &ray,
                        bool dbg=false);
     }
 
@@ -172,7 +174,8 @@ namespace cuBQL {
 
   template<typename T>
   inline __cubql_both
-  bool rayIntersectsBox(ray_t<T> ray, box_t<T,3> box)
+  bool rayIntersectsBox(ray_t<T> ray, box_t<T,3> box// , bool dbg=false
+                        )
   {
     using vec3 = vec_t<T,3>;
     vec3 inv = rcp(ray.direction);
@@ -182,6 +185,8 @@ namespace cuBQL {
     vec3 fr = max(lo,hi);
     T tin  = max(ray.tMin,reduce_max(nr));
     T tout = min(ray.tMax,reduce_min(fr));
+    // if (dbg)
+    //   dout << "ray overlap " << tin << " " << tout << "\n";
     return tin <= tout;
   }
 
@@ -202,8 +207,8 @@ namespace cuBQL {
 
   template<typename T>
   inline __cubql_both
-  bool rayIntersectsBox(float &ret_t0,
-                        ray_t<T> ray, vec_t<T,3> rcp_dir, box_t<T,3> box)
+  bool rayIntersectsBox(T &ret_t0,
+                        ray_t<T> ray, vec_t<T,3> rcp_dir, box_t<T,3> box, bool dbg=false)
   {
     using vec3 = vec_t<T,3>;
     vec3 lo = (box.lower - ray.origin) * rcp_dir;
@@ -213,6 +218,13 @@ namespace cuBQL {
     T tin  = max(ray.tMin,reduce_max(nr));
     T tout = min(ray.tMax,reduce_min(fr));
     ret_t0 = tin;
+    // if (dbg) {
+    //   dout << "lo " << lo << "\n";
+    //   dout << "hi " << hi << "\n";
+    //   dout << "nr " << nr << "\n";
+    //   dout << "fr " << fr << "\n";
+    //   dout << "ray overlap " << tin << " " << tout << "\n";
+    // }
     return tin <= tout;
   }
 
@@ -260,18 +272,21 @@ namespace cuBQL {
     forEachLeaf(leafCode,bvh,ray,dbg);
   }
 
-  template<typename Lambda, typename T, int D>
+  template<typename Lambda, typename T>
   inline __cubql_both
   void fixedRayQuery::forEachLeaf(const Lambda &lambdaToCallOnEachLeaf,
-                                  cuBQL::bvh_t<T, D> bvh,
-                                  cuBQL::ray3f ray,
+                                  cuBQL::BinaryBVH<T,3> bvh,
+                                  cuBQL::ray_t<T>   ray,
                                   bool dbg)
   {
+    using node_t = typename BinaryBVH<T,3>::node_t;
+    using node_admin_t = typename node_t::Admin;
+    enum { stackDepth = 64 };
     struct StackEntry {
       uint32_t idx;
     };
-    bvh3f::node_t::Admin traversalStack[64], *stackPtr = traversalStack;
-    bvh3f::node_t::Admin node = bvh.nodes[0].admin;
+    node_admin_t traversalStack[stackDepth], *stackPtr = traversalStack;
+    node_admin_t node = bvh.nodes[0].admin;
     // ------------------------------------------------------------------
     // traverse until there's nothing left to traverse:
     // ------------------------------------------------------------------
@@ -290,8 +305,8 @@ namespace cuBQL {
 
         uint32_t n0Idx = (uint32_t)node.offset+0;
         uint32_t n1Idx = (uint32_t)node.offset+1;
-        bvh3f::node_t n0 = bvh.nodes[n0Idx];
-        bvh3f::node_t n1 = bvh.nodes[n1Idx];
+        node_t n0 = bvh.nodes[n0Idx];
+        node_t n1 = bvh.nodes[n1Idx];
         bool o0 = rayIntersectsBox(ray,n0.bounds);
         bool o1 = rayIntersectsBox(ray,n1.bounds);
         if (o0) {
@@ -353,14 +368,14 @@ namespace cuBQL {
       }
   }
 
-  template<typename Lambda, typename T, int D, int W>
+  template<typename Lambda, typename T, int W>
   inline __cubql_both
   void fixedRayQuery::forEachLeaf(const Lambda& lambdaToCallOnEachLeaf,
-                                  cuBQL::WideBVH<T, D, W> bvh,
-                                  cuBQL::ray3f ray,
+                                  cuBQL::WideBVH<T, 3, W> bvh,
+                                  cuBQL::ray_t<T> ray,
                                   bool dbg)
   {
-      using node_t = typename WideBVH<T, D, W>::node_t;
+      using node_t = typename WideBVH<T, 3, W>::node_t;
 
       int traversalStack[64], * stackPtr = traversalStack;
       int nodeID = 0;
@@ -393,7 +408,7 @@ namespace cuBQL {
                   if (!node.children[c].valid)
                       childOrder.clear(c);
                   else {
-                      float dist2;
+                      T dist2;
                       bool o = rayIntersectsBox(dist2, ray, rcp_dir, node.children[c].bounds);
                       if (!o)
                           childOrder.clear(c);
@@ -440,11 +455,11 @@ namespace cuBQL {
 
   /*! this query assumes lambads that return CUBQL_CONTINUE_TRAVERSAL
     or CUBQL_TERMINATE_TRAVERSAL */
-  template<typename Lambda, typename bvh_t>
+  template<typename Lambda, typename bvh_t, typename T>
   inline __cubql_both
   void fixedRayQuery::forEachPrim(const Lambda &lambdaToExecuteForEachCandidate,
                                   bvh_t bvh,
-                                  cuBQL::ray3f ray,
+                                  cuBQL::ray_t<T> ray,
                                   bool dbg)
   {
     /* the code we want to have executed for each leaf that may
@@ -465,19 +480,25 @@ namespace cuBQL {
     forEachLeaf(leafCode,bvh,ray,dbg);
   }
     
-  template<typename Lambda, typename T, int D, typename ray_t>
+  template<typename Lambda, typename T>
   inline __cubql_both
   float shrinkingRayQuery::forEachLeaf(const Lambda &lambdaToCallOnEachLeaf,
-                                       bvh_t<T, D> bvh,
-                                       ray_t ray,
+                                       BinaryBVH<T, 3> bvh,
+                                       ray_t<T> ray,
                                        bool dbg)
   {
-    using node_t = typename bvh_t<T, D>::node_t;
+    using scalar_t = T;
+    using node_t = typename BinaryBVH<T, 3>::node_t;
+    using node_admin_t = typename node_t::Admin;
     struct StackEntry {
       uint32_t idx;
     };
-    typename node_t::Admin traversalStack[64], *stackPtr = traversalStack;
-    typename node_t::Admin node = bvh.nodes[0].admin;
+    enum { stackDepth = 64 };
+    node_admin_t traversalStack[stackDepth], *stackPtr = traversalStack;
+    node_admin_t node = bvh.nodes[0].admin;
+#if CUBQL_DIST_STACK
+    T distStack[stackDepth], *distStackPtr = distStack;
+#endif
 
     if (ray.direction.x == (T)0) ray.direction.x = T(1e-20);
     if (ray.direction.y == (T)0) ray.direction.y = T(1e-20);
@@ -504,13 +525,18 @@ namespace cuBQL {
         uint32_t n1Idx = (uint32_t)node.offset+1;
         node_t n0 = bvh.nodes[n0Idx];
         node_t n1 = bvh.nodes[n1Idx];
-        float node_t0 = 0.f, node_t1 = 0.f;
+        T node_t0 = 0.f, node_t1 = 0.f;
         bool o0 = rayIntersectsBox(node_t0,ray,rcp_dir,n0.bounds);
         bool o1 = rayIntersectsBox(node_t1,ray,rcp_dir,n1.bounds);
 
         if (o0) {
           if (o1) {
-            *stackPtr++ = (node_t0 < node_t1) ? n1.admin : n0.admin;
+            *stackPtr++
+              = (node_t0 < node_t1) ? n1.admin : n0.admin;
+#if CUBQL_DIST_STACK
+            *distStackPtr++
+              = (node_t0 < node_t1) ? node_t1 : node_t0;
+#endif
             node = (node_t0 < node_t1) ? n0.admin : n1.admin;
           } else {
             node = n0.admin;
@@ -536,20 +562,31 @@ namespace cuBQL {
       // pop next un-traversed node from stack, discarding any nodes
       // that are more distant than whatever query radius we now have
       // ------------------------------------------------------------------
-      if (stackPtr == traversalStack)
-        return ray.tMax;
-      node = *--stackPtr;
+
+      while (true) {
+        if (stackPtr == traversalStack)
+          return ray.tMax;
+#if CUBQL_DIST_STACK
+        scalar_t tFromStack = *--distStackPtr;
+        if (tFromStack >= ray.tMax) {
+          --stackPtr;
+          continue;
+        }
+#endif
+        node = *--stackPtr;
+        break;
+      }
     }
   }
 
-  template<typename Lambda, typename T, int D, int W, typename ray_t>
+  template<typename Lambda, typename T, int W>
   inline __cubql_both
   float shrinkingRayQuery::forEachLeaf(const Lambda& lambdaToCallOnEachLeaf,
-                                       WideBVH<T, D, W> bvh,
-                                       ray_t ray,
+                                       WideBVH<T, 3, W> bvh,
+                                       ray_t<T> ray,
                                        bool dbg)
   {
-      using node_t = typename WideBVH<T, D, W>::node_t;
+    using node_t = typename WideBVH<T, 3, W>::node_t;
 
       int traversalStack[64], * stackPtr = traversalStack;
       int nodeID = 0;
@@ -582,7 +619,7 @@ namespace cuBQL {
                   if (!node.children[c].valid)
                       childOrder.clear(c);
                   else {
-                      float dist2;
+                      T dist2;
                       bool o = rayIntersectsBox(dist2, ray, rcp_dir, node.children[c].bounds);
                       if (!o)
                           childOrder.clear(c);
@@ -626,11 +663,11 @@ namespace cuBQL {
       return T(CUBQL_INF);
   }
 
-  template<typename Lambda, typename bvh_t, typename ray_t>
+  template<typename Lambda, typename bvh_t, typename T>
   inline __cubql_both
   void shrinkingRayQuery::forEachPrim(const Lambda &lambdaToExecuteForEachCandidate,
                                       bvh_t bvh,
-                                      ray_t &ray,
+                                      ray_t<T> &ray,
                                       bool dbg)
   {
     auto perLeaf = [dbg,bvh,&ray,lambdaToExecuteForEachCandidate]
@@ -641,8 +678,6 @@ namespace cuBQL {
     };
     shrinkingRayQuery::forEachLeaf(perLeaf,bvh,ray,dbg);
   }
-
-
 
   /*! two-level BVH ray traversal, where the BVH is made up of a
     "TLAS" (top-level acceleration structure) that itself contains
@@ -659,38 +694,48 @@ namespace cuBQL {
   template<typename EnterBlasLambda,
            typename LeaveBlasLambda,
            typename ProcessLeafLambda,
-           typename bvh_t, typename ray_t>
+           typename T>
   inline __cubql_both
   void shrinkingRayQuery::twoLevel::
   forEachLeaf(const EnterBlasLambda   &enterBlas,
               const LeaveBlasLambda   &leaveBlas,
               const ProcessLeafLambda &processLeaf,
-              bvh_t bvh,
+              BinaryBVH<T,3> bvh,
               /*! REFERENCE to a ray, so 'enterBlas()' can modify it */
-              ray_t &ray,
-              bool dbg)
+              ray_t<T> &ray,
+              bool _dbg)
   {
+// #ifdef NDEBUG
+    const bool dbg = false;
+// #else
+//     bool dbg = _dbg;
+// #endif
+    using bvh_t = BinaryBVH<T,3>;
     using node_t = typename bvh_t::node_t;
-    using T = typename bvh_t::scalar_t;
+    using scalar_t = typename bvh_t::scalar_t;
+    using vec3_t = typename cuBQL::vec_t<scalar_t,3>;
     struct StackEntry {
       uint32_t idx;
     };
-    enum { STACK_DEPTH=128 };
+    enum { STACK_DEPTH=64 };
     typename node_t::Admin
       traversalStack[STACK_DEPTH],
       *stackPtr = traversalStack,
       *blasStackBase = nullptr;
     typename node_t::Admin node = bvh.nodes[0].admin;
+#if CUBQL_DIST_STACK
+    T distStack[STACK_DEPTH], *distStackPtr = distStack;
+#endif
 
     node_t   *tlasSavedNodePtr = 0;
     uint32_t *tlasSavedPrimIDs = 0;
-    vec_t<T,3> saved_dir, saved_org;
+    vec3_t    saved_dir, saved_org;
     
-    if (ray.direction.x == (T)0) ray.direction.x = T(1e-20);
-    if (ray.direction.y == (T)0) ray.direction.y = T(1e-20);
-    if (ray.direction.z == (T)0) ray.direction.z = T(1e-20);
-    vec_t<T,3> rcp_dir = rcp(ray.direction);
-      
+    if (ray.direction.x == (scalar_t)0) ray.direction.x = scalar_t(1e-20);
+    if (ray.direction.y == (scalar_t)0) ray.direction.y = scalar_t(1e-20);
+    if (ray.direction.z == (scalar_t)0) ray.direction.z = scalar_t(1e-20);
+    vec3_t rcp_dir = rcp(ray.direction);
+
     // ------------------------------------------------------------------
     // traverse until there's nothing left to traverse:
     // ------------------------------------------------------------------
@@ -703,8 +748,9 @@ namespace cuBQL {
       // at which we need to pop
       // ------------------------------------------------------------------
       while (true) {
-        if (dbg) printf("node %i.%i\n",(int)node.offset,(int)node.count);
+        // if (dbg) printf("node %i.%i\n",(int)node.offset,(int)node.count);
         if (node.count != 0) {
+          // return;//xx
           // it's a boy! - seriously: this is not a inner node; so
           // we're either at a final leaf, or at an instance node
           if (blasStackBase != nullptr)
@@ -714,13 +760,15 @@ namespace cuBQL {
           // it's not a real leaf, so this must be a instance node
           tlasSavedNodePtr = bvh.nodes;
           tlasSavedPrimIDs = bvh.primIDs;
-          if (node.count != 1)
-            printf("TWO-LEVEL BVH MUST BE BUILT WITH 1 PRIM PER LEAF!\n");
-          if (dbg)
-            printf("inner-leaf primIDs %p ofs %i count %i\n",
-                   bvh.primIDs,
-                   (int)node.offset,
-                   (int)node.count);
+#ifndef NDEBUG
+          // if (node.count != 1)
+          //   printf("TWO-LEVEL BVH MUST BE BUILT WITH 1 PRIM PER LEAF!\n");
+#endif
+          // if (dbg)
+          //   printf("inner-leaf primIDs %p ofs %i count %i\n",
+          //          bvh.primIDs,
+          //          (int)node.offset,
+          //          (int)node.count);
               
           int instID
             = bvh.primIDs
@@ -732,11 +780,14 @@ namespace cuBQL {
           bvh_t blas;
           ray_t transformed_ray = ray;
           enterBlas(transformed_ray,blas,instID);
-          ray.origin = transformed_ray.origin;
+          ray.origin    = transformed_ray.origin;
           ray.direction = transformed_ray.direction;
-          if (ray.direction.x == (T)0) ray.direction.x = T(1e-20);
-          if (ray.direction.y == (T)0) ray.direction.y = T(1e-20);
-          if (ray.direction.z == (T)0) ray.direction.z = T(1e-20);
+          if (ray.direction.x == (scalar_t)0)
+            ray.direction.x = scalar_t(1e-20);
+          if (ray.direction.y == (scalar_t)0)
+            ray.direction.y = scalar_t(1e-20);
+          if (ray.direction.z == (scalar_t)0)
+            ray.direction.z = scalar_t(1e-20);
           rcp_dir = rcp(ray.direction);
           bvh.nodes     = blas.nodes;
           bvh.primIDs   = blas.primIDs;
@@ -745,31 +796,38 @@ namespace cuBQL {
           // now check if those blas root node is _also_ a leaf:
           if (node.count != 0)
             break;
-          if (dbg) printf("new node %i.%i\n",(int)node.offset,(int)node.count);
+          // if (dbg) printf("new node %i.%i\n",(int)node.offset,(int)node.count);
         }          
 
+        
         uint32_t n0Idx = (uint32_t)node.offset+0;
         uint32_t n1Idx = (uint32_t)node.offset+1;
         node_t n0 = bvh.nodes[n0Idx];
         node_t n1 = bvh.nodes[n1Idx];
-        float node_t0 = 0.f, node_t1 = 0.f;
-        bool o0 = rayIntersectsBox(node_t0,ray,rcp_dir,n0.bounds);
-        bool o1 = rayIntersectsBox(node_t1,ray,rcp_dir,n1.bounds);
+        scalar_t node_t0 = scalar_t(0), node_t1 = scalar_t(0);
+        bool o0 = rayIntersectsBox(node_t0,ray,rcp_dir,n0.bounds,dbg);
+        bool o1 = rayIntersectsBox(node_t1,ray,rcp_dir,n1.bounds,dbg);
 
-        if (dbg) {
-          // dout << " node L " << n0.bounds << "\n";
-          // dout << " node R " << n1.bounds << "\n";
-          printf("children L hit %i dist %f R hit %i dist %f\n",
-                 int(o0),node_t0,
-                 int(o1),node_t1);
-        }
+        // return; //xx
+
+        // if (dbg) {
+        //   dout << " node L " << n0.bounds << "\n";
+        //   dout << " node R " << n1.bounds << "\n";
+        //   dout << "children L hit " << int(o0) << " dist " << node_t0
+        //        << " R hit " << int(o1) << " dist " << node_t1 << "\n";
+        // }
         if (o0) {
           if (o1) {
-            if (stackPtr-traversalStack >= STACK_DEPTH) {
+            if ((stackPtr-traversalStack) >= STACK_DEPTH) {
               return;
             }
             
-            *stackPtr++ = (node_t0 < node_t1) ? n1.admin : n0.admin;
+            *stackPtr++
+              = (node_t0 < node_t1) ? n1.admin : n0.admin;
+#if CUBQL_DIST_STACK
+            *distStackPtr++
+              = (node_t0 < node_t1) ? node_t1 : node_t0;
+#endif
             node = (node_t0 < node_t1) ? n0.admin : n1.admin;
           } else {
             node = n0.admin;
@@ -784,32 +842,43 @@ namespace cuBQL {
           }
         }
       }
- 
+
+      // return;//xx
+      
       if (node.count != 0 && blasStackBase != nullptr) {
         // we're at a valid leaf: call the lambda and see if that gave
         // us a new, closer cull radius
-        if (dbg)
-          printf("trav leaf-leaf primIDs %p offset %i count %i\n",
-                 bvh.primIDs,(int)node.offset,(int)node.count);
-        ray.tMax
-          = processLeaf(bvh.primIDs,(int)node.offset,(int)node.count);
+        // if (dbg)
+        //   printf("trav leaf-leaf primIDs %p offset %i count %i\n",
+        //          bvh.primIDs,(int)node.offset,(int)node.count);
+        ray.tMax  = processLeaf(bvh.primIDs,(int)node.offset,(int)node.count);
       }
       // ------------------------------------------------------------------
       // pop next un-traversed node from stack, discarding any nodes
       // that are more distant than whatever query radius we now have
       // ------------------------------------------------------------------
-      if (stackPtr == blasStackBase) {
-        leaveBlas();
-        ray.direction = saved_dir;
-        ray.origin    = saved_org;
-        rcp_dir = rcp(ray.direction);
-        blasStackBase = nullptr;
-        bvh.nodes   = tlasSavedNodePtr;
-        bvh.primIDs = tlasSavedPrimIDs;
+      while (true) {
+        if (stackPtr == blasStackBase) {
+          leaveBlas();
+          ray.direction = saved_dir;
+          ray.origin    = saved_org;
+          rcp_dir       = rcp(ray.direction);
+          blasStackBase = nullptr;
+          bvh.nodes     = tlasSavedNodePtr;
+          bvh.primIDs   = tlasSavedPrimIDs;
+        }
+        if (stackPtr == traversalStack)
+          return;// ray.tMax;
+#if CUBQL_DIST_STACK
+        scalar_t tFromStack = *--distStackPtr;
+        if (tFromStack >= ray.tMax) {
+          --stackPtr;
+          continue;
+        }
+#endif
+        node = *--stackPtr;
+        break;
       }
-      if (stackPtr == traversalStack)
-        return;// ray.tMax;
-      node = *--stackPtr;
     }
   }
   
@@ -828,15 +897,15 @@ namespace cuBQL {
   template<typename EnterBlasLambda,
            typename LeaveBlasLambda,
            typename IntersectPrimLambda,
-           typename bvh_t, typename ray_t>
+           typename T>
   inline __cubql_both
   void shrinkingRayQuery::twoLevel::
   forEachPrim(const EnterBlasLambda     &enterBlas,
               const LeaveBlasLambda     &leaveBlas,
               const IntersectPrimLambda &intersectPrim,
-              bvh_t bvh,
+              BinaryBVH<T,3> bvh,
               /*! REFERENCE to a ray, so 'enterBlas()' can modify it */
-              ray_t &ray,
+              ray_t<T> &ray,
               bool dbg)
   {
     auto perLeaf = [dbg,&bvh,&ray,
@@ -844,13 +913,13 @@ namespace cuBQL {
                     leaveBlas,
                     intersectPrim]
       (const uint32_t *primIDs, int offset, int count) {
-      if (dbg) printf("AT LEAF!, primIDs %p, count %i\n",bvh.primIDs,count);
+      // if (dbg) printf("AT LEAF!, primIDs %p, count %i\n",bvh.primIDs,count);
       for (int i=0;i<count;i++) { 
         int primIdx = offset+i;
         if (primIDs) primIdx = primIDs[primIdx];
         ray.tMax = min(ray.tMax,intersectPrim(primIdx));
       }
-      if (dbg) printf("LEAVING LEAF! t = %f\n",ray.tMax);
+      // if (dbg) printf("LEAVING LEAF! t = %f\n",ray.tMax);
       return ray.tMax;
     };
     shrinkingRayQuery::twoLevel::forEachLeaf

@@ -15,20 +15,6 @@ namespace cuBQL {
   // *** INTERFACE ***
   // =========================================================================
   
-  // /*! a simple triangle consisting of three vertices. In order to not
-  //   overload this class with too many functions the actual
-  //   operations on triangles - such as intersectin with a ray,
-  //   computing distance to a point, etc - will be defined in the
-  //   respective queries */
-  // struct Triangle {
-  //   /*! returns an axis aligned bounding box enclosing this triangle */
-  //   inline __cubql_both box3f bounds() const;
-  //   inline __cubql_both vec3f sample(float u, float v) const;
-  //   inline __cubql_both vec3f normal() const;
-    
-  //   vec3f a, b, c;
-  // };
-
   template<typename T>
   struct triangle_t
   {
