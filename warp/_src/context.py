@@ -2661,7 +2661,8 @@ class ModuleHasher:
         ch.update(bytes(kernel.key, "utf-8"))
         for opt in sorted(kernel.options):
             ch.update(bytes(f"{opt}:{kernel.options[opt]}", "utf-8"))
-        ch.update(self.hash_adjoint(kernel.adj))
+        reference_analysis = kernel.adj.reference_analysis()
+        ch.update(self.hash_adjoint(kernel.adj, reference_analysis))
         ch.update(self._hash_kernel_return_annotation(kernel))
 
     @staticmethod
@@ -2703,13 +2704,18 @@ class ModuleHasher:
                 continue
 
             # adjoint
-            ch.update(self.hash_adjoint(ovl.adj))
+            reference_analysis = ovl.adj.reference_analysis()
+            ch.update(self.hash_adjoint(ovl.adj, reference_analysis))
 
             # custom bits
             if ovl.custom_grad_func:
-                ch.update(self.hash_adjoint(ovl.custom_grad_func.adj))
+                grad = ovl.custom_grad_func
+                reference_analysis = grad.adj.reference_analysis()
+                ch.update(self.hash_adjoint(grad.adj, reference_analysis))
             if ovl.custom_replay_func:
-                ch.update(self.hash_adjoint(ovl.custom_replay_func.adj))
+                replay = ovl.custom_replay_func
+                reference_analysis = replay.adj.reference_analysis()
+                ch.update(self.hash_adjoint(replay.adj, reference_analysis))
             if ovl.replay_snippet:
                 ch.update(bytes(ovl.replay_snippet, "utf-8"))
             if ovl.native_snippet:
@@ -2749,7 +2755,7 @@ class ModuleHasher:
 
         return ch.digest()
 
-    def hash_adjoint(self, adj: warp._src.codegen.Adjoint) -> bytes:
+    def hash_adjoint(self, adj: warp._src.codegen.Adjoint, reference_analysis=None) -> bytes:
         # NOTE: We don't cache adjoint hashes, because adjoints are always unique.
         # Even instances of generic kernels and functions have unique adjoints with
         # different argument types.
@@ -2776,7 +2782,7 @@ class ModuleHasher:
         # dicts, custom classes) captured by closures are not included in the hash.
         # Users should wrap such values with wp.static() to make them visible.
         # find referenced constants, types, and functions
-        constants, types, functions = adj.get_references()
+        constants, types, functions = adj.get_references(reference_analysis)
 
         # hash referenced constants
         for name, value in constants.items():
@@ -3665,22 +3671,29 @@ class Module:
 
     # collect all referenced functions / structs
     # given the AST of a function or kernel
-    def _find_references(self, adj):
+    def _find_references(self, adj, reference_analysis=None):
         def add_ref(ref):
             if ref is not self:
                 self.references.add(ref)
                 ref.dependents.add(self)
 
         callable_arg_values = getattr(adj, "callable_arg_values", None) or {}
+        if reference_analysis is None:
+            reference_analysis = adj.reference_analysis()
 
-        # scan for function calls and kernel-local function bindings. ``reference_nodes`` shares
-        # a single AST traversal with Adjoint.get_references; it also yields Name/Attribute
-        # nodes, which this dependency scan ignores.
-        for node in adj.reference_nodes():
+        # Scan cached function-call and kernel-local binding candidates using
+        # the same source-order binding analysis as Adjoint.get_references.
+        # Name/Attribute candidates are ignored by this dependency scan.
+        for node, shadowed_names in reference_analysis.iter_candidates():
             if type(node) is ast.Call:
                 try:
                     # try to resolve the function
-                    func = warp._src.codegen.resolve_reference_call_func(adj, node, callable_arg_values)
+                    func = warp._src.codegen.resolve_reference_call_func(
+                        adj,
+                        node,
+                        callable_arg_values,
+                        shadowed_names,
+                    )
 
                     # if this is a user-defined function, add a module reference
                     if isinstance(func, warp._src.context.Function) and func.module is not None:
@@ -3690,7 +3703,11 @@ class Module:
                         # Function targets can come from arguments or defaults;
                         # either way their modules must invalidate this module.
                         for callable_func in warp._src.codegen.iter_call_callable_arg_targets(
-                            adj, func, node, callable_arg_values
+                            adj,
+                            func,
+                            node,
+                            callable_arg_values,
+                            shadowed_names,
                         ):
                             if not callable_func.is_builtin() and callable_func.module is not None:
                                 add_ref(callable_func.module)
@@ -3712,7 +3729,11 @@ class Module:
                 rhs_nodes = node.value.elts if isinstance(node.value, ast.Tuple) else [node.value]
                 for rhs_node in rhs_nodes:
                     try:
-                        rhs_func, _ = adj.resolve_static_expression(rhs_node, eval_types=False)
+                        rhs_func, _ = adj.resolve_static_expression(
+                            rhs_node,
+                            eval_types=False,
+                            shadowed_names=shadowed_names,
+                        )
                         if isinstance(rhs_func, warp._src.context.Function) and rhs_func.module is not None:
                             add_ref(rhs_func.module)
                     except Exception:

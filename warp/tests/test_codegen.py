@@ -2103,7 +2103,7 @@ class TestCodeGen(unittest.TestCase):
         self.assertEqual(len(remaining_static_calls), 1)
 
     def test_shared_source_across_redeclarations(self):
-        """Redeclarations of one code object share the extracted source and tree;
+        """Redeclarations share extracted syntax and reference analysis;
         resolution stays per-adjoint, so closure values are not shared."""
 
         def make(v):
@@ -2118,6 +2118,11 @@ class TestCodeGen(unittest.TestCase):
         self.assertIsNotNone(k1.adj._shared_source)
         self.assertIs(k1.adj._shared_source, k2.adj._shared_source)
         self.assertIs(k1.adj.tree, k2.adj.tree)
+        self.assertTrue(hasattr(k1.adj, "reference_analysis"))
+        analysis_1 = k1.adj.reference_analysis()
+        analysis_2 = k2.adj.reference_analysis()
+        self.assertIs(analysis_1, analysis_2)
+        self.assertEqual(tuple(node for node, _ in analysis_1.iter_candidates()), analysis_1.reference_nodes)
         self.assertNotEqual(k1.module.name, k2.module.name)
         self.assertIs(make(1.0), k1)
 

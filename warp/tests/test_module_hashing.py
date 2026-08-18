@@ -3,16 +3,19 @@
 
 # TODO: add more tests for kernels and generics
 
+import ast
 import itertools
 import os
 import subprocess
 import sys
 import tempfile
+import tracemalloc
 import unittest
 from collections.abc import Mapping
 from importlib import util
 
 import warp as wp
+from warp._src.codegen import _analyze_reference_bindings
 from warp._src.context import ModuleBuilder, ModuleHasher
 from warp.tests.unittest_utils import *
 
@@ -273,6 +276,223 @@ def artifact_order_kernel(output: wp.array[wp.float32]):
     output[wp.tid()] = 1.0
 
 
+SHADOWED_ATTRIBUTE_MODULE = wp.Module("module_hashing_shadowed_attribute")
+REFERENCE_TARGET_MODULE = wp.Module("module_hashing_reference_target")
+REFERENCE_DECOY_MODULE = wp.Module("module_hashing_reference_decoy")
+SHADOWING_CONSUMER_MODULE = wp.Module("module_hashing_shadowing_consumer")
+CONTROL_FLOW_SCAN_MODULE = wp.Module("module_hashing_control_flow_scan")
+CONTROL_FLOW_BUILD_MODULE = wp.Module("module_hashing_control_flow_build")
+
+
+@wp.struct(None, module=SHADOWED_ATTRIBUTE_MODULE)
+class ShadowedAttributeResult:
+    value: float
+
+
+@wp.func(module=SHADOWED_ATTRIBUTE_MODULE)
+def make_shadowed_attribute_result(value: float) -> ShadowedAttributeResult:
+    result = ShadowedAttributeResult()
+    result.value = value
+    return result
+
+
+@wp.kernel(module=SHADOWED_ATTRIBUTE_MODULE)
+def shadowed_attribute_first(out: wp.array[float]):
+    e = make_shadowed_attribute_result(1.0)
+    out[0] = e.value
+
+
+@wp.kernel(module=SHADOWED_ATTRIBUTE_MODULE)
+def shadowed_attribute_second(out: wp.array[float]):
+    e = make_shadowed_attribute_result(2.0)
+    out[0] = e.value
+
+
+@wp.func(module=REFERENCE_DECOY_MODULE)
+def shadowed_function_alias(value: float):
+    return value + 100.0
+
+
+@wp.func(module=REFERENCE_TARGET_MODULE)
+def shadowed_function_target(value: float):
+    return value * 2.0
+
+
+@wp.kernel(module=SHADOWING_CONSUMER_MODULE)
+def shadowed_function_alias_kernel(out: wp.array[float]):
+    shadowed_function_alias = shadowed_function_target
+    out[0] = shadowed_function_alias(3.0)
+
+
+@wp.func(module=REFERENCE_TARGET_MODULE)
+def shadowed_tuple_alias_target_a(value: float):
+    return value + 10.0
+
+
+@wp.func(module=REFERENCE_TARGET_MODULE)
+def shadowed_tuple_alias_target_b(value: float):
+    return value + 20.0
+
+
+@wp.kernel(module=SHADOWING_CONSUMER_MODULE)
+def shadowed_tuple_alias_kernel(out: wp.array[float]):
+    first, second = shadowed_tuple_alias_target_a, shadowed_tuple_alias_target_b
+    out[0] = first(1.0) + second(2.0)
+
+
+@wp.func(module=REFERENCE_TARGET_MODULE)
+def call_before_shadow(value: float):
+    return value + 1.0
+
+
+@wp.kernel(module=SHADOWING_CONSUMER_MODULE)
+def call_before_shadow_kernel(out: wp.array[float]):
+    out[0] = call_before_shadow(2.0)  # noqa: F823
+    call_before_shadow = 0.0
+
+
+@wp.func(module=REFERENCE_TARGET_MODULE)
+def rhs_before_lhs(value: float):
+    return value * 2.0
+
+
+@wp.kernel(module=SHADOWING_CONSUMER_MODULE)
+def rhs_before_lhs_kernel(out: wp.array[float]):
+    rhs_before_lhs = rhs_before_lhs(3.0)  # noqa: F823
+    out[0] = rhs_before_lhs
+
+
+@wp.func(module=REFERENCE_TARGET_MODULE)
+def branch_arm_reference(value: float):
+    return value + 4.0
+
+
+@wp.kernel(module=SHADOWING_CONSUMER_MODULE)
+def branch_arm_reference_kernel(condition: bool, out: wp.array[float]):
+    if condition:
+        branch_arm_reference = 1.0
+        out[0] = branch_arm_reference
+    else:
+        out[0] = branch_arm_reference(2.0)
+
+
+CONSTANT_BRANCH_GLOBAL_FLAG = False
+
+
+class ConstantBranchConfig:
+    ENABLED = False
+
+
+@wp.func(module=REFERENCE_TARGET_MODULE)
+def constant_branch_target(value: float):
+    return value + 5.0
+
+
+@wp.func(module=REFERENCE_DECOY_MODULE)
+def constant_branch_dead_reference(value: float):
+    return value + 100.0
+
+
+@wp.kernel(module=CONTROL_FLOW_SCAN_MODULE)
+def constant_branch_literal_kernel(out: wp.array[float]):
+    if False:
+        constant_branch_target = 0.0
+        out[0] = constant_branch_dead_reference(1.0)
+    out[0] = constant_branch_target(2.0)
+
+
+@wp.kernel(module=CONTROL_FLOW_SCAN_MODULE)
+def constant_branch_local_kernel(out: wp.array[float]):
+    condition = False
+    if condition:
+        constant_branch_target = 0.0
+        out[0] = constant_branch_dead_reference(1.0)
+    out[0] = constant_branch_target(3.0)
+
+
+@wp.kernel(module=CONTROL_FLOW_SCAN_MODULE)
+def constant_branch_global_kernel(out: wp.array[float]):
+    if CONSTANT_BRANCH_GLOBAL_FLAG:
+        constant_branch_target = 0.0
+        out[0] = constant_branch_dead_reference(1.0)
+    out[0] = constant_branch_target(4.0)
+
+
+@wp.kernel(module=CONTROL_FLOW_SCAN_MODULE)
+def constant_branch_true_kernel(out: wp.array[float]):
+    condition = True
+    if condition:
+        out[0] = constant_branch_target(5.0)  # noqa: F823
+    else:
+        constant_branch_target = 0.0
+        out[0] = constant_branch_dead_reference(1.0)
+
+
+@wp.kernel(module=CONTROL_FLOW_SCAN_MODULE)
+def constant_branch_static_kernel(out: wp.array[float]):
+    if wp.static(False):
+        constant_branch_target = 0.0
+        out[0] = constant_branch_dead_reference(1.0)
+    out[0] = constant_branch_target(3.0)
+
+
+@wp.kernel(module=CONTROL_FLOW_SCAN_MODULE)
+def constant_branch_static_local_kernel(out: wp.array[float]):
+    condition = False
+    if wp.static(condition):
+        constant_branch_target = 0.0
+        out[0] = constant_branch_dead_reference(1.0)
+    out[0] = constant_branch_target(6.0)
+
+
+@wp.kernel(module=CONTROL_FLOW_SCAN_MODULE)
+def constant_branch_rebind_kernel(out: wp.array[float]):
+    if CONSTANT_BRANCH_GLOBAL_FLAG:
+        out[0] = constant_branch_dead_reference(1.0)
+    else:
+        out[0] = constant_branch_target(7.0)
+
+
+@wp.kernel(module=CONTROL_FLOW_BUILD_MODULE)
+def constant_branch_augassign_kernel(value: int, out: wp.array[float]):
+    condition = 0
+    condition += value
+    if condition:
+        out[0] = constant_branch_target(8.0)
+
+
+@wp.kernel(module=CONTROL_FLOW_BUILD_MODULE)
+def constant_branch_for_kernel(count: int, out: wp.array[float]):
+    condition = 0
+    for condition in range(count):  # noqa: B007
+        pass
+    if condition:
+        out[0] = constant_branch_target(10.0)
+
+
+@wp.kernel(module=CONTROL_FLOW_BUILD_MODULE)
+def constant_branch_zero_range_kernel(out: wp.array[float]):
+    for _ in range(0):
+        constant_branch_target = 0.0
+        out[0] = constant_branch_dead_reference(1.0)
+    out[0] = constant_branch_target(11.0)
+
+
+@wp.kernel(module=CONTROL_FLOW_BUILD_MODULE)
+def constant_branch_attribute_kernel(out: wp.array[float]):
+    if ConstantBranchConfig.ENABLED:
+        constant_branch_target = 0.0
+    out[0] = constant_branch_target(12.0)
+
+
+@wp.kernel(module=CONTROL_FLOW_BUILD_MODULE)
+def constant_branch_unrolled_range_kernel(out: wp.array[float]):
+    for i in range(1):
+        if i:
+            constant_branch_target = 0.0
+    out[0] = constant_branch_target(13.0)
+
+
 def test_module_load(test, device):
     """Ensure that loading a module does not change its hash."""
     m = load_code_as_module(SIMPLE_MODULE, "simple_module")
@@ -433,6 +653,183 @@ class TestModuleHashing(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("before True True", result.stdout)
         self.assertIn("after False False", result.stdout)
+
+    def test_shadowed_attribute_reference_is_local(self):
+        """Verify a local attribute is not resolved through a same-named Warp global."""
+        constants, _, _ = shadowed_attribute_first.adj.get_references()
+
+        self.assertNotIn("e.value", constants)
+
+    def test_shadowed_local_bindings_preserve_function_references(self):
+        """Verify local bindings preserve only the functions visible at each use."""
+        cases = (
+            (shadowed_function_alias_kernel, {shadowed_function_target}),
+            (shadowed_tuple_alias_kernel, {shadowed_tuple_alias_target_a, shadowed_tuple_alias_target_b}),
+            (call_before_shadow_kernel, {call_before_shadow}),
+            (rhs_before_lhs_kernel, {rhs_before_lhs}),
+            (branch_arm_reference_kernel, {branch_arm_reference}),
+        )
+
+        for kernel, expected in cases:
+            with self.subTest(kernel=kernel.key):
+                _, _, functions = kernel.adj.get_references()
+                self.assertEqual(set(functions), expected)
+
+    def test_shadowing_dependency_profile(self):
+        """Verify shadowing consumers retain real targets but not decoys."""
+        references = SHADOWING_CONSUMER_MODULE.references
+
+        self.assertIn(REFERENCE_TARGET_MODULE, references)
+        self.assertNotIn(REFERENCE_DECOY_MODULE, references)
+
+    def test_control_flow_references_are_conservative(self):
+        """Verify control-flow scans retain all potentially generated functions."""
+        cases = (
+            (
+                (
+                    constant_branch_literal_kernel,
+                    constant_branch_local_kernel,
+                    constant_branch_global_kernel,
+                    constant_branch_true_kernel,
+                    constant_branch_static_kernel,
+                    constant_branch_static_local_kernel,
+                    constant_branch_rebind_kernel,
+                    constant_branch_zero_range_kernel,
+                ),
+                {constant_branch_target, constant_branch_dead_reference},
+            ),
+            (
+                (
+                    constant_branch_augassign_kernel,
+                    constant_branch_for_kernel,
+                    constant_branch_attribute_kernel,
+                    constant_branch_unrolled_range_kernel,
+                ),
+                {constant_branch_target},
+            ),
+        )
+
+        for kernels, expected in cases:
+            for kernel in kernels:
+                with self.subTest(kernel=kernel.key):
+                    _, _, functions = kernel.adj.get_references()
+                    self.assertEqual(set(functions), expected)
+
+    def test_control_flow_dependency_profiles(self):
+        """Verify control-flow consumer modules retain both dependency classes."""
+        for module in (CONTROL_FLOW_SCAN_MODULE, CONTROL_FLOW_BUILD_MODULE):
+            with self.subTest(module=module.name):
+                self.assertIn(REFERENCE_TARGET_MODULE, module.references)
+                self.assertIn(REFERENCE_DECOY_MODULE, module.references)
+
+    def test_constant_branch_regressions_build(self):
+        """Verify constant-range and loop-carried conditions compile as scanned."""
+        out = wp.zeros(1, dtype=float, device="cpu")
+
+        wp.launch(constant_branch_zero_range_kernel, dim=1, inputs=[out], device="cpu")
+        self.assertEqual(out.numpy()[0], 16.0)
+
+        wp.launch(constant_branch_augassign_kernel, dim=1, inputs=[1, out], device="cpu")
+        self.assertEqual(out.numpy()[0], 13.0)
+
+        wp.launch(constant_branch_for_kernel, dim=1, inputs=[2, out], device="cpu")
+        self.assertEqual(out.numpy()[0], 15.0)
+
+        wp.launch(constant_branch_attribute_kernel, dim=1, inputs=[out], device="cpu")
+        self.assertEqual(out.numpy()[0], 17.0)
+
+        wp.launch(constant_branch_unrolled_range_kernel, dim=1, inputs=[out], device="cpu")
+        self.assertEqual(out.numpy()[0], 18.0)
+
+    def test_global_condition_rebinding_preserves_references(self):
+        """Verify global-condition callees remain references across rebindings."""
+        global CONSTANT_BRANCH_GLOBAL_FLAG
+
+        old_value = CONSTANT_BRANCH_GLOBAL_FLAG
+        try:
+            for value in (False, True):
+                with self.subTest(value=value):
+                    CONSTANT_BRANCH_GLOBAL_FLAG = value
+                    _, _, functions = constant_branch_rebind_kernel.adj.get_references()
+                    self.assertEqual(set(functions), {constant_branch_target, constant_branch_dead_reference})
+        finally:
+            CONSTANT_BRANCH_GLOBAL_FLAG = old_value
+
+    def test_reference_analysis_storage_is_bounded(self):
+        """Verify reference analysis does not retain full per-node name sets."""
+        source = "def function():\n" + "".join(f"    local_{i} = global_{i}\n" for i in range(2000))
+        tree = ast.parse(source)
+        already_tracing = tracemalloc.is_tracing()
+
+        if not already_tracing:
+            tracemalloc.start()
+        try:
+            retained_before, _ = tracemalloc.get_traced_memory()
+            analysis = _analyze_reference_bindings(tree)
+            retained_after, _ = tracemalloc.get_traced_memory()
+        finally:
+            if not already_tracing:
+                tracemalloc.stop()
+
+        self.assertEqual(len(analysis), 6000)
+        self.assertLess(retained_after - retained_before, 16 * 1024 * 1024)
+
+    def test_shadowed_reference_hashes_stable_after_build(self):
+        """Verify module building does not change hashes for shadowed local roots."""
+        cases = (
+            (
+                SHADOWED_ATTRIBUTE_MODULE,
+                (shadowed_attribute_first, shadowed_attribute_second),
+                (),
+            ),
+            (
+                SHADOWING_CONSUMER_MODULE,
+                (
+                    shadowed_function_alias_kernel,
+                    shadowed_tuple_alias_kernel,
+                    call_before_shadow_kernel,
+                    rhs_before_lhs_kernel,
+                ),
+                (call_before_shadow, rhs_before_lhs),
+            ),
+        )
+
+        for module, kernels, recursively_hashed_functions in cases:
+            with self.subTest(module=module.name):
+                options = module.resolve_options(wp.config, block_dim=1)
+                before = ModuleHasher(kernels, options)
+                module_hash_before = before.get_hash()
+                kernel_hashes_before = {kernel: kernel.hash for kernel in kernels}
+
+                for function in recursively_hashed_functions:
+                    self.assertIn(function, before.function_hashes)
+
+                ModuleBuilder(module, options, hasher=before)
+
+                after = ModuleHasher(kernels, options)
+                for function in recursively_hashed_functions:
+                    self.assertIn(function, after.function_hashes)
+                self.assertEqual(after.get_hash(), module_hash_before)
+                self.assertEqual(
+                    {kernel: kernel.hash for kernel in kernels},
+                    kernel_hashes_before,
+                )
+
+    @unittest.skipUnless(
+        wp.is_cpu_available() and wp.is_cuda_available(),
+        "Requires both CPU and CUDA devices",
+    )
+    def test_shadowed_reference_hashes_stable_across_devices(self):
+        """Verify a CUDA build cannot invalidate CPU entry-point hashes."""
+
+        def launch(kernel, device, expected):
+            out = wp.empty(1, dtype=float, device=device)
+            wp.launch(kernel, dim=1, outputs=[out], device=device)
+            self.assertEqual(out.numpy()[0], expected)
+
+        launch(shadowed_attribute_first, "cpu", 1.0)
+        launch(shadowed_attribute_first, "cuda:0", 1.0)
+        launch(shadowed_attribute_second, "cpu", 2.0)
 
     def test_codegen_is_independent_of_kernel_order(self):
         """Verify that kernel order does not affect hashes, source, or metadata."""
