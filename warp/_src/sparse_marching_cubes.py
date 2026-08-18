@@ -5,8 +5,8 @@
 
 This module extracts an isosurface directly from a callable implicit function
 (for example a signed distance function) without ever materializing a dense
-grid. It first builds a *Lipschitz octree* -- a sparse set of small voxels that
-provably bracket the level set of a 1-Lipschitz function -- and then runs
+grid. It first builds a *Lipschitz octree*, a sparse set of small voxels that
+provably bracket the level set of a 1-Lipschitz function, and then runs
 marching cubes only on those voxels.
 
 The approach mirrors ``igl::lipschitz_octree`` plus the sparse-voxel overload of
@@ -342,24 +342,30 @@ def _record_unique_codes_kernel(
 @wp.kernel(enable_backward=False)
 def _decode_corner_positions_kernel(
     unique_codes: wp.array(dtype=wp.int64),
-    offset: wp.vec3i,
     stride_x: wp.int64,
     stride_y: wp.int64,
-    origin: wp.vec3,
+    base: wp.vec3,
     cell_width: wp.float32,
     positions: wp.array(dtype=wp.vec3),
 ):
-    """Recover world-space positions of the unique corners from their codes."""
+    """Recover world-space positions of the unique corners from their codes.
+
+    The codes hold subscripts *relative* to the minimum corner, and ``base`` is
+    the world position of that minimum corner (folded in on the host, in double
+    precision). Decoding relatively keeps the float32 multiplier small: adding
+    the absolute subscript instead would round adjacent corners onto the same
+    position once subscripts pass float32's 2**24 exact-integer limit.
+    """
     tid = wp.tid()
     code = unique_codes[tid]
     ci = code / stride_x
     rem = code - ci * stride_x
     cj = rem / stride_y
     ck = rem - cj * stride_y
-    positions[tid] = origin + cell_width * wp.vec3(
-        wp.float32(wp.int32(ci) + offset[0]),
-        wp.float32(wp.int32(cj) + offset[1]),
-        wp.float32(wp.int32(ck) + offset[2]),
+    positions[tid] = base + cell_width * wp.vec3(
+        wp.float32(wp.int32(ci)),
+        wp.float32(wp.int32(cj)),
+        wp.float32(wp.int32(ck)),
     )
 
 
@@ -639,6 +645,7 @@ def _dedupe_corners(cells, n_cells, offset, axis_stride, origin, cell_width, dev
         )
     stride_y = wp.int64(axis_stride)
     stride_x = wp.int64(axis_stride * axis_stride)
+    offset_subscript = (int(offset[0]), int(offset[1]), int(offset[2]))
     offset = wp.vec3i(offset)
 
     codes = wp.empty(m, dtype=wp.int64, device=device)
@@ -683,11 +690,19 @@ def _dedupe_corners(cells, n_cells, offset, axis_stride, origin, cell_width, dev
         device=device,
     )
 
+    # Fold the subscript offset into the origin here, in double precision, so the
+    # kernel only ever converts small relative subscripts to float32.
+    base = wp.vec3(
+        float(origin[0]) + cell_width * offset_subscript[0],
+        float(origin[1]) + cell_width * offset_subscript[1],
+        float(origin[2]) + cell_width * offset_subscript[2],
+    )
+
     corner_positions = wp.empty(n_unique, dtype=wp.vec3, device=device)
     wp.launch(
         _decode_corner_positions_kernel,
         dim=n_unique,
-        inputs=[unique_codes, offset, stride_x, stride_y, wp.vec3(origin), wp.float32(cell_width)],
+        inputs=[unique_codes, stride_x, stride_y, base, wp.float32(cell_width)],
         outputs=[corner_positions],
         device=device,
     )
@@ -873,8 +888,8 @@ def sparse_marching_cubes_from_cells(
     This is the sparse marching cubes core: it runs marching cubes on a
     caller-provided list of voxels (rather than cells discovered by a Lipschitz
     octree), sharing vertices between adjacent cells so the output is watertight.
-    It is useful when the occupied cells are already known -- for example a marked
-    band of voxels around an object from a vision or generative model -- and the
+    It is useful when the occupied cells are already known, such as a marked
+    band of voxels around an object from a vision or generative model, and the
     implicit field has already been sampled at their corners.
 
     :func:`sparse_marching_cubes` is a thin wrapper that discovers the cells with
@@ -927,6 +942,10 @@ def sparse_marching_cubes_from_cells(
         raise ValueError(f"corner_values must be float32, got {values_wp.dtype}.")
     if values_wp.size != 8 * n_cells:
         raise ValueError(f"corner_values must have {8 * n_cells} entries for {n_cells} cells, got {values_wp.size}.")
+    # reshape() only works on contiguous arrays, and a caller pulling corner
+    # values out of a larger structure can easily hand us a strided view.
+    if not values_wp.is_contiguous:
+        values_wp = wp.clone(values_wp)
     per_cell_values = values_wp.reshape((n_cells, 8))
 
     # Pack corner subscripts relative to their minimum, using a per-axis stride

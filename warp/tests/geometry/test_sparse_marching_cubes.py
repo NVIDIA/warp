@@ -377,6 +377,94 @@ def test_sparse_mc_from_cells(test, device):
     np.testing.assert_allclose(np.sort(np.linalg.norm(vs, axis=1)), np.sort(np.linalg.norm(v_ref, axis=1)), atol=1e-4)
 
 
+def test_sparse_mc_large_subscripts(test, device):
+    """Check that subscripts beyond float32's exact-integer range still resolve.
+
+    Corner positions are decoded from subscripts relative to the cell set's
+    minimum, with the offset folded into the origin in double precision. Adding
+    the absolute subscript in float32 instead would round adjacent corners onto
+    the same position once subscripts pass 2**24, collapsing triangles.
+    """
+    origin = (-1.0, -1.0, -1.0)
+    cell_width = 2.0 / 32
+    corner_offsets = np.array(wp.geometry.IsoSurfaceMarchingCubes.CUBE_CORNER_OFFSETS, dtype=np.int32)
+
+    # Cells straddling a radius-0.5 sphere on a 32^3 grid.
+    grid = np.arange(32)
+    cells = np.stack(np.meshgrid(grid, grid, grid, indexing="ij"), axis=-1).reshape(-1, 3).astype(np.int32)
+    corner_pos = np.array(origin) + cell_width * (cells[:, None, :] + corner_offsets[None, :, :])
+    corner_vals = (np.linalg.norm(corner_pos, axis=2) - 0.5).astype(np.float32)
+    keep = (corner_vals.min(axis=1) < 0.0) & (corner_vals.max(axis=1) >= 0.0)
+    cells, corner_vals = cells[keep], corner_vals[keep]
+
+    verts, indices = wp.geometry.sparse_marching_cubes_from_cells(
+        cells, corner_vals, origin=origin, cell_width=cell_width, threshold=0.0, device=device
+    )
+    v_ref, f_ref = verts.numpy(), indices.numpy().reshape(-1, 3)
+
+    # The same surface, addressed with subscripts well past 2**24 and a
+    # compensating origin, must come out identical to within float32 rounding.
+    #
+    # The shifts are multiples of 16 so that ``shift * cell_width`` is a whole
+    # number and the compensating origin stays exactly representable: ``origin``
+    # is itself a float32 wp.vec3, so a shift that pushed it off the float32 grid
+    # would move the surface by up to half an ULP regardless of how the corner
+    # subscripts are decoded.
+    for shift in (1 << 24, (1 << 25) + 12352):
+        origin_shifted = tuple(np.array(origin) - shift * cell_width)
+        verts_s, indices_s = wp.geometry.sparse_marching_cubes_from_cells(
+            cells + np.int32(shift),
+            corner_vals,
+            origin=origin_shifted,
+            cell_width=cell_width,
+            threshold=0.0,
+            device=device,
+        )
+        vs, fs = verts_s.numpy(), indices_s.numpy().reshape(-1, 3)
+
+        test.assertEqual(vs.shape[0], v_ref.shape[0], f"vertex count changed at shift {shift}")
+        np.testing.assert_array_equal(fs, f_ref)
+        np.testing.assert_allclose(vs, v_ref, atol=1e-4)
+
+        # No triangle may collapse to a degenerate sliver.
+        for a, b in ((0, 1), (1, 2), (0, 2)):
+            test.assertFalse(
+                np.any(np.all(vs[fs[:, a]] == vs[fs[:, b]], axis=1)),
+                f"degenerate triangles at shift {shift}",
+            )
+
+
+def test_sparse_mc_noncontiguous_corner_values(test, device):
+    """Check that a strided view of corner values is accepted.
+
+    A caller slicing corner values out of a larger device-resident structure
+    hands us a non-contiguous array, which cannot be reshaped directly.
+    """
+    origin = (-1.0, -1.0, -1.0)
+    depth = 5
+    corner_offsets = np.array(wp.geometry.IsoSurfaceMarchingCubes.CUBE_CORNER_OFFSETS, dtype=np.int32)
+
+    cell_origins, cell_width = wp.geometry.lipschitz_octree(sphere_sdf, origin, 2.0, max_depth=depth, device=device)
+    cells = np.round((cell_origins.numpy() - np.array(origin)) / cell_width).astype(np.int32)
+    corner_pos = np.array(origin) + cell_width * (cells[:, None, :] + corner_offsets[None, :, :])
+    corner_vals = (np.linalg.norm(corner_pos, axis=2) - 0.5).astype(np.float32)
+
+    v_ref, f_ref = wp.geometry.sparse_marching_cubes_from_cells(
+        cells, corner_vals, origin=origin, cell_width=float(cell_width), device=device
+    )
+
+    # Interleave the values into a wider buffer, then take a strided view of it.
+    padded = np.repeat(corner_vals[:, :, None], 2, axis=2)
+    strided = wp.array(np.ascontiguousarray(padded), dtype=wp.float32, device=device)[:, :, 0]
+    test.assertFalse(strided.is_contiguous)
+
+    verts, indices = wp.geometry.sparse_marching_cubes_from_cells(
+        cells, strided, origin=origin, cell_width=float(cell_width), device=device
+    )
+    np.testing.assert_array_equal(verts.numpy(), v_ref.numpy())
+    np.testing.assert_array_equal(indices.numpy(), f_ref.numpy())
+
+
 def test_lipschitz_octree_brackets_surface(test, device):
     """Check that the octree keeps every cell the surface actually passes through.
 
@@ -476,6 +564,15 @@ add_function_test(
 add_function_test(TestSparseMarchingCubes, "test_sparse_mc_mesh_sdf", test_sparse_mc_mesh_sdf, devices=devices)
 add_function_test(TestSparseMarchingCubes, "test_sparse_mc_watertight", test_sparse_mc_watertight, devices=devices)
 add_function_test(TestSparseMarchingCubes, "test_sparse_mc_from_cells", test_sparse_mc_from_cells, devices=devices)
+add_function_test(
+    TestSparseMarchingCubes, "test_sparse_mc_large_subscripts", test_sparse_mc_large_subscripts, devices=devices
+)
+add_function_test(
+    TestSparseMarchingCubes,
+    "test_sparse_mc_noncontiguous_corner_values",
+    test_sparse_mc_noncontiguous_corner_values,
+    devices=devices,
+)
 add_function_test(
     TestSparseMarchingCubes,
     "test_lipschitz_octree_brackets_surface",

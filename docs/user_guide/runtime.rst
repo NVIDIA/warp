@@ -2956,8 +2956,8 @@ See :github:`warp/examples/core/example_isosurface.py` for a complete usage exam
 Sparse Marching Cubes
 #####################
 
-When the field comes from an implicit function -- a signed distance function, a
-mesh distance query, or a neural implicit --
+When the field comes from an implicit function (a signed distance function, a
+mesh distance query, or a neural implicit),
 :func:`wp.geometry.sparse_marching_cubes <warp.geometry.sparse_marching_cubes>`
 extracts the isosurface without ever building a
 dense grid. It constructs a *Lipschitz octree* that provably brackets the level
@@ -3008,10 +3008,10 @@ neural implicits, or any field that is cheaper to evaluate in bulk.
 
 At a given depth the output is equivalent to
 :class:`wp.geometry.IsoSurfaceMarchingCubes
-<warp.geometry.IsoSurfaceMarchingCubes>` run on the equivalent dense grid -- the
+<warp.geometry.IsoSurfaceMarchingCubes>` run on the equivalent dense grid: the
 same triangulation and the same vertex and triangle counts, with vertex
-positions agreeing to floating-point tolerance -- but only the near-surface
-cells are instantiated. The two stages are also exposed separately: the pruning
+positions agreeing to floating-point tolerance. Only the near-surface cells are
+instantiated. The two stages are also exposed separately: the pruning
 stage is :func:`wp.geometry.lipschitz_octree <warp.geometry.lipschitz_octree>`,
 which returns the leaf cells, and the extraction stage is
 :func:`wp.geometry.sparse_marching_cubes_from_cells
@@ -3020,7 +3020,7 @@ an explicit list of occupied cells and their sampled corner values.
 :func:`wp.geometry.sparse_marching_cubes <warp.geometry.sparse_marching_cubes>`
 simply chains the
 two. Calling the extraction stage directly is convenient when the occupied cells
-are already known -- for example a marked band of voxels around an object from a
+are already known, such as a marked band of voxels around an object from a
 vision or generative model, or a custom sparse data structure that already tracks
 which voxels are near the surface.
 
@@ -3104,8 +3104,8 @@ encloses:
     vertices lie on the sphere: True
 
 Note that the sphere spans 32 cells per axis here, so a dense grid covering it
-would hold 32,768 cells -- more than ten times what the search evaluated, and the
-gap grows with resolution. The subscripts are also centered on the origin and
+would hold 32,768 cells, more than ten times what the search evaluated. The gap
+grows with resolution. The subscripts are also centered on the origin and
 therefore negative on one side, which the extractor handles directly.
 
 .. list-table::
@@ -3119,7 +3119,7 @@ therefore negative on one side, which the extractor handles directly.
       - .. image:: ../img/examples/core_sparse_marching_cubes_sparse_octree.png
 
 At this coarse resolution the dense grid holds 32,768 cells while the octree
-keeps only about 2,500 -- the thin shell hugging the surface. The gap widens with
+keeps only about 2,500, the thin shell hugging the surface. The gap widens with
 depth: on the bunny SDF above, sparse extraction is roughly 8x faster than the
 dense grid at depth 8 and 27x faster at depth 9, and beyond that the dense grid
 no longer fits in memory.

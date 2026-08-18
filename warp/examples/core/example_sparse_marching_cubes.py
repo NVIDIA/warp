@@ -21,7 +21,7 @@
 #   * Pass --mode dense to extract the identical surface with the dense
 #     wp.geometry.IsoSurfaceMarchingCubes instead, for a comparison.
 #   * Pass --show-cells to also draw the octree leaf cells as a voxel cage
-#     around the surface -- the thin shell the sparse method instantiates,
+#     around the surface: the thin shell the sparse method instantiates,
 #     versus the full volume a dense grid would.
 #
 # Note: requires a CUDA-capable device for interactive resolutions, and
