@@ -64,7 +64,7 @@
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="warp.launch" href="warp.launch_function.html" />
-    <link rel="prev" title="warp.Module" href="warp.Module.html" />
+    <link rel="prev" title="warp.get_cuda_kernel_properties" href="warp.get_cuda_kernel_properties.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -518,7 +518,7 @@
 <h1>warp.get_suggested_block_size<a class="headerlink" href="#warp-get-suggested-block-size" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.get_suggested_block_size">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">get_suggested_block_size</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">kernel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L11166-L11258"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.get_suggested_block_size" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">get_suggested_block_size</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">kernel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L11301-L11402"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.get_suggested_block_size" title="Link to this definition">#</a></dt>
 <dd><p>Suggest a CUDA block size that maximizes occupancy for a kernel.</p>
 <p>Queries the CUDA driver’s occupancy API
 (<code class="docutils literal notranslate"><span class="pre">cuOccupancyMaxPotentialBlockSize</span></code>) to find the block size that
@@ -552,9 +552,10 @@ benefit from the suggestion.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>kernel</strong> – A <a class="reference internal" href="warp.Kernel.html#warp.Kernel" title="warp.Kernel"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Kernel</span></code></a> object, created with <code class="docutils literal notranslate"><span class="pre">&#64;warp.kernel</span></code> or
-the <a class="reference internal" href="warp.Kernel.html#warp.Kernel" title="warp.Kernel"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Kernel</span></code></a> constructor.</p></li>
-<li><p><strong>device</strong> (<a class="reference internal" href="warp.Device.html#warp.Device" title="warp._src.context.Device"><em>Device</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – The target device. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, uses the current CUDA device.
+<li><p><strong>kernel</strong> – A concrete <a class="reference internal" href="warp.Kernel.html#warp.Kernel" title="warp.Kernel"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Kernel</span></code></a> object, created with
+<code class="docutils literal notranslate"><span class="pre">&#64;warp.kernel</span></code> or the <a class="reference internal" href="warp.Kernel.html#warp.Kernel" title="warp.Kernel"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Kernel</span></code></a> constructor. For a
+generic kernel, pass an overload returned by <a class="reference internal" href="warp.overload.html#warp.overload" title="warp.overload"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.overload()</span></code></a>.</p></li>
+<li><p><strong>device</strong> (<a class="reference internal" href="warp.Device.html#warp.Device" title="warp._src.context.Device"><em>Device</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – The target device. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, uses the default device.
 For CPU devices, returns <code class="docutils literal notranslate"><span class="pre">(1,</span> <span class="pre">1)</span></code>.</p></li>
 </ul>
 </dd>
@@ -567,7 +568,9 @@ utilize all SMs on the device.</p>
 <dt class="field-odd">Raises<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.14)"><strong>TypeError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">kernel</span></code> is not a Warp kernel.</p></li>
-<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If the CUDA occupancy query fails.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">device</span></code> is not a valid device identifier.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">kernel</span></code> is a generic kernel parent on a CUDA
+    device or the CUDA occupancy query fails.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
@@ -589,12 +592,12 @@ utilize all SMs on the device.</p>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.Module.html"
+       href="warp.get_cuda_kernel_properties.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.Module</p>
+        <p class="prev-next-title">warp.get_cuda_kernel_properties</p>
       </div>
     </a>
     <a class="right-next"

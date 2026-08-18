@@ -850,6 +850,26 @@ is handled when <code class="docutils literal notranslate"><span class="pre">cuP
 Consult the profiler’s documentation to determine whether explicit synchronization is needed to include work that is
 still in flight.</p>
 </section>
+<section id="checking-cuda-kernel-resource-use">
+<h2>Checking CUDA kernel resource use<a class="headerlink" href="#checking-cuda-kernel-resource-use" title="Link to this heading">#</a></h2>
+<p>Use <a class="reference internal" href="../../api_reference/_generated/warp.get_cuda_kernel_properties.html#warp.get_cuda_kernel_properties" title="warp.get_cuda_kernel_properties"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.get_cuda_kernel_properties()</span></code></a> to inspect register and local-memory use for a kernel’s compiled forward
+CUDA entry point. Warp compiles and loads the requested module variant if necessary, but does not launch the kernel.
+The <code class="docutils literal notranslate"><span class="pre">device</span></code> and <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> arguments are optional. By default, Warp uses the default device and the kernel
+module’s default block dimension. Pass explicit values to inspect the variant for a particular launch:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">properties</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_cuda_kernel_properties</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">block_dim</span><span class="o">=</span><span class="mi">128</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">properties</span><span class="p">[</span><span class="s2">&quot;register_count&quot;</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">properties</span><span class="p">[</span><span class="s2">&quot;local_memory_size&quot;</span><span class="p">])</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">register_count</span></code> is the number of registers used by each thread. <code class="docutils literal notranslate"><span class="pre">local_memory_size</span></code> is the number of local-memory
+bytes used by each thread. Local memory may contain compiler-placed automatic variables and register spills. See the
+<a class="reference external" href="https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/writing-cuda-kernels.html">Writing SIMT Kernels chapter of the CUDA Programming Guide</a> for more information about
+registers and local memory. Future Warp releases may add keys to the returned dictionary.</p>
+<p>High register use can limit occupancy, while local-memory accesses may increase device-memory traffic. These values
+do not establish a performance bottleneck by themselves. Use Nsight Compute to measure runtime effects, or
+<a class="reference internal" href="../../api_reference/_generated/warp.get_suggested_block_size.html#warp.get_suggested_block_size" title="warp.get_suggested_block_size"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.get_suggested_block_size()</span></code></a> for an occupancy-based block-size recommendation. The values may change with
+the GPU, CUDA toolchain, Warp version, compiler options, or block dimension.</p>
+</section>
 <section id="nsight-compute-profiling">
 <h2>Nsight Compute Profiling<a class="headerlink" href="#nsight-compute-profiling" title="Link to this heading">#</a></h2>
 <p>While Nsight Systems provides a system-wide visualization of software and hardware activity for an application,
@@ -1143,6 +1163,7 @@ while Option B eliminates all cache-related overhead.</p>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#limiting-the-profiler-capture-range">Limiting the Profiler Capture Range</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#checking-cuda-kernel-resource-use">Checking CUDA kernel resource use</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#nsight-compute-profiling">Nsight Compute Profiling</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#source-code-correlation-options">Source code correlation options</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#example-profiling-kernels-from-example-sph-py">Example: Profiling kernels from <code class="docutils literal notranslate"><span class="pre">example_sph.py</span></code></a></li>

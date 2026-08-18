@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.synchronize_stream &#8212; Warp 1.17.0.dev4</title>
+    <title>warp.get_cuda_kernel_properties &#8212; Warp 1.17.0.dev4</title>
   
   
   
@@ -49,7 +49,7 @@
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.synchronize_stream';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.get_cuda_kernel_properties';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
@@ -63,8 +63,8 @@
 
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="warp.wait_stream" href="warp.wait_stream.html" />
-    <link rel="prev" title="warp.set_stream" href="warp.set_stream.html" />
+    <link rel="next" title="warp.get_suggested_block_size" href="warp.get_suggested_block_size.html" />
+    <link rel="prev" title="warp.Module" href="warp.Module.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -484,7 +484,7 @@
     
     <li class="breadcrumb-item"><a href="../warp.html" class="nav-link">warp</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.synchronize_stream</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.get_cuda_kernel_properties</span></li>
   </ul>
 </nav>
 </div>
@@ -497,7 +497,7 @@
         <div class="header-article-item">
 
 <div class="d-flex justify-content-end w-100">
-  <a href="../../_sources/api_reference/_generated/warp.synchronize_stream.rst.txt">
+  <a href="../../_sources/api_reference/_generated/warp.get_cuda_kernel_properties.rst.txt">
     <i class="fa-solid fa-file-code"></i> View page source
   </a>
 </div>
@@ -514,17 +514,42 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="warp-synchronize-stream">
-<h1>warp.synchronize_stream<a class="headerlink" href="#warp-synchronize-stream" title="Link to this heading">#</a></h1>
+  <section id="warp-get-cuda-kernel-properties">
+<h1>warp.get_cuda_kernel_properties<a class="headerlink" href="#warp-get-cuda-kernel-properties" title="Link to this heading">#</a></h1>
 <dl class="py function">
-<dt class="sig sig-object py" id="warp.synchronize_stream">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">synchronize_stream</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stream_or_device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L11446-L11466"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.synchronize_stream" title="Link to this definition">#</a></dt>
-<dd><p>Synchronize the calling CPU thread with any outstanding CUDA work on the specified stream.</p>
-<p>This function allows the host application code to ensure that all kernel launches
-and memory copies have completed on the stream.</p>
+<dt class="sig sig-object py" id="warp.get_cuda_kernel_properties">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">get_cuda_kernel_properties</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">kernel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">block_dim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L11254-L11299"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.get_cuda_kernel_properties" title="Link to this definition">#</a></dt>
+<dd><p>Return properties of a compiled CUDA kernel.</p>
+<p>The result contains <code class="docutils literal notranslate"><span class="pre">&quot;register_count&quot;</span></code> in registers per thread and
+<code class="docutils literal notranslate"><span class="pre">&quot;local_memory_size&quot;</span></code> in bytes per thread. Values may vary with the
+device, CUDA toolchain, Warp version, compilation options, and
+<code class="docutils literal notranslate"><span class="pre">block_dim</span></code>. Future Warp releases may add keys.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>stream_or_device</strong> (<a class="reference internal" href="warp.Stream.html#warp.Stream" title="warp._src.context.Stream"><em>Stream</em></a><em> | </em><a class="reference internal" href="warp.Device.html#warp.Device" title="warp._src.context.Device"><em>Device</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – <cite>warp.Stream</cite> or a device.  If the argument is a device, synchronize the device’s current stream.</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>kernel</strong> – A concrete <code class="docutils literal notranslate"><span class="pre">&#64;warp.kernel</span></code>-decorated kernel or explicitly
+constructed <a class="reference internal" href="warp.Kernel.html#warp.Kernel" title="warp.Kernel"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Kernel</span></code></a>. For a generic kernel, pass an
+overload returned by <a class="reference internal" href="warp.overload.html#warp.overload" title="warp.overload"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.overload()</span></code></a>.</p></li>
+<li><p><strong>device</strong> (<a class="reference internal" href="warp.Device.html#warp.Device" title="warp._src.context.Device"><em>Device</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – The target CUDA device. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, use the default device,
+which must be CUDA.</p></li>
+<li><p><strong>block_dim</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Threads per block for the compiled variant. If <code class="docutils literal notranslate"><span class="pre">None</span></code>,
+use the kernel module default.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The complete dictionary of exposed CUDA kernel properties.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.14)"><strong>TypeError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">kernel</span></code> is not a Warp kernel.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">device</span></code> is not a valid device identifier or
+    <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> is not a positive integer.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">kernel</span></code> is generic, <code class="docutils literal notranslate"><span class="pre">device</span></code> is not a CUDA
+    device, or loading or the native query fails.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a>]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -542,20 +567,20 @@ and memory copies have completed on the stream.</p>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.set_stream.html"
+       href="warp.Module.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.set_stream</p>
+        <p class="prev-next-title">warp.Module</p>
       </div>
     </a>
     <a class="right-next"
-       href="warp.wait_stream.html"
+       href="warp.get_suggested_block_size.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.wait_stream</p>
+        <p class="prev-next-title">warp.get_suggested_block_size</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -580,7 +605,7 @@ and memory copies have completed on the stream.</p>
   </div>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.synchronize_stream"><code class="docutils literal notranslate"><span class="pre">synchronize_stream()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.get_cuda_kernel_properties"><code class="docutils literal notranslate"><span class="pre">get_cuda_kernel_properties()</span></code></a></li>
 </ul>
   </nav></div>
 
@@ -588,7 +613,7 @@ and memory copies have completed on the stream.</p>
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/_generated/warp.synchronize_stream.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/_generated/warp.get_cuda_kernel_properties.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

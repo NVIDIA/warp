@@ -298,6 +298,7 @@ Kernel Execution
    Kernel
    Launch
    Module
+   get_cuda_kernel_properties
    get_suggested_block_size
    launch
    launch_tiled
