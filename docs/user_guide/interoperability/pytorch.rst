@@ -882,7 +882,24 @@ This approach works for both analytic gradient kernels and when using the Warp t
 
 *Variant 2: With Warp's Tape (Automatic Differentiation)*
 
+Instead of implementing an analytic backward kernel, Warp can generate an adjoint for the forward kernel. Backward
+generation is enabled by default and can be invoked directly with ``wp.launch(..., adjoint=True)`` or managed across
+recorded launches with ``wp.Tape``. The following example uses a tape to record the forward launch and run its
+generated adjoint:
+
 .. code:: python
+
+    @wp.kernel
+    def sum_squares(
+        a: wp.array[float],
+        b: wp.array[float],
+        output: wp.array[float]
+    ):
+        i = wp.tid()
+        x = a[i]
+        y = b[i]
+        output[i] = x*x + y*y
+
 
     @staticmethod
     def forward(ctx, a, b):
@@ -904,7 +921,7 @@ This approach works for both analytic gradient kernels and when using the Warp t
 
             with wp.Tape() as tape:
                 wp.launch(
-                    kernel=forward_kernel,
+                    kernel=sum_squares,
                     dim=(N),
                     device=device,
                     inputs=[
@@ -967,6 +984,108 @@ before each backward pass and pass them explicitly to ``wp.from_torch(..., grad=
     wp_b = wp.from_torch(b_torch, grad=grad_b_buffer)
     wp_output = wp.from_torch(output_torch, requires_grad=True, grad=grad_output_buffer)
 
+The following minimal, runnable example runs repeated backward with a reused external ``grad_outputs`` tensor and
+PyTorch ``gradcheck`` without letting the tape adopt external gradient storage:
+
+.. code:: python
+
+    import torch
+    import warp as wp
+
+
+    def active_torch_stream(tensor):
+        if tensor.is_cuda:
+            return wp.ScopedStream(wp.stream_from_torch(tensor.device))
+
+        return wp.ScopedStream(None)
+
+
+    @wp.kernel
+    def square_kernel(x: wp.array[wp.float64], y: wp.array[wp.float64]):
+        tid = wp.tid()
+        y[tid] = x[tid] * x[tid]
+
+
+    class WarpSquare(torch.autograd.Function):
+
+        @staticmethod
+        def forward(ctx, x):
+            ctx.save_for_backward(x)
+
+            y = torch.empty_like(x)
+            ctx.grad_x = torch.zeros_like(x)
+            ctx.grad_y = torch.zeros_like(y)
+
+            with active_torch_stream(x):
+                # Warp records the detached input, then returns gradients manually to PyTorch.
+                x_wp = wp.from_torch(
+                    x.detach(),
+                    dtype=wp.float64,
+                    requires_grad=True,
+                    grad=ctx.grad_x,
+                )
+                y_wp = wp.from_torch(
+                    y,
+                    dtype=wp.float64,
+                    requires_grad=True,
+                    grad=ctx.grad_y,
+                )
+
+                tape = wp.Tape()
+                with tape:
+                    wp.launch(square_kernel, dim=x.numel(), inputs=[x_wp], outputs=[y_wp], device=x_wp.device)
+
+            ctx.tape = tape
+            # Keep Warp array wrappers alive until backward.
+            ctx.x_wp = x_wp
+            ctx.y_wp = y_wp
+
+            return y
+
+        @staticmethod
+        def backward(ctx, grad_y):
+            _ = ctx.saved_tensors
+
+            ctx.grad_x.zero_()
+            ctx.grad_y.zero_()
+
+            with active_torch_stream(grad_y):
+                # Since y_wp already has ctx.grad_y attached, Tape.backward()
+                # copies grad_y into that buffer instead of retaining grad_y.
+                ctx.tape.backward(
+                    grads={
+                        ctx.y_wp: wp.from_torch(grad_y, dtype=wp.float64, requires_grad=False),
+                    }
+                )
+
+                grad_x = ctx.grad_x.clone()
+                ctx.tape.zero()
+
+            return grad_x
+
+
+    device = wp.get_device()
+    torch_device = wp.device_to_torch(device)
+
+    x = torch.tensor([1.0, -2.0, 3.0], dtype=torch.float64, device=torch_device, requires_grad=True)
+    y = WarpSquare.apply(x)
+
+    # Use a strided grad_outputs tensor to model external storage that PyTorch may reuse.
+    grad_y = torch.ones(
+        6,
+        dtype=torch.float64,
+        device=torch_device,
+    )[::2]
+    expected_grad_y = grad_y.clone()
+
+    for i in range(3):
+        (grad_x,) = torch.autograd.grad(y, (x,), grad_outputs=grad_y, retain_graph=i < 2)
+        torch.testing.assert_close(grad_x, 2.0 * x.detach())
+        torch.testing.assert_close(grad_y, expected_grad_y)
+
+    x_check = x.detach().clone().requires_grad_()
+    assert torch.autograd.gradcheck(WarpSquare.apply, (x_check,), eps=1.0e-6, atol=1.0e-5)
+
 
 Performance Comparison
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -983,8 +1102,8 @@ Benchmarking these approaches on a workload with N=300,000,000 elements shows:
 All three solutions eliminate the synchronization overhead:
 
 - **Solutions A and B** are fastest because they allocate gradients in the backward pass as simple standalone tensors
-- **Solution C** is slightly slower because it allocates gradients in the forward pass and attaches them as ``.grad``
-  attributes, which involves PyTorch's autograd bookkeeping
+- **Solution C** is slightly slower because it pre-allocates PyTorch-owned gradient buffers in the forward pass.
+  The analytic-kernel path attaches them as ``.grad`` attributes, while the tape path passes them through ``grad=``.
 
 Choose based on your workflow:
 
