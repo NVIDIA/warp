@@ -159,14 +159,62 @@ template <unsigned Rows, unsigned Cols, typename Type> struct mat_t {
         }
     }
 
+    CUDA_CALLABLE static int normalize_row_index(int index)
+    {
+#ifndef NDEBUG
+        if (index < -(int)Rows || index >= (int)Rows) {
+            printf("mat row index %d out of bounds at %s %d\n", index, __FILE__, __LINE__);
+            assert(0);
+        }
+#endif
+
+        if (index < 0) {
+            index += Rows;
+        }
+        return index;
+    }
+
+    CUDA_CALLABLE static int normalize_col_index(int index)
+    {
+#ifndef NDEBUG
+        if (index < -(int)Cols || index >= (int)Cols) {
+            printf("mat col index %d out of bounds at %s %d\n", index, __FILE__, __LINE__);
+            assert(0);
+        }
+#endif
+
+        if (index < 0) {
+            index += Cols;
+        }
+        return index;
+    }
+
     CUDA_CALLABLE vec_t<Cols, Type> get_row(int index) const
     {
+        index = normalize_row_index(index);
         return reinterpret_cast<const vec_t<Cols, Type>&>(data[index]);
     }
 
     CUDA_CALLABLE void set_row(int index, const vec_t<Cols, Type>& v)
     {
+        index = normalize_row_index(index);
         reinterpret_cast<vec_t<Cols, Type>&>(data[index]) = v;
+    }
+
+    // Returns a mutable reference to row ``index`` as a ``vec_t``.
+    CUDA_CALLABLE vec_t<Cols, Type>& row_ref(int index)
+    {
+        index = normalize_row_index(index);
+        return reinterpret_cast<vec_t<Cols, Type>&>(data[index]);
+    }
+
+    // Returns a mutable reference to element ``(row, col)`` with negative-index
+    // normalization.
+    CUDA_CALLABLE Type& element_ref(int row, int col)
+    {
+        row = normalize_row_index(row);
+        col = normalize_col_index(col);
+        return data[row][col];
     }
 
     CUDA_CALLABLE vec_t<Rows, Type> get_col(int index) const
@@ -753,20 +801,25 @@ inline CUDA_CALLABLE void adj_index(
 }
 
 template <unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE vec_t<Cols, Type>* indexref(mat_t<Rows, Cols, Type>* m, int row)
+{
+    row = mat_t<Rows, Cols, Type>::normalize_row_index(row);
+
+    return reinterpret_cast<vec_t<Cols, Type>*>(&(m->data[row]));
+}
+
+template <unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_indexref(
+    mat_t<Rows, Cols, Type>* m, int row, mat_t<Rows, Cols, Type>& adj_m, int adj_row, const vec_t<Cols, Type>& adj_value
+)
+{
+    // nop
+}
+
+template <unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE Type* indexref(mat_t<Rows, Cols, Type>* m, int row, int col)
 {
-#ifndef NDEBUG
-    if (row < 0 || row >= Rows) {
-        printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
-        assert(0);
-    }
-    if (col < 0 || col >= Cols) {
-        printf("mat col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
-        assert(0);
-    }
-#endif
-
-    return &(m->data)[row][col];
+    return &m->element_ref(row, col);
 }
 
 template <unsigned Rows, unsigned Cols, typename Type>
@@ -3823,6 +3876,17 @@ inline CUDA_CALLABLE void adj_extract(
     const vec_t<Cols, Type>& adj_ret
 )
 {
+#ifndef NDEBUG
+    if (row < -(int)Rows || row >= (int)Rows) {
+        printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    if (row < 0) {
+        row += Rows;
+    }
+
     for (unsigned col = 0; col < Cols; ++col)
         adj_m.data[row][col] += adj_ret[col];
 }

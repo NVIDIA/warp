@@ -4630,6 +4630,16 @@ def tile_assign_value_func(arg_types, arg_values):
                         f"within destination tile of shape {tuple(dst_type.shape)}"
                     )
 
+    # For matrix-dtype tiles, also accept one extra index for row-assign:
+    # assign(dst, i0, ..., iR, row_idx, src_vec) where src is a vector
+    # matching the matrix row length.
+    if src_type is not None and not is_tile(src_type) and type_is_matrix(dst_type.dtype):
+        # num_indices = total args - dst - src
+        num_indices = len(arg_types) - 2
+        tile_shape = dst_type.shape
+        if num_indices == len(tile_shape) + 1:
+            _check_tile_matrix_row_value(src_type, dst_type.dtype, "tile row-assign")
+
     # force the destination tile to shared memory
     dst_type.storage = "shared"
     return None
@@ -4964,6 +4974,9 @@ def tile_extract_value_func(arg_types, arg_values):
     elif type_is_matrix(tile_dtype):
         if num_indices == len(tile_shape):
             return tile_dtype
+        elif num_indices == len(tile_shape) + 1:
+            # row extract: returns a vector of length = matrix column count
+            return vector(length=tile_dtype._shape_[1], dtype=tile_dtype._wp_scalar_type_)
         elif num_indices == len(tile_shape) + 2:
             return tile_dtype._wp_scalar_type_
         else:
@@ -5406,6 +5419,15 @@ def tile_inplace_value_func(arg_types, arg_values):
     arg_types["a"].storage = "shared"
 
     return None
+
+
+def _check_tile_matrix_row_value(value_type, tile_dtype, op_name):
+    row_type = tile_dtype._wp_row_type_
+    if not type_is_vector(value_type) or not types_equal(value_type, row_type):
+        raise TypeError(
+            f"{op_name}: expected a vector source of type {type_repr(row_type)} for matrix-dtype tile row, "
+            f"got {type_repr(value_type)}"
+        )
 
 
 def tile_inplace_tile_value_func(arg_types, arg_values):
@@ -13454,6 +13476,15 @@ add_builtin(
     skip_replay=True,
     is_differentiable=False,
 )
+
+
+def matrix_index_row_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+    mat_type = arg_types["a"]
+    row_type = mat_type._wp_row_type_
+
+    return Reference(row_type)
+
+
 # implements &(*matrix)[i, j]
 add_builtin(
     "indexref",
@@ -13749,13 +13780,6 @@ add_builtin(
     group="Utility",
     is_differentiable=False,
 )
-
-
-def matrix_index_row_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
-    mat_type = arg_types["a"]
-    row_type = mat_type._wp_row_type_
-
-    return Reference(row_type)
 
 
 # implements &matrix[i] = row

@@ -256,6 +256,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.tile.test_tile_atomic_bitwise import TestTileAtomicBitwise
     from warp.tests.tile.test_tile_cholesky import TestTileCholesky
     from warp.tests.tile.test_tile_cholesky_no_mathdx import TestTileCholeskyNoMathDx
+    from warp.tests.tile.test_tile_composite_row import TestTileCompositeRow
     from warp.tests.tile.test_tile_empty import TestTileEmpty
     from warp.tests.tile.test_tile_fft import TestTileFFT
     from warp.tests.tile.test_tile_fft_no_mathdx import TestTileFFTNoMathDx
@@ -428,6 +429,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestTileAtomicBitwise,
         TestTileCholesky,
         TestTileCholeskyNoMathDx,
+        TestTileCompositeRow,
         TestTileEmpty,
         TestTileFFT,
         TestTileFFTNoMathDx,
@@ -687,6 +689,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.tile.test_tile_atomic_bitwise import TestTileAtomicBitwise
     from warp.tests.tile.test_tile_cholesky import TestTileCholesky
     from warp.tests.tile.test_tile_cholesky_no_mathdx import TestTileCholeskyNoMathDx
+    from warp.tests.tile.test_tile_composite_row import TestTileCompositeRow
     from warp.tests.tile.test_tile_empty import TestTileEmpty
     from warp.tests.tile.test_tile_fft import TestTileFFT
     from warp.tests.tile.test_tile_fft_no_mathdx import TestTileFFTNoMathDx
@@ -754,6 +757,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         # Tile (debug-safe)
         TestTile,
         TestTileAtomicBitwise,
+        TestTileCompositeRow,
         TestTileFFT,
         TestTileFFTNoMathDx,
         TestTileLoad,
