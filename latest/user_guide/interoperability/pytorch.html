@@ -1335,7 +1335,23 @@ This approach works for both analytic gradient kernels and when using the Warp t
 </pre></div>
 </div>
 <p><em>Variant 2: With Warp’s Tape (Automatic Differentiation)</em></p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@staticmethod</span>
+<p>Instead of implementing an analytic backward kernel, Warp can generate an adjoint for the forward kernel. Backward
+generation is enabled by default and can be invoked directly with <code class="docutils literal notranslate"><span class="pre">wp.launch(...,</span> <span class="pre">adjoint=True)</span></code> or managed across
+recorded launches with <code class="docutils literal notranslate"><span class="pre">wp.Tape</span></code>. The following example uses a tape to record the forward launch and run its
+generated adjoint:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">sum_squares</span><span class="p">(</span>
+    <span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
+    <span class="n">b</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
+    <span class="n">output</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>
+<span class="p">):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">b</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+    <span class="n">output</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="o">*</span><span class="n">x</span> <span class="o">+</span> <span class="n">y</span><span class="o">*</span><span class="n">y</span>
+
+
+<span class="nd">@staticmethod</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
     <span class="n">ctx</span><span class="o">.</span><span class="n">save_for_backward</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
 
@@ -1355,7 +1371,7 @@ This approach works for both analytic gradient kernels and when using the Warp t
 
         <span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">Tape</span><span class="p">()</span> <span class="k">as</span> <span class="n">tape</span><span class="p">:</span>
             <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span>
-                <span class="n">kernel</span><span class="o">=</span><span class="n">forward_kernel</span><span class="p">,</span>
+                <span class="n">kernel</span><span class="o">=</span><span class="n">sum_squares</span><span class="p">,</span>
                 <span class="n">dim</span><span class="o">=</span><span class="p">(</span><span class="n">N</span><span class="p">),</span>
                 <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
                 <span class="n">inputs</span><span class="o">=</span><span class="p">[</span>
@@ -1417,6 +1433,106 @@ before each backward pass and pass them explicitly to <code class="docutils lite
 <span class="n">wp_output</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">output_torch</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">grad</span><span class="o">=</span><span class="n">grad_output_buffer</span><span class="p">)</span>
 </pre></div>
 </div>
+<p>The following minimal, runnable example runs repeated backward with a reused external <code class="docutils literal notranslate"><span class="pre">grad_outputs</span></code> tensor and
+PyTorch <code class="docutils literal notranslate"><span class="pre">gradcheck</span></code> without letting the tape adopt external gradient storage:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">active_torch_stream</span><span class="p">(</span><span class="n">tensor</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">tensor</span><span class="o">.</span><span class="n">is_cuda</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedStream</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">stream_from_torch</span><span class="p">(</span><span class="n">tensor</span><span class="o">.</span><span class="n">device</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedStream</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">square_kernel</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float64</span><span class="p">],</span> <span class="n">y</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float64</span><span class="p">]):</span>
+    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">y</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">*</span> <span class="n">x</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">WarpSquare</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">autograd</span><span class="o">.</span><span class="n">Function</span><span class="p">):</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">ctx</span><span class="o">.</span><span class="n">save_for_backward</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+        <span class="n">y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty_like</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">ctx</span><span class="o">.</span><span class="n">grad_x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">ctx</span><span class="o">.</span><span class="n">grad_y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="n">active_torch_stream</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+            <span class="c1"># Warp records the detached input, then returns gradients manually to PyTorch.</span>
+            <span class="n">x_wp</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span>
+                <span class="n">x</span><span class="o">.</span><span class="n">detach</span><span class="p">(),</span>
+                <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span>
+                <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">grad</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">grad_x</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">y_wp</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span>
+                <span class="n">y</span><span class="p">,</span>
+                <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span>
+                <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">grad</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">grad_y</span><span class="p">,</span>
+            <span class="p">)</span>
+
+            <span class="n">tape</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Tape</span><span class="p">()</span>
+            <span class="k">with</span> <span class="n">tape</span><span class="p">:</span>
+                <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">square_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">numel</span><span class="p">(),</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">x_wp</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">y_wp</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">x_wp</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+
+        <span class="n">ctx</span><span class="o">.</span><span class="n">tape</span> <span class="o">=</span> <span class="n">tape</span>
+        <span class="c1"># Keep Warp array wrappers alive until backward.</span>
+        <span class="n">ctx</span><span class="o">.</span><span class="n">x_wp</span> <span class="o">=</span> <span class="n">x_wp</span>
+        <span class="n">ctx</span><span class="o">.</span><span class="n">y_wp</span> <span class="o">=</span> <span class="n">y_wp</span>
+
+        <span class="k">return</span> <span class="n">y</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">backward</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">grad_y</span><span class="p">):</span>
+        <span class="n">_</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">saved_tensors</span>
+
+        <span class="n">ctx</span><span class="o">.</span><span class="n">grad_x</span><span class="o">.</span><span class="n">zero_</span><span class="p">()</span>
+        <span class="n">ctx</span><span class="o">.</span><span class="n">grad_y</span><span class="o">.</span><span class="n">zero_</span><span class="p">()</span>
+
+        <span class="k">with</span> <span class="n">active_torch_stream</span><span class="p">(</span><span class="n">grad_y</span><span class="p">):</span>
+            <span class="c1"># Since y_wp already has ctx.grad_y attached, Tape.backward()</span>
+            <span class="c1"># copies grad_y into that buffer instead of retaining grad_y.</span>
+            <span class="n">ctx</span><span class="o">.</span><span class="n">tape</span><span class="o">.</span><span class="n">backward</span><span class="p">(</span>
+                <span class="n">grads</span><span class="o">=</span><span class="p">{</span>
+                    <span class="n">ctx</span><span class="o">.</span><span class="n">y_wp</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">grad_y</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+
+            <span class="n">grad_x</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">grad_x</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+            <span class="n">ctx</span><span class="o">.</span><span class="n">tape</span><span class="o">.</span><span class="n">zero</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">grad_x</span>
+
+
+<span class="n">device</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_device</span><span class="p">()</span>
+<span class="n">torch_device</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">device_to_torch</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">torch_device</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">WarpSquare</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+<span class="c1"># Use a strided grad_outputs tensor to model external storage that PyTorch may reuse.</span>
+<span class="n">grad_y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span>
+    <span class="mi">6</span><span class="p">,</span>
+    <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="n">torch_device</span><span class="p">,</span>
+<span class="p">)[::</span><span class="mi">2</span><span class="p">]</span>
+<span class="n">expected_grad_y</span> <span class="o">=</span> <span class="n">grad_y</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+    <span class="p">(</span><span class="n">grad_x</span><span class="p">,)</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">autograd</span><span class="o">.</span><span class="n">grad</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="p">(</span><span class="n">x</span><span class="p">,),</span> <span class="n">grad_outputs</span><span class="o">=</span><span class="n">grad_y</span><span class="p">,</span> <span class="n">retain_graph</span><span class="o">=</span><span class="n">i</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">torch</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">assert_close</span><span class="p">(</span><span class="n">grad_x</span><span class="p">,</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">x</span><span class="o">.</span><span class="n">detach</span><span class="p">())</span>
+    <span class="n">torch</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">assert_close</span><span class="p">(</span><span class="n">grad_y</span><span class="p">,</span> <span class="n">expected_grad_y</span><span class="p">)</span>
+
+<span class="n">x_check</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span><span class="o">.</span><span class="n">requires_grad_</span><span class="p">()</span>
+<span class="k">assert</span> <span class="n">torch</span><span class="o">.</span><span class="n">autograd</span><span class="o">.</span><span class="n">gradcheck</span><span class="p">(</span><span class="n">WarpSquare</span><span class="o">.</span><span class="n">apply</span><span class="p">,</span> <span class="p">(</span><span class="n">x_check</span><span class="p">,),</span> <span class="n">eps</span><span class="o">=</span><span class="mf">1.0e-6</span><span class="p">,</span> <span class="n">atol</span><span class="o">=</span><span class="mf">1.0e-5</span><span class="p">)</span>
+</pre></div>
+</div>
 </section>
 <section id="performance-comparison">
 <h3>Performance Comparison<a class="headerlink" href="#performance-comparison" title="Link to this heading">#</a></h3>
@@ -1430,8 +1546,8 @@ before each backward pass and pass them explicitly to <code class="docutils lite
 <p>All three solutions eliminate the synchronization overhead:</p>
 <ul class="simple">
 <li><p><strong>Solutions A and B</strong> are fastest because they allocate gradients in the backward pass as simple standalone tensors</p></li>
-<li><p><strong>Solution C</strong> is slightly slower because it allocates gradients in the forward pass and attaches them as <code class="docutils literal notranslate"><span class="pre">.grad</span></code>
-attributes, which involves PyTorch’s autograd bookkeeping</p></li>
+<li><p><strong>Solution C</strong> is slightly slower because it pre-allocates PyTorch-owned gradient buffers in the forward pass.
+The analytic-kernel path attaches them as <code class="docutils literal notranslate"><span class="pre">.grad</span></code> attributes, while the tape path passes them through <code class="docutils literal notranslate"><span class="pre">grad=</span></code>.</p></li>
 </ul>
 <p>Choose based on your workflow:</p>
 <ul class="simple">
