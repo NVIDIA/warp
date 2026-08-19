@@ -98,10 +98,12 @@ CUDA_CALLABLE half float_to_half(float x);
 CUDA_CALLABLE float half_to_float(half x);
 
 struct half {
-    CUDA_CALLABLE inline half()
-        : u(0)
-    {
-    }
+    // Keep the payload uninitialized so half remains trivially default
+    // constructible. Value initialization, e.g. half{}, still produces zero.
+    // Keep this unannotated: NVCC ignores CUDA annotations on explicitly
+    // defaulted constructors and emits warning #20012.
+    // cppcheck-suppress uninitMemberVar
+    half() = default;
 
     CUDA_CALLABLE inline half(float f) { *this = float_to_half(f); }
 
@@ -176,10 +178,13 @@ CUDA_CALLABLE wp_bfloat16 float_to_bfloat16(float x);
 CUDA_CALLABLE float bfloat16_to_float(wp_bfloat16 x);
 
 struct wp_bfloat16 {
-    CUDA_CALLABLE inline wp_bfloat16()
-        : u(0)
-    {
-    }
+    // Keep the payload uninitialized so wp_bfloat16 remains trivially default
+    // constructible. Value initialization, e.g. wp_bfloat16{}, still produces zero.
+    // Keep this unannotated: NVCC ignores CUDA annotations on explicitly
+    // defaulted constructors and emits warning #20012.
+    // cppcheck-suppress uninitMemberVar
+    wp_bfloat16() = default;
+
     CUDA_CALLABLE inline wp_bfloat16(float f) { *this = float_to_bfloat16(f); }
 
     unsigned short u;

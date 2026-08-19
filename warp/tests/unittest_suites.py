@@ -267,6 +267,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.tile.test_tile_load_extract import TestTileLoadExtract
     from warp.tests.tile.test_tile_load_indexed import TestTileLoadIndexed
     from warp.tests.tile.test_tile_load_vectorized import TestTileLoadVectorized
+    from warp.tests.tile.test_tile_low_precision_stack import TestTileLowPrecisionStack
     from warp.tests.tile.test_tile_mathdx import TestTileMathDx
     from warp.tests.tile.test_tile_matmul import TestTileMatmul
     from warp.tests.tile.test_tile_matmul_no_mathdx import TestTileMatmulNoMathDx
@@ -365,6 +366,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestIntersect,
         TestIter,
         TestJax,
+        TestKernelAttributes,
         TestKernelCache,
         TestLarge,
         TestLaunch,
@@ -393,7 +395,6 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestMultiGPU,
         TestNoise,
         TestOccupancy,
-        TestKernelAttributes,
         TestOperators,
         TestOptions,
         TestOverwrite,
@@ -438,6 +439,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestTileLoadExtract,
         TestTileLoadIndexed,
         TestTileLoadVectorized,
+        TestTileLowPrecisionStack,
         TestTileMathDx,
         TestTileMatmul,
         TestTileMatmulNoMathDx,
@@ -487,8 +489,10 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     Known debug-mode failures:
         - fem.test_fem_geometry: test_deformed_geometry_cuda_0 exceeds the
           available memory on a 24 GiB MIG device
-        - tile.test_tile_struct: test_tile_map_custom_struct_cuda_0 triggers
-          CUDA error 719 and poisons the CUDA context
+
+    tile.test_tile_struct is no longer listed above:
+    tile.test_tile_low_precision_stack now covers its CUDA error 719 case
+    without pulling that memory-heavy class into the parallel debug suite.
 
     The GitLab GPU job runs up to eight worker processes that share one GPU.
     It uses ``--isolate-test-processes`` so each process runs one class-level
@@ -694,6 +698,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.tile.test_tile_load_extract import TestTileLoadExtract
     from warp.tests.tile.test_tile_load_indexed import TestTileLoadIndexed
     from warp.tests.tile.test_tile_load_vectorized import TestTileLoadVectorized
+    from warp.tests.tile.test_tile_low_precision_stack import TestTileLowPrecisionStack
     from warp.tests.tile.test_tile_mathdx import TestTileMathDx
     from warp.tests.tile.test_tile_matmul import TestTileMatmul
     from warp.tests.tile.test_tile_matmul_no_mathdx import TestTileMatmulNoMathDx
@@ -756,6 +761,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestTileLoadExtract,
         TestTileLoadIndexed,
         TestTileLoadVectorized,
+        TestTileLowPrecisionStack,
         TestTileMatmulNoMathDx,
         TestTileMatmulStrides,
         TestTileOOB,
