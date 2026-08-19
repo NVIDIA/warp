@@ -653,7 +653,6 @@ Warp’s built-in default logger.</p>
 <p>In debug mode, Warp kernels will perform the following additional checks:</p>
 <ul class="simple">
 <li><p>Raise an assertion if there is an array access outside the defined shape.</p></li>
-<li><p>Warn if <a class="reference internal" href="../language_reference/_generated/warp.tid.html#warp._src.lang.tid" title="warp._src.lang.tid"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tid()</span></code></a> will return an overflowed value on large grids.</p></li>
 <li><p>(GPU-only) Warn if the CUDA grid dimensions have been capped due to an overflowed number of blocks.</p></li>
 <li><p>(GPU-only) Generate line-number information for device code.</p></li>
 </ul>

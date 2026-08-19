@@ -555,8 +555,22 @@ as <code class="docutils literal notranslate"><span class="pre">wp.Function</spa
 Rebinding a function-valued local to a different function or to a non-function value is not supported.
 User functions with <code class="docutils literal notranslate"><span class="pre">wp.Function</span></code> parameters also cannot define custom gradient or replay functions.</p></li>
 </ul>
-<p>A limitation of Warp is that each dimension of the grid used to launch a kernel must be representable as a 32-bit
-signed integer. Therefore, no single dimension of a grid should exceed <span class="math notranslate nohighlight">\(2^{31}-1\)</span>.</p>
+<p><a class="reference internal" href="../language_reference/_generated/warp.tid.html#warp._src.lang.tid" title="warp._src.lang.tid"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tid()</span></code></a> returns signed 32-bit thread coordinates. The supported launch extents depend
+on how the kernel uses those coordinates:</p>
+<ul class="simple">
+<li><p>The leading coordinate supports a launch extent up to <span class="math notranslate nohighlight">\(2^{31}\)</span>, whose largest coordinate is
+<span class="math notranslate nohighlight">\(2^{31}-1\)</span>. Warp enforces this limit for kernels that use scalar <code class="docutils literal notranslate"><span class="pre">wp.tid()</span></code> and raises a <code class="docutils literal notranslate"><span class="pre">ValueError</span></code>
+for a larger leading extent.</p></li>
+<li><p>For tuple-valued <code class="docutils literal notranslate"><span class="pre">wp.tid()</span></code>, keep each non-leading launch dimension at or below <span class="math notranslate nohighlight">\(2^{31}-1\)</span>.
+Multidimensional launch bounds store these extents as signed 32-bit values, so an extent of exactly
+<span class="math notranslate nohighlight">\(2^{31}\)</span> can produce incorrect coordinates when an earlier dimension is greater than one. Warp does not
+currently validate tuple-only launches: a leading extent above <span class="math notranslate nohighlight">\(2^{31}\)</span> can overflow the first returned
+coordinate, and a non-leading extent above <span class="math notranslate nohighlight">\(2^{31}-1\)</span> can corrupt coordinate reconstruction. In a kernel
+that uses both scalar and tuple-valued <code class="docutils literal notranslate"><span class="pre">wp.tid()</span></code>, the scalar validation applies only to the leading coordinate.</p></li>
+</ul>
+<p>The total number of threads in a multidimensional grid may exceed <span class="math notranslate nohighlight">\(2^{31}\)</span> when each returned coordinate stays
+within these limits. Use 64-bit arithmetic when flattening such coordinates into a linear index. See
+<a class="reference internal" href="basics.html#large-launch-indexing"><span class="std std-ref">large-array launch indexing</span></a> for an example.</p>
 <p>By default, Warp will try to process one element from the Warp grid in one CUDA thread.
 This is not always possible for kernels launched with multi-dimensional grid bounds, as there are
 <a class="reference external" href="https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#features-and-technical-specifications-technical-specifications-per-compute-capability">hardware limitations</a>
