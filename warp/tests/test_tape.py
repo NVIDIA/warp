@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 
@@ -316,6 +317,12 @@ def sum_kernel_2d(x: wp.array2d[float], total: wp.array[float]):
 
 
 @wp.kernel
+def sum_kernel_4d(x: wp.array4d[float], total: wp.array[float]):
+    i, j, k, l = wp.tid()
+    wp.atomic_add(total, 0, x[i, j, k, l])
+
+
+@wp.kernel
 def sum_kernel_vec(x: wp.array[wp.vec3], total: wp.array[float]):
     tid = wp.tid()
     v = x[tid]
@@ -547,9 +554,25 @@ def test_tape_copy_adjoint_views_and_offsets(test, device):
     expected[:, 0:2, :] = 1.0
     assert_np_equal(x.grad.numpy(), expected)
 
+    # 4D copy adjoints accumulate and consume the full copied region
+    shape = (2, 2, 3, 4)
+    x = wp.array(np.ones(shape, dtype=np.float32), dtype=float, requires_grad=True, device=device)
+    dst = wp.zeros_like(x)
+    loss = wp.zeros(1, dtype=float, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.copy(dst, x)
+        wp.launch(sum_kernel_4d, dim=shape, inputs=[x], outputs=[loss], device=device)
+        wp.launch(sum_kernel_4d, dim=shape, inputs=[dst], outputs=[loss], device=device)
+    tape.backward(loss)
+
+    assert_np_equal(x.grad.numpy(), np.full(shape, 2.0, dtype=np.float32))
+    assert_np_equal(dst.grad.numpy(), np.zeros(shape, dtype=np.float32))
+
 
 def test_tape_copy_adjoint_out_of_scope(test, device):
-    """Verify out-of-scope copies keep the previous byte-copy adjoint (accumulation deferred to follow-up work)."""
+    """Verify out-of-scope copies keep the previous byte-copy adjoint."""
     n = 4
 
     # overlapping self-copy: the incoming all-ones gradient is left in place
@@ -561,7 +584,8 @@ def test_tape_copy_adjoint_out_of_scope(test, device):
     with tape:
         wp.copy(y, y, dest_offset=1, src_offset=0, count=3)
         wp.launch(sum_kernel, dim=n, inputs=[y], outputs=[loss], device=device)
-    tape.backward(loss)
+    with patch("warp._src.context.log_warning"):
+        tape.backward(loss)
 
     assert_np_equal(y.grad.numpy(), np.ones(n))
 
@@ -574,7 +598,8 @@ def test_tape_copy_adjoint_out_of_scope(test, device):
     with tape:
         wp.copy(base[:, 1], base[:, 0])
         wp.launch(sum_kernel_2d, dim=(n, 2), inputs=[base], outputs=[loss], device=device)
-    tape.backward(loss)
+    with patch("warp._src.context.log_warning"):
+        tape.backward(loss)
 
     assert_np_equal(base.grad.numpy(), np.ones((n, 2), dtype=np.float32))
 
@@ -587,7 +612,8 @@ def test_tape_copy_adjoint_out_of_scope(test, device):
     with tape:
         cloned = wp.clone(xs)
         wp.launch(sum_kernel_struct, dim=n, inputs=[cloned], outputs=[loss], device=device)
-    tape.backward(loss)
+    with patch("warp._src.context.log_warning"):
+        tape.backward(loss)
 
     assert_np_equal(xs.grad.numpy()["a"], np.ones(n, dtype=np.float32))
     assert_np_equal(cloned.grad.numpy()["a"], np.ones(n, dtype=np.float32))
@@ -601,7 +627,8 @@ def test_tape_copy_adjoint_out_of_scope(test, device):
         with tape:
             cloned_b = wp.clone(b)
         cloned_b.grad.fill_(True)
-        tape.backward()
+        with patch("warp._src.context.log_warning"):
+            tape.backward()
 
         test.assertTrue(bool(np.all(b.grad.numpy())))
 
@@ -614,34 +641,170 @@ def test_tape_copy_adjoint_out_of_scope(test, device):
     with tape:
         wp.copy(b, a)
     b.grad.assign(np.ones(n, dtype=np.int32))
-    tape.backward()
+    with patch("warp._src.context.log_warning"):
+        tape.backward()
 
     assert_np_equal(a.grad.numpy(), np.ones(n, dtype=np.int32).view(np.float32))
     assert_np_equal(b.grad.numpy(), np.ones(n, dtype=np.int32))
 
-    # cross-device copies: the previous overwrite adjoint applies
-    # (with accumulation this would be 3.0)
+
+def test_tape_copy_adjoint_fallback_warning(test, device):
+    """Warn when a copy adjoint cannot be fully tracked."""
+    n = 4
+    y = wp.array(np.arange(1.0, n + 1), dtype=float, requires_grad=True, device=device)
+    loss = wp.zeros(1, dtype=float, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.copy(y, y, dest_offset=1, src_offset=0, count=3)
+        wp.launch(sum_kernel, dim=n, inputs=[y], outputs=[loss], device=device)
+
+    with patch("warp._src.context.log_warning") as mock_log_warning:
+        tape.backward(loss)
+
+    test.assertEqual(mock_log_warning.call_count, 1)
+    message = mock_log_warning.call_args.args[0]
+    test.assertIn("overlapping copy", message)
+    test.assertIn("cannot yet be fully tracked", message)
+    test.assertIs(mock_log_warning.call_args.kwargs.get("category"), UserWarning)
+    test.assertEqual(mock_log_warning.call_args.kwargs.get("stacklevel"), 5)
+    test.assertIs(mock_log_warning.call_args.kwargs.get("once"), True)
+
     if device.is_cuda:
-        x = wp.array(np.ones(n, dtype=np.float32), dtype=float, requires_grad=True, device="cpu")
-        dst = wp.zeros(n, dtype=float, requires_grad=True, device=device)
-        yc = wp.zeros_like(x)
+        base_cpu = wp.zeros((n, 2), dtype=float, requires_grad=True, device="cpu")
+        src_cuda = wp.ones(n, dtype=float, requires_grad=True, device=device)
         loss_cpu = wp.zeros(1, dtype=float, requires_grad=True, device="cpu")
-        loss_dev = wp.zeros(1, dtype=float, requires_grad=True, device=device)
 
         tape = wp.Tape()
         with tape:
-            wp.copy(dst, x)
-            wp.launch(mul_constant, dim=n, inputs=[x], outputs=[yc], device="cpu")
-            wp.launch(sum_kernel, dim=n, inputs=[yc], outputs=[loss_cpu], device="cpu")
-            wp.launch(sum_kernel, dim=n, inputs=[dst], outputs=[loss_dev], device=device)
-        tape.backward(
-            grads={
-                loss_cpu: wp.ones(1, dtype=float, device="cpu"),
-                loss_dev: wp.ones(1, dtype=float, device=device),
-            }
+            wp.copy(base_cpu[:, 1], src_cuda)
+            wp.launch(sum_kernel_2d, dim=(n, 2), inputs=[base_cpu], outputs=[loss_cpu], device="cpu")
+
+        with patch("warp._src.context.log_warning") as mock_log_warning:
+            tape.backward(loss_cpu)
+
+        test.assertTrue(
+            any(call.args and "non-contiguous copy" in call.args[0] for call in mock_log_warning.call_args_list)
         )
 
-        assert_np_equal(x.grad.numpy(), np.full(n, 1.0))
+        x_cpu = wp.array(np.ones(n, dtype=np.float32), dtype=float, requires_grad=True, device="cpu")
+        dst_cuda = wp.zeros(n, dtype=wp.int32, requires_grad=True, device=device)
+
+        tape = wp.Tape()
+        with tape:
+            wp.copy(dst_cuda, x_cpu)
+        dst_cuda.grad.assign(np.ones(n, dtype=np.int32))
+
+        with patch("warp._src.context.log_warning") as mock_log_warning:
+            tape.backward()
+
+        test.assertTrue(
+            any(
+                call.args and "copy between unsupported gradient dtypes" in call.args[0]
+                for call in mock_log_warning.call_args_list
+            )
+        )
+        assert_np_equal(x_cpu.grad.numpy(), np.ones(n, dtype=np.int32).view(np.float32))
+
+
+def test_tape_copy_adjoint_cpu_cuda(test, device):
+    """Verify CPU/CUDA copy adjoints accumulate into the source and consume the destination."""
+    n = 4
+
+    # CPU -> CUDA: the CPU source receives both its direct kernel contribution and
+    # the copy's destination adjoint.
+    x_cpu = wp.array(np.ones(n, dtype=np.float32), dtype=float, requires_grad=True, device="cpu")
+    dst_cuda = wp.zeros(n, dtype=float, requires_grad=True, device=device)
+    doubled_cpu = wp.zeros_like(x_cpu)
+    loss_cpu = wp.zeros(1, dtype=float, requires_grad=True, device="cpu")
+    loss_cuda = wp.zeros(1, dtype=float, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.copy(dst_cuda, x_cpu)
+        wp.launch(mul_constant, dim=n, inputs=[x_cpu], outputs=[doubled_cpu], device="cpu")
+        wp.launch(sum_kernel, dim=n, inputs=[doubled_cpu], outputs=[loss_cpu], device="cpu")
+        wp.launch(sum_kernel, dim=n, inputs=[dst_cuda], outputs=[loss_cuda], device=device)
+    tape.backward(
+        grads={
+            loss_cpu: wp.ones(1, dtype=float, device="cpu"),
+            loss_cuda: wp.ones(1, dtype=float, device=device),
+        }
+    )
+
+    assert_np_equal(x_cpu.grad.numpy(), np.full(n, 3.0, dtype=np.float32))
+
+    stream = wp.Stream(device)
+    src_cpu = wp.array(np.ones(n, dtype=np.float32), dtype=float, requires_grad=True, device="cpu")
+    dst_cuda = wp.zeros(2, dtype=float, requires_grad=True, retain_grad=True, device=device)
+    loss_cuda = wp.zeros(1, dtype=float, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.copy(dst_cuda, src_cpu, src_offset=1, count=2, stream=stream)
+        device.stream.wait_stream(stream)
+        wp.launch(sum_kernel, dim=2, inputs=[dst_cuda], outputs=[loss_cuda], device=device)
+    tape.backward(loss_cuda)
+
+    assert_np_equal(src_cpu.grad.numpy(), np.array([0.0, 1.0, 1.0, 0.0], dtype=np.float32))
+    assert_np_equal(dst_cuda.grad.numpy(), np.ones(2, dtype=np.float32))
+
+    # CPU -> CUDA: an earlier CUDA write to the destination is dead and its
+    # adjoint must be consumed by the copy.
+    dead_src_cuda = wp.array(np.ones(n, dtype=np.float32), dtype=float, requires_grad=True, device=device)
+    src_cpu = wp.array(np.full(n, 5.0, dtype=np.float32), dtype=float, requires_grad=True, device="cpu")
+    dst_cuda = wp.zeros(n, dtype=float, requires_grad=True, device=device)
+    loss_cuda = wp.zeros(1, dtype=float, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(mul_constant, dim=n, inputs=[dead_src_cuda], outputs=[dst_cuda], device=device)
+        wp.copy(dst_cuda, src_cpu)
+        wp.launch(sum_kernel, dim=n, inputs=[dst_cuda], outputs=[loss_cuda], device=device)
+    tape.backward(loss_cuda)
+
+    assert_np_equal(src_cpu.grad.numpy(), np.ones(n, dtype=np.float32))
+    assert_np_equal(dead_src_cuda.grad.numpy(), np.zeros(n, dtype=np.float32))
+
+    # CUDA -> CPU: the CUDA source receives both its direct kernel contribution
+    # and the copy's destination adjoint.
+    x_cuda = wp.array(np.ones(n, dtype=np.float32), dtype=float, requires_grad=True, device=device)
+    dst_cpu = wp.zeros(n, dtype=float, requires_grad=True, device="cpu")
+    doubled_cuda = wp.zeros_like(x_cuda)
+    loss_cuda = wp.zeros(1, dtype=float, requires_grad=True, device=device)
+    loss_cpu = wp.zeros(1, dtype=float, requires_grad=True, device="cpu")
+
+    tape = wp.Tape()
+    with tape:
+        wp.copy(dst_cpu, x_cuda)
+        wp.launch(mul_constant, dim=n, inputs=[x_cuda], outputs=[doubled_cuda], device=device)
+        wp.launch(sum_kernel, dim=n, inputs=[doubled_cuda], outputs=[loss_cuda], device=device)
+        wp.launch(sum_kernel, dim=n, inputs=[dst_cpu], outputs=[loss_cpu], device="cpu")
+    tape.backward(
+        grads={
+            loss_cuda: wp.ones(1, dtype=float, device=device),
+            loss_cpu: wp.ones(1, dtype=float, device="cpu"),
+        }
+    )
+
+    assert_np_equal(x_cuda.grad.numpy(), np.full(n, 3.0, dtype=np.float32))
+
+    # CUDA -> CPU: an earlier CPU write to the destination is dead and its adjoint
+    # must be consumed by the copy.
+    dead_src_cpu = wp.array(np.ones(n, dtype=np.float32), dtype=float, requires_grad=True, device="cpu")
+    src_cuda = wp.array(np.full(n, 5.0, dtype=np.float32), dtype=float, requires_grad=True, device=device)
+    dst_cpu = wp.zeros(n, dtype=float, requires_grad=True, device="cpu")
+    loss_cpu = wp.zeros(1, dtype=float, requires_grad=True, device="cpu")
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(mul_constant, dim=n, inputs=[dead_src_cpu], outputs=[dst_cpu], device="cpu")
+        wp.copy(dst_cpu, src_cuda)
+        wp.launch(sum_kernel, dim=n, inputs=[dst_cpu], outputs=[loss_cpu], device="cpu")
+    tape.backward(loss_cpu)
+
+    assert_np_equal(src_cuda.grad.numpy(), np.ones(n, dtype=np.float32))
+    assert_np_equal(dead_src_cpu.grad.numpy(), np.zeros(n, dtype=np.float32))
 
 
 def test_tape_copy_adjoint_stream(test, device):
@@ -667,7 +830,7 @@ def test_tape_copy_adjoint_stream(test, device):
 
 
 def test_tape_copy_adjoint_graph_capture(test, device):
-    """Verify backward passes with same-device copy adjoints capture and replay exactly."""
+    """Verify copy-adjoint behavior during CUDA graph capture."""
     # the same-device copy adjoint performs no allocations (including for
     # non-contiguous views), so a backward pass containing it stays capturable
     # in a CUDA graph; gradients must accumulate identically across replays
@@ -696,6 +859,30 @@ def test_tape_copy_adjoint_graph_capture(test, device):
     expected = np.zeros((n, 2), dtype=np.float32)
     expected[:, 0] = 2.0
     assert_np_equal(x.grad.numpy(), expected)
+
+    src_cpu = wp.ones(n, dtype=float, requires_grad=True, device="cpu")
+    dst_cuda = wp.zeros(n, dtype=float, requires_grad=True, device=device)
+    tape = wp.Tape()
+    with tape:
+        wp.copy(dst_cuda, src_cpu)
+    dst_cuda.grad.fill_(1.0)
+
+    with test.assertRaisesRegex(RuntimeError, "Cannot run CPU/CUDA wp.copy\\(\\) adjoints during CUDA graph capture"):
+        with wp.ScopedCapture(device, force_module_load=False):
+            tape.backward()
+    test.assertFalse(device.is_capturing)
+
+    src_cuda = wp.ones(n, dtype=float, requires_grad=True, device=device)
+    dst_cpu = wp.zeros(n, dtype=float, requires_grad=True, device="cpu")
+    tape = wp.Tape()
+    with tape:
+        wp.copy(dst_cpu, src_cuda)
+    dst_cpu.grad.fill_(1.0)
+
+    with test.assertRaisesRegex(RuntimeError, "Cannot run CPU/CUDA wp.copy\\(\\) adjoints during CUDA graph capture"):
+        with wp.ScopedCapture(device, force_module_load=False):
+            tape.backward()
+    test.assertFalse(device.is_capturing)
 
 
 def test_tape_backward_cuda_launch_failure(test, device):
@@ -790,6 +977,10 @@ add_function_test(
     TestTape, "test_tape_copy_adjoint_views_and_offsets", test_tape_copy_adjoint_views_and_offsets, devices=devices
 )
 add_function_test(TestTape, "test_tape_copy_adjoint_out_of_scope", test_tape_copy_adjoint_out_of_scope, devices=devices)
+add_function_test(
+    TestTape, "test_tape_copy_adjoint_fallback_warning", test_tape_copy_adjoint_fallback_warning, devices=devices
+)
+add_function_test(TestTape, "test_tape_copy_adjoint_cpu_cuda", test_tape_copy_adjoint_cpu_cuda, devices=cuda_devices)
 add_function_test(TestTape, "test_tape_copy_adjoint_stream", test_tape_copy_adjoint_stream, devices=cuda_devices)
 add_function_test(
     TestTape, "test_tape_copy_adjoint_graph_capture", test_tape_copy_adjoint_graph_capture, devices=cuda_devices

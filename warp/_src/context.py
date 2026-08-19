@@ -13752,9 +13752,8 @@ def _address_ranges_overlap(a: warp.array, b: warp.array) -> bool:
     with non-positive strides (broadcast or reversed), are reported as
     overlapping so they route to the byte-copy adjoint.
     """
-    for arr in (a, b):
-        if any(st <= 0 for st in arr.strides):
-            return True
+    if not all(all(stride > 0 for stride in arr.strides) for arr in (a, b)):
+        return True
 
     def byte_range(arr):
         """Return the half-open byte interval spanned by the view."""
@@ -13778,6 +13777,85 @@ def _launch_adj_copy_add(a: warp.array, b: warp.array):
     launch(add_kernel, dim=a.shape, inputs=[a, b], outputs=[a], device=a.device, record_tape=False)
 
 
+def _copy_adjoint_dtypes_addable(adj_src: warp.array, adj_dest: warp.array) -> bool:
+    """Return whether the copied adjoints can be accumulated elementwise.
+
+    Args:
+        adj_src: Source array adjoint.
+        adj_dest: Destination array adjoint.
+
+    Returns:
+        Whether the adjoints have matching non-boolean value dtypes supported by
+        ``wp.add``.
+    """
+    return (
+        # addable value dtypes only; wp.add has no overloads for bool scalars/composites
+        warp._src.types.type_is_value(adj_src.dtype)
+        and warp._src.types.type_scalar_type(adj_src.dtype) not in (bool, warp._src.types.bool)
+        # types_equal, not identity: vector dtypes are not interned across spellings
+        and warp._src.types.types_equal(adj_src.dtype, adj_dest.dtype)
+    )
+
+
+def _adj_copy_fallback_reason(
+    adj_dest: warp.array,
+    adj_src: warp.array,
+    stream: Stream | None,
+    regions: tuple[warp.array, warp.array] | None,
+) -> str:
+    """Return the user-facing reason a copy adjoint is not fully tracked.
+
+    Args:
+        adj_dest: Destination array adjoint.
+        adj_src: Source array adjoint.
+        stream: Stream recorded for the forward copy.
+        regions: Resolved source and destination gradient regions, if available.
+
+    Returns:
+        A short copy-pattern description for warning text.
+    """
+    if not _copy_adjoint_dtypes_addable(adj_src, adj_dest):
+        return "copy between unsupported gradient dtypes"
+
+    if adj_src.device != adj_dest.device:
+        if adj_src.device.is_cuda and adj_dest.device.is_cuda:
+            return "CUDA peer copy"
+        if regions is not None and any(not region.is_contiguous for region in regions):
+            return "non-contiguous CPU/CUDA copy"
+        if stream is not None:
+            cuda_device = None
+            if adj_src.device.is_cpu and adj_dest.device.is_cuda:
+                cuda_device = adj_dest.device
+            elif adj_src.device.is_cuda and adj_dest.device.is_cpu:
+                cuda_device = adj_src.device
+            if cuda_device is not None and stream.device != cuda_device:
+                return "CPU/CUDA copy recorded on a stream from another device"
+        return "cross-device copy"
+
+    if regions is None:
+        return "copy with unsupported view or offset layout"
+    if any(not region.is_contiguous for region in regions):
+        return "non-contiguous copy"
+    if stream is not None and stream.device != adj_src.device:
+        return "copy recorded on a stream from another device"
+    if _address_ranges_overlap(*regions):
+        return "overlapping copy"
+    return "unsupported copy"
+
+
+def _warn_adj_copy_fallback(reason: str):
+    """Warn once when a recorded copy adjoint is not fully tracked."""
+    log_warning(
+        f"A tape-recorded wp.copy() encountered a copy pattern whose gradients cannot yet be fully tracked "
+        f"({reason}). "
+        "The backward pass may overwrite existing source gradients or fail to clear gradients from "
+        "overwritten destination values.",
+        category=UserWarning,
+        stacklevel=5,
+        once=True,
+    )
+
+
 def _resolve_adj_copy_windows(adj_src: warp.array, adj_dest: warp.array, dest_offset: int, src_offset: int, count: int):
     """Resolve the copied window on each adjoint as a pair of views, or ``None``.
 
@@ -13798,6 +13876,48 @@ def _resolve_adj_copy_windows(adj_src: warp.array, adj_dest: warp.array, dest_of
     return None
 
 
+def _adj_copy_add_cross_device_cpu_cuda(
+    src_region: warp.array,
+    dest_region: warp.array,
+    stream: Stream | None,
+    dest_retain_grad: bool,
+):
+    """Accumulate a CPU/CUDA copy adjoint through a source-device temporary.
+
+    Args:
+        src_region: Source-gradient region that receives the accumulated adjoint.
+        dest_region: Destination-gradient region that provides the incoming adjoint.
+        stream: CUDA stream recorded for the forward copy, or ``None`` to use
+            the copy's CUDA endpoint stream.
+        dest_retain_grad: Whether to preserve ``dest_region`` after propagation.
+    """
+    if stream is None:
+        copy_stream = src_region.device.stream if src_region.device.is_cuda else dest_region.device.stream
+    else:
+        copy_stream = stream
+
+    if copy_stream.is_capturing:
+        raise RuntimeError("Cannot run CPU/CUDA wp.copy() adjoints during CUDA graph capture")
+
+    incoming = empty_like(src_region, requires_grad=False)
+
+    # If the recorded copy stream is not the device's current stream, make it wait
+    # for any gradient producers already queued on the current stream before
+    # extracting the destination adjoint.
+    scope_stream = copy_stream if copy_stream is not copy_stream.device.stream else None
+    with warp.ScopedStream(scope_stream, sync_enter=True, sync_exit=False):
+        copy(incoming, dest_region, stream=copy_stream)
+
+    # Host/device transfers cannot be composed with a CPU add by CUDA events, and
+    # CPU destination gradients must not be zeroed while an H2D read is pending.
+    synchronize_stream(copy_stream)
+
+    _launch_adj_copy_add(src_region, incoming)
+
+    if not dest_retain_grad:
+        dest_region.zero_()
+
+
 def adj_copy(
     adj_dest: warp.array,
     adj_src: warp.array,
@@ -13809,19 +13929,20 @@ def adj_copy(
 ):
     """Copy adjoint operation for wp.copy() calls on the tape.
 
-    For same-device, non-overlapping copies of addable numeric dtypes whose recorded
-    stream (if any) belongs to that device, the adjoint accumulates the destination
-    region's adjoint into the source region's adjoint (the source may have other
-    consumers whose contributions land first in the reverse pass and must not be
+    For non-overlapping same-device copies and contiguous CPU/CUDA copies of
+    addable numeric matching dtypes whose recorded stream (if any) belongs to the
+    copy's CUDA endpoint, the adjoint accumulates the destination region's
+    adjoint into the source region's adjoint (the source may have other consumers
+    whose contributions land first in the reverse pass and must not be
     overwritten) and then consumes (zeroes) the destination region, matching
-    kernel-adjoint final-write-wins semantics; destinations with ``retain_grad=True``
-    keep their gradient.
+    kernel-adjoint final-write-wins semantics; destinations with
+    ``retain_grad=True`` keep their gradient. CPU/CUDA copy adjoints are not
+    CUDA-graph-capturable.
 
-    All other copies — cross-device, struct/boolean or reinterpreting dtypes,
-    overlapping regions, or streams from another device — keep the previous
-    byte-copy adjoint (overwrite the source region's adjoint, no consumption).
-    Extending accumulation and consumption to those cases is deferred to
-    follow-up work.
+    All other copies — CUDA peer copies, non-contiguous CPU/CUDA copies,
+    struct/boolean or reinterpreting dtypes, overlapping same-device regions, or
+    streams from another device — keep the previous byte-copy adjoint (overwrite
+    the source region's adjoint, no consumption).
 
     Args:
         adj_dest: Destination array adjoint
@@ -13842,11 +13963,7 @@ def adj_copy(
     if (
         adj_src.device == adj_dest.device
         and (stream is None or stream.device == adj_src.device)
-        # addable value dtypes only; wp.add has no overloads for bool scalars/composites
-        and warp._src.types.type_is_value(adj_src.dtype)
-        and warp._src.types.type_scalar_type(adj_src.dtype) not in (bool, warp._src.types.bool)
-        # types_equal, not identity: vector dtypes are not interned across spellings
-        and warp._src.types.types_equal(adj_src.dtype, adj_dest.dtype)
+        and _copy_adjoint_dtypes_addable(adj_src, adj_dest)
     ):
         regions = _resolve_adj_copy_windows(adj_src, adj_dest, dest_offset, src_offset, count)
         if regions is not None and not _address_ranges_overlap(*regions):
@@ -13860,7 +13977,23 @@ def adj_copy(
                     dest_region.zero_()
             return
 
+    if adj_src.device != adj_dest.device and _copy_adjoint_dtypes_addable(adj_src, adj_dest):
+        cuda_device = None
+        if adj_src.device.is_cpu and adj_dest.device.is_cuda:
+            cuda_device = adj_dest.device
+        elif adj_src.device.is_cuda and adj_dest.device.is_cpu:
+            cuda_device = adj_src.device
+
+        if cuda_device is not None and (stream is None or stream.device == cuda_device):
+            regions = _resolve_adj_copy_windows(adj_src, adj_dest, dest_offset, src_offset, count)
+            if regions is not None and all(region.is_contiguous for region in regions):
+                src_region, dest_region = regions
+                _adj_copy_add_cross_device_cpu_cuda(src_region, dest_region, stream, dest_retain_grad)
+                return
+
     # offsets swapped relative to the forward call
+    regions = _resolve_adj_copy_windows(adj_src, adj_dest, dest_offset, src_offset, count)
+    _warn_adj_copy_fallback(_adj_copy_fallback_reason(adj_dest, adj_src, stream, regions))
     copy(adj_src, adj_dest, dest_offset=src_offset, src_offset=dest_offset, count=count, stream=stream)
 
 
