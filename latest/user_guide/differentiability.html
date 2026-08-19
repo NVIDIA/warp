@@ -1750,10 +1750,11 @@ the <cite>final</cite> value of a local variable is necessary for the adjoint co
 <p>In the backward pass, when computing the adjoint for <code class="docutils literal notranslate"><span class="pre">sum</span></code>, which is used to compute the adjoint for the <code class="docutils literal notranslate"><span class="pre">x</span></code> array, there is a division by zero:
 <code class="docutils literal notranslate"><span class="pre">norm</span></code> is not recomputed in the backward pass because dynamic loops are not replayed. This means that <code class="docutils literal notranslate"><span class="pre">norm</span></code> is 0.0 at the start of the adjoint calculation
 rather than the value computed in the forward pass, 3.0.</p>
-<p>There is a different remedy for this particular scenario. One can force a dynamic loop to replay in the backward pass by migrating the body of the loop to
-a Warp function:</p>
+<p>There is a workaround for this case. During the backward pass, Warp skips dynamic loops in the kernel body, but it replays calls to Warp functions.
+Replaying a function call runs the function again, including any dynamic loop it contains, and recomputes its return values. We can therefore move the loop
+into a Warp function that returns the accumulated values and keep the division in the kernel:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">loop</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">weights</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">iters</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">weighted_sum</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">weights</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">iters</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
     <span class="nb">sum</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
     <span class="n">norm</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
 
@@ -1767,7 +1768,7 @@ a Warp function:</p>
 
 <span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">dynamic_loop_sum</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">weights</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">loss</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">iters</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
-    <span class="nb">sum</span><span class="p">,</span> <span class="n">norm</span> <span class="o">=</span> <span class="n">loop</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">weights</span><span class="p">,</span> <span class="n">iters</span><span class="p">)</span>
+    <span class="nb">sum</span><span class="p">,</span> <span class="n">norm</span> <span class="o">=</span> <span class="n">weighted_sum</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">weights</span><span class="p">,</span> <span class="n">iters</span><span class="p">)</span>
 
     <span class="n">l</span> <span class="o">=</span> <span class="nb">sum</span> <span class="o">/</span> <span class="n">norm</span>
     <span class="n">wp</span><span class="o">.</span><span class="n">atomic_add</span><span class="p">(</span><span class="n">loss</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">l</span><span class="p">)</span>
@@ -1775,7 +1776,7 @@ a Warp function:</p>
 
 <span class="n">iters</span> <span class="o">=</span> <span class="mi">3</span>
 <span class="n">x</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="n">iters</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<span class="n">weights</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="n">iters</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">weights</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="n">iters</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="n">loss</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
 <span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">Tape</span><span class="p">()</span> <span class="k">as</span> <span class="n">tape</span><span class="p">:</span>
@@ -1790,13 +1791,69 @@ a Warp function:</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[0.33333334 0.33333334 0.33333334]
 </pre></div>
 </div>
-<p>However, this only works because the <code class="docutils literal notranslate"><span class="pre">x</span></code> array adjoints do not require an intermediate
-value for <code class="docutils literal notranslate"><span class="pre">sum</span></code>; they only need the adjoint of <code class="docutils literal notranslate"><span class="pre">sum</span></code>. In general this workaround is only valid for simple add/subtract operations such as
-<code class="docutils literal notranslate"><span class="pre">+=</span></code> or <code class="docutils literal notranslate"><span class="pre">-=</span></code>.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>In a subsequent release, we will enable users to force-unroll dynamic loops in some circumstances, thereby obviating these workarounds.</p>
+<p>The backward pass handles <code class="docutils literal notranslate"><span class="pre">weighted_sum()</span></code> in two stages. It first replays the original function to recompute its return values. It then runs the
+function’s generated adjoint to propagate gradients to <code class="docutils literal notranslate"><span class="pre">x</span></code> and <code class="docutils literal notranslate"><span class="pre">weights</span></code>. In detail:</p>
+<ol class="arabic simple">
+<li><p>Warp calls <code class="docutils literal notranslate"><span class="pre">weighted_sum()</span></code> again while replaying the kernel. The function runs its dynamic loop and recomputes the final values of <code class="docutils literal notranslate"><span class="pre">sum</span></code> and
+<code class="docutils literal notranslate"><span class="pre">norm</span></code>. The kernel’s reverse sweep then reads these values where it needs them: the adjoint of the division <code class="docutils literal notranslate"><span class="pre">l</span> <span class="pre">=</span> <span class="pre">sum</span> <span class="pre">/</span> <span class="pre">norm</span></code> evaluates
+<span class="math notranslate nohighlight">\(\partial l / \partial \mathrm{sum} = 1 / \mathrm{norm}\)</span> and <span class="math notranslate nohighlight">\(\partial l / \partial \mathrm{norm} = -\mathrm{sum} / \mathrm{norm}^2\)</span>
+with the recomputed values, producing correct adjoints of <code class="docutils literal notranslate"><span class="pre">sum</span></code> and <code class="docutils literal notranslate"><span class="pre">norm</span></code>.</p></li>
+<li><p>Warp runs the generated adjoint of <code class="docutils literal notranslate"><span class="pre">weighted_sum()</span></code> to propagate those adjoints into <code class="docutils literal notranslate"><span class="pre">x</span></code> and <code class="docutils literal notranslate"><span class="pre">weights</span></code>. The adjoint rebuilds the function’s local
+variables by re-executing its statements, with one exception: it never runs the dynamic loop forward, so the accumulators stay at their pre-loop values
+(here, 0.0) instead of their final sums. The adjoint does iterate over the loop range, but backward and only to apply the adjoint of each statement in
+the loop body. That is enough here because the adjoint of <code class="docutils literal notranslate"><span class="pre">sum</span> <span class="pre">+=</span> <span class="pre">x[i]</span> <span class="pre">*</span> <span class="pre">w</span></code> needs only <code class="docutils literal notranslate"><span class="pre">w</span></code> (recomputed each iteration from <code class="docutils literal notranslate"><span class="pre">weights</span></code>) and the
+adjoint of <code class="docutils literal notranslate"><span class="pre">sum</span></code>, never the value of <code class="docutils literal notranslate"><span class="pre">sum</span></code> itself.</p></li>
+</ol>
+<p>This limits the workaround in two ways:</p>
+<ul class="simple">
+<li><p>Warp can differentiate simple <code class="docutils literal notranslate"><span class="pre">+=</span></code> and <code class="docutils literal notranslate"><span class="pre">-=</span></code> accumulations inside the loop because their adjoints do not depend on intermediate accumulator values.
+Other operations inside the loop body remain subject to the restrictions described earlier in this section.</p></li>
+<li><p>After the loop, the function’s adjoint differentiates any use of an accumulator at its pre-loop value. Operations whose derivatives do not depend on the
+accumulated value, such as scaling by a constant, still produce correct gradients inside the function. Operations whose derivatives do need the final
+value, such as the division <code class="docutils literal notranslate"><span class="pre">sum</span> <span class="pre">/</span> <span class="pre">norm</span></code>, must be performed in the caller, where the replayed call provides the correct values.</p></li>
+</ul>
+<p>To illustrate the second limitation, suppose we instead perform the division inside the Warp function:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">weighted_mean</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">weights</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">iters</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+    <span class="nb">sum</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">norm</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">iters</span><span class="p">):</span>
+        <span class="n">w</span> <span class="o">=</span> <span class="n">weights</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="n">norm</span> <span class="o">+=</span> <span class="n">w</span>
+        <span class="nb">sum</span> <span class="o">+=</span> <span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">w</span>
+
+    <span class="k">return</span> <span class="nb">sum</span> <span class="o">/</span> <span class="n">norm</span>
+
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">dynamic_loop_divide</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">weights</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">loss</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">iters</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+    <span class="n">l</span> <span class="o">=</span> <span class="n">weighted_mean</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">weights</span><span class="p">,</span> <span class="n">iters</span><span class="p">)</span>
+
+    <span class="n">wp</span><span class="o">.</span><span class="n">atomic_add</span><span class="p">(</span><span class="n">loss</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">l</span><span class="p">)</span>
+
+
+<span class="n">iters</span> <span class="o">=</span> <span class="mi">3</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="n">iters</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">weights</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="n">iters</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">loss</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">Tape</span><span class="p">()</span> <span class="k">as</span> <span class="n">tape</span><span class="p">:</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">dynamic_loop_divide</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">x</span><span class="p">,</span> <span class="n">weights</span><span class="p">,</span> <span class="n">loss</span><span class="p">,</span> <span class="n">iters</span><span class="p">])</span>
+
+<span class="n">tape</span><span class="o">.</span><span class="n">backward</span><span class="p">(</span><span class="n">loss</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">grad</span><span class="p">)</span>
+</pre></div>
 </div>
+<p>The forward pass computes the correct loss, but the adjoint of the division is evaluated with <code class="docutils literal notranslate"><span class="pre">norm</span></code> still at its pre-loop value of 0.0, producing incorrect
+gradients:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[inf inf inf]
+</pre></div>
+</div>
+<p>The pre-loop value read by the adjoint is not necessarily zero, so this failure is not always as visible as an <code class="docutils literal notranslate"><span class="pre">inf</span></code>: the backward pass may instead
+produce zeros or finite but incorrect gradients. As a rule, return the raw accumulated values from the function and move any operation whose derivative
+depends on them to the caller.</p>
 </section>
 </section>
 </section>
