@@ -54,6 +54,7 @@ Scalars
    float16
    float32
    float64
+   graph_cond_handle
    handle
    int8
    int16
