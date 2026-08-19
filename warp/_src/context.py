@@ -2955,6 +2955,7 @@ class ModuleBuilder:
             raise WarpCodegenTypeError(f"'{kernel.key}': {_KERNEL_RETURN_ERROR}")
 
         kernel.adj.build(self)
+        self.module._cache_kernel_scalar_tid_extent_limit(kernel, self.options["block_dim"])
 
         if kernel.adj.return_var is not None:
             raise WarpCodegenTypeError(f"'{kernel.key}': {_KERNEL_RETURN_ERROR}")
@@ -3444,6 +3445,7 @@ class Module:
         # hash data, including the module hash. Module may store multiple hashes (one per block_dim used)
         self.hashers = {}
         self.resolved_options = {}
+        self._scalar_tid_extent_limits = {}
 
         # LLVM executable modules are identified using strings.  Since it's possible for multiple
         # executable versions to be loaded at the same time, we need a way to ensure uniqueness.
@@ -3786,6 +3788,32 @@ class Module:
                     self.resolved_options[block_dim] = options
 
         return self.hashers[block_dim].get_hash()
+
+    def _cache_kernel_scalar_tid_extent_limit(self, kernel: Kernel, block_dim: int) -> None:
+        """Cache exact scalar ``wp.tid()`` metadata from the kernel's latest build."""
+        limit = warp._src.codegen._SCALAR_TID_MAX_EXTENT if kernel.adj.uses_scalar_tid else None
+        self._scalar_tid_extent_limits[(block_dim, kernel.hash)] = limit
+
+    @synchronized(_codegen_lock)
+    def _get_kernel_scalar_tid_extent_limit(self, kernel: Kernel, block_dim: int | None = None) -> int | None:
+        """Return exact scalar ``wp.tid()`` metadata for a module variant.
+
+        Held under ``_codegen_lock`` so another variant cannot rebuild the shared
+        kernel adjoint between ``kernel.adj.build()`` and caching its
+        ``uses_scalar_tid`` result.
+        """
+        if block_dim is None:
+            block_dim = self.options["block_dim"]
+
+        self.get_module_hash(block_dim)
+        cache_key = (block_dim, kernel.hash)
+
+        if cache_key not in self._scalar_tid_extent_limits:
+            builder_options = self.resolved_options[block_dim] | {"output_arch": None}
+            kernel.adj.build(None, builder_options)
+            self._cache_kernel_scalar_tid_extent_limit(kernel, block_dim)
+
+        return self._scalar_tid_extent_limits[cache_key]
 
     def _snapshot_deterministic_metadata(
         self, block_dim: int, options: dict, rebuild: bool
@@ -4370,6 +4398,7 @@ class Module:
         # clear hash data
         self.hashers = {}
         self.resolved_options = {}
+        self._scalar_tid_extent_limits = {}
 
         # clear build failures
         self.failed_builds = {}
@@ -10323,11 +10352,16 @@ class Launch:
             dim: The dimensions of the launch.
 
         Raises:
+            ValueError: If ``dim`` is invalid, its leading extent exceeds ``2**31`` for a kernel
+                that uses scalar ``wp.tid()``, or the resized grid is incompatible with the launch's
+                CUDA thread-block cluster configuration.
             RuntimeError: If the kernel is not grid-stride and the new dimensions exceed the lean 3D
                 grid capacity (~7e16 work items). Decorate the kernel with
                 ``@wp.kernel(grid_stride=True)`` to support launch dimensions this large.
         """
-        new_bounds = _build_launch_bounds(dim, self.kernel.adj.kernel_dim)
+        dim, _ = _normalize_launch_dim(dim)
+        scalar_tid_extent_limit = _resolve_kernel_scalar_tid_extent_limit(self.kernel, dim, self.block_dim)
+        new_bounds = _build_launch_bounds_from_tuple(dim, self.kernel.adj.kernel_dim, scalar_tid_extent_limit)
 
         # Guard the impossible lean-grid overflow so a resize fails clearly instead of silently
         # dropping work items (matching wp.launch()).
@@ -10689,7 +10723,11 @@ def _normalize_launch_dim(dim: int | Sequence[int]) -> tuple[tuple[int, ...], in
     return dim, total
 
 
-def _build_launch_bounds_from_tuple(dim: tuple[int, ...], kernel_dim: int) -> LaunchBounds:
+def _build_launch_bounds_from_tuple(
+    dim: tuple[int, ...],
+    kernel_dim: int,
+    scalar_tid_extent_limit: int | None = None,
+) -> LaunchBounds:
     """Build launch bounds while preserving legacy ``wp.tid()`` aliasing.
 
     Missing trailing dimensions are padded with 1. Extra trailing dimensions
@@ -10699,6 +10737,14 @@ def _build_launch_bounds_from_tuple(dim: tuple[int, ...], kernel_dim: int) -> La
     padded = dim + (1,) * max(0, kernel_dim - len(dim))
     kept = padded[:kernel_dim]
     extras = padded[kernel_dim:]
+
+    if scalar_tid_extent_limit is not None and kept[0] > scalar_tid_extent_limit:
+        raise ValueError(
+            f"Warp cannot launch a kernel using scalar wp.tid() with extent {kept[0]}. "
+            f"Scalar wp.tid() returns a signed 32-bit coordinate and supports extents up to "
+            f"{scalar_tid_extent_limit}. Use a multidimensional launch and unpack wp.tid() "
+            "to index additional work items uniquely."
+        )
 
     bounds = launch_bounds_t(kept)
     if extras:
@@ -10712,9 +10758,25 @@ def _build_launch_bounds_from_tuple(dim: tuple[int, ...], kernel_dim: int) -> La
     return bounds
 
 
-def _build_launch_bounds(dim: int | Sequence[int], kernel_dim: int) -> LaunchBounds:
+def _resolve_kernel_scalar_tid_extent_limit(kernel: Kernel, dim: tuple[int, ...], block_dim: int | None) -> int | None:
+    """Resolve exact scalar ``wp.tid()`` metadata only when its candidate would reject."""
+    candidate = kernel.adj.scalar_tid_extent_limit_candidate
+    leading_extent = dim[0] if dim else 1
+    if leading_extent <= candidate:
+        return candidate
+
+    return kernel.module._get_kernel_scalar_tid_extent_limit(kernel, block_dim)
+
+
+def _build_kernel_launch_bounds(
+    dim: int | Sequence[int],
+    kernel: Kernel,
+    block_dim: int | None = None,
+) -> LaunchBounds:
+    """Build launch bounds using exact scalar ``wp.tid()`` metadata when required."""
     dim, _ = _normalize_launch_dim(dim)
-    return _build_launch_bounds_from_tuple(dim, kernel_dim)
+    scalar_tid_extent_limit = _resolve_kernel_scalar_tid_extent_limit(kernel, dim, block_dim)
+    return _build_launch_bounds_from_tuple(dim, kernel.adj.kernel_dim, scalar_tid_extent_limit)
 
 
 def launch(
@@ -10839,7 +10901,8 @@ def launch(
                     f"@wp.kernel(grid_stride=True) to launch dimensions this large."
                 )
 
-        bounds = _build_launch_bounds_from_tuple(dim, kernel.adj.kernel_dim)
+        scalar_tid_extent_limit = _resolve_kernel_scalar_tid_extent_limit(kernel, dim, block_dim)
+        bounds = _build_launch_bounds_from_tuple(dim, kernel.adj.kernel_dim, scalar_tid_extent_limit)
 
         # first param is the number of threads
         params = [bounds]

@@ -1946,14 +1946,6 @@ inline CUDA_CALLABLE int block_dim()
 
 template <int N> inline CUDA_CALLABLE int tid(size_t index, const launch_bounds_t<N>& bounds)
 {
-    // For the 1-D tid() we need to warn the user if we're about to provide a truncated index
-    // Only do this in _DEBUG when called from device to avoid excessive register allocation
-#if defined(_DEBUG) || !defined(__CUDA_ARCH__)
-    if (index > 2147483647) {
-        printf("Warp warning: tid() is returning an overflowed int\n");
-    }
-#endif
-
     launch_coord_t coord = launch_coord(index, bounds);
     return static_cast<int>(coord.i);
 }
