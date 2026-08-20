@@ -1,7 +1,7 @@
 ﻿warp.bvh\_query\_next
 =====================
 
-.. function:: warp._src.lang.bvh_query_next(query: BvhQuery, index: int32, max_dist: float32) -> bool
+.. function:: warp._src.lang.bvh_query_next(query: _BvhQueryAabb, index: int32, max_dist: float32) -> bool
 
    .. hlist::
       :columns: 8
@@ -13,20 +13,23 @@
    Writes the index of the current item to ``index`` and returns ``True``; returns ``False`` once
    the query is exhausted (``index`` is then left unchanged). The reported index is the item's
    index into the ``lowers``/``uppers`` arrays passed to :class:`warp.Bvh`. Used in a ``while``
-   loop together with :func:`bvh_query_aabb` or :func:`bvh_query_ray`.
+   loop together with :func:`bvh_query_aabb`, :func:`bvh_query_ray`, :func:`bvh_query_capsule`,
+   or :func:`bvh_query_sphere`.
    
-   For ray queries, ``max_dist`` bounds how far along the ray to look for intersections, measured
-   in multiples of the ray direction's length (so it is a distance only if ``dir`` was normalized).
-   It has no effect on AABB queries.
+   For plain ray queries (:func:`bvh_query_ray`), ``max_dist`` bounds how far along the ray to
+   look for intersections, measured in multiples of ``dir``'s length (so it is a distance only if
+   ``dir`` was normalized). For capsule queries (:func:`bvh_query_capsule`), pass
+   ``dir = p1 - p0`` (unnormalized) together with ``max_dist = 1.0`` to sweep from ``p0`` to
+   ``p1``. ``max_dist`` has no effect on AABB or sphere queries.
    
    Note that increasing ``max_dist`` may miss intersections: a subtree already rejected for being
    beyond ``max_dist`` is never revisited, even if a later, larger ``max_dist`` would reach it. It
    is therefore only safe to monotonically *reduce* ``max_dist`` during a query.
    
-   :param query: The query to advance, from :func:`bvh_query_aabb` or :func:`bvh_query_ray`
+   :param query: The query to advance, from :func:`bvh_query_aabb`, :func:`bvh_query_ray`, :func:`bvh_query_capsule`, or :func:`bvh_query_sphere`
    :param index: Output; receives the index of the current overlapping item
    :param max_dist: For ray queries, the maximum distance along the ray to check for intersections
-                    (in multiples of ``dir``'s length). Has no effect on AABB queries.
+                    (in multiples of ``dir``'s length). Has no effect on AABB or sphere queries.
    
    :returns: ``True`` if another overlapping item was found (its index written to ``index``), ``False``
              if the query is exhausted.
@@ -55,3 +58,43 @@
    
        [[0.5, 0.5, 0.5], [2.5, 0.5, 0.5], [0.0, 0.0, 0.0]]
    
+
+.. function:: warp._src.lang.bvh_query_next(query: _BvhQueryRay, index: int32, max_dist: float32) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Advance a :func:`bvh_query_ray` query to the next intersected item.
+
+.. function:: warp._src.lang.bvh_query_next(query: _BvhQueryCapsule, index: int32, max_dist: float32) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Advance a :func:`bvh_query_capsule` query to the next intersected item.
+
+.. function:: warp._src.lang.bvh_query_next(query: _BvhQuerySphere, index: int32, max_dist: float32) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Advance a :func:`bvh_query_sphere` query to the next intersected item.
+
+.. function:: warp._src.lang.bvh_query_next(query: BvhQuery, index: int32, max_dist: float32) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Advance a BVH query whose kind is selected at runtime to the next overlapping item.

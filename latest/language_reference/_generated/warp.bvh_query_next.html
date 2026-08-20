@@ -64,7 +64,7 @@
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="warp.bvh_query_next_tiled" href="warp.bvh_query_next_tiled.html" />
-    <link rel="prev" title="warp.bvh_query_aabb_tiled" href="warp.bvh_query_aabb_tiled.html" />
+    <link rel="prev" title="warp.bvh_query_capsule" href="warp.bvh_query_capsule.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -521,7 +521,7 @@
 <span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">bvh_query_next</span></span><span class="sig-paren">(</span>
 
 <dl>
-<dd><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.BvhQuery.html#warp.BvhQuery" title="warp.BvhQuery"><span class="pre">BvhQuery</span></a></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_BvhQueryAabb</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">max_dist</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em>,</dd>
 </dl>
@@ -549,20 +549,23 @@
 <p>Writes the index of the current item to <code class="docutils literal notranslate"><span class="pre">index</span></code> and returns <code class="docutils literal notranslate"><span class="pre">True</span></code>; returns <code class="docutils literal notranslate"><span class="pre">False</span></code> once
 the query is exhausted (<code class="docutils literal notranslate"><span class="pre">index</span></code> is then left unchanged). The reported index is the item’s
 index into the <code class="docutils literal notranslate"><span class="pre">lowers</span></code>/<code class="docutils literal notranslate"><span class="pre">uppers</span></code> arrays passed to <a class="reference internal" href="../../api_reference/_generated/warp.Bvh.html#warp.Bvh" title="warp.Bvh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Bvh</span></code></a>. Used in a <code class="docutils literal notranslate"><span class="pre">while</span></code>
-loop together with <a class="reference internal" href="warp.bvh_query_aabb.html#warp._src.lang.bvh_query_aabb" title="warp._src.lang.bvh_query_aabb"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_aabb()</span></code></a> or <a class="reference internal" href="warp.bvh_query_ray.html#warp._src.lang.bvh_query_ray" title="warp._src.lang.bvh_query_ray"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_ray()</span></code></a>.</p>
-<p>For ray queries, <code class="docutils literal notranslate"><span class="pre">max_dist</span></code> bounds how far along the ray to look for intersections, measured
-in multiples of the ray direction’s length (so it is a distance only if <code class="docutils literal notranslate"><span class="pre">dir</span></code> was normalized).
-It has no effect on AABB queries.</p>
+loop together with <a class="reference internal" href="warp.bvh_query_aabb.html#warp._src.lang.bvh_query_aabb" title="warp._src.lang.bvh_query_aabb"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_aabb()</span></code></a>, <a class="reference internal" href="warp.bvh_query_ray.html#warp._src.lang.bvh_query_ray" title="warp._src.lang.bvh_query_ray"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_ray()</span></code></a>, <a class="reference internal" href="warp.bvh_query_capsule.html#warp._src.lang.bvh_query_capsule" title="warp._src.lang.bvh_query_capsule"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_capsule()</span></code></a>,
+or <a class="reference internal" href="warp.bvh_query_sphere.html#warp._src.lang.bvh_query_sphere" title="warp._src.lang.bvh_query_sphere"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_sphere()</span></code></a>.</p>
+<p>For plain ray queries (<a class="reference internal" href="warp.bvh_query_ray.html#warp._src.lang.bvh_query_ray" title="warp._src.lang.bvh_query_ray"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_ray()</span></code></a>), <code class="docutils literal notranslate"><span class="pre">max_dist</span></code> bounds how far along the ray to
+look for intersections, measured in multiples of <code class="docutils literal notranslate"><span class="pre">dir</span></code>’s length (so it is a distance only if
+<code class="docutils literal notranslate"><span class="pre">dir</span></code> was normalized). For capsule queries (<a class="reference internal" href="warp.bvh_query_capsule.html#warp._src.lang.bvh_query_capsule" title="warp._src.lang.bvh_query_capsule"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_capsule()</span></code></a>), pass
+<code class="docutils literal notranslate"><span class="pre">dir</span> <span class="pre">=</span> <span class="pre">p1</span> <span class="pre">-</span> <span class="pre">p0</span></code> (unnormalized) together with <code class="docutils literal notranslate"><span class="pre">max_dist</span> <span class="pre">=</span> <span class="pre">1.0</span></code> to sweep from <code class="docutils literal notranslate"><span class="pre">p0</span></code> to
+<code class="docutils literal notranslate"><span class="pre">p1</span></code>. <code class="docutils literal notranslate"><span class="pre">max_dist</span></code> has no effect on AABB or sphere queries.</p>
 <p>Note that increasing <code class="docutils literal notranslate"><span class="pre">max_dist</span></code> may miss intersections: a subtree already rejected for being
 beyond <code class="docutils literal notranslate"><span class="pre">max_dist</span></code> is never revisited, even if a later, larger <code class="docutils literal notranslate"><span class="pre">max_dist</span></code> would reach it. It
 is therefore only safe to monotonically <em>reduce</em> <code class="docutils literal notranslate"><span class="pre">max_dist</span></code> during a query.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>query</strong> – The query to advance, from <a class="reference internal" href="warp.bvh_query_aabb.html#warp._src.lang.bvh_query_aabb" title="warp._src.lang.bvh_query_aabb"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_aabb()</span></code></a> or <a class="reference internal" href="warp.bvh_query_ray.html#warp._src.lang.bvh_query_ray" title="warp._src.lang.bvh_query_ray"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_ray()</span></code></a></p></li>
+<li><p><strong>query</strong> – The query to advance, from <a class="reference internal" href="warp.bvh_query_aabb.html#warp._src.lang.bvh_query_aabb" title="warp._src.lang.bvh_query_aabb"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_aabb()</span></code></a>, <a class="reference internal" href="warp.bvh_query_ray.html#warp._src.lang.bvh_query_ray" title="warp._src.lang.bvh_query_ray"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_ray()</span></code></a>, <a class="reference internal" href="warp.bvh_query_capsule.html#warp._src.lang.bvh_query_capsule" title="warp._src.lang.bvh_query_capsule"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_capsule()</span></code></a>, or <a class="reference internal" href="warp.bvh_query_sphere.html#warp._src.lang.bvh_query_sphere" title="warp._src.lang.bvh_query_sphere"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_sphere()</span></code></a></p></li>
 <li><p><strong>index</strong> – Output; receives the index of the current overlapping item</p></li>
 <li><p><strong>max_dist</strong> – For ray queries, the maximum distance along the ray to check for intersections
-(in multiples of <code class="docutils literal notranslate"><span class="pre">dir</span></code>’s length). Has no effect on AABB queries.</p></li>
+(in multiples of <code class="docutils literal notranslate"><span class="pre">dir</span></code>’s length). Has no effect on AABB or sphere queries.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -593,6 +596,134 @@ if the query is exhausted.</p>
 </div>
 </dd></dl>
 
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">bvh_query_next</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_BvhQueryRay</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_dist</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../../api_reference/_generated/warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></span></span></dt>
+<dd><table class="hlist"><tr><td><ul class="simple">
+<li><p>Kernel</p></li>
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td></tr></table>
+<p>Advance a <a class="reference internal" href="warp.bvh_query_ray.html#warp._src.lang.bvh_query_ray" title="warp._src.lang.bvh_query_ray"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_ray()</span></code></a> query to the next intersected item.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">bvh_query_next</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_BvhQueryCapsule</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_dist</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../../api_reference/_generated/warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></span></span></dt>
+<dd><table class="hlist"><tr><td><ul class="simple">
+<li><p>Kernel</p></li>
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td></tr></table>
+<p>Advance a <a class="reference internal" href="warp.bvh_query_capsule.html#warp._src.lang.bvh_query_capsule" title="warp._src.lang.bvh_query_capsule"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_capsule()</span></code></a> query to the next intersected item.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">bvh_query_next</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_BvhQuerySphere</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_dist</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../../api_reference/_generated/warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></span></span></dt>
+<dd><table class="hlist"><tr><td><ul class="simple">
+<li><p>Kernel</p></li>
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td></tr></table>
+<p>Advance a <a class="reference internal" href="warp.bvh_query_sphere.html#warp._src.lang.bvh_query_sphere" title="warp._src.lang.bvh_query_sphere"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_sphere()</span></code></a> query to the next intersected item.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">bvh_query_next</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.BvhQuery.html#warp.BvhQuery" title="warp.BvhQuery"><span class="pre">BvhQuery</span></a></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_dist</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../../api_reference/_generated/warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></span></span></dt>
+<dd><table class="hlist"><tr><td><ul class="simple">
+<li><p>Kernel</p></li>
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td></tr></table>
+<p>Advance a BVH query whose kind is selected at runtime to the next overlapping item.</p>
+</dd></dl>
+
 </section>
 
 
@@ -606,12 +737,12 @@ if the query is exhausted.</p>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.bvh_query_aabb_tiled.html"
+       href="warp.bvh_query_capsule.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.bvh_query_aabb_tiled</p>
+        <p class="prev-next-title">warp.bvh_query_capsule</p>
       </div>
     </a>
     <a class="right-next"

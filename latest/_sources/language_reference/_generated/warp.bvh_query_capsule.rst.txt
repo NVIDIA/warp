@@ -1,0 +1,54 @@
+﻿warp.bvh\_query\_capsule
+========================
+
+.. function:: warp._src.lang.bvh_query_capsule(id: uint64, start: vec3f, dir: vec3f, radius: float32, root: int32) -> _BvhQueryCapsule
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Construct a conservative capsule sweep query against a BVH.
+   
+   Iterates over every BVH item whose stored bounding box overlaps the swept capsule. Each node's
+   bounds are inflated by ``radius`` before the ray-slab test (an axis-aligned box inflation, not
+   a true sphere cap), so the query never misses a primitive within ``radius`` of the segment but
+   may return extra candidates near box corners.
+   
+   To sweep a closed capsule from ``p0`` to ``p1``, pass ``dir = p1 - p0`` (unnormalized) and
+   ``max_dist = 1.0`` in :func:`bvh_query_next`; contact at both endpoints is included.
+   A zero-length segment (``p0 == p1``) is not supported — use :func:`bvh_query_sphere` instead.
+   A negative ``radius`` is clamped to zero. Advance results with :func:`bvh_query_next`.
+   
+   :param id: The BVH identifier
+   :param start: The segment start point (``p0``), in BVH space
+   :param dir: The segment direction (``p1 - p0``), in BVH space
+   :param radius: The capsule radius; negative values are clamped to zero
+   :param root: The node to begin the query from, or -1 (default) for the BVH's global root
+   
+   :returns: A :class:`warp.BvhQuery`. It is opaque; pass it to :func:`bvh_query_next`.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def capsule_sweep(bvh_id: wp.uint64, p0: wp.vec3, p1: wp.vec3, radius: float,
+                          count: wp.array[wp.int32]):
+           query = wp.bvh_query_capsule(bvh_id, p0, p1 - p0, radius)
+           item = int(0)
+           while wp.bvh_query_next(query, item, 1.0):
+               wp.atomic_add(count, 0, 1)
+   
+       lowers = wp.array([[0.75, -1, -1]], dtype=wp.vec3)
+       uppers = wp.array([[2.0,   1,  1]], dtype=wp.vec3)
+       bvh = wp.Bvh(lowers=lowers, uppers=uppers)
+       count = wp.zeros(1, dtype=wp.int32)
+       wp.launch(capsule_sweep, dim=1,
+                 inputs=[bvh.id, wp.vec3(0.0, 0.0, 0.0), wp.vec3(0.5, 0.0, 0.0), 0.3, count])
+       print(count.numpy()[0])
+   
+   .. testoutput::
+   
+       1
+   

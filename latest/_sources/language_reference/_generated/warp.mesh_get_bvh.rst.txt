@@ -1,0 +1,20 @@
+﻿warp.mesh\_get\_bvh
+===================
+
+.. function:: warp._src.lang.mesh_get_bvh(id: uint64) -> uint64
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Return the identifier of a mesh's internal BVH.
+   
+   The returned id can be passed directly to the ``bvh_query_*`` builtins (:func:`bvh_query_aabb`,
+   :func:`bvh_query_ray`, :func:`bvh_query_capsule`, :func:`bvh_query_sphere`) to run broad-phase
+   bounding-volume queries against
+   the mesh's triangle BVH; the bound indices they return are triangle (face) indices. Works for all
+   BVH backends (including ``"cubql"``), since cuBQL meshes are converted to Warp's native BVH layout.
+   
+   :param id: The mesh identifier
+   

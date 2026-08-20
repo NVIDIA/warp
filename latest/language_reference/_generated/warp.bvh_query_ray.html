@@ -527,7 +527,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../../api_reference/_generated/warp.BvhQuery.html#warp.BvhQuery" title="warp.BvhQuery"><span class="pre">BvhQuery</span></a></span></span><a class="headerlink" href="#warp._src.lang.bvh_query_ray" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">_BvhQueryRay</span></span></span><a class="headerlink" href="#warp._src.lang.bvh_query_ray" title="Link to this definition">#</a></dt>
 <dd><table class="hlist"><tr><td><ul class="simple">
 <li><p>Kernel</p></li>
 </ul>
@@ -552,7 +552,8 @@ intersected by the ray. Advance the query and read each result with <a class="re
 <code class="docutils literal notranslate"><span class="pre">start</span></code> and <code class="docutils literal notranslate"><span class="pre">dir</span></code> are given in BVH space, i.e. the same coordinate space as
 the <code class="docutils literal notranslate"><span class="pre">lowers</span></code>/<code class="docutils literal notranslate"><span class="pre">uppers</span></code> arrays passed to <a class="reference internal" href="../../api_reference/_generated/warp.Bvh.html#warp.Bvh" title="warp.Bvh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Bvh</span></code></a>. <code class="docutils literal notranslate"><span class="pre">dir</span></code> need not be normalized,
 but the <code class="docutils literal notranslate"><span class="pre">max_dist</span></code> cutoff of <a class="reference internal" href="warp.bvh_query_next.html#warp._src.lang.bvh_query_next" title="warp._src.lang.bvh_query_next"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_next()</span></code></a> is measured in multiples of its length,
-so normalize it for <code class="docutils literal notranslate"><span class="pre">max_dist</span></code> to be a distance in BVH-space units.</p>
+so normalize it for <code class="docutils literal notranslate"><span class="pre">max_dist</span></code> to be a distance in BVH-space units. For capsule sweeps
+use <a class="reference internal" href="warp.bvh_query_capsule.html#warp._src.lang.bvh_query_capsule" title="warp._src.lang.bvh_query_capsule"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_capsule()</span></code></a> instead.</p>
 <p>To restrict traversal to a subtree, set <code class="docutils literal notranslate"><span class="pre">root</span></code> to that node’s index (for a grouped BVH the
 group root is obtained from <a class="reference internal" href="warp.bvh_get_group_root.html#warp._src.lang.bvh_get_group_root" title="warp._src.lang.bvh_get_group_root"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_get_group_root()</span></code></a>). If <code class="docutils literal notranslate"><span class="pre">root</span></code> is -1 (default),
 traversal starts at the BVH’s global root.</p>
@@ -561,7 +562,7 @@ traversal starts at the BVH’s global root.</p>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>id</strong> – The BVH identifier</p></li>
 <li><p><strong>start</strong> – The ray origin, in BVH space</p></li>
-<li><p><strong>dir</strong> – The ray direction, in BVH space (see above on normalization)</p></li>
+<li><p><strong>dir</strong> – The ray direction, in BVH space (normalize for <code class="docutils literal notranslate"><span class="pre">max_dist</span></code> to be a world-space distance)</p></li>
 <li><p><strong>root</strong> – The node to begin the query from, or -1 (default) for the BVH’s global root</p></li>
 </ul>
 </dd>

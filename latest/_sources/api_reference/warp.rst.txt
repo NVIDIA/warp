@@ -225,6 +225,7 @@ Spatial Acceleration
    HashGrid
    HashGridQuery
    Mesh
+   MeshQuery
    MeshQueryAABB
    MeshQueryAABBTiled
    MeshQueryPoint

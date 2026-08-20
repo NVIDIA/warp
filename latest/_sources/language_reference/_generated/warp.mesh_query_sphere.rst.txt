@@ -1,0 +1,46 @@
+﻿warp.mesh\_query\_sphere
+========================
+
+.. function:: warp._src.lang.mesh_query_sphere(id: uint64, center: vec3f, radius: float32) -> _MeshQuerySphere
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Construct a sphere query against a :class:`warp.Mesh`.
+   
+   Iterates over mesh triangles that intersect a sphere. A broad phase uses an exact sphere-AABB test
+   to find candidate triangles; a narrow phase keeps only those whose closest point on the triangle
+   is within ``radius`` of ``center``. Tangential contact (closest point exactly on the sphere surface)
+   is included. A negative ``radius`` is clamped to zero. Degenerate (zero-area) faces are handled by
+   falling back to a closest-point-on-longest-edge test. Advance the query with :func:`mesh_query_next`.
+   
+   :param id: The mesh identifier
+   :param center: The center of the sphere in mesh space
+   :param radius: The radius of the sphere; negative values are clamped to zero
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def find_tris_in_sphere(mesh_id: wp.uint64, center: wp.vec3, radius: float,
+                               hits: wp.array[wp.int32]):
+           query = wp.mesh_query_sphere(mesh_id, center, radius)
+           face = int(0)
+           while wp.mesh_query_next(query, face):
+               hits[face] = wp.int32(1)
+   
+       points = wp.array([[0,0,0],[1,0,0],[0,1,0]], dtype=wp.vec3)
+       indices = wp.array([0,1,2], dtype=wp.int32)
+       mesh = wp.Mesh(points=points, indices=indices)
+       hits = wp.zeros(1, dtype=wp.int32)
+       wp.launch(find_tris_in_sphere, dim=1,
+                 inputs=[mesh.id, wp.vec3(0.1, 0.1, 0.0), 0.5, hits])
+       print("hit:", hits.numpy()[0])
+   
+   .. testoutput::
+   
+       hit: 1
+   
