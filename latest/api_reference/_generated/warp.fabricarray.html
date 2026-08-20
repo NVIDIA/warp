@@ -518,7 +518,7 @@
 <h1>warp.fabricarray<a class="headerlink" href="#warp-fabricarray" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.fabricarray">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">fabricarray</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fabric.py#L106-L301"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fabricarray" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">fabricarray</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fabric.py#L138-L337"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fabricarray" title="Link to this definition">#</a></dt>
 <dd><p>Array type for accessing data stored in Omniverse Runtime Fabric.</p>
 <p>Fabric arrays provide a view into attribute data stored across multiple
 buckets in Fabric, allowing Warp kernels to read and write Fabric data
@@ -534,6 +534,11 @@ Fabric interface information.</p></li>
 </ul>
 </dd>
 </dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Warp does not own the underlying Fabric storage. Keep that storage alive while using this array, an
+indexed view derived from it, or a struct that contains either.</p>
+</div>
 <div class="admonition seealso">
 <p class="admonition-title">See also</p>
 <p><a class="reference internal" href="warp.indexedfabricarray.html#warp.indexedfabricarray" title="warp.indexedfabricarray"><code class="xref py py-class docutils literal notranslate"><span class="pre">indexedfabricarray</span></code></a>, <a class="reference internal" href="warp.fabricarrayarray.html#warp.fabricarrayarray" title="warp.fabricarrayarray"><code class="xref py py-func docutils literal notranslate"><span class="pre">fabricarrayarray()</span></code></a></p>
@@ -576,12 +581,12 @@ Fabric interface information.</p></li>
 </div>
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fabricarray.vars">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">vars</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fabric.py#L286-L293"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fabricarray.vars" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">vars</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fabric.py#L322-L329"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fabricarray.vars" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fabricarray.fill_">
-<span class="sig-name descname"><span class="pre">fill_</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fabric.py#L294-L301"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fabricarray.fill_" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">fill_</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fabric.py#L330-L337"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fabricarray.fill_" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
