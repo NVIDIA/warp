@@ -272,8 +272,11 @@ class StructInstance:
         """Copies this struct with all array members moved onto the given device.
 
         Arrays already living on the desired device are referenced as-is, while
-        arrays being moved are copied.
+        arrays being moved are copied. Fabric array members must already live
+        on the requested device because their descriptors reference external
+        Fabric storage that Warp cannot move.
         """
+        device = warp.get_device(device)
         out = self._cls()
         stack = [(self, out, k, v) for k, v in self._cls.vars.items()]
         while stack:
@@ -287,6 +290,20 @@ class StructInstance:
                 # `.to` returns an array if on different device, force to identity indexedarray
                 cloned = value.to(device)
                 setattr(dst, name, cloned if isinstance(cloned, indexedarray) else indexedarray(cloned))
+            elif matches_array_class(var.type, fabricarray):
+                if value is not None and value.device is not None and value.device != device:
+                    raise ValueError(
+                        f"Cannot move struct field '{name}' containing a Warp Fabric array "
+                        f"from device {value.device} to {device}"
+                    )
+                setattr(dst, name, value)
+            elif matches_array_class(var.type, indexedfabricarray):
+                if value is not None and value.device is not None and value.device != device:
+                    raise ValueError(
+                        f"Cannot move struct field '{name}' containing a Warp indexed Fabric array "
+                        f"from device {value.device} to {device}"
+                    )
+                setattr(dst, name, value)
             elif isinstance(var.type, Struct):
                 # nested struct
                 new_struct = var.type()
@@ -316,6 +333,12 @@ class StructInstance:
                 npvalue.append(value.numpy_value())
             elif matches_array_class(var.type, indexedarray):
                 # indexedarray_t
+                npvalue.append(value.numpy_value())
+            elif matches_array_class(var.type, fabricarray):
+                # fabricarray_t
+                npvalue.append(value.numpy_value())
+            elif matches_array_class(var.type, indexedfabricarray):
+                # indexedfabricarray_t
                 npvalue.append(value.numpy_value())
             elif isinstance(var.type, Struct):
                 # nested struct
@@ -383,6 +406,10 @@ def _make_struct_field_constructor(field: str, var_type: type):
         return lambda ctype: None
     elif matches_array_class(var_type, warp._src.types.indexedarray):
         return lambda ctype: None
+    elif matches_array_class(var_type, warp._src.types.fabricarray):
+        return lambda ctype: None
+    elif matches_array_class(var_type, warp._src.types.indexedfabricarray):
+        return lambda ctype: None
     elif _is_texture_type(var_type):
         return lambda ctype: None
     elif issubclass(var_type, ctypes.Array):
@@ -393,6 +420,13 @@ def _make_struct_field_constructor(field: str, var_type: type):
 
 
 def _make_struct_field_setter(cls, field: str, var_type: type):
+    def check_array_ndim(value):
+        if var_type.ndim is not Any and value.ndim != var_type.ndim:
+            raise TypeError(
+                f"Struct field '{field}' expects an array with {var_type.ndim} dimension(s), "
+                f"got {value.ndim} dimension(s)"
+            )
+
     def set_array_value(inst, value):
         if value is None:
             # create array with null pointer
@@ -405,6 +439,7 @@ def _make_struct_field_setter(cls, field: str, var_type: type):
                 raise TypeError(
                     f"Struct field '{field}' expects dtype {type_repr(var_type.dtype)}, got {type_repr(value.dtype)}"
                 )
+            check_array_ndim(value)
             setattr(inst._ctype, field, value.__ctype__())
 
         # Keep gradient buffers alive while the struct's native array
@@ -429,6 +464,7 @@ def _make_struct_field_setter(cls, field: str, var_type: type):
                 raise TypeError(
                     f"Struct field '{field}' expects dtype {type_repr(var_type.dtype)}, got {type_repr(value.dtype)}"
                 )
+            check_array_ndim(value)
             setattr(inst._ctype, field, value.__ctype__())
 
         # workaround to prevent gradient buffers being garbage collected
@@ -439,6 +475,40 @@ def _make_struct_field_setter(cls, field: str, var_type: type):
         else:
             # clear any previous keepalive
             cls.__setattr__(inst, grad_attr, None)
+
+        cls.__setattr__(inst, field, value)
+
+    def set_fabricarray_value(inst: StructInstance, value: fabricarray | None) -> None:
+        """Assign a Fabric array to the struct field."""
+        if value is None:
+            setattr(inst._ctype, field, var_type.__ctype__())
+        else:
+            if not isinstance(value, fabricarray):
+                raise TypeError(f"Struct field '{field}' expects a Warp Fabric array, got {type(value).__name__}")
+            if not types_equal(value.dtype, var_type.dtype):
+                raise TypeError(
+                    f"Struct field '{field}' expects dtype {type_repr(var_type.dtype)}, got {type_repr(value.dtype)}"
+                )
+            check_array_ndim(value)
+            setattr(inst._ctype, field, value.__ctype__())
+
+        cls.__setattr__(inst, field, value)
+
+    def set_indexedfabricarray_value(inst: StructInstance, value: indexedfabricarray | None) -> None:
+        """Assign an indexed Fabric array to the struct field."""
+        if value is None:
+            setattr(inst._ctype, field, var_type.__ctype__())
+        else:
+            if not isinstance(value, indexedfabricarray):
+                raise TypeError(
+                    f"Struct field '{field}' expects a Warp indexed Fabric array, got {type(value).__name__}"
+                )
+            if not types_equal(value.dtype, var_type.dtype):
+                raise TypeError(
+                    f"Struct field '{field}' expects dtype {type_repr(var_type.dtype)}, got {type_repr(value.dtype)}"
+                )
+            check_array_ndim(value)
+            setattr(inst._ctype, field, value.__ctype__())
 
         cls.__setattr__(inst, field, value)
 
@@ -513,6 +583,10 @@ def _make_struct_field_setter(cls, field: str, var_type: type):
         return set_array_value
     elif matches_array_class(var_type, indexedarray):
         return set_indexedarray_value
+    elif matches_array_class(var_type, fabricarray):
+        return set_fabricarray_value
+    elif matches_array_class(var_type, indexedfabricarray):
+        return set_indexedfabricarray_value
     elif isinstance(var_type, Struct):
         return set_struct_value
     elif _is_texture_type(var_type):
@@ -545,6 +619,10 @@ class Struct:
                 fields.append((label, array_t))
             elif matches_array_class(var.type, indexedarray):
                 fields.append((label, indexedarray_t))
+            elif matches_array_class(var.type, fabricarray):
+                fields.append((label, fabricarray_t))
+            elif matches_array_class(var.type, indexedfabricarray):
+                fields.append((label, indexedfabricarray_t))
             elif isinstance(var.type, Struct):
                 fields.append((label, var.type.ctype))
             elif issubclass(var.type, ctypes.Array):
@@ -663,6 +741,12 @@ class Struct:
             elif matches_array_class(var.type, indexedarray):
                 # indexedarray_t
                 formats.append(indexedarray_t.numpy_dtype())
+            elif matches_array_class(var.type, fabricarray):
+                # fabricarray_t
+                formats.append(fabricarray_t.numpy_dtype())
+            elif matches_array_class(var.type, indexedfabricarray):
+                # indexedfabricarray_t
+                formats.append(indexedfabricarray_t.numpy_dtype())
             elif isinstance(var.type, Struct):
                 # nested struct
                 formats.append(var.type.numpy_dtype())
@@ -699,6 +783,12 @@ class Struct:
             elif matches_array_class(var.type, indexedarray):
                 # Same as regular arrays: return an annotation stub only.
                 setattr(instance, name, indexedarray(dtype=var.type.dtype, ndim=var.type.ndim))
+            elif matches_array_class(var.type, fabricarray):
+                # Same as regular arrays: return an annotation stub only.
+                setattr(instance, name, fabricarray(dtype=var.type.dtype, ndim=var.type.ndim))
+            elif matches_array_class(var.type, indexedfabricarray):
+                # Same as regular arrays: return an annotation stub only.
+                setattr(instance, name, indexedfabricarray(dtype=var.type.dtype, ndim=var.type.ndim))
             elif isinstance(var.type, Struct):
                 # nested struct
                 value = var.type.from_ptr(ptr + offset)
@@ -6837,7 +6927,12 @@ def codegen_struct(struct, device="cpu", indent_size=4, include_tile_helpers=Fal
         return type_is_value(field_type) or type_is_struct(field_type)
 
     def field_type_supports_tile_descriptor_shuffle(field_type):
-        return is_array(field_type) and concrete_array_type(field_type) in (array, indexedarray)
+        return is_array(field_type) and concrete_array_type(field_type) in (
+            array,
+            indexedarray,
+            fabricarray,
+            indexedfabricarray,
+        )
 
     # Scalar leaf types that support additive accumulation: exactly the wp.atomic_add()
     # type set. Every field-wise operation (add, subtract, negate, reduction, atomic add)
