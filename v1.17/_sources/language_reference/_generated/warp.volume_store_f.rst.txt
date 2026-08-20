@@ -1,0 +1,17 @@
+﻿warp.volume\_store\_f
+=====================
+
+.. function:: warp._src.lang.volume_store_f(id: uint64, i: int32, j: int32, k: int32, value: float32) -> None
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Store the :class:`warp.float32` ``value`` at the voxel with integer index-space coordinates
+   ``i``, ``j``, ``k``.
+   
+   Writes only where leaf-level storage exists (see :func:`~warp.volume_store`); a no-op outside
+   allocated leaves or for non-``float32`` volumes. Does not activate voxels. Not differentiable.
+   
+   See :func:`~warp.volume_store` for a usage example.

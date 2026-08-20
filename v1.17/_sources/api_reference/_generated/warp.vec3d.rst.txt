@@ -1,0 +1,20 @@
+﻿warp.vec3d
+==========
+
+.. currentmodule:: warp
+
+.. autoclass:: vec3d
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~vec3d.from_ptr
+      ~vec3d.scalar_export
+      ~vec3d.scalar_import
+   
+   
+   
+   
+   

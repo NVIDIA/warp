@@ -1,0 +1,12 @@
+﻿warp.fem.Operator
+=================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: Operator
+   
+   
+   
+   
+   
+   

@@ -1,0 +1,6 @@
+﻿warp.set\_mempool\_access\_enabled
+==================================
+
+.. currentmodule:: warp
+
+.. autofunction:: set_mempool_access_enabled

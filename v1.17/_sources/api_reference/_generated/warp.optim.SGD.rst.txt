@@ -1,0 +1,21 @@
+﻿warp.optim.SGD
+==============
+
+.. currentmodule:: warp.optim
+
+.. autoclass:: SGD
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~SGD.reset_internal_state
+      ~SGD.set_params
+      ~SGD.step
+      ~SGD.step_detail
+   
+   
+   
+   
+   

@@ -1,0 +1,6 @@
+﻿warp.sparse.bsr\_compress
+=========================
+
+.. currentmodule:: warp.sparse
+
+.. autofunction:: bsr_compress

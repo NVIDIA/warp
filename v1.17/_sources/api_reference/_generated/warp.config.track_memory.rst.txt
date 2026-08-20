@@ -1,0 +1,6 @@
+﻿warp.config.track\_memory
+=========================
+
+.. currentmodule:: warp.config
+
+.. autodata:: track_memory

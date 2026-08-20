@@ -1,0 +1,6 @@
+﻿warp.wait\_event
+================
+
+.. currentmodule:: warp
+
+.. autofunction:: wait_event

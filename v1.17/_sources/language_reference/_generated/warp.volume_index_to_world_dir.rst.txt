@@ -1,0 +1,40 @@
+﻿warp.volume\_index\_to\_world\_dir
+==================================
+
+.. function:: warp._src.lang.volume_index_to_world_dir(id: uint64, uvw: vec3f) -> vec3f
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+      * Differentiable
+
+   Transform the direction ``uvw`` from the volume's index space to world space using the linear
+   part of the volume's affine transform.
+   
+   Translation is not applied and the result is not renormalized, so a scaling transform changes the
+   vector's length. For positions, use :func:`~warp.volume_index_to_world` instead.
+   
+   :param id: The ``id`` of a :class:`warp.Volume`.
+   :param uvw: Direction in index space.
+   
+   :returns: The transformed direction in world space with ``float32`` precision.
+   
+   See :func:`~warp.volume_index_to_world` for a usage example.
+
+.. function:: warp._src.lang.volume_index_to_world_dir(id: uint64, uvw: vec3d) -> vec3d
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+      * Differentiable
+
+   Transform the direction ``uvw`` from the volume's index space to world space using the linear
+   part of the volume's affine transform (float64 precision).
+   
+   The ``float64`` overload of :func:`~warp.volume_index_to_world_dir`. Behavior and usage match
+   the default ``float32`` overload; see it for details and a usage example.

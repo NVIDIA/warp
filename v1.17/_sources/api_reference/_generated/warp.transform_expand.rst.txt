@@ -1,0 +1,6 @@
+﻿warp.transform\_expand
+======================
+
+.. currentmodule:: warp
+
+.. autofunction:: transform_expand

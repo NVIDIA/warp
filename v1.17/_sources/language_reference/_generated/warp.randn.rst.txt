@@ -1,0 +1,18 @@
+﻿warp.randn
+==========
+
+.. function:: warp._src.lang.randn(state: uint32) -> float
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   Sample the standard normal (Gaussian) distribution with mean 0 and variance 1.
+   
+   Uses the Box-Muller transform, consuming two uniform draws. In a kernel, this
+   advances ``state`` in place; called from the Python scope, it does not modify
+   ``state``, so repeated calls with the same ``state`` return the same value
+   (see :func:`rand_init`). For a general normal, scale and shift the result:
+   ``mean + stddev * wp.randn(state)``.

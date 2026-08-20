@@ -1,0 +1,50 @@
+﻿warp.tile\_dot
+==============
+
+.. function:: warp._src.lang.tile_dot(a: Tile[Any, tuple[int, ...]], b: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[Literal[1]]]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the dot product of two tiles.
+   
+   Computes a full contraction between corresponding elements and sums
+   the results. For scalar tiles this is the standard dot product; for
+   vector tiles each pair is contracted via ``wp.dot``; for matrix tiles
+   it is the Frobenius inner product (the sum of element-wise products
+   over all axes).
+   
+   Equivalent in Python to ``wp.tile_sum(a * b)`` for scalar tiles,
+   ``wp.tile_sum(wp.tile_map(wp.dot, a, b))`` for vector tiles, and
+   ``wp.tile_sum(wp.tile_map(wp.ddot, a, b))`` for matrix tiles, but
+   without the intermediate tile and shared-memory round trip the
+   explicit forms would require.
+   
+   :param a: First tile operand.
+   :param b: Second tile operand (must have same shape and dtype as ``a``).
+   
+   :returns: A single-element tile holding the dot-product result. Index the
+             tile at ``[0]`` to obtain the scalar value.
+   
+   .. rubric:: Example
+   
+   .. code-block:: python
+   
+       @wp.kernel
+       def compute():
+   
+           a = wp.tile_ones(dtype=float, shape=64)
+           b = wp.tile_ones(dtype=float, shape=64) * 2.0
+           d = wp.tile_dot(a, b)
+   
+           print(d)
+   
+       wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
+   
+   .. code-block:: text
+   
+       [128] = tile(shape=(1), storage=register)
+   

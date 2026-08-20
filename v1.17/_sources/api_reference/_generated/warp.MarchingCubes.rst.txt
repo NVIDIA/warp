@@ -1,0 +1,34 @@
+﻿warp.MarchingCubes
+==================
+
+.. currentmodule:: warp
+
+.. autoclass:: MarchingCubes
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~MarchingCubes.extract_surface_marching_cubes
+      ~MarchingCubes.resize
+      ~MarchingCubes.surface
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MarchingCubes.CASE_TO_TRI_RANGE
+      ~MarchingCubes.CUBE_CORNER_OFFSETS
+      ~MarchingCubes.EDGE_TO_CORNERS
+      ~MarchingCubes.TRI_LOCAL_INDICES
+      ~MarchingCubes.device
+      ~MarchingCubes.id
+      ~MarchingCubes.max_tris
+      ~MarchingCubes.max_verts
+      ~MarchingCubes.runtime
+   
+   

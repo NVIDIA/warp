@@ -1,0 +1,6 @@
+﻿warp.set\_module\_options
+=========================
+
+.. currentmodule:: warp
+
+.. autofunction:: set_module_options

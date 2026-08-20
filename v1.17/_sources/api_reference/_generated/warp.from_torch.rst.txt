@@ -1,0 +1,6 @@
+﻿warp.from\_torch
+================
+
+.. currentmodule:: warp
+
+.. autofunction:: from_torch

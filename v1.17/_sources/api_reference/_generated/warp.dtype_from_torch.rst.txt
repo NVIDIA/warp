@@ -1,0 +1,6 @@
+﻿warp.dtype\_from\_torch
+=======================
+
+.. currentmodule:: warp
+
+.. autofunction:: dtype_from_torch

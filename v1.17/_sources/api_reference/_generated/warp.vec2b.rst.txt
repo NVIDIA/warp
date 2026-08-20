@@ -1,0 +1,20 @@
+﻿warp.vec2b
+==========
+
+.. currentmodule:: warp
+
+.. autoclass:: vec2b
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~vec2b.from_ptr
+      ~vec2b.scalar_export
+      ~vec2b.scalar_import
+   
+   
+   
+   
+   

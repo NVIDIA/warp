@@ -1,0 +1,31 @@
+﻿warp.tile\_cholesky
+===================
+
+.. function:: warp._src.lang.tile_cholesky(A: Tile[Float, tuple[int, int]], fill_mode: str) -> Tile[Float, tuple[int, int]]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the Cholesky factorization of a symmetric positive-definite matrix ``A``.
+   
+   When ``fill_mode="lower"`` (default), returns lower-triangular ``L`` such that ``LL^T = A``.
+   When ``fill_mode="upper"``, returns upper-triangular ``U`` such that ``U^T U = A``.
+   
+   The ``fill_mode`` parameter must be a compile-time constant.
+   
+   Backward propagation computes gradients with respect to the corresponding
+   triangular parameterization of ``A`` (lower triangle when ``fill_mode="lower"``,
+   upper triangle when ``fill_mode="upper"``).
+   
+   Supported datatypes are:
+       * float32
+       * float64
+   
+   :param A: A square, symmetric positive-definite matrix.
+   :param fill_mode: ``"lower"`` (default) or ``"upper"``. Must be a compile-time constant.
+   
+   :returns: A triangular matrix ``L`` or ``U``.
+   

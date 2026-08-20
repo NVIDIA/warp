@@ -1,0 +1,48 @@
+﻿warp.tile\_stack\_count
+=======================
+
+.. function:: warp._src.lang.tile_stack_count(s: Any) -> int
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Return the current number of elements in a tile stack.
+   
+   Unlike the other tile stack operations this function is **not** cooperative
+   — it does not contain a synchronization barrier and may be called by a
+   single thread or from within a divergent branch. It is safe to call after
+   any :func:`tile_stack_push`, :func:`tile_stack_pop`, or
+   :func:`tile_stack_clear` *provided the preceding cooperative call has
+   completed on all threads in the block*. Those calls end with a barrier
+   that makes ``count`` stable and visible. Calling this after a divergent
+   push/pop/clear is undefined.
+   
+   :param s: The tile stack
+   
+   :returns: The current number of elements in the stack.
+   
+   .. rubric:: Example
+   
+   .. code-block:: python
+   
+       CAP = wp.constant(8)
+   
+       @wp.kernel
+       def count_kernel(out_count: wp.array[int]):
+           _i, j = wp.tid()
+           s = wp.tile_stack(capacity=CAP, dtype=int)
+           wp.tile_stack_push(s, j, j % 2 == 0)
+           if j == 0:
+               out_count[0] = wp.tile_stack_count(s)
+   
+       out_count = wp.zeros(1, dtype=int)
+       wp.launch_tiled(count_kernel, dim=[1], inputs=[out_count], block_dim=8)
+   
+       print(out_count.numpy()[0])
+   
+   .. code-block:: text
+   
+       4
+   

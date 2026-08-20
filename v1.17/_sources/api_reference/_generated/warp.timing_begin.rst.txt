@@ -1,0 +1,6 @@
+﻿warp.timing\_begin
+==================
+
+.. currentmodule:: warp
+
+.. autofunction:: timing_begin

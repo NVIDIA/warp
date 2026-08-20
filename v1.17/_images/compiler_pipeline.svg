@@ -1,0 +1,561 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="37.719in" height="15.073in" overflow="hidden" version="1.1" xmlns="http://www.w3.org/2000/svg">
+ <defs>
+  <filter id="fx0" x="-362.1" y="-144.7" width="4345.2" height="1736.4" filterUnits="userSpaceOnUse">
+   <feComponentTransfer color-interpolation-filters="sRGB">
+    <feFuncR tableValues="0 0" type="discrete"/>
+    <feFuncG tableValues="0 0" type="discrete"/>
+    <feFuncB tableValues="0 0" type="discrete"/>
+    <feFuncA slope="0.380392" type="linear"/>
+   </feComponentTransfer>
+   <feGaussianBlur stdDeviation="3.05556 3.05556"/>
+  </filter>
+  <filter id="fx1" x="-362.1" y="-144.7" width="4345.2" height="1736.4" filterUnits="userSpaceOnUse">
+   <feComponentTransfer color-interpolation-filters="sRGB">
+    <feFuncR tableValues="0 0" type="discrete"/>
+    <feFuncG tableValues="0 0" type="discrete"/>
+    <feFuncB tableValues="0 0" type="discrete"/>
+    <feFuncA slope="0.380392" type="linear"/>
+   </feComponentTransfer>
+   <feGaussianBlur stdDeviation="3.05556 3.05556"/>
+  </filter>
+  <filter id="fx2" x="-362.1" y="-144.7" width="4345.2" height="1736.4" filterUnits="userSpaceOnUse">
+   <feComponentTransfer color-interpolation-filters="sRGB">
+    <feFuncR tableValues="0 0" type="discrete"/>
+    <feFuncG tableValues="0 0" type="discrete"/>
+    <feFuncB tableValues="0 0" type="discrete"/>
+    <feFuncA slope="0.380392" type="linear"/>
+   </feComponentTransfer>
+   <feGaussianBlur stdDeviation="3.05556 3.05556"/>
+  </filter>
+  <filter id="fx3" x="-362.1" y="-144.7" width="4345.2" height="1736.4" filterUnits="userSpaceOnUse">
+   <feComponentTransfer color-interpolation-filters="sRGB">
+    <feFuncR tableValues="0 0" type="discrete"/>
+    <feFuncG tableValues="0 0" type="discrete"/>
+    <feFuncB tableValues="0 0" type="discrete"/>
+    <feFuncA slope="0.380392" type="linear"/>
+   </feComponentTransfer>
+   <feGaussianBlur stdDeviation="3.05556 3.05556"/>
+  </filter>
+  <filter id="fx4" x="-362.1" y="-144.7" width="4345.2" height="1736.4" filterUnits="userSpaceOnUse">
+   <feComponentTransfer color-interpolation-filters="sRGB">
+    <feFuncR tableValues="0 0" type="discrete"/>
+    <feFuncG tableValues="0 0" type="discrete"/>
+    <feFuncB tableValues="0 0" type="discrete"/>
+    <feFuncA slope="0.380392" type="linear"/>
+   </feComponentTransfer>
+   <feGaussianBlur stdDeviation="3.05556 3.05556"/>
+  </filter>
+  <filter id="fx5" x="-362.1" y="-144.7" width="4345.2" height="1736.4" filterUnits="userSpaceOnUse">
+   <feComponentTransfer color-interpolation-filters="sRGB">
+    <feFuncR tableValues="0 0" type="discrete"/>
+    <feFuncG tableValues="0 0" type="discrete"/>
+    <feFuncB tableValues="0 0" type="discrete"/>
+    <feFuncA slope="0.380392" type="linear"/>
+   </feComponentTransfer>
+   <feGaussianBlur stdDeviation="3.05556 3.05556"/>
+  </filter>
+  <filter id="fx6" x="-362.1" y="-144.7" width="4345.2" height="1736.4" filterUnits="userSpaceOnUse">
+   <feComponentTransfer color-interpolation-filters="sRGB">
+    <feFuncR tableValues="0 0" type="discrete"/>
+    <feFuncG tableValues="0 0" type="discrete"/>
+    <feFuncB tableValues="0 0" type="discrete"/>
+    <feFuncA slope="0.380392" type="linear"/>
+   </feComponentTransfer>
+   <feGaussianBlur stdDeviation="3.05556 3.05556"/>
+  </filter>
+  <filter id="fx7" x="-362.1" y="-144.7" width="4345.2" height="1736.4" filterUnits="userSpaceOnUse">
+   <feComponentTransfer color-interpolation-filters="sRGB">
+    <feFuncR tableValues="0 0" type="discrete"/>
+    <feFuncG tableValues="0 0" type="discrete"/>
+    <feFuncB tableValues="0 0" type="discrete"/>
+    <feFuncA slope="0.380392" type="linear"/>
+   </feComponentTransfer>
+   <feGaussianBlur stdDeviation="3.05556 3.05556"/>
+  </filter>
+  <filter id="fx8" x="-362.1" y="-144.7" width="4345.2" height="1736.4" filterUnits="userSpaceOnUse">
+   <feComponentTransfer color-interpolation-filters="sRGB">
+    <feFuncR tableValues="0 0" type="discrete"/>
+    <feFuncG tableValues="0 0" type="discrete"/>
+    <feFuncB tableValues="0 0" type="discrete"/>
+    <feFuncA slope="0.380392" type="linear"/>
+   </feComponentTransfer>
+   <feGaussianBlur stdDeviation="3.05556 3.05556"/>
+  </filter>
+  <filter id="fx9" x="-362.1" y="-144.7" width="4345.2" height="1736.4" filterUnits="userSpaceOnUse">
+   <feComponentTransfer color-interpolation-filters="sRGB">
+    <feFuncR tableValues="0 0" type="discrete"/>
+    <feFuncG tableValues="0 0" type="discrete"/>
+    <feFuncB tableValues="0 0" type="discrete"/>
+    <feFuncA slope="0.380392" type="linear"/>
+   </feComponentTransfer>
+   <feGaussianBlur stdDeviation="3.05556 3.05556"/>
+  </filter>
+  <filter id="fx10" x="-362.1" y="-144.7" width="4345.2" height="1736.4" filterUnits="userSpaceOnUse">
+   <feComponentTransfer color-interpolation-filters="sRGB">
+    <feFuncR tableValues="0 0" type="discrete"/>
+    <feFuncG tableValues="0 0" type="discrete"/>
+    <feFuncB tableValues="0 0" type="discrete"/>
+    <feFuncA slope="0.380392" type="linear"/>
+   </feComponentTransfer>
+   <feGaussianBlur stdDeviation="3.05556 3.05556"/>
+  </filter>
+  <filter id="fx11" x="-362.1" y="-144.7" width="4345.2" height="1736.4" filterUnits="userSpaceOnUse">
+   <feComponentTransfer color-interpolation-filters="sRGB">
+    <feFuncR tableValues="0 0" type="discrete"/>
+    <feFuncG tableValues="0 0" type="discrete"/>
+    <feFuncB tableValues="0 0" type="discrete"/>
+    <feFuncA slope="0.380392" type="linear"/>
+   </feComponentTransfer>
+   <feGaussianBlur stdDeviation="3.05556 3.05556"/>
+  </filter>
+  <filter id="fx12" x="-362.1" y="-144.7" width="4345.2" height="1736.4" filterUnits="userSpaceOnUse">
+   <feComponentTransfer color-interpolation-filters="sRGB">
+    <feFuncR tableValues="0 0" type="discrete"/>
+    <feFuncG tableValues="0 0" type="discrete"/>
+    <feFuncB tableValues="0 0" type="discrete"/>
+    <feFuncA slope="0.380392" type="linear"/>
+   </feComponentTransfer>
+   <feGaussianBlur stdDeviation="3.05556 3.05556"/>
+  </filter>
+  <filter id="fx13" x="-362.1" y="-144.7" width="4345.2" height="1736.4" filterUnits="userSpaceOnUse">
+   <feComponentTransfer color-interpolation-filters="sRGB">
+    <feFuncR tableValues="0 0" type="discrete"/>
+    <feFuncG tableValues="0 0" type="discrete"/>
+    <feFuncB tableValues="0 0" type="discrete"/>
+    <feFuncA slope="0.380392" type="linear"/>
+   </feComponentTransfer>
+   <feGaussianBlur stdDeviation="3.05556 3.05556"/>
+  </filter>
+  <filter id="fx14" x="-362.1" y="-144.7" width="4345.2" height="1736.4" filterUnits="userSpaceOnUse">
+   <feComponentTransfer color-interpolation-filters="sRGB">
+    <feFuncR tableValues="0 0" type="discrete"/>
+    <feFuncG tableValues="0 0" type="discrete"/>
+    <feFuncB tableValues="0 0" type="discrete"/>
+    <feFuncA slope="0.380392" type="linear"/>
+   </feComponentTransfer>
+   <feGaussianBlur stdDeviation="3.05556 3.05556"/>
+  </filter>
+  <filter id="fx15" x="-362.1" y="-144.7" width="4345.2" height="1736.4" filterUnits="userSpaceOnUse">
+   <feComponentTransfer color-interpolation-filters="sRGB">
+    <feFuncR tableValues="0 0" type="discrete"/>
+    <feFuncG tableValues="0 0" type="discrete"/>
+    <feFuncB tableValues="0 0" type="discrete"/>
+    <feFuncA slope="0.380392" type="linear"/>
+   </feComponentTransfer>
+   <feGaussianBlur stdDeviation="3.05556 3.05556"/>
+  </filter>
+  <filter id="fx16" x="-362.1" y="-144.7" width="4345.2" height="1736.4" filterUnits="userSpaceOnUse">
+   <feComponentTransfer color-interpolation-filters="sRGB">
+    <feFuncR tableValues="0 0" type="discrete"/>
+    <feFuncG tableValues="0 0" type="discrete"/>
+    <feFuncB tableValues="0 0" type="discrete"/>
+    <feFuncA slope="0.380392" type="linear"/>
+   </feComponentTransfer>
+   <feGaussianBlur stdDeviation="3.05556 3.05556"/>
+  </filter>
+  <filter id="fx17" x="-362.1" y="-144.7" width="4345.2" height="1736.4" filterUnits="userSpaceOnUse">
+   <feComponentTransfer color-interpolation-filters="sRGB">
+    <feFuncR tableValues="0 0" type="discrete"/>
+    <feFuncG tableValues="0 0" type="discrete"/>
+    <feFuncB tableValues="0 0" type="discrete"/>
+    <feFuncA slope="0.380392" type="linear"/>
+   </feComponentTransfer>
+   <feGaussianBlur stdDeviation="3.05556 3.05556"/>
+  </filter>
+  <filter id="fx18" x="-362.1" y="-144.7" width="4345.2" height="1736.4" filterUnits="userSpaceOnUse">
+   <feComponentTransfer color-interpolation-filters="sRGB">
+    <feFuncR tableValues="0 0" type="discrete"/>
+    <feFuncG tableValues="0 0" type="discrete"/>
+    <feFuncB tableValues="0 0" type="discrete"/>
+    <feFuncA slope="0.380392" type="linear"/>
+   </feComponentTransfer>
+   <feGaussianBlur stdDeviation="3.05556 3.05556"/>
+  </filter>
+  <filter id="fx19" x="-362.1" y="-144.7" width="4345.2" height="1736.4" filterUnits="userSpaceOnUse">
+   <feComponentTransfer color-interpolation-filters="sRGB">
+    <feFuncR tableValues="0 0" type="discrete"/>
+    <feFuncG tableValues="0 0" type="discrete"/>
+    <feFuncB tableValues="0 0" type="discrete"/>
+    <feFuncA slope="0.380392" type="linear"/>
+   </feComponentTransfer>
+   <feGaussianBlur stdDeviation="3.05556 3.05556"/>
+  </filter>
+  <filter id="fx20" x="-362.1" y="-144.7" width="4345.2" height="1736.4" filterUnits="userSpaceOnUse">
+   <feComponentTransfer color-interpolation-filters="sRGB">
+    <feFuncR tableValues="0 0" type="discrete"/>
+    <feFuncG tableValues="0 0" type="discrete"/>
+    <feFuncB tableValues="0 0" type="discrete"/>
+    <feFuncA slope="0.380392" type="linear"/>
+   </feComponentTransfer>
+   <feGaussianBlur stdDeviation="3.05556 3.05556"/>
+  </filter>
+  <filter id="fx21" x="-362.1" y="-144.7" width="4345.2" height="1736.4" filterUnits="userSpaceOnUse">
+   <feComponentTransfer color-interpolation-filters="sRGB">
+    <feFuncR tableValues="0 0" type="discrete"/>
+    <feFuncG tableValues="0 0" type="discrete"/>
+    <feFuncB tableValues="0 0" type="discrete"/>
+    <feFuncA slope="0.380392" type="linear"/>
+   </feComponentTransfer>
+   <feGaussianBlur stdDeviation="3.05556 3.05556"/>
+  </filter>
+  <filter id="fx22" x="-362.1" y="-144.7" width="4345.2" height="1736.4" filterUnits="userSpaceOnUse">
+   <feComponentTransfer color-interpolation-filters="sRGB">
+    <feFuncR tableValues="0 0" type="discrete"/>
+    <feFuncG tableValues="0 0" type="discrete"/>
+    <feFuncB tableValues="0 0" type="discrete"/>
+    <feFuncA slope="0.380392" type="linear"/>
+   </feComponentTransfer>
+   <feGaussianBlur stdDeviation="3.05556 3.05556"/>
+  </filter>
+  <clipPath id="clip23">
+   <rect x="440" y="545" width="3621" height="1447"/>
+  </clipPath>
+  <clipPath id="clip24">
+   <rect x="1" y="35" width="2418" height="514"/>
+  </clipPath>
+  <clipPath id="clip25">
+   <rect width="2437" height="548"/>
+  </clipPath>
+  <clipPath id="clip26">
+   <rect x="-2" y="1" width="368" height="202"/>
+  </clipPath>
+  <clipPath id="clip27">
+   <rect width="400" height="219"/>
+  </clipPath>
+  <clipPath id="clip28">
+   <rect x="-2" y="1" width="363" height="215"/>
+  </clipPath>
+  <clipPath id="clip29">
+   <rect width="395" height="233"/>
+  </clipPath>
+  <clipPath id="clip30">
+   <rect x="6" y="18" width="466" height="57"/>
+  </clipPath>
+  <clipPath id="clip31">
+   <rect width="505" height="92"/>
+  </clipPath>
+  <clipPath id="clip32">
+   <rect x="-2" y="15" width="321" height="60"/>
+  </clipPath>
+  <clipPath id="clip33">
+   <rect width="352" height="91"/>
+  </clipPath>
+  <clipPath id="clip34">
+   <path d="m450.5 1076.5v503h470.96v-503zm-10.5-531.5h3621v1447h-3621z" clip-rule="evenodd" fill-rule="evenodd"/>
+  </clipPath>
+  <clipPath id="clip35">
+   <rect x="1" y="-2" width="494" height="529"/>
+  </clipPath>
+  <clipPath id="clip36">
+   <rect width="494" height="526"/>
+  </clipPath>
+  <clipPath id="clip37">
+   <rect x="35" y="25" width="316" height="208"/>
+  </clipPath>
+  <clipPath id="clip38">
+   <rect width="387" height="269"/>
+  </clipPath>
+  <clipPath id="clip39">
+   <path d="m1496.5 1049.5v259h445v-259zm-1056.5-504.5h3621v1447h-3621z" clip-rule="evenodd" fill-rule="evenodd"/>
+  </clipPath>
+  <clipPath id="clip40">
+   <rect x="-2" y="-2" width="472" height="284"/>
+  </clipPath>
+  <clipPath id="clip41">
+   <rect width="468" height="282"/>
+  </clipPath>
+  <clipPath id="clip42">
+   <rect x="35" y="38" width="126" height="64"/>
+  </clipPath>
+  <clipPath id="clip43">
+   <rect width="196" height="138"/>
+  </clipPath>
+  <clipPath id="clip44">
+   <path d="m1496.5 1389.5v259h445v-259zm-1056.5-844.5h3621v1447h-3621z" clip-rule="evenodd" fill-rule="evenodd"/>
+  </clipPath>
+  <clipPath id="clip45">
+   <rect x="-2" y="-2" width="472" height="284"/>
+  </clipPath>
+  <clipPath id="clip46">
+   <rect width="468" height="282"/>
+  </clipPath>
+  <clipPath id="clip47">
+   <rect x="35" y="38" width="92" height="52"/>
+  </clipPath>
+  <clipPath id="clip48">
+   <rect width="162" height="137"/>
+  </clipPath>
+  <clipPath id="clip49">
+   <path d="m2149.5 1049.5v259h446v-259zm-1709.5-504.5h3621v1447h-3621z" clip-rule="evenodd" fill-rule="evenodd"/>
+  </clipPath>
+  <clipPath id="clip50">
+   <rect x="-2" y="-2" width="472" height="284"/>
+  </clipPath>
+  <clipPath id="clip51">
+   <rect width="469" height="282"/>
+  </clipPath>
+  <clipPath id="clip52">
+   <rect x="38" y="28" width="155" height="62"/>
+  </clipPath>
+  <clipPath id="clip53">
+   <rect width="230" height="138"/>
+  </clipPath>
+  <clipPath id="clip54">
+   <path d="m2149.5 1389.5v259h446v-259zm-1709.5-844.5h3621v1447h-3621z" clip-rule="evenodd" fill-rule="evenodd"/>
+  </clipPath>
+  <clipPath id="clip55">
+   <rect x="-2" y="-2" width="472" height="284"/>
+  </clipPath>
+  <clipPath id="clip56">
+   <rect width="469" height="282"/>
+  </clipPath>
+  <clipPath id="clip57">
+   <rect x="38" y="25" width="195" height="65"/>
+  </clipPath>
+  <clipPath id="clip58">
+   <rect width="266" height="137"/>
+  </clipPath>
+  <clipPath id="clip59">
+   <path d="m2838.5 1226.5v260h445v-260zm-2398.5-681.5h3621v1447h-3621z" clip-rule="evenodd" fill-rule="evenodd"/>
+  </clipPath>
+  <clipPath id="clip60">
+   <rect x="-2" y="-2" width="472" height="287"/>
+  </clipPath>
+  <clipPath id="clip61">
+   <rect width="468" height="283"/>
+  </clipPath>
+  <clipPath id="clip62">
+   <rect x="35" y="25" width="223" height="74"/>
+  </clipPath>
+  <clipPath id="clip63">
+   <rect width="295" height="137"/>
+  </clipPath>
+  <clipPath id="clip64">
+   <path d="m3579.5 1105.5v502h471v-502zm-3139.5-560.5h3621v1447h-3621z" clip-rule="evenodd" fill-rule="evenodd"/>
+  </clipPath>
+  <clipPath id="clip65">
+   <rect x="-2" y="-2" width="497" height="529"/>
+  </clipPath>
+  <clipPath id="clip66">
+   <rect width="494" height="525"/>
+  </clipPath>
+  <clipPath id="clip67">
+   <rect x="35" y="25" width="368" height="213"/>
+  </clipPath>
+  <clipPath id="clip68">
+   <rect width="441" height="270"/>
+  </clipPath>
+  <clipPath id="clip69">
+   <path d="m2056.5 550.5v300h647v-300zm-1616.5-5.5h3621v1447h-3621z" clip-rule="evenodd" fill-rule="evenodd"/>
+  </clipPath>
+  <clipPath id="clip70">
+   <rect x="1" y="-2" width="672" height="326"/>
+  </clipPath>
+  <clipPath id="clip71">
+   <rect width="670" height="323"/>
+  </clipPath>
+  <clipPath id="clip72">
+   <rect x="28" y="25" width="509" height="198"/>
+  </clipPath>
+  <clipPath id="clip73">
+   <rect width="563" height="253"/>
+  </clipPath>
+  <clipPath id="clip74">
+   <rect x="6" y="18" width="158" height="57"/>
+  </clipPath>
+  <clipPath id="clip75">
+   <rect width="197" height="92"/>
+  </clipPath>
+  <clipPath id="clip76">
+   <rect x="18" y="1" width="57" height="118"/>
+  </clipPath>
+  <clipPath id="clip77">
+   <rect width="91" height="154"/>
+  </clipPath>
+ </defs>
+ <g fill="#d42626">
+  <rect width="3621" height="1447" fill="#fff" stroke="#91c499" stroke-width="2"/>
+ </g>
+ <g transform="translate(-440,-545)" clip-path="url(#clip23)">
+  <g transform="translate(670,1445)" clip-path="url(#clip24)" filter="url(#fx0)">
+   <g clip-path="url(#clip25)">
+    <path d="m2397 73.583v458.03c0 3.037-2.47 5.5-5.5 5.5h-2375c-3.0376 0-5.5-2.463-5.5-5.5v-392.61h11v392.61l-5.5-5.5h2375l-5.5 5.5v-458.03zm-22 5.5002 16.5-33 16.5 33z"/>
+   </g>
+  </g>
+  <path d="m3067.2 1515.2v456.88c0 3.16-2.57 5.72-5.73 5.72h-2375c-3.164 0-5.729-2.56-5.729-5.72v-392.61h11.458v392.61l-5.729-5.73h2375l-5.73 5.73v-456.88zm-22.92 5.72 17.19-34.37 17.18 34.37z"/>
+  <g transform="translate(1702,1010)" clip-path="url(#clip26)" filter="url(#fx1)">
+   <g clip-path="url(#clip27)">
+    <path transform="matrix(0 1 1 0 16.5 44.084)" d="m0 5.5h-27.5l5.5-5.5v280.49l-5.5-5.5h157.23c3.037 0 5.5 2.462 5.5 5.5v30.324h-11v-30.324l5.5 5.5h-157.23c-3.0376 0-5.5-2.463-5.5-5.5v-280.49c0-3.0376 2.4624-5.5 5.5-5.5h27.5zm146.23 299.81-16.5 33-16.5-33z"/>
+   </g>
+  </g>
+  <path transform="matrix(0,1,1,0,1718.5,1049.5)" d="m0 5.7292h-27.5l5.7292-5.7292v280.49l-5.7292-5.729h157.23c3.164 0 5.729 2.565 5.729 5.729v29.178h-11.458v-29.178l5.729 5.729h-157.23c-3.1641 0-5.7292-2.565-5.7292-5.729v-280.49c0-3.1641 2.5651-5.7292 5.7292-5.7292h27.5zm146.92 298.21-17.187 34.375-17.188-34.375z"/>
+  <g transform="translate(1702,1350)" clip-path="url(#clip28)" filter="url(#fx2)">
+   <g clip-path="url(#clip29)">
+    <path d="m321.97 192.89h-27.654c-3.037 0-5.5-2.462-5.5-5.5v-170.81l5.5 5.5h-277.82l5.5-5.5v27.5h-11v-27.5c0-3.0375 2.4624-5.5 5.5-5.5h277.82c3.038 0 5.5 2.4625 5.5 5.5v170.81l-5.5-5.5h27.654zm-5.5-22 33 16.5-33 16.5z"/>
+   </g>
+  </g>
+  <path d="m2022.8 1538.5h-26.51c-3.16 0-5.73-2.57-5.73-5.73v-170.81l5.73 5.73h-277.82l5.73-5.73v27.5h-11.46v-27.5c0-3.16 2.57-5.73 5.73-5.73h277.82c3.16 0 5.73 2.57 5.73 5.73v170.81l-5.73-5.73h26.51zm-5.73-22.92 34.37 17.19-34.37 17.19z"/>
+  <g transform="translate(905,1286)" clip-path="url(#clip30)" filter="url(#fx3)">
+   <g clip-path="url(#clip31)">
+    <path transform="matrix(-1 0 0 1 459.31 46.083)" d="m27.5-5.5 415.31 3.4e-4v11l-415.31-3.4e-4zm5.5001 22-33-16.5 33-16.5z"/>
+   </g>
+  </g>
+  <path transform="matrix(-1 0 0 1 1364.3 1327.5)" d="m28.646-5.7291 414.17 3.3e-4v11.458l-414.17-3.4e-4zm5.7292 22.917-34.375-17.188 34.375-17.188z"/>
+  <g transform="translate(3273,1316)" clip-path="url(#clip32)" filter="url(#fx4)">
+   <g clip-path="url(#clip33)">
+    <path d="m10.5 39.583h148.07c3.038 0 5.5 2.4624 5.5 5.5v0.0429l-5.5-5.5h120.57v11h-120.57c-3.037 0-5.5-2.4624-5.5-5.5v-0.0429l5.5 5.5h-148.07zm263.15-10.957 33 16.5-33 16.5z"/>
+   </g>
+  </g>
+  <path d="m3283.5 1350.8h148.07c3.17 0 5.73 2.57 5.73 5.73v0.04l-5.73-5.73h119.43v11.46h-119.43c-3.16 0-5.73-2.56-5.73-5.73v-0.04l5.73 5.73h-148.07zm261.77-11.41 34.38 17.18-34.38 17.19z"/>
+  <rect x="1364.5" y="947.5" width="648" height="761" fill="#cbe4c9" stroke="#008564" stroke-linejoin="round" stroke-miterlimit="10" stroke-width="4.5833"/>
+  <rect x="2055.5" y="947.5" width="648" height="761" fill="#cbe4c9" stroke="#008564" stroke-linejoin="round" stroke-miterlimit="10" stroke-width="4.5833"/>
+  <g clip-path="url(#clip34)">
+   <g transform="translate(439,1070)" clip-path="url(#clip35)" filter="url(#fx5)">
+    <g clip-path="url(#clip36)">
+     <rect x="11.5" y="11.084" width="470.96" height="503" fill="#d7edff" stroke="#000" stroke-linejoin="round" stroke-miterlimit="10"/>
+    </g>
+   </g>
+   <g transform="translate(492,1206)" clip-path="url(#clip37)" filter="url(#fx6)">
+    <g clip-path="url(#clip38)">
+     <path transform="translate(101.04,78)" d="m5.225 0v-38.5h13.53c4.3633 0 7.7458 0.9808 10.148 2.9425s3.6025 4.7392 3.6025 8.3325v1.32c0 3.5933-1.2192 6.38-3.6575 8.36s-5.8025 2.97-10.092 2.97h-8.965v14.575zm4.565-18.48h8.91c2.9333 0 5.2067-0.605 6.82-1.815s2.42-3.0433 2.42-5.5v-1.485c0-2.4567-0.8067-4.29-2.42-5.5s-3.8867-1.815-6.82-1.815h-8.91zm29.141 29.48v-3.685h1.54c1.7234 0 3.0342-0.385 3.9325-1.155 0.8984-0.77 1.7509-2.255 2.5575-4.455l0.605-1.65-11.055-28.05h4.675l8.69 23.375 8.305-23.375h4.455l-11.33 29.865c-0.88 2.3833-1.7783 4.2442-2.695 5.5825-0.9166 1.3383-1.98 2.2642-3.19 2.7775-1.21 0.5133-2.7133 0.77-4.51 0.77zm41.768-10.78c-3.2266 0-5.5183-0.75167-6.875-2.255-1.3566-1.5033-2.035-3.5567-2.035-6.16v-16.17h-5.995v-3.63h5.995v-8.47h4.4001v8.47h9.6799l-0.605 3.63h-9.0749v15.895c0 1.76 0.4033 3.0342 1.21 3.8225 0.8066 0.78833 2.0533 1.1825 3.7399 1.1825h4.73v3.685zm11.885-0.22v-40.15h4.4v16.5c0.8067-1.5033 1.9709-2.7133 3.4927-3.63 1.521-0.9167 3.364-1.375 5.527-1.375h0.495c3.19 0 5.748 0.9717 7.673 2.915s2.887 4.785 2.887 8.525v17.215h-4.4v-16.5c0-2.75-0.605-4.8308-1.815-6.2425s-2.951-2.1175-5.225-2.1175h-0.385c-1.466 0-2.823 0.3575-4.07 1.0725-1.2463 0.715-2.2547 1.7783-3.0247 3.19s-1.155 3.1808-1.155 5.3075v15.29zm43.877 0.66c-2.42 0-4.593-0.54083-6.518-1.6225-1.925-1.0817-3.447-2.6492-4.565-4.7025s-1.677-4.51-1.677-7.37v-1.925c0-2.86 0.559-5.3167 1.677-7.37s2.64-3.6208 4.565-4.7025 4.098-1.6225 6.518-1.6225h0.55c2.456 0 4.647 0.5408 6.572 1.6225s3.447 2.64 4.565 4.675 1.678 4.4825 1.678 7.3425v2.035c0 2.86-0.56 5.3075-1.678 7.3425s-2.64 3.5933-4.565 4.675c-1.925 1.0817-4.116 1.6225-6.572 1.6225zm0.055-3.795h0.44c2.383 0 4.39-0.825 6.022-2.475s2.448-4.1067 2.448-7.37v-2.035c0-3.2633-0.816-5.72-2.448-7.37s-3.639-2.475-6.022-2.475h-0.44c-2.347 0-4.336 0.825-5.968 2.475s-2.447 4.1067-2.447 7.37v2.035c0 3.2633 0.815 5.72 2.447 7.37s3.621 2.475 5.968 2.475zm20.235 3.135v-27.995h4.015v5.005c0.77-1.6867 1.943-3.0525 3.52-4.0975s3.538-1.5675 5.885-1.5675h0.495c3.19 0 5.748 0.9717 7.673 2.915s2.887 4.785 2.887 8.525v17.215h-4.4v-16.5c0-2.75-0.605-4.8308-1.815-6.2425s-2.952-2.1175-5.225-2.1175h-0.385c-1.467 0-2.823 0.3575-4.07 1.0725s-2.255 1.7783-3.025 3.19-1.155 3.1808-1.155 5.3075v15.29z"/>
+     <path transform="translate(43.634 210)" d="m26.565 11.715c-3.4467 0-6.6092-0.55-9.4875-1.65s-5.3625-2.6492-7.4525-4.6475-3.7033-4.3633-4.84-7.095-1.705-5.7475-1.705-9.0475v-2.585c0-3.4833 0.59583-6.6733 1.7875-9.57s2.8783-5.4083 5.06-7.535c2.1817-2.1267 4.7758-3.7767 7.7825-4.95s6.3067-1.76 9.9-1.76h0.935c4.4367 0 8.3417 0.8708 11.715 2.6125s6.0133 4.1617 7.92 7.26 2.86 6.6825 2.86 10.752v1.54c0 2.7133-0.4583 5.1517-1.375 7.315s-2.1542 3.8775-3.7125 5.1425-3.3275 1.8975-5.3075 1.8975h-0.605c-1.7233 0-3.1258-0.44-4.2075-1.32s-1.7325-2.1083-1.9525-3.685c-0.6967 1.5767-1.7417 2.805-3.135 3.685s-3.0433 1.32-4.95 1.32h-0.44c-2.1267 0-3.9875-0.47667-5.5825-1.43s-2.8417-2.3008-3.74-4.0425-1.3475-3.7675-1.3475-6.0775v-1.485c0-2.2733 0.4583-4.2717 1.375-5.995s2.1817-3.0708 3.795-4.0425 3.465-1.4575 5.555-1.4575h0.44c1.9067 0 3.5567 0.4217 4.95 1.265s2.42 2.0717 3.08 3.685v-4.345h3.63v16.83c0 2.42 0.9167 3.63 2.75 3.63h0.33c1.2467 0 2.3467-0.47667 3.3-1.43s1.705-2.255 2.255-3.905 0.825-3.5017 0.825-5.555v-1.54c0-3.4467-0.7608-6.4258-2.2825-8.9375s-3.6667-4.4642-6.435-5.8575-6.0225-2.09-9.7625-2.09h-0.935c-4.0333 0-7.5717 0.8342-10.615 2.5025s-5.4175 4.0058-7.1225 7.0125-2.5575 6.5267-2.5575 10.56v2.585c0 3.6667 0.81583 6.9117 2.4475 9.735 1.6317 2.8233 3.9142 5.0325 6.8475 6.6275s6.3067 2.3925 10.12 2.3925h0.935c1.7233 0 3.4833-0.22917 5.28-0.6875s3.3367-1.0725 4.62-1.8425l1.65 3.52c-3.4467 1.7967-7.315 2.695-11.605 2.695zm-0.605-15.84h0.44c2.2367 0 3.9783-0.73333 5.225-2.2s1.87-3.465 1.87-5.995v-1.1c0-2.5667-0.6233-4.5742-1.87-6.0225s-2.9883-2.1725-5.225-2.1725h-0.44c-2.1267 0-3.85 0.7425-5.17 2.2275s-1.98 3.4192-1.98 5.8025v1.43c0 2.4567 0.6508 4.4092 1.9525 5.8575s3.0342 2.1725 5.1975 2.1725zm29.434-23.87h4.62l6.82 22.055 6.6-22.055h3.905l6.545 22 6.82-22h4.345l-9.24 27.995h-3.905l-6.655-21.945-6.655 21.945h-3.905zm45.829 38.995v-38.995h4.015v4.785c0.843-1.65 2.062-2.97 3.657-3.96s3.53-1.485 5.803-1.485h0.385c2.347 0 4.418 0.5225 6.215 1.5675s3.217 2.585 4.262 4.62 1.568 4.5192 1.568 7.4525v2.035c0 2.9333-0.523 5.4175-1.568 7.4525s-2.465 3.575-4.262 4.62-3.868 1.5675-6.215 1.5675h-0.385c-2.09 0-3.914-0.44-5.473-1.32-1.558-0.88-2.759-2.0717-3.602-3.575v15.235zm12.65-14.135h0.495c2.383 0 4.372-0.80667 5.967-2.42s2.393-4.1067 2.393-7.48v-1.98c0-3.3733-0.798-5.8575-2.393-7.4525s-3.584-2.3925-5.967-2.3925h-0.495c-1.503 0-2.888 0.3483-4.153 1.045s-2.264 1.7783-2.997 3.245-1.1 3.3733-1.1 5.72v1.705c0 3.4833 0.807 6.0225 2.42 7.6175s3.557 2.3925 5.83 2.3925zm18.274 3.135v-5.555h5.17v5.555zm13.374 0v-40.15h4.4v24.805l13.86-12.65h5.775l-11.715 10.615 12.595 17.38h-5.335l-10.505-14.685-4.675 4.235v10.45zm41.309 0.66c-3.85 0-6.893-1.1917-9.13-3.575-2.236-2.3833-3.355-5.7383-3.355-10.065v-2.035c0-2.8233 0.514-5.2525 1.54-7.2875 1.027-2.035 2.485-3.6025 4.373-4.7025s4.079-1.65 6.572-1.65h0.44c2.457 0 4.575 0.5133 6.353 1.54s3.162 2.4842 4.152 4.3725 1.485 4.0975 1.485 6.6275v3.355h-20.57c0.037 3.2633 0.78 5.7017 2.228 7.315s3.419 2.42 5.912 2.42h0.825c1.834 0 3.328-0.33 4.483-0.99s2.081-1.6133 2.777-2.86l3.355 2.035c-0.953 1.6867-2.337 3.025-4.152 4.015s-3.969 1.485-6.463 1.485zm-8.085-16.775h16.17v-0.605c0-2.7133-0.687-4.7667-2.062-6.16s-3.236-2.09-5.583-2.09h-0.44c-2.273 0-4.152 0.7517-5.637 2.255s-2.301 3.7033-2.448 6.6zm27.505 16.115v-27.995h4.015v5.885c0.66-1.8333 1.659-3.3092 2.997-4.4275 1.339-1.1183 3.291-1.6775 5.858-1.6775h2.585v4.015h-2.805c-2.383 0-4.354 0.8158-5.913 2.4475-1.558 1.6317-2.337 4.1342-2.337 7.5075v14.245zm21.771 0v-27.995h4.015v5.005c0.77-1.6867 1.943-3.0525 3.52-4.0975 1.576-1.045 3.538-1.5675 5.885-1.5675h0.495c3.19 0 5.747 0.9717 7.672 2.915s2.888 4.785 2.888 8.525v17.215h-4.4v-16.5c0-2.75-0.605-4.8308-1.815-6.2425s-2.952-2.1175-5.225-2.1175h-0.385c-1.467 0-2.824 0.3575-4.07 1.0725-1.247 0.715-2.255 1.7783-3.025 3.19s-1.155 3.1808-1.155 5.3075v15.29zm43.601 0.66c-3.85 0-6.893-1.1917-9.13-3.575-2.237-2.3833-3.355-5.7383-3.355-10.065v-2.035c0-2.8233 0.513-5.2525 1.54-7.2875s2.484-3.6025 4.373-4.7025c1.888-1.1 4.079-1.65 6.572-1.65h0.44c2.457 0 4.574 0.5133 6.353 1.54 1.778 1.0267 3.162 2.4842 4.152 4.3725s1.485 4.0975 1.485 6.6275v3.355h-20.57c0.037 3.2633 0.779 5.7017 2.228 7.315 1.448 1.6133 3.419 2.42 5.912 2.42h0.825c1.833 0 3.328-0.33 4.483-0.99s2.08-1.6133 2.777-2.86l3.355 2.035c-0.953 1.6867-2.337 3.025-4.152 4.015s-3.97 1.485-6.463 1.485zm-8.085-16.775h16.17v-0.605c0-2.7133-0.687-4.7667-2.062-6.16s-3.236-2.09-5.583-2.09h-0.44c-2.273 0-4.152 0.7517-5.637 2.255s-2.301 3.7033-2.448 6.6zm27.505 16.115v-40.15h4.4v40.15z"/>
+    </g>
+   </g>
+  </g>
+  <rect x="450.5" y="1076.5" width="470.96" height="503" fill="#d7edff" stroke="#000" stroke-linejoin="round" stroke-miterlimit="10" stroke-width="1.1458"/>
+  <g transform="translate(593.04,1279)" aria-label="Python@wp.kernel">
+   <path d="m5.225 0v-38.5h13.53q6.545 0 10.12 2.97 3.63 2.915 3.63 8.305v1.32q0 5.39-3.685 8.36-3.63 2.97-10.065 2.97h-8.965v14.575zm4.565-18.48h8.91q4.4 0 6.82-1.815t2.42-5.5v-1.485q0-3.685-2.42-5.5t-6.82-1.815h-8.91zm28.6 29.48v-3.685h1.54q2.585 0 3.905-1.155 1.375-1.155 2.585-4.455l0.605-1.65-11.055-28.05h4.675l8.69 23.375 8.305-23.375h4.455l-11.33 29.865q-1.32 3.575-2.695 5.555-1.375 2.035-3.19 2.805t-4.51 0.77zm41.8-10.78q-4.84 0-6.875-2.255t-2.035-6.16v-16.17h-5.995v-3.63h5.995v-8.47h4.4v8.47h9.68l-0.605 3.63h-9.075v15.895q0 2.64 1.21 3.85 1.21 1.155 3.74 1.155h4.73v3.685zm12.32-0.22v-40.15h4.4v16.5q1.21-2.255 3.465-3.63 2.31-1.375 5.555-1.375h0.495q4.785 0 7.645 2.915 2.915 2.915 2.915 8.525v17.215h-4.4v-16.5q0-4.125-1.815-6.215-1.815-2.145-5.225-2.145h-0.385q-2.2 0-4.07 1.1-1.87 1.045-3.025 3.19-1.155 2.09-1.155 5.28v15.29zm44.11 0.66q-3.63 0-6.545-1.595-2.86-1.65-4.565-4.73-1.65-3.08-1.65-7.37v-1.925q0-4.29 1.65-7.37 1.705-3.08 4.565-4.675 2.915-1.65 6.545-1.65h0.55q3.685 0 6.545 1.65 2.915 1.595 4.565 4.675 1.705 3.025 1.705 7.315v2.035q0 4.29-1.705 7.37-1.65 3.025-4.565 4.675-2.86 1.595-6.545 1.595zm0.055-3.795h0.44q3.575 0 5.995-2.475 2.475-2.475 2.475-7.37v-2.035q0-4.895-2.475-7.37-2.42-2.475-5.995-2.475h-0.44q-3.52 0-5.995 2.475-2.42 2.475-2.42 7.37v2.035q0 4.895 2.42 7.37 2.475 2.475 5.995 2.475zm20.515 3.135v-27.995h4.015v5.005q1.155-2.53 3.52-4.07 2.365-1.595 5.885-1.595h0.495q4.785 0 7.645 2.915 2.915 2.915 2.915 8.525v17.215h-4.4v-16.5q0-4.125-1.815-6.215-1.815-2.145-5.225-2.145h-0.385q-2.2 0-4.07 1.1-1.87 1.045-3.025 3.19-1.155 2.09-1.155 5.28v15.29z"/>
+   <path d="m-30.841 143.72q-5.17 0-9.515-1.65-4.29-1.65-7.425-4.675-3.135-2.97-4.84-7.04-1.705-4.125-1.705-9.075v-2.585q0-5.225 1.76-9.57 1.815-4.345 5.06-7.535 3.3-3.19 7.81-4.95t9.9-1.76h0.935q6.655 0 11.715 2.64 5.06 2.585 7.92 7.26 2.86 4.62 2.86 10.725v1.54q0 4.07-1.375 7.315t-3.74 5.17q-2.31 1.87-5.28 1.87h-0.605q-2.585 0-4.235-1.32-1.595-1.32-1.925-3.685-1.045 2.365-3.135 3.685t-4.95 1.32h-0.44q-3.19 0-5.61-1.43-2.365-1.43-3.74-4.015-1.32-2.64-1.32-6.105v-1.485q0-3.41 1.375-5.995t3.795-4.015q2.42-1.485 5.555-1.485h0.44q2.86 0 4.95 1.265t3.08 3.685v-4.345h3.63v16.83q0 3.63 2.75 3.63h0.33q1.87 0 3.3-1.43t2.255-3.905 0.825-5.555v-1.54q0-5.17-2.31-8.91-2.255-3.795-6.435-5.885-4.125-2.09-9.735-2.09h-0.935q-6.05 0-10.615 2.53-4.565 2.475-7.15 6.985-2.53 4.51-2.53 10.56v2.585q0 5.5 2.42 9.735 2.475 4.235 6.875 6.6 4.4 2.42 10.12 2.42h0.935q2.585 0 5.28-0.715 2.695-0.66 4.62-1.815l1.65 3.52q-5.17 2.695-11.605 2.695zm-0.605-15.84h0.44q3.355 0 5.225-2.2t1.87-5.995v-1.1q0-3.85-1.87-5.995-1.87-2.2-5.225-2.2h-0.44q-3.19 0-5.17 2.255-1.98 2.2-1.98 5.775v1.43q0 3.685 1.925 5.885 1.98 2.145 5.225 2.145zm28.875-23.87h4.62l6.82 22.055 6.6-22.055h3.905l6.545 22 6.82-22h4.345l-9.24 27.995h-3.905l-6.655-21.945-6.655 21.945h-3.905zm45.1 38.995v-38.995h4.015v4.785q1.265-2.475 3.63-3.96 2.42-1.485 5.83-1.485h0.385q3.52 0 6.215 1.595 2.695 1.54 4.235 4.62 1.595 3.025 1.595 7.425v2.035q0 4.4-1.595 7.48-1.54 3.025-4.235 4.62-2.695 1.54-6.215 1.54h-0.385q-3.135 0-5.5-1.32-2.31-1.32-3.575-3.575v15.235zm12.65-14.135h0.495q3.575 0 5.94-2.42 2.42-2.42 2.42-7.48v-1.98q0-5.06-2.42-7.425-2.365-2.42-5.94-2.42h-0.495q-2.255 0-4.18 1.045-1.87 1.045-2.97 3.245t-1.1 5.72v1.705q0 5.225 2.42 7.645 2.42 2.365 5.83 2.365zm18.205 3.135v-5.555h5.17v5.555zm13.2 0v-40.15h4.4v24.805l13.86-12.65h5.775l-11.715 10.615 12.595 17.38h-5.335l-10.505-14.685-4.675 4.235v10.45zm40.37 0.66q-5.775 0-9.13-3.575t-3.355-10.065v-2.035q0-4.235 1.54-7.26 1.54-3.08 4.345-4.73 2.86-1.65 6.6-1.65h0.44q3.685 0 6.325 1.54 2.695 1.54 4.18 4.4 1.485 2.805 1.485 6.6v3.355h-20.57q0.055 4.895 2.2 7.315 2.2 2.42 5.94 2.42h0.825q2.75 0 4.455-0.99 1.76-0.99 2.805-2.86l3.355 2.035q-1.43 2.53-4.18 4.015-2.695 1.485-6.435 1.485zm-8.085-16.775h16.17v-0.605q0-4.07-2.09-6.16-2.035-2.09-5.555-2.09h-0.44q-3.41 0-5.665 2.255-2.2 2.255-2.42 6.6zm27.5 16.115v-27.995h4.015v5.885q0.99-2.75 2.97-4.4 2.035-1.705 5.885-1.705h2.585v4.015h-2.805q-3.575 0-5.94 2.475-2.31 2.42-2.31 7.48v14.245zm21.56 0v-27.995h4.015v5.005q1.155-2.53 3.52-4.07 2.365-1.595 5.885-1.595h0.495q4.785 0 7.645 2.915 2.915 2.915 2.915 8.525v17.215h-4.4v-16.5q0-4.125-1.815-6.215-1.815-2.145-5.225-2.145h-0.385q-2.2 0-4.07 1.1-1.87 1.045-3.025 3.19-1.155 2.09-1.155 5.28v15.29zm43.835 0.66q-5.775 0-9.13-3.575t-3.355-10.065v-2.035q0-4.235 1.54-7.26 1.54-3.08 4.345-4.73 2.86-1.65 6.6-1.65h0.44q3.685 0 6.325 1.54 2.695 1.54 4.18 4.4 1.485 2.805 1.485 6.6v3.355h-20.57q0.055 4.895 2.2 7.315 2.2 2.42 5.94 2.42h0.825q2.75 0 4.455-0.99 1.76-0.99 2.805-2.86l3.355 2.035q-1.43 2.53-4.18 4.015-2.695 1.485-6.435 1.485zm-8.085-16.775h16.17v-0.605q0-4.07-2.09-6.16-2.035-2.09-5.555-2.09h-0.44q-3.41 0-5.665 2.255-2.2 2.255-2.42 6.6zm27.5 16.115v-40.15h4.4v40.15z"/>
+  </g>
+  <g clip-path="url(#clip39)">
+   <g transform="translate(1485,1043)" clip-path="url(#clip40)" filter="url(#fx7)">
+    <g clip-path="url(#clip41)">
+     <rect x="11.5" y="11.083" width="445" height="259" fill="#d7edff" stroke="#000" stroke-linejoin="round" stroke-miterlimit="10"/>
+    </g>
+   </g>
+   <g transform="translate(1620,1122)" clip-path="url(#clip42)" filter="url(#fx8)">
+    <g clip-path="url(#clip43)">
+     <path transform="translate(44.103 79)" d="m3.63 0v-5.555h5.17v5.555zm24.704 0.66c-3.9234 0-7.0492-1.1917-9.3775-3.575-2.3284-2.3833-3.4925-5.7383-3.4925-10.065v-2.035c0-2.86 0.5408-5.3075 1.6225-7.3425 1.0816-2.035 2.5941-3.5933 4.5375-4.675 1.9433-1.0817 4.18-1.6225 6.71-1.6225h0.605c2.4566 0 4.565 0.5775 6.325 1.7325s3.0433 2.6858 3.85 4.5925l-3.52 1.65c-0.6234-1.2833-1.485-2.3008-2.585-3.0525s-2.4567-1.1275-4.07-1.1275h-0.55c-2.4934 0-4.5375 0.825-6.1325 2.475s-2.3925 4.1067-2.3925 7.37v2.035c0 3.3 0.7791 5.7658 2.3375 7.3975 1.5583 1.6317 3.6208 2.4475 6.1875 2.4475h0.55c1.6866 0 3.0891-0.3575 4.2075-1.0725 1.1183-0.715 1.9708-1.6775 2.5575-2.8875l3.52 1.705c-0.8067 1.7967-2.0992 3.2542-3.8775 4.3725-1.7784 1.1183-3.9142 1.6775-6.4075 1.6775zm17.889 10.34v-38.995h4.015v4.785c0.8433-1.65 2.0625-2.97 3.6575-3.96s3.5292-1.485 5.8025-1.485h0.385c2.3467 0 4.4183 0.5225 6.215 1.5675s3.2175 2.585 4.2625 4.62 1.5675 4.5192 1.5675 7.4525v2.035c0 2.9333-0.5225 5.4175-1.5675 7.4525s-2.4658 3.575-4.2625 4.62-3.8683 1.5675-6.215 1.5675h-0.385c-2.09 0-3.9142-0.44-5.4725-1.32s-2.7592-2.0717-3.6025-3.575v15.235zm12.65-14.135h0.495c2.3833 0 4.3725-0.80667 5.9675-2.42s2.3925-4.1067 2.3925-7.48v-1.98c0-3.3733-0.7975-5.8575-2.3925-7.4525s-3.5842-2.3925-5.9675-2.3925h-0.495c-1.5033 0-2.8875 0.3483-4.1525 1.045s-2.2642 1.7783-2.9975 3.245-1.1 3.3733-1.1 5.72v1.705c0 3.4833 0.8067 6.0225 2.42 7.6175s3.5567 2.3925 5.83 2.3925zm20.579 14.135v-38.995h4.015v4.785c0.8433-1.65 2.0625-2.97 3.6575-3.96s3.5291-1.485 5.8025-1.485h0.385c2.3466 0 4.4183 0.5225 6.215 1.5675 1.7969 1.045 3.2179 2.585 4.2629 4.62s1.567 4.5192 1.567 7.4525v2.035c0 2.9333-0.522 5.4175-1.567 7.4525s-2.466 3.575-4.2629 4.62c-1.7967 1.045-3.8684 1.5675-6.215 1.5675h-0.385c-2.09 0-3.9142-0.44-5.4725-1.32-1.5584-0.88-2.7592-2.0717-3.6025-3.575v15.235zm12.65-14.135h0.495c2.3833 0 4.3725-0.80667 5.9675-2.42 1.5954-1.6133 2.3924-4.1067 2.3924-7.48v-1.98c0-3.3733-0.797-5.8575-2.3924-7.4525-1.595-1.595-3.5842-2.3925-5.9675-2.3925h-0.495c-1.5034 0-2.8875 0.3483-4.1525 1.045s-2.2642 1.7783-2.9975 3.245c-0.7334 1.4667-1.1 3.3733-1.1 5.72v1.705c0 3.4833 0.8066 6.0225 2.42 7.6175 1.6133 1.595 3.5566 2.3925 5.83 2.3925z"/>
+    </g>
+   </g>
+  </g>
+  <rect x="1496.5" y="1049.5" width="445" height="259" fill="#d7edff" stroke="#000" stroke-linejoin="round" stroke-miterlimit="10" stroke-width="1.1458"/>
+  <path transform="translate(1664.1,1196)" d="m3.63 0v-5.555h5.17v5.555zm24.53 0.66q-5.885 0-9.405-3.575-3.465-3.575-3.465-10.065v-2.035q0-4.29 1.595-7.315 1.65-3.08 4.565-4.675 2.915-1.65 6.71-1.65h0.605q3.685 0 6.325 1.76 2.64 1.705 3.85 4.565l-3.52 1.65q-0.935-1.925-2.585-3.025-1.65-1.155-4.07-1.155h-0.55q-3.74 0-6.16 2.475-2.365 2.475-2.365 7.37v2.035q0 4.95 2.31 7.425 2.365 2.42 6.215 2.42h0.55q2.53 0 4.18-1.045 1.705-1.1 2.585-2.915l3.52 1.705q-1.21 2.695-3.905 4.4-2.64 1.65-6.38 1.65zm17.6 10.34v-38.995h4.015v4.785q1.265-2.475 3.63-3.96 2.42-1.485 5.83-1.485h0.385q3.52 0 6.215 1.595 2.695 1.54 4.235 4.62 1.595 3.025 1.595 7.425v2.035q0 4.4-1.595 7.48-1.54 3.025-4.235 4.62-2.695 1.54-6.215 1.54h-0.385q-3.135 0-5.5-1.32-2.31-1.32-3.575-3.575v15.235zm12.65-14.135h0.495q3.575 0 5.94-2.42 2.42-2.42 2.42-7.48v-1.98q0-5.06-2.42-7.425-2.365-2.42-5.94-2.42h-0.495q-2.255 0-4.18 1.045-1.87 1.045-2.97 3.245t-1.1 5.72v1.705q0 5.225 2.42 7.645 2.42 2.365 5.83 2.365zm20.515 14.135v-38.995h4.015v4.785q1.265-2.475 3.63-3.96 2.42-1.485 5.83-1.485h0.385q3.52 0 6.215 1.595 2.695 1.54 4.235 4.62 1.595 3.025 1.595 7.425v2.035q0 4.4-1.595 7.48-1.54 3.025-4.235 4.62-2.695 1.54-6.215 1.54h-0.385q-3.135 0-5.5-1.32-2.31-1.32-3.575-3.575v15.235zm12.65-14.135h0.495q3.575 0 5.94-2.42 2.42-2.42 2.42-7.48v-1.98q0-5.06-2.42-7.425-2.365-2.42-5.94-2.42h-0.495q-2.255 0-4.18 1.045-1.87 1.045-2.97 3.245t-1.1 5.72v1.705q0 5.225 2.42 7.645 2.42 2.365 5.83 2.365z" aria-label=".cpp"/>
+  <g clip-path="url(#clip44)">
+   <g transform="translate(1485,1383)" clip-path="url(#clip45)" filter="url(#fx9)">
+    <g clip-path="url(#clip46)">
+     <rect x="11.5" y="11.083" width="445" height="259" fill="#d7edff" stroke="#000" stroke-linejoin="round" stroke-miterlimit="10"/>
+    </g>
+   </g>
+   <g transform="translate(1637,1463)" clip-path="url(#clip47)" filter="url(#fx10)">
+    <g clip-path="url(#clip48)">
+     <path transform="translate(44.29 78)" d="m3.63 0v-5.555h5.17v5.555zm24.704 0.66c-3.9234 0-7.0492-1.1917-9.3775-3.575-2.3284-2.3833-3.4925-5.7383-3.4925-10.065v-2.035c0-2.86 0.5408-5.3075 1.6225-7.3425 1.0816-2.035 2.5941-3.5933 4.5375-4.675 1.9433-1.0817 4.18-1.6225 6.71-1.6225h0.605c2.4566 0 4.565 0.5775 6.325 1.7325s3.0433 2.6858 3.85 4.5925l-3.52 1.65c-0.6234-1.2833-1.485-2.3008-2.585-3.0525s-2.4567-1.1275-4.07-1.1275h-0.55c-2.4934 0-4.5375 0.825-6.1325 2.475s-2.3925 4.1067-2.3925 7.37v2.035c0 3.3 0.7791 5.7658 2.3375 7.3975 1.5583 1.6317 3.6208 2.4475 6.1875 2.4475h0.55c1.6866 0 3.0891-0.3575 4.2075-1.0725 1.1183-0.715 1.9708-1.6775 2.5575-2.8875l3.52 1.705c-0.8067 1.7967-2.0992 3.2542-3.8775 4.3725-1.7784 1.1183-3.9142 1.6775-6.4075 1.6775zm27.734 0c-3.08 0-5.555-0.97167-7.425-2.915-1.87-1.9433-2.805-4.785-2.805-8.525v-17.215h4.4v16.555c0 2.7133 0.5775 4.7758 1.7325 6.1875s2.8142 2.1175 4.9775 2.1175h0.44c1.43 0 2.7408-0.3575 3.9325-1.0725s2.145-1.7783 2.86-3.19 1.0725-3.1808 1.0725-5.3075v-15.29h4.4v27.995h-4.015v-4.95c-0.77 1.6867-1.9067 3.0433-3.41 4.07-1.5033 1.0267-3.3917 1.54-5.665 1.54z"/>
+    </g>
+   </g>
+  </g>
+  <rect x="1496.5" y="1389.5" width="445" height="259" fill="#d7edff" stroke="#000" stroke-linejoin="round" stroke-miterlimit="10" stroke-width="1.1458"/>
+  <path transform="translate(1681.3 1537)" d="m3.63 0v-5.555h5.17v5.555zm24.53 0.66q-5.885 0-9.405-3.575-3.465-3.575-3.465-10.065v-2.035q0-4.29 1.595-7.315 1.65-3.08 4.565-4.675 2.915-1.65 6.71-1.65h0.605q3.685 0 6.325 1.76 2.64 1.705 3.85 4.565l-3.52 1.65q-0.935-1.925-2.585-3.025-1.65-1.155-4.07-1.155h-0.55q-3.74 0-6.16 2.475-2.365 2.475-2.365 7.37v2.035q0 4.95 2.31 7.425 2.365 2.42 6.215 2.42h0.55q2.53 0 4.18-1.045 1.705-1.1 2.585-2.915l3.52 1.705q-1.21 2.695-3.905 4.4-2.64 1.65-6.38 1.65zm27.61 0q-4.62 0-7.425-2.915t-2.805-8.525v-17.215h4.4v16.555q0 4.07 1.705 6.215 1.76 2.09 5.005 2.09h0.44q2.145 0 3.905-1.045 1.815-1.1 2.86-3.19 1.1-2.145 1.1-5.335v-15.29h4.4v27.995h-4.015v-4.95q-1.155 2.53-3.41 4.07t-5.665 1.54z" aria-label=".cu"/>
+  <g clip-path="url(#clip49)">
+   <g transform="translate(2138,1043)" clip-path="url(#clip50)" filter="url(#fx11)">
+    <g clip-path="url(#clip51)">
+     <rect x="11.5" y="11.083" width="446" height="259" fill="#d7edff" stroke="#000" stroke-linejoin="round" stroke-miterlimit="10"/>
+    </g>
+   </g>
+   <g transform="translate(2257,1122)" clip-path="url(#clip52)" filter="url(#fx12)">
+    <g clip-path="url(#clip53)">
+     <path transform="translate(44.317 79)" d="m5.225 0v-38.5h4.565v34.595h18.425v3.905zm30.365 0v-38.5h4.565v34.595h18.425v3.905zm36.199 0-14.795-38.5h4.95l11.935 32.56 11.99-32.56h4.675l-14.795 38.5zm24.553 0v-38.5h5.1703l14.85 32.285 14.795-32.285h5.06v38.5h-4.4v-30.195l-13.915 30.195h-3.245l-13.915-30.195v30.195z"/>
+    </g>
+   </g>
+  </g>
+  <rect x="2149.5" y="1049.5" width="446" height="259" fill="#d7edff" stroke="#000" stroke-linejoin="round" stroke-miterlimit="10" stroke-width="1.1458"/>
+  <path transform="translate(2301.3 1196)" d="m5.225 0v-38.5h4.565v34.595h18.425v3.905zm30.305 0v-38.5h4.565v34.595h18.425v3.905zm36.135 0-14.795-38.5h4.95l11.935 32.56 11.99-32.56h4.675l-14.795 38.5zm24.805 0v-38.5h5.17l14.85 32.285 14.795-32.285h5.06v38.5h-4.4v-30.195l-13.915 30.195h-3.245l-13.915-30.195v30.195z" aria-label="LLVM"/>
+  <g clip-path="url(#clip54)">
+   <g transform="translate(2138,1383)" clip-path="url(#clip55)" filter="url(#fx13)">
+    <g clip-path="url(#clip56)">
+     <rect x="11.5" y="11.083" width="446" height="259" fill="#d7edff" stroke="#000" stroke-linejoin="round" stroke-miterlimit="10"/>
+    </g>
+   </g>
+   <g transform="translate(2239,1463)" clip-path="url(#clip57)" filter="url(#fx14)">
+    <g clip-path="url(#clip58)">
+     <path transform="translate(43.904 78)" d="m5.225 0v-38.5h3.96l21.725 30.745v-30.745h4.345v38.5h-3.96l-21.67-30.69v30.69zm51.072 0-14.795-38.5h4.95l11.935 32.56 11.99-32.56h4.675l-14.795 38.5zm24.553 0v-38.5h13.035c4.4733 0 7.92 0.9442 10.34 2.8325s3.63 4.5558 3.63 8.0025v1.265c0 2.6033-0.697 4.7758-2.09 6.5175s-3.41 2.9608-6.05 3.6575l9.185 16.225h-5.06l-8.69-15.51h-1.265-8.47v15.51zm4.565-19.415h8.415c3.0433 0 5.3808-0.5592 7.012-1.6775 1.632-1.1183 2.448-2.8325 2.448-5.1425v-1.54c0-2.2733-0.816-3.9783-2.448-5.115-1.6312-1.1367-3.9687-1.705-7.012-1.705h-8.415zm38.853 19.415v-34.595h-12.375v-3.905h29.315v3.905h-12.375v34.595zm36.818 0.66c-5.317 0-9.396-1.6408-12.238-4.9225-2.841-3.2817-4.262-7.8742-4.262-13.778v-2.475c0-3.8133 0.66-7.1225 1.98-9.9275s3.217-4.9683 5.692-6.49 5.418-2.2825 8.828-2.2825h0.715c3.483 0 6.416 0.8067 8.8 2.42 2.383 1.6133 4.07 3.905 5.06 6.875l-4.18 1.43c-0.697-2.1633-1.889-3.8133-3.575-4.95-1.687-1.1367-3.722-1.705-6.105-1.705h-0.66c-3.777 0-6.719 1.265-8.828 3.795-2.108 2.53-3.162 6.105-3.162 10.725v2.695c0 4.7667 1.026 8.3875 3.08 10.862 2.053 2.475 5.023 3.7125 8.91 3.7125h0.66c2.456 0 4.556-0.54083 6.297-1.6225 1.742-1.0817 2.961-2.6675 3.658-4.7575l4.07 1.595c-1.027 2.7867-2.759 4.95-5.198 6.49-2.438 1.54-5.381 2.31-8.827 2.31z"/>
+    </g>
+   </g>
+  </g>
+  <rect x="2149.5" y="1389.5" width="446" height="259" fill="#d7edff" stroke="#000" stroke-linejoin="round" stroke-miterlimit="10" stroke-width="1.1458"/>
+  <path transform="translate(2282.9,1537)" d="m5.225 0v-38.5h3.96l21.725 30.745v-30.745h4.345v38.5h-3.96l-21.67-30.69v30.69zm50.875 0-14.795-38.5h4.95l11.935 32.56 11.99-32.56h4.675l-14.795 38.5zm24.805 0v-38.5h13.035q6.71 0 10.34 2.86 3.63 2.805 3.63 7.975v1.265q0 3.905-2.09 6.545-2.09 2.585-6.05 3.63l9.185 16.225h-5.06l-8.69-15.51q-0.605 0-1.265 0h-8.47v15.51zm4.565-19.415h8.415q4.565 0 6.985-1.65 2.475-1.705 2.475-5.17v-1.54q0-3.41-2.475-5.115-2.42-1.705-6.985-1.705h-8.415zm38.555 19.415v-34.595h-12.375v-3.905h29.315v3.905h-12.375v34.595zm36.685 0.66q-7.975 0-12.265-4.895-4.235-4.95-4.235-13.805v-2.475q0-5.72 1.98-9.9 1.98-4.235 5.665-6.49 3.74-2.31 8.855-2.31h0.715q5.225 0 8.8 2.42t5.06 6.875l-4.18 1.43q-1.045-3.245-3.575-4.95t-6.105-1.705h-0.66q-5.665 0-8.855 3.795-3.135 3.795-3.135 10.725v2.695q0 7.15 3.08 10.89 3.08 3.685 8.91 3.685h0.66q3.685 0 6.27-1.595 2.64-1.65 3.685-4.785l4.07 1.595q-1.54 4.18-5.225 6.49-3.63 2.31-8.8 2.31z" aria-label="NVRTC"/>
+  <g clip-path="url(#clip59)">
+   <g transform="translate(2827,1220)" clip-path="url(#clip60)" filter="url(#fx15)">
+    <g clip-path="url(#clip61)">
+     <rect x="11.5" y="11.083" width="445" height="260" fill="#d7edff" stroke="#000" stroke-linejoin="round" stroke-miterlimit="10"/>
+    </g>
+   </g>
+   <g transform="translate(2913,1300)" clip-path="url(#clip62)" filter="url(#fx16)">
+    <g clip-path="url(#clip63)">
+     <path transform="translate(44.134,78)" d="m3.63 0v-5.555h5.17v5.555z"/>
+     <path transform="translate(56.738 78)" d="m4.4 11v-38.995h4.015v4.785c0.84333-1.65 2.0625-2.97 3.6575-3.96s3.5292-1.485 5.8025-1.485h0.385c2.3467 0 4.4183 0.5225 6.215 1.5675s3.2175 2.585 4.2625 4.62 1.5675 4.5192 1.5675 7.4525v2.035c0 2.9333-0.5225 5.4175-1.5675 7.4525s-2.4658 3.575-4.2625 4.62-3.8683 1.5675-6.215 1.5675h-0.385c-2.09 0-3.9142-0.44-5.4725-1.32s-2.7592-2.0717-3.6025-3.575v15.235zm12.65-14.135h0.495c2.3833 0 4.3725-0.80667 5.9675-2.42s2.3925-4.1067 2.3925-7.48v-1.98c0-3.3733-0.7975-5.8575-2.3925-7.4525s-3.5842-2.3925-5.9675-2.3925h-0.495c-1.5033 0-2.8875 0.3483-4.1525 1.045s-2.2642 1.7783-2.9975 3.245c-0.73333 1.4667-1.1 3.3733-1.1 5.72v1.705c0 3.4833 0.80667 6.0225 2.42 7.6175 1.6133 1.595 3.5567 2.3925 5.83 2.3925zm30.534 3.355c-3.2267 0-5.5184-0.75167-6.875-2.255-1.3567-1.5033-2.035-3.5567-2.035-6.16v-16.17h-5.995v-3.63h5.995v-8.47h4.4v8.47h9.68l-0.605 3.63h-9.075v15.895c0 1.76 0.4033 3.0342 1.21 3.8225 0.8066 0.78833 2.0533 1.1825 3.74 1.1825h4.73v3.685zm29.484-0.22-7.7549-11.275-7.8101 11.275h-4.95l10.175-14.19-9.79-13.805h5.115l7.425 10.835 7.37-10.835h4.95l-9.79 13.805 10.175 14.19z"/>
+     <path transform="translate(141.44 78)" d="m4.785 7.15h-4.4l13.86-49.5h4.4zm17.751-7.15v-5.555h5.17v5.555zm24.594 0.66c-2.42 0-4.5925-0.54083-6.5175-1.6225-1.925-1.0817-3.4467-2.6492-4.565-4.7025s-1.6775-4.51-1.6775-7.37v-1.925c0-2.86 0.5592-5.3167 1.6775-7.37s2.64-3.6208 4.565-4.7025 4.0975-1.6225 6.5175-1.6225h0.55c2.4567 0 4.6475 0.5408 6.5725 1.6225s3.4467 2.64 4.565 4.675 1.6775 4.4825 1.6775 7.3425v2.035c0 2.86-0.5592 5.3075-1.6775 7.3425s-2.64 3.5933-4.565 4.675c-1.925 1.0817-4.1158 1.6225-6.5725 1.6225zm0.055-3.795h0.44c2.3833 0 4.3908-0.825 6.0225-2.475s2.4475-4.1067 2.4475-7.37v-2.035c0-3.2633-0.8158-5.72-2.4475-7.37s-3.6392-2.475-6.0225-2.475h-0.44c-2.3467 0-4.3358 0.825-5.9675 2.475s-2.4475 4.1067-2.4475 7.37v2.035c0 3.2633 0.8158 5.72 2.4475 7.37s3.6208 2.475 5.9675 2.475zm33.71 3.795c-2.2733 0-4.2075-0.495-5.8025-1.485s-2.8141-2.3283-3.6575-4.015v4.84h-4.015v-40.15h4.4v16.445c0.8434-1.5033 2.0442-2.7042 3.6025-3.6025 1.5584-0.8983 3.3825-1.3475 5.4725-1.3475h0.385c2.3467 0 4.4184 0.5225 6.215 1.5675 1.7967 1.045 3.2175 2.585 4.2625 4.62s1.5675 4.5192 1.5675 7.4525v2.035c0 2.9333-0.5225 5.4175-1.5675 7.4525s-2.4658 3.575-4.2625 4.62c-1.7966 1.045-3.8683 1.5675-6.215 1.5675zm-0.825-3.795h0.495c2.3834 0 4.3725-0.80667 5.9675-2.42s2.3925-4.1067 2.3925-7.48v-1.98c0-3.3733-0.7975-5.8575-2.3925-7.4525s-3.5841-2.3925-5.9675-2.3925h-0.495c-1.5033 0-2.8875 0.3483-4.1525 1.045s-2.2641 1.7783-2.9975 3.245c-0.7333 1.4667-1.1 3.3733-1.1 5.72v1.705c0 3.4833 0.8067 6.0225 2.42 7.6175 1.6134 1.595 3.5567 2.3925 5.83 2.3925zm14.749 14.135v-3.685h1.87c1.3933 0 2.4017-0.4125 3.025-1.2375 0.623-0.825 0.935-2.0442 0.935-3.6575v-30.415h4.4v30.415c0 2.6033-0.66 4.6842-1.98 6.2425-1.32 1.5583-3.4467 2.3375-6.38 2.3375zm5.72-44.88v-5.005h4.62v5.005z"/>
+    </g>
+   </g>
+  </g>
+  <rect x="2838.5" y="1226.5" width="445" height="260" fill="#d7edff" stroke="#000" stroke-linejoin="round" stroke-miterlimit="10" stroke-width="1.1458"/>
+  <g transform="translate(2957.1 1374)" aria-label=".ptx/.obj">
+   <path d="m3.63 0v-5.555h5.17v5.555z"/>
+   <path d="m17.004 11v-38.995h4.015v4.785q1.265-2.475 3.63-3.96 2.42-1.485 5.83-1.485h0.385q3.52 0 6.215 1.595 2.695 1.54 4.235 4.62 1.595 3.025 1.595 7.425v2.035q0 4.4-1.595 7.48-1.54 3.025-4.235 4.62-2.695 1.54-6.215 1.54h-0.385q-3.135 0-5.5-1.32-2.31-1.32-3.575-3.575v15.235zm12.65-14.135h0.495q3.575 0 5.94-2.42 2.42-2.42 2.42-7.48v-1.98q0-5.06-2.42-7.425-2.365-2.42-5.94-2.42h-0.495q-2.255 0-4.18 1.045-1.87 1.045-2.97 3.245t-1.1 5.72v1.705q0 5.225 2.42 7.645 2.42 2.365 5.83 2.365zm30.47 3.355q-4.84 0-6.875-2.255t-2.035-6.16v-16.17h-5.995v-3.63h5.995v-8.47h4.4v8.47h9.68l-0.605 3.63h-9.075v15.895q0 2.64 1.21 3.85 1.21 1.155 3.74 1.155h4.73v3.685zm29.92-0.22-7.755-11.275-7.81 11.275h-4.95l10.175-14.19-9.79-13.805h5.115l7.425 10.835 7.37-10.835h4.95l-9.79 13.805 10.175 14.19z"/>
+   <path d="m102.09 7.15h-4.4l13.86-49.5h4.4zm17.875-7.15v-5.555h5.17v5.555zm24.42 0.66q-3.63 0-6.545-1.595-2.86-1.65-4.565-4.73-1.65-3.08-1.65-7.37v-1.925q0-4.29 1.65-7.37 1.705-3.08 4.565-4.675 2.915-1.65 6.545-1.65h0.55q3.685 0 6.545 1.65 2.915 1.595 4.565 4.675 1.705 3.025 1.705 7.315v2.035q0 4.29-1.705 7.37-1.65 3.025-4.565 4.675-2.86 1.595-6.545 1.595zm0.055-3.795h0.44q3.575 0 5.995-2.475 2.475-2.475 2.475-7.37v-2.035q0-4.895-2.475-7.37-2.42-2.475-5.995-2.475h-0.44q-3.52 0-5.995 2.475-2.42 2.475-2.42 7.37v2.035q0 4.895 2.42 7.37 2.475 2.475 5.995 2.475zm33.99 3.795q-3.41 0-5.83-1.485-2.365-1.485-3.63-4.015v4.84h-4.015v-40.15h4.4v16.445q1.265-2.255 3.575-3.575 2.365-1.375 5.5-1.375h0.385q3.52 0 6.215 1.595 2.695 1.54 4.235 4.62 1.595 3.025 1.595 7.425v2.035q0 4.4-1.595 7.48-1.54 3.025-4.235 4.62-2.695 1.54-6.215 1.54zm-0.825-3.795h0.495q3.575 0 5.94-2.42 2.42-2.42 2.42-7.48v-1.98q0-5.06-2.42-7.425-2.365-2.42-5.94-2.42h-0.495q-2.255 0-4.18 1.045-1.87 1.045-2.97 3.245t-1.1 5.72v1.705q0 5.225 2.42 7.645 2.42 2.365 5.83 2.365zm14.685 14.135v-3.685h1.87q2.09 0 3.025-1.265 0.935-1.21 0.935-3.63v-30.415h4.4v30.415q0 3.905-1.98 6.215-1.98 2.365-6.38 2.365zm5.72-44.88v-5.005h4.62v5.005z"/>
+  </g>
+  <g clip-path="url(#clip64)">
+   <g transform="translate(3568,1099)" clip-path="url(#clip65)" filter="url(#fx17)">
+    <g clip-path="url(#clip66)">
+     <rect x="11.5" y="11.083" width="471" height="502" fill="#d7edff" stroke="#000" stroke-linejoin="round" stroke-miterlimit="10"/>
+    </g>
+   </g>
+   <g transform="translate(3594,1234)" clip-path="url(#clip67)" filter="url(#fx18)">
+    <g clip-path="url(#clip68)">
+     <path transform="translate(128.27 78)" d="m5.225 0v-38.5h13.53c4.3633 0 7.7458 0.9808 10.148 2.9425s3.6025 4.7392 3.6025 8.3325v1.32c0 3.5933-1.2192 6.38-3.6575 8.36s-5.8025 2.97-10.092 2.97h-8.965v14.575zm4.565-18.48h8.91c2.9333 0 5.2067-0.605 6.82-1.815s2.42-3.0433 2.42-5.5v-1.485c0-2.4567-0.8067-4.29-2.42-5.5s-3.8867-1.815-6.82-1.815h-8.91zm29.141 29.48v-3.685h1.54c1.7234 0 3.0342-0.385 3.9325-1.155 0.8984-0.77 1.7509-2.255 2.5575-4.455l0.605-1.65-11.055-28.05h4.675l8.69 23.375 8.305-23.375h4.455l-11.33 29.865c-0.88 2.3833-1.7783 4.2442-2.695 5.5825-0.9166 1.3383-1.98 2.2642-3.19 2.7775-1.21 0.5133-2.7133 0.77-4.51 0.77zm41.768-10.78c-3.2266 0-5.5183-0.75167-6.875-2.255-1.3566-1.5033-2.035-3.5567-2.035-6.16v-16.17h-5.995v-3.63h5.995v-8.47h4.4001v8.47h9.6799l-0.605 3.63h-9.0749v15.895c0 1.76 0.4033 3.0342 1.21 3.8225 0.8066 0.78833 2.0533 1.1825 3.7399 1.1825h4.73v3.685zm11.885-0.22v-40.15h4.4v16.5c0.8067-1.5033 1.9709-2.7133 3.4927-3.63 1.521-0.9167 3.364-1.375 5.527-1.375h0.495c3.19 0 5.748 0.9717 7.673 2.915s2.887 4.785 2.887 8.525v17.215h-4.4v-16.5c0-2.75-0.605-4.8308-1.815-6.2425s-2.951-2.1175-5.225-2.1175h-0.385c-1.466 0-2.823 0.3575-4.07 1.0725-1.2463 0.715-2.2547 1.7783-3.0247 3.19s-1.155 3.1808-1.155 5.3075v15.29zm43.877 0.66c-2.42 0-4.593-0.54083-6.518-1.6225-1.925-1.0817-3.447-2.6492-4.565-4.7025s-1.677-4.51-1.677-7.37v-1.925c0-2.86 0.559-5.3167 1.677-7.37s2.64-3.6208 4.565-4.7025 4.098-1.6225 6.518-1.6225h0.55c2.456 0 4.647 0.5408 6.572 1.6225s3.447 2.64 4.565 4.675 1.678 4.4825 1.678 7.3425v2.035c0 2.86-0.56 5.3075-1.678 7.3425s-2.64 3.5933-4.565 4.675c-1.925 1.0817-4.116 1.6225-6.572 1.6225zm0.055-3.795h0.44c2.383 0 4.39-0.825 6.022-2.475s2.448-4.1067 2.448-7.37v-2.035c0-3.2633-0.816-5.72-2.448-7.37s-3.639-2.475-6.022-2.475h-0.44c-2.347 0-4.336 0.825-5.968 2.475s-2.447 4.1067-2.447 7.37v2.035c0 3.2633 0.815 5.72 2.447 7.37s3.621 2.475 5.968 2.475zm20.235 3.135v-27.995h4.015v5.005c0.77-1.6867 1.943-3.0525 3.52-4.0975s3.538-1.5675 5.885-1.5675h0.495c3.19 0 5.748 0.9717 7.673 2.915s2.887 4.785 2.887 8.525v17.215h-4.4v-16.5c0-2.75-0.605-4.8308-1.815-6.2425s-2.952-2.1175-5.225-2.1175h-0.385c-1.467 0-2.823 0.3575-4.07 1.0725s-2.255 1.7783-3.025 3.19-1.155 3.1808-1.155 5.3075v15.29z"/>
+     <path transform="translate(44.302,213)" d="m19.336 0-3.33-22.612h-0.4297l-2.3365-5.8545h5.21l3.3569 24.17h0.4834l2.417-24.17h5.6397l-4.0283 28.467zm-14.233 0-3.2227-28.467h5.3711l2.1484 24.17h0.4834l3.3569-24.17h5.21l-2.3901 5.8545h-0.376l-3.3301 22.612zm31.493 12.354v-40.82h5.1562l0.5371 6.0156v34.805zm13.777-11.816c-2.1842 0-3.9433-0.5013-5.2771-1.5039-1.3338-1.0026-2.0902-2.3991-2.2693-4.1895h-2.4707l1.9336-8.1104c0 2.9362 0.5774 5.1652 1.7322 6.687s2.8511 2.2827 5.0891 2.2827c2.2917 0 4.0283-0.81462 5.21-2.4438 1.1816-1.6292 1.7724-4.0373 1.7724-7.2241 0-3.3659-0.5908-5.9082-1.7724-7.627-1.1817-1.7187-2.9183-2.5781-5.21-2.5781-2.238 0-3.9343 0.7609-5.0891 2.2827s-1.7322 3.7508-1.7322 6.687l-1.9336-8.1103h2.2022c0.2506-1.7904 1.0608-3.1869 2.4304-4.1895s3.1645-1.5039 5.3845-1.5039c3.7419 0 6.5706 1.2712 8.4863 3.8135s2.8736 6.2842 2.8736 11.226c0 4.7623-0.9579 8.3699-2.8736 10.823s-4.7444 3.6792-8.4863 3.6792zm29.908 0c-1.0921 0-2.0276-0.3894-2.8064-1.1682-0.7788-0.77881-1.1682-1.7143-1.1682-2.8064 0-1.11 0.3894-2.05 1.1682-2.8198 0.7788-0.76986 1.7143-1.1548 2.8064-1.1548 1.1101 0 2.05 0.38493 2.8199 1.1548 0.7698 0.76985 1.1548 1.7098 1.1548 2.8198 0 1.0921-0.385 2.0276-1.1548 2.8064-0.7699 0.77881-1.7098 1.1682-2.8199 1.1682zm36.326 0c-3.294 0-5.675-0.89518-7.143-2.6855-1.468-1.7904-2.202-4.6549-2.202-8.5938v-29.541h5.693v29.272c0 1.5039 0.143 2.7303 0.43 3.6792 0.286 0.94889 0.846 1.6471 1.678 2.0947 0.833 0.4476 2.064 0.67139 3.693 0.67139 1.486 0 3.384-0.34017 5.693-1.0205l0.645 4.9951c-1.45 0.39388-2.842 0.68034-4.176 0.85938-1.334 0.17904-2.771 0.26855-4.311 0.26855zm-17.724-35.825v-4.9951h8.8622v4.9951zm51.419 35.557-0.376-8.4326-0.752-2.3632v-7.3584c0-1.8978-0.667-3.2898-2.001-4.1761-1.333-0.8862-3.316-1.3651-5.948-1.4367l-6.821-0.188 0.537-5.0488 5.747 0.0805c4.709 0.0716 8.204 1.0877 10.487 3.0481 2.283 1.9605 3.424 4.8206 3.424 8.5803v11.87l4.834 0.59082v4.5654zm-10.044 0.26855c-2.972 0-5.272-0.71615-6.902-2.1484-1.629-1.4323-2.444-3.4554-2.444-6.0693 0-3.0078 1.124-5.3173 3.371-6.9287 2.247-1.6113 5.42-2.417 9.52-2.417 1.701 0 3.218 0.103 4.552 0.3089s2.52 0.5147 3.558 0.9265l-1.181 3.8672c-1.2-0.2686-2.372-0.4252-3.518-0.47s-2.319-0.0671-3.518-0.0671c-4.942 0-7.412 1.5039-7.412 4.5117 0 1.2533 0.425 2.22 1.275 2.9004 0.851 0.68034 2.055 1.0205 3.612 1.0205 1.773 0 3.254-0.30436 4.445-0.91309 1.19-0.60872 2.081-1.3875 2.672-2.3364s0.886-1.9246 0.886-2.9273v-3.1152l1.665 7.3047h-2.256l0.913-0.85938c0 1.6471-0.38 3.0212-1.141 4.1223-0.761 1.1011-1.831 1.9246-3.209 2.4707-1.379 0.54606-3.008 0.81909-4.888 0.81909zm33.48 0c-2.99 0-5.304-0.89071-6.942-2.6721-1.638-1.7814-2.457-4.2924-2.457-7.533v-18.799h5.693v18.799c0 1.6292 0.465 2.887 1.396 3.7732s2.238 1.3293 3.921 1.3293c2.077 0 3.644-0.65796 4.7-1.9739 1.056-1.3159 1.584-3.5225 1.584-6.6199l1.451 7.6807h-1.88c-0.448 1.9336-1.325 3.4196-2.632 4.458-1.307 1.0384-2.918 1.5576-4.834 1.5576zm8.379-0.26855-0.484-6.8213v-4.9952h5.694v6.3916l3.921 0.59082v4.5654zm-0.484-8.3252v-20.41h5.694v18.799zm32.889 8.0566v-18.53c0-1.7187-0.447-3.0436-1.342-3.9746s-2.149-1.3965-3.76-1.3965c-4.476 0-6.714 2.6319-6.714 7.8955l-1.665-7.3046h2.202c0.161-1.9157 0.86-3.3436 2.095-4.2835s3.044-1.4099 5.425-1.4099c3.008 0 5.335 0.9131 6.982 2.7393 1.647 1.8261 2.471 4.4043 2.471 7.7343v18.53zm-17.509 0v-28.467h5.156l0.537 6.0156v22.451zm46.424 0.53711c-4.852 0-8.598-1.2756-11.239-3.8269-2.641-2.5513-3.961-6.217-3.961-10.997 0-4.655 1.248-8.2715 3.746-10.85s6.065-3.8672 10.702-3.8672c2.775 0 5.152 0.5147 7.13 1.5442 1.978 1.0294 3.388 2.4841 4.23 4.364l-4.378 3.3032c-0.805-1.3069-1.835-2.3185-3.088-3.0346-1.253-0.7162-2.623-1.0743-4.109-1.0743-2.685 0-4.771 0.8102-6.257 2.4305-1.486 1.6202-2.229 3.9253-2.229 6.9152 0 3.2406 0.873 5.7158 2.618 7.4256 1.746 1.7098 4.239 2.5647 7.479 2.5647 1.325 0 2.65-0.06266 3.975-0.18799 1.325-0.12532 2.614-0.29541 3.867-0.51025l0.645 4.9951c-1.468 0.32227-2.986 0.53711-4.552 0.64453-1.567 0.10742-3.093 0.16113-4.579 0.16113zm35.252-0.53711v-18.53c0-1.8082-0.447-3.2002-1.343-4.176-0.895-0.9757-2.148-1.4636-3.759-1.4636-4.476 0-6.714 2.7213-6.714 8.164l-1.665-7.3046h2.202c0.161-1.9157 0.859-3.3436 2.095-4.2835 1.235-0.9399 3.043-1.4099 5.424-1.4099 3.008 0 5.336 0.9131 6.983 2.7393 1.647 1.8261 2.471 4.4043 2.471 7.7343v18.53zm-17.51 0v-40.283h5.694v40.283z"/>
+     <path transform="translate(333.05 213)" d="m25.513 5.3711c-5.8187 0-10.335-2.144-13.549-6.4319-3.2137-4.2879-4.8206-10.344-4.8206-18.168 0-7.7165 1.6069-13.692 4.8206-17.926 3.2137-4.2342 7.7299-6.3514 13.549-6.3514h1.2891v4.834h-0.752c-4.2432 0-7.5151 1.7009-9.8157 5.1026s-3.4509 8.1819-3.4509 14.341c0 6.2663 1.1503 11.127 3.4509 14.582 2.3006 3.4554 5.5725 5.1831 9.8157 5.1831h0.752v4.834zm11.995 0v-4.834h0.752c4.2432 0 7.515-1.7277 9.8157-5.1831 2.3006-3.4554 3.4509-8.3162 3.4509-14.582 0-6.1589-1.1503-10.939-3.4509-14.341-2.3007-3.4017-5.5725-5.1026-9.8157-5.1026h-0.752v-4.834h1.2891c5.8366 0 10.357 2.1172 13.562 6.3514 3.2048 4.2342 4.8071 10.21 4.8071 17.926 0 7.8239-1.6023 13.88-4.8071 18.168-3.2047 4.2879-7.7254 6.4319-13.562 6.4319z"/>
+    </g>
+   </g>
+  </g>
+  <rect x="3579.5" y="1105.5" width="471" height="502" fill="#d7edff" stroke="#000" stroke-linejoin="round" stroke-miterlimit="10" stroke-width="1.1458"/>
+  <g transform="translate(3722.3 1308)" aria-label="Pythonwp.launch()">
+   <path d="m5.225 0v-38.5h13.53q6.545 0 10.12 2.97 3.63 2.915 3.63 8.305v1.32q0 5.39-3.685 8.36-3.63 2.97-10.065 2.97h-8.965v14.575zm4.565-18.48h8.91q4.4 0 6.82-1.815t2.42-5.5v-1.485q0-3.685-2.42-5.5t-6.82-1.815h-8.91zm28.6 29.48v-3.685h1.54q2.585 0 3.905-1.155 1.375-1.155 2.585-4.455l0.605-1.65-11.055-28.05h4.675l8.69 23.375 8.305-23.375h4.455l-11.33 29.865q-1.32 3.575-2.695 5.555-1.375 2.035-3.19 2.805t-4.51 0.77zm41.8-10.78q-4.84 0-6.875-2.255t-2.035-6.16v-16.17h-5.995v-3.63h5.995v-8.47h4.4v8.47h9.68l-0.605 3.63h-9.075v15.895q0 2.64 1.21 3.85 1.21 1.155 3.74 1.155h4.73v3.685zm12.32-0.22v-40.15h4.4v16.5q1.21-2.255 3.465-3.63 2.31-1.375 5.555-1.375h0.495q4.785 0 7.645 2.915 2.915 2.915 2.915 8.525v17.215h-4.4v-16.5q0-4.125-1.815-6.215-1.815-2.145-5.225-2.145h-0.385q-2.2 0-4.07 1.1-1.87 1.045-3.025 3.19-1.155 2.09-1.155 5.28v15.29zm44.11 0.66q-3.63 0-6.545-1.595-2.86-1.65-4.565-4.73-1.65-3.08-1.65-7.37v-1.925q0-4.29 1.65-7.37 1.705-3.08 4.565-4.675 2.915-1.65 6.545-1.65h0.55q3.685 0 6.545 1.65 2.915 1.595 4.565 4.675 1.705 3.025 1.705 7.315v2.035q0 4.29-1.705 7.37-1.65 3.025-4.565 4.675-2.86 1.595-6.545 1.595zm0.055-3.795h0.44q3.575 0 5.995-2.475 2.475-2.475 2.475-7.37v-2.035q0-4.895-2.475-7.37-2.42-2.475-5.995-2.475h-0.44q-3.52 0-5.995 2.475-2.42 2.475-2.42 7.37v2.035q0 4.895 2.42 7.37 2.475 2.475 5.995 2.475zm20.515 3.135v-27.995h4.015v5.005q1.155-2.53 3.52-4.07 2.365-1.595 5.885-1.595h0.495q4.785 0 7.645 2.915 2.915 2.915 2.915 8.525v17.215h-4.4v-16.5q0-4.125-1.815-6.215-1.815-2.145-5.225-2.145h-0.385q-2.2 0-4.07 1.1-1.87 1.045-3.025 3.19-1.155 2.09-1.155 5.28v15.29z"/>
+   <path d="m-64.631 134-3.3301-22.612h-0.42969l-2.3364-5.8545h5.21l3.3569 24.17h0.4834l2.417-24.17h5.6396l-4.0283 28.467zm-14.233 0-3.2227-28.467h5.3711l2.1484 24.17h0.4834l3.3569-24.17h5.21l-2.3901 5.8545h-0.37598l-3.3301 22.612zm31.636 12.354v-40.82h5.1562l0.53711 6.0156v34.805zm13.777-11.816q-3.2764 0-5.2905-1.5039-1.9873-1.5039-2.2559-4.1894h-2.4707l1.9336-8.1104q0 4.4043 1.7188 6.687 1.7456 2.2827 5.1025 2.2827 3.4375 0 5.21-2.4438 1.7725-2.4438 1.7725-7.2241 0-5.0488-1.7725-7.627-1.7725-2.5781-5.21-2.5781-3.3569 0-5.1025 2.2827-1.7188 2.2827-1.7188 6.687l-1.9336-8.1104h2.2021q0.37598-2.6855 2.417-4.1894 2.0679-1.5039 5.3979-1.5039 5.6128 0 8.4863 3.8135t2.8735 11.226q0 7.1436-2.8735 10.823t-8.4863 3.6792zm30.051 0q-1.6382 0-2.8198-1.1548-1.1548-1.1816-1.1548-2.8198 0-1.665 1.1548-2.8198 1.1816-1.1548 2.8198-1.1548 1.665 0 2.8198 1.1548 1.1548 1.1548 1.1548 2.8198 0 1.6382-1.1548 2.8198-1.1548 1.1548-2.8198 1.1548zm36.47 0q-4.9414 0-7.1436-2.6856-2.2021-2.6855-2.2021-8.5938v-29.541h5.6934v29.272q0 2.2559 0.42969 3.6792 0.42969 1.4233 1.665 2.0947 1.2622 0.67139 3.7061 0.67139 2.229 0 5.6934-1.0205l0.64453 4.9951q-2.1753 0.59082-4.1895 0.85937-1.9873 0.26856-4.2969 0.26856zm-17.725-35.825v-4.9951h8.8623v4.9951zm51.562 35.557-0.37598-8.4326-0.75195-2.3633v-7.3584q0-2.8467-2.0142-4.1626-1.9873-1.3428-5.9351-1.4502l-6.8213-0.18798 0.53711-5.0488 5.7471 0.0806q7.063 0.10743 10.474 3.0615 3.4375 2.9272 3.4375 8.5669v11.87l4.834 0.59082v4.5654zm-10.044 0.26856q-4.458 0-6.9019-2.1484t-2.4438-6.0693q0-4.5117 3.3569-6.9287 3.3838-2.417 9.5337-2.417 2.5513 0 4.5386 0.32227 2.0142 0.29541 3.5718 0.91308l-1.1816 3.8672q-1.7993-0.40283-3.5181-0.45654-1.7188-0.0806-3.5181-0.0806-7.4121 0-7.4121 4.5117 0 1.8799 1.2622 2.9004 1.2891 1.0205 3.6255 1.0205 2.6587 0 4.4312-0.91309 1.7993-0.91308 2.6855-2.3364 0.88623-1.4233 0.88623-2.9272v-3.1152l1.665 7.3047h-2.2559l0.91309-0.85938q0 2.4707-1.1548 4.1357-1.1279 1.6382-3.1958 2.4707-2.0679 0.80566-4.8877 0.80566zm33.623 0q-4.4849 0-6.9556-2.6587-2.4438-2.6856-2.4438-7.5464v-18.799h5.6934v18.799q0 2.4438 1.3965 3.7866 1.3965 1.3159 3.9209 1.3159 3.1152 0 4.6997-1.9604 1.5845-1.9873 1.5845-6.6333l1.4502 7.6807h-1.8799q-0.67139 2.9004-2.6318 4.458t-4.834 1.5576zm8.3789-0.26856-0.4834-6.8213v-4.9951h5.6934v6.3916l3.9209 0.59082v4.5654zm-0.4834-8.3252v-20.41h5.6934v18.799zm33.032 8.0566v-18.53q0-2.5781-1.3428-3.9746-1.3428-1.3965-3.7598-1.3965-6.7139 0-6.7139 7.8955l-1.665-7.3047h2.2021q0.2417-2.8735 2.0947-4.27 1.853-1.4233 5.4248-1.4233 4.5117 0 6.9824 2.7393 2.4707 2.7393 2.4707 7.7344v18.53zm-17.51 0v-28.467h5.1562l0.5371 6.0156v22.451zm46.567 0.53711q-7.2778 0-11.252-3.8135-3.9478-3.8403-3.9478-11.011 0-6.9824 3.7329-10.85 3.7598-3.8672 10.715-3.8672 4.1626 0 7.1167 1.5576 2.981 1.5308 4.2432 4.3506l-4.3774 3.3032q-1.2085-1.9604-3.0884-3.0347t-4.1089-1.0742q-4.0283 0-6.2573 2.4438-2.229 2.417-2.229 6.9019 0 4.8608 2.605 7.439 2.6318 2.5513 7.4927 2.5513 1.9873 0 3.9746-0.18799 1.9873-0.18799 3.8672-0.51025l0.64453 4.9951q-2.2022 0.48339-4.5654 0.64453-2.3364 0.16113-4.5654 0.16113zm35.396-0.53711v-18.53q0-2.7124-1.3428-4.1626-1.3428-1.477-3.7598-1.477-6.7139 0-6.7139 8.1641l-1.665-7.3047h2.2022q0.2417-2.8735 2.0947-4.27 1.853-1.4233 5.4248-1.4233 4.5117 0 6.9824 2.7393 2.4707 2.7393 2.4707 7.7344v18.53zm-17.51 0v-40.283h5.6934v40.283z"/>
+   <path d="m230.3 139.37q-8.728 0-13.562-6.4184-4.8071-6.4453-4.8071-18.181 0-11.575 4.8071-17.913 4.834-6.3647 13.562-6.3647h1.2891v4.834h-0.75195q-6.3648 0-9.8291 5.1025-3.4375 5.1025-3.4375 14.341 0 9.3994 3.4375 14.583 3.4644 5.1831 9.8291 5.1831h0.75195v4.834zm12.139 0v-4.834h0.75196q6.3647 0 9.8022-5.1831 3.4644-5.1831 3.4644-14.583 0-9.2383-3.4644-14.341-3.4375-5.1025-9.8022-5.1025h-0.75196v-4.834h1.2891q8.7549 0 13.562 6.3647 4.8071 6.3379 4.8071 17.913 0 11.736-4.8071 18.181-4.8071 6.4184-13.562 6.4184z"/>
+  </g>
+  <g clip-path="url(#clip69)">
+   <g transform="translate(2045,544)" clip-path="url(#clip70)" filter="url(#fx19)">
+    <g clip-path="url(#clip71)">
+     <rect x="11.5" y="11.083" width="647" height="300" fill="#d7edff" stroke="#000" stroke-linejoin="round" stroke-miterlimit="10"/>
+    </g>
+   </g>
+   <g transform="translate(2098,584)" clip-path="url(#clip72)" filter="url(#fx20)">
+    <g clip-path="url(#clip73)">
+     <path transform="translate(178.25 78)" d="m17.875 0.66c-2.2733 0-4.2075-0.495-5.8025-1.485s-2.8142-2.3283-3.6575-4.015v4.84h-4.015v-40.15h4.4v16.445c0.84333-1.5033 2.0442-2.7042 3.6025-3.6025s3.3825-1.3475 5.4725-1.3475h0.385c2.3467 0 4.4183 0.5225 6.215 1.5675s3.2175 2.585 4.2625 4.62 1.5675 4.5192 1.5675 7.4525v2.035c0 2.9333-0.5225 5.4175-1.5675 7.4525s-2.4658 3.575-4.2625 4.62-3.8683 1.5675-6.215 1.5675zm-0.825-3.795h0.495c2.3833 0 4.3725-0.80667 5.9675-2.42s2.3925-4.1067 2.3925-7.48v-1.98c0-3.3733-0.7975-5.8575-2.3925-7.4525s-3.5842-2.3925-5.9675-2.3925h-0.495c-1.5033 0-2.8875 0.3483-4.1525 1.045s-2.2642 1.7783-2.9975 3.245c-0.73333 1.4667-1.1 3.3733-1.1 5.72v1.705c0 3.4833 0.80667 6.0225 2.42 7.6175 1.6133 1.595 3.5567 2.3925 5.83 2.3925zm30.424 3.795c-3.08 0-5.555-0.97167-7.425-2.915-1.87-1.9433-2.805-4.785-2.805-8.525v-17.215h4.4v16.555c0 2.7133 0.5775 4.7758 1.7325 6.1875s2.8141 2.1175 4.9775 2.1175h0.44c1.43 0 2.7408-0.3575 3.9325-1.0725 1.1916-0.715 2.145-1.7783 2.86-3.19s1.0725-3.1808 1.0725-5.3075v-15.29h4.4v27.995h-4.015v-4.95c-0.77 1.6867-1.9067 3.0433-3.41 4.07-1.5034 1.0267-3.3917 1.54-5.665 1.54zm22.238-0.66v-27.995h4.4v27.995zm-0.11-33.88v-5.005h4.62v5.005zm13.287 33.88v-40.15h4.4v40.15zm24.782 0.22c-3.227 0-5.519-0.75167-6.875-2.255-1.357-1.5033-2.0353-3.5567-2.0353-6.16v-16.17h-5.995v-3.63h5.995v-8.47h4.4003v8.47h9.68l-0.605 3.63h-9.075v15.895c0 1.76 0.403 3.0342 1.21 3.8225 0.806 0.78833 2.053 1.1825 3.74 1.1825h4.73v3.685zm11.884-0.22v-27.995h4.4v27.995zm-0.11-33.88v-5.005h4.62v5.005zm13.287 33.88v-27.995h4.015v5.005c0.77-1.6867 1.944-3.0525 3.52-4.0975 1.577-1.045 3.539-1.5675 5.885-1.5675h0.495c3.19 0 5.748 0.9717 7.673 2.915s2.887 4.785 2.887 8.525v17.215h-4.4v-16.5c0-2.75-0.605-4.8308-1.815-6.2425s-2.951-2.1175-5.225-2.1175h-0.385c-1.466 0-2.823 0.3575-4.07 1.0725-1.246 0.715-2.255 1.7783-3.025 3.19s-1.155 3.1808-1.155 5.3075v15.29zm31.887 0v-5.555h5.17v5.555zm13.374 0v-40.15h4.4v16.5c0.806-1.5033 1.971-2.7133 3.492-3.63 1.522-0.9167 3.364-1.375 5.528-1.375h0.495c3.19 0 5.747 0.9717 7.672 2.915s2.888 4.785 2.888 8.525v17.215h-4.4v-16.5c0-2.75-0.605-4.8308-1.815-6.2425s-2.952-2.1175-5.225-2.1175h-0.385c-1.467 0-2.824 0.3575-4.07 1.0725-1.247 0.715-2.255 1.7783-3.025 3.19s-1.155 3.1808-1.155 5.3075v15.29z"/>
+     <path transform="translate(38.462 202)" d="m0.69 0 12.926-32.2h3.312l12.972 32.2h-4.094l-3.082-7.958h-15.042l-3.082 7.958zm8.234-11.178h12.512l-6.256-16.146zm25.121 11.178v-23.414h3.358v4.922c0.552-1.5333 1.3876-2.7677 2.507-3.703 1.1193-0.9353 2.7523-1.403 4.899-1.403h2.162v3.358h-2.346c-1.9934 0-3.6417 0.6823-4.945 2.047-1.3034 1.3647-1.955 3.4577-1.955 6.279v11.914zm18.333 0v-23.414h3.358v4.922c0.552-1.5333 1.3877-2.7677 2.507-3.703s2.7523-1.403 4.899-1.403h2.162v3.358h-2.346c-1.9933 0-3.6417 0.6823-4.945 2.047s-1.955 3.4577-1.955 6.279v11.914zm24.405 0.552c-2.5146 0-4.4466-0.598-5.7959-1.794-1.3494-1.196-2.0241-2.9133-2.0241-5.152 0-1.84 0.575-3.3503 1.725-4.531 1.15-1.1807 2.8444-1.9243 5.083-2.231l9.2001-1.242v-0.184c0-4.2013-1.8707-6.302-5.612-6.302h-0.5061c-2.944 0-4.9526 1.1347-6.026 3.404l-2.944-1.426c0.7054-1.5947 1.8324-2.8367 3.3811-3.726 1.5486-0.8893 3.4116-1.334 5.5889-1.334h0.6901c2.9746 0 5.2363 0.782 6.7849 2.346 1.5487 1.564 2.323 3.8333 2.323 6.808v14.812h-3.3579v-4.186c-0.7054 1.472-1.7787 2.6297-3.2201 3.473-1.4413 0.84333-3.0666 1.265-4.8759 1.265zm8.1881-12.144-7.636 1.104c-1.7787 0.2453-3.0207 0.65934-3.726 1.242-0.7054 0.58267-1.0581 1.472-1.0581 2.668 0 1.3187 0.4217 2.3307 1.265 3.036 0.8434 0.70533 2.0624 1.058 3.6571 1.058h0.46c2.1159 0 3.8179-0.67467 5.1059-2.024s1.9321-3.1433 1.9321-5.382zm9.5474 20.792v-3.082h1.288c1.4413 0 2.5376-0.322 3.289-0.966 0.7513-0.644 1.4643-1.886 2.1393-3.726l0.506-1.38-9.2463-23.46h3.91l7.2683 19.55 6.946-19.55h3.726l-9.476 24.978c-0.736 1.9933-1.488 3.5497-2.254 4.669-0.767 1.1193-1.656 1.8937-2.6683 2.323-1.012 0.42933-2.2694 0.644-3.772 0.644zm24.271-2.714-1.38-1.794 1.288-1.012c0.583-0.42933 0.982-0.81267 1.196-1.15 0.215-0.33733 0.322-0.90467 0.322-1.702v-0.828h-2.024v-4.646h4.324v5.474c0 0.85867-0.084 1.5563-0.253 2.093-0.168 0.53667-0.444 1.0043-0.828 1.403-0.383 0.39867-0.912 0.85867-1.587 1.38zm23.08-6.486v-32.2h4.324l12.42 27.002 12.374-27.002h4.232v32.2h-3.68v-25.254l-11.638 25.254h-2.714l-11.638-25.254v25.254zm47.205 0.552c-2.515 0-4.447-0.598-5.796-1.794s-2.024-2.9133-2.024-5.152c0-1.84 0.575-3.3503 1.725-4.531 1.15-1.1807 2.844-1.9243 5.083-2.231l9.2-1.242v-0.184c0-4.2013-1.871-6.302-5.612-6.302h-0.506c-2.944 0-4.953 1.1347-6.026 3.404l-2.944-1.426c0.705-1.5947 1.832-2.8367 3.381-3.726s3.412-1.334 5.589-1.334h0.69c2.975 0 5.236 0.782 6.785 2.346s2.323 3.8333 2.323 6.808v14.812h-3.358v-4.186c-0.705 1.472-1.779 2.6297-3.22 3.473-1.441 0.84333-3.067 1.265-4.876 1.265zm8.188-12.144-7.636 1.104c-1.779 0.2453-3.021 0.65934-3.726 1.242-0.705 0.58267-1.058 1.472-1.058 2.668 0 1.3187 0.422 2.3307 1.265 3.036s2.062 1.058 3.657 1.058h0.46c2.116 0 3.818-0.67467 5.106-2.024s1.932-3.1433 1.932-5.382zm20.081 11.776c-2.698 0-4.615-0.62867-5.75-1.886-1.134-1.2573-1.702-2.9747-1.702-5.152v-13.524h-5.014v-3.036h5.014v-7.084h3.68v7.084h8.096l-0.506 3.036h-7.59v13.294c0 1.472 0.338 2.5377 1.012 3.197 0.675 0.65933 1.718 0.989 3.128 0.989h3.956v3.082zm9.773-0.184v-33.58h3.681v13.8c0.674-1.2573 1.648-2.2693 2.921-3.036 1.272-0.7667 2.813-1.15 4.622-1.15h0.414c2.668 0 4.807 0.8127 6.418 2.438 1.609 1.6253 2.414 4.002 2.414 7.13v14.398h-3.679v-13.8c0-2.3-0.507-4.0403-1.519-5.221s-2.468-1.771-4.369-1.771h-0.323c-1.226 0-2.361 0.299-3.403 0.897-1.043 0.598-1.887 1.4873-2.53 2.668-0.645 1.1807-0.967 2.6603-0.966 4.439v12.788zm27.455 6.486-1.381-1.794 1.288-1.012c0.583-0.42933 0.982-0.81267 1.197-1.15 0.214-0.33733 0.321-0.90467 0.321-1.702v-0.828h-2.024v-4.646h4.324v5.474c0 0.85867-0.084 1.5563-0.253 2.093-0.168 0.53667-0.444 1.0043-0.828 1.403-0.383 0.39867-0.912 0.85867-1.586 1.38zm36.143-5.934c-4.753 0-8.364-1.334-10.833-4.002-2.468-2.668-3.703-6.5167-3.703-11.546v-2.07c0-3.2507 0.56-6.049 1.679-8.395 1.12-2.346 2.714-4.1553 4.784-5.428s4.516-1.909 7.337-1.909h0.552c2.914 0 5.382 0.6363 7.406 1.909s3.481 3.1203 4.37 5.543l-3.496 1.196c-1.226-3.496-3.986-5.244-8.28-5.244h-0.552c-3.158 0-5.612 1.0733-7.36 3.22s-2.622 5.1673-2.622 9.062v2.254c0 8.0347 3.573 12.052 10.718 12.052h0.552c3.19 0 5.812-0.61333 7.866-1.84v-8.878h-8.188l0.46-3.22h11.408v13.846c-1.349 1.0427-2.997 1.8783-4.945 2.507-1.947 0.62867-4.132 0.943-6.555 0.943zm28.056 0c-3.22 0-5.765-0.99667-7.636-2.99-1.87-1.9933-2.806-4.7993-2.806-8.418v-1.702c0-2.3613 0.43-4.393 1.288-6.095 0.859-1.702 2.078-3.013 3.658-3.933 1.579-0.92 3.411-1.38 5.496-1.38h0.368c2.055 0 3.826 0.4293 5.314 1.288 1.487 0.8587 2.644 2.0777 3.473 3.657 0.827 1.5793 1.241 3.427 1.242 5.543v2.806h-17.204c0.03 2.7293 0.651 4.7687 1.863 6.118 1.211 1.3493 2.859 2.024 4.944 2.024h0.69c1.534 0 2.784-0.276 3.75-0.828 0.965-0.552 1.74-1.3493 2.323-2.392l2.806 1.702c-0.798 1.4107-1.956 2.53-3.474 3.358-1.517 0.828-3.319 1.242-5.405 1.242zm-6.762-14.03h13.525v-0.506c0-2.2693-0.576-3.9867-1.725-5.152-1.15-1.1653-2.707-1.748-4.67-1.748h-0.368c-1.901 0-3.473 0.6287-4.715 1.886-1.241 1.2573-1.924 3.0973-2.047 5.52zm32.201 14.03c-2.024 0-3.841-0.45233-5.451-1.357-1.61-0.90467-2.883-2.2157-3.818-3.933-0.936-1.7173-1.403-3.772-1.403-6.164v-1.61c0-2.392 0.467-4.4467 1.403-6.164 0.935-1.7173 2.208-3.0283 3.818-3.933s3.427-1.357 5.451-1.357h0.46c2.054 0 3.887 0.4523 5.497 1.357s2.882 2.208 3.818 3.91c0.935 1.702 1.403 3.749 1.403 6.141v1.702c0 2.392-0.468 4.439-1.403 6.141-0.936 1.702-2.208 3.0053-3.818 3.91-1.61 0.90467-3.443 1.357-5.497 1.357zm0.046-3.174h0.368c1.993 0 3.672-0.69 5.037-2.07s2.047-3.4347 2.047-6.164v-1.702c0-2.7293-0.682-4.784-2.047-6.164s-3.044-2.07-5.037-2.07h-0.368c-1.963 0-3.627 0.69-4.991 2.07-1.365 1.38-2.047 3.4347-2.047 6.164v1.702c0 2.7293 0.682 4.784 2.047 6.164 1.364 1.38 3.028 2.07 4.991 2.07zm16.924 2.622v-23.414h3.358v4.186c0.644-1.4413 1.572-2.5913 2.783-3.45s2.66-1.288 4.347-1.288h0.414c3.833 0 6.348 1.656 7.544 4.968 0.675-1.5027 1.664-2.7063 2.967-3.611s2.829-1.357 4.577-1.357h0.414c2.576 0 4.6 0.8127 6.072 2.438s2.208 4.002 2.208 7.13v14.398h-3.68v-13.8c0-2.3-0.429-4.0403-1.288-5.221s-2.208-1.771-4.048-1.771h-0.322c-1.043 0-2.039 0.299-2.99 0.897s-1.717 1.4873-2.3 2.668-0.874 2.6603-0.874 4.439v12.788h-3.68v-13.8c0-2.3-0.429-4.0403-1.288-5.221s-2.208-1.771-4.048-1.771h-0.322c-1.043 0-2.032 0.299-2.967 0.897s-1.702 1.4873-2.3 2.668-0.897 2.6603-0.897 4.439v12.788zm50.977 0.552c-3.22 0-5.765-0.99667-7.636-2.99-1.871-1.9933-2.806-4.7993-2.806-8.418v-1.702c0-2.3613 0.429-4.393 1.288-6.095s2.078-3.013 3.657-3.933 3.412-1.38 5.497-1.38h0.368c2.055 0 3.826 0.4293 5.313 1.288s2.645 2.0777 3.473 3.657 1.242 3.427 1.242 5.543v2.806h-17.204c0.031 2.7293 0.652 4.7687 1.863 6.118s2.86 2.024 4.945 2.024h0.69c1.533 0 2.783-0.276 3.749-0.828s1.74-1.3493 2.323-2.392l2.806 1.702c-0.797 1.4107-1.955 2.53-3.473 3.358s-3.32 1.242-5.405 1.242zm-6.762-14.03h13.524v-0.506c0-2.2693-0.575-3.9867-1.725-5.152s-2.706-1.748-4.669-1.748h-0.368c-1.901 0-3.473 0.6287-4.715 1.886s-1.924 3.0973-2.047 5.52zm32.522 13.662c-2.698 0-4.615-0.62867-5.75-1.886-1.134-1.2573-1.702-2.9747-1.702-5.152v-13.524h-5.014v-3.036h5.014v-7.084h3.68v7.084h8.096l-0.506 3.036h-7.59v13.294c0 1.472 0.338 2.5377 1.012 3.197 0.675 0.65933 1.718 0.989 3.128 0.989h3.956v3.082zm9.773-0.184v-23.414h3.358v4.922c0.552-1.5333 1.388-2.7677 2.507-3.703 1.12-0.9353 2.753-1.403 4.899-1.403h2.162v3.358h-2.346c-1.993 0-3.641 0.6823-4.945 2.047-1.303 1.3647-1.955 3.4577-1.955 6.279v11.914zm17.506 9.2v-3.082h1.288c1.441 0 2.537-0.322 3.289-0.966 0.751-0.644 1.464-1.886 2.139-3.726l0.506-1.38-9.246-23.46h3.91l7.268 19.55 6.946-19.55h3.726l-9.476 24.978c-0.736 1.9933-1.488 3.5497-2.254 4.669-0.767 1.1193-1.656 1.8937-2.668 2.323s-2.27 0.644-3.772 0.644z"/>
+    </g>
+   </g>
+  </g>
+  <rect x="2056.5" y="550.5" width="647" height="300" fill="#d7edff" stroke="#000" stroke-linejoin="round" stroke-miterlimit="10" stroke-width="1.1458"/>
+  <g transform="translate(2276.2 658)" aria-label="builtin.hArray, Math, GeometryAST TraversalimportKernel Cache">
+   <path d="m17.875 0.66q-3.41 0-5.83-1.485-2.365-1.485-3.63-4.015v4.84h-4.015v-40.15h4.4v16.445q1.265-2.255 3.575-3.575 2.365-1.375 5.5-1.375h0.385q3.52 0 6.215 1.595 2.695 1.54 4.235 4.62 1.595 3.025 1.595 7.425v2.035q0 4.4-1.595 7.48-1.54 3.025-4.235 4.62-2.695 1.54-6.215 1.54zm-0.825-3.795h0.495q3.575 0 5.94-2.42 2.42-2.42 2.42-7.48v-1.98q0-5.06-2.42-7.425-2.365-2.42-5.94-2.42h-0.495q-2.255 0-4.18 1.045-1.87 1.045-2.97 3.245t-1.1 5.72v1.705q0 5.225 2.42 7.645 2.42 2.365 5.83 2.365zm30.36 3.795q-4.62 0-7.425-2.915t-2.805-8.525v-17.215h4.4v16.555q0 4.07 1.705 6.215 1.76 2.09 5.005 2.09h0.44q2.145 0 3.905-1.045 1.815-1.1 2.86-3.19 1.1-2.145 1.1-5.335v-15.29h4.4v27.995h-4.015v-4.95q-1.155 2.53-3.41 4.07t-5.665 1.54zm22.385-0.66v-27.995h4.4v27.995zm-0.11-33.88v-5.005h4.62v5.005zm13.31 33.88v-40.15h4.4v40.15zm24.365 0.22q-4.84 0-6.875-2.255-2.035-2.255-2.035-6.16v-16.17h-5.995v-3.63h5.995v-8.47h4.4v8.47h9.68l-0.605 3.63h-9.075v15.895q0 2.64 1.21 3.85 1.21 1.155 3.74 1.155h4.73v3.685zm11.77-0.22v-27.995h4.4v27.995zm-0.11-33.88v-5.005h4.62v5.005zm13.31 33.88v-27.995h4.015v5.005q1.155-2.53 3.52-4.07 2.365-1.595 5.885-1.595h0.495q4.785 0 7.645 2.915 2.915 2.915 2.915 8.525v17.215h-4.4v-16.5q0-4.125-1.815-6.215-1.815-2.145-5.225-2.145h-0.385q-2.2 0-4.07 1.1-1.87 1.045-3.025 3.19-1.155 2.09-1.155 5.28v15.29zm32.12 0v-5.555h5.17v5.555zm13.2 0v-40.15h4.4v16.5q1.21-2.255 3.465-3.63 2.31-1.375 5.555-1.375h0.495q4.785 0 7.645 2.915 2.915 2.915 2.915 8.525v17.215h-4.4v-16.5q0-4.125-1.815-6.215-1.815-2.145-5.225-2.145h-0.385q-2.2 0-4.07 1.1-1.87 1.045-3.025 3.19-1.155 2.09-1.155 5.28v15.29z"/>
+   <path d="m-139.1 124 12.926-32.2h3.312l12.972 32.2h-4.094l-3.082-7.958h-15.042l-3.082 7.958zm8.234-11.178h12.512l-6.256-16.146zm25.346 11.178v-23.414h3.358v4.922q0.828-2.3 2.484-3.68 1.702-1.426 4.922-1.426h2.162v3.358h-2.346q-2.99 0-4.968 2.07-1.932 2.024-1.932 6.256v11.914zm18.032 0v-23.414h3.358v4.922q0.828-2.3 2.484-3.68 1.702-1.426 4.922-1.426h2.162v3.358h-2.346q-2.99 0-4.968 2.07-1.932 2.024-1.932 6.256v11.914zm23.046 0.552q-3.772 0-5.796-1.794t-2.024-5.152q0-2.76 1.702-4.508 1.748-1.794 5.106-2.254l9.2-1.242v-0.184q0-6.302-5.612-6.302h-0.506q-4.416 0-6.026 3.404l-2.944-1.426q1.058-2.392 3.358-3.726 2.346-1.334 5.612-1.334h0.69q4.462 0 6.762 2.346 2.346 2.346 2.346 6.808v14.812h-3.358v-4.186q-1.058 2.208-3.22 3.496-2.162 1.242-4.876 1.242zm8.188-12.144-7.636 1.104q-2.668 0.368-3.726 1.242t-1.058 2.668q0 1.978 1.242 3.036 1.288 1.058 3.68 1.058h0.46q3.174 0 5.106-2.024t1.932-5.382zm8.9699 20.792v-3.082h1.288q2.162 0 3.266-0.966 1.15-0.966 2.162-3.726l0.506-1.38-9.246-23.46h3.91l7.268 19.55 6.946-19.55h3.726l-9.476 24.978q-1.104 2.99-2.254 4.646-1.15 1.702-2.668 2.346t-3.772 0.644zm21.068-2.714-1.38-1.794 1.288-1.012q0.874-0.644 1.196-1.15t0.322-1.702v-0.828h-2.024v-4.646h4.324v5.474q0 1.288-0.276 2.07-0.23 0.828-0.828 1.426-0.552 0.598-1.564 1.38zm23-6.486v-32.2h4.324l12.42 27.002 12.374-27.002h4.232v32.2h-3.68v-25.254l-11.638 25.254h-2.714l-11.638-25.254v25.254zm47.472 0.552q-3.772 0-5.796-1.794t-2.024-5.152q0-2.76 1.702-4.508 1.748-1.794 5.106-2.254l9.2-1.242v-0.184q0-6.302-5.612-6.302h-0.506q-4.416 0-6.026 3.404l-2.944-1.426q1.058-2.392 3.358-3.726 2.346-1.334 5.612-1.334h0.69q4.462 0 6.762 2.346 2.346 2.346 2.346 6.808v14.812h-3.358v-4.186q-1.058 2.208-3.22 3.496-2.162 1.242-4.876 1.242zm8.188-12.144-7.636 1.104q-2.668 0.368-3.726 1.242t-1.058 2.668q0 1.978 1.242 3.036 1.288 1.058 3.68 1.058h0.46q3.174 0 5.106-2.024t1.932-5.382zm19.734 11.776q-4.048 0-5.75-1.886t-1.702-5.152v-13.524h-5.014v-3.036h5.014v-7.084h3.68v7.084h8.096l-0.506 3.036h-7.59v13.294q0 2.208 1.012 3.22 1.012 0.966 3.128 0.966h3.956v3.082zm10.304-0.184v-33.58h3.68v13.8q1.012-1.886 2.898-3.036 1.932-1.15 4.646-1.15h0.414q4.002 0 6.394 2.438 2.438 2.438 2.438 7.13v14.398h-3.68v-13.8q0-3.45-1.518-5.198-1.518-1.794-4.37-1.794h-0.322q-1.84 0-3.404 0.92-1.564 0.874-2.53 2.668-0.966 1.748-0.966 4.416v12.788zm27.462 6.486-1.38-1.794 1.288-1.012q0.874-0.644 1.196-1.15t0.322-1.702v-0.828h-2.024v-4.646h4.324v5.474q0 1.288-0.276 2.07-0.23 0.828-0.828 1.426-0.552 0.598-1.564 1.38zm36.064-5.934q-7.13 0-10.856-4.002-3.68-4.002-3.68-11.546v-2.07q0-4.876 1.656-8.372 1.702-3.542 4.784-5.428 3.128-1.932 7.36-1.932h0.552q4.37 0 7.406 1.932 3.036 1.886 4.37 5.52l-3.496 1.196q-1.84-5.244-8.28-5.244h-0.552q-4.738 0-7.36 3.22t-2.622 9.062v2.254q0 12.052 10.718 12.052h0.552q4.784 0 7.866-1.84v-8.878h-8.188l0.46-3.22h11.408v13.846q-2.024 1.564-4.968 2.53-2.898 0.92-6.532 0.92zm28.152 0q-4.83 0-7.636-2.99t-2.806-8.418v-1.702q0-3.542 1.288-6.072 1.288-2.576 3.634-3.956 2.392-1.38 5.52-1.38h0.368q3.082 0 5.29 1.288 2.254 1.288 3.496 3.68 1.242 2.346 1.242 5.52v2.806h-17.204q0.046 4.094 1.84 6.118 1.84 2.024 4.968 2.024h0.69q2.3 0 3.726-0.828 1.472-0.828 2.346-2.392l2.806 1.702q-1.196 2.116-3.496 3.358-2.254 1.242-5.382 1.242zm-6.762-14.03h13.524v-0.506q0-3.404-1.748-5.152-1.702-1.748-4.646-1.748h-0.368q-2.852 0-4.738 1.886-1.84 1.886-2.024 5.52zm32.384 14.03q-3.036 0-5.474-1.334-2.392-1.38-3.818-3.956-1.38-2.576-1.38-6.164v-1.61q0-3.588 1.38-6.164 1.426-2.576 3.818-3.91 2.438-1.38 5.474-1.38h0.46q3.082 0 5.474 1.38 2.438 1.334 3.818 3.91 1.426 2.53 1.426 6.118v1.702q0 3.588-1.426 6.164-1.38 2.53-3.818 3.91-2.392 1.334-5.474 1.334zm0.046-3.174h0.368q2.99 0 5.014-2.07 2.07-2.07 2.07-6.164v-1.702q0-4.094-2.07-6.164-2.024-2.07-5.014-2.07h-0.368q-2.944 0-5.014 2.07-2.024 2.07-2.024 6.164v1.702q0 4.094 2.024 6.164 2.07 2.07 5.014 2.07zm17.158 2.622v-23.414h3.358v4.186q0.966-2.162 2.76-3.45 1.84-1.288 4.37-1.288h0.414q5.75 0 7.544 4.968 1.012-2.254 2.944-3.588 1.978-1.38 4.6-1.38h0.414q3.864 0 6.072 2.438t2.208 7.13v14.398h-3.68v-13.8q0-3.45-1.288-5.198-1.288-1.794-4.048-1.794h-0.322q-1.564 0-2.99 0.92-1.426 0.874-2.3 2.668-0.874 1.748-0.874 4.416v12.788h-3.68v-13.8q0-3.45-1.288-5.198-1.288-1.794-4.048-1.794h-0.322q-1.564 0-2.99 0.92-1.38 0.874-2.3 2.668-0.874 1.748-0.874 4.416v12.788zm50.876 0.552q-4.83 0-7.636-2.99t-2.806-8.418v-1.702q0-3.542 1.288-6.072 1.288-2.576 3.634-3.956 2.392-1.38 5.52-1.38h0.368q3.082 0 5.29 1.288 2.254 1.288 3.496 3.68 1.242 2.346 1.242 5.52v2.806h-17.204q0.046 4.094 1.84 6.118 1.84 2.024 4.968 2.024h0.69q2.3 0 3.726-0.828 1.472-0.828 2.346-2.392l2.806 1.702q-1.196 2.116-3.496 3.358-2.254 1.242-5.382 1.242zm-6.762-14.03h13.524v-0.506q0-3.404-1.748-5.152-1.702-1.748-4.646-1.748h-0.368q-2.852 0-4.738 1.886-1.84 1.886-2.024 5.52zm32.844 13.662q-4.048 0-5.75-1.886t-1.702-5.152v-13.524h-5.014v-3.036h5.014v-7.084h3.68v7.084h8.096l-0.506 3.036h-7.59v13.294q0 2.208 1.012 3.22 1.012 0.966 3.128 0.966h3.956v3.082zm9.9819-0.184v-23.414h3.358v4.922q0.828-2.3 2.484-3.68 1.702-1.426 4.922-1.426h2.162v3.358h-2.346q-2.99 0-4.968 2.07-1.932 2.024-1.932 6.256v11.914zm18.262 9.2v-3.082h1.288q2.162 0 3.266-0.966 1.15-0.966 2.162-3.726l0.506-1.38-9.246-23.46h3.91l7.268 19.55 6.946-19.55h3.726l-9.476 24.978q-1.104 2.99-2.254 4.646-1.15 1.702-2.668 2.346t-3.772 0.644z"/>
+   <path d="m-1298.5 622 15.455-38.5h3.96l15.51 38.5h-4.895l-3.685-9.515h-17.985l-3.685 9.515zm9.845-13.365h14.96l-7.48-19.305zm43.065 14.025q-11.22 0-14.685-8.305l3.905-2.035q1.32 3.19 3.905 4.785 2.64 1.595 6.82 1.595h0.605q4.565 0 6.985-1.705 2.475-1.76 2.475-4.895v-0.605q0-2.695-1.54-4.345t-5.005-2.255l-7.04-1.155q-9.955-1.65-9.955-10.01v-0.715q0-3.025 1.65-5.335 1.705-2.31 4.675-3.575 2.97-1.32 6.875-1.32h0.77q4.95 0 8.415 2.035 3.52 2.035 5.06 5.83l-4.015 1.705q-2.09-5.555-9.515-5.555h-0.66q-4.07 0-6.435 1.705-2.31 1.65-2.31 4.51v0.66q0 2.53 1.54 3.96 1.54 1.375 4.895 1.98l7.04 1.155q5.06 0.825 7.59 3.575 2.53 2.695 2.53 7.095v0.66q0 4.895-3.74 7.755-3.685 2.805-10.12 2.805zm30.745-0.66v-34.595h-12.375v-3.905h29.315v3.905h-12.375v34.595zm46.145 0v-34.595h-12.375v-3.905h29.315v3.905h-12.375v34.595zm19.91 0v-27.995h4.015v5.885q0.99-2.75 2.97-4.4 2.035-1.705 5.885-1.705h2.585v4.015h-2.805q-3.575 0-5.94 2.475-2.31 2.42-2.31 7.48v14.245zm27.555 0.66q-4.51 0-6.93-2.145t-2.42-6.16q0-3.3 2.035-5.39 2.09-2.145 6.105-2.695l11-1.485v-0.22q0-7.535-6.71-7.535h-0.605q-5.28 0-7.205 4.07l-3.52-1.705q1.265-2.86 4.015-4.455 2.805-1.595 6.71-1.595h0.825q5.335 0 8.085 2.805 2.805 2.805 2.805 8.14v17.71h-4.015v-5.005q-1.265 2.64-3.85 4.18-2.585 1.485-5.83 1.485zm9.79-14.52-9.13 1.32q-3.19 0.44-4.455 1.485t-1.265 3.19q0 2.365 1.485 3.63 1.54 1.265 4.4 1.265h0.55q3.795 0 6.105-2.42t2.31-6.435zm19.36 13.86-11.055-27.995h4.565l8.47 22.495 8.415-22.495h4.4l-11.055 27.995zm30.305 0.66q-5.775 0-9.13-3.575t-3.355-10.065v-2.035q0-4.235 1.54-7.26 1.54-3.08 4.345-4.73 2.86-1.65 6.6-1.65h0.44q3.685 0 6.325 1.54 2.695 1.54 4.18 4.4 1.485 2.805 1.485 6.6v3.355h-20.57q0.055 4.895 2.2 7.315 2.2 2.42 5.94 2.42h0.825q2.75 0 4.455-0.99 1.76-0.99 2.805-2.86l3.355 2.035q-1.43 2.53-4.18 4.015-2.695 1.485-6.435 1.485zm-8.085-16.775h16.17v-0.605q0-4.07-2.09-6.16-2.035-2.09-5.555-2.09h-0.44q-3.41 0-5.665 2.255-2.2 2.255-2.42 6.6zm27.5 16.115v-27.995h4.015v5.885q0.99-2.75 2.97-4.4 2.035-1.705 5.885-1.705h2.585v4.015h-2.805q-3.575 0-5.94 2.475-2.31 2.42-2.31 7.48v14.245zm31.13 0.66q-9.185 0-11.99-6.435l3.52-1.76q1.1 2.31 3.135 3.41 2.09 1.1 5.39 1.1h0.605q6.6 0 6.6-4.235v-0.275q0-3.685-4.345-4.235l-6.27-0.88q-3.685-0.495-5.72-2.365-1.98-1.87-1.98-5.06v-0.605q0-3.575 2.86-5.775t7.535-2.2h0.715q3.85 0 6.71 1.595 2.86 1.54 3.96 4.345l-3.52 1.595q-1.76-3.85-7.15-3.85h-0.66q-2.86 0-4.565 1.155-1.65 1.155-1.65 3.08v0.33q0 1.705 0.99 2.64 1.045 0.88 3.355 1.21l6.325 0.88q3.63 0.495 5.61 2.53 2.035 2.035 2.035 5.28v0.605q0 3.905-2.75 5.94-2.75 1.98-8.03 1.98zm25.41 0q-4.51 0-6.93-2.145t-2.42-6.16q0-3.3 2.035-5.39 2.09-2.145 6.105-2.695l11-1.485v-0.22q0-7.535-6.71-7.535h-0.605q-5.28 0-7.205 4.07l-3.52-1.705q1.265-2.86 4.015-4.455 2.805-1.595 6.71-1.595h0.825q5.335 0 8.085 2.805 2.805 2.805 2.805 8.14v17.71h-4.015v-5.005q-1.265 2.64-3.85 4.18-2.585 1.485-5.83 1.485zm9.79-14.52-9.13 1.32q-3.19 0.44-4.455 1.485t-1.265 3.19q0 2.365 1.485 3.63 1.54 1.265 4.4 1.265h0.55q3.795 0 6.105-2.42t2.31-6.435zm12.815 13.86v-40.15h4.4v40.15z"/>
+   <path d="m1067.3 636v-27.995h4.4v27.995zm-0.11-33.88v-5.005h4.62v5.005zm13.31 33.88v-27.995h4.015v5.005q1.155-2.585 3.3-4.125 2.2-1.54 5.225-1.54h0.495q6.875 0 9.02 5.94 1.21-2.695 3.52-4.29 2.365-1.65 5.5-1.65h0.495q4.62 0 7.26 2.915t2.64 8.525v17.215h-4.4v-16.5q0-4.125-1.54-6.215-1.54-2.145-4.84-2.145h-0.385q-1.87 0-3.575 1.1-1.705 1.045-2.75 3.19-1.045 2.09-1.045 5.28v15.29h-4.4v-16.5q0-4.125-1.54-6.215-1.54-2.145-4.84-2.145h-0.385q-1.87 0-3.575 1.1-1.65 1.045-2.75 3.19-1.045 2.09-1.045 5.28v15.29zm49.885 11v-38.995h4.015v4.785q1.265-2.475 3.63-3.96 2.42-1.485 5.83-1.485h0.385q3.52 0 6.215 1.595 2.695 1.54 4.235 4.62 1.595 3.025 1.595 7.425v2.035q0 4.4-1.595 7.48-1.54 3.025-4.235 4.62-2.695 1.54-6.215 1.54h-0.385q-3.135 0-5.5-1.32-2.31-1.32-3.575-3.575v15.235zm12.65-14.135h0.495q3.575 0 5.94-2.42 2.42-2.42 2.42-7.48v-1.98q0-5.06-2.42-7.425-2.365-2.42-5.94-2.42h-0.495q-2.255 0-4.18 1.045-1.87 1.045-2.97 3.245t-1.1 5.72v1.705q0 5.225 2.42 7.645 2.42 2.365 5.83 2.365zm31.735 3.795q-3.63 0-6.545-1.595-2.86-1.65-4.565-4.73-1.65-3.08-1.65-7.37v-1.925q0-4.29 1.65-7.37 1.705-3.08 4.565-4.675 2.915-1.65 6.545-1.65h0.55q3.685 0 6.545 1.65 2.915 1.595 4.565 4.675 1.705 3.025 1.705 7.315v2.035q0 4.29-1.705 7.37-1.65 3.025-4.565 4.675-2.86 1.595-6.545 1.595zm0.055-3.795h0.44q3.575 0 5.995-2.475 2.475-2.475 2.475-7.37v-2.035q0-4.895-2.475-7.37-2.42-2.475-5.995-2.475h-0.44q-3.52 0-5.995 2.475-2.42 2.475-2.42 7.37v2.035q0 4.895 2.42 7.37 2.475 2.475 5.995 2.475zm20.515 3.135v-27.995h4.015v5.885q0.99-2.75 2.97-4.4 2.035-1.705 5.885-1.705h2.585v4.015h-2.805q-3.575 0-5.94 2.475-2.31 2.42-2.31 7.48v14.245zm33.715 0.22q-4.84 0-6.875-2.255t-2.035-6.16v-16.17h-5.995v-3.63h5.995v-8.47h4.4v8.47h9.68l-0.605 3.63h-9.075v15.895q0 2.64 1.21 3.85 1.21 1.155 3.74 1.155h4.73v3.685z"/>
+   <path d="m-451.68 1272v-38.5h4.565v19.8l18.865-19.8h5.72l-15.07 15.565 15.785 22.935h-5.28l-13.53-19.965-6.49 6.82v13.145zm45.705 0.66q-5.775 0-9.13-3.575t-3.355-10.065v-2.035q0-4.235 1.54-7.26 1.54-3.08 4.345-4.73 2.86-1.65 6.6-1.65h0.44q3.685 0 6.325 1.54 2.695 1.54 4.18 4.4 1.485 2.805 1.485 6.6v3.355h-20.57q0.055 4.895 2.2 7.315 2.2 2.42 5.94 2.42h0.825q2.75 0 4.455-0.99 1.76-0.99 2.805-2.86l3.355 2.035q-1.43 2.53-4.18 4.015-2.695 1.485-6.435 1.485zm-8.085-16.775h16.17v-0.605q0-4.07-2.09-6.16-2.035-2.09-5.555-2.09h-0.44q-3.41 0-5.665 2.255-2.2 2.255-2.42 6.6zm27.5 16.115v-27.995h4.015v5.885q0.99-2.75 2.97-4.4 2.035-1.705 5.885-1.705h2.585v4.015h-2.805q-3.575 0-5.94 2.475-2.31 2.42-2.31 7.48v14.245zm21.56 0v-27.995h4.015v5.005q1.155-2.53 3.52-4.07 2.365-1.595 5.885-1.595h0.495q4.785 0 7.645 2.915 2.915 2.915 2.915 8.525v17.215h-4.4v-16.5q0-4.125-1.815-6.215-1.815-2.145-5.225-2.145h-0.385q-2.2 0-4.07 1.1-1.87 1.045-3.025 3.19-1.155 2.09-1.155 5.28v15.29zm43.835 0.66q-5.775 0-9.13-3.575t-3.355-10.065v-2.035q0-4.235 1.54-7.26 1.54-3.08 4.345-4.73 2.86-1.65 6.6-1.65h0.44q3.685 0 6.325 1.54 2.695 1.54 4.18 4.4 1.485 2.805 1.485 6.6v3.355h-20.57q0.055 4.895 2.2 7.315 2.2 2.42 5.94 2.42h0.825q2.75 0 4.455-0.99 1.76-0.99 2.805-2.86l3.355 2.035q-1.43 2.53-4.18 4.015-2.695 1.485-6.435 1.485zm-8.085-16.775h16.17v-0.605q0-4.07-2.09-6.16-2.035-2.09-5.555-2.09h-0.44q-3.41 0-5.665 2.255-2.2 2.255-2.42 6.6zm27.5 16.115v-40.15h4.4v40.15zm42.955 0.66q-7.975 0-12.265-4.895-4.235-4.95-4.235-13.805v-2.475q0-5.72 1.98-9.9 1.98-4.235 5.665-6.49 3.74-2.31 8.855-2.31h0.715q5.225 0 8.8 2.42t5.06 6.875l-4.18 1.43q-1.045-3.245-3.575-4.95t-6.105-1.705h-0.66q-5.665 0-8.855 3.795-3.135 3.795-3.135 10.725v2.695q0 7.15 3.08 10.89 3.08 3.685 8.91 3.685h0.66q3.685 0 6.27-1.595 2.64-1.65 3.685-4.785l4.07 1.595q-1.54 4.18-5.225 6.49-3.63 2.31-8.8 2.31zm28.875 0q-4.51 0-6.93-2.145t-2.42-6.16q0-3.3 2.035-5.39 2.09-2.145 6.105-2.695l11-1.485v-0.22q0-7.535-6.71-7.535h-0.605q-5.28 0-7.205 4.07l-3.52-1.705q1.265-2.86 4.015-4.455 2.805-1.595 6.71-1.595h0.825q5.335 0 8.085 2.805 2.805 2.805 2.805 8.14v17.71h-4.015v-5.005q-1.265 2.64-3.85 4.18-2.585 1.485-5.83 1.485zm9.79-14.52-9.13 1.32q-3.19 0.44-4.455 1.485t-1.265 3.19q0 2.365 1.485 3.63 1.54 1.265 4.4 1.265h0.55q3.795 0 6.105-2.42t2.31-6.435zm24.145 14.52q-5.885 0-9.405-3.575-3.465-3.575-3.465-10.065v-2.035q0-4.29 1.595-7.315 1.65-3.08 4.565-4.675 2.915-1.65 6.71-1.65h0.605q3.685 0 6.325 1.76 2.64 1.705 3.85 4.565l-3.52 1.65q-0.935-1.925-2.585-3.025-1.65-1.155-4.07-1.155h-0.55q-3.74 0-6.16 2.475-2.365 2.475-2.365 7.37v2.035q0 4.95 2.31 7.425 2.365 2.42 6.215 2.42h0.55q2.53 0 4.18-1.045 1.705-1.1 2.585-2.915l3.52 1.705q-1.21 2.695-3.905 4.4-2.64 1.65-6.38 1.65zm17.765-0.66v-40.15h4.4v16.5q1.21-2.255 3.465-3.63 2.31-1.375 5.555-1.375h0.495q4.785 0 7.645 2.915 2.915 2.915 2.915 8.525v17.215h-4.4v-16.5q0-4.125-1.815-6.215-1.815-2.145-5.225-2.145h-0.385q-2.2 0-4.07 1.1-1.87 1.045-3.025 3.19-1.155 2.09-1.155 5.28v15.29zm43.835 0.66q-5.775 0-9.13-3.575t-3.355-10.065v-2.035q0-4.235 1.54-7.26 1.54-3.08 4.345-4.73 2.86-1.65 6.6-1.65h0.44q3.685 0 6.325 1.54 2.695 1.54 4.18 4.4 1.485 2.805 1.485 6.6v3.355h-20.57q0.055 4.895 2.2 7.315 2.2 2.42 5.94 2.42h0.825q2.75 0 4.455-0.99 1.76-0.99 2.805-2.86l3.355 2.035q-1.43 2.53-4.18 4.015-2.695 1.485-6.435 1.485zm-8.085-16.775h16.17v-0.605q0-4.07-2.09-6.16-2.035-2.09-5.555-2.09h-0.44q-3.41 0-5.665 2.255-2.2 2.255-2.42 6.6z"/>
+  </g>
+  <g transform="translate(2687,1315)" clip-path="url(#clip74)" filter="url(#fx21)">
+   <g clip-path="url(#clip75)">
+    <path d="m124.04 51.787-107.5 0.7961-0.0814-11 107.5-0.7961zm-5.663-21.959 33.122 16.255-32.877 16.744z"/>
+   </g>
+  </g>
+  <path d="m2809.9 1362.4-106.36 0.79-0.08-11.46 106.35-0.79zm-5.9-22.87 34.5 16.93-34.25 17.44z"/>
+  <g transform="translate(2334,844)" clip-path="url(#clip76)" filter="url(#fx22)">
+   <g clip-path="url(#clip77)">
+    <path d="m51 11.083 3e-4 69.361h-11l-3e-4 -69.361zm11 63.861-16.5 33-16.5-33z"/>
+   </g>
+  </g>
+  <path d="m2385.2 850.5v68.215h-11.46v-68.215zm11.46 62.486-17.19 34.375-17.19-34.375z"/>
+ </g>
+</svg>

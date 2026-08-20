@@ -1,0 +1,47 @@
+﻿warp.tile\_stack\_push
+======================
+
+.. function:: warp._src.lang.tile_stack_push(s: Any, value: Any, has_value: bool) -> int
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Push a value onto a tile stack (cooperative).
+   
+   All threads in the block must call this function. Only threads with
+   ``has_value=True`` write to the stack.
+   
+   :param s: The tile stack
+   :param value: The value to push
+   :param has_value: Whether this thread has a value to push
+   
+   :returns: The slot index where the value was written, or ``-1`` if
+             ``has_value`` is ``False`` or the stack overflowed.
+   
+   .. rubric:: Example
+   
+   .. code-block:: python
+   
+       CAP = wp.constant(8)
+   
+       @wp.kernel
+       def push_kernel(out_idx: wp.array[int]):
+           _i, j = wp.tid()
+           s = wp.tile_stack(capacity=CAP, dtype=int)
+           idx = wp.tile_stack_push(s, j * 10, j < 4)
+           out_idx[j] = idx
+   
+       out_idx = wp.full(8, -1, dtype=int)
+       wp.launch_tiled(push_kernel, dim=[1], inputs=[out_idx], block_dim=8)
+   
+       idxs = out_idx.numpy()
+       print(sorted(idxs[idxs >= 0].tolist()))
+       print(sum(idxs == -1))
+   
+   .. code-block:: text
+   
+       [0, 1, 2, 3]
+       4
+   

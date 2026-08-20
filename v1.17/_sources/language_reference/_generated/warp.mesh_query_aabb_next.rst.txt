@@ -1,0 +1,37 @@
+﻿warp.mesh\_query\_aabb\_next
+============================
+
+.. function:: warp._src.lang.mesh_query_aabb_next(query: MeshQueryAABB, index: int32) -> bool
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Advance a mesh AABB query to the next overlapping triangle and report whether one was found.
+   
+   .. note:: This is an alias for :func:`mesh_query_next`.
+
+.. function:: warp._src.lang.mesh_query_aabb_next(query: _MeshQuerySphere, index: int32) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Advance a sphere mesh query to the next matching triangle.
+   
+   .. note:: This is an alias for :func:`mesh_query_next`.
+
+.. function:: warp._src.lang.mesh_query_aabb_next(query: MeshQuery, index: int32) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Advance a mesh query to the next matching triangle.
+   
+   .. note:: This is an alias for :func:`mesh_query_next`.

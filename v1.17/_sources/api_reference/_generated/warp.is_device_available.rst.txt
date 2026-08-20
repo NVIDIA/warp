@@ -1,0 +1,6 @@
+﻿warp.is\_device\_available
+==========================
+
+.. currentmodule:: warp
+
+.. autofunction:: is_device_available

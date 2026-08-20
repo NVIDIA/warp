@@ -1,0 +1,6 @@
+﻿warp.config.verify\_cuda
+========================
+
+.. currentmodule:: warp.config
+
+.. autodata:: verify_cuda

@@ -1,0 +1,7 @@
+﻿warp.config.launch\_array\_access\_mode
+=======================================
+
+.. currentmodule:: warp.config
+
+.. autodata:: launch_array_access_mode
+   :annotation: : warp.config.LaunchArrayAccessMode = warp.config.LaunchArrayAccessMode.RELAXED

@@ -1,0 +1,6 @@
+﻿warp.fem.project\_system\_matrix
+================================
+
+.. currentmodule:: warp.fem
+
+.. autofunction:: project_system_matrix

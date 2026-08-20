@@ -1,0 +1,6 @@
+﻿warp.indexedarray1d
+===================
+
+.. currentmodule:: warp
+
+.. autofunction:: indexedarray1d

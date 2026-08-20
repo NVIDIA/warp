@@ -1,0 +1,6 @@
+﻿warp.fem.D
+==========
+
+.. currentmodule:: warp.fem
+
+.. autodata:: D

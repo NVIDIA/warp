@@ -1,0 +1,19 @@
+﻿warp.volume\_lookup\_f
+======================
+
+.. function:: warp._src.lang.volume_lookup_f(id: uint64, i: int32, j: int32, k: int32) -> float
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   Return the :class:`warp.float32` value of the voxel at integer index-space coordinates
+   ``i``, ``j``, ``k``, without interpolation.
+   
+   Returns the resolved NanoVDB value (see :func:`~warp.volume_lookup`); the result is ``0`` if
+   ``id`` is not a ``float32`` volume. Not differentiable. In kernels, equivalent to
+   :func:`~warp.volume_lookup` with ``dtype=float``.
+   
+   See :func:`~warp.volume_lookup` for a usage example.

@@ -1,0 +1,12 @@
+﻿warp.float32
+============
+
+.. currentmodule:: warp
+
+.. autoclass:: float32
+   
+   
+   
+   
+   
+   

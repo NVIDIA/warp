@@ -1,0 +1,6 @@
+﻿warp.func\_grad
+===============
+
+.. currentmodule:: warp
+
+.. autofunction:: func_grad

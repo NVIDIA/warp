@@ -1,0 +1,52 @@
+﻿warp.tile\_stack
+================
+
+.. function:: warp._src.lang.tile_stack(capacity: int32, dtype: Any) -> TileStack[Any, Any]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Allocate a cooperative thread-block stack in shared memory.
+   
+   :param capacity: Maximum number of elements (must be a compile-time constant)
+   :param dtype: Data type of stack elements
+   
+   :returns: A tile stack object for use with :func:`tile_stack_push`, :func:`tile_stack_pop`,
+             :func:`tile_stack_clear`, and :func:`tile_stack_count`.
+   
+   .. rubric:: Example
+   
+   .. code-block:: python
+   
+       BLOCK = 8
+       CAP = wp.constant(8)
+   
+       @wp.kernel
+       def compact_kernel(data: wp.array[int], out: wp.array[int], out_count: wp.array[int]):
+           _i, j = wp.tid()
+           s = wp.tile_stack(capacity=CAP, dtype=int)
+   
+           val = data[j]
+           wp.tile_stack_push(s, val, val > 5)
+   
+           if j == 0:
+               out_count[0] = wp.tile_stack_count(s)
+   
+           result, slot = wp.tile_stack_pop(s)
+           if slot != -1:
+               out[slot] = result
+   
+       data = wp.array([1, 8, 3, 7, 2, 9, 4, 6], dtype=int)
+       out = wp.zeros(BLOCK, dtype=int)
+       out_count = wp.zeros(1, dtype=int)
+       wp.launch_tiled(compact_kernel, dim=[1], inputs=[data, out, out_count], block_dim=BLOCK)
+   
+       n = out_count.numpy()[0]
+       print(sorted(out.numpy()[:n].tolist()))
+   
+   .. code-block:: text
+   
+       [6, 7, 8, 9]
+   

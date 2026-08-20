@@ -1,0 +1,6 @@
+﻿warp.config.enable\_graph\_capture\_module\_load\_by\_default
+=============================================================
+
+.. currentmodule:: warp.config
+
+.. autodata:: enable_graph_capture_module_load_by_default

@@ -1,0 +1,42 @@
+﻿warp.tile\_fft
+==============
+
+.. function:: warp._src.lang.tile_fft(inout: Tile[Vector[Float, Literal[2]], tuple[int, ...]]) -> None
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the forward FFT along the last dimension of an N-D tile of data.
+   
+   This function cooperatively computes the forward FFT on a tile of data inplace.
+   All leading dimensions are treated as independent batch dimensions.
+   The tile must have at least two dimensions.
+   
+   The transform is unnormalized, meaning that applying :func:`tile_fft` followed by :func:`tile_ifft`
+   will scale the data by N, where N is the FFT size (the last dimension of the tile).
+   Normalization is left to the user to perform as needed.
+   
+   Supported datatypes are:
+       * vec2f, vec2d
+   
+   :param inout: The input/output tile.
+   
+   .. rubric:: Notes
+   
+   Supported FFT sizes by backend:
+   
+   * **CPU**: Any size. Non-power-of-two sizes are capped at 4096;
+     larger non-power-of-two sizes raise ``ValueError``.
+   * **GPU with libmathdx**: Any size. This is the default when Warp
+     is built with libmathdx.
+   * **GPU without libmathdx** (or ``enable_mathdx_fft=False``):
+     Power-of-two sizes only, and the FFT size must be divisible by
+     ``block_dim``. Other sizes raise ``ValueError``. Slower than the
+     libmathdx path.
+   
+   See :attr:`warp.config.enable_mathdx_fft` to control GPU backend
+   selection.
+   

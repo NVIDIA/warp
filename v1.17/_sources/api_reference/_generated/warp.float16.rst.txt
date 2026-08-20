@@ -1,0 +1,12 @@
+﻿warp.float16
+============
+
+.. currentmodule:: warp
+
+.. autoclass:: float16
+   
+   
+   
+   
+   
+   

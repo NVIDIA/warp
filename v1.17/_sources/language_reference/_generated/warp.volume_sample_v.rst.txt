@@ -1,0 +1,21 @@
+﻿warp.volume\_sample\_v
+======================
+
+.. function:: warp._src.lang.volume_sample_v(id: uint64, uvw: vec3f, sampling_mode: int32) -> vec3f
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+      * Differentiable
+
+   Sample the vector (:class:`warp.vec3f`) volume given by ``id`` at the index-space point ``uvw``.
+   
+   ``uvw`` is in index space (voxel coordinates) and may be fractional; ``sampling_mode`` must be
+   :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR` and is applied per component. Sampling
+   uses the resolved NanoVDB value (see :func:`~warp.volume_sample`), and the sample is ``0`` if
+   ``id`` is not a ``vec3f`` volume. In kernels, equivalent to :func:`~warp.volume_sample` with
+   ``dtype=warp.vec3f``.
+   
+   See :func:`~warp.volume_sample` for a usage example.

@@ -1,0 +1,12 @@
+﻿warp.ScopedCapture
+==================
+
+.. currentmodule:: warp
+
+.. autoclass:: ScopedCapture
+   
+   
+   
+   
+   
+   

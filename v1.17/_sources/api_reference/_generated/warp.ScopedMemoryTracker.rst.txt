@@ -1,0 +1,19 @@
+﻿warp.ScopedMemoryTracker
+========================
+
+.. currentmodule:: warp
+
+.. autoclass:: ScopedMemoryTracker
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~ScopedMemoryTracker.clear
+      ~ScopedMemoryTracker.report
+   
+   
+   
+   
+   

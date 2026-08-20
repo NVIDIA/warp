@@ -1,0 +1,30 @@
+﻿warp.Stream
+===========
+
+.. currentmodule:: warp
+
+.. autoclass:: Stream
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Stream.record_event
+      ~Stream.wait_event
+      ~Stream.wait_stream
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Stream.cached_event
+      ~Stream.is_blocking
+      ~Stream.is_capturing
+      ~Stream.is_complete
+      ~Stream.priority
+   
+   

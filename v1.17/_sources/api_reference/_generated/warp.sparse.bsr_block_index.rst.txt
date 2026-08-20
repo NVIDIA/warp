@@ -1,0 +1,6 @@
+﻿warp.sparse.bsr\_block\_index
+=============================
+
+.. currentmodule:: warp.sparse
+
+.. autodata:: bsr_block_index

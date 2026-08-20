@@ -1,0 +1,6 @@
+﻿warp.capture\_load
+==================
+
+.. currentmodule:: warp
+
+.. autofunction:: capture_load

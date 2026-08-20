@@ -1,0 +1,6 @@
+﻿warp.config.enable\_tiles\_in\_stack\_memory
+============================================
+
+.. currentmodule:: warp.config
+
+.. autodata:: enable_tiles_in_stack_memory

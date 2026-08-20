@@ -1,0 +1,6 @@
+﻿warp.compile\_aot\_module
+=========================
+
+.. currentmodule:: warp
+
+.. autofunction:: compile_aot_module

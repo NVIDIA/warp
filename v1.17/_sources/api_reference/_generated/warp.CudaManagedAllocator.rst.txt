@@ -1,0 +1,26 @@
+﻿warp.CudaManagedAllocator
+=========================
+
+.. currentmodule:: warp
+
+.. autoclass:: CudaManagedAllocator
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~CudaManagedAllocator.allocate
+      ~CudaManagedAllocator.deallocate
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~CudaManagedAllocator.deallocate_requires_context_guard
+      ~CudaManagedAllocator.memory_kind
+   
+   

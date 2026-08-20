@@ -1,0 +1,28 @@
+﻿warp.tile\_cholesky\_solve\_inplace
+===================================
+
+.. function:: warp._src.lang.tile_cholesky_solve_inplace(L: Tile[Float, tuple[int, int]], y: Tile[Float, tuple[int]], fill_mode: str) -> None
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Solve for ``x`` in ``Ax = y`` by overwriting ``y`` with ``x``.
+   
+   When ``fill_mode="lower"`` (default), ``L`` is lower-triangular such that ``LL^T = A``.
+   When ``fill_mode="upper"``, ``L`` is upper-triangular ``U`` such that ``U^T U = A``.
+   
+   The ``fill_mode`` parameter must be a compile-time constant.
+   
+   Note: This inplace variant does not support automatic differentiation (adjoint computation),
+   but avoids allocating shared memory for the output ``x`` by reusing ``y``'s memory.
+   
+   Supported datatypes are:
+       * float32
+       * float64
+   
+   :param L: A square triangular Cholesky factor of ``A``.
+   :param y: A 1D or 2D tile of length ``M`` that gets overwritten by ``x`` where ``Ax = y``.
+   :param fill_mode: ``"lower"`` (default) or ``"upper"``. Must be a compile-time constant.
+   

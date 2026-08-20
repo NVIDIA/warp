@@ -1,0 +1,39 @@
+﻿warp.tile\_axpy
+===============
+
+.. function:: warp._src.lang.tile_axpy(alpha: Any, src: Tile[Any, tuple[int, ...]], dest: Tile[Any, tuple[int, ...]]) -> None
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Scale ``src`` by ``alpha`` and accumulate into ``dest``.
+   
+   Performs a fused multiply-add directly into the destination tile without
+   creating an intermediate scaled tile.
+   
+   :param alpha: Scalar multiplier (must match the tile's underlying scalar type).
+   :param src: Source tile (must have same shape and dtype as ``dest``).
+   :param dest: Destination tile, modified in place.
+   
+   .. rubric:: Example
+   
+   .. code-block:: python
+   
+       @wp.kernel
+       def compute():
+   
+           dest = wp.tile_ones(dtype=float, shape=4) * 2.0
+           src = wp.tile_ones(dtype=float, shape=4) * 3.0
+           wp.tile_axpy(5.0, src, dest)
+   
+           print(dest)
+   
+       wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
+   
+   .. code-block:: text
+   
+       [17 17 17 17] = tile(shape=(4), storage=register)
+   

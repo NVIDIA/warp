@@ -1,0 +1,56 @@
+warp.config
+===========
+
+.. automodule:: warp.config
+   :no-members:
+
+.. currentmodule:: warp.config
+
+API
+---
+
+.. autosummary::
+   :nosignatures:
+   :toctree: _generated
+
+   LaunchArrayAccessMode
+   cache_kernels
+   compile_time_trace
+   cpu_compiler_flags
+   cuda_arch_suffix
+   cuda_output
+   default_grid_stride
+   deterministic
+   deterministic_debug
+   deterministic_max_records
+   enable_backward
+   enable_graph_capture_module_load_by_default
+   enable_mathdx_fft
+   enable_mathdx_gemm
+   enable_mathdx_solver
+   enable_mempools_at_init
+   enable_tiles_in_stack_memory
+   enable_vector_component_overwrites
+   kernel_cache_dir
+   launch_array_access_mode
+   legacy_cpu_linker
+   legacy_scalar_return_types
+   line_directives
+   lineinfo
+   llvm_cuda
+   load_module_max_workers
+   log_level
+   max_unroll
+   mode
+   optimization_level
+   print_launches
+   ptx_target_arch
+   quiet
+   track_memory
+   use_precompiled_headers
+   verbose
+   verbose_warnings
+   verify_autograd_array_access
+   verify_cuda
+   verify_fp
+   version

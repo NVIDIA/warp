@@ -1,0 +1,6 @@
+﻿warp.cuda\_profiler\_start
+==========================
+
+.. currentmodule:: warp
+
+.. autofunction:: cuda_profiler_start

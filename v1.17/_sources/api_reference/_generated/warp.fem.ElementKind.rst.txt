@@ -1,0 +1,35 @@
+﻿warp.fem.ElementKind
+====================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: ElementKind
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~ElementKind.conjugate
+      ~ElementKind.bit_length
+      ~ElementKind.bit_count
+      ~ElementKind.to_bytes
+      ~ElementKind.from_bytes
+      ~ElementKind.as_integer_ratio
+      ~ElementKind.is_integer
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ElementKind.real
+      ~ElementKind.imag
+      ~ElementKind.numerator
+      ~ElementKind.denominator
+      ~ElementKind.CELL
+      ~ElementKind.SIDE
+   
+   

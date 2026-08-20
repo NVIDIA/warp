@@ -1,0 +1,6 @@
+﻿warp.set\_device\_allocator
+===========================
+
+.. currentmodule:: warp
+
+.. autofunction:: set_device_allocator

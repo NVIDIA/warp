@@ -1,0 +1,12 @@
+﻿warp.array4d
+============
+
+.. currentmodule:: warp
+
+.. autoclass:: array4d
+   
+   
+   
+   
+   
+   

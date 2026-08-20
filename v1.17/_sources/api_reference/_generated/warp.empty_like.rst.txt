@@ -1,0 +1,6 @@
+﻿warp.empty\_like
+================
+
+.. currentmodule:: warp
+
+.. autofunction:: empty_like

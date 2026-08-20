@@ -1,0 +1,28 @@
+﻿warp.quat\_twist\_angle
+=======================
+
+.. function:: warp._src.lang.quat_twist_angle(axis: vec3f, q: quatf) -> float
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Return the unsigned twist magnitude of ``q`` around ``axis``.
+   
+   This discards the sign of the twist, so rotations by ``+theta`` and
+   ``-theta`` around ``axis`` return the same value. Use
+   :func:`quat_twist_angle_signed` when the direction of rotation around
+   ``axis`` matters.
+   
+   The result follows the quaternion branch supplied by ``q``. For
+   canonicalized quaternions, the result is in ``[0, pi]``. Noncanonicalized
+   inputs may return values in ``[0, 2*pi]``.
+   
+   :param axis: Twist axis. Expected to be normalized by the caller.
+   :param q: Input quaternion.
+   
+   :returns: Unsigned twist angle in radians.
+   :rtype: float
+   

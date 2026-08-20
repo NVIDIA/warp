@@ -1,0 +1,6 @@
+﻿warp.capture\_launch
+====================
+
+.. currentmodule:: warp
+
+.. autofunction:: capture_launch

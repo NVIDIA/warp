@@ -1,0 +1,43 @@
+﻿warp.tile\_stack\_clear
+=======================
+
+.. function:: warp._src.lang.tile_stack_clear(s: Any) -> None
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Clear a tile stack, resetting the count to zero (cooperative).
+   
+   All threads in the block must call this function.
+   
+   :param s: The tile stack
+   
+   .. rubric:: Example
+   
+   .. code-block:: python
+   
+       CAP = wp.constant(8)
+   
+       @wp.kernel
+       def clear_kernel(before: wp.array[int], after: wp.array[int]):
+           _i, j = wp.tid()
+           s = wp.tile_stack(capacity=CAP, dtype=int)
+           wp.tile_stack_push(s, j, True)
+           if j == 0:
+               before[0] = wp.tile_stack_count(s)
+           wp.tile_stack_clear(s)
+           if j == 0:
+               after[0] = wp.tile_stack_count(s)
+   
+       before = wp.zeros(1, dtype=int)
+       after = wp.zeros(1, dtype=int)
+       wp.launch_tiled(clear_kernel, dim=[1], inputs=[before, after], block_dim=8)
+   
+       print(f"before: {before.numpy()[0]}, after: {after.numpy()[0]}")
+   
+   .. code-block:: text
+   
+       before: 8, after: 0
+   
