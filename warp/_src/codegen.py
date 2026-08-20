@@ -6555,6 +6555,22 @@ cuda_module_header = """
 #define WP_CLUSTER_DIMS(x, y, z)
 #endif
 
+// Maximum registers per thread. __maxnreg__ was added in CUDA Toolkit 12.4;
+// older toolkits ignore the opt-in so the same source remains compilable.
+#if defined(__CUDACC_VER_MAJOR__) && (__CUDACC_VER_MAJOR__ > 12 || (__CUDACC_VER_MAJOR__ == 12 && __CUDACC_VER_MINOR__ >= 4))
+#define WP_MAXNREG(n) __maxnreg__(n)
+#else
+#define WP_MAXNREG(n)
+#endif
+
+// Allow PTXAS to spill registers into shared memory. CUDA Toolkit 13.0
+// introduced the pragma, which is unavailable in device-debug compilation.
+#if defined(__CUDACC_VER_MAJOR__) && (__CUDACC_VER_MAJOR__ >= 13) && !defined(_DEBUG)
+#define WP_ENABLE_SMEM_SPILLING() asm volatile(".pragma \\\"enable_smem_spilling\\\";");
+#else
+#define WP_ENABLE_SMEM_SPILLING()
+#endif
+
 """
 
 struct_template = """
@@ -6706,10 +6722,10 @@ cuda_reverse_function_template = """
 # The index flattens blockIdx.{z,y,x}; the grid shape (and its uint32 cap) is built in wp_cuda_launch_kernel.
 cuda_kernel_template_forward = """
 
-{line_directive}extern "C" {launch_bounds_str}{cluster_dims_str}__global__ void {name}_cuda_kernel_forward(
+{line_directive}extern "C" {launch_bounds_str}{cluster_dims_str}__global__ void {max_registers_str}{name}_cuda_kernel_forward(
     {forward_args})
 {{
-{line_directive}    wp::tile_shared_storage_t tile_mem;
+{forward_smem_spilling_str}{line_directive}    wp::tile_shared_storage_t tile_mem;
 
 {line_directive}    const size_t _idx = static_cast<size_t>(blockIdx.z * gridDim.y + blockIdx.y) * static_cast<size_t>(gridDim.x * blockDim.x) + static_cast<size_t>(blockIdx.x * blockDim.x + threadIdx.x);
 {line_directive}    if (_idx >= dim.size) return;
@@ -6722,10 +6738,10 @@ cuda_kernel_template_forward = """
 
 cuda_kernel_template_backward = """
 
-{line_directive}extern "C" {launch_bounds_str}{cluster_dims_str}__global__ void {name}_cuda_kernel_backward(
+{line_directive}extern "C" {launch_bounds_str}{cluster_dims_str}__global__ void {max_registers_str}{name}_cuda_kernel_backward(
     {reverse_args})
 {{
-{line_directive}    wp::tile_shared_storage_t tile_mem;
+{backward_smem_spilling_str}{line_directive}    wp::tile_shared_storage_t tile_mem;
 
 {line_directive}    const size_t _idx = static_cast<size_t>(blockIdx.z * gridDim.y + blockIdx.y) * static_cast<size_t>(gridDim.x * blockDim.x) + static_cast<size_t>(blockIdx.x * blockDim.x + threadIdx.x);
 {line_directive}    if (_idx >= dim.size) return;
@@ -6738,10 +6754,10 @@ cuda_kernel_template_backward = """
 
 cuda_kernel_template_forward_grid_stride = """
 
-{line_directive}extern "C" {launch_bounds_str}{cluster_dims_str}__global__ void {name}_cuda_kernel_forward(
+{line_directive}extern "C" {launch_bounds_str}{cluster_dims_str}__global__ void {max_registers_str}{name}_cuda_kernel_forward(
     {forward_args})
 {{
-{line_directive}    wp::tile_shared_storage_t tile_mem;
+{forward_smem_spilling_str}{line_directive}    wp::tile_shared_storage_t tile_mem;
 
 {line_directive}    for (size_t _idx = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
 {line_directive}         _idx < dim.size;
@@ -6757,10 +6773,10 @@ cuda_kernel_template_forward_grid_stride = """
 
 cuda_kernel_template_backward_grid_stride = """
 
-{line_directive}extern "C" {launch_bounds_str}{cluster_dims_str}__global__ void {name}_cuda_kernel_backward(
+{line_directive}extern "C" {launch_bounds_str}{cluster_dims_str}__global__ void {max_registers_str}{name}_cuda_kernel_backward(
     {reverse_args})
 {{
-{line_directive}    wp::tile_shared_storage_t tile_mem;
+{backward_smem_spilling_str}{line_directive}    wp::tile_shared_storage_t tile_mem;
 
 {line_directive}    for (size_t _idx = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
 {line_directive}         _idx < dim.size;
@@ -7577,6 +7593,19 @@ def codegen_kernel(kernel, device, options):
         else:
             raise ValueError(f"launch_bounds must be an int or a tuple/list of 1-2 ints, got {type(launch_bounds)}")
 
+    max_registers_str = ""
+    if device == "cuda" and not options.get("llvm_cuda", False) and "cuda_max_registers" in options:
+        max_registers_str = f"WP_MAXNREG({options['cuda_max_registers']}) "
+
+    forward_smem_spilling_str = ""
+    if (
+        device == "cuda"
+        and not options.get("llvm_cuda", False)
+        and options.get("enable_cuda_smem_spilling", False)
+        and adj.get_total_required_shared() == 0
+    ):
+        forward_smem_spilling_str = "    WP_ENABLE_SMEM_SPILLING();\n"
+
     # Generate cluster_dims string for CUDA kernels.
     # 1 is the implicit default and is treated as a no-op so that
     # kernels without cluster_dim produce byte-identical source to pre-feature.
@@ -7606,6 +7635,8 @@ def codegen_kernel(kernel, device, options):
             "line_directive": func_line_directive,
             "launch_bounds_str": launch_bounds_str,
             "cluster_dims_str": cluster_dims_str,
+            "max_registers_str": max_registers_str,
+            "forward_smem_spilling_str": forward_smem_spilling_str,
         }
     )
     template += template_forward
@@ -7630,10 +7661,19 @@ def codegen_kernel(kernel, device, options):
         reverse_body = ""
         reverse_body += adj.deterministic.kernel_locals(device)
         reverse_body += codegen_func_reverse(adj, func_type="kernel", device=device, grid_stride=kernel.grid_stride)
+        backward_smem_spilling_str = ""
+        if (
+            device == "cuda"
+            and not options.get("llvm_cuda", False)
+            and options.get("enable_cuda_smem_spilling", False)
+            and adj.get_total_required_shared_backward() == 0
+        ):
+            backward_smem_spilling_str = "    WP_ENABLE_SMEM_SPILLING();\n"
         template_fmt_args.update(
             {
                 "reverse_args": indent(reverse_args),
                 "reverse_body": reverse_body,
+                "backward_smem_spilling_str": backward_smem_spilling_str,
             }
         )
         template += template_backward

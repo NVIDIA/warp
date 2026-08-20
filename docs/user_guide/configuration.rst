@@ -127,6 +127,21 @@ Kernel-level settings can be passed as arguments to the :func:`@wp.kernel <warp.
        ``(maxThreadsPerBlock, minBlocksPerMultiprocessor)``. Only applies to
        CUDA kernels. The ``block_dim`` parameter in :func:`warp.launch` must
        not exceed the ``maxThreadsPerBlock`` value specified here.
+   * - ``cuda_max_registers``
+     - int
+     - ``None``
+     - CUDA ``__maxnreg__`` attribute specifying the maximum number of
+       registers allocated per thread. Must be positive and cannot be combined
+       with ``launch_bounds``. Ignored on CPU and when Warp was built with CUDA
+       Toolkit earlier than 12.4 or when ``wp.config.llvm_cuda`` is ``True``.
+   * - ``enable_cuda_smem_spilling``
+     - Boolean
+     - ``None``
+     - If ``True``, allow the CUDA Toolkit used to build Warp, when version
+       13.0 or later, to spill registers into shared memory. Silently ignored
+       for entry points that use dynamic shared memory, on CPU, with older CUDA
+       Toolkits, in unsupported device-debug compilation, and when
+       ``wp.config.llvm_cuda`` is ``True``.
    * - ``module_options``
      - dict
      - ``None``
@@ -161,11 +176,34 @@ Kernel-level settings can be passed as arguments to the :func:`@wp.kernel <warp.
         a[tid] = a[tid] * 2.0
 
 
+    @wp.kernel(cuda_max_registers=64)
+    def register_limited_kernel(a: wp.array[float]):
+        # CUDA __maxnreg__(64) will be set when supported
+        tid = wp.tid()
+        a[tid] = a[tid] * 2.0
+
+
+    @wp.kernel(enable_cuda_smem_spilling=True, launch_bounds=256)
+    def smem_spilling_kernel(a: wp.array[float]):
+        tid = wp.tid()
+        a[tid] = a[tid] * 2.0
+
+
     @wp.kernel(module_options={"fast_math": True}, module="unique")
     def fast_kernel(a: wp.array[float], b: wp.array[float]):
         # fast_math is applied to this kernel's unique module
         tid = wp.tid()
         b[tid] = a[tid] + 1.0
+
+CUDA shared-memory register spilling uses otherwise available shared memory to
+reduce local-memory spill traffic. Warp evaluates forward and backward entry
+points independently and enables the optimization only when the corresponding
+entry point requires no dynamic shared memory, including scratch space required
+by tile operations and their callees. Explicit ``launch_bounds`` are recommended
+to keep the compiler's shared-memory estimate aligned with the intended block
+size. See NVIDIA's `shared-memory register spilling guidance
+<https://developer.nvidia.com/blog/how-to-improve-cuda-kernel-performance-with-shared-memory-register-spilling/>`__
+for performance considerations and CUDA limitations.
 
 .. _kernel-cluster-dim:
 

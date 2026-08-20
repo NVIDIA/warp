@@ -969,6 +969,26 @@ class KernelHooks:
 _MAX_CLUSTER_SIZE = 16
 
 
+def _normalize_enable_cuda_smem_spilling(value) -> bool:
+    """Validate an ``enable_cuda_smem_spilling`` decorator value."""
+    if not isinstance(value, bool):
+        raise TypeError(f"enable_cuda_smem_spilling must be a bool, got {type(value).__name__}: {value!r}")
+
+    return value
+
+
+def _normalize_cuda_max_registers(value) -> int:
+    """Validate and canonicalize a ``cuda_max_registers`` decorator value."""
+    if isinstance(value, bool):
+        raise TypeError(f"cuda_max_registers must be a positive int, got bool {value!r}")
+    if not isinstance(value, int):
+        raise TypeError(f"cuda_max_registers must be a positive int, got {type(value).__name__}: {value!r}")
+    if value < 1:
+        raise ValueError(f"cuda_max_registers must be >= 1, got {value!r}")
+
+    return value
+
+
 def _normalize_cluster_dim(value) -> int:
     """Validate and canonicalize a ``cluster_dim`` decorator value.
 
@@ -1675,6 +1695,8 @@ def kernel(
     *,
     enable_backward: bool | None = None,
     launch_bounds: tuple[int, ...] | int | None = None,
+    cuda_max_registers: int | None = None,
+    enable_cuda_smem_spilling: bool | None = None,
     cluster_dim: int | None = None,
     module: Module | Literal["unique"] | str | None = None,
     module_options: dict[str, Any] | None = None,
@@ -1715,6 +1737,20 @@ def kernel(
             a[tid] = a[tid] * 2.0
 
 
+        @wp.kernel(cuda_max_registers=64)
+        def my_kernel_with_cuda_max_registers(a: wp.array[float]):
+            # CUDA __maxnreg__(64) will be set when supported
+            tid = wp.tid()
+            a[tid] = a[tid] * 2.0
+
+
+        @wp.kernel(enable_cuda_smem_spilling=True, launch_bounds=256)
+        def my_kernel_with_cuda_smem_spilling(a: wp.array[float]):
+            # CUDA 13+ may use shared memory for register spills
+            tid = wp.tid()
+            a[tid] = a[tid] * 2.0
+
+
         @wp.kernel(module_options={"fast_math": True}, module="unique")
         def my_kernel_fast(a: wp.array[float], b: wp.array[float]):
             # fast_math is a module-level option, so module="unique" is required
@@ -1732,6 +1768,19 @@ def kernel(
             kernels. Note: The ``block_dim`` parameter in
             :func:`warp.launch` must not exceed the
             ``maxThreadsPerBlock`` value specified here.
+        cuda_max_registers: CUDA ``__maxnreg__`` attribute specifying the maximum
+            number of registers allocated per thread. Must be a positive int
+            and cannot be combined with ``launch_bounds``. Only applies to CUDA
+            kernels and is ignored when Warp was built with CUDA Toolkit
+            earlier than 12.4 or when ``wp.config.llvm_cuda`` is ``True``.
+        enable_cuda_smem_spilling: If ``True``, allow the CUDA Toolkit used to
+            build Warp, when version 13.0 or later, to use shared memory for
+            register spills. Applied independently to the forward and backward
+            kernels and silently ignored when an entry point uses dynamic shared
+            memory, on CPU, with older CUDA Toolkits, in unsupported device-debug
+            compilation, or when ``wp.config.llvm_cuda`` is ``True``. Explicit
+            ``launch_bounds`` are recommended to avoid over-allocating shared
+            memory and reducing occupancy.
         cluster_dim: CUDA Thread Block Cluster size as a 1D CTA count.
             Warp emits CUDA ``__cluster_dims__(cluster_dim, 1, 1)`` because
             kernels use a 1D hardware launch grid. Must be a positive int <= 16
@@ -1771,6 +1820,14 @@ def kernel(
 
         if launch_bounds is not None:
             kernel_options["launch_bounds"] = launch_bounds
+
+        if cuda_max_registers is not None:
+            if launch_bounds is not None:
+                raise ValueError("cuda_max_registers and launch_bounds cannot be specified together")
+            kernel_options["cuda_max_registers"] = _normalize_cuda_max_registers(cuda_max_registers)
+
+        if enable_cuda_smem_spilling is not None and _normalize_enable_cuda_smem_spilling(enable_cuda_smem_spilling):
+            kernel_options["enable_cuda_smem_spilling"] = True
 
         if grid_stride is not None:
             kernel_options["grid_stride"] = bool(grid_stride)
