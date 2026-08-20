@@ -108,9 +108,12 @@ class BsrMatrix(Generic[_BlockType]):
     Attributes:
         nrow (int): Number of rows of blocks.
         ncol (int): Number of columns of blocks.
-        nnz (int):  Upper bound for the number of stored blocks, used for
-          dimensioning launches. For compact matrices this is also the number
-          of active non-zero blocks. See also :meth:`nnz_sync`.
+        nnz (int): Host-side upper bound on the number of stored block slots
+          used by sparse operations, including for dimensioning launches.
+          Topology-changing operations may leave this larger than the active
+          block count, even for compact matrices. The backing arrays may have
+          additional allocated capacity. Call :meth:`nnz_sync` before using
+          ``nnz`` as an exact count.
         offsets (Array[int]): Array of size at least ``1 + nrow`` such that the
           start and capacity end indices of row ``r`` are ``offsets[r]`` and
           ``offsets[r+1]``, respectively.
@@ -121,9 +124,12 @@ class BsrMatrix(Generic[_BlockType]):
           ``row_counts`` is ``None``, in which case all storage in each row is
           active.
         columns (Array[int]): Array of size at least equal to ``nnz`` containing
-          block column indices.
+          block column indices. Entries outside active row ranges are not part
+          of the matrix and may be uninitialized.
         values (Array[BlockType]): Array of size at least equal to ``nnz``
-          containing block values.
+          containing block values. Entries outside active row ranges are not
+          part of the matrix and may be uninitialized. Active entries may also
+          be uninitialized after topology-only or structure-only operations.
     """
 
     @property
@@ -170,7 +176,26 @@ class BsrMatrix(Generic[_BlockType]):
         return values_view
 
     def uncompress_rows(self, out: wp.array = None) -> wp.array:
-        """Compute the row index for each non-zero block from the compressed row offsets."""
+        """Compute the row index for each stored block slot from the compressed row offsets.
+
+        The method writes ``nnz`` entries. When ``out`` is omitted, it allocates
+        an array of that length. Entries outside active row ranges are ``-1``.
+        When ``out`` is provided, entries beyond ``nnz`` are unchanged. For a
+        compact matrix, use :meth:`nnz_sync` before treating the result as COO
+        row data:
+
+        .. code-block:: python
+
+            nnz = matrix.nnz_sync()
+            rows = matrix.uncompress_rows()[:nnz]
+
+        Args:
+            out: Optional one-dimensional integer output array with at least
+              ``nnz`` elements on the matrix's device.
+
+        Returns:
+            The output array.
+        """
         if out is None:
             out = wp.empty(self.nnz, dtype=int, device=self.device)
 
@@ -189,8 +214,8 @@ class BsrMatrix(Generic[_BlockType]):
         or, if none has been scheduled yet, starts a new transfer and waits for it to complete.
 
         Then updates the host-side nnz upper bound to match ``offsets[nrow]``, and returns it. For compact matrices,
-        this is the active non-zero block count. For padded matrices, this is the total row-capacity storage size,
-        not necessarily the active non-zero block count.
+        this is the active stored block count. For padded matrices, this is the total row-capacity storage size,
+        not necessarily the active block count.
 
         See also :meth:`notify_nnz_changed`.
 
@@ -298,7 +323,7 @@ class BsrMatrix(Generic[_BlockType]):
         matrices.
 
         Args:
-            nnz: New non-zero block count upper bound. If omitted, read from
+            nnz: New stored block count upper bound. If omitted, read from
               ``offsets[nrow]`` unless `nnz_capacity` is provided. The caller
               is responsible for ensuring it is greater or equal to ``offsets[nrow]``.
             nnz_capacity: Optional storage pre-allocation size. If omitted,
@@ -477,7 +502,10 @@ def bsr_matrix_t(dtype: BlockType):
         ncol: int
         """Number of columns of blocks."""
         nnz: int
-        """Upper bound for the number of non-zeros."""
+        """Host-side upper bound on stored block slots. The backing arrays may be larger.
+
+        See :meth:`BsrMatrix.nnz_sync`.
+        """
         offsets: wp.array(dtype=int)
         """Array of size at least ``1 + nrow``."""
         row_counts: wp.array(dtype=int)
@@ -1505,6 +1533,17 @@ def bsr_from_triplets(
     This convenience constructor always builds compact storage. To build into reserved row capacity,
     allocate with :func:`bsr_zeros` using ``row_capacity`` and then call :func:`bsr_set_from_triplets`
     with ``topology="padded"``.
+
+    This function sums duplicate coordinates. When ``prune_numerical_zeros=True``, it omits zero-valued input
+    blocks. The returned matrix can therefore have fewer active blocks than input triplets, while ``nnz``
+    initially remains equal to the input array length. Call :meth:`BsrMatrix.nnz_sync` to obtain the exact
+    compact count before slicing ``columns`` and ``values``. Entries beyond the active count are not part of
+    the matrix and may be uninitialized. If nonzero duplicate blocks sum to zero, the result remains an active
+    explicit-zero block until it is pruned by :func:`bsr_compress`.
+
+    Use :func:`bsr_copy` to copy a matrix or change its scalar type or block shape. Use :func:`bsr_compress`
+    to pack active blocks into compact storage and optionally prune explicit zeros. Neither operation requires
+    converting the matrix back to COO.
 
     Args:
         rows_of_blocks: Number of rows of blocks.

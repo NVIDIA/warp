@@ -222,6 +222,36 @@ def test_bsr_from_triplets_prune_numerical_zeros(test, device):
     assert A.nnz_sync() == 0
 
 
+def test_bsr_stale_compact_tail(test, device):
+    """Verify stale compact tails and their exclusion from BSR copies."""
+    rows = wp.array([0, 0, 1, 1], dtype=int, device=device)
+    columns = wp.array([0, 0, 1, 1], dtype=int, device=device)
+    values = wp.array([1.0, 2.0, 3.0, 4.0], dtype=float, device=device)
+
+    # Duplicate coordinates reduce four input blocks to two active blocks.
+    matrix = bsr_from_triplets(2, 2, rows, columns, values)
+
+    # nnz stays at the input count until synchronization, so tail row indices are -1.
+    test.assertEqual(matrix.nnz, rows.shape[0])
+    np.testing.assert_array_equal(matrix.offsets.numpy(), np.array([0, 1, 2]))
+    np.testing.assert_array_equal(matrix.uncompress_rows().numpy(), np.array([0, 1, -1, -1]))
+
+    # Copy before synchronizing to exercise the stale host-side upper bound.
+    copied = bsr_copy(matrix, scalar_type=wp.float64)
+
+    # Synchronization updates nnz but leaves the overallocated backing arrays intact.
+    test.assertEqual(matrix.nnz_sync(), 2)
+    test.assertEqual(matrix.columns.size, rows.shape[0])
+    test.assertEqual(matrix.values.size, rows.shape[0])
+    np.testing.assert_array_equal(matrix.columns[: matrix.nnz].numpy(), np.array([0, 1]))
+    np.testing.assert_allclose(matrix.values[: matrix.nnz].numpy(), np.array([3.0, 7.0]))
+
+    # The copy excludes stale tail slots and keeps the accumulated values.
+    test.assertEqual(copied.nnz_sync(), 2)
+    np.testing.assert_array_equal(copied.columns[: copied.nnz].numpy(), np.array([0, 1]))
+    np.testing.assert_allclose(copied.values[: copied.nnz].numpy(), np.array([3.0, 7.0]))
+
+
 def test_bsr_gapped_layout(test, device):
     A = _make_gapped_csr(device)
     expected_A = np.array([[1.0, 0.0, 2.0], [0.0, 3.0, 4.0]])
@@ -1393,6 +1423,7 @@ add_function_test(
     test_bsr_from_triplets_prune_numerical_zeros,
     devices=devices,
 )
+add_function_test(TestSparse, "test_bsr_stale_compact_tail", test_bsr_stale_compact_tail, devices=devices)
 add_function_test(TestSparse, "test_bsr_gapped_layout", test_bsr_gapped_layout, devices=devices)
 add_function_test(TestSparse, "test_bsr_get_diag", test_bsr_get_set_diag, devices=devices)
 add_function_test(TestSparse, "test_bsr_split_merge", test_bsr_split_merge, devices=devices)
