@@ -2180,9 +2180,39 @@ class range_t:
 
 # definition just for kernel type (cannot be a parameter), see bvh.h
 class BvhQuery:
-    """Object used to track state during BVH traversal."""
+    """Object used to track state during BVH traversal.
+
+    Erased parent of the concrete query-kind tags: codegen produces this type only
+    when the concrete kind is lost (a branch merging two kinds, or a function
+    parameter annotated with the parent). Iteration then dispatches on the kind
+    stored in the query at construction.
+    """
 
     _wp_native_name_ = "bvh_query_t"
+
+
+class _BvhQueryAabb(BvhQuery):
+    """Internal dispatch type for AABB queries. Users see BvhQuery."""
+
+    _wp_erase_to_ = BvhQuery
+
+
+class _BvhQueryRay(BvhQuery):
+    """Internal dispatch type for ray queries. Users see BvhQuery."""
+
+    _wp_erase_to_ = BvhQuery
+
+
+class _BvhQueryCapsule(BvhQuery):
+    """Internal dispatch type for capsule queries. Users see BvhQuery."""
+
+    _wp_erase_to_ = BvhQuery
+
+
+class _BvhQuerySphere(BvhQuery):
+    """Internal dispatch type for sphere queries. Users see BvhQuery."""
+
+    _wp_erase_to_ = BvhQuery
 
 
 class BvhQueryTiled:
@@ -2192,10 +2222,32 @@ class BvhQueryTiled:
 
 
 # definition just for kernel type (cannot be a parameter), see mesh.h
-class MeshQueryAABB:
-    """Object used to track state during mesh traversal."""
+class MeshQuery:
+    """Object used to track state during mesh traversal.
+
+    Erased parent of the concrete query-kind tags: codegen produces this type only
+    when the concrete kind is lost (a branch merging two kinds, or a function
+    parameter annotated with the parent). Iteration then dispatches on the kind
+    stored in the query at construction.
+    """
 
     _wp_native_name_ = "mesh_query_aabb_t"
+
+
+class MeshQueryAABB(MeshQuery):
+    """Object used to track state during a mesh AABB query.
+
+    The concrete AABB query kind; public for backward compatibility with code
+    annotated against the pre-1.17 type name.
+    """
+
+    _wp_erase_to_ = MeshQuery
+
+
+class _MeshQuerySphere(MeshQuery):
+    """Internal dispatch type for sphere mesh queries. Users see MeshQuery."""
+
+    _wp_erase_to_ = MeshQuery
 
 
 class MeshQueryAABBTiled:
@@ -3001,6 +3053,30 @@ def types_equal(a, b):
     if a is b:
         return True
     return types_equal_generic(a, b, match_generic=False)
+
+
+def type_erased_parent(t):
+    """Return the public erased parent of a query-kind dispatch type, or ``None``.
+
+    Concrete query-kind types (e.g. the internal subclasses of ``BvhQuery`` and
+    ``MeshQuery``) carry a ``_wp_erase_to_`` class attribute naming the public
+    parent they decay to when the concrete kind cannot be tracked statically.
+    """
+    if isinstance(t, type):
+        return getattr(t, "_wp_erase_to_", None)
+    return None
+
+
+def type_erasure_join(a, b):
+    """Return the common erased parent of two query-kind types, or ``None``.
+
+    Used by codegen to merge values whose types are sibling query-kind types (or a
+    concrete kind and its erased parent): the merged value decays to the parent,
+    whose iterator dispatches on the kind stored in the query object at runtime.
+    """
+    parent_a = type_erased_parent(a) or a
+    parent_b = type_erased_parent(b) or b
+    return parent_a if parent_a is parent_b else None
 
 
 def strides_from_shape(shape: tuple, dtype):
@@ -8085,10 +8161,16 @@ simple_type_codes = {
     hash_grid_query_type(float16): "hgqh",
     hash_grid_query_type(float32): "hgq",
     hash_grid_query_type(float64): "hgqd",
-    MeshQueryAABB: "mqa",
+    MeshQuery: "mqa",
+    MeshQueryAABB: "mqab",
+    _MeshQuerySphere: "mqs",
     MeshQueryPoint: "mqp",
     MeshQueryRay: "mqr",
     BvhQuery: "bvhq",
+    _BvhQueryAabb: "bvhqa",
+    _BvhQueryRay: "bvhqr",
+    _BvhQueryCapsule: "bvhqc",
+    _BvhQuerySphere: "bvhqs",
     # Textures are added at the end of the file to avoid circular imports
 }
 

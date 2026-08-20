@@ -27,6 +27,84 @@ def bvh_query_ray(bvh_id: wp.uint64, start: wp.vec3, dir: wp.vec3, bounds_inters
         bounds_intersected[bounds_nr] = 1
 
 
+@wp.kernel
+def bvh_query_sphere(bvh_id: wp.uint64, center: wp.vec3, radius: float, bounds_intersected: wp.array[int]):
+    query = wp.bvh_query_sphere(bvh_id, center, radius)
+    bounds_nr = int(0)
+
+    while wp.bvh_query_next(query, bounds_nr):
+        bounds_intersected[bounds_nr] = 1
+
+
+@wp.kernel
+def bvh_capsule_query(bvh_id: wp.uint64, p0: wp.vec3, p1: wp.vec3, radius: float, bounds_intersected: wp.array[int]):
+    # capsule = ray (p0 -> p1) inflated by radius, bounded to the segment by max_dist = 1.0
+    query = wp.bvh_query_capsule(bvh_id, p0, p1 - p0, radius)
+    bounds_nr = int(0)
+
+    while wp.bvh_query_next(query, bounds_nr, 1.0):
+        bounds_intersected[bounds_nr] = 1
+
+
+@wp.kernel
+def bvh_query_runtime_ray_or_aabb(
+    bvh_id: wp.uint64,
+    use_ray: bool,
+    lower: wp.vec3,
+    upper: wp.vec3,
+    start: wp.vec3,
+    dir: wp.vec3,
+    bounds_intersected: wp.array[int],
+):
+    # The kind is selected by a runtime branch, so the merged query decays to the
+    # erased parent BvhQuery and iterates via the kind stored at construction.
+    if use_ray:
+        query = wp.bvh_query_ray(bvh_id, start, dir)
+    else:
+        query = wp.bvh_query_aabb(bvh_id, lower, upper)
+    bounds_nr = int(0)
+
+    while wp.bvh_query_next(query, bounds_nr):
+        bounds_intersected[bounds_nr] = 1
+
+
+@wp.kernel
+def bvh_query_runtime_capsule_or_sphere(
+    bvh_id: wp.uint64,
+    use_capsule: bool,
+    p0: wp.vec3,
+    p1: wp.vec3,
+    capsule_radius: float,
+    center: wp.vec3,
+    sphere_radius: float,
+    bounds_intersected: wp.array[int],
+):
+    if use_capsule:
+        query = wp.bvh_query_capsule(bvh_id, p0, p1 - p0, capsule_radius)
+    else:
+        query = wp.bvh_query_sphere(bvh_id, center, sphere_radius)
+    bounds_nr = int(0)
+
+    # max_dist = 1.0 bounds the capsule to its segment; sphere queries ignore it
+    while wp.bvh_query_next(query, bounds_nr, 1.0):
+        bounds_intersected[bounds_nr] = 1
+
+
+@wp.func
+def collect_bvh_hits(query: wp.BvhQuery, bounds_intersected: wp.array[int]):
+    # Parameter annotated with the erased parent type: any concrete query kind is
+    # accepted, and iteration dispatches on the kind stored at construction.
+    bounds_nr = int(0)
+    while wp.bvh_query_next(query, bounds_nr):
+        bounds_intersected[bounds_nr] = 1
+
+
+@wp.kernel
+def bvh_query_ray_via_erased_func(bvh_id: wp.uint64, start: wp.vec3, dir: wp.vec3, bounds_intersected: wp.array[int]):
+    query = wp.bvh_query_ray(bvh_id, start, dir)
+    collect_bvh_hits(query, bounds_intersected)
+
+
 def aabb_overlap(a_lower, a_upper, b_lower, b_upper):
     if (
         a_lower[0] > b_upper[0]
@@ -63,6 +141,48 @@ def intersect_ray_aabb(start, rcp_dir, lower, upper):
         return 0
 
 
+def sphere_aabb_overlap(center, radius, lower, upper):
+    # squared distance from center to the AABB <= radius^2
+    sq = 0.0
+    for i in range(3):
+        if center[i] < lower[i]:
+            sq += (lower[i] - center[i]) ** 2
+        elif center[i] > upper[i]:
+            sq += (center[i] - upper[i]) ** 2
+    return 1 if sq <= radius * radius else 0
+
+
+def segment_aabb_overlap(p0, p1, radius, lower, upper):
+    # segment [p0, p1] vs the AABB inflated by radius (slab test clamped to [0, 1])
+    lo = [lower[i] - radius for i in range(3)]
+    hi = [upper[i] + radius for i in range(3)]
+    d = [p1[i] - p0[i] for i in range(3)]
+    tmin, tmax = 0.0, 1.0
+    for i in range(3):
+        if abs(d[i]) < 1e-8:
+            if p0[i] < lo[i] or p0[i] > hi[i]:
+                return 0
+        else:
+            ood = 1.0 / d[i]
+            t1 = (lo[i] - p0[i]) * ood
+            t2 = (hi[i] - p0[i]) * ood
+            if t1 > t2:
+                t1, t2 = t2, t1
+            tmin = max(tmin, t1)
+            tmax = min(tmax, t2)
+            if tmin > tmax:
+                return 0
+    return 1
+
+
+@wp.kernel
+def count_sphere_hits(bvh_id: wp.uint64, center: wp.vec3, radius: float, hits: wp.array[int]):
+    q = wp.bvh_query_sphere(bvh_id, center, radius)
+    idx = int(0)
+    while wp.bvh_query_next(q, idx):
+        wp.atomic_add(hits, 0, 1)
+
+
 def test_bvh(test, type, device, leaf_size, constructor=None):
     rng = np.random.default_rng(123)
 
@@ -83,6 +203,13 @@ def test_bvh(test, type, device, leaf_size, constructor=None):
     query_start = wp.vec3(0.0, 0.0, 0.0)
     query_dir = wp.normalize(wp.vec3(1.0, 1.0, 1.0))
 
+    query_center = wp.vec3(5.0, 5.0, 5.0)
+    query_radius = 3.0
+
+    query_p0 = wp.vec3(0.0, 0.0, 0.0)
+    query_p1 = wp.vec3(10.0, 10.0, 10.0)
+    capsule_radius = 1.0
+
     for test_case in range(3):
         if type == "AABB":
             wp.launch(
@@ -91,8 +218,19 @@ def test_bvh(test, type, device, leaf_size, constructor=None):
                 inputs=[bvh.id, query_lower, query_upper, bounds_intersected],
                 device=device,
             )
-        else:
+        elif type == "ray":
             wp.launch(bvh_query_ray, dim=1, inputs=[bvh.id, query_start, query_dir, bounds_intersected], device=device)
+        elif type == "sphere":
+            wp.launch(
+                bvh_query_sphere, dim=1, inputs=[bvh.id, query_center, query_radius, bounds_intersected], device=device
+            )
+        else:  # capsule
+            wp.launch(
+                bvh_capsule_query,
+                dim=1,
+                inputs=[bvh.id, query_p0, query_p1, capsule_radius, bounds_intersected],
+                device=device,
+            )
 
         device_intersected = bounds_intersected.numpy()
 
@@ -101,8 +239,12 @@ def test_bvh(test, type, device, leaf_size, constructor=None):
             upper = uppers[i]
             if type == "AABB":
                 host_intersected = aabb_overlap(lower, upper, query_lower, query_upper)
-            else:
+            elif type == "ray":
                 host_intersected = intersect_ray_aabb(query_start, 1.0 / query_dir, lower, upper)
+            elif type == "sphere":
+                host_intersected = sphere_aabb_overlap(query_center, query_radius, lower, upper)
+            else:  # capsule
+                host_intersected = segment_aabb_overlap(query_p0, query_p1, capsule_radius, lower, upper)
 
             test.assertEqual(host_intersected, device_intersected[i])
 
@@ -129,6 +271,29 @@ def test_bvh_query_ray(test, device):
         test_bvh(test, "ray", device, leaf_size)
 
 
+def test_bvh_query_sphere(test, device):
+    for leaf_size in [1, 2, 4]:
+        test_bvh(test, "sphere", device, leaf_size)
+
+    # Zero-radius sphere should behave like a point query (only bounds that contain the point).
+    lowers = wp.array([(0.0, 0.0, 0.0), (2.0, 2.0, 2.0)], dtype=wp.vec3, device=device)
+    uppers = wp.array([(1.0, 1.0, 1.0), (3.0, 3.0, 3.0)], dtype=wp.vec3, device=device)
+    bvh = wp.Bvh(lowers, uppers)
+
+    hit_count = wp.zeros(1, dtype=int, device=device)
+
+    wp.launch(count_sphere_hits, dim=1, inputs=[bvh.id, wp.vec3(0.5, 0.5, 0.5), 0.0, hit_count], device=device)
+    test.assertEqual(hit_count.numpy()[0], 1)
+
+
+def test_bvh_query_capsule(test, device):
+    # The broad-phase inflates node AABBs by radius as an axis-aligned box, not a true sphere,
+    # so it is conservative: it never misses a primitive within radius of the segment but may
+    # return extra candidates near box corners. Tests validate this conservative semantics.
+    for leaf_size in [1, 2, 4]:
+        test_bvh(test, "capsule", device, leaf_size)
+
+
 def test_bvh_cubql_constructor(test, device):
     if not wp.is_cubql_available():
         test.skipTest("cuBQL is not available")
@@ -136,6 +301,94 @@ def test_bvh_cubql_constructor(test, device):
     for leaf_size in [1, 2, 4]:
         test_bvh(test, "AABB", device, leaf_size, constructor="cubql")
         test_bvh(test, "ray", device, leaf_size, constructor="cubql")
+
+
+def _runtime_kind_test_bvh(device):
+    rng = np.random.default_rng(123)
+    num_bounds = 100
+    lowers = rng.random(size=(num_bounds, 3)) * 5.0
+    uppers = lowers + rng.random(size=(num_bounds, 3)) * 5.0
+    bvh = wp.Bvh(
+        wp.array(lowers, dtype=wp.vec3, device=device),
+        wp.array(uppers, dtype=wp.vec3, device=device),
+    )
+    return bvh, num_bounds
+
+
+def test_bvh_query_runtime_kind(test, device):
+    # A query whose kind is chosen by a runtime branch decays to the erased parent
+    # BvhQuery type and must match the statically-typed kernels for every kind.
+    bvh, num_bounds = _runtime_kind_test_bvh(device)
+
+    query_lower = wp.vec3(2.0, 2.0, 2.0)
+    query_upper = wp.vec3(8.0, 8.0, 8.0)
+    query_start = wp.vec3(0.0, 0.0, 0.0)
+    query_dir = wp.normalize(wp.vec3(1.0, 1.0, 1.0))
+    query_p0 = wp.vec3(0.0, 0.0, 0.0)
+    query_p1 = wp.vec3(10.0, 10.0, 10.0)
+    capsule_radius = 1.0
+    query_center = wp.vec3(5.0, 5.0, 5.0)
+    sphere_radius = 3.0
+
+    expected = wp.zeros(num_bounds, dtype=int, device=device)
+    actual = wp.zeros(num_bounds, dtype=int, device=device)
+
+    mixed_ray_or_aabb = [bvh.id, True, query_lower, query_upper, query_start, query_dir, actual]
+    mixed_capsule_or_sphere = [
+        bvh.id,
+        True,
+        query_p0,
+        query_p1,
+        capsule_radius,
+        query_center,
+        sphere_radius,
+        actual,
+    ]
+
+    def check():
+        reference = expected.numpy()
+        test.assertGreater(reference.sum(), 0)
+        np.testing.assert_array_equal(actual.numpy(), reference)
+        expected.zero_()
+        actual.zero_()
+
+    wp.launch(bvh_query_ray, dim=1, inputs=[bvh.id, query_start, query_dir, expected], device=device)
+    wp.launch(bvh_query_runtime_ray_or_aabb, dim=1, inputs=mixed_ray_or_aabb, device=device)
+    check()
+
+    mixed_ray_or_aabb[1] = False
+    wp.launch(bvh_query_aabb, dim=1, inputs=[bvh.id, query_lower, query_upper, expected], device=device)
+    wp.launch(bvh_query_runtime_ray_or_aabb, dim=1, inputs=mixed_ray_or_aabb, device=device)
+    check()
+
+    # capsule endpoint semantics (max_dist = 1.0 clamps to the segment) must survive
+    # the erased path
+    wp.launch(bvh_capsule_query, dim=1, inputs=[bvh.id, query_p0, query_p1, capsule_radius, expected], device=device)
+    wp.launch(bvh_query_runtime_capsule_or_sphere, dim=1, inputs=mixed_capsule_or_sphere, device=device)
+    check()
+
+    mixed_capsule_or_sphere[1] = False
+    wp.launch(bvh_query_sphere, dim=1, inputs=[bvh.id, query_center, sphere_radius, expected], device=device)
+    wp.launch(bvh_query_runtime_capsule_or_sphere, dim=1, inputs=mixed_capsule_or_sphere, device=device)
+    check()
+
+
+def test_bvh_query_erased_func_param(test, device):
+    # A wp.func parameter annotated with the parent BvhQuery type accepts any
+    # concrete query kind and must keep that kind's traversal semantics.
+    bvh, num_bounds = _runtime_kind_test_bvh(device)
+
+    query_start = wp.vec3(0.0, 0.0, 0.0)
+    query_dir = wp.normalize(wp.vec3(1.0, 1.0, 1.0))
+
+    expected = wp.zeros(num_bounds, dtype=int, device=device)
+    actual = wp.zeros(num_bounds, dtype=int, device=device)
+
+    wp.launch(bvh_query_ray, dim=1, inputs=[bvh.id, query_start, query_dir, expected], device=device)
+    wp.launch(bvh_query_ray_via_erased_func, dim=1, inputs=[bvh.id, query_start, query_dir, actual], device=device)
+    reference = expected.numpy()
+    test.assertGreater(reference.sum(), 0)
+    np.testing.assert_array_equal(actual.numpy(), reference)
 
 
 def test_bvh_ray_query_inside_and_outside_bounds(test, device):
@@ -837,7 +1090,11 @@ class TestBvh(unittest.TestCase):
 
 add_function_test(TestBvh, "test_bvh_aabb", test_bvh_query_aabb, devices=devices)
 add_function_test(TestBvh, "test_bvh_ray", test_bvh_query_ray, devices=devices)
+add_function_test(TestBvh, "test_bvh_sphere", test_bvh_query_sphere, devices=devices)
+add_function_test(TestBvh, "test_bvh_capsule", test_bvh_query_capsule, devices=devices)
 add_function_test(TestBvh, "test_bvh_cubql_constructor", test_bvh_cubql_constructor, devices=devices)
+add_function_test(TestBvh, "test_bvh_query_runtime_kind", test_bvh_query_runtime_kind, devices=devices)
+add_function_test(TestBvh, "test_bvh_query_erased_func_param", test_bvh_query_erased_func_param, devices=devices)
 add_function_test(
     TestBvh,
     "test_bvh_ray_query_inside_and_outside_bounds",
@@ -845,12 +1102,12 @@ add_function_test(
     devices=devices,
 )
 add_function_test(TestBvh, "test_bvh_refit_root_leaves", test_bvh_refit_root_leaves, devices=cuda_devices)
-add_function_test(TestBvh, "test_tile_bvh_query_aabb", test_tile_bvh_query, devices=cuda_devices)
-add_function_test(TestBvh, "test_tile_bvh_query_ray", test_tile_bvh_query_ray, devices=cuda_devices)
+add_function_test(TestBvh, "test_tile_bvh_query_aabb", test_tile_bvh_query, devices=devices)
+add_function_test(TestBvh, "test_tile_bvh_query_ray", test_tile_bvh_query_ray, devices=devices)
 
 # Tests for new bvh_query_*_tiled() API
-add_function_test(TestBvh, "test_bvh_query_aabb_tiled", test_bvh_query_aabb_tiled, devices=cuda_devices)
-add_function_test(TestBvh, "test_bvh_query_ray_tiled", test_bvh_query_ray_tiled, devices=cuda_devices)
+add_function_test(TestBvh, "test_bvh_query_aabb_tiled", test_bvh_query_aabb_tiled, devices=devices)
+add_function_test(TestBvh, "test_bvh_query_ray_tiled", test_bvh_query_ray_tiled, devices=devices)
 
 add_function_test(TestBvh, "test_capture_bvh_rebuild", test_capture_bvh_rebuild, devices=cuda_devices_with_mempool)
 

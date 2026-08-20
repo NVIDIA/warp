@@ -1136,7 +1136,7 @@ def apply_defaults(
     bound_args.arguments = dict(new_arguments)
 
 
-def func_match_args(func, arg_types, kwarg_types):
+def func_match_args(func, arg_types, kwarg_types, allow_erasure=False):
     try:
         # Try to bind the given arguments to the function's signature.
         # This is not checking whether the argument types are matching,
@@ -1192,6 +1192,11 @@ def func_match_args(func, arg_types, kwarg_types):
 
         # check arg type matches input variable type
         if not types_equal_generic(param_type, bound_arg_type_stripped):
+            # A concrete query-kind argument may bind to a parameter annotated with
+            # its erased parent, but only on the second resolution pass
+            # (allow_erasure) so exact overloads always win over parent-typed ones.
+            if allow_erasure and type_erased_parent(bound_arg_type_stripped) is param_type:
+                continue
             return False
 
     return True
@@ -2190,11 +2195,14 @@ class Adjoint:
                     f"`{warp._src.context.type_str(adj.arg_types['return'])}`."
                 )
             elif not types_equal(adj.arg_types["return"], adj.return_var[0].type):
-                raise WarpCodegenError(
-                    f"The function `{adj.fun_name}` has its return type "
-                    f"annotated as `{warp._src.context.type_str(adj.arg_types['return'])}` "
-                    f"but the code returns a value of type `{warp._src.context.type_str(adj.return_var[0].type)}`."
-                )
+                # A concrete query-kind value may be returned where the annotation
+                # is its erased parent; the annotation decides what callers see.
+                if type_erased_parent(adj.return_var[0].type) is not adj.arg_types["return"]:
+                    raise WarpCodegenError(
+                        f"The function `{adj.fun_name}` has its return type "
+                        f"annotated as `{warp._src.context.type_str(adj.arg_types['return'])}` "
+                        f"but the code returns a value of type `{warp._src.context.type_str(adj.return_var[0].type)}`."
+                    )
 
     # code generation methods
     def format_template(adj, template, input_vars, output_var):
@@ -2434,24 +2442,28 @@ class Adjoint:
         else:
             # if func is overloaded then perform overload resolution here
             # we validate argument types before they go to generated native code
-            for f in func.overloads:
-                # skip type checking for variadic functions
-                if not f.variadic:
-                    # check argument counts match are compatible (may be some default args)
-                    if len(f.input_types) < len(arg_types) + len(kwarg_types):
-                        continue
+            # Two passes: exact type matches first, then let concrete query-kind
+            # arguments bind to parameters typed as their erased parent, so a
+            # parent-typed overload can never steal a call from a specialized one.
+            for allow_erasure in (False, True):
+                for f in func.overloads:
+                    # skip type checking for variadic functions
+                    if not f.variadic:
+                        # check argument counts match are compatible (may be some default args)
+                        if len(f.input_types) < len(arg_types) + len(kwarg_types):
+                            continue
 
-                    if not func_match_args(f, arg_types, kwarg_types):
-                        continue
+                        if not func_match_args(f, arg_types, kwarg_types, allow_erasure=allow_erasure):
+                            continue
 
-                # check output dimensions match expectations
-                if min_outputs:
-                    value_type = f.value_func(None, None)
-                    if not isinstance(value_type, Sequence) or len(value_type) != min_outputs:
-                        continue
+                    # check output dimensions match expectations
+                    if min_outputs:
+                        value_type = f.value_func(None, None)
+                        if not isinstance(value_type, Sequence) or len(value_type) != min_outputs:
+                            continue
 
-                # found a match, use it
-                return f
+                    # found a match, use it
+                    return f
 
         # unresolved function, report error
         arg_type_reprs = []
@@ -5021,7 +5033,11 @@ class Adjoint:
                             "for the new value."
                         )
 
-                    if not types_equal(rhs.type, adj.symbols[name].type):
+                    # Sibling query-kind types may rebind over one another: a later
+                    # branch merge decays the symbol to their shared erased parent.
+                    if not types_equal(rhs.type, adj.symbols[name].type) and not type_erasure_join(
+                        rhs.type, adj.symbols[name].type
+                    ):
                         raise WarpCodegenTypeError(
                             f"Error, assigning to existing symbol {name} ({adj.symbols[name].type}) with different type ({rhs.type})"
                         )
@@ -5100,7 +5116,11 @@ class Adjoint:
                         "for the new value."
                     )
 
-                if not types_equal(strip_reference(rhs.type), adj.symbols[name].type):
+                # Sibling query-kind types may rebind over one another: a later
+                # branch merge decays the symbol to their shared erased parent.
+                if not types_equal(strip_reference(rhs.type), adj.symbols[name].type) and not type_erasure_join(
+                    strip_reference(rhs.type), adj.symbols[name].type
+                ):
                     raise WarpCodegenTypeError(
                         f"Error, assigning to existing symbol {name} ({adj.symbols[name].type}) with different type ({rhs.type})"
                     )
@@ -5594,13 +5614,22 @@ class Adjoint:
                     f"Error, function returned different types, previous: [{', '.join(old_ctypes)}], new [{', '.join(new_ctypes)}]"
                 )
 
+        prev_return_var = adj.return_var
         if var is not None:
             adj.return_var = ()
-            for ret in var:
+            for i, ret in enumerate(var):
                 if is_reference(ret.type):
                     ret_var = adj.add_builtin_call("copy", [ret])
                 else:
                     ret_var = ret
+                # Return paths may carry sibling query-kind types over the same C++
+                # type (e.g. a ray query on one path, an AABB query on another).
+                # Widen the recorded return type to their erased parent so callers
+                # dispatch on the stored kind instead of assuming one path's kind.
+                if prev_return_var is not None and prev_return_var[i].type is not ret_var.type:
+                    joined = type_erasure_join(prev_return_var[i].type, ret_var.type)
+                    if joined is not None:
+                        ret_var.type = joined
                 adj.return_var += (ret_var,)
 
         adj.add_return(adj.return_var)

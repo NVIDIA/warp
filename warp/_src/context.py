@@ -551,15 +551,20 @@ class Function:
                 self.user_overloads[sig] = f
 
     def get_overload(self, arg_types: list[type], kwarg_types: Mapping[str, type]) -> Function | None:
+        # Two passes: exact type matches first, then let concrete query-kind
+        # arguments bind to parameters typed as their erased parent, so a
+        # parent-typed overload can never steal a call from a specialized one.
         if self.is_builtin():
-            for f in self.overloads:
-                if warp._src.codegen.func_match_args(f, arg_types, kwarg_types):
-                    return f
+            for allow_erasure in (False, True):
+                for f in self.overloads:
+                    if warp._src.codegen.func_match_args(f, arg_types, kwarg_types, allow_erasure=allow_erasure):
+                        return f
             return None
 
-        for f in self.user_overloads.values():
-            if warp._src.codegen.func_match_args(f, arg_types, kwarg_types):
-                return f
+        for allow_erasure in (False, True):
+            for f in self.user_overloads.values():
+                if warp._src.codegen.func_match_args(f, arg_types, kwarg_types, allow_erasure=allow_erasure):
+                    return f
 
         for f in self.user_templates.values():
             if not warp._src.codegen.func_match_args(f, arg_types, kwarg_types):
@@ -14212,7 +14217,7 @@ def export_functions_rst(file):  # pragma: no cover
 
     query_types = (
         ("bvh_query", "BvhQuery"),
-        ("mesh_query_aabb", "MeshQueryAABB"),
+        ("mesh_query_aabb", "MeshQuery"),
         ("mesh_query_point", "MeshQueryPoint"),
         ("mesh_query_ray", "MeshQueryRay"),
         ("hash_grid_query", "HashGridQuery"),
@@ -14525,6 +14530,29 @@ def export_stubs(file):  # pragma: no cover
                 print(f"{inner}{arg},", file=file)
             print(f"{indent}){return_str}:", file=file)
 
+    # Rewrite private codegen dispatch subtypes to their public parents in generated stubs.
+    # These underscore-prefixed types are implementation details for Warp's internal type
+    # dispatch and must not appear in the public API surface (__init__.pyi).
+    from warp._src.types import (  # noqa: PLC0415
+        BvhQuery,
+        MeshQuery,
+        _BvhQueryAabb,
+        _BvhQueryCapsule,
+        _BvhQueryRay,
+        _BvhQuerySphere,
+        _MeshQuerySphere,
+    )
+
+    # MeshQueryAABB is intentionally absent: it is a public concrete kind
+    # (subclass of MeshQuery) and appears in stubs under its own name.
+    _private_to_public = {
+        _BvhQueryAabb: BvhQuery,
+        _BvhQueryRay: BvhQuery,
+        _BvhQueryCapsule: BvhQuery,
+        _BvhQuerySphere: BvhQuery,
+        _MeshQuerySphere: MeshQuery,
+    }
+
     def get_return_type_str(f):
         """Get the return type string for a builtin function."""
         return_type = f.value_type
@@ -14533,6 +14561,8 @@ def export_stubs(file):  # pragma: no cover
                 return_type = f.value_func(None, None)
             except Exception:
                 pass  # Keep f.value_type as fallback
+        if not isinstance(return_type, list):
+            return_type = _private_to_public.get(return_type, return_type)
         return type_str(return_type)
 
     def add_builtin_function_stub(f, use_overload=True, type_overrides=None):
@@ -14541,11 +14571,11 @@ def export_stubs(file):  # pragma: no cover
 
         if type_overrides:
             args = [
-                f"{k}: {type_overrides[k]}" if k in type_overrides else f"{k}: {type_str(v)}"
+                f"{k}: {type_overrides[k]}" if k in type_overrides else f"{k}: {type_str(_private_to_public.get(v, v))}"
                 for k, v in f.input_types.items()
             ]
         else:
-            args = [f"{k}: {type_str(v)}" for k, v in f.input_types.items()]
+            args = [f"{k}: {type_str(_private_to_public.get(v, v))}" for k, v in f.input_types.items()]
         rt_str = get_return_type_str(f)
         return_str = f" -> {rt_str}"
 
@@ -14817,7 +14847,7 @@ def export_stubs(file):  # pragma: no cover
 
         Returns ``[(function, type_overrides_or_None), ...]``.
         """
-        if len(overloads) < 3:
+        if len(overloads) < 2:
             return [(f, None) for f in overloads]
 
         # Group overloads by (param_names, return_type)
@@ -14837,11 +14867,14 @@ def export_stubs(file):  # pragma: no cover
             group = groups[key]
 
             if len(group) >= 3:
-                # Find parameter positions where types differ
-                varying = [p for p in f.input_types if len({type_str(g.input_types[p]) for g in group}) > 1]
+                # Find parameter positions where types differ (after public type rewriting)
+                def _pub(t):
+                    return type_str(_private_to_public.get(t, t))
+
+                varying = [p for p in f.input_types if len({_pub(g.input_types[p]) for g in group}) > 1]
                 if len(varying) == 1:
                     vp = varying[0]
-                    union = " | ".join(dict.fromkeys(type_str(g.input_types[vp]) for g in group))
+                    union = " | ".join(dict.fromkeys(_pub(g.input_types[vp]) for g in group))
                     result.append((f, {vp: union}))
                     merged.update(id(g) for g in group)
                     continue
@@ -14854,7 +14887,12 @@ def export_stubs(file):  # pragma: no cover
         deduped = []
         for f, type_overrides in result:
             args = tuple(
-                (k, type_overrides[k] if type_overrides and k in type_overrides else type_str(v))
+                (
+                    k,
+                    type_overrides[k]
+                    if type_overrides and k in type_overrides
+                    else type_str(_private_to_public.get(v, v)),
+                )
                 for k, v in f.input_types.items()
             )
             sig = (args, get_return_type_str(f))

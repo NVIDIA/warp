@@ -94,6 +94,9 @@ nitpick_ignore_regex = [
         r"py:class",
         r"(Vector|Quaternion|Matrix|Array|Transformation|Tile|TileStack|IndexedArray|IndexedFabricArray|FabricArray|Shape|DType|Any)",
     ),
+    # Private codegen query subtypes — visible in Sphinx RST (generated from Python source)
+    # but not in __init__.pyi (rewritten by export_stubs) or the public API.
+    (r"py:class", r"(_BvhQueryAabb|_BvhQueryRay|_BvhQueryCapsule|_BvhQuerySphere|_MeshQuerySphere)"),
     # Array type parameters from warp.array() annotations (e.g., "dtype=warp.float32", "ndim=3")
     # Sphinx splits "warp.array(dtype=float, ndim=3)" and tries to resolve each part as a class.
     (r"py:class", r"(ndim|dtype)=.*"),
