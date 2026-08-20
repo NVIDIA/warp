@@ -185,8 +185,18 @@ class BsrMatrix(Generic[_BlockType]):
     def nnz_sync(self) -> int:
         """Synchronize the stored block upper bound from the device ``offsets`` array to the host.
 
-        Ensures that any ongoing transfer of ``offsets[nrow]`` from the device offsets array to the host has completed,
-        or, if none has been scheduled yet, starts a new transfer and waits for it to complete.
+        Waits for a previously scheduled readback of ``offsets[nrow]`` (see
+        :meth:`notify_nnz_changed`) when one is pending, or schedules a fresh scalar
+        device-to-host readback on the current stream and waits for it to complete.
+
+        The pending-transfer fast path is used only while the cached transfer has never
+        been recorded into a CUDA graph capture. Once a readback has been captured, its
+        copy and event record are graph nodes: every replay rewrites the cached buffer
+        and re-arms the cached event at times this method cannot observe, so waiting on
+        the cached transfer is no longer sound. From that point on the readback is
+        always re-issued on the current stream, which orders it behind any replayed
+        graph by construction. The cached buffer and event are kept alive (the graph
+        holds references to them) but are never trusted again.
 
         Then updates the host-side nnz upper bound to match ``offsets[nrow]``, and returns it. For compact matrices,
         this is the active non-zero block count. For padded matrices, this is the total row-capacity storage size,
@@ -226,7 +236,11 @@ class BsrMatrix(Generic[_BlockType]):
             paused_graph = capture_pause(device=self.device)
         try:
             buf, event = self._nnz_transfer_if_any()
-            if buf is None:
+            if buf is None or getattr(self, "_nnz_transfer_captured", False):
+                # No pending transfer, or the cached transfer was captured into a
+                # graph (replays rewrite it asynchronously): (re-)issue a fresh
+                # readback on the current stream so the wait below is
+                # stream-ordered behind any replayed graph by construction.
                 buf, event = self._copy_nnz_async()
 
             if event is not None:
@@ -333,6 +347,12 @@ class BsrMatrix(Generic[_BlockType]):
             wp.copy(src=self.offsets, dest=buf, src_offset=self.nrow, count=1, stream=stream)
             if event is not None:
                 stream.record_event(event, external=True)
+            if self.device.is_capturing:
+                # The copy (and event record) above were recorded as graph nodes;
+                # every future replay rewrites ``buf`` and re-arms ``event``.
+                # Permanently disable the nnz_sync() pending-transfer fast path
+                # for this matrix; the readback will be re-issued instead.
+                BsrMatrix.__setattr__(self, "_nnz_transfer_captured", True)
         return buf, event
 
     def _setup_nnz_transfer(self) -> tuple[wp.array, wp.Event]:
