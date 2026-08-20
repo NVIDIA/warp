@@ -3622,7 +3622,7 @@ class array(Array[DType, NDim]):
                         and data.dtype.itemsize == ctypes.sizeof(dtype)
                     )
                 else:
-                    valid_source_dtype = data.dtype == npdtype
+                    valid_source_dtype = data.dtype == npdtype or data.dtype == np.dtype(npdtype.descr)
                 if not valid_source_dtype:
                     expected_dtype = (
                         np.dtype(f"V{ctypes.sizeof(dtype)}") if dtype._wp_native_type_.fields is None else npdtype

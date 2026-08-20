@@ -365,6 +365,28 @@ class TestExternalBuild(unittest.TestCase):
                 initializer="aggregate",
             )
 
+    def test_padded_native_type_numpy_roundtrip(self):
+        """Verify padded native arrays round-trip through Warp's NumPy output."""
+
+        class PaddedValue(ctypes.Structure):
+            _fields_ = [("tag", ctypes.c_uint8), ("value", ctypes.c_uint32)]
+
+        wp.build_experimental.add_native_type(
+            PaddedValue,
+            native_name="warp_test::PaddedValue",
+            fields={"tag": wp.uint8, "value": wp.uint32},
+            initializer="aggregate",
+        )
+
+        source = wp.array([PaddedValue(7, 13)], dtype=PaddedValue, device="cpu")
+        try:
+            restored = wp.array(source.numpy(), dtype=PaddedValue, device="cpu")
+        except RuntimeError as error:
+            self.fail(f"Warp's NumPy output should be accepted as native array input: {error}")
+        value = restored.list()[0]
+
+        self.assertEqual((value.tag, value.value), (7, 13))
+
     def test_add_native_type_equivalent_redefinition(self):
         class FirstDefinition(ctypes.Structure):
             _fields_ = [("value", ctypes.c_float)]
@@ -549,11 +571,50 @@ def test_preamble_follows_warp_headers(test, device):
     test.assertEqual(out.numpy()[0], 3.0)
 
 
+def test_preamble_allows_function_style_casts(test, device):
+    """Verify external preambles can use ordinary C++ function-style casts."""
+
+    # Warp emits float() and int() macros for generated code. The preamble must
+    # appear before those macros so these casts remain ordinary C++.
+    preamble = """
+namespace warp_test {
+CUDA_CALLABLE inline float preamble_cast(int value) {
+    int rounded = int(0.5f);
+    return float(value + rounded);
+}
+}  // namespace warp_test
+"""
+
+    @wp.kernel(module="unique")
+    def preamble_cast_kernel(out: wp.array[wp.float32]):
+        out[0] = wp.warp_test_preamble_cast(7)
+
+    wp.set_module_options(
+        {
+            "extra_build_options": wp.ModuleBuildOptions(
+                extra_cpu_preamble=preamble,
+                extra_cuda_preamble=preamble,
+            )
+        },
+        module=preamble_cast_kernel.module,
+    )
+
+    out = wp.zeros(1, dtype=wp.float32, device=device)
+    wp.launch(preamble_cast_kernel, dim=1, outputs=[out], device=device)
+    test.assertEqual(out.numpy()[0], 7.0)
+
+
 wp.build_experimental.add_builtin(
     "warp_test_preamble_double",
     {"x": wp.float32},
     wp.float32,
     native_name="warp_test_preamble_double",
+)
+wp.build_experimental.add_builtin(
+    "warp_test_preamble_cast",
+    {"value": wp.int32},
+    wp.float32,
+    native_name="warp_test::preamble_cast",
 )
 
 add_function_test(TestExternalBuild, "test_native_value_types", test_native_value_types, devices=get_test_devices())
@@ -567,6 +628,12 @@ add_function_test(
     TestExternalBuild,
     "test_preamble_follows_warp_headers",
     test_preamble_follows_warp_headers,
+    devices=get_test_devices(),
+)
+add_function_test(
+    TestExternalBuild,
+    "test_preamble_allows_function_style_casts",
+    test_preamble_allows_function_style_casts,
     devices=get_test_devices(),
 )
 

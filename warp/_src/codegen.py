@@ -6673,18 +6673,21 @@ class Adjoint:
 # ----------------
 # code generation
 
-cpu_module_header = """
-#define WP_TILE_BLOCK_DIM {block_dim}
-#define WP_NO_CRT
-#include "builtin.h"
-#include "deterministic.h"
-
+codegen_cast_macros = """
 // avoid namespacing of float type for casting to float type, this is to avoid wp::float(x), which is not valid in C++
 #define float(x) cast_float(x)
 #define adj_float(x, adj_x, adj_ret) adj_cast_float(x, adj_x, adj_ret)
 
 #define int(x) cast_int(x)
 #define adj_int(x, adj_x, adj_ret) adj_cast_int(x, adj_x, adj_ret)
+
+"""
+
+cpu_module_header = """
+#define WP_TILE_BLOCK_DIM {block_dim}
+#define WP_NO_CRT
+#include "builtin.h"
+#include "deterministic.h"
 
 #define builtin_tid1d() wp::tid(task_index, dim)
 #define builtin_tid2d(x, y) wp::tid(x, y, task_index, dim)
@@ -6705,13 +6708,6 @@ cuda_module_header = """
 #if defined(__CUDACC__) && !defined(_MSC_VER)
 #define __debugbreak() __brkpt()
 #endif
-
-// avoid namespacing of float type for casting to float type, this is to avoid wp::float(x), which is not valid in C++
-#define float(x) cast_float(x)
-#define adj_float(x, adj_x, adj_ret) adj_cast_float(x, adj_x, adj_ret)
-
-#define int(x) cast_int(x)
-#define adj_int(x, adj_x, adj_ret) adj_cast_int(x, adj_x, adj_ret)
 
 #define builtin_tid1d() wp::tid(_idx, dim)
 #define builtin_tid2d(x, y) wp::tid(x, y, _idx, dim)

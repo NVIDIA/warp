@@ -34,6 +34,16 @@ def generic_kernel(a: wp.array[Any]):
     a[tid] = a[tid]
 
 
+@wp.struct
+class ExternalConstantParams:
+    value: wp.float32
+
+
+@wp.kernel(enable_backward=False, entry_point_abi="external_constant_params", module="unique")
+def external_constant_params_kernel(params: ExternalConstantParams):
+    value = params.value
+
+
 def test_suggested_block_size_basic(test, device):
     block_size, min_grid_size = wp.get_suggested_block_size(simple_kernel, device)
     test.assertGreater(block_size, 0)
@@ -91,6 +101,16 @@ def test_suggested_block_size_rejects_generic_parent(test, device):
         wp.get_suggested_block_size(generic_kernel, device)
 
 
+def test_suggested_block_size_accepts_external_constant_params(test, device):
+    """Verify occupancy queries accept external constant-params kernels."""
+    # This ABI cannot use wp.launch(), but occupancy only needs its raw CUDA
+    # entry point and does not launch the kernel.
+    block_size, min_grid_size = wp.get_suggested_block_size(external_constant_params_kernel, device)
+
+    test.assertGreater(block_size, 0)
+    test.assertGreater(min_grid_size, 0)
+
+
 devices = get_selected_cuda_test_devices()
 
 
@@ -132,6 +152,12 @@ add_function_test(
     TestOccupancy,
     "test_suggested_block_size_rejects_generic_parent",
     test_suggested_block_size_rejects_generic_parent,
+    devices=devices,
+)
+add_function_test(
+    TestOccupancy,
+    "test_suggested_block_size_accepts_external_constant_params",
+    test_suggested_block_size_accepts_external_constant_params,
     devices=devices,
 )
 

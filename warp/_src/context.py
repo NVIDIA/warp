@@ -1295,6 +1295,14 @@ def func(
 ):
     """Decorator to define a Warp function callable from kernels and other Warp functions.
 
+    Args:
+        f: The Python callable to register as a Warp function.
+        name: Sets the function key used for registration and native code
+            generation. If ``None``, Warp derives the key from ``f``.
+        module: The Warp module in which to register the function. If ``None``,
+            Warp infers the module from ``f``. Pass ``"unique"`` to create a
+            new module, or a string to register the function in a named module.
+
     See also:
         :func:`warp.kernel` for defining kernels that can be launched on devices.
     """
@@ -1771,11 +1779,11 @@ def kernel(
 
     Args:
         f: The function to be registered as a kernel.
-        name: Experimental kernel-name override that may change without
-            deprecation in future releases. If omitted, the name is derived
-            from the function's qualified name. Custom names must be valid C++
-            identifiers. When ``strip_hash=True``, this is also the base name
-            of the exported native symbol.
+        name: Sets the kernel key used for registration and native code
+            generation. If ``None``, Warp derives the key from ``f``. A custom
+            name must be a valid C++ identifier. When ``strip_hash=True``, Warp
+            uses the key without a hash suffix as the base of the generated
+            native entry-point names.
         enable_backward: If False, the backward pass will not be
             generated.
         launch_bounds: CUDA ``__launch_bounds__`` attribute for the
@@ -2571,10 +2579,12 @@ class ModuleBuildOptions:
         extra_cpu_include_dirs: Extra include directories used only when
             compiling CPU modules. Each entry must be an absolute path to an
             existing directory.
-        extra_cuda_preamble: Extra CUDA source inserted after Warp's headers
-            and before the generated code, so it may use Warp's macros.
+        extra_cuda_preamble: Extra CUDA source inserted after Warp's headers and
+            before codegen-only cast macros and the generated code, so it may
+            use Warp's public macros and ordinary C++ casts.
         extra_cpu_preamble: Extra CPU source inserted after Warp's headers and
-            before the generated code, so it may use Warp's macros.
+            before codegen-only cast macros and the generated code, so it may
+            use Warp's public macros and ordinary C++ casts.
         extra_build_dependencies: Files whose contents are hashed into the
             module hash. Each entry must be an absolute path to an existing
             file. Contents are re-read when the module hash is recomputed
@@ -3505,8 +3515,8 @@ class ModuleBuilder:
         #
         # The extra preamble goes *after* Warp's module header so external headers can use
         # Warp's macros (CUDA_CALLABLE and friends) and so the CPU and CUDA backends agree.
-        # Emitting it first would put it ahead of the headers on CUDA but behind them on CPU,
-        # where Clang injects the precompiled builtin.h before the translation unit.
+        # Codegen-only cast macros follow the preamble so they do not rewrite ordinary C++
+        # function-style casts in external headers.
         if device == "cpu":
             extra_preamble = self.options.get("extra_cpu_preamble", "")
             module_header = warp._src.codegen.cpu_module_header.format(block_dim=self.options["block_dim"])
@@ -3514,7 +3524,7 @@ class ModuleBuilder:
             extra_preamble = self.options.get("extra_cuda_preamble", "")
             module_header = warp._src.codegen.cuda_module_header.format(block_dim=self.options["block_dim"])
 
-        source = type_defines + module_header + extra_preamble + source
+        source = type_defines + module_header + extra_preamble + warp._src.codegen.codegen_cast_macros + source
 
         return source
 
@@ -11654,9 +11664,9 @@ def launch_tiled(*args, **kwargs):
 
 
 def _resolve_cuda_kernel_forward_entry_point(kernel, device, block_dim, api_name):
-    """Resolve the forward CUDA kernel entry point used by property queries.
+    """Resolve the forward CUDA kernel entry point used by inspection queries.
 
-    Public CUDA kernel-property APIs use this helper to validate their shared
+    Public CUDA kernel-inspection APIs use this helper to validate their shared
     arguments and load the requested block-dimension module variant. It
     returns the ``ModuleExec`` with the raw ``CUfunction`` handle so the
     caller can keep the owning module loaded until the CUDA property query
@@ -11832,31 +11842,44 @@ def get_suggested_block_size(kernel, device: DeviceLike = None) -> tuple[int, in
             "create one with wp.overload() and pass the returned kernel"
         )
 
-    module = kernel.module
-    module_exec = module.load(device)
+    options = kernel.module.options | kernel.options
+    if options.get("entry_point_abi", "warp") == "external_constant_params":
+        # External constant-params kernels reject shared-memory tiles during
+        # code generation, so occupancy only needs the raw entry point.
+        device, _module_exec, forward, _resolved_block_dim = _resolve_cuda_kernel_forward_entry_point(
+            kernel, device, None, "get_suggested_block_size"
+        )
+        forward_smem_bytes = 0
+        forward_smem_shortfall = None
+    else:
+        module_exec = kernel.module.load(device)
 
-    if module_exec is None:
-        raise RuntimeError(f"Failed to load module for kernel '{kernel.key}' on device '{device}'")
+        if module_exec is None:
+            raise RuntimeError(f"Failed to load module for kernel '{kernel.key}' on device '{device}'")
 
-    hooks = module_exec.get_kernel_hooks(kernel)
-    if hooks is None or hooks.forward is None:
-        raise RuntimeError(f"Failed to load kernel '{kernel.key}' on device '{device}'")
+        hooks = module_exec.get_kernel_hooks(kernel)
+        if hooks is None or hooks.forward is None:
+            raise RuntimeError(f"Failed to load kernel '{kernel.key}' on device '{device}'")
+
+        forward = hooks.forward
+        forward_smem_bytes = hooks.forward_smem_bytes
+        forward_smem_shortfall = hooks.forward_smem_shortfall
 
     block_size = ctypes.c_int(0)
     min_grid_size = ctypes.c_int(0)
     success = runtime.core.wp_cuda_get_suggested_block_size(
         device.context,
-        hooks.forward,
-        hooks.forward_smem_bytes,
+        forward,
+        forward_smem_bytes,
         ctypes.byref(block_size),
         ctypes.byref(min_grid_size),
     )
     if not success:
-        if hooks.forward_smem_shortfall is not None:
+        if forward_smem_shortfall is not None:
             raise RuntimeError(
                 f"CUDA occupancy query failed for kernel '{kernel.key}' on device '{device}': the forward "
-                f"kernel requests {hooks.forward_smem_bytes} bytes of dynamic shared memory, "
-                f"{hooks.forward_smem_shortfall}. {_SMEM_MITIGATION_MSG}"
+                f"kernel requests {forward_smem_bytes} bytes of dynamic shared memory, "
+                f"{forward_smem_shortfall}. {_SMEM_MITIGATION_MSG}"
             )
 
         err = runtime.get_error_string()

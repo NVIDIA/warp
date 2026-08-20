@@ -2,7 +2,7 @@
 
 **Status**: In Progress
 
-**Issues**: [GH-1561](https://github.com/NVIDIA/warp/issues/1561), [GH-1575](https://github.com/NVIDIA/warp/issues/1575)
+**Issue**: [GH-1575](https://github.com/NVIDIA/warp/issues/1575)
 
 ## Motivation
 
@@ -30,12 +30,12 @@ general C++ build system.
 | R4  | Register an external C++ function through a small public API | Must | `wp.build_experimental.add_builtin()` |
 | R5  | Register opaque and field-described external C++ value types | Must | `wp.build_experimental.add_native_type()` |
 | R6  | Validate host/native ABI assumptions during compilation | Must | Generated `static_assert`s |
-| R7  | Give generated kernels stable names and selectable entry-point ABIs | Must | `@wp.kernel(name=..., entry_point_abi=...)` |
+| R7  | Support selectable external entry-point ABIs | Must | `@wp.kernel(entry_point_abi=...)` |
 | R8  | Return AOT artifact paths instead of requiring cache-name reconstruction | Must | `wp.compile_aot_module()` |
 | R9  | Include all Warp-visible extension contracts and explicitly declared build inputs in module hashing | Must | Module options, external builtin identities, `nt<schema>` type codes |
 | R10 | Preserve normal JIT compilation and `wp.launch()` behavior by default | Must | Defaults unchanged |
-| R11 | Reject conflicts early and make equivalent registration idempotent | Must | Registration is process-global |
-| R12 | Keep the initial public surface experimental and narrowly scoped | Should | |
+| R11 | Reject conflicts early and make equivalent registration idempotent | Must | Registration is process-global. Reloaded classes are not yet interchangeable |
+| R12 | Keep experimental external-compilation contracts narrowly scoped | Should | |
 
 **Non-goals:**
 
@@ -91,9 +91,8 @@ wp.build_experimental.add_native_type(
     initializer: str | None = None,             # None | "aggregate"
 ) -> type[ctypes.Structure]                     # returns ctype, used as annotation/dtype
 
-# --- Exported kernels: new parameters only; @wp.kernel keeps its existing ones ------
+# --- Exported kernels, with only the new parameter shown ----------------------------
 @wp.kernel(
-    name: str | None = None,                    # C++ identifier, overrides derived name
     entry_point_abi: Literal["warp", "external_constant_params"] | None = None,
 )
 
@@ -154,16 +153,17 @@ via `wp.set_module_options()`, before that module's first JIT launch or AOT comp
 `ModuleBuildOptions` carries separate CPU and CUDA include-directory lists, separate CPU and
 CUDA preambles, and a list of files whose contents affect the build.
 
-A preamble is inserted after Warp's module header and before the generated code. External
-headers can therefore use Warp macros such as `CUDA_CALLABLE`, and the generated kernels see
-everything the preamble declares. The cost is that a preamble cannot define macros consumed by
-Warp's own headers.
+A preamble is inserted after Warp's native headers, but before codegen-only cast macros and the
+generated code. External headers can therefore use public Warp macros such as `CUDA_CALLABLE`,
+ordinary C++ function-style casts are not rewritten by codegen macros, and the generated kernels
+see everything the preamble declares. The cost is that a preamble cannot define macros consumed
+by Warp's own headers.
 
 Emitting the preamble *first* was the obvious choice and turned out to be wrong: on CPU, Clang
 injects the precompiled `builtin.h` ahead of the translation unit, so a leading preamble lands
 *after* Warp's headers there but *before* them under NVRTC — and the CPU behavior flipped with
-`warp.config.use_precompiled_headers`. Placing it after the header makes both backends agree
-regardless of PCH state.
+`warp.config.use_precompiled_headers`. Placing it after the native headers makes both backends
+agree regardless of PCH state.
 
 Include directories and dependency files must be absolute and must exist, but the constructor
 and `merged()` do not check that — validation happens when the module's options are resolved
@@ -256,15 +256,13 @@ CPU once is the cheapest way to get that check.
 
 The registered schema is the qualified C++ name, size, alignment, initializer policy, and the
 exposed field names, types, and offsets. It is hashed into a short type code (`nt<digest>`) that
-feeds module hashing. Re-registering an equivalent schema is a no-op, which keeps Python module
-reloads working even though they create a fresh ctypes class. Registering a *different* schema
-under the same C++ name raises.
+feeds module hashing. Re-registering an equivalent schema is accepted and produces the same
+stable type code. This makes registration idempotent, but it does not make module reloads safe. A
+newly created ctypes class is not interchangeable with the original class during overload
+resolution or argument matching. Reload-safe type matching is future work. Registering a
+*different* schema under the same C++ name raises.
 
-#### Kernel names and entry-point ABIs
-
-`@wp.kernel(name=...)` overrides the name derived from the Python function; it must be a
-non-empty C++ identifier. This distinguishes kernels produced by factories and gives a
-predictable symbol when AOT hashes are stripped.
+#### Entry-point ABIs
 
 The default entry-point ABI is `"warp"`: unchanged CPU/CUDA, forward/backward code generation
 and `wp.launch()` behavior.
@@ -285,9 +283,9 @@ extern "C" __global__ void my_kernel()
 }
 ```
 
-The entry point is named by the kernel's mangled name with no `_cuda_kernel_forward` suffix, so
-`@wp.kernel(name="my_kernel")` plus `strip_hash=True` yields exactly `my_kernel` as the
-device-side symbol — which is what an external runtime looks up.
+The entry point uses the kernel's mangled name without the `_cuda_kernel_forward` suffix. With
+`strip_hash=True`, Warp uses the kernel key without its hash suffix, giving the external runtime
+a stable device-side symbol to look up.
 
 The ABI is deliberately constrained. A kernel using it must be CUDA-only, take exactly one Warp
 struct argument, set `enable_backward=False`, avoid `wp.tid()`, shared-memory tiles, and
@@ -295,9 +293,8 @@ deterministic atomics, and cannot be passed to `wp.launch()`. Because `params` i
 module-scope symbol, all `external_constant_params` kernels in one module must use the same
 struct type; mixing types raises at code-generation time.
 
-Addons wrap these generic options in a domain-specific decorator. An OptiX addon, for example,
-adds the required program-kind prefix to the name and records OptiX metadata; Warp knows
-nothing about OptiX program kinds.
+Addons can wrap this generic option in a domain-specific decorator and record their own metadata.
+Warp does not need to know about concepts such as OptiX program kinds.
 
 #### AOT artifact paths
 
@@ -308,7 +305,7 @@ previous `None` return are unaffected.
 
 #### Where the code lives
 
-- `warp/build.py` — explicit public re-exports for `add_builtin` and `add_native_type`.
+- `warp/build_experimental.py` — public re-exports for `add_builtin` and `add_native_type`.
 - `warp/_src/external_build.py` — external registration implementation and registry state.
 - `warp/_src/context.py` — module options, hashing, ABI assertion emission, AOT naming and
   compilation.
@@ -317,6 +314,11 @@ previous `None` return are unaffected.
 - `warp/_src/types.py` — native values in arrays, NumPy interop, type identity, type codes.
 - `warp/_src/build.py` and `warp/native/clang/clang.cpp` — passing resolved include directories
   to the CPU (Clang) and CUDA (NVRTC) compilers.
+
+`warp.build_experimental` makes the provisional status visible at import sites. If these APIs
+later meet Warp's stability and support bar, they could be promoted to a stable `warp.build`
+namespace, as `warp.jax_experimental` was promoted to `warp.jax`. Any promotion would define its
+own compatibility and deprecation plan.
 
 Native metadata is attached to the ctypes class as `_wp_native_type_` / `_wp_native_vars_` so
 existing struct-oriented code generation stays generic. These attributes are private, not an
@@ -348,9 +350,10 @@ type.
 
 ## Limitations and Future Work
 
-The API is experimental. Beyond the constraints described above, the registries are
-process-global with no unregister, and dynamically registered builtin names are invisible to
-static type checkers.
+The experimental API surface is limited to module build inputs, external registrations,
+entry-point ABIs, and the AOT artifact-path return contract. The registries are process-global
+with no unregister, and dynamically registered builtin names are invisible to static type
+checkers.
 
 Plausible follow-ups: linked translation units, stronger CUDA ABI checks, gradient contracts
 for external builtins, additional construction policies, more named entry-point ABIs, and
@@ -359,21 +362,21 @@ exposing compiler internals.
 
 ## Testing Strategy
 
-- `warp/tests/test_external_build.py` — registration validation, conflicts and idempotent
-  re-registration, `merged()` ordering and non-mutation, dependency contents changing the
-  module hash, preamble position on both backends, and opaque and field-described native
+- `warp/tests/test_external_build.py`: registration validation, conflicts and idempotent
+  re-registration, `merged()` ordering and non-mutation, dependency and external builtin
+  contract hashing, preamble position on both backends, and opaque and field-described native
   values as kernel arguments, builtin results, struct fields, and array dtypes with NumPy
   round-trip.
-- `warp/tests/test_codegen.py` — `@wp.kernel(name=...)` and every `external_constant_params`
-  rejection (CPU backend, backward pass, `wp.tid()`, shared tiles, deterministic lowering,
-  missing or non-struct params, zero-dim launch, unknown ABI value).
-- `warp/tests/test_compilation.py`, `warp/tests/aot/test_module_aot.py` — include directories
-  reaching Clang, and AOT artifact paths for CPU, CUDA devices, and arch lists.
-- `warp/tests/test_generics.py`, `warp/tests/test_modules_lite.py` — overload lookup for
-  custom-named kernels (including the ambiguous-factory rejection) and "internal
-  `add_builtin` is not exported".
+- `warp/tests/test_codegen.py`: preamble and backend-specific include-directory hashing,
+  `external_constant_params` code generation, and its validation errors.
+- `warp/tests/test_compilation.py` and `warp/tests/aot/test_module_aot.py`: include directories
+  reaching Clang, and AOT artifact paths for CPU, CUDA devices, and architecture lists.
+- `warp/tests/cuda/test_occupancy.py` and `warp/tests/cuda/test_kernel_attributes.py`: occupancy
+  and kernel-property queries for external entry points.
+- `warp/tests/test_modules_lite.py`: confirmation that the internal `add_builtin` is not part of
+  the public API.
 
-Hash sensitivity for preambles, include paths, native schemas, kernel names, and ABI choice is
-only covered indirectly, through the hashed module-option set and type codes; just dependency
-contents have a dedicated test. Validation against a real out-of-tree consumer (`otk-pyoptix`,
-importing nothing from `warp._src`) is manual.
+Preambles, backend-specific include paths, external builtin contracts, and dependency contents
+have dedicated hash-sensitivity assertions. Native schemas and entry-point ABI choices are
+covered indirectly because native type codes and kernel options feed the module hash. Validation
+against a real out-of-tree consumer (`otk-pyoptix`, importing nothing from `warp._src`) is manual.
