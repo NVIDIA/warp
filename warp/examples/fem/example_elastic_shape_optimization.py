@@ -438,12 +438,17 @@ class Example:
         # Write back updated connectivity in-place
         wp.copy(src=wp.array(tri_np, dtype=int), dest=self._tri_vertex_indices)
 
-        # Rebuild spaces and fields on the existing geometry.
-        # We intentionally avoid recreating the Trimesh2D objects: edge flips
-        # only affect interior edges, so boundary structures and projectors
-        # remain valid; and re-running _build_topology() would introduce
-        # non-deterministic edge ordering that perturbs the boundary projector
-        # enough to visibly affect the displacement on ill-conditioned systems.
+        # The flips rewrote the shared triangle array in place, so the geometries now hold a
+        # side topology that no longer matches their triangles. Flipping the edge shared by
+        # (c, a, b) and (d, b, a) yields (c, a, d) and (d, b, c), which moves the untouched
+        # edge b-c from the first triangle to the second, so the cached edge-to-triangle map
+        # is wrong even for edges no flip selected. The BVH is bounded per triangle and is
+        # invalidated for the same reason.
+        self._start_geo.update_topology()
+        if not self._use_deformed_geo:
+            self._geo.update_topology()
+
+        # Rebuild spaces and fields, which depend on the refreshed side ordering.
         self._rebuild_fem_structures(self._degree)
 
     def step(self):

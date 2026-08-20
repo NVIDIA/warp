@@ -864,6 +864,67 @@ def test_closest_point_queries(test, device):
 
 # -- Device setup and test registration --
 
+
+def test_trimesh_update_topology(test, device):
+    # Two triangles sharing the diagonal a-b. Flipping it gives (c, a, d) and (d, b, c),
+    # which also moves the untouched edge b-c from the first triangle to the second, so the
+    # cached edge-to-triangle map is stale for an edge the flip did not select.
+    a, b, c, d = 0, 1, 2, 3
+    positions = wp.array([[0.0, 0.0], [1.0, 1.0], [0.0, 1.0], [1.0, 0.0]], dtype=wp.vec2, device=device)
+    tri_before = wp.array([[c, a, b], [d, b, a]], dtype=int, device=device)
+    tri_after = wp.array([[c, a, d], [d, b, c]], dtype=int, device=device)
+
+    geo = fem.Trimesh2D(tri_vertex_indices=tri_before, positions=positions, build_bvh=True)
+
+    def stale_side_count():
+        triangles = geo.tri_vertex_indices.numpy()
+        edge_vertices = geo.edge_vertex_indices.numpy()
+        edge_tris = geo.edge_tri_indices.numpy()
+        stale = 0
+        for (v0, v1), tris in zip(edge_vertices, edge_tris, strict=False):
+            for tri_index in tris:
+                corners = triangles[tri_index]
+                if v0 not in corners or v1 not in corners:
+                    stale += 1
+        return stale
+
+    test.assertEqual(stale_side_count(), 0)
+
+    # Populate the cached Arg structs so the refresh has to invalidate them, in particular the
+    # side-index arg, which holds the boundary edge list.
+    geo.cell_arg_value(device)
+    geo.side_arg_value(device)
+    geo.side_index_arg_value(device)
+
+    # Flip the connectivity in place, without rebuilding the geometry.
+    wp.copy(src=tri_after, dest=geo.tri_vertex_indices)
+    test.assertGreater(stale_side_count(), 0)
+
+    geo.update_topology()
+    test.assertEqual(stale_side_count(), 0)
+
+    # The refreshed topology must describe the same mesh as one built from the flipped triangles.
+    rebuilt = fem.Trimesh2D(tri_vertex_indices=tri_after, positions=positions)
+    test.assertEqual(geo.side_count(), rebuilt.side_count())
+
+    def canonical(g):
+        return sorted(
+            (tuple(sorted(edge)), tuple(sorted(tris)))
+            for edge, tris in zip(
+                g.edge_vertex_indices.numpy().tolist(), g.edge_tri_indices.numpy().tolist(), strict=False
+            )
+        )
+
+    test.assertEqual(canonical(geo), canonical(rebuilt))
+
+    # The cached side-index arg must hand out the rebuilt boundary edge list, not the one it
+    # captured before the flip.
+    refreshed_boundary = geo.side_index_arg_value(device).boundary_edge_indices.numpy().tolist()
+    test.assertEqual(refreshed_boundary, geo._boundary_edge_indices.numpy().tolist())
+    test.assertEqual(len(refreshed_boundary), geo.boundary_side_count())
+    test.assertEqual(geo.boundary_side_count(), rebuilt.boundary_side_count())
+
+
 devices = get_test_devices()
 cuda_devices = get_selected_cuda_test_devices()
 capture_allocation_devices = [device for device in get_test_devices_with_graph_capture_allocation() if device.is_cuda]
@@ -896,6 +957,7 @@ add_function_test(TestFemGeometry, "test_deformed_geometry", test_deformed_geome
 add_function_test(
     TestFemGeometry, "test_deformed_geometry_codimensional", test_deformed_geometry_codimensional, devices=devices
 )
+add_function_test(TestFemGeometry, "test_trimesh_update_topology", test_trimesh_update_topology, devices=devices)
 add_function_test(TestFemGeometry, "test_closest_point_queries", test_closest_point_queries)
 
 if __name__ == "__main__":

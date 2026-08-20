@@ -114,17 +114,7 @@ class Trimesh(Geometry):
         self._edge_tri_indices: wp.array = None
         self._build_topology(temporary_store)
 
-        # Flip edges so that normals point away from inner cell
-        if self.dimension == 2:
-            orient_kernel = Trimesh._orient_edges_2d
-        else:
-            orient_kernel = Trimesh._orient_edges_3d
-        wp.launch(
-            kernel=orient_kernel,
-            device=positions.device,
-            dim=self.side_count(),
-            inputs=[self._edge_vertex_indices, self._edge_tri_indices, self.tri_vertex_indices, self.positions],
-        )
+        self._orient_edges()
 
         # Process all dynamic attributes (Trimesh primitives + Geometry dependents)
         cache.setup_dynamic_attributes(self)
@@ -268,6 +258,51 @@ class Trimesh(Geometry):
         return side_to_cell_arg
 
     # -- Topology building (precision-independent, uses integer indices) --
+
+    def _orient_edges(self):
+        """Flip edges so that normals point away from the inner cell."""
+
+        orient_kernel = Trimesh._orient_edges_2d if self.dimension == 2 else Trimesh._orient_edges_3d
+        wp.launch(
+            kernel=orient_kernel,
+            device=self.positions.device,
+            dim=self.side_count(),
+            inputs=[self._edge_vertex_indices, self._edge_tri_indices, self.tri_vertex_indices, self.positions],
+        )
+
+    def update_topology(self, temporary_store: TemporaryStore | None = None):
+        """Rebuild the side topology after ``tri_vertex_indices`` has been modified in place.
+
+        The edge list, the edge-to-triangle map and the boundary edge list are all derived from
+        ``tri_vertex_indices`` when the geometry is constructed. Changing the connectivity in place,
+        for instance by flipping edges, leaves those structures describing the previous mesh, so
+        side integration and :func:`lookup` silently use stale data. Calling this method makes them
+        consistent with the current triangles again.
+
+        Note that a connectivity change may reorder the edges, so any :class:`Field` or
+        :class:`Space` built from a previous side ordering must be rebuilt as well.
+
+        Args:
+            temporary_store: shared pool from which to allocate temporary arrays
+
+        See also: :meth:`.Geometry.update_bvh`, which handles moving positions rather than
+        changing connectivity.
+        """
+
+        self._build_topology(temporary_store)
+        self._orient_edges()
+
+        # Arg structs hold references to the previous edge arrays. side_index_arg_value caches
+        # the boundary edge list, which _build_topology() reallocates, so it has to go too.
+        Geometry.cell_arg_value.invalidate(self)
+        Geometry.side_arg_value.invalidate(self)
+        Geometry.side_index_arg_value.invalidate(self)
+
+        # Cell bounds are derived from the triangles, so a connectivity change invalidates the tree
+        # itself and not just its bounds; refitting through update_bvh() is not enough here.
+        if self._bvhs:
+            for bvh in list(self._bvhs.values()):
+                self.build_bvh(bvh.lowers.device)
 
     def _build_topology(self, temporary_store: TemporaryStore):
         device = self.tri_vertex_indices.device
