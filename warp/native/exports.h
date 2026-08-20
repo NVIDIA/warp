@@ -975,6 +975,9 @@ WP_API void wp_builtin_transform_vector_mat44d_vec3d(mat44d& mat, vec3d& vec, ve
 WP_API void wp_builtin_transform_inverse_transformh(transformh& xform, transformh* ret) { *ret = wp::transform_inverse(xform); }
 WP_API void wp_builtin_transform_inverse_transformf(transformf& xform, transformf* ret) { *ret = wp::transform_inverse(xform); }
 WP_API void wp_builtin_transform_inverse_transformd(transformd& xform, transformd* ret) { *ret = wp::transform_inverse(xform); }
+WP_API void wp_builtin_transform_normalize_transformh(transformh& xform, transformh* ret) { *ret = wp::transform_normalize(xform); }
+WP_API void wp_builtin_transform_normalize_transformf(transformf& xform, transformf* ret) { *ret = wp::transform_normalize(xform); }
+WP_API void wp_builtin_transform_normalize_transformd(transformd& xform, transformd* ret) { *ret = wp::transform_normalize(xform); }
 WP_API void wp_builtin_spatial_dot_spatial_vectorh_spatial_vectorh(spatial_vectorh& a, spatial_vectorh& b, float16* ret) { *ret = wp::spatial_dot(a, b); }
 WP_API void wp_builtin_spatial_dot_spatial_vectorf_spatial_vectorf(spatial_vectorf& a, spatial_vectorf& b, float32* ret) { *ret = wp::spatial_dot(a, b); }
 WP_API void wp_builtin_spatial_dot_spatial_vectord_spatial_vectord(spatial_vectord& a, spatial_vectord& b, float64* ret) { *ret = wp::spatial_dot(a, b); }
