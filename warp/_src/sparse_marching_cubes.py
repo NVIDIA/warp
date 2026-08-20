@@ -834,7 +834,10 @@ def lipschitz_octree(
     Args:
         sdf: The implicit function, in either form accepted by
             :func:`sparse_marching_cubes_via_lipschitz_pruning`.
-        origin: The minimum corner of the cubic root cell.
+        origin: The minimum corner of the cubic root cell. Set ``origin`` and
+            ``root_width`` so that the box ``[origin, origin + root_width]``
+            covers the entire level set to be found; cells outside it are never
+            visited.
         root_width: The side length of the cubic root cell.
         max_depth: The octree depth. Leaf cells have width ``root_width / 2**max_depth``.
         threshold: The isovalue defining the surface.
@@ -894,6 +897,26 @@ def sparse_marching_cubes_from_cells(
 
     :func:`sparse_marching_cubes_via_lipschitz_pruning` is a thin wrapper that discovers the cells with
     a :func:`lipschitz_octree` and then calls this function.
+
+    .. note::
+
+        The subscript convention here differs from the VDB-style one used by
+        :class:`warp.Volume`, so subscripts are not interchangeable between the
+        two. In :class:`warp.Volume`, a subscript names a *voxel* and the sample
+        lives at that voxel's center, so voxel ``(i, j, k)`` covers
+        ``[ijk - 1/2, ijk + 1/2]`` in index space. Here a subscript names a
+        *cell* by its minimum corner, so cell ``(i, j, k)`` covers
+        ``[ijk, ijk + 1]`` and the samples live at its 8 corners.
+
+        Both place samples on the integer lattice, so what shifts by half a cell
+        is the region a subscript refers to, not the data. Concretely, a
+        :class:`warp.Volume` voxel subscript corresponds to a *corner* subscript
+        here rather than a cell subscript: the corners of cell ``(i, j, k)`` are
+        the volume voxels ``(i, j, k)`` through ``(i + 1, j + 1, k + 1)``.
+        ``origin`` matches ``min_world`` in
+        :meth:`warp.Volume.load_from_numpy` and ``cell_width`` matches
+        ``voxel_size``, since both give the world position of subscript
+        ``(0, 0, 0)`` and the lattice spacing.
 
     Args:
         cells: An ``(N, 3)`` array of integer cell minimum-corner subscripts, as a
@@ -1001,7 +1024,11 @@ def sparse_marching_cubes_via_lipschitz_pruning(
             The batched form is convenient for meshes (``wp.mesh_query_point*``),
             neural implicits, or any field that is easier to evaluate in bulk. It
             must return its values on the same device as the points it is given.
-        origin: The minimum corner of the cubic root cell.
+        origin: The minimum corner of the cubic root cell. Set ``origin`` and
+            ``root_width`` so that the box ``[origin, origin + root_width]``
+            covers the entire surface to be extracted: anything outside that box
+            is never visited, so parts of the level set that leave it are simply
+            missing from the output, leaving the mesh open where it exits.
         root_width: The side length of the cubic root cell. The domain covered is
             ``[origin, origin + root_width]`` on every axis.
         max_depth: The octree depth. The finest cells have width

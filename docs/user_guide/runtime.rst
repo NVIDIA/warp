@@ -3038,6 +3038,16 @@ renumbering. Corners shared between neighboring cells are de-duplicated
 internally, so the result is watertight even though each cell supplies its own
 eight values.
 
+.. note::
+
+    This subscript convention differs from the VDB-style one used by
+    :class:`wp.Volume <warp.Volume>`, where a subscript names a voxel whose
+    *center* holds the sample. Here a subscript names a cell by its *minimum
+    corner*, and the samples sit at the cell's corners. Both put samples on the
+    integer lattice, so a :class:`wp.Volume <warp.Volume>` voxel subscript lines
+    up with a corner subscript here, not a cell subscript: the corners of cell
+    ``(i, j, k)`` are the voxels ``(i, j, k)`` through ``(i+1, j+1, k+1)``.
+
 The cells a closed surface passes through form a face-connected shell, so they
 can be gathered with a breadth-first search from a single seed cell. The search
 only ever touches the shell and its immediate neighbors, never the volume it
