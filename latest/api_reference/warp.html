@@ -428,6 +428,7 @@
 <ul class="current nav bd-sidenav">
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">warp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="warp_autograd.html">warp.autograd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="warp_build_experimental.html">warp.build_experimental</a></li>
 <li class="toctree-l1"><a class="reference internal" href="warp_config.html">warp.config</a></li>
 <li class="toctree-l1"><a class="reference internal" href="warp_fem.html">warp.fem</a></li>
 <li class="toctree-l1"><a class="reference internal" href="warp_optim.html">warp.optim</a></li>
@@ -527,6 +528,7 @@ element methods, and <a class="reference internal" href="warp_sparse.html#module
 <h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading">#</a></h2>
 <p>These modules are automatically available when you <code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">warp</span></code>.</p>
 <ul class="simple">
+<li><p><a class="reference internal" href="warp_build_experimental.html#module-warp.build_experimental" title="warp.build_experimental"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warp.build_experimental</span></code></a></p></li>
 <li><p><a class="reference internal" href="warp_config.html#module-warp.config" title="warp.config"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warp.config</span></code></a></p></li>
 <li><p><a class="reference internal" href="warp_types.html#module-warp.types" title="warp.types"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warp.types</span></code></a></p></li>
 <li><p><a class="reference internal" href="warp_utils.html#module-warp.utils" title="warp.utils"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warp.utils</span></code></a></p></li>
@@ -1131,19 +1133,22 @@ element methods, and <a class="reference internal" href="warp_sparse.html#module
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.Module.html#warp.Module" title="warp.Module"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Module</span></code></a></p></td>
 <td><p>Warp module containing kernels and functions to be compiled.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.get_cuda_kernel_properties.html#warp.get_cuda_kernel_properties" title="warp.get_cuda_kernel_properties"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_cuda_kernel_properties</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.ModuleBuildOptions.html#warp.ModuleBuildOptions" title="warp.ModuleBuildOptions"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ModuleBuildOptions</span></code></a></p></td>
+<td><p>Extra build options for a Warp module.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.get_cuda_kernel_properties.html#warp.get_cuda_kernel_properties" title="warp.get_cuda_kernel_properties"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_cuda_kernel_properties</span></code></a></p></td>
 <td><p>Return properties of a compiled CUDA kernel.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.get_suggested_block_size.html#warp.get_suggested_block_size" title="warp.get_suggested_block_size"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_suggested_block_size</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.get_suggested_block_size.html#warp.get_suggested_block_size" title="warp.get_suggested_block_size"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_suggested_block_size</span></code></a></p></td>
 <td><p>Suggest a CUDA block size that maximizes occupancy for a kernel.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-obj docutils literal notranslate"><span class="pre">launch</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-obj docutils literal notranslate"><span class="pre">launch</span></code></a></p></td>
 <td><p>Launch a Warp kernel on the target device</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.launch_tiled.html#warp.launch_tiled" title="warp.launch_tiled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">launch_tiled</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.launch_tiled.html#warp.launch_tiled" title="warp.launch_tiled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">launch_tiled</span></code></a></p></td>
 <td><p>A helper method for launching a grid with an extra trailing dimension equal to the block size.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.synchronize.html#warp.synchronize" title="warp.synchronize"><code class="xref py py-obj docutils literal notranslate"><span class="pre">synchronize</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.synchronize.html#warp.synchronize" title="warp.synchronize"><code class="xref py py-obj docutils literal notranslate"><span class="pre">synchronize</span></code></a></p></td>
 <td><p>Manually synchronize the calling CPU thread with any outstanding CUDA work on all devices</p></td>
 </tr>
 </tbody>

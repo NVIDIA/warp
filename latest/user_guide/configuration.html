@@ -428,6 +428,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp.html">warp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_autograd.html">warp.autograd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_build_experimental.html">warp.build_experimental</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_config.html">warp.config</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_fem.html">warp.fem</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_optim.html">warp.optim</a></li>
@@ -624,13 +625,19 @@ compiled for.</p></td>
 <td><p>If <code class="docutils literal notranslate"><span class="pre">True</span></code>, avoids using a content-based hash to identify the module
 and its functions.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">enable_mathdx_gemm</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">extra_build_options</span></code></p></td>
+<td><p>Object</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>Experimental extra build inputs for CPU and CUDA modules. Set to an
+<a class="reference internal" href="../api_reference/_generated/warp.ModuleBuildOptions.html#warp.ModuleBuildOptions" title="warp.ModuleBuildOptions"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.ModuleBuildOptions</span></code></a> instance.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">enable_mathdx_gemm</span></code></p></td>
 <td><p>Boolean</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
 <td><p>A module-level override of the <a class="reference internal" href="../api_reference/_generated/warp.config.enable_mathdx_gemm.html#warp.config.enable_mathdx_gemm" title="warp.config.enable_mathdx_gemm"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.enable_mathdx_gemm</span></code></a>
 setting. <code class="docutils literal notranslate"><span class="pre">None</span></code> defers to the global setting at compile time.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">enable_mathdx_solver</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">enable_mathdx_solver</span></code></p></td>
 <td><p>Boolean</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
 <td><p>A module-level override of the <a class="reference internal" href="../api_reference/_generated/warp.config.enable_mathdx_solver.html#warp.config.enable_mathdx_solver" title="warp.config.enable_mathdx_solver"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.enable_mathdx_solver</span></code></a>
@@ -658,13 +665,21 @@ setting. <code class="docutils literal notranslate"><span class="pre">None</span
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">enable_backward</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">name</span></code></p></td>
+<td><p>String</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>Experimental kernel-name override that may change without deprecation
+in future releases. The value must be a valid C identifier. When module
+hashing is stripped, this is also the base name of the exported native
+symbol.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">enable_backward</span></code></p></td>
 <td><p>Boolean</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
 <td><p>If <code class="docutils literal notranslate"><span class="pre">False</span></code>, the backward pass will not be generated for this kernel.
 If <code class="docutils literal notranslate"><span class="pre">None</span></code>, inherits from the module/global setting.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">module</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">module</span></code></p></td>
 <td><p>Module | <code class="docutils literal notranslate"><span class="pre">&quot;unique&quot;</span></code> | str</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
 <td><p>Controls which module the kernel belongs to. If <code class="docutils literal notranslate"><span class="pre">&quot;unique&quot;</span></code>, the kernel
@@ -672,7 +687,7 @@ is assigned to a new module named after the kernel (with a hash suffix). If a
 plain string is provided, the kernel is registered in the module with
 that name. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, the module is inferred from the function’s module.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">launch_bounds</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">launch_bounds</span></code></p></td>
 <td><p>int | tuple</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
 <td><p>CUDA <code class="docutils literal notranslate"><span class="pre">__launch_bounds__</span></code> attribute for the kernel. Can be an int
@@ -681,7 +696,7 @@ that name. If <code class="docutils literal notranslate"><span class="pre">None<
 CUDA kernels. The <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> parameter in <a class="reference internal" href="../api_reference/_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.launch()</span></code></a> must
 not exceed the <code class="docutils literal notranslate"><span class="pre">maxThreadsPerBlock</span></code> value specified here.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">cuda_max_registers</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">cuda_max_registers</span></code></p></td>
 <td><p>int</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
 <td><p>CUDA <code class="docutils literal notranslate"><span class="pre">__maxnreg__</span></code> attribute specifying the maximum number of
@@ -689,7 +704,7 @@ registers allocated per thread. Must be positive and cannot be combined
 with <code class="docutils literal notranslate"><span class="pre">launch_bounds</span></code>. Ignored on CPU and when Warp was built with CUDA
 Toolkit earlier than 12.4 or when <code class="docutils literal notranslate"><span class="pre">wp.config.llvm_cuda</span></code> is <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">enable_cuda_smem_spilling</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">enable_cuda_smem_spilling</span></code></p></td>
 <td><p>Boolean</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
 <td><p>If <code class="docutils literal notranslate"><span class="pre">True</span></code>, allow the CUDA Toolkit used to build Warp, when version
@@ -698,7 +713,7 @@ for entry points that use dynamic shared memory, on CPU, with older CUDA
 Toolkits, in unsupported device-debug compilation, and when
 <code class="docutils literal notranslate"><span class="pre">wp.config.llvm_cuda</span></code> is <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">module_options</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">module_options</span></code></p></td>
 <td><p>dict</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
 <td><p>A dict of module-level compilation options to apply to the kernel’s
@@ -706,6 +721,15 @@ module. Requires <code class="docutils literal notranslate"><span class="pre">mo
 Keys are validated against the module’s known options (see
 <a class="reference internal" href="#id3">Module Settings</a> above). For shared modules, use
 <a class="reference internal" href="../api_reference/_generated/warp.set_module_options.html#warp.set_module_options" title="warp.set_module_options"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.set_module_options()</span></code></a> instead.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">entry_point_abi</span></code></p></td>
+<td><p>String</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>Selects the experimental entry-point ABI. <code class="docutils literal notranslate"><span class="pre">&quot;warp&quot;</span></code> uses the regular
+launch-compatible CPU and CUDA ABI. <code class="docutils literal notranslate"><span class="pre">&quot;external_constant_params&quot;</span></code> is
+CUDA-only and binds one struct argument from constant memory symbol
+<code class="docutils literal notranslate"><span class="pre">params</span></code>; it requires <code class="docutils literal notranslate"><span class="pre">enable_backward=False</span></code> and cannot be launched
+with <a class="reference internal" href="../api_reference/_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.launch()</span></code></a>.</p></td>
 </tr>
 </tbody>
 </table>

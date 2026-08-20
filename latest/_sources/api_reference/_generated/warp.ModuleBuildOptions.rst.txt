@@ -1,0 +1,18 @@
+﻿warp.ModuleBuildOptions
+=======================
+
+.. currentmodule:: warp
+
+.. autoclass:: ModuleBuildOptions
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~ModuleBuildOptions.merged
+   
+   
+   
+   
+   

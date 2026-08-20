@@ -421,6 +421,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="api_reference/warp.html">warp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api_reference/warp_autograd.html">warp.autograd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api_reference/warp_build_experimental.html">warp.build_experimental</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api_reference/warp_config.html">warp.config</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api_reference/warp_fem.html">warp.fem</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api_reference/warp_optim.html">warp.optim</a></li>
@@ -512,6 +513,10 @@
 </li>
       <li><a href="api_reference/_generated/warp.fem.AdaptiveNanogrid.html#warp.fem.AdaptiveNanogrid">AdaptiveNanogrid (class in warp.fem)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.build_experimental.add_builtin.html#warp.build_experimental.add_builtin">add_builtin() (in module warp.build_experimental)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.build_experimental.add_native_type.html#warp.build_experimental.add_native_type">add_native_type() (in module warp.build_experimental)</a>
+</li>
       <li><a href="api_reference/_generated/warp.Function.html#warp.Function.add_overload">add_overload() (warp.Function method)</a>
 
       <ul>
@@ -556,10 +561,10 @@
 </li>
       <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.allocate_by_voxels">allocate_by_voxels() (warp.Volume class method)</a>
 </li>
-      <li><a href="api_reference/_generated/warp.render.OpenGLRenderer.html#warp.render.OpenGLRenderer.allocate_shape_instances">allocate_shape_instances() (warp.render.OpenGLRenderer method)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api_reference/_generated/warp.render.OpenGLRenderer.html#warp.render.OpenGLRenderer.allocate_shape_instances">allocate_shape_instances() (warp.render.OpenGLRenderer method)</a>
+</li>
       <li><a href="api_reference/_generated/warp.Allocator.html#warp.Allocator">Allocator (class in warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.utils.AllocatorRmm.html#warp.utils.AllocatorRmm">AllocatorRmm (class in warp.utils)</a>
@@ -3861,6 +3866,8 @@
       </ul></li>
       <li><a href="api_reference/_generated/warp.MemoryKind.html#warp.MemoryKind">MemoryKind (class in warp)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.ModuleBuildOptions.html#warp.ModuleBuildOptions.merged">merged() (warp.ModuleBuildOptions method)</a>
+</li>
       <li><a href="api_reference/_generated/warp.Mesh.html#warp.Mesh">Mesh (class in warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.MeshQuery.html#warp.MeshQuery">MeshQuery (class in warp)</a>
@@ -3886,6 +3893,8 @@
         <li><a href="api_reference/warp.html#module-warp">warp</a>
 </li>
         <li><a href="api_reference/warp_autograd.html#module-warp.autograd">warp.autograd</a>
+</li>
+        <li><a href="api_reference/warp_build_experimental.html#module-warp.build_experimental">warp.build_experimental</a>
 </li>
         <li><a href="api_reference/warp_config.html#module-warp.config">warp.config</a>
 </li>
@@ -3925,6 +3934,8 @@
       <li><a href="api_reference/_generated/warp.fem.Integrand.html#warp.fem.Integrand.module">module (warp.fem.Integrand attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.Graph.html#warp.Graph.module_execs">module_execs (warp.Graph attribute)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.ModuleBuildOptions.html#warp.ModuleBuildOptions">ModuleBuildOptions (class in warp)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -6981,8 +6992,6 @@
         <li><a href="language_reference/_generated/warp.sample_unit_hemisphere.html#warp._src.lang.sample_unit_hemisphere">built-in function</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     warp._src.lang.sample_unit_hemisphere_surface()
 
@@ -6990,6 +6999,8 @@
         <li><a href="language_reference/_generated/warp.sample_unit_hemisphere_surface.html#warp._src.lang.sample_unit_hemisphere_surface">built-in function</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     warp._src.lang.sample_unit_ring()
 
@@ -7961,6 +7972,13 @@
 
       <ul>
         <li><a href="api_reference/warp_autograd.html#module-warp.autograd">module</a>
+</li>
+      </ul></li>
+      <li>
+    warp.build_experimental
+
+      <ul>
+        <li><a href="api_reference/warp_build_experimental.html#module-warp.build_experimental">module</a>
 </li>
       </ul></li>
       <li>

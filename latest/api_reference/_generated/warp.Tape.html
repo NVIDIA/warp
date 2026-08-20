@@ -428,6 +428,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../warp.html">warp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_autograd.html">warp.autograd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_build_experimental.html">warp.build_experimental</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_config.html">warp.config</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_fem.html">warp.fem</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_optim.html">warp.optim</a></li>
@@ -518,7 +519,7 @@
 <h1>warp.Tape<a class="headerlink" href="#warp-tape" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.Tape">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Tape</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/tape.py#L12-L423"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Tape" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Tape</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/tape.py#L12-L429"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Tape" title="Link to this definition">#</a></dt>
 <dd><p>Record kernel launches within a Tape scope to enable automatic differentiation.
 Gradients can be computed after the operations have been recorded on the tape via
 <a class="reference internal" href="#warp.Tape.backward" title="warp.Tape.backward"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Tape.backward()</span></code></a>.</p>
@@ -656,13 +657,14 @@ the same arrays and has not yet run its own backward pass, or against a second
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Tape.get_adjoint">
-<span class="sig-name descname"><span class="pre">get_adjoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/tape.py#L248-L296"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Tape.get_adjoint" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_adjoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/tape.py#L248-L302"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Tape.get_adjoint" title="Link to this definition">#</a></dt>
 <dd><p>Return the adjoint container for a kernel argument.</p>
 <p>For <a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a> inputs with gradients enabled, this returns
 <a class="reference internal" href="warp.array.html#warp.array.grad" title="warp.array.grad"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.array.grad</span></code></a> and tracks it in <code class="docutils literal notranslate"><span class="pre">gradients</span></code> so it can
 be zeroed later. For instances created with <a class="reference internal" href="warp.struct.html#warp.struct" title="warp.struct"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.struct()</span></code></a>, a mirrored
 struct is created with adjoints for array fields, and nested structs are
-handled recursively. Non-differentiable values are passed through unchanged.</p>
+handled recursively. Registered native values receive a default-initialized
+value so reverse-launch argument packing preserves their ABI.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>a</strong> – Kernel argument to map to an adjoint. Can be a <a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a>,
@@ -676,13 +678,13 @@ a <a class="reference internal" href="warp.struct.html#warp.struct" title="warp.
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Tape.reset">
-<span class="sig-name descname"><span class="pre">reset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/tape.py#L297-L307"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Tape.reset" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">reset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/tape.py#L303-L313"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Tape.reset" title="Link to this definition">#</a></dt>
 <dd><p>Clear all operations recorded on the tape and zero out all gradients.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Tape.zero">
-<span class="sig-name descname"><span class="pre">zero</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/tape.py#L308-L322"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Tape.zero" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">zero</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/tape.py#L314-L328"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Tape.zero" title="Link to this definition">#</a></dt>
 <dd><p>Zero out all gradients recorded on the tape.</p>
 </dd></dl>
 
@@ -704,7 +706,7 @@ a <a class="reference internal" href="warp.struct.html#warp.struct" title="warp.
 <dd><em class="sig-param"><span class="n"><span class="pre">graph_direction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'LR'</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/tape.py#L346-L423"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Tape.visualize" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/tape.py#L352-L429"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Tape.visualize" title="Link to this definition">#</a></dt>
 <dd><p>Visualize the recorded operations on the tape as a <a class="reference external" href="https://graphviz.org/">GraphViz diagram</a>.</p>
 <p class="rubric">Example</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
