@@ -536,7 +536,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">grid_stride</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L1703-L2014"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.kernel" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L1711-L2022"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.kernel" title="Link to this definition">#</a></dt>
 <dd><p>Decorator to register a Warp kernel from a Python function.
 The function must be defined with type annotations for all arguments.
 The function must not return anything.</p>
@@ -594,11 +594,11 @@ The function must not return anything.</p>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>f</strong> (<a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Callable" title="(in Python v3.14)"><em>Callable</em></a><em> | </em><em>None</em>) – The function to be registered as a kernel.</p></li>
-<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Experimental kernel-name override that may change without
-deprecation in future releases. If omitted, the name is derived
-from the function’s qualified name. Custom names must be valid C++
-identifiers. When <code class="docutils literal notranslate"><span class="pre">strip_hash=True</span></code>, this is also the base name
-of the exported native symbol.</p></li>
+<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Sets the kernel key used for registration and native code
+generation. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, Warp derives the key from <code class="docutils literal notranslate"><span class="pre">f</span></code>. A custom
+name must be a valid C++ identifier. When <code class="docutils literal notranslate"><span class="pre">strip_hash=True</span></code>, Warp
+uses the key without a hash suffix as the base of the generated
+native entry-point names.</p></li>
 <li><p><strong>enable_backward</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a><em> | </em><em>None</em>) – If False, the backward pass will not be
 generated.</p></li>
 <li><p><strong>launch_bounds</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>...</em><em>] </em><em>| </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – CUDA <code class="docutils literal notranslate"><span class="pre">__launch_bounds__</span></code> attribute for the

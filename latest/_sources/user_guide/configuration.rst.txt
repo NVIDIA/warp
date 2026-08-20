@@ -113,10 +113,11 @@ Kernel-level settings can be passed as arguments to the :func:`@wp.kernel <warp.
    * - ``name``
      - String
      - ``None``
-     - Experimental kernel-name override that may change without deprecation
-       in future releases. The value must be a valid C identifier. When module
-       hashing is stripped, this is also the base name of the exported native
-       symbol.
+     - Sets the kernel key used for registration and native code generation. If
+       ``None``, Warp derives the key from the Python callable passed to
+       ``wp.kernel``. A custom name must be a valid C++ identifier. When
+       ``strip_hash=True``, Warp uses the key without a hash suffix as the base
+       of the generated native entry-point names.
    * - ``enable_backward``
      - Boolean
      - ``None``

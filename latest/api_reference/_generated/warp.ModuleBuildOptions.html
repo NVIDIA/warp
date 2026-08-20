@@ -530,7 +530,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">extra_build_dependencies</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L2551-L2655"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.ModuleBuildOptions" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L2559-L2665"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.ModuleBuildOptions" title="Link to this definition">#</a></dt>
 <dd><p>Extra build options for a Warp module.</p>
 <p>Experimental: this API may change in future releases.</p>
 <p>Example:</p>
@@ -552,10 +552,12 @@ existing directory.</p></li>
 <li><p><strong>extra_cpu_include_dirs</strong> (<em>Sequence</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/os.html#os.PathLike" title="(in Python v3.14)"><em>os.PathLike</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>]</em><em>] </em><em>| </em><em>None</em>) – Extra include directories used only when
 compiling CPU modules. Each entry must be an absolute path to an
 existing directory.</p></li>
-<li><p><strong>extra_cuda_preamble</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Extra CUDA source inserted after Warp’s headers
-and before the generated code, so it may use Warp’s macros.</p></li>
+<li><p><strong>extra_cuda_preamble</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Extra CUDA source inserted after Warp’s headers and
+before codegen-only cast macros and the generated code, so it may
+use Warp’s public macros and ordinary C++ casts.</p></li>
 <li><p><strong>extra_cpu_preamble</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Extra CPU source inserted after Warp’s headers and
-before the generated code, so it may use Warp’s macros.</p></li>
+before codegen-only cast macros and the generated code, so it may
+use Warp’s public macros and ordinary C++ casts.</p></li>
 <li><p><strong>extra_build_dependencies</strong> (<em>Sequence</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/os.html#os.PathLike" title="(in Python v3.14)"><em>os.PathLike</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>]</em><em>] </em><em>| </em><em>None</em>) – Files whose contents are hashed into the
 module hash. Each entry must be an absolute path to an existing
 file. Contents are re-read when the module hash is recomputed
@@ -575,7 +577,7 @@ on every launch.</p></li>
 </div>
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.ModuleBuildOptions.merged">
-<span class="sig-name descname"><span class="pre">merged</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">others</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L2604-L2655"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.ModuleBuildOptions.merged" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">merged</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">others</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L2614-L2665"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.ModuleBuildOptions.merged" title="Link to this definition">#</a></dt>
 <dd><p>Return build options formed by appending one or more option sets.</p>
 <p>Include directories and dependencies retain their first occurrence.
 Preambles are concatenated in argument order with a newline between

@@ -912,10 +912,12 @@ and may change without deprecation in future releases.</p>
 <span class="n">wp</span><span class="o">.</span><span class="n">set_module_options</span><span class="p">({</span><span class="s2">&quot;extra_build_options&quot;</span><span class="p">:</span> <span class="n">build_options</span><span class="p">})</span>
 </pre></div>
 </div>
-<p>The preambles are inserted after Warp’s own headers and before the generated
-code, so an external header may use Warp macros such as <code class="docutils literal notranslate"><span class="pre">CUDA_CALLABLE</span></code>, and
-the generated kernels see everything the preamble declares. A preamble cannot
-define macros that Warp’s headers consume, because those are already included.</p>
+<p>The preambles are inserted after Warp’s own headers, but before codegen-only
+cast macros and the generated code. An external header may therefore use public
+Warp macros such as <code class="docutils literal notranslate"><span class="pre">CUDA_CALLABLE</span></code> and ordinary C++ function-style casts,
+and the generated kernels see everything the preamble declares. A preamble
+cannot define macros that Warp’s headers consume, because those are already
+included.</p>
 <p>Warp hashes the configured include-directory paths, but not the contents of
 headers resolved through them. List external headers and other build inputs in
 <code class="docutils literal notranslate"><span class="pre">extra_build_dependencies</span></code> so Warp also hashes their contents. Dependency

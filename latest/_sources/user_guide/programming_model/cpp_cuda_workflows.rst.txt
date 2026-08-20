@@ -442,10 +442,12 @@ Extra build inputs for a module can be grouped in
     )
     wp.set_module_options({"extra_build_options": build_options})
 
-The preambles are inserted after Warp's own headers and before the generated
-code, so an external header may use Warp macros such as ``CUDA_CALLABLE``, and
-the generated kernels see everything the preamble declares. A preamble cannot
-define macros that Warp's headers consume, because those are already included.
+The preambles are inserted after Warp's own headers, but before codegen-only
+cast macros and the generated code. An external header may therefore use public
+Warp macros such as ``CUDA_CALLABLE`` and ordinary C++ function-style casts,
+and the generated kernels see everything the preamble declares. A preamble
+cannot define macros that Warp's headers consume, because those are already
+included.
 
 Warp hashes the configured include-directory paths, but not the contents of
 headers resolved through them. List external headers and other build inputs in
