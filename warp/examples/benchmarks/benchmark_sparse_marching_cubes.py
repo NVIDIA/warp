@@ -8,7 +8,7 @@
 #
 #   dense  : evaluate the field on a full (2^d + 1)^3 grid, then run
 #            wp.geometry.IsoSurfaceMarchingCubes (cost ~ O(R^3), the surface *volume*).
-#   sparse : build a Lipschitz octree and run wp.geometry.sparse_marching_cubes
+#   sparse : build a Lipschitz octree and run wp.geometry.sparse_marching_cubes_via_lipschitz_pruning
 #            (cost ~ O(R^2), the surface *area*).
 #
 # Both paths evaluate the SAME implicit function on the GPU and, at a given
@@ -86,7 +86,7 @@ def analytic_backend(device):
         wp.launch(_analytic_field_kernel, dim=field.shape, inputs=[field, origin, float(h)], device=device)
         return field
 
-    # Passing the @wp.func lets wp.geometry.sparse_marching_cubes build its own evaluation
+    # Passing the @wp.func lets wp.geometry.sparse_marching_cubes_via_lipschitz_pruning build its own evaluation
     # kernel; it computes the same values as the dense field kernel.
     return _scene_sdf, dense_field, origin, root_width
 
@@ -165,7 +165,7 @@ def dense_extract(dense_field, origin, root_width, depth):
 
 
 def sparse_extract(sdf, origin, root_width, depth, device, return_stats=False):
-    return wp.geometry.sparse_marching_cubes(
+    return wp.geometry.sparse_marching_cubes_via_lipschitz_pruning(
         sdf, origin, root_width, depth, threshold=0.0, device=device, return_stats=return_stats
     )
 

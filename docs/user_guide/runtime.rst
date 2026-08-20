@@ -2958,9 +2958,10 @@ Sparse Marching Cubes
 
 When the field comes from an implicit function (a signed distance function, a
 mesh distance query, or a neural implicit),
-:func:`wp.geometry.sparse_marching_cubes <warp.geometry.sparse_marching_cubes>`
-extracts the isosurface without ever building a
-dense grid. It constructs a *Lipschitz octree* that provably brackets the level
+:func:`wp.geometry.sparse_marching_cubes_via_lipschitz_pruning
+<warp.geometry.sparse_marching_cubes_via_lipschitz_pruning>` extracts the
+isosurface without ever building a dense grid. It constructs a *Lipschitz
+octree* that provably brackets the level
 set of a 1-Lipschitz field, then runs marching cubes only on the near-surface
 cells. The cost scales with the surface area rather than the volume, and the
 whole pipeline (octree construction, field evaluation, and extraction) runs on
@@ -2989,7 +2990,7 @@ neural implicits, or any field that is cheaper to evaluate in bulk.
         return wp.length(p) - 0.5
 
     # A depth-8 octree matches a dense 256^3 grid, but only touches cells near the surface.
-    verts, indices = wp.geometry.sparse_marching_cubes(
+    verts, indices = wp.geometry.sparse_marching_cubes_via_lipschitz_pruning(
         sphere_sdf,
         origin=wp.vec3(-1.0, -1.0, -1.0),
         root_width=2.0,
@@ -3015,8 +3016,8 @@ which returns the leaf cells, and the extraction stage is
 :func:`wp.geometry.sparse_marching_cubes_from_cells
 <warp.geometry.sparse_marching_cubes_from_cells>`, which runs marching cubes on
 an explicit list of occupied cells and their sampled corner values.
-:func:`wp.geometry.sparse_marching_cubes <warp.geometry.sparse_marching_cubes>`
-simply chains the
+:func:`wp.geometry.sparse_marching_cubes_via_lipschitz_pruning
+<warp.geometry.sparse_marching_cubes_via_lipschitz_pruning>` simply chains the
 two. Calling the extraction stage directly is convenient when the occupied cells
 are already known, such as a marked band of voxels around an object from a
 vision or generative model, or a custom sparse data structure that already tracks

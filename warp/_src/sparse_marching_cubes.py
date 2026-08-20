@@ -828,12 +828,12 @@ def lipschitz_octree(
     The surviving leaves at ``max_depth`` form a thin shell around the surface.
 
     This mirrors ``igl::lipschitz_octree`` from libigl. It is the pruning stage
-    used by :func:`sparse_marching_cubes`, exposed separately so callers can
+    used by :func:`sparse_marching_cubes_via_lipschitz_pruning`, exposed separately so callers can
     build their own extractors, visualize the adaptive grid, or reuse the cells.
 
     Args:
         sdf: The implicit function, in either form accepted by
-            :func:`sparse_marching_cubes`.
+            :func:`sparse_marching_cubes_via_lipschitz_pruning`.
         origin: The minimum corner of the cubic root cell.
         root_width: The side length of the cubic root cell.
         max_depth: The octree depth. Leaf cells have width ``root_width / 2**max_depth``.
@@ -892,7 +892,7 @@ def sparse_marching_cubes_from_cells(
     band of voxels around an object from a vision or generative model, and the
     implicit field has already been sampled at their corners.
 
-    :func:`sparse_marching_cubes` is a thin wrapper that discovers the cells with
+    :func:`sparse_marching_cubes_via_lipschitz_pruning` is a thin wrapper that discovers the cells with
     a :func:`lipschitz_octree` and then calls this function.
 
     Args:
@@ -913,7 +913,7 @@ def sparse_marching_cubes_from_cells(
         device: The Warp device to run on. Defaults to the current device.
 
     Returns:
-        A tuple ``(vertices, indices)`` as in :func:`sparse_marching_cubes`.
+        A tuple ``(vertices, indices)`` as in :func:`sparse_marching_cubes_via_lipschitz_pruning`.
 
     Raises:
         ValueError: If ``cell_width`` is not positive, the shapes of ``cells`` and
@@ -970,7 +970,7 @@ def sparse_marching_cubes_from_cells(
     return _extract_from_dedup(cell_corners, corner_positions, unique_values, float(threshold), device)
 
 
-def sparse_marching_cubes(
+def sparse_marching_cubes_via_lipschitz_pruning(
     sdf,
     origin: wp.vec3 | tuple[float, float, float],
     root_width: float,

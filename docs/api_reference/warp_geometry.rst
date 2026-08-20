@@ -17,5 +17,5 @@ API
    IsoSurfaceMarchingCubes
    IsoSurfaceNets
    lipschitz_octree
-   sparse_marching_cubes
    sparse_marching_cubes_from_cells
+   sparse_marching_cubes_via_lipschitz_pruning

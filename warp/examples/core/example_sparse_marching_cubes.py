@@ -169,7 +169,7 @@ class Example:
         return evaluate
 
     def _extract_sparse(self, angle):
-        return wp.geometry.sparse_marching_cubes(
+        return wp.geometry.sparse_marching_cubes_via_lipschitz_pruning(
             self._make_evaluator(angle), self.origin, self.root_width, self.max_depth, threshold=0.0, return_stats=True
         )
 
