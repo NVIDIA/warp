@@ -681,6 +681,23 @@ that name. If <code class="docutils literal notranslate"><span class="pre">None<
 CUDA kernels. The <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> parameter in <a class="reference internal" href="../api_reference/_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.launch()</span></code></a> must
 not exceed the <code class="docutils literal notranslate"><span class="pre">maxThreadsPerBlock</span></code> value specified here.</p></td>
 </tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">cuda_max_registers</span></code></p></td>
+<td><p>int</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>CUDA <code class="docutils literal notranslate"><span class="pre">__maxnreg__</span></code> attribute specifying the maximum number of
+registers allocated per thread. Must be positive and cannot be combined
+with <code class="docutils literal notranslate"><span class="pre">launch_bounds</span></code>. Ignored on CPU and when Warp was built with CUDA
+Toolkit earlier than 12.4 or when <code class="docutils literal notranslate"><span class="pre">wp.config.llvm_cuda</span></code> is <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">enable_cuda_smem_spilling</span></code></p></td>
+<td><p>Boolean</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>If <code class="docutils literal notranslate"><span class="pre">True</span></code>, allow the CUDA Toolkit used to build Warp, when version
+13.0 or later, to spill registers into shared memory. Silently ignored
+for entry points that use dynamic shared memory, on CPU, with older CUDA
+Toolkits, in unsupported device-debug compilation, and when
+<code class="docutils literal notranslate"><span class="pre">wp.config.llvm_cuda</span></code> is <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></td>
+</tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">module_options</span></code></p></td>
 <td><p>dict</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
@@ -716,6 +733,19 @@ Keys are validated against the module’s known options (see
     <span class="n">a</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">*</span> <span class="mf">2.0</span>
 
 
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">cuda_max_registers</span><span class="o">=</span><span class="mi">64</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">register_limited_kernel</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+    <span class="c1"># CUDA __maxnreg__(64) will be set when supported</span>
+    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">a</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">*</span> <span class="mf">2.0</span>
+
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">enable_cuda_smem_spilling</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">launch_bounds</span><span class="o">=</span><span class="mi">256</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">smem_spilling_kernel</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">a</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">*</span> <span class="mf">2.0</span>
+
+
 <span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">module_options</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;fast_math&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span> <span class="n">module</span><span class="o">=</span><span class="s2">&quot;unique&quot;</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">fast_kernel</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">b</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
     <span class="c1"># fast_math is applied to this kernel&#39;s unique module</span>
@@ -723,6 +753,14 @@ Keys are validated against the module’s known options (see
     <span class="n">b</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">+</span> <span class="mf">1.0</span>
 </pre></div>
 </div>
+<p>CUDA shared-memory register spilling uses otherwise available shared memory to
+reduce local-memory spill traffic. Warp evaluates forward and backward entry
+points independently and enables the optimization only when the corresponding
+entry point requires no dynamic shared memory, including scratch space required
+by tile operations and their callees. Explicit <code class="docutils literal notranslate"><span class="pre">launch_bounds</span></code> are recommended
+to keep the compiler’s shared-memory estimate aligned with the intended block
+size. See NVIDIA’s <a class="reference external" href="https://developer.nvidia.com/blog/how-to-improve-cuda-kernel-performance-with-shared-memory-register-spilling/">shared-memory register spilling guidance</a>
+for performance considerations and CUDA limitations.</p>
 <section id="cuda-thread-block-clusters">
 <span id="kernel-cluster-dim"></span><h3>CUDA Thread Block Clusters<a class="headerlink" href="#cuda-thread-block-clusters" title="Link to this heading">#</a></h3>
 <p>CUDA Thread Block Clusters group adjacent CTAs into clusters that the hardware
