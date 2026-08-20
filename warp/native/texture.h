@@ -157,18 +157,40 @@ struct texture1d_t {
     uint64 tex;  // CUtexObject handle (GPU) or Texture* (CPU)
     int32 width;
     int32 num_channels;
+    // Sampling configuration mirrored from the owning texture so that
+    // adj_texture_sample can differentiate without host-side lookups.
+    int32 filter_mode;
+    int32 mip_filter_mode;
+    int32 num_mip_levels;
+    int32 use_normalized_coords;
 
     CUDA_CALLABLE inline texture1d_t()
         : tex(0)
         , width(0)
         , num_channels(0)
+        , filter_mode(0)
+        , mip_filter_mode(0)
+        , num_mip_levels(1)
+        , use_normalized_coords(1)
     {
     }
 
-    CUDA_CALLABLE inline texture1d_t(uint64 tex, int32 width, int32 num_channels)
+    CUDA_CALLABLE inline texture1d_t(
+        uint64 tex,
+        int32 width,
+        int32 num_channels,
+        int32 filter_mode,
+        int32 mip_filter_mode,
+        int32 num_mip_levels,
+        int32 use_normalized_coords
+    )
         : tex(tex)
         , width(width)
         , num_channels(num_channels)
+        , filter_mode(filter_mode)
+        , mip_filter_mode(mip_filter_mode)
+        , num_mip_levels(num_mip_levels)
+        , use_normalized_coords(use_normalized_coords)
     {
     }
 };
@@ -178,20 +200,43 @@ struct texture2d_t {
     int32 width;
     int32 height;
     int32 num_channels;
+    // Sampling configuration mirrored from the owning texture so that
+    // adj_texture_sample can differentiate without host-side lookups.
+    int32 filter_mode;
+    int32 mip_filter_mode;
+    int32 num_mip_levels;
+    int32 use_normalized_coords;
 
     CUDA_CALLABLE inline texture2d_t()
         : tex(0)
         , width(0)
         , height(0)
         , num_channels(0)
+        , filter_mode(0)
+        , mip_filter_mode(0)
+        , num_mip_levels(1)
+        , use_normalized_coords(1)
     {
     }
 
-    CUDA_CALLABLE inline texture2d_t(uint64 tex, int32 width, int32 height, int32 num_channels)
+    CUDA_CALLABLE inline texture2d_t(
+        uint64 tex,
+        int32 width,
+        int32 height,
+        int32 num_channels,
+        int32 filter_mode,
+        int32 mip_filter_mode,
+        int32 num_mip_levels,
+        int32 use_normalized_coords
+    )
         : tex(tex)
         , width(width)
         , height(height)
         , num_channels(num_channels)
+        , filter_mode(filter_mode)
+        , mip_filter_mode(mip_filter_mode)
+        , num_mip_levels(num_mip_levels)
+        , use_normalized_coords(use_normalized_coords)
     {
     }
 };
@@ -202,6 +247,12 @@ struct texture3d_t {
     int32 height;
     int32 depth;
     int32 num_channels;
+    // Sampling configuration mirrored from the owning texture so that
+    // adj_texture_sample can differentiate without host-side lookups.
+    int32 filter_mode;
+    int32 mip_filter_mode;
+    int32 num_mip_levels;
+    int32 use_normalized_coords;
 
     CUDA_CALLABLE inline texture3d_t()
         : tex(0)
@@ -209,15 +260,33 @@ struct texture3d_t {
         , height(0)
         , depth(0)
         , num_channels(0)
+        , filter_mode(0)
+        , mip_filter_mode(0)
+        , num_mip_levels(1)
+        , use_normalized_coords(1)
     {
     }
 
-    CUDA_CALLABLE inline texture3d_t(uint64 tex, int32 width, int32 height, int32 depth, int32 num_channels)
+    CUDA_CALLABLE inline texture3d_t(
+        uint64 tex,
+        int32 width,
+        int32 height,
+        int32 depth,
+        int32 num_channels,
+        int32 filter_mode,
+        int32 mip_filter_mode,
+        int32 num_mip_levels,
+        int32 use_normalized_coords
+    )
         : tex(tex)
         , width(width)
         , height(height)
         , depth(depth)
         , num_channels(num_channels)
+        , filter_mode(filter_mode)
+        , mip_filter_mode(mip_filter_mode)
+        , num_mip_levels(num_mip_levels)
+        , use_normalized_coords(use_normalized_coords)
     {
     }
 };
@@ -934,31 +1003,230 @@ template <typename T> CUDA_CALLABLE T texture_sample(const texture3d_t& tex, flo
     return texture_sample_helper<T>::sample_3d(tex, u, v, w, lod);
 }
 
-// Adjoint stubs for texture sampling
+// ============================================================================
+// Texture Sampling Adjoints
+// ============================================================================
+//
+// Gradients with respect to the sampling coordinates (and LOD) are computed by
+// re-sampling the texture through the same forward sampler at two interior
+// points of the current interpolation cell. With linear filtering the forward
+// function restricted to one cell is exactly a lerp of the cell's corner
+// values, and every address-mode coordinate mapping (wrap, clamp, mirror,
+// border) is piecewise affine with slope in {0, +/-1}, folding only at cell
+// boundaries in raw texel space. A scaled difference of two in-cell samples is
+// therefore the exact derivative of the actual forward function, with each
+// mode's boundary behavior (clamp's zero slope, mirror's sign flip, wrap's
+// periodicity, border's zero padding) inherited from the sampler itself, on
+// both the CPU and CUDA backends.
+//
+// The samples are taken at the cell's quarter points (fractions 0.25 and
+// 0.75) rather than at the texel centers on the cell boundary: quarter points
+// sit a safe distance from any fold or floor rounding, and both fractions are
+// exact in the CUDA hardware's 9-bit fixed-point interpolator, so the
+// difference recovers the lerp slope exactly.
+//
+// Gradients with respect to the texel data (``adj_tex``) are not implemented.
+
+// dot(adjoint, delta) for the supported sample value types
+CUDA_CALLABLE inline float texture_grad_dot(float a, float b) { return a * b; }
+
+CUDA_CALLABLE inline float texture_grad_dot(const vec2f& a, const vec2f& b) { return a[0] * b[0] + a[1] * b[1]; }
+
+CUDA_CALLABLE inline float texture_grad_dot(const vec4f& a, const vec4f& b)
+{
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3];
+}
+
+// Dimension of a mip level (mip chains always use floor-halving)
+CUDA_CALLABLE inline int texture_mip_dim(int base_dim, int level)
+{
+    int d = base_dim >> level;
+    return d < 1 ? 1 : d;
+}
+
+// Derivative of the raw texel-space coordinate with respect to the sampling
+// coordinate: texel = coord * scale - 0.5. Unnormalized coordinates address
+// mip levels in base-level texel space, hence the level/base ratio.
+CUDA_CALLABLE inline float texture_coord_scale(int use_normalized_coords, int level_dim, int base_dim)
+{
+    return use_normalized_coords ? (float)level_dim : ((float)level_dim / (float)base_dim);
+}
+
+// Quarter points of the interpolation cell containing texel-space coordinate
+// t, mapped back to coordinate space (coord = (t + 0.5) / scale).
+CUDA_CALLABLE inline void texture_grad_cell_points(float coord, float scale, float& coord_a, float& coord_b)
+{
+    float n = floor(coord * scale - 0.5f);
+    coord_a = (n + 0.75f) / scale;
+    coord_b = (n + 1.25f) / scale;
+}
+
+// Per-level coordinate gradients accumulated via quarter-point differences.
+// ``sample_lod`` is the LOD passed to the sampler (an integer level for
+// mipmapped textures so that exactly one level is read, or the original
+// ``lod`` argument when the texture has a single level).
+template <typename T>
+CUDA_CALLABLE inline void texture_grad_coords_1d(
+    const texture1d_t& tex, float u, float sample_lod, int level, float weight, const T& adj_ret, float& adj_u
+)
+{
+    const int level_w = texture_mip_dim(tex.width, level);
+    const float su = texture_coord_scale(tex.use_normalized_coords, level_w, tex.width);
+
+    float ua, ub;
+    texture_grad_cell_points(u, su, ua, ub);
+    const T va = texture_sample_helper<T>::sample_1d(tex, ua, sample_lod);
+    const T vb = texture_sample_helper<T>::sample_1d(tex, ub, sample_lod);
+    adj_u += weight * 2.0f * su * texture_grad_dot(adj_ret, vb - va);
+}
+
+template <typename T>
+CUDA_CALLABLE inline void texture_grad_coords_2d(
+    const texture2d_t& tex,
+    float u,
+    float v,
+    float sample_lod,
+    int level,
+    float weight,
+    const T& adj_ret,
+    float& adj_u,
+    float& adj_v
+)
+{
+    const int level_w = texture_mip_dim(tex.width, level);
+    const int level_h = texture_mip_dim(tex.height, level);
+    const float su = texture_coord_scale(tex.use_normalized_coords, level_w, tex.width);
+    const float sv = texture_coord_scale(tex.use_normalized_coords, level_h, tex.height);
+
+    float a, b;
+
+    texture_grad_cell_points(u, su, a, b);
+    const T vua = texture_sample_helper<T>::sample_2d(tex, a, v, sample_lod);
+    const T vub = texture_sample_helper<T>::sample_2d(tex, b, v, sample_lod);
+    adj_u += weight * 2.0f * su * texture_grad_dot(adj_ret, vub - vua);
+
+    texture_grad_cell_points(v, sv, a, b);
+    const T vva = texture_sample_helper<T>::sample_2d(tex, u, a, sample_lod);
+    const T vvb = texture_sample_helper<T>::sample_2d(tex, u, b, sample_lod);
+    adj_v += weight * 2.0f * sv * texture_grad_dot(adj_ret, vvb - vva);
+}
+
+template <typename T>
+CUDA_CALLABLE inline void texture_grad_coords_3d(
+    const texture3d_t& tex,
+    float u,
+    float v,
+    float w,
+    float sample_lod,
+    int level,
+    float weight,
+    const T& adj_ret,
+    float& adj_u,
+    float& adj_v,
+    float& adj_w
+)
+{
+    const int level_w = texture_mip_dim(tex.width, level);
+    const int level_h = texture_mip_dim(tex.height, level);
+    const int level_d = texture_mip_dim(tex.depth, level);
+    const float su = texture_coord_scale(tex.use_normalized_coords, level_w, tex.width);
+    const float sv = texture_coord_scale(tex.use_normalized_coords, level_h, tex.height);
+    const float sw = texture_coord_scale(tex.use_normalized_coords, level_d, tex.depth);
+
+    float a, b;
+
+    texture_grad_cell_points(u, su, a, b);
+    const T vua = texture_sample_helper<T>::sample_3d(tex, a, v, w, sample_lod);
+    const T vub = texture_sample_helper<T>::sample_3d(tex, b, v, w, sample_lod);
+    adj_u += weight * 2.0f * su * texture_grad_dot(adj_ret, vub - vua);
+
+    texture_grad_cell_points(v, sv, a, b);
+    const T vva = texture_sample_helper<T>::sample_3d(tex, u, a, w, sample_lod);
+    const T vvb = texture_sample_helper<T>::sample_3d(tex, u, b, w, sample_lod);
+    adj_v += weight * 2.0f * sv * texture_grad_dot(adj_ret, vvb - vva);
+
+    texture_grad_cell_points(w, sw, a, b);
+    const T vwa = texture_sample_helper<T>::sample_3d(tex, u, v, a, sample_lod);
+    const T vwb = texture_sample_helper<T>::sample_3d(tex, u, v, b, sample_lod);
+    adj_w += weight * 2.0f * sw * texture_grad_dot(adj_ret, vwb - vwa);
+}
+
+// Resolve the mip levels and blend weights the forward pass reads for a given
+// LOD, mirroring cpu_clamp_lod and the mip filter selection. Returns the
+// number of levels contributing spatial gradients (1 or 2).
+CUDA_CALLABLE inline int
+texture_grad_mip_levels(int num_mip_levels, int mip_filter_mode, float lod, int* levels, float* weights)
+{
+    const float max_lod = (float)(num_mip_levels - 1);
+    float clamped = lod < 0.0f ? 0.0f : (lod > max_lod ? max_lod : lod);
+
+    if (mip_filter_mode == WP_TEXTURE_FILTER_CLOSEST) {
+        int nearest = (int)floor(clamped + 0.5f);
+        if (nearest >= num_mip_levels)
+            nearest = num_mip_levels - 1;
+        levels[0] = nearest;
+        weights[0] = 1.0f;
+        return 1;
+    }
+
+    const int level0 = (int)floor(clamped);
+    int level1 = level0 + 1;
+    if (level1 >= num_mip_levels)
+        level1 = num_mip_levels - 1;
+    const float fl = clamped - (float)level0;
+
+    levels[0] = level0;
+    weights[0] = 1.0f - fl;
+    if (level1 == level0 || fl == 0.0f)
+        return 1;
+    levels[1] = level1;
+    weights[1] = fl;
+    return 2;
+}
+
+// LOD gradient: the mip-linear blend is piecewise linear in the clamped LOD,
+// with derivative sample(level1) - sample(level0) between levels and zero in
+// the clamped ranges or with a CLOSEST mip filter.
+CUDA_CALLABLE inline bool
+texture_grad_lod_levels(int num_mip_levels, int mip_filter_mode, float lod, int& level0, int& level1)
+{
+    if (num_mip_levels <= 1 || mip_filter_mode != WP_TEXTURE_FILTER_LINEAR)
+        return false;
+    if (lod < 0.0f || lod >= (float)(num_mip_levels - 1))
+        return false;
+    level0 = (int)floor(lod);
+    level1 = level0 + 1;
+    return true;
+}
+
 template <typename T>
 CUDA_CALLABLE void adj_texture_sample(
     const texture1d_t& tex, float u, float lod, texture1d_t& adj_tex, float& adj_u, float& adj_lod, const T& adj_ret
 )
 {
-    // MISSINGADJOINT: differentiable for linear interpolation;
-    // route adj_ret to neighboring texels and mip levels (weighted by interpolation factors)
-    // and to adj_u/adj_lod (via the interpolation derivatives along U and LOD).
-}
+    if (tex.tex == 0)
+        return;
 
-template <typename T>
-CUDA_CALLABLE void adj_texture_sample(
-    const texture2d_t& tex,
-    const vec2f& uv,
-    float lod,
-    texture2d_t& adj_tex,
-    vec2f& adj_uv,
-    float& adj_lod,
-    const T& adj_ret
-)
-{
-    // MISSINGADJOINT: differentiable for linear interpolation;
-    // route adj_ret to the four neighboring texels and mip levels (weighted by interpolation factors)
-    // and to adj_uv/adj_lod (via the interpolation derivatives along U, V, and LOD).
+    const bool mipmapped = tex.num_mip_levels > 1 && lod >= 0.0f;
+
+    if (tex.filter_mode == WP_TEXTURE_FILTER_LINEAR) {
+        if (!mipmapped) {
+            texture_grad_coords_1d(tex, u, lod, 0, 1.0f, adj_ret, adj_u);
+        } else {
+            int levels[2];
+            float weights[2];
+            const int n = texture_grad_mip_levels(tex.num_mip_levels, tex.mip_filter_mode, lod, levels, weights);
+            for (int i = 0; i < n; ++i)
+                texture_grad_coords_1d(tex, u, (float)levels[i], levels[i], weights[i], adj_ret, adj_u);
+        }
+    }
+
+    int level0, level1;
+    if (mipmapped && texture_grad_lod_levels(tex.num_mip_levels, tex.mip_filter_mode, lod, level0, level1)) {
+        const T v0 = texture_sample_helper<T>::sample_1d(tex, u, (float)level0);
+        const T v1 = texture_sample_helper<T>::sample_1d(tex, u, (float)level1);
+        adj_lod += texture_grad_dot(adj_ret, v1 - v0);
+    }
 }
 
 template <typename T>
@@ -974,25 +1242,43 @@ CUDA_CALLABLE void adj_texture_sample(
     const T& adj_ret
 )
 {
-    // MISSINGADJOINT: differentiable for linear interpolation;
-    // route adj_ret to the four neighboring texels and mip levels (weighted by interpolation factors)
-    // and to adj_u/adj_v/adj_lod (via the interpolation derivatives along each axis and LOD).
+    if (tex.tex == 0)
+        return;
+
+    const bool mipmapped = tex.num_mip_levels > 1 && lod >= 0.0f;
+
+    if (tex.filter_mode == WP_TEXTURE_FILTER_LINEAR) {
+        if (!mipmapped) {
+            texture_grad_coords_2d(tex, u, v, lod, 0, 1.0f, adj_ret, adj_u, adj_v);
+        } else {
+            int levels[2];
+            float weights[2];
+            const int n = texture_grad_mip_levels(tex.num_mip_levels, tex.mip_filter_mode, lod, levels, weights);
+            for (int i = 0; i < n; ++i)
+                texture_grad_coords_2d(tex, u, v, (float)levels[i], levels[i], weights[i], adj_ret, adj_u, adj_v);
+        }
+    }
+
+    int level0, level1;
+    if (mipmapped && texture_grad_lod_levels(tex.num_mip_levels, tex.mip_filter_mode, lod, level0, level1)) {
+        const T v0 = texture_sample_helper<T>::sample_2d(tex, u, v, (float)level0);
+        const T v1 = texture_sample_helper<T>::sample_2d(tex, u, v, (float)level1);
+        adj_lod += texture_grad_dot(adj_ret, v1 - v0);
+    }
 }
 
 template <typename T>
 CUDA_CALLABLE void adj_texture_sample(
-    const texture3d_t& tex,
-    const vec3f& uvw,
+    const texture2d_t& tex,
+    const vec2f& uv,
     float lod,
-    texture3d_t& adj_tex,
-    vec3f& adj_uvw,
+    texture2d_t& adj_tex,
+    vec2f& adj_uv,
     float& adj_lod,
     const T& adj_ret
 )
 {
-    // MISSINGADJOINT: differentiable for linear interpolation;
-    // route adj_ret to the eight neighboring texels and mip levels (weighted by interpolation factors)
-    // and to adj_uvw/adj_lod (via the interpolation derivatives along U, V, W, and LOD).
+    adj_texture_sample(tex, uv[0], uv[1], lod, adj_tex, adj_uv[0], adj_uv[1], adj_lod, adj_ret);
 }
 
 template <typename T>
@@ -1010,9 +1296,45 @@ CUDA_CALLABLE void adj_texture_sample(
     const T& adj_ret
 )
 {
-    // MISSINGADJOINT: differentiable for linear interpolation;
-    // route adj_ret to the eight neighboring texels and mip levels (weighted by interpolation factors)
-    // and to adj_u/adj_v/adj_w/adj_lod (via the interpolation derivatives along each axis and LOD).
+    if (tex.tex == 0)
+        return;
+
+    const bool mipmapped = tex.num_mip_levels > 1 && lod >= 0.0f;
+
+    if (tex.filter_mode == WP_TEXTURE_FILTER_LINEAR) {
+        if (!mipmapped) {
+            texture_grad_coords_3d(tex, u, v, w, lod, 0, 1.0f, adj_ret, adj_u, adj_v, adj_w);
+        } else {
+            int levels[2];
+            float weights[2];
+            const int n = texture_grad_mip_levels(tex.num_mip_levels, tex.mip_filter_mode, lod, levels, weights);
+            for (int i = 0; i < n; ++i)
+                texture_grad_coords_3d(
+                    tex, u, v, w, (float)levels[i], levels[i], weights[i], adj_ret, adj_u, adj_v, adj_w
+                );
+        }
+    }
+
+    int level0, level1;
+    if (mipmapped && texture_grad_lod_levels(tex.num_mip_levels, tex.mip_filter_mode, lod, level0, level1)) {
+        const T v0 = texture_sample_helper<T>::sample_3d(tex, u, v, w, (float)level0);
+        const T v1 = texture_sample_helper<T>::sample_3d(tex, u, v, w, (float)level1);
+        adj_lod += texture_grad_dot(adj_ret, v1 - v0);
+    }
+}
+
+template <typename T>
+CUDA_CALLABLE void adj_texture_sample(
+    const texture3d_t& tex,
+    const vec3f& uvw,
+    float lod,
+    texture3d_t& adj_tex,
+    vec3f& adj_uvw,
+    float& adj_lod,
+    const T& adj_ret
+)
+{
+    adj_texture_sample(tex, uvw[0], uvw[1], uvw[2], lod, adj_tex, adj_uvw[0], adj_uvw[1], adj_uvw[2], adj_lod, adj_ret);
 }
 
 // Type aliases for code generation
