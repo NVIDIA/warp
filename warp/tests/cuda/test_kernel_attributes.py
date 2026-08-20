@@ -46,6 +46,16 @@ def generic_attribute_kernel(out: wp.array[Any]):
 generic_float_attribute_kernel = wp.overload(generic_attribute_kernel, [wp.array[float]])
 
 
+@wp.struct
+class ExternalConstantParams:
+    value: wp.float32
+
+
+@wp.kernel(enable_backward=False, entry_point_abi="external_constant_params", module="unique")
+def external_constant_params_attribute_kernel(params: ExternalConstantParams):
+    value = params.value
+
+
 def constructor_kernel_func(out: wp.array[float]):
     tid = wp.tid()
     out[tid] = float(tid)
@@ -164,6 +174,20 @@ def test_cuda_kernel_properties_compiles_lazily(test, device):
     test.assertGreater(properties["register_count"], 0)
     test.assertGreaterEqual(properties["local_memory_size"], 0)
     test.assertIn(exec_key, lazy_attribute_kernel.module.execs)
+
+
+def test_cuda_kernel_properties_accepts_external_constant_params(test, device):
+    """Verify that resource queries find an external constant-params entry point."""
+    external_constant_params_attribute_kernel.module.unload()
+
+    properties = wp.get_cuda_kernel_properties(
+        external_constant_params_attribute_kernel,
+        device=device,
+        block_dim=ATTRIBUTE_BLOCK_DIM,
+    )
+
+    test.assertGreater(properties["register_count"], 0)
+    test.assertGreaterEqual(properties["local_memory_size"], 0)
 
 
 def test_cuda_kernel_properties_avoids_shared_memory_configuration(test, device):
@@ -444,6 +468,12 @@ add_function_test(
     TestKernelAttributes,
     "test_cuda_kernel_properties_compiles_lazily",
     test_cuda_kernel_properties_compiles_lazily,
+    devices=devices,
+)
+add_function_test(
+    TestKernelAttributes,
+    "test_cuda_kernel_properties_accepts_external_constant_params",
+    test_cuda_kernel_properties_accepts_external_constant_params,
     devices=devices,
 )
 add_function_test(

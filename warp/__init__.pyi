@@ -115,6 +115,7 @@ from warp._src.context import Kernel as Kernel
 from warp._src.context import Function as Function
 from warp._src.context import Launch as Launch
 from warp._src.context import Module as Module
+from warp._src.context import ModuleBuildOptions as ModuleBuildOptions
 from warp._src.context import launch as launch
 from warp._src.context import launch_tiled as launch_tiled
 from warp._src.context import get_cuda_kernel_properties as get_cuda_kernel_properties
@@ -257,6 +258,7 @@ from warp._src.paddle import stream_from_paddle as stream_from_paddle
 from warp._src.utils import transform_expand as transform_expand
 from warp._src.utils import quat_between_vectors as quat_between_vectors
 from warp._src.constants import *
+from . import build_experimental as build_experimental
 from . import config as config
 from . import types as types
 from . import utils as utils

@@ -552,7 +552,7 @@ def test_error_unmatched_arguments(test, device):
         a = 1 * 1.0
 
     def kernel_2_fn():
-        x = wp.dot(wp.vec2(1.0, 2.0), wp.vec2h(1.0, 2.0))
+        wp.expect_eq(wp.dot(wp.vec2(1.0, 2.0), wp.vec2h(1.0, 2.0)), 0.0)
 
     kernel = make_isolated_kernel(kernel_1_fn)
     with test.assertRaisesRegex(RuntimeError, r"Input types must be the same, got \['int32', 'float32'\]"):
@@ -1295,6 +1295,16 @@ class AugAssignTestStruct:
     value: float
 
 
+@wp.struct
+class EntryPointParams:
+    value: wp.uint32
+
+
+@wp.struct
+class DeterministicEntryPointParams:
+    values: wp.array[wp.float32]
+
+
 @wp.func
 def side_effect_inc_int16(counter: wp.array[int], val: wp.int16) -> wp.int16:
     wp.atomic_add(counter, 0, 1)
@@ -1652,6 +1662,9 @@ def test_assign_function_to_local(test, device):
 
 
 def test_assign_static_function_to_local(test, device):
+    references = assign_static_function_to_local_kernel.adj.get_references()[2]
+    test.assertNotIn(wp._src.context.builtin_functions["add"], references)
+
     out = wp.zeros(2, dtype=float, device=device)
     wp.launch(assign_static_function_to_local_kernel, dim=1, outputs=[out], device=device)
     test.assertEqual(out.numpy()[0], 6.0)
@@ -1780,6 +1793,28 @@ def test_unary_minus_on_64bit_constant(test, device):
 
 
 class TestCodeGen(unittest.TestCase):
+    def _codegen_cuda_source(self, kernel):
+        module = kernel.module
+        options = module.resolve_options(wp.config)
+        hasher = wp._src.context.ModuleHasher(module._get_live_kernels(), options)
+        builder = wp._src.context.ModuleBuilder(module, options=options, hasher=hasher)
+        return builder.codegen("cuda")
+
+    def _codegen_cpu_source(self, kernel):
+        module = kernel.module
+        options = module.resolve_options(wp.config)
+        hasher = wp._src.context.ModuleHasher(module._get_live_kernels(), options)
+        builder = wp._src.context.ModuleBuilder(module, options=options, hasher=hasher)
+        return builder.codegen("cpu")
+
+    def _build_cuda_meta(self, kernel):
+        module = kernel.module
+        options = module.resolve_options(wp.config)
+        hasher = wp._src.context.ModuleHasher(module._get_live_kernels(), options)
+        builder = wp._src.context.ModuleBuilder(module, options=options, hasher=hasher)
+        builder.codegen("cuda")
+        return builder.build_meta()
+
     def test_grid_stride_precedence(self):
         from warp._src.codegen import resolve_grid_stride  # noqa: PLC0415
 
@@ -1832,6 +1867,102 @@ class TestCodeGen(unittest.TestCase):
             return adj
         finally:
             linecache.cache.pop(filename, None)
+
+    def test_extra_cuda_preamble_follows_warp_headers(self):
+        @wp.kernel(module="unique")
+        def preamble_kernel():
+            return
+
+        module = preamble_kernel.module
+        module.options["extra_build_options"] = wp.ModuleBuildOptions(extra_cuda_preamble="#include <cuda_addon.h>")
+        try:
+            source = self._codegen_cuda_source(preamble_kernel)
+        finally:
+            module.options["extra_build_options"] = None
+
+        # The preamble sits after Warp's headers, so external headers can use Warp macros,
+        # and before the generated code, which may reference what the preamble declares.
+        # The trailing newline is supplied by the option normalization.
+        self.assertLess(source.index('#include "builtin.h"'), source.index("#include <cuda_addon.h>\n"))
+        self.assertLess(source.index("#include <cuda_addon.h>\n"), source.index('extern "C" __global__'))
+
+    def test_extra_cpu_preamble_follows_warp_headers(self):
+        @wp.kernel(module="unique")
+        def cpu_preamble_kernel():
+            return
+
+        module = cpu_preamble_kernel.module
+        module.options["extra_build_options"] = wp.ModuleBuildOptions(extra_cpu_preamble="#include <cpu_addon.h>")
+        try:
+            source = self._codegen_cpu_source(cpu_preamble_kernel)
+        finally:
+            module.options["extra_build_options"] = None
+
+        self.assertLess(source.index('#include "builtin.h"'), source.index("#include <cpu_addon.h>\n"))
+        self.assertLess(source.index("#include <cpu_addon.h>\n"), source.index("_cpu_kernel_forward"))
+
+    def test_extra_cuda_preamble_affects_module_hash(self):
+        @wp.kernel(module="unique")
+        def preamble_hash_kernel():
+            return
+
+        module = preamble_hash_kernel.module
+
+        def get_hash(preamble):
+            module.options["extra_build_options"] = wp.ModuleBuildOptions(extra_cuda_preamble=preamble)
+            options = module.resolve_options(wp.config)
+            hasher = wp._src.context.ModuleHasher(module._get_live_kernels(), options)
+            return hasher.get_hash()
+
+        try:
+            hash_a = get_hash("#define WARP_TEST_PREAMBLE 1")
+            hash_a_normalized = get_hash("#define WARP_TEST_PREAMBLE 1\n")
+            hash_b = get_hash("#define WARP_TEST_PREAMBLE 2")
+        finally:
+            module.options["extra_build_options"] = None
+
+        self.assertEqual(hash_a, hash_a_normalized)
+        self.assertNotEqual(hash_a, hash_b)
+
+    def test_backend_specific_include_dirs_affect_module_hash(self):
+        @wp.kernel(module="unique")
+        def backend_include_dirs_hash_kernel():
+            return
+
+        module = backend_include_dirs_hash_kernel.module
+
+        def get_hash(build_options):
+            module.options["extra_build_options"] = build_options
+            options = module.resolve_options(wp.config)
+            hasher = wp._src.context.ModuleHasher(module._get_live_kernels(), options)
+            return hasher.get_hash()
+
+        try:
+            hash_default = get_hash(wp.ModuleBuildOptions())
+            with tempfile.TemporaryDirectory() as tmpdir:
+                hash_cuda = get_hash(wp.ModuleBuildOptions(extra_cuda_include_dirs=[tmpdir]))
+                hash_cpu = get_hash(wp.ModuleBuildOptions(extra_cpu_include_dirs=[tmpdir]))
+        finally:
+            module.options["extra_build_options"] = None
+
+        self.assertNotEqual(hash_default, hash_cuda)
+        self.assertNotEqual(hash_default, hash_cpu)
+        self.assertNotEqual(hash_cuda, hash_cpu)
+
+    def test_module_build_options_with_kernel_module_options(self):
+        @wp.kernel(
+            module="unique",
+            module_options={
+                "extra_build_options": wp.ModuleBuildOptions(extra_cuda_preamble="#define WARP_TEST_OPTION 1")
+            },
+        )
+        def build_options_kernel():
+            return
+
+        source = self._codegen_cuda_source(build_options_kernel)
+
+        self.assertIn("#define WARP_TEST_OPTION 1\n", source)
+        self.assertLess(source.index('#include "builtin.h"'), source.index("#define WARP_TEST_OPTION 1"))
 
     def test_get_arg_type_preserves_any(self):
         """Verify ``get_arg_type`` returns ``Any`` for generic parameters.
@@ -2049,6 +2180,206 @@ class TestCodeGen(unittest.TestCase):
         self.assertTrue(body.strip().endswith(")"))
         self.assertIn("q[0] == 0.0", body)
         ast.parse(f"def generated(q, qd):\n    return {body}\n")
+
+    def test_is_tid_call_requires_warp_receiver(self):
+        from warp._src.codegen import _is_tid_call  # noqa: PLC0415
+
+        class FakeAdjoint:
+            def resolve_external_reference(self, name):
+                return {"wp": wp, "warp_alias": wp, "other": object()}.get(name)
+
+        fake_adj = FakeAdjoint()
+        wp_tid = ast.parse("wp.tid()").body[0].value
+        warp_alias_tid = ast.parse("warp_alias.tid()").body[0].value
+        other_tid = ast.parse("other.tid()").body[0].value
+
+        self.assertTrue(_is_tid_call(wp_tid, fake_adj))
+        self.assertTrue(_is_tid_call(warp_alias_tid, fake_adj))
+        self.assertFalse(_is_tid_call(other_tid, fake_adj))
+
+    def test_namespaced_tid_call_sets_kernel_dim(self):
+        namespace = types.SimpleNamespace(warp=wp)
+
+        @wp.kernel(module="unique")
+        def namespaced_tid_kernel(values: wp.array2d[wp.int32]):
+            i, j = namespace.warp.tid()
+            values[i, j] = i + j
+
+        source = self._codegen_cuda_source(namespaced_tid_kernel)
+
+        self.assertEqual(namespaced_tid_kernel.adj.kernel_dim, 2)
+        self.assertIn("wp::launch_bounds_t<2> dim", source)
+
+    def test_kernel_name_preserves_warp_kernel_abi(self):
+        @wp.kernel(module="unique", name="custom_kernel")
+        def named_kernel(values: wp.array(dtype=float), scale: float):
+            tid = wp.tid()
+            values[tid] = values[tid] * scale
+
+        source = self._codegen_cuda_source(named_kernel)
+        mangled_name = named_kernel.get_mangled_name()
+
+        self.assertEqual(named_kernel.key, "custom_kernel")
+        self.assertIn(f"void {mangled_name}_cuda_kernel_forward(", source)
+        self.assertIn(f"void {mangled_name}_cuda_kernel_backward(", source)
+        self.assertIn("wp::launch_bounds_t<1> dim", source)
+        self.assertIn("wp::array_t<wp::float32> var_values", source)
+        self.assertIn("wp::float32 var_scale", source)
+        self.assertNotIn(f"void {mangled_name}()", source)
+        self.assertNotIn("__constant__ unsigned char params", source)
+
+    def test_generic_unique_module_hash_includes_kernel_name(self):
+        def make_kernel(name):
+            @wp.kernel(module="unique", name=name)
+            def generic_named_kernel(value: Any):
+                _ = value
+
+            return generic_named_kernel
+
+        kernel_a = make_kernel("kernel_a")
+        kernel_b = make_kernel("kernel_b")
+
+        self.assertIsNot(kernel_a, kernel_b)
+        self.assertNotEqual(kernel_a.module.name, kernel_b.module.name)
+        self.assertEqual(kernel_a.key, "kernel_a")
+        self.assertEqual(kernel_b.key, "kernel_b")
+
+    def test_kernel_name_rejects_invalid_identifier(self):
+        with self.assertRaisesRegex(ValueError, r"valid C\+\+ identifier"):
+
+            @wp.kernel(module="unique", name="1invalid")
+            def invalid_named_kernel():
+                return
+
+    def test_external_constant_params_entry_point_binds_params(self):
+        @wp.kernel(
+            module="unique",
+            module_options={"strip_hash": True},
+            name="__raygen__external_params_kernel",
+            enable_backward=False,
+            entry_point_abi="external_constant_params",
+        )
+        def external_params_kernel(params: EntryPointParams):
+            value = params.value
+            if value == wp.uint32(0):
+                return
+
+        source = self._codegen_cuda_source(external_params_kernel)
+        name = external_params_kernel.get_mangled_name()
+
+        self.assertEqual(name, "__raygen__external_params_kernel")
+        self.assertIn(f"void {name}()", source)
+        self.assertNotIn(f"{name}_cuda_kernel_forward", source)
+        self.assertNotIn("wp::launch_bounds_t<1> dim", source)
+        self.assertIn('extern "C" {\n__constant__ __align__(alignof(EntryPointParams_', source)
+        self.assertIn("unsigned char params[sizeof(EntryPointParams_", source)
+        self.assertIn("var_params = *reinterpret_cast<const EntryPointParams_", source)
+        self.assertIn("*>(params);", source)
+        self.assertNotIn("const_cast<unsigned char*>(params)", source)
+
+    def test_external_constant_params_entry_point_rejects_shared_tile_storage(self):
+        @wp.kernel(
+            module="unique",
+            module_options={"strip_hash": True},
+            name="__raygen__shared_tile",
+            enable_backward=False,
+            entry_point_abi="external_constant_params",
+        )
+        def shared_tile(params: EntryPointParams):
+            enabled = params.value
+            tile = wp.tile_zeros(shape=32, dtype=wp.float32, storage="shared")
+
+        with self.assertRaisesRegex(wp.WarpCodegenError, "cannot use shared-memory tiles"):
+            self._codegen_cuda_source(shared_tile)
+
+    def test_external_constant_params_entry_point_omits_backward_meta(self):
+        @wp.kernel(
+            module="unique",
+            enable_backward=False,
+            entry_point_abi="external_constant_params",
+        )
+        def external_params_meta_kernel(params: EntryPointParams):
+            value = params.value
+            if value == wp.uint32(0):
+                return
+
+        meta = self._build_cuda_meta(external_params_meta_kernel)
+        forward_name = wp._src.codegen.cuda_kernel_forward_name(external_params_meta_kernel)
+        backward_name = wp._src.codegen.cuda_kernel_backward_name(external_params_meta_kernel)
+
+        self.assertIn(forward_name + "_smem_bytes", meta)
+        self.assertNotIn(backward_name + "_smem_bytes", meta)
+
+    def test_external_constant_params_entry_point_rejects_missing_params(self):
+        @wp.kernel(module="unique", enable_backward=False, entry_point_abi="external_constant_params")
+        def invalid_kernel():
+            return
+
+        with self.assertRaisesRegex(wp.WarpCodegenTypeError, "exactly one Warp struct argument"):
+            self._codegen_cuda_source(invalid_kernel)
+
+    def test_external_constant_params_entry_point_rejects_non_struct_params(self):
+        @wp.kernel(module="unique", enable_backward=False, entry_point_abi="external_constant_params")
+        def invalid_kernel(value: wp.uint32):
+            _ = value
+
+        with self.assertRaisesRegex(wp.WarpCodegenTypeError, "exactly one Warp struct argument"):
+            self._codegen_cuda_source(invalid_kernel)
+
+    def test_external_constant_params_entry_point_rejects_tid(self):
+        @wp.kernel(module="unique", enable_backward=False, entry_point_abi="external_constant_params")
+        def invalid_kernel(params: EntryPointParams):
+            _ = wp.tid()
+
+        with self.assertRaisesRegex(wp.WarpCodegenError, "cannot use wp.tid"):
+            self._codegen_cuda_source(invalid_kernel)
+
+    def test_external_constant_params_entry_point_rejects_deterministic_lowering(self):
+        @wp.kernel(
+            module="unique",
+            module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN},
+            enable_backward=False,
+            entry_point_abi="external_constant_params",
+        )
+        def invalid_kernel(params: DeterministicEntryPointParams):
+            wp.atomic_add(params.values, 0, 1.0)
+
+        with self.assertRaisesRegex(wp.WarpCodegenError, "does not support deterministic lowering"):
+            self._codegen_cuda_source(invalid_kernel)
+
+    def test_external_constant_params_entry_point_rejects_cpu_backend(self):
+        @wp.kernel(module="unique", enable_backward=False, entry_point_abi="external_constant_params")
+        def invalid_kernel(params: EntryPointParams):
+            _ = params.value
+
+        with self.assertRaisesRegex(wp.WarpCodegenError, "not supported by the CPU backend"):
+            self._codegen_cpu_source(invalid_kernel)
+
+    def test_external_constant_params_entry_point_rejects_zero_dim_launch(self):
+        @wp.kernel(module="unique", enable_backward=False, entry_point_abi="external_constant_params")
+        def external_params_kernel(params: EntryPointParams):
+            value = params.value
+            if value == wp.uint32(0):
+                return
+
+        with mock.patch("warp._src.context.init"):
+            with mock.patch.object(wp._src.context.runtime, "get_device", return_value="cpu"):
+                with self.assertRaisesRegex(RuntimeError, "cannot be launched with wp.launch"):
+                    wp.launch(external_params_kernel, dim=0)
+
+    def test_entry_point_abi_requires_forward_only(self):
+        with self.assertRaisesRegex(ValueError, "requires enable_backward=False"):
+
+            @wp.kernel(module="unique", entry_point_abi="external_constant_params")
+            def invalid_kernel():
+                return
+
+    def test_entry_point_abi_rejects_unknown_value(self):
+        with self.assertRaisesRegex(ValueError, "must be 'warp' or 'external_constant_params'"):
+
+            @wp.kernel(module="unique", enable_backward=False, entry_point_abi="external")
+            def invalid_kernel():
+                return
 
     def test_replace_static_expressions_replaces_call_in_ast(self):
         """The walker actually mutates ``adj.tree``: every resolvable ``wp.static``

@@ -252,7 +252,8 @@ class Tape:
         :attr:`warp.array.grad` and tracks it in ``gradients`` so it can
         be zeroed later. For instances created with :func:`warp.struct`, a mirrored
         struct is created with adjoints for array fields, and nested structs are
-        handled recursively. Non-differentiable values are passed through unchanged.
+        handled recursively. Registered native values receive a default-initialized
+        value so reverse-launch argument packing preserves their ABI.
 
         Args:
             a: Kernel argument to map to an adjoint. Can be a :class:`warp.array`,
@@ -261,6 +262,9 @@ class Tape:
         Returns:
             The adjoint object for ``a`` or ``None`` if no adjoint is required.
         """
+        if wp._src.types.is_native_type(type(a)):
+            return type(a)()
+
         if not wp._src.types.is_array(a) and not wp._src.types.is_struct(a):
             # if input is a simple type (e.g.: float, vec3, etc) or a non-Warp array,
             # then no gradient needed (we only return gradients through Warp arrays and structs)
@@ -286,6 +290,8 @@ class Tape:
                     setattr(adj, name, grad)
                 elif isinstance(a._cls.vars[name].type, wp._src.codegen.Struct):
                     setattr(adj, name, self.get_adjoint(getattr(a, name)))
+                elif wp._src.types.is_native_type(a._cls.vars[name].type):
+                    setattr(adj, name, a._cls.vars[name].type())
                 else:
                     setattr(adj, name, getattr(a, name))
 

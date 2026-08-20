@@ -362,9 +362,32 @@ class StructInstance:
         return tuple(npvalue)
 
 
-def _is_tid_call(node) -> bool:
+_IDENTIFIER_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\Z")
+
+
+def is_valid_cpp_identifier(value: str) -> bool:
+    """Return True if ``value`` is a non-empty C++ identifier."""
+    return _IDENTIFIER_RE.fullmatch(value) is not None
+
+
+def _is_tid_call(node, adj=None) -> bool:
     """Return True if ``node`` is an AST call to ``wp.tid()``."""
-    return isinstance(node, ast.Call) and hasattr(node.func, "attr") and node.func.attr == "tid"
+    if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute) or node.func.attr != "tid":
+        return False
+
+    receiver = node.func.value
+    if adj is not None:
+        if isinstance(receiver, ast.Name):
+            return adj.resolve_external_reference(receiver.id) is warp
+        resolved_receiver, _ = adj.resolve_static_expression(receiver, eval_types=False)
+        return resolved_receiver is warp
+
+    return isinstance(receiver, ast.Name) and receiver.id in ("wp", "warp")
+
+
+def is_external_constant_params_arg(arg) -> bool:
+    """Return True if ``arg`` can be bound from the constant params symbol."""
+    return isinstance(arg.type, Struct)
 
 
 def iter_ast_nodes_of_types(root: ast.AST, *types: type):
@@ -389,6 +412,10 @@ def iter_ast_nodes_of_types(root: ast.AST, *types: type):
                 todo.append(value)
 
 
+def _uses_tid_call(adj) -> bool:
+    return any(_is_tid_call(node, adj) for node in iter_ast_nodes_of_types(adj.tree, ast.Call))
+
+
 def _is_texture_type(var_type: type) -> bool:
     """Check if var_type is a Texture subclass (Texture2D, Texture3D, etc.)."""
     from warp._src.texture import Texture  # noqa: PLC0415
@@ -399,9 +426,17 @@ def _is_texture_type(var_type: type) -> bool:
         return False
 
 
+def _aggregate_vars(var_type):
+    if warp._src.types.is_native_type(var_type):
+        return var_type._wp_native_vars_
+    return var_type.vars
+
+
 def _make_struct_field_constructor(field: str, var_type: type):
     if isinstance(var_type, Struct):
         return lambda ctype: var_type.instance_type(ctype=getattr(ctype, field))
+    elif warp._src.types.is_native_type(var_type):
+        return lambda ctype: getattr(ctype, field)
     elif matches_array_class(var_type, warp._src.types.array):
         return lambda ctype: None
     elif matches_array_class(var_type, warp._src.types.indexedarray):
@@ -515,6 +550,13 @@ def _make_struct_field_setter(cls, field: str, var_type: type):
     def set_struct_value(inst, value):
         getattr(inst, field).assign(value)
 
+    def set_native_value(inst, value):
+        if value is None:
+            value = var_type()
+        if not isinstance(value, var_type):
+            raise TypeError(f"Struct field '{field}' expects {var_type.__name__}, got {type(value).__name__}")
+        setattr(inst._ctype, field, value)
+
     def set_vector_value(inst, value):
         # vector/matrix type, e.g. vec3
         if value is None:
@@ -589,6 +631,8 @@ def _make_struct_field_setter(cls, field: str, var_type: type):
         return set_indexedfabricarray_value
     elif isinstance(var_type, Struct):
         return set_struct_value
+    elif warp._src.types.is_native_type(var_type):
+        return set_native_value
     elif _is_texture_type(var_type):
         return set_texture_value
     elif issubclass(var_type, ctypes.Array):
@@ -625,6 +669,8 @@ class Struct:
                 fields.append((label, indexedfabricarray_t))
             elif isinstance(var.type, Struct):
                 fields.append((label, var.type.ctype))
+            elif warp._src.types.is_native_type(var.type):
+                fields.append((label, var.type))
             elif issubclass(var.type, ctypes.Array):
                 fields.append((label, var.type))
             elif _is_texture_type(var.type):
@@ -750,6 +796,8 @@ class Struct:
             elif isinstance(var.type, Struct):
                 # nested struct
                 formats.append(var.type.numpy_dtype())
+            elif warp._src.types.is_native_type(var.type):
+                formats.append(np.dtype(var.type))
             elif issubclass(var.type, ctypes.Array):
                 scalar_typestr = type_typestr(var.type._wp_scalar_type_)
                 if len(var.type._shape_) == 1:
@@ -792,6 +840,9 @@ class Struct:
             elif isinstance(var.type, Struct):
                 # nested struct
                 value = var.type.from_ptr(ptr + offset)
+                setattr(instance, name, value)
+            elif warp._src.types.is_native_type(var.type):
+                value = ctypes.cast(ptr + offset, ctypes.POINTER(var.type)).contents
                 setattr(instance, name, value)
             elif issubclass(var.type, ctypes.Array):
                 # vector/matrix
@@ -1016,6 +1067,8 @@ class Var:
             return compute_type_str(f"wp::{t._wp_generic_type_str_}", t._wp_type_params_)
         elif isinstance(t, Struct):
             return t.native_name
+        elif warp._src.types.is_native_type(t):
+            return t._wp_native_type_.native_name
         elif hasattr(t, "_wp_native_name_"):
             return f"wp::{t._wp_native_name_}"
         elif t.__name__ in ("bool", "int", "float"):
@@ -1457,7 +1510,11 @@ def resolve_reference_call_func(adj, call_node, callable_arg_values=None):
     if callable_arg_values is None:
         callable_arg_values = {}
 
-    func, _ = adj.resolve_static_expression(call_node.func, eval_types=False)
+    func, path = adj.resolve_static_expression(call_node.func, eval_types=False)
+    if path and not isinstance(func, warp._src.context.Function):
+        attr = path[-1]
+        if func is warp:
+            func = warp._src.context.builtin_functions.get(attr)
     if func is None and isinstance(call_node.func, ast.Name):
         func = callable_arg_values.get(call_node.func.id)
 
@@ -1703,13 +1760,14 @@ class _SharedFunctionSource:
     and ``wp.static`` (which rewrites the tree) exclude an adjoint.
     """
 
-    __slots__ = ("fun_lineno", "reference_nodes", "source", "tree")
+    __slots__ = ("assigned_name_ids", "fun_lineno", "reference_nodes", "source", "tree")
 
     def __init__(self, source, fun_lineno, tree):
         self.source = source
         self.fun_lineno = fun_lineno
         self.tree = tree
         self.reference_nodes = None
+        self.assigned_name_ids = None
 
 
 def _shared_source_for_code(code):
@@ -1881,9 +1939,10 @@ class Adjoint:
         # paths do not need to coordinate deterministic internals directly.
         adj.deterministic = DeterministicCodegen(adj)
 
-        # Cache of reference-candidate AST nodes, materialized once by ``reference_nodes()``.
-        # Reset to None if ``adj.tree`` is ever mutated after the cache is populated.
+        # Caches derived from the AST. Reset both if ``adj.tree`` is ever mutated
+        # after either cache is populated.
         adj._reference_nodes = None
+        adj._assigned_name_ids = None
 
     # allocate extra space for a function call that requires its
     # own shared memory space, we treat shared memory as a stack
@@ -2896,8 +2955,17 @@ class Adjoint:
         has_nondifferentiable_callable_arg = any(
             isinstance(arg, warp._src.context.Function) and not arg.is_differentiable for arg in func_args
         )
+        has_native_value = any(
+            isinstance(arg, Var) and adj.type_contains_native_value(arg.type) for arg in (*func_args, *output_list)
+        )
 
-        if func.is_differentiable and func_args and not skip_reverse and not has_nondifferentiable_callable_arg:
+        if (
+            func.is_differentiable
+            and func_args
+            and not skip_reverse
+            and not has_nondifferentiable_callable_arg
+            and not has_native_value
+        ):
             # Ref-param functions are not automatically differentiable and a silent skip would
             # produce wrong gradients, but used_by_backward_kernel is not known yet (callers may
             # still be built); ModuleBuilder rejects the recorded calls once it is final
@@ -3299,10 +3367,10 @@ class Adjoint:
                         is_func_native = True
         if is_func_native and "return" in adj.arg_types:
             ret_type = adj.arg_types["return"]
-            if not (type_is_value(ret_type) or is_array(ret_type)):
+            if not (type_is_value(ret_type) or warp._src.types.is_native_type(ret_type) or is_array(ret_type)):
                 raise WarpCodegenError(
                     f"Native function '{adj.fun_name}' has unsupported return type `{ret_type}`. "
-                    f"Expected a Warp scalar, vector, matrix, quaternion, array, or fixedarray type."
+                    "Expected a Warp value, native value, array, or fixedarray type."
                 )
             var = Var(label="return_type", type=ret_type)
             adj.return_var = (var,)
@@ -3536,6 +3604,15 @@ class Adjoint:
         # possibly holding differentiable values (for which gradients must be accumulated)
         return type_scalar_type(var_type) in float_types or isinstance(var_type, Struct)
 
+    @staticmethod
+    def type_contains_native_value(var_type):
+        var_type = strip_reference(var_type)
+        if warp._src.types.is_native_type(var_type):
+            return True
+        if is_array(var_type):
+            return Adjoint.type_contains_native_value(var_type.dtype)
+        return False
+
     def emit_Attribute(adj, node, aggregate=None):
         if hasattr(node, "is_adjoint"):
             node.value.is_adjoint = True
@@ -3546,6 +3623,13 @@ class Adjoint:
         try:
             if isinstance(aggregate, Var) and aggregate.constant is not None:
                 # this case may occur when the attribute is a constant, e.g.: `IntEnum.A.value`
+                if warp._src.types.is_native_type(type(aggregate.constant)):
+                    try:
+                        return adj.add_constant(getattr(aggregate.constant, node.attr))
+                    except AttributeError as e:
+                        raise WarpCodegenAttributeError(
+                            f"Native type '{type(aggregate.constant).__name__}' has no field '{node.attr}'"
+                        ) from e
                 return aggregate
 
             if isinstance(aggregate, types.ModuleType) or isinstance(aggregate, type):
@@ -3562,7 +3646,7 @@ class Adjoint:
             if hasattr(node, "is_adjoint"):
                 # create a Var that points to the struct attribute, i.e.: directly generates `struct.attr` when used
                 attr_name = aggregate.label + "." + node.attr
-                attr_type = aggregate.type.vars[node.attr].type
+                attr_type = _aggregate_vars(aggregate.type)[node.attr].type
 
                 return Var(attr_name, attr_type)
 
@@ -3592,7 +3676,7 @@ class Adjoint:
                 return out
 
             else:
-                attr_var = aggregate_type.vars[node.attr]
+                attr_var = _aggregate_vars(aggregate_type)[node.attr]
 
                 # represent pointer types as uint64
                 if isinstance(attr_var.type, pointer_t):
@@ -4170,6 +4254,57 @@ class Adjoint:
         adj.add_forward(f"{result.emit()} = {addr_expr};")
         return result
 
+    def emit_native_type_constructor(adj, native_type, node):
+        """Emit default or explicitly enabled aggregate construction."""
+        info = native_type._wp_native_type_
+        if not node.args and not node.keywords:
+            output = adj.add_var(native_type)
+            adj.add_forward(f"{output.emit()} = {info.native_name}();")
+            return output
+
+        if info.initializer != "aggregate":
+            raise WarpCodegenError(
+                f"Native type '{info.native_name}' only supports default construction; "
+                "register it with initializer='aggregate' to expose field construction"
+            )
+
+        fields = dict(info.fields)
+        values = {}
+        if len(node.args) > len(fields):
+            raise WarpCodegenError(
+                f"Native type '{info.native_name}' expects {len(fields)} constructor arguments, got {len(node.args)}"
+            )
+        for name, arg_node in zip(fields, node.args, strict=False):
+            values[name] = adj.resolve_arg(arg_node)
+        for keyword in node.keywords:
+            if keyword.arg is None:
+                raise WarpCodegenError("Native type constructors do not support **kwargs")
+            if keyword.arg not in fields:
+                raise WarpCodegenError(f"Native type '{info.native_name}' has no exposed field '{keyword.arg}'")
+            if keyword.arg in values:
+                raise WarpCodegenError(f"Native type constructor got multiple values for field '{keyword.arg}'")
+            values[keyword.arg] = adj.resolve_arg(keyword.value)
+        missing = [name for name in fields if name not in values]
+        if missing:
+            raise WarpCodegenError(
+                f"Native type '{info.native_name}' aggregate construction requires all exposed fields; "
+                f"missing {', '.join(missing)}"
+            )
+
+        args = []
+        for name, expected_type in fields.items():
+            value = adj.load(values[name])
+            actual_type = warp._src.types.type_to_warp(strip_reference(value.type))
+            if not types_equal(actual_type, expected_type):
+                raise WarpCodegenTypeError(
+                    f"Native field '{name}' expects {type_repr(expected_type)}, got {type_repr(actual_type)}"
+                )
+            args.append(value.emit())
+
+        output = adj.add_var(native_type)
+        adj.add_forward(f"{output.emit()} = {info.native_name}{{{', '.join(args)}}};")
+        return output
+
     def emit_Call(adj, node, return_value_used=True):
         # try and lookup function in globals by
         # resolving path (e.g.: module.submodule.attr)
@@ -4180,6 +4315,9 @@ class Adjoint:
             func, path = adj.resolve_static_expression(node.func)
         if func is None:
             func = adj.eval(node.func)
+
+        if warp._src.types.is_native_type(func):
+            return adj.emit_native_type_constructor(func, node)
 
         # wp.address_of() is a codegen-only special form; intercept it here
         # regardless of how it was resolved (via module path or direct ref).
@@ -4264,6 +4402,9 @@ class Adjoint:
                     func = caller.value_constructor
                 else:
                     func = caller.default_constructor
+
+            if func is None and warp._src.types.is_native_type(caller):
+                return adj.emit_native_type_constructor(caller, node)
 
             # lambda function
             if func is None and getattr(caller, "__name__", None) == "<lambda>":
@@ -6397,8 +6538,9 @@ class Adjoint:
         This cache assumes ``adj.tree`` is structurally final before the first call; adjoints
         whose tree is mutated (transformers, ``wp.static`` rewriting) never share it. Any new
         code that mutates ``adj.tree`` afterwards must reset ``adj._reference_nodes`` -- and
-        ``adj._shared_source.reference_nodes`` when set, which invalidates every adjoint
-        sharing the tree -- or better, exclude the adjoint from sharing like the cases above.
+        ``adj._shared_source.reference_nodes`` and ``assigned_name_ids`` when set, which
+        invalidates every adjoint sharing the tree -- or better, exclude the adjoint from
+        sharing like the cases above.
         """
         if adj._reference_nodes is None:
             shared = adj._shared_source
@@ -6412,6 +6554,30 @@ class Adjoint:
                     shared.reference_nodes = adj._reference_nodes
         return adj._reference_nodes
 
+    def assigned_name_ids(adj) -> frozenset[str]:
+        """Return names made local by assignments anywhere in the function."""
+
+        if adj._assigned_name_ids is None:
+            shared = adj._shared_source
+            if shared is not None and shared.assigned_name_ids is not None:
+                adj._assigned_name_ids = shared.assigned_name_ids
+            else:
+                names = set()
+                for node in adj.reference_nodes():
+                    if not isinstance(node, ast.Assign):
+                        continue
+                    pending = list(node.targets)
+                    while pending:
+                        target = pending.pop()
+                        if isinstance(target, ast.Name):
+                            names.add(target.id)
+                        elif isinstance(target, (ast.Tuple, ast.List)):
+                            pending.extend(target.elts)
+                adj._assigned_name_ids = frozenset(names)
+                if shared is not None:
+                    shared.assigned_name_ids = adj._assigned_name_ids
+        return adj._assigned_name_ids
+
     def get_references(adj) -> tuple[dict[str, Any], dict[Any, Any], dict[warp._src.context.Function, Any]]:
         """Traverse ``adj.tree`` for referenced constants, types, and user-defined functions.
 
@@ -6422,7 +6588,10 @@ class Adjoint:
         code generation records exact reachability before an oversized launch is rejected.
         """
 
-        local_variables = set()  # Track local variables appearing on the LHS so we know when variables are shadowed
+        # ``reference_nodes()`` is breadth-first, not source-ordered. Collect locals
+        # up front to match Python's function-scope semantics and avoid resolving a
+        # local call target as an unrelated global before visiting its assignment.
+        local_variables = adj.assigned_name_ids()
 
         constants: dict[str, Any] = {}
         types: dict[Struct | type, Any] = {}
@@ -6443,28 +6612,38 @@ class Adjoint:
                     constants[".".join(path)] = obj
 
             elif isinstance(node, ast.Call):
-                func = resolve_reference_call_func(adj, node, callable_arg_values)
+                if isinstance(node.func, ast.Name) and node.func.id in local_variables:
+                    func = callable_arg_values.get(node.func.id)
+                else:
+                    func = resolve_reference_call_func(adj, node, callable_arg_values)
 
-                if isinstance(func, warp._src.context.Function) and not func.is_builtin():
-                    # calling user-defined function
-                    functions[func] = None
+                if isinstance(func, warp._src.context.Function):
+                    if not func.is_builtin():
+                        # User-defined calls contribute their transitive implementation hash.
+                        functions[func] = None
 
-                    # Function targets are passed as values, so they must be
-                    # added explicitly to the function reference set. Built-in
-                    # targets are hash inputs too, but they are filtered out by
-                    # module dependency discovery because they have no module.
-                    for callable_func in iter_call_callable_arg_targets(adj, func, node, callable_arg_values):
-                        functions[callable_func] = None
+                        # Function targets are passed as values, so they must be
+                        # added explicitly to the function reference set. Built-in
+                        # targets are hash inputs too, but they are filtered out by
+                        # module dependency discovery because they have no module.
+                        for callable_func in iter_call_callable_arg_targets(adj, func, node, callable_arg_values):
+                            functions[callable_func] = None
+                    elif func._has_external_builtin_contract:
+                        # External builtins are mutable process-local registrations, so
+                        # their native contract must participate in the module hash.
+                        # Warp's builtins are versioned with the library and need no
+                        # per-call hashing; keeping them out preserves declaration speed.
+                        functions[func] = None
                 elif isinstance(func, Struct):
                     # calling struct constructor
                     types[func] = None
-                elif warp._src.types.type_is_value(func):
+                elif warp._src.types.type_is_value(func) or warp._src.types.is_native_type(func):
                     # calling value type constructor
                     types[func] = None
 
             elif isinstance(node, ast.Assign):
                 # Infer the thread-grid dimension from `i[, j, ...] = wp.tid()` unpack arity.
-                if _is_tid_call(node.value):
+                if _is_tid_call(node.value, adj):
                     target = node.targets[0]
                     max_dim = max(max_dim, len(target.elts) if isinstance(target, ast.Tuple) else 1)
 
@@ -6474,18 +6653,13 @@ class Adjoint:
                 # hash. Register each bound function explicitly to keep the hash sound.
                 rhs_nodes = node.value.elts if isinstance(node.value, ast.Tuple) else [node.value]
                 for rhs_node in rhs_nodes:
-                    rhs_func, _ = adj.resolve_static_expression(rhs_node, eval_types=False)
-                    if isinstance(rhs_func, warp._src.context.Function) and not rhs_func.is_builtin():
+                    rhs_func, path = adj.resolve_static_expression(rhs_node, eval_types=False)
+                    if path and rhs_func is warp:
+                        rhs_func = warp._src.context.builtin_functions.get(path[-1])
+                    if isinstance(rhs_func, warp._src.context.Function) and (
+                        not rhs_func.is_builtin() or rhs_func._has_external_builtin_contract
+                    ):
                         functions[rhs_func] = None
-
-                # Add the LHS names to the local_variables so we know any subsequent uses are shadowed
-                lhs = node.targets[0]
-                if isinstance(lhs, ast.Tuple):
-                    for v in lhs.elts:
-                        if isinstance(v, ast.Name):
-                            local_variables.add(v.id)
-                elif isinstance(lhs, ast.Name):
-                    local_variables.add(lhs.id)
 
         adj.kernel_dim = max_dim if max_dim > 0 else 1
         # Treat every kernel as a potential scalar-`wp.tid()` user until exact
@@ -6722,7 +6896,7 @@ cuda_reverse_function_template = """
 # The index flattens blockIdx.{z,y,x}; the grid shape (and its uint32 cap) is built in wp_cuda_launch_kernel.
 cuda_kernel_template_forward = """
 
-{line_directive}extern "C" {launch_bounds_str}{cluster_dims_str}__global__ void {max_registers_str}{name}_cuda_kernel_forward(
+{line_directive}extern "C" {launch_bounds_str}{cluster_dims_str}__global__ void {max_registers_str}{forward_name}(
     {forward_args})
 {{
 {forward_smem_spilling_str}{line_directive}    wp::tile_shared_storage_t tile_mem;
@@ -6738,7 +6912,7 @@ cuda_kernel_template_forward = """
 
 cuda_kernel_template_backward = """
 
-{line_directive}extern "C" {launch_bounds_str}{cluster_dims_str}__global__ void {max_registers_str}{name}_cuda_kernel_backward(
+{line_directive}extern "C" {launch_bounds_str}{cluster_dims_str}__global__ void {max_registers_str}{backward_name}(
     {reverse_args})
 {{
 {backward_smem_spilling_str}{line_directive}    wp::tile_shared_storage_t tile_mem;
@@ -6754,7 +6928,7 @@ cuda_kernel_template_backward = """
 
 cuda_kernel_template_forward_grid_stride = """
 
-{line_directive}extern "C" {launch_bounds_str}{cluster_dims_str}__global__ void {max_registers_str}{name}_cuda_kernel_forward(
+{line_directive}extern "C" {launch_bounds_str}{cluster_dims_str}__global__ void {max_registers_str}{forward_name}(
     {forward_args})
 {{
 {forward_smem_spilling_str}{line_directive}    wp::tile_shared_storage_t tile_mem;
@@ -6773,7 +6947,7 @@ cuda_kernel_template_forward_grid_stride = """
 
 cuda_kernel_template_backward_grid_stride = """
 
-{line_directive}extern "C" {launch_bounds_str}{cluster_dims_str}__global__ void {max_registers_str}{name}_cuda_kernel_backward(
+{line_directive}extern "C" {launch_bounds_str}{cluster_dims_str}__global__ void {max_registers_str}{backward_name}(
     {reverse_args})
 {{
 {backward_smem_spilling_str}{line_directive}    wp::tile_shared_storage_t tile_mem;
@@ -6789,6 +6963,26 @@ cuda_kernel_template_backward_grid_stride = """
 {line_directive}}}
 
 """
+
+cuda_external_constant_params_kernel_template_forward = """
+
+{line_directive}extern "C" {launch_bounds_str}__global__ void {forward_name}()
+{{
+{constant_params_alias}{forward_body}{line_directive}}}
+
+"""
+
+
+def cuda_kernel_forward_name(kernel):
+    name = kernel.get_mangled_name()
+    if kernel.options.get("entry_point_abi") == "external_constant_params":
+        return name
+    return f"{name}_cuda_kernel_forward"
+
+
+def cuda_kernel_backward_name(kernel):
+    return f"{kernel.get_mangled_name()}_cuda_kernel_backward"
+
 
 cpu_kernel_template_forward = """
 
@@ -6923,6 +7117,16 @@ def constant_str(value):
                 return s + "u"
         return s
 
+    elif warp._src.types.is_native_type(value_type):
+        info = value_type._wp_native_type_
+        if info.initializer != "aggregate":
+            raise WarpCodegenError(
+                f"Captured constants of opaque native type '{info.native_name}' are not supported; "
+                "pass the value as a kernel argument"
+            )
+        arg_str = ", ".join(constant_str(getattr(value, name)) for name, _ in info.fields)
+        return f"{info.native_name}{{{arg_str}}}"
+
     elif issubclass(value_type, StructInstance):
         # constant struct instance
         arg_strs = []
@@ -7022,7 +7226,8 @@ def codegen_struct(struct, device="cpu", indent_size=4, include_tile_helpers=Fal
         reverse_args.append(f"{var_ctype} const&")
 
         namespace = "wp::" if var_ctype.startswith("wp::") or var_ctype == "bool" else ""
-        atomic_add_body.append(f"{indent_block}{namespace}adj_atomic_add(&p->{label}, t.{label});\n")
+        if not warp._src.types.is_native_type(var.type):
+            atomic_add_body.append(f"{indent_block}{namespace}adj_atomic_add(&p->{label}, t.{label});\n")
         if field_type_supports_tile_descriptor_shuffle(var.type):
             atomic_add_forward_body.append(f"{indent_block}old.{label} = p->{label};\n")
             shuffle_down_body.append(f"{indent_block}ret.{label} = wp::warp_shuffle_down(val.{label}, offset, mask);\n")
@@ -7064,7 +7269,9 @@ def codegen_struct(struct, device="cpu", indent_size=4, include_tile_helpers=Fal
     # reverse args
     for label, var in struct.vars.items():
         reverse_args.append(var.ctype() + " & adj_" + label)
-        if is_array(var.type):
+        if warp._src.types.is_native_type(var.type):
+            continue
+        elif is_array(var.type):
             reverse_body.append(f"{indent_block}adj_{label} = adj_ret.{label};\n")
         else:
             reverse_body.append(f"{indent_block}adj_{label} += adj_ret.{label};\n")
@@ -7558,9 +7765,47 @@ def codegen_kernel(kernel, device, options):
     if line_directive := adj.get_line_directive("", adj.fun_def_lineno - 1):
         func_line_directive = f"{line_directive}\n"
 
+    entry_point_abi = kernel.options.get("entry_point_abi", "warp")
+    if entry_point_abi not in ("warp", "external_constant_params"):
+        raise WarpCodegenError(
+            f"entry_point_abi for kernel '{kernel.key}' must be 'warp' or 'external_constant_params', got {entry_point_abi!r}"
+        )
+    if entry_point_abi == "external_constant_params" and device != "cuda":
+        raise WarpCodegenError(
+            f"Kernel '{kernel.key}' uses entry_point_abi='external_constant_params', which is not supported "
+            f"by the {device.upper()} backend."
+        )
+
+    is_external_constant_params_entry = device == "cuda" and entry_point_abi == "external_constant_params"
+    if is_external_constant_params_entry and options["enable_backward"]:
+        raise WarpCodegenError(
+            f"Kernel '{kernel.key}' with entry_point_abi='external_constant_params' does not support backward "
+            "code generation; set enable_backward=False."
+        )
+
+    if is_external_constant_params_entry and adj.det_meta is not None and adj.det_meta.needs_deterministic:
+        raise WarpCodegenError(
+            f"Kernel '{kernel.key}' with entry_point_abi='external_constant_params' does not support "
+            "deterministic lowering."
+        )
+
+    if is_external_constant_params_entry and _uses_tid_call(adj):
+        raise WarpCodegenError(
+            f"Kernel '{kernel.key}' with entry_point_abi='external_constant_params' cannot use wp.tid(); "
+            "the external entry point does not define dim or _idx."
+        )
+    if is_external_constant_params_entry and adj.get_total_required_shared():
+        raise WarpCodegenError(
+            f"Kernel '{kernel.key}' with entry_point_abi='external_constant_params' cannot use shared-memory tiles; "
+            "external entry-point runtimes such as OptiX do not accept Warp's shared-memory allocator."
+        )
+
     if device == "cpu":
         template_forward = cpu_kernel_template_forward
         template_backward = cpu_kernel_template_backward
+    elif is_external_constant_params_entry:
+        template_forward = cuda_external_constant_params_kernel_template_forward
+        template_backward = ""
     elif device == "cuda":
         if kernel.grid_stride:
             template_forward = cuda_kernel_template_forward_grid_stride
@@ -7574,7 +7819,10 @@ def codegen_kernel(kernel, device, options):
     template = ""
     template_fmt_args = {
         "name": kernel.get_mangled_name(),
+        "forward_name": cuda_kernel_forward_name(kernel) if device == "cuda" else kernel.get_mangled_name(),
+        "backward_name": cuda_kernel_backward_name(kernel) if device == "cuda" else kernel.get_mangled_name(),
         "launch_ndim": kernel.adj.kernel_dim,
+        "constant_params_alias": "",
     }
 
     # Generate launch_bounds string for CUDA kernels
@@ -7616,18 +7864,37 @@ def codegen_kernel(kernel, device, options):
             cluster_dims_str = f"WP_CLUSTER_DIMS({cluster_dim}, 1, 1) "
 
     # build forward signature
-    forward_args = [f"wp::launch_bounds_t<{adj.kernel_dim}> dim"]
+    forward_args = []
+    if not is_external_constant_params_entry:
+        forward_args.append(f"wp::launch_bounds_t<{adj.kernel_dim}> dim")
     if device == "cpu":
         forward_args.append("size_t task_index")
-    else:
+    elif not is_external_constant_params_entry:
         for arg in adj.args:
             forward_args.append(arg.ctype() + " var_" + arg.label)
+    elif len(adj.args) == 1 and is_external_constant_params_arg(adj.args[0]):
+        arg = adj.args[0]
+        template_fmt_args["constant_params_alias"] = (
+            f"    {arg.ctype()} var_{arg.label} = *reinterpret_cast<const {arg.ctype()}*>(params);\n"
+        )
+    else:
+        raise WarpCodegenError(
+            f"Kernel '{kernel.key}' with entry_point_abi='external_constant_params' must take exactly one "
+            "Warp struct argument."
+        )
 
+    if not is_external_constant_params_entry and device != "cpu":
         forward_args.extend(adj.deterministic.kernel_args())
 
+    forward_func_type = "function" if is_external_constant_params_entry else "kernel"
     forward_body = ""
     forward_body += adj.deterministic.kernel_locals(device)
-    forward_body += codegen_func_forward(adj, func_type="kernel", device=device, grid_stride=kernel.grid_stride)
+    forward_body += codegen_func_forward(
+        adj,
+        func_type=forward_func_type,
+        device=device,
+        grid_stride=kernel.grid_stride and not is_external_constant_params_entry,
+    )
     template_fmt_args.update(
         {
             "forward_args": indent(forward_args),
@@ -7641,7 +7908,7 @@ def codegen_kernel(kernel, device, options):
     )
     template += template_forward
 
-    if options["enable_backward"]:
+    if options["enable_backward"] and not is_external_constant_params_entry:
         # build reverse signature
         reverse_args = [f"wp::launch_bounds_t<{adj.kernel_dim}> dim"]
         if device == "cpu":

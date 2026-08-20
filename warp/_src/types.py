@@ -2584,7 +2584,9 @@ def type_size_in_bytes(dtype: type) -> int:
     size = _type_size_cache.get(dtype)
 
     if size is None:
-        if dtype.__module__ == "ctypes":
+        if is_native_type(dtype):
+            size = ctypes.sizeof(dtype)
+        elif dtype.__module__ == "ctypes":
             size = ctypes.sizeof(dtype)
         elif hasattr(dtype, "_type_"):
             size = getattr(dtype, "_length_", 1) * ctypes.sizeof(dtype._type_)
@@ -2644,6 +2646,8 @@ def type_typestr(dtype: type) -> str:
         return "<u8"
     elif isinstance(dtype, warp._src.codegen.Struct):
         return f"|V{ctypes.sizeof(dtype.ctype)}"
+    elif is_native_type(dtype):
+        return f"|V{ctypes.sizeof(dtype)}"
     elif hasattr(dtype, "_wp_ctype_"):
         # texture types (Texture2D, Texture3D) have _wp_ctype_ pointing to their ctypes struct
         return f"|V{ctypes.sizeof(dtype._wp_ctype_)}"
@@ -2786,6 +2790,12 @@ def type_is_composite(t):
 
 
 value_types = (int, float, builtins.bool, *scalar_and_bool_types)
+_native_value_types: set[type] = set()
+
+
+def is_native_type(t: Any) -> builtins.bool:
+    """Return whether ``t`` is a native value type registered through ``warp.build_experimental``."""
+    return isinstance(t, type) and t in _native_value_types
 
 
 def type_is_value(t: Any) -> builtins.bool:
@@ -2855,7 +2865,7 @@ def is_composite(x):
 
 def is_value(x: Any) -> builtins.bool:
     """Return ``True`` if the value is a value type instance (scalar, vector, matrix, quaternion, or transformation)."""
-    return isinstance(x, value_types) or is_composite(x)
+    return isinstance(x, value_types) or is_composite(x) or type(x) in _native_value_types
 
 
 def is_struct(x) -> builtins.bool:
@@ -3380,6 +3390,9 @@ class array(Array[DType, NDim]):
         elif dtype is builtins.bool:
             dtype = bool
 
+        if is_native_type(dtype) and (requires_grad or grad is not None or retain_grad):
+            raise ValueError("Native value-type arrays do not support automatic differentiation")
+
         # convert shape to tuple (or leave shape=None if neither shape nor length were specified)
         if shape is not None:
             if isinstance(shape, int):
@@ -3599,6 +3612,38 @@ class array(Array[DType, NDim]):
                     arr = arr.view(np.uint16)
                 else:
                     raise RuntimeError(f"Unsupported input data dtype: {arr.dtype}")
+        elif is_native_type(dtype):
+            npdtype = np.dtype(dtype)
+            if isinstance(data, np.ndarray):
+                if dtype._wp_native_type_.fields is None:
+                    valid_source_dtype = (
+                        data.dtype.kind == "V"
+                        and data.dtype.fields is None
+                        and data.dtype.itemsize == ctypes.sizeof(dtype)
+                    )
+                else:
+                    valid_source_dtype = data.dtype == npdtype
+                if not valid_source_dtype:
+                    expected_dtype = (
+                        np.dtype(f"V{ctypes.sizeof(dtype)}") if dtype._wp_native_type_.fields is None else npdtype
+                    )
+                    raise RuntimeError(
+                        f"Invalid source data type for native array, expected {expected_dtype}, got {data.dtype}"
+                    )
+                arr = data
+            elif isinstance(data, (list, tuple)):
+                try:
+                    ctype_arr = (dtype * len(data))(*data)
+                    arr = np.frombuffer(ctype_arr, dtype=npdtype)
+                except Exception as e:
+                    raise RuntimeError(
+                        f"Error while trying to construct Warp array from a sequence of {dtype.__name__} values: {e}"
+                    ) from e
+            else:
+                raise RuntimeError(
+                    "Invalid data argument for a native array, expected a sequence of ctypes values "
+                    "or a NumPy structured array"
+                )
         elif isinstance(dtype, warp._src.codegen.Struct):
             if isinstance(data, np.ndarray):
                 # construct from numpy structured array
@@ -3927,6 +3972,10 @@ class array(Array[DType, NDim]):
                 arr_shape = self.shape
                 arr_strides = self.strides
                 descr = self.dtype.numpy_dtype()
+            elif is_native_type(self.dtype):
+                arr_shape = self.shape
+                arr_strides = self.strides
+                descr = np.dtype(self.dtype).descr if self.dtype._wp_native_type_.fields is not None else None
             elif issubclass(self.dtype, ctypes.Array):
                 # vector type, flatten the dimensions into one tuple
                 arr_shape = (*self.shape, *self.dtype._shape_)
@@ -4194,6 +4243,8 @@ class array(Array[DType, NDim]):
             self._grad = None
             self._requires_grad = False
         else:
+            if is_native_type(self.dtype):
+                raise ValueError("Native value-type arrays do not support automatic differentiation")
             # make sure the given gradient array is compatible
             if grad.dtype != self.dtype:
                 raise ValueError(
@@ -4223,6 +4274,8 @@ class array(Array[DType, NDim]):
 
     @requires_grad.setter
     def requires_grad(self, value: builtins.bool):
+        if value and is_native_type(self.dtype):
+            raise ValueError("Native value-type arrays do not support automatic differentiation")
         if value and self._grad is None:
             self._alloc_grad()
         elif not value:
@@ -4357,6 +4410,16 @@ class array(Array[DType, NDim]):
                     raise ValueError(
                         f"Invalid initializer value for struct {self.dtype.cls.__name__}, expected struct instance or 0"
                     )
+            elif is_native_type(self.dtype):
+                if isinstance(value, self.dtype):
+                    cvalue = value
+                elif value == 0:
+                    cvalue = self.dtype()
+                else:
+                    raise ValueError(
+                        f"Invalid initializer value for native type {self.dtype.__name__}, "
+                        f"expected {self.dtype.__name__} instance or 0"
+                    )
             elif issubclass(self.dtype, ctypes.Array):
                 # vector/matrix
                 cvalue = self.dtype(value)
@@ -4461,6 +4524,12 @@ class array(Array[DType, NDim]):
             if isinstance(self.dtype, warp._src.codegen.Struct):
                 npdtype = self.dtype.numpy_dtype()
                 npshape = self.shape
+            elif is_native_type(self.dtype):
+                if self.dtype._wp_native_type_.fields is None:
+                    npdtype = np.dtype(f"V{ctypes.sizeof(self.dtype)}")
+                else:
+                    npdtype = np.dtype(self.dtype)
+                npshape = self.shape
             elif issubclass(self.dtype, ctypes.Array):
                 npdtype = warp_type_to_np_dtype[self.dtype._wp_scalar_type_]
                 npshape = (*self.shape, *self.dtype._shape_)
@@ -4497,6 +4566,8 @@ class array(Array[DType, NDim]):
 
         if isinstance(self.dtype, warp._src.codegen.Struct):
             p = ctypes.cast(self.ptr, ctypes.POINTER(self.dtype.ctype))
+        elif is_native_type(self.dtype):
+            p = ctypes.cast(self.ptr, ctypes.POINTER(self.dtype))
         else:
             p = ctypes.cast(self.ptr, ctypes.POINTER(self.dtype._type_))
 
@@ -4515,6 +4586,10 @@ class array(Array[DType, NDim]):
             data = a.ctypes.data
             stride = a.strides[0]
             return [self.dtype.from_ptr(data + i * stride) for i in range(self.size)]
+        elif is_native_type(self.dtype):
+            a = a.flatten()
+            stride = a.strides[0]
+            return [self.dtype.from_buffer_copy(a, i * stride) for i in range(self.size)]
         elif issubclass(self.dtype, ctypes.Array):
             # vector/matrix - flatten, but preserve inner vector/matrix dimensions
             a = a.reshape((self.size, *self.dtype._shape_))
@@ -8122,6 +8197,8 @@ def infer_argument_types(args: list[Any], template_types, arg_names: list[str] |
         elif issubclass(arg_type, warp._src.codegen.StructInstance):
             # a struct
             arg_types.append(arg._cls)
+        elif is_native_type(arg_type):
+            arg_types.append(arg_type)
         elif arg is None:
             # allow passing None for arrays
             t = template_types[i]
@@ -8215,7 +8292,9 @@ def get_type_code(arg_type) -> str:
             "Union type annotations are only supported at Python scope and are invalid in Warp kernels/functions"
         )
     elif isinstance(arg_type, type):
-        if hasattr(arg_type, "_wp_scalar_type_"):
+        if is_native_type(arg_type):
+            return f"nt{arg_type._wp_native_type_.type_code}"
+        elif hasattr(arg_type, "_wp_scalar_type_"):
             # vector/matrix type
             dtype_code = get_type_code(arg_type._wp_scalar_type_)
             # check for "special" vector/matrix subtypes

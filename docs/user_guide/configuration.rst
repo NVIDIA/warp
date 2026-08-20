@@ -87,6 +87,9 @@ The options for a module can also be queried using :func:`wp.get_module_options(
 |``strip_hash``                        | Boolean | ``False``   | If ``True``, avoids using a content-based hash to identify the module    |
 |                                      |         |             | and its functions.                                                       |
 +--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
+|``extra_build_options``               | Object  | ``None``    | Experimental extra build inputs for CPU and CUDA modules. Set to an      |
+|                                      |         |             | :class:`warp.ModuleBuildOptions` instance.                               |
++--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
 |``enable_mathdx_gemm``                | Boolean | ``None``    | A module-level override of the :attr:`warp.config.enable_mathdx_gemm`    |
 |                                      |         |             | setting. ``None`` defers to the global setting at compile time.          |
 +--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
@@ -107,6 +110,13 @@ Kernel-level settings can be passed as arguments to the :func:`@wp.kernel <warp.
      - Type
      - Default Value
      - Description
+   * - ``name``
+     - String
+     - ``None``
+     - Experimental kernel-name override that may change without deprecation
+       in future releases. The value must be a valid C identifier. When module
+       hashing is stripped, this is also the base name of the exported native
+       symbol.
    * - ``enable_backward``
      - Boolean
      - ``None``
@@ -150,6 +160,14 @@ Kernel-level settings can be passed as arguments to the :func:`@wp.kernel <warp.
        Keys are validated against the module's known options (see
        `Module Settings`_ above). For shared modules, use
        :func:`wp.set_module_options() <warp.set_module_options>` instead.
+   * - ``entry_point_abi``
+     - String
+     - ``None``
+     - Selects the experimental entry-point ABI. ``"warp"`` uses the regular
+       launch-compatible CPU and CUDA ABI. ``"external_constant_params"`` is
+       CUDA-only and binds one struct argument from constant memory symbol
+       ``params``; it requires ``enable_backward=False`` and cannot be launched
+       with :func:`warp.launch`.
 
 .. code-block:: python
 
