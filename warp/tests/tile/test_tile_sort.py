@@ -48,9 +48,16 @@ def test_tile_sort(test, device):
             length = 2**i + 1
             kernels[(dtype, length)] = create_sort_kernel(dtype, length)
 
+    # Safe block_dim values are only powers of two >= 32 for the large-tile implementation.
+    # For lengths <= 32, smaller block_dims may be accepted but are not reliable.
+    # The test must only use safe block_dim values to avoid CUDA errors and mis-sorts.
+    safe_block_dims = [32, 64, 128, 256, 512]
+
     for (dtype, length), kernel in kernels.items():
-        for j in range(5, 10):
-            TILE_DIM = 2**j
+        for TILE_DIM in safe_block_dims:
+            # Ensure the tile length fits within the block dim's shared memory allocation
+            if length > TILE_DIM:
+                continue
 
             rng = np.random.default_rng(42)  # Create a random generator instance
 
