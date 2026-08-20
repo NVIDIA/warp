@@ -3023,7 +3023,7 @@ vision or generative model, or a custom sparse data structure that already track
 which voxels are near the surface.
 
 Extracting from an explicit cell set
-""""""""""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 :func:`wp.geometry.sparse_marching_cubes_from_cells
 <warp.geometry.sparse_marching_cubes_from_cells>` takes the occupied cells as an

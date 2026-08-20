@@ -143,8 +143,8 @@ class IsoSurfaceBase(ABC):
         self.domain_bounds_upper_corner = domain_bounds_upper_corner
 
         # Output arrays
-        self.verts: wp.array(dtype=wp.vec3f) | None = None
-        self.indices: wp.array(dtype=wp.int32) | None = None
+        self.verts = None
+        self.indices = None
 
     def resize(self, nx: int, ny: int, nz: int) -> None:
         """Update the grid dimensions for the context.
