@@ -292,9 +292,11 @@ class Trimesh(Geometry):
         self._build_topology(temporary_store)
         self._orient_edges()
 
-        # Arg structs hold references to the previous edge arrays.
+        # Arg structs hold references to the previous edge arrays. side_index_arg_value caches
+        # the boundary edge list, which _build_topology() reallocates, so it has to go too.
         Geometry.cell_arg_value.invalidate(self)
         Geometry.side_arg_value.invalidate(self)
+        Geometry.side_index_arg_value.invalidate(self)
 
         # Cell bounds are derived from the triangles, so a connectivity change invalidates the tree
         # itself and not just its bounds; refitting through update_bvh() is not enough here.

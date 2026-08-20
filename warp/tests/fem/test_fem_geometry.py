@@ -890,6 +890,12 @@ def test_trimesh_update_topology(test, device):
 
     test.assertEqual(stale_side_count(), 0)
 
+    # Populate the cached Arg structs so the refresh has to invalidate them, in particular the
+    # side-index arg, which holds the boundary edge list.
+    geo.cell_arg_value(device)
+    geo.side_arg_value(device)
+    geo.side_index_arg_value(device)
+
     # Flip the connectivity in place, without rebuilding the geometry.
     wp.copy(src=tri_after, dest=geo.tri_vertex_indices)
     test.assertGreater(stale_side_count(), 0)
@@ -910,6 +916,13 @@ def test_trimesh_update_topology(test, device):
         )
 
     test.assertEqual(canonical(geo), canonical(rebuilt))
+
+    # The cached side-index arg must hand out the rebuilt boundary edge list, not the one it
+    # captured before the flip.
+    refreshed_boundary = geo.side_index_arg_value(device).boundary_edge_indices.numpy().tolist()
+    test.assertEqual(refreshed_boundary, geo._boundary_edge_indices.numpy().tolist())
+    test.assertEqual(len(refreshed_boundary), geo.boundary_side_count())
+    test.assertEqual(geo.boundary_side_count(), rebuilt.boundary_side_count())
 
 
 devices = get_test_devices()
