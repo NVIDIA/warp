@@ -115,13 +115,13 @@ python -m warp.examples.browse
             <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_dem.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/core_dem.png"></a></td>
             <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_fluid.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/core_fluid.png"></a></td>
             <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_graph_capture.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/core_graph_capture.png"></a></td>
-            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_marching_cubes.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/core_marching_cubes.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_isosurface.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/core_isosurface.png"></a></td>
         </tr>
         <tr>
             <td align="center">dem</td>
             <td align="center">fluid</td>
             <td align="center">graph capture</td>
-            <td align="center">marching cubes</td>
+            <td align="center">isosurface</td>
         </tr>
         <tr>
             <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_mesh.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/core_mesh.png"></a></td>

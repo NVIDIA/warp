@@ -1,11 +1,16 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import io
+import sys
 import unittest
+import warnings
 
 import numpy as np
 
 import warp as wp
+import warp.geometry
+from warp._src import logger as _logger_module
 from warp.tests.unittest_utils import *
 
 
@@ -83,14 +88,14 @@ def validate_marching_cubes_output(test, verts_np, faces_np, check_nonempty=True
 
 
 def test_marching_cubes(test, device):
-    """Basic test of typical usage."""
+    """Test typical usage of the stateful interface."""
     node_dim = 64
     cell_dim = node_dim - 1
     field = wp.zeros(shape=(node_dim, node_dim, node_dim), dtype=float, device=device)
     bounds_low = (0.0, 0.0, 0.0)
     bounds_high = (float(cell_dim), float(cell_dim), float(cell_dim))
 
-    iso = wp.MarchingCubes(
+    iso = wp.geometry.IsoSurfaceMarchingCubes(
         nx=node_dim,
         ny=node_dim,
         nz=node_dim,
@@ -140,7 +145,7 @@ def test_marching_cubes_functional(test, device):
     )
 
     # call via the functional interface
-    verts, faces = wp.MarchingCubes.extract_surface_marching_cubes(
+    verts, faces = wp.geometry.IsoSurfaceMarchingCubes.extract_surface_marching_cubes(
         field, threshold=0.0, domain_bounds_lower_corner=bounds_low, domain_bounds_upper_corner=bounds_high
     )
 
@@ -165,7 +170,7 @@ def test_marching_cubes_nonuniform(test, device):
     bounds_low = wp.vec3(0.0, 0.0, 0.0)
     bounds_high = wp.vec3(float(dimX), float(dimY), float(dimZ))
 
-    iso = wp.MarchingCubes(
+    iso = wp.geometry.IsoSurfaceMarchingCubes(
         nx=dimX,
         ny=dimY,
         nz=dimZ,
@@ -193,7 +198,7 @@ def test_marching_cubes_empty_output(test, device):
     dim = 64
     field = wp.zeros(shape=(dim, dim, dim), dtype=float, device=device)
 
-    iso = wp.MarchingCubes(nx=dim, ny=dim, nz=dim)
+    iso = wp.geometry.IsoSurfaceMarchingCubes(nx=dim, ny=dim, nz=dim)
 
     wp.launch(make_field_sphere_sdf, dim=field.shape, inputs=[field, wp.vec3(0.5, 0.5, 0.5), 0.25], device=device)
 
@@ -204,6 +209,27 @@ def test_marching_cubes_empty_output(test, device):
 
     test.assertEqual(faces_np.shape[0], 0)  # no faces
     test.assertEqual(verts_np.shape[0], 0)  # no vertices
+
+
+def test_marching_cubes_degenerate_field(test, device):
+    """Check that fields too thin to span a cell are rejected up front."""
+
+    # A grid needs two nodes on an axis to span one cell, so a single-node axis
+    # has nothing to extract from. Without validation these reach the extraction
+    # kernels and fail on a zero-length scan buffer instead.
+    for shape in ((1, 8, 8), (8, 1, 8), (8, 8, 1), (1, 1, 1), (0, 8, 8)):
+        field = wp.zeros(shape=shape, dtype=wp.float32, device=device)
+        with test.assertRaisesRegex(ValueError, "at least 2 nodes on each axis"):
+            wp.geometry.IsoSurfaceMarchingCubes.extract(field, threshold=0.0)
+
+        # the stateful interface routes through the same validation
+        iso = wp.geometry.IsoSurfaceMarchingCubes(nx=shape[0], ny=shape[1], nz=shape[2])
+        with test.assertRaisesRegex(ValueError, "at least 2 nodes on each axis"):
+            iso.surface(field=field, threshold=0.0)
+
+    # two nodes on every axis is the smallest field that does extract
+    field = wp.zeros(shape=(2, 2, 2), dtype=wp.float32, device=device)
+    wp.geometry.IsoSurfaceMarchingCubes.extract(field, threshold=0.0)
 
 
 def test_marching_cubes_differentiable(test, device):
@@ -230,7 +256,7 @@ def test_marching_cubes_differentiable(test, device):
         )
 
         # call via the functional interface
-        verts, faces = wp.MarchingCubes.extract_surface_marching_cubes(
+        verts, faces = wp.geometry.IsoSurfaceMarchingCubes.extract_surface_marching_cubes(
             field, threshold=0.0, domain_bounds_lower_corner=bounds_low, domain_bounds_upper_corner=bounds_high
         )
 
@@ -253,10 +279,10 @@ def test_marching_cubes_differentiable(test, device):
 def test_mc_lookup_tables_structure(test, device):
     """Test that lookup tables have correct sizes and types."""
     # Access via class attributes
-    CUBE_CORNER_OFFSETS = wp.MarchingCubes.CUBE_CORNER_OFFSETS
-    EDGE_TO_CORNERS = wp.MarchingCubes.EDGE_TO_CORNERS
-    CASE_TO_TRI_RANGE = wp.MarchingCubes.CASE_TO_TRI_RANGE
-    TRI_LOCAL_INDICES = wp.MarchingCubes.TRI_LOCAL_INDICES
+    CUBE_CORNER_OFFSETS = wp.geometry.IsoSurfaceMarchingCubes.CUBE_CORNER_OFFSETS
+    EDGE_TO_CORNERS = wp.geometry.IsoSurfaceMarchingCubes.EDGE_TO_CORNERS
+    CASE_TO_TRI_RANGE = wp.geometry.IsoSurfaceMarchingCubes.CASE_TO_TRI_RANGE
+    TRI_LOCAL_INDICES = wp.geometry.IsoSurfaceMarchingCubes.TRI_LOCAL_INDICES
 
     # Verify types are tuples (immutable)
     test.assertIsInstance(CUBE_CORNER_OFFSETS, tuple)
@@ -283,10 +309,10 @@ def test_mc_lookup_tables_structure(test, device):
 def test_mc_lookup_tables_values(test, device):
     """Test that lookup table values are valid."""
     # Access via class attributes
-    CUBE_CORNER_OFFSETS = wp.MarchingCubes.CUBE_CORNER_OFFSETS
-    EDGE_TO_CORNERS = wp.MarchingCubes.EDGE_TO_CORNERS
-    CASE_TO_TRI_RANGE = wp.MarchingCubes.CASE_TO_TRI_RANGE
-    TRI_LOCAL_INDICES = wp.MarchingCubes.TRI_LOCAL_INDICES
+    CUBE_CORNER_OFFSETS = wp.geometry.IsoSurfaceMarchingCubes.CUBE_CORNER_OFFSETS
+    EDGE_TO_CORNERS = wp.geometry.IsoSurfaceMarchingCubes.EDGE_TO_CORNERS
+    CASE_TO_TRI_RANGE = wp.geometry.IsoSurfaceMarchingCubes.CASE_TO_TRI_RANGE
+    TRI_LOCAL_INDICES = wp.geometry.IsoSurfaceMarchingCubes.TRI_LOCAL_INDICES
 
     # Corner offsets should be 0 or 1
     for corner in CUBE_CORNER_OFFSETS:
@@ -316,12 +342,12 @@ def test_mc_lookup_tables_values(test, device):
 
 
 def test_mc_lookup_tables_to_warp_array(test, device):
-    """Test that lookup tables can be converted to warp arrays."""
+    """Test that lookup tables can be converted to Warp arrays."""
     # Access via class attributes
-    CUBE_CORNER_OFFSETS = wp.MarchingCubes.CUBE_CORNER_OFFSETS
-    EDGE_TO_CORNERS = wp.MarchingCubes.EDGE_TO_CORNERS
-    CASE_TO_TRI_RANGE = wp.MarchingCubes.CASE_TO_TRI_RANGE
-    TRI_LOCAL_INDICES = wp.MarchingCubes.TRI_LOCAL_INDICES
+    CUBE_CORNER_OFFSETS = wp.geometry.IsoSurfaceMarchingCubes.CUBE_CORNER_OFFSETS
+    EDGE_TO_CORNERS = wp.geometry.IsoSurfaceMarchingCubes.EDGE_TO_CORNERS
+    CASE_TO_TRI_RANGE = wp.geometry.IsoSurfaceMarchingCubes.CASE_TO_TRI_RANGE
+    TRI_LOCAL_INDICES = wp.geometry.IsoSurfaceMarchingCubes.TRI_LOCAL_INDICES
 
     # Convert to warp arrays with appropriate dtypes
     corner_offsets = wp.array(CUBE_CORNER_OFFSETS, dtype=wp.vec3ub, device=device)
@@ -344,11 +370,102 @@ def test_mc_lookup_tables_to_warp_array(test, device):
     test.assertEqual(tuple(edge_to_corners_np[0]), (0, 1))  # edge 0 connects corners 0 and 1
 
 
+def test_marching_cubes_extract_deprecated_alias(test, device):
+    """Check that the deprecated extract_surface_marching_cubes() alias warns and matches extract()."""
+    node_dim = 32
+    field = wp.zeros(shape=(node_dim, node_dim, node_dim), dtype=float, device=device)
+
+    radius = node_dim / 4.0
+    wp.launch(
+        make_field_sphere_sdf,
+        dim=field.shape,
+        inputs=[field, wp.vec3(node_dim / 2, node_dim / 2, node_dim / 2), radius],
+        device=device,
+    )
+
+    verts, faces = wp.geometry.IsoSurfaceMarchingCubes.extract(field, threshold=0.0)
+
+    # The logger deduplicates DeprecationWarnings globally, so reset its cache
+    # around the call to reliably observe the warning on stderr.
+    saved_warnings_seen = _logger_module._warnings_seen.copy()
+    _logger_module._warnings_seen.clear()
+    old_stderr = sys.stderr
+    sys.stderr = io.StringIO()
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("always", DeprecationWarning)
+            alias_verts, alias_faces = wp.geometry.IsoSurfaceMarchingCubes.extract_surface_marching_cubes(
+                field, threshold=0.0
+            )
+        stderr_output = sys.stderr.getvalue()
+    finally:
+        sys.stderr = old_stderr
+        _logger_module._warnings_seen.clear()
+        _logger_module._warnings_seen.update(saved_warnings_seen)
+
+    test.assertIn("MarchingCubes.extract_surface_marching_cubes() is deprecated", stderr_output)
+
+    np.testing.assert_array_equal(verts.numpy(), alias_verts.numpy())
+    np.testing.assert_array_equal(faces.numpy(), alias_faces.numpy())
+
+
 devices = get_test_devices()
 
 
 class TestMarchingCubes(unittest.TestCase):
-    pass
+    def test_marching_cubes_iso_surface_base(self):
+        """Check that IsoSurfaceMarchingCubes implements the wp.geometry.IsoSurfaceBase interface."""
+        self.assertTrue(issubclass(wp.geometry.IsoSurfaceMarchingCubes, wp.geometry.IsoSurfaceBase))
+
+        iso = wp.geometry.IsoSurfaceMarchingCubes(8, 8, 8)
+        self.assertIsInstance(iso, wp.geometry.IsoSurfaceBase)
+
+        # The base class is abstract and cannot be instantiated directly.
+        with self.assertRaises(TypeError):
+            wp.geometry.IsoSurfaceBase(8, 8, 8)
+
+    def test_marching_cubes_deprecated_top_level_alias(self):
+        """Check that the deprecated wp.MarchingCubes alias warns but still extracts.
+
+        The alias is a subclass rather than a plain assignment, so existing
+        ``isinstance`` checks and type annotations must keep working while the
+        deprecation warning is emitted on construction.
+        """
+        self.assertTrue(issubclass(wp.MarchingCubes, wp.geometry.IsoSurfaceMarchingCubes))
+
+        node_dim = 16
+        field = wp.zeros((node_dim, node_dim, node_dim), dtype=wp.float32)
+        wp.launch(
+            make_field_sphere_sdf,
+            dim=field.shape,
+            inputs=[field, wp.vec3(node_dim / 2, node_dim / 2, node_dim / 2), 4.0],
+        )
+
+        # The logger deduplicates DeprecationWarnings globally, so reset its cache
+        # around the call to reliably observe the warning on stderr.
+        saved_warnings_seen = _logger_module._warnings_seen.copy()
+        _logger_module._warnings_seen.clear()
+        old_stderr = sys.stderr
+        sys.stderr = io.StringIO()
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("always", DeprecationWarning)
+                iso = wp.MarchingCubes(nx=node_dim, ny=node_dim, nz=node_dim)
+            stderr_output = sys.stderr.getvalue()
+        finally:
+            sys.stderr = old_stderr
+            _logger_module._warnings_seen.clear()
+            _logger_module._warnings_seen.update(saved_warnings_seen)
+
+        self.assertIn("wp.MarchingCubes is deprecated", stderr_output)
+        self.assertIn("wp.geometry.IsoSurfaceMarchingCubes", stderr_output)
+
+        self.assertIsInstance(iso, wp.geometry.IsoSurfaceBase)
+
+        iso.surface(field, threshold=0.0)
+        expected_verts, expected_faces = wp.geometry.IsoSurfaceMarchingCubes.extract(field, threshold=0.0)
+        np.testing.assert_array_equal(iso.verts.numpy(), expected_verts.numpy())
+        np.testing.assert_array_equal(iso.indices.numpy(), expected_faces.numpy())
 
 
 add_function_test(TestMarchingCubes, "test_marching_cubes", test_marching_cubes, devices=devices)
@@ -356,6 +473,9 @@ add_function_test(TestMarchingCubes, "test_marching_cubes_functional", test_marc
 add_function_test(TestMarchingCubes, "test_marching_cubes_nonuniform", test_marching_cubes_nonuniform, devices=devices)
 add_function_test(
     TestMarchingCubes, "test_marching_cubes_empty_output", test_marching_cubes_empty_output, devices=devices
+)
+add_function_test(
+    TestMarchingCubes, "test_marching_cubes_degenerate_field", test_marching_cubes_degenerate_field, devices=devices
 )
 add_function_test(
     TestMarchingCubes, "test_marching_cubes_differentiable", test_marching_cubes_differentiable, devices=devices
@@ -366,6 +486,12 @@ add_function_test(
 add_function_test(TestMarchingCubes, "test_mc_lookup_tables_values", test_mc_lookup_tables_values, devices=devices)
 add_function_test(
     TestMarchingCubes, "test_mc_lookup_tables_to_warp_array", test_mc_lookup_tables_to_warp_array, devices=devices
+)
+add_function_test(
+    TestMarchingCubes,
+    "test_marching_cubes_extract_deprecated_alias",
+    test_marching_cubes_extract_deprecated_alias,
+    devices=devices,
 )
 
 

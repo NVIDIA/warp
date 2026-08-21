@@ -35,7 +35,9 @@ from warp._src.module_registry import register_module_source as _register_module
 # stubs. ``# fmt: off`` stops the formatter from wrapping the longer lines.
 # fmt: off
 _register_module_source("warp.autograd", "warp._src.autograd")
-_register_module_source("warp.marching_cubes", "warp._src.marching_cubes")
+_register_module_source("warp.geometry.marching_cubes", "warp._src.marching_cubes")
+_register_module_source("warp.geometry.sparse_marching_cubes", "warp._src.sparse_marching_cubes")
+_register_module_source("warp.geometry.surface_nets", "warp._src.surface_nets")
 _register_module_source("warp.math", "warp._src.math")
 _register_module_source("warp.sparse", "warp._src.sparse")
 _register_module_source("warp.utils", "warp._src.utils")
@@ -594,6 +596,10 @@ from warp.config import DeterministicMode as DeterministicMode
 # category: Misc
 
 from warp._src.math import *
+
+# Deprecated alias of `warp.geometry.IsoSurfaceMarchingCubes`, kept importable from
+# the top level for backward compatibility. The isosurface API itself lives in
+# `warp.geometry`, which must be imported explicitly.
 from warp._src.marching_cubes import MarchingCubes as MarchingCubes
 from warp._src.context import RegisteredGLBuffer as RegisteredGLBuffer
 

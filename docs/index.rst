@@ -45,12 +45,12 @@ warp/examples/core
            :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_fluid.py
       - .. image:: ./img/examples/core_graph_capture.png
            :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_graph_capture.py
-      - .. image:: ./img/examples/core_marching_cubes.png
-           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_marching_cubes.py
+      - .. image:: ./img/examples/core_isosurface.png
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_isosurface.py
     * - dem
       - fluid
       - graph capture
-      - marching cubes
+      - isosurface
     * - .. image:: ./img/examples/core_mesh.png
            :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_mesh.py
       - .. image:: ./img/examples/core_nvdb.png
@@ -79,11 +79,12 @@ warp/examples/core
            :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_fft_poisson_navier_stokes_2d.py
       - .. image:: ./img/examples/core_fdtd_3d.png
            :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_fdtd_3d.py
-      -
+      - .. image:: ./img/examples/core_sparse_marching_cubes.png
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_sparse_marching_cubes.py
       -
     * - 2-D incompressible turbulence in a periodic box
       - 3-D FDTD Luneburg lens
-      -
+      - sparse marching cubes
       -
 
 warp/examples/fem
@@ -202,6 +203,7 @@ warp/examples/tile
     api_reference/warp_build_experimental
     api_reference/warp_config
     api_reference/warp_fem
+    api_reference/warp_geometry
     api_reference/warp_optim
     api_reference/warp_render
     api_reference/warp_sparse

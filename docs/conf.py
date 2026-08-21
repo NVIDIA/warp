@@ -125,6 +125,15 @@ nitpick_ignore_regex = [
     (r"py:class", r"<(property|functools\.cached_property) object at .*>"),
     # Autosummary-generated member stubs for Warp classes (Texture*, fem.*, etc.)
     (r"py:obj", r"warp\.(Texture\w+|fixedarray|indexedarray|indexedfabricarray|fabricarray|fem\.).*"),
+    # Members inherited from IsoSurfaceBase, listed in member tables but documented on the base class
+    (r"py:obj", r"warp\.geometry\.IsoSurface(MarchingCubes|Nets)\.(resize|surface|extract)"),
+    # Everything on the deprecated `wp.MarchingCubes` alias is inherited from, and
+    # documented on, `warp.geometry.IsoSurfaceMarchingCubes`
+    (r"py:(obj|attr)", r"warp\.MarchingCubes\..*"),
+    (
+        r"py:attr",
+        r"(CUBE_CORNER_OFFSETS|EDGE_TO_CORNERS|CASE_TO_TRI_RANGE|TRI_LOCAL_INDICES)",
+    ),
     # Internal C++/Python interop methods on geometric types
     (
         r"py:obj",
