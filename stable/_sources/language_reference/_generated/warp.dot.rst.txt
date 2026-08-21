@@ -7,6 +7,7 @@
       :columns: 8
 
       * Kernel
+      * Python
       * Differentiable
 
    Compute the dot product.
@@ -18,6 +19,7 @@
       :columns: 8
 
       * Kernel
+      * Python
       * Differentiable
 
    Compute the dot product.

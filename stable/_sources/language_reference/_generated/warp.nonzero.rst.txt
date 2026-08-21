@@ -7,5 +7,6 @@
       :columns: 8
 
       * Kernel
+      * Python
 
    Compute 1.0 if ``x`` is not equal to zero, otherwise 0.0.

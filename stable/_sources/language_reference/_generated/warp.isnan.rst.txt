@@ -7,6 +7,7 @@
       :columns: 8
 
       * Kernel
+      * Python
 
    Check if ``a`` is NaN.
 
@@ -17,6 +18,7 @@
       :columns: 8
 
       * Kernel
+      * Python
 
    Check if any element of ``a`` is NaN.
 
@@ -27,6 +29,7 @@
       :columns: 8
 
       * Kernel
+      * Python
 
    Check if any element of ``a`` is NaN.
 
@@ -37,5 +40,6 @@
       :columns: 8
 
       * Kernel
+      * Python
 
    Check if any element of ``a`` is NaN.

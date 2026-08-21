@@ -7,6 +7,7 @@
       :columns: 8
 
       * Kernel
+      * Python
       * Differentiable
 
    Compute the dual cross product of two 6D screw vectors.

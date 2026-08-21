@@ -7,6 +7,7 @@
       :columns: 8
 
       * Kernel
+      * Python
 
    Print an error to stdout if ``a`` and ``b`` differ by more than ``tolerance``.
    
@@ -19,6 +20,7 @@
       :columns: 8
 
       * Kernel
+      * Python
 
    Print an error to stdout if ``a`` and ``b`` differ by more than ``tolerance``.
    
@@ -31,6 +33,7 @@
       :columns: 8
 
       * Kernel
+      * Python
 
    Print an error to stdout if ``a`` and ``b`` differ by more than ``tolerance``.
    
@@ -43,6 +46,7 @@
       :columns: 8
 
       * Kernel
+      * Python
 
    Print an error to stdout if ``a`` and ``b`` differ by more than ``tolerance``.
    

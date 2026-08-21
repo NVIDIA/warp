@@ -7,5 +7,6 @@
       :columns: 8
 
       * Kernel
+      * Python
 
    Divide two scalars using floor division.
