@@ -5711,6 +5711,12 @@ def tile_broadcast_value_func(arg_types, arg_values):
     if None in target_shape:
         raise ValueError("Tile functions require shape to be a compile time constant.")
 
+    if len(target_shape) < len(t.shape):
+        raise ValueError(
+            f"tile_broadcast() target shape {target_shape} must have at least {len(t.shape)} "
+            f"dimensions (source tile shape {t.shape})"
+        )
+
     target_strides = [0] * len(target_shape)
 
     offset = len(target_shape) - len(t.shape)
