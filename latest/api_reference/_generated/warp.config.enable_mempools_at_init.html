@@ -519,8 +519,11 @@
 <h1>warp.config.enable_mempools_at_init<a class="headerlink" href="#warp-config-enable-mempools-at-init" title="Link to this heading">#</a></h1>
 <dl class="py data">
 <dt class="sig sig-object py" id="warp.config.enable_mempools_at_init">
-<span class="sig-prename descclassname"><span class="pre">warp.config.</span></span><span class="sig-name descname"><span class="pre">enable_mempools_at_init</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">True</span></span><a class="headerlink" href="#warp.config.enable_mempools_at_init" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.config.</span></span><span class="sig-name descname"><span class="pre">enable_mempools_at_init</span></span><span class="property"><span class="w"> </span><span class="pre">:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">True</span></span><a class="headerlink" href="#warp.config.enable_mempools_at_init" title="Link to this definition">#</a></dt>
 <dd><p>Enable CUDA memory pools during device initialization when supported.</p>
+<p>Set <code class="docutils literal notranslate"><span class="pre">WARP_ENABLE_MEMPOOLS_AT_INIT</span></code> to <code class="docutils literal notranslate"><span class="pre">0</span></code>, <code class="docutils literal notranslate"><span class="pre">false</span></code>, or <code class="docutils literal notranslate"><span class="pre">no</span></code> before
+importing Warp to disable automatic memory pool initialization (e.g. when
+sharing the process with a framework that owns its own GPU allocator).</p>
 </dd></dl>
 
 </section>
