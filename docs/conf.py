@@ -358,6 +358,7 @@ def _get_builtin_overloads_info(symbol: str) -> list[dict[str, object]]:
     # Note: head.overloads already includes the head itself (see Function.__init__)
     all_funcs = head.overloads if hasattr(head, "overloads") else [head]
     visible_overloads = [f for f in all_funcs if not f.hidden]
+    exported_overloads = [f for f in all_funcs if wp._src.context.resolve_exported_function_sig(f) is not None]
 
     overloads_info = []
     seen_overloads = set()
@@ -370,11 +371,10 @@ def _get_builtin_overloads_info(symbol: str) -> list[dict[str, object]]:
         except Exception:
             return_type = "None"
 
-        if hasattr(func, "overloads"):
-            sig = wp._src.context.resolve_exported_function_sig(func)
-            is_exported = sig is not None
-        else:
-            is_exported = False
+        is_exported = any(
+            wp._src.codegen.func_match_args(func, list(exported.input_types.values()), {})
+            for exported in exported_overloads
+        )
 
         doc = normalize_docstring(func.doc)
         overload_key = (args_str, return_type, is_exported, func.is_differentiable, doc)
