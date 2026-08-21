@@ -7,6 +7,7 @@
       :columns: 8
 
       * Kernel
+      * Python
 
    Compute the bitwise OR of ``a`` and ``b``.
 
@@ -17,6 +18,7 @@
       :columns: 8
 
       * Kernel
+      * Python
 
    Compute the bitwise OR of ``a`` and ``b``.
    

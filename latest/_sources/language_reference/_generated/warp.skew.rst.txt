@@ -7,6 +7,7 @@
       :columns: 8
 
       * Kernel
+      * Python
       * Differentiable
 
    Compute the skew-symmetric 3x3 matrix for a 3D vector ``vec``.

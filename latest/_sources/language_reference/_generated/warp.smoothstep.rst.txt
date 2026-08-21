@@ -7,6 +7,7 @@
       :columns: 8
 
       * Kernel
+      * Python
       * Differentiable
 
    Smoothly interpolate between two values ``a`` and ``b`` using a factor ``x``,

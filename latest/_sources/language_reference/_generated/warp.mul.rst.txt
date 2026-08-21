@@ -7,6 +7,7 @@
       :columns: 8
 
       * Kernel
+      * Python
       * Differentiable
 
    Multiply two values.
@@ -18,6 +19,7 @@
       :columns: 8
 
       * Kernel
+      * Python
       * Differentiable
 
    Multiply two values.
@@ -31,6 +33,7 @@
       :columns: 8
 
       * Kernel
+      * Python
       * Differentiable
 
    Multiply two values.
@@ -44,6 +47,7 @@
       :columns: 8
 
       * Kernel
+      * Python
       * Differentiable
 
    Multiply two values.
@@ -57,6 +61,7 @@
       :columns: 8
 
       * Kernel
+      * Python
       * Differentiable
 
    Multiply two values.
@@ -70,6 +75,7 @@
       :columns: 8
 
       * Kernel
+      * Python
       * Differentiable
 
    Multiply two values.
@@ -83,6 +89,7 @@
       :columns: 8
 
       * Kernel
+      * Python
       * Differentiable
 
    Multiply two values.
@@ -96,6 +103,7 @@
       :columns: 8
 
       * Kernel
+      * Python
       * Differentiable
 
    Multiply two values.
@@ -109,6 +117,7 @@
       :columns: 8
 
       * Kernel
+      * Python
       * Differentiable
 
    Multiply two values.
@@ -122,6 +131,7 @@
       :columns: 8
 
       * Kernel
+      * Python
       * Differentiable
 
    Multiply two values.
@@ -135,6 +145,7 @@
       :columns: 8
 
       * Kernel
+      * Python
       * Differentiable
 
    Multiply two values.
@@ -148,6 +159,7 @@
       :columns: 8
 
       * Kernel
+      * Python
       * Differentiable
 
    Multiply two values.
@@ -161,6 +173,7 @@
       :columns: 8
 
       * Kernel
+      * Python
       * Differentiable
 
    Multiply two values.
@@ -176,6 +189,7 @@
       :columns: 8
 
       * Kernel
+      * Python
       * Differentiable
 
    Multiply two values.

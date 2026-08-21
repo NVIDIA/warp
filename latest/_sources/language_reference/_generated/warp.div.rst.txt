@@ -7,6 +7,7 @@
       :columns: 8
 
       * Kernel
+      * Python
       * Differentiable
 
    Divide two values.
@@ -18,6 +19,7 @@
       :columns: 8
 
       * Kernel
+      * Python
       * Differentiable
 
    Divide two values.
@@ -31,6 +33,7 @@
       :columns: 8
 
       * Kernel
+      * Python
       * Differentiable
 
    Divide two values.
@@ -44,6 +47,7 @@
       :columns: 8
 
       * Kernel
+      * Python
       * Differentiable
 
    Divide two values.
@@ -57,6 +61,7 @@
       :columns: 8
 
       * Kernel
+      * Python
       * Differentiable
 
    Divide two values.
@@ -70,6 +75,7 @@
       :columns: 8
 
       * Kernel
+      * Python
       * Differentiable
 
    Divide two values.
@@ -85,6 +91,7 @@
       :columns: 8
 
       * Kernel
+      * Python
       * Differentiable
 
    Divide two values.

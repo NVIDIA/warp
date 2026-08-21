@@ -7,6 +7,7 @@
       :columns: 8
 
       * Kernel
+      * Python
       * Differentiable
 
    Construct a quaternion representing a combined roll (z), pitch (x), yaw rotations (y) in radians.
