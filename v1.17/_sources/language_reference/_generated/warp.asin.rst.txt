@@ -7,6 +7,7 @@
       :columns: 8
 
       * Kernel
+      * Python
       * Differentiable
 
    Compute arcsin of ``x`` in radians.

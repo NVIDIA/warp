@@ -7,6 +7,7 @@
       :columns: 8
 
       * Kernel
+      * Python
 
    Compute the nearest integer value to ``x``, rounding halfway cases to nearest even integer.
    

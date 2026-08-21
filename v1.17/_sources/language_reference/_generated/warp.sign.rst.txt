@@ -7,6 +7,7 @@
       :columns: 8
 
       * Kernel
+      * Python
 
    Compute the sign of ``x``.
    
@@ -20,6 +21,7 @@
       :columns: 8
 
       * Kernel
+      * Python
 
    Compute the sign of ``x``.
    

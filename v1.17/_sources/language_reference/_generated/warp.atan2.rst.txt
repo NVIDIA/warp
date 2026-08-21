@@ -7,6 +7,7 @@
       :columns: 8
 
       * Kernel
+      * Python
       * Differentiable
 
    Compute the 2-argument arctangent, atan2, of the point ``(x, y)`` in radians.

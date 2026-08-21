@@ -7,6 +7,7 @@
       :columns: 8
 
       * Kernel
+      * Python
       * Differentiable
 
    Clamp the value of ``x`` to the range [low, high].
