@@ -1149,7 +1149,7 @@ def visit_tape(
         for id, x in enumerate(launch.inputs):
             name = kernel.adj.args[id].label
             if isinstance(x, wp.array):
-                if x.ptr is None:
+                if x.size == 0:  # skip zero-size arrays (ptr may be non-None on HIP)
                     continue
                 # if x.ptr in array_to_launch and len(array_to_launch[x.ptr]) > 1:
                 #     launch_arg_i = array_to_launch[x.ptr]
@@ -1166,6 +1166,8 @@ def visit_tape(
             elif wp._src.types.is_struct(x):
                 for varname, var in get_struct_vars(x).items():
                     if isinstance(var, wp.array):
+                        if var.size == 0:  # skip zero-size nested arrays (ptr may be non-None on HIP)
+                            continue
                         if not hide_readonly_arrays or var.ptr in computed_nodes or var.ptr in input_output_ptr:
                             add_array_node(var, f"{name}.{varname}", active_scope_stack)
                             input_arrays.append(var.ptr)
@@ -1176,7 +1178,7 @@ def visit_tape(
         output_arrays = []
         for id, x in enumerate(launch.outputs):
             name = kernel.adj.args[id + len(launch.inputs)].label
-            if isinstance(x, wp.array) and x.ptr is not None:
+            if isinstance(x, wp.array) and x.size > 0:  # skip zero-size arrays
                 add_array_node(x, name, active_scope_stack)
                 output_arrays.append(x.ptr)
                 computed_nodes.add(x.ptr)
@@ -1184,6 +1186,8 @@ def visit_tape(
             elif wp._src.types.is_struct(x):
                 for varname, var in get_struct_vars(x).items():
                     if isinstance(var, wp.array):
+                        if var.size == 0:  # skip zero-size nested arrays (ptr may be non-None on HIP)
+                            continue
                         add_array_node(var, f"{name}.{varname}", active_scope_stack)
                         output_arrays.append(var.ptr)
                         computed_nodes.add(var.ptr)
