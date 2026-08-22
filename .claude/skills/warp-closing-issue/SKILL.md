@@ -20,6 +20,9 @@ confirmation after the user sees the exact target issues and comment body.
   extra commits or issues; ask the user for more SHAs/issues if scope is incomplete.
 - Read the issue body and comments, not just the title.
 - Treat commit messages as orientation, not proof. Inspect diffs and changed files.
+- Treat `changelog/*.md` fragments as the editable source of pending changelog
+  intent. Treat generated `CHANGELOG.md` sections as released history or
+  release-build metadata, never as behavioral fix evidence by themselves.
 - Commenting is not always closure. Supported actions are `close`, `comment-only`,
   `keep open`, and `no public update`.
 - Never post comments or close issues before showing the assessment and exact draft.
@@ -48,15 +51,31 @@ fine for gaps or simple issue operations.
 ## Checklist
 
 1. **Resolve scope.** Record supplied commits, issues, and requested outcome, if any:
-   closure assessment, progress update, comment only, or unspecified.
+   closure assessment, progress update, comment only, or unspecified. If one
+   supplied commit contains all others, use the newest such commit as the
+   assessed head. For disjoint histories, inspect each commit tree separately
+   and do not invent a combined fragment view.
 
 2. **Gather evidence.** For each issue, extract author, author association, reported
    symptoms, reproducers, expected behavior, follow-up comments, maintainer asks, and
-   current state. For each commit, inspect message, diff, tests, docs/CHANGELOG
-   changes, and touched areas such as `warp/native/`.
+   current state. For each commit, inspect message, diff, tests, docs, changelog
+   fragments, generated changelog changes, and touched areas such as `warp/native/`.
+   For every touched fragment:
+   - Read `changelog/README.md` and validate the identifier, category, optional
+     counter, and content. A numeric filename identifies a GitHub issue and
+     Towncrier generates its link; the fragment text should not repeat it.
+   - Compare a numeric identifier with the supplied issue number. Inspect sibling
+     fragments with the same identifier at the assessed head so complementary,
+     duplicate, and counter-based entries are not mistaken for separate fixes.
+     If an Added/Fixed/Changed set describes iterations on one not-yet-released
+     feature, flag it for changelog audit; do not consolidate fragments in this
+     issue-assessment workflow.
+   - When combined rendering matters, run the pinned Towncrier draft from the
+     assessed worktree and map the rendered bullet back to its source paths.
+     A draft is read-only; never edit generated `CHANGELOG.md`.
    When the issue or commit appears to change public API behavior, inspect the
-   relevant code, docs, tests, and CHANGELOG entry for intended API surface and
-   examples.
+   relevant code, docs, tests, source fragments, rendered entry, and historical
+   changelog for intended API surface and examples.
 
 3. **Classify commits.**
 
@@ -64,7 +83,7 @@ fine for gaps or simple issue operations.
    | --- | --- |
    | Behavioral fix | Changes the code path behind the issue. |
    | Test-only | Adds confidence, but cannot close by itself. |
-   | Docs/CHANGELOG-only | Supporting/progress metadata, not fix evidence. |
+   | Docs/changelog-only | Source fragments or generated release metadata; supporting context, not fix evidence. |
    | Follow-up | Completes or corrects earlier issue-linked work. |
    | Beyond scope | Related cleanup or broader behavior worth surfacing. |
 
@@ -199,7 +218,7 @@ Progress update: <full-sha> landed <summary>.
 ```
 
 Then explain what changed in issue terms, mention supporting commits if useful, and
-state whether the issue should remain open. Mention docs/CHANGELOG-only commits only
+state whether the issue should remain open. Mention docs/changelog-only commits only
 as supporting metadata. If leaving an externally filed issue open for requester
 verification, say that directly. Drop empty sections.
 
