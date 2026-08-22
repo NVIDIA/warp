@@ -221,7 +221,9 @@ html_context = {
     "doc_path": "docs",
 }
 html_css_files = ["custom.css"]
+html_js_files = ["copy-page-source.js"]
 html_static_path = ["_static"]
+html_copy_source = True
 html_show_sphinx = False
 
 
@@ -779,6 +781,12 @@ def generate_reference_docs(app):
     docs.generate_reference.run()
 
 
+def hide_generated_api_edit_link(_app, pagename, _templatename, context, _doctree):
+    """Hide edit links for generated API stubs that are not tracked in Git."""
+    if pagename.startswith("api_reference/_generated/"):
+        context["theme_use_edit_page_button"] = False
+
+
 def drop_autosummary_toctrees(app, doctree):
     # autosummary's `:toctree:` wraps its generated toctree in
     # `autosummary_toc`, a `nodes.comment` subclass. HTML writers skip the
@@ -912,6 +920,7 @@ def setup(app):
     # Priority must be lower than autosummary's default (500) so that the
     # reference .rst files exist before autosummary scans for stub directives.
     app.connect("builder-inited", generate_reference_docs, priority=400)
+    app.connect("html-page-context", hide_generated_api_edit_link)
     app.connect("autodoc-process-docstring", filter_builtin_docstrings)
     app.connect("autodoc-process-docstring", rewrite_wp_in_docstrings)
     app.connect("autodoc-process-docstring", populate_reexported_docstrings)
