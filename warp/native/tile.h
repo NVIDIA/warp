@@ -489,6 +489,7 @@ template <typename T, typename Shape> struct tile_vectorized_check_t {
         // 3. All dimensions fit within bounds
         WP_PRAGMA_UNROLL
         for (int d = 0; d < Shape::N; ++d) {
+            ok = ok && (global.offset[d] >= 0);
             ok = ok && (global.offset[d] + Shape::dim(d) <= global.data.shape[d]);
         }
 
@@ -547,8 +548,8 @@ template <typename T, typename Shape> struct tile_vectorized_check_t {
 
         for (int d = 0; d < Shape::N; ++d) {
             assert(
-                global.offset[d] + Shape::dim(d) <= global.data.shape[d]
-                && "aligned=True but tile extends past array bounds"
+                global.offset[d] >= 0 && global.offset[d] + Shape::dim(d) <= global.data.shape[d]
+                && "aligned=True but tile extends outside array bounds"
             );
         }
 
@@ -592,6 +593,7 @@ template <typename T, typename Shape, typename Global> inline CUDA_CALLABLE bool
     //    or skipping (stores).
     WP_PRAGMA_UNROLL
     for (int d = 0; d < Shape::N; ++d) {
+        ok = ok && (global.offset[d] >= 0);
         ok = ok && (global.offset[d] + Shape::dim(d) <= global.data.shape[d]);
     }
 
@@ -755,7 +757,7 @@ template <typename T, typename Shape_, bool BoundsCheck = true, bool Aligned = f
                 int c = offset[i] + coord[i];
 
                 // handle out of bounds case
-                if (c >= data.shape[i])
+                if (c < 0 || c >= data.shape[i])
                     return false;
                 else
                     byte_index += int64_t(data.strides[i]) * c;
@@ -1932,7 +1934,7 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
                 for (int i = WP_TILE_THREAD_IDX; i < Layout::Size; i += WP_TILE_BLOCK_DIM) {
                     bool valid = true;
                     if constexpr (Global::bounds_check) {
-                        if (dest.offset[0] + i >= dest.data.shape[0])
+                        if (dest.offset[0] + i < 0 || dest.offset[0] + i >= dest.data.shape[0])
                             valid = false;
                     }
 
@@ -1953,7 +1955,8 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
                     if constexpr (Global::bounds_check) {
                         WP_PRAGMA_UNROLL
                         for (int d = 0; d < Shape::N; ++d) {
-                            if (dest.offset[d] + iter.coord[d] >= dest.data.shape[d])
+                            const int c = dest.offset[d] + iter.coord[d];
+                            if (c < 0 || c >= dest.data.shape[d])
                                 valid = false;
                         }
                     }
@@ -2095,7 +2098,7 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
                 for (int i = WP_TILE_THREAD_IDX; i < Layout::Size; i += WP_TILE_BLOCK_DIM) {
                     bool valid = true;
                     if constexpr (Global::bounds_check) {
-                        if (src.offset[0] + i >= src.data.shape[0])
+                        if (src.offset[0] + i < 0 || src.offset[0] + i >= src.data.shape[0])
                             valid = false;
                     }
 
@@ -2117,7 +2120,8 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
                     if constexpr (Global::bounds_check) {
                         WP_PRAGMA_UNROLL
                         for (int d = 0; d < Shape::N; ++d) {
-                            if (src.offset[d] + iter.coord[d] >= src.data.shape[d])
+                            const int c = src.offset[d] + iter.coord[d];
+                            if (c < 0 || c >= src.data.shape[d])
                                 valid = false;
                         }
                     }
