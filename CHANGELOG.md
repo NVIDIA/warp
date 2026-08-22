@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.16.1] - 2026-08-24
+
+### Fixed
+
+- Fix unexpected memory retention during the first CUDA graph capture in some host applications when APIC recording is
+  disabled ([GH-1829](https://github.com/NVIDIA/warp/issues/1829)).
+
 ## [1.16.0] - 2026-08-03
 
 ### Added
@@ -3009,6 +3016,7 @@
 
 - Initial publish for alpha testing
 
+[1.16.1]: https://github.com/NVIDIA/warp/releases/tag/v1.16.1
 [1.16.0]: https://github.com/NVIDIA/warp/releases/tag/v1.16.0
 [1.15.0]: https://github.com/NVIDIA/warp/releases/tag/v1.15.0
 [1.14.0]: https://github.com/NVIDIA/warp/releases/tag/v1.14.0
