@@ -7,7 +7,7 @@ import importlib.util
 import os
 
 import numpy as np
-from asv_runner.benchmarks.mark import skip_benchmark_if, skip_for_params
+from asv_runner.benchmarks.mark import skip_benchmark_if
 from numpy.random import default_rng
 
 import warp as wp
@@ -490,11 +490,7 @@ class BvhAABBQueryCPU:
 
     Uses a bunny mesh (~12k triangle bounds) with 32k query AABBs at two radii
     (sparse: 0.002, dense: 0.03) and three leaf sizes (default/1/8).
-    In-bounds timings query AABBs that traverse the tree. A single representative
-    BVH root-miss case times AABBs rejected at the root node, isolating per-call
-    iterator overhead; it uses a larger ``number`` because the per-call cost is
-    tiny and noisy at ``number = 5``. The mesh root-miss variant produced false
-    classifications on unchanged code and was dropped.
+    The timings query AABBs that traverse the tree.
     """
 
     params = [[0.002, 0.03], [0, 1, 8], ["sah"]]
@@ -521,13 +517,11 @@ class BvhAABBQueryCPU:
 
         rng = default_rng(42)
         query_points_np = (bb_min + (bb_max - bb_min) * rng.random((CPU_NUM_QUERY_POINTS, 3))).astype(np.float32)
-        root_miss_points_np = (query_points_np + 4.0 * (bb_max - bb_min)).astype(np.float32)
 
         return {
             "points_np": points_np,
             "indices_np": indices_np,
             "query_points_np": query_points_np,
-            "root_miss_points_np": root_miss_points_np,
         }
 
     @setup_once
@@ -541,7 +535,6 @@ class BvhAABBQueryCPU:
             points = wp.array(cache["points_np"], dtype=wp.vec3)
             indices = wp.array(cache["indices_np"], dtype=int)
             query_points = wp.array(cache["query_points_np"], dtype=wp.vec3)
-            root_miss_points = wp.array(cache["root_miss_points_np"], dtype=wp.vec3)
 
             num_faces = int(cache["indices_np"].shape[0] / 3)
             lowers = wp.zeros(num_faces, dtype=wp.vec3)
@@ -572,7 +565,6 @@ class BvhAABBQueryCPU:
             for name, geom_id, kernel, points_arr in (
                 ("bvh", self.bvh.id, bvh_kernel, query_points),
                 ("mesh", self.mesh.id, mesh_kernel, query_points),
-                ("bvh_root_miss", self.bvh.id, bvh_kernel, root_miss_points),
             ):
                 self.launches[name] = wp.launch(
                     dim=CPU_NUM_QUERY_POINTS,
@@ -593,21 +585,6 @@ class BvhAABBQueryCPU:
     @skip_benchmark_if(USD_AVAILABLE is False)
     def time_mesh_aabb_vs_aabb_query(self, cache, query_radius, leaf_size, bvh_constructor):
         self.launches["mesh"].launch()
-
-    @skip_benchmark_if(USD_AVAILABLE is False)
-    @skip_for_params(
-        [
-            (0.002, 1, "sah"),
-            (0.002, 8, "sah"),
-            (0.03, 0, "sah"),
-            (0.03, 1, "sah"),
-            (0.03, 8, "sah"),
-        ]
-    )
-    def time_bvh_aabb_root_miss(self, cache, query_radius, leaf_size, bvh_constructor):
-        self.launches["bvh_root_miss"].launch()
-
-    time_bvh_aabb_root_miss.number = 40
 
 
 class BvhRayQuery:
