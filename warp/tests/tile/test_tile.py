@@ -1649,6 +1649,41 @@ def test_tile_broadcast_grad(test, device):
     assert_np_equal(a.grad.numpy(), np.ones(5) * 5.0)
 
 
+def test_tile_broadcast_lower_rank_target_rejected(test, device):
+    # tile_broadcast() documents NumPy broadcast semantics, which require the
+    # target rank to be at least the source rank. A lower-rank target used to
+    # slip through validation and silently alias a leading subrange of the
+    # source tile (e.g. a (2, 3) tile broadcast to shape (3,) exposes the first
+    # row) instead of raising; NumPy rejects the corresponding call.
+    @wp.kernel(module="unique", enable_backward=False)
+    def lower_rank_target_kernel(a: wp.array2d[float], out: wp.array[float]):
+        t = wp.tile_load(a, shape=(2, 3), storage="shared")
+        b = wp.tile_broadcast(t, shape=(3,))
+        wp.tile_store(out, b)
+
+    a = wp.array(np.ones((2, 3), dtype=np.float32), device=device)
+    out = wp.zeros(3, dtype=float, device=device)
+
+    with test.assertRaisesRegex((RuntimeError, ValueError), r"at least"):
+        wp.launch_tiled(lower_rank_target_kernel, dim=[1], inputs=[a, out], block_dim=TILE_DIM, device=device)
+
+    # Broadcasting to a higher rank is still allowed: leading target dimensions
+    # become broadcast (zero-stride) copies of the source tile.
+    @wp.kernel(module="unique", enable_backward=False)
+    def higher_rank_target_kernel(a: wp.array2d[float], out: wp.array3d[float]):
+        t = wp.tile_load(a, shape=(2, 3), storage="shared")
+        b = wp.tile_broadcast(t, shape=(4, 2, 3))
+        c = b + wp.tile_ones(dtype=float, shape=(4, 2, 3))
+        wp.tile_store(out, c)
+
+    a = wp.array(np.arange(6, dtype=np.float32).reshape(2, 3), device=device)
+    out = wp.zeros((4, 2, 3), dtype=float, device=device)
+
+    wp.launch_tiled(higher_rank_target_kernel, dim=[1], inputs=[a, out], block_dim=TILE_DIM, device=device)
+    expected = np.broadcast_to(a.numpy(), (4, 2, 3)) + np.ones((4, 2, 3), dtype=np.float32)
+    assert_np_equal(out.numpy(), expected)
+
+
 @wp.kernel
 def test_tile_squeeze_kernel(x: wp.array3d[float], y: wp.array[float]):
     a = wp.tile_load(x, shape=(1, TILE_M, 1), offset=(0, 0, 0))
@@ -3217,6 +3252,12 @@ add_function_test(TestTile, "test_tile_broadcast_add_2d", test_tile_broadcast_ad
 add_function_test(TestTile, "test_tile_broadcast_add_3d", test_tile_broadcast_add_3d, devices=devices)
 add_function_test(TestTile, "test_tile_broadcast_add_4d", test_tile_broadcast_add_4d, devices=devices)
 add_function_test(TestTile, "test_tile_broadcast_grad", test_tile_broadcast_grad, devices=devices)
+add_function_test(
+    TestTile,
+    "test_tile_broadcast_lower_rank_target_rejected",
+    test_tile_broadcast_lower_rank_target_rejected,
+    devices=devices,
+)
 add_function_test(TestTile, "test_tile_squeeze", test_tile_squeeze, devices=devices)
 add_function_test(TestTile, "test_tile_reshape", test_tile_reshape, devices=devices)
 add_function_test(TestTile, "test_tile_len", test_tile_len, devices=devices)
