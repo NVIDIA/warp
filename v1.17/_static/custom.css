@@ -46,3 +46,19 @@ ol.arabic li blockquote:has(div[class^="highlight-"])
     color: inherit;
     padding: 0;
 }
+
+
+/*
+Keep the page-source split button and its extensible action menu compact.
+*/
+
+.copy-page-source
+{
+    white-space: nowrap;
+}
+
+.copy-page-source .dropdown-menu
+{
+    --bs-dropdown-font-size: 0.875rem;
+    min-width: max-content;
+}
