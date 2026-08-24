@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import venv
 from pathlib import Path
 from unittest import mock
 
@@ -143,6 +144,26 @@ class ChildProcessTests(unittest.TestCase):
 
 
 class EagerImportTests(unittest.TestCase):
+    def test_sitecustomize_ignores_interpreters_without_usd(self):
+        eager_directory = Path(__file__).parent / "usd_eager_import"
+        with tempfile.TemporaryDirectory() as directory:
+            virtual_environment = Path(directory) / "venv"
+            venv.EnvBuilder(with_pip=False).create(virtual_environment)
+            executable = virtual_environment / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+            environment = os.environ.copy()
+            environment["PYTHONPATH"] = str(eager_directory)
+
+            result = subprocess.run(
+                [executable, "-c", "print('python-body')"],
+                capture_output=True,
+                check=False,
+                encoding="utf-8",
+                env=environment,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.strip(), "python-body")
+
     def test_sitecustomize_restores_runtime_path_before_importing_tf(self):
         eager_directory = Path(__file__).parent / "usd_eager_import"
         with tempfile.TemporaryDirectory() as directory:
