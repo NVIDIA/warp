@@ -262,6 +262,7 @@ class Function:
         skip_adding_overload: bool = False,
         require_original_output_arg: bool = False,
         scope_locals: dict[str, Any] | None = None,
+        inline_hint: Literal["noinline", "forceinline"] | None = None,
     ):
         if code_transformers is None:
             code_transformers = []
@@ -289,6 +290,7 @@ class Function:
         self.replay_snippet = replay_snippet
         self.custom_grad_func: Function | None = None
         self.require_original_output_arg = require_original_output_arg
+        self.inline_hint = inline_hint
         self.generic_parent = None  # generic function that was used to instantiate this overload
 
         if initializer_list_func is None:
@@ -1282,6 +1284,8 @@ def func(
     *,
     name: str | None = None,
     module: Module | Literal["unique"] | str | None = None,
+    noinline: bool = False,
+    forceinline: bool = False,
 ) -> Callable[[Callable[_FuncParams, _FuncReturn]], Callable[_FuncParams, _FuncReturn]]:
     """Register a Warp function (decorator with arguments: ``@wp.func(...)``)."""
     ...
@@ -1292,6 +1296,8 @@ def func(
     *,
     name: str | None = None,
     module: Module | Literal["unique"] | str | None = None,
+    noinline: bool = False,
+    forceinline: bool = False,
 ):
     """Decorator to define a Warp function callable from kernels and other Warp functions.
 
@@ -1302,10 +1308,28 @@ def func(
         module: The Warp module in which to register the function. If ``None``,
             Warp infers the module from ``f``. Pass ``"unique"`` to create a
             new module, or a string to register the function in a named module.
+        noinline: Emit the function out of line instead of letting the backend
+            compiler inline it into its call sites (CUDA ``__noinline__``).
+            Cannot be combined with ``forceinline``.
+        forceinline: Require the function to be inlined, overriding the backend
+            compiler's own heuristic (CUDA ``__forceinline__``). Cannot be
+            combined with ``noinline``.
+
+    Both inline hints cover the generated adjoint as well as the forward function,
+    and are lowered per backend so the decorated function stays valid for CPU and CUDA.
 
     See also:
         :func:`warp.kernel` for defining kernels that can be launched on devices.
     """
+
+    if not isinstance(noinline, bool):
+        raise TypeError(f"noinline must be a bool, got {type(noinline).__name__}: {noinline!r}")
+    if not isinstance(forceinline, bool):
+        raise TypeError(f"forceinline must be a bool, got {type(forceinline).__name__}: {forceinline!r}")
+    if noinline and forceinline:
+        raise ValueError("noinline and forceinline cannot be specified together")
+
+    inline_hint = "noinline" if noinline else "forceinline" if forceinline else None
 
     frame = inspect.currentframe()
     if frame is None or frame.f_back is None:
@@ -1337,6 +1361,7 @@ def func(
             value_func=None,
             scope_locals=scope_locals,
             doc=doc.strip(),
+            inline_hint=inline_hint,
         )  # value_type not known yet, will be inferred during Adjoint.build()
 
         # use the top of the list of overloads for this key
@@ -2971,6 +2996,10 @@ class ModuleHasher:
             if ovl.adj_native_snippet:
                 ch.update(bytes(ovl.adj_native_snippet, "utf-8"))
 
+            # the inline hint changes the generated C++/CUDA, so it belongs in the cache key
+            if ovl.inline_hint:
+                ch.update(bytes(ovl.inline_hint, "utf-8"))
+
         h = ch.digest()
 
         self.function_hashes[func] = h
@@ -3366,6 +3395,7 @@ class ModuleBuilder:
                     options=self.options,
                     forward_only=forward_only,
                     reverse_only=reverse_only,
+                    inline_hint=func.inline_hint,
                 )
             else:
                 source += warp._src.codegen.codegen_snippet(
