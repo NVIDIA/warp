@@ -337,13 +337,14 @@ class Example:
     def _rebuild_fem_structures(self, degree):
         """Build all geometry-dependent FEM objects from scratch.
 
-        Called once from ``__init__``.  Creates geometry objects, boundary
-        subdomains, Dirichlet projectors, and function spaces.
+        Called from ``__init__`` and after each ``remesh()``.  Creates
+        geometry objects, boundary subdomains, Dirichlet projectors, and
+        function spaces.
         """
 
         if self._use_deformed_geo:
             self._build_deformed_geo()
-        elif not hasattr(self, "_geo"):
+        else:
             self._geo = fem.Trimesh2D(
                 tri_vertex_indices=self._tri_vertex_indices, positions=self._vertex_positions, build_bvh=True
             )
@@ -377,9 +378,8 @@ class Example:
     def _rebuild_spaces(self, degree):
         """Rebuild function spaces, fields, and test/trial functions.
 
-        Called after edge flips update ``tri_vertex_indices`` in-place.
-        Reuses the existing geometry objects (avoids non-deterministic topology
-        rebuild) and boundary subdomains (unaffected by interior edge flips).
+        Called from ``_rebuild_fem_structures`` with freshly rebuilt geometry
+        objects and boundary subdomains.
         """
 
         self._u_space = fem.make_polynomial_space(self._geo, degree=degree, dtype=wp.vec2)
@@ -438,13 +438,27 @@ class Example:
         # Write back updated connectivity in-place
         wp.copy(src=wp.array(tri_np, dtype=int), dest=self._tri_vertex_indices)
 
-        # Rebuild spaces and fields on the existing geometry.
-        # We intentionally avoid recreating the Trimesh2D objects: edge flips
-        # only affect interior edges, so boundary structures and projectors
-        # remain valid; and re-running _build_topology() would introduce
-        # non-deterministic edge ordering that perturbs the boundary projector
-        # enough to visibly affect the displacement on ill-conditioned systems.
+        # Recreate the geometry and everything built from it. Although only
+        # interior edges are flipped, a flip also moves the two triangles'
+        # outer edges between them, so the Trimesh2D's cached edge-to-triangle
+        # mapping -- and the triangle BVH used by `fem.lookup` -- go stale
+        # even for edges that were not themselves flipped. Rebuilding the
+        # geometry refreshes this topology so that side quadrature keeps
+        # evaluating at the correct locations.
+        # The flipper rejects flips that would degenerate the reference mesh,
+        # so `_start_geo` can be rebuilt with the same connectivity. The
+        # degree-1 fixed-vertex projector only depends on the left/right
+        # boundary vertex sets, which edge flips never change, so it remains
+        # valid without a rebuild.
+        self._start_geo = fem.Trimesh2D(
+            tri_vertex_indices=self._tri_vertex_indices, positions=self._initial_positions, build_bvh=True
+        )
         self._rebuild_fem_structures(self._degree)
+
+        # Node ordering may change with the rebuilt topology; refresh the
+        # start-geometry node positions used for rendering.
+        start_space = fem.make_polynomial_space(self._start_geo, degree=self._degree, dtype=wp.vec2)
+        self._start_node_positions = start_space.node_positions()
 
     def step(self):
         # Forward step, record adjoint tape for forces
