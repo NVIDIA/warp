@@ -968,10 +968,11 @@ jobs:
 
       - name: Report Warp diagnostics
         # See the note in test-warp-gpu-linux; the Warp counterpart to nvidia-smi.
-        run: uv run --extra dev --extra torch-cu13 python -c "import warp as wp; wp.print_diagnostics(); assert wp.get_cuda_devices(), 'No CUDA device visible to Warp'"
+        run: uv run --extra dev --extra torch-cu13 --with usd-core==25.5.1 python -c "import warp as wp; wp.print_diagnostics(); assert wp.get_cuda_devices(), 'No CUDA device visible to Warp'"
 
       - name: Run Tests
-        run: uv run --extra dev --extra torch-cu13 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
+        # Pin usd-core to 25.5.1 to work around a frequent loading crash on Windows.
+        run: uv run --extra dev --extra torch-cu13 --with usd-core==25.5.1 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
 
       - name: Test Summary
         uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86  # v2.4
