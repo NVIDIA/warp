@@ -111,6 +111,8 @@ jobs:
           path: warp/bin/
 
       - name: Validate eager USD bootstrap
+        env:
+          PYTHONPATH: ${{ github.workspace }}/tools/ci/usd_eager_import
         run: >-
           uv run --extra dev --extra torch-cu13 --with 'usd-core==26.8' python -c
           "import os; from warp.tests import unittest_utils; assert unittest_utils.USD_AVAILABLE; from pxr import Tf; print('Tf:', Tf); print('PXR_USD_WINDOWS_DLL_PATH:', os.environ.get('PXR_USD_WINDOWS_DLL_PATH'))"
@@ -118,6 +120,8 @@ jobs:
       - name: Run Warp suite with usd-core 26.8
         if: always()
         shell: pwsh
+        env:
+          PYTHONPATH: ${{ github.workspace }}/tools/ci/usd_eager_import
         run: |
           uv run --extra dev --extra torch-cu13 --with 'usd-core==26.8' -m warp.tests `
             --junit-report-xml "$env:USD_LOADER_ARTIFACT_DIR\rspec.xml" `

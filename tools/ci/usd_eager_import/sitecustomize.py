@@ -11,6 +11,21 @@ import sys
 import time
 
 try:
+    import pxr  # noqa: F401
+
+    variable_name = "PXR_USD_WINDOWS_DLL_PATH"
+    search_paths = [path for path in os.environ.get(variable_name, "").split(os.pathsep) if path]
+    normalized_paths = {os.path.normcase(os.path.abspath(path)) for path in search_paths}
+
+    for relative_path in ("bin", os.path.join("Library", "bin")):
+        runtime_directory = os.path.join(sys.prefix, relative_path)
+        normalized_path = os.path.normcase(os.path.abspath(runtime_directory))
+        if os.path.isdir(runtime_directory) and normalized_path not in normalized_paths:
+            search_paths.append(runtime_directory)
+            normalized_paths.add(normalized_path)
+
+    os.environ[variable_name] = os.pathsep.join(search_paths)
+
     from pxr import Tf
 except BaseException as error:
     print(

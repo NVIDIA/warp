@@ -143,16 +143,28 @@ class ChildProcessTests(unittest.TestCase):
 
 
 class EagerImportTests(unittest.TestCase):
-    def test_sitecustomize_imports_tf_before_the_python_body(self):
+    def test_sitecustomize_restores_runtime_path_before_importing_tf(self):
         eager_directory = Path(__file__).parent / "usd_eager_import"
         with tempfile.TemporaryDirectory() as directory:
             fake_package_root = Path(directory)
             pxr_directory = fake_package_root / "pxr"
             pxr_directory.mkdir()
-            (pxr_directory / "__init__.py").write_text("from . import Tf\n", encoding="utf-8")
-            (pxr_directory / "Tf.py").write_text("VALUE = 'loaded'\n", encoding="utf-8")
+            (pxr_directory / "__init__.py").write_text(
+                "import os\nos.environ['PXR_USD_WINDOWS_DLL_PATH'] = os.path.dirname(__file__)\n",
+                encoding="utf-8",
+            )
+            (pxr_directory / "Tf.py").write_text(
+                "import os\n"
+                "runtime_directory = os.environ['EXPECTED_USD_RUNTIME_DIRECTORY']\n"
+                "search_paths = os.environ['PXR_USD_WINDOWS_DLL_PATH'].split(os.pathsep)\n"
+                "if runtime_directory not in search_paths:\n"
+                "    raise ImportError('environment runtime directory was not restored')\n"
+                "VALUE = 'loaded'\n",
+                encoding="utf-8",
+            )
             environment = os.environ.copy()
             environment["PYTHONPATH"] = os.pathsep.join((str(eager_directory), str(fake_package_root)))
+            environment["EXPECTED_USD_RUNTIME_DIRECTORY"] = str(Path(sys.prefix) / "bin")
 
             result = subprocess.run(
                 [sys.executable, "-c", "print('python-body')"],
@@ -237,6 +249,7 @@ class DiagnosticWorkflowTests(unittest.TestCase):
         self.assertIn("unittest_utils.USD_AVAILABLE", workflow)
         self.assertIn("-m warp.tests", workflow)
         self.assertIn("--extra dev --extra torch-cu13", workflow)
+        self.assertGreaterEqual(workflow.count("PYTHONPATH: ${{ github.workspace }}/tools/ci/usd_eager_import"), 2)
         self.assertNotIn("strategy:", workflow)
         self.assertNotIn("usd-core==25.5.1", workflow)
         self.assertNotIn("Run MSVC resolution probes", workflow)
