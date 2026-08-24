@@ -1,0 +1,212 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+# Temporary workflow for diagnosing usd-core native-library loading on the
+# Windows RTX Pro 6000 runner. This workflow is not intended to be merged.
+name: Windows USD TLS Diagnostic
+
+on:
+  workflow_call:
+
+env:
+  PYTHONFAULTHANDLER: "1"
+
+jobs:
+  build-warp-windows-cuda13:
+    runs-on: windows-2022
+    permissions:
+      contents: read
+    env:
+      UV_PYTHON: "3.12"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+          lfs: true
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57  # v8.0.0
+        with:
+          version: "0.11.16"
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Restore build artifacts
+        if: github.repository == 'NVIDIA/warp'
+        id: cache-build
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
+        with:
+          path: warp/bin/
+          key: build-build-artifact-windows-cuda13-13.0.3-${{ hashFiles('build_lib.py', 'build_llvm.py', 'warp/_src/build_architecture.py', 'warp/_src/build_dll.py', 'warp/native/clang/clang.cpp', 'warp/native/**/*.cpp', 'warp/native/**/*.cu', 'warp/native/**/*.cuh', 'warp/native/**/*.h', 'warp/native/libdevice/*.bc', 'warp/native/warp.map', 'deps/llvm-deps.packman.xml', 'deps/libmathdx-deps.packman.xml', '.github/actions/setup-warp-cuda/action.yml', 'tools/ci/cuda_toolkit.py', 'tools/ci/cuda_toolkit_requirements.json', 'tools/ci/cuda_toolkit_lock.json') }}
+
+      - name: Set up CUDA Toolkit for Warp
+        if: steps.cache-build.outputs.cache-hit != 'true'
+        uses: ./.github/actions/setup-warp-cuda
+        with:
+          version: "13.0.3"
+          platform: windows-x86_64
+          cache-read: ${{ github.repository == 'NVIDIA/warp' }}
+          cache-write: false
+
+      - name: Build Warp
+        if: steps.cache-build.outputs.cache-hit != 'true'
+        env:
+          WARP_CACHE_PATH: ${{ runner.temp }}/warp-cache-usd-tls-${{ github.run_id }}-build
+        run: uv run build_lib.py
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: build-artifact-windows-cuda13
+          path: warp/bin/
+          retention-days: 7
+
+  probe-usd-tls-windows:
+    name: Probe USD TLS (${{ matrix.scenario }})
+    needs: build-warp-windows-cuda13
+    runs-on: windows-amd64-gpu-rtxpro6000-latest-1
+    permissions:
+      contents: read
+    timeout-minutes: ${{ matrix.timeout_minutes }}
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - scenario: matched-controls
+            timeout_minutes: 25
+          - scenario: tls-thread-pressure
+            timeout_minutes: 30
+          - scenario: full-suite-lazy-26-8
+            timeout_minutes: 60
+          - scenario: full-suite-eager-26-8
+            timeout_minutes: 60
+    steps:
+      - name: Configure task paths and crash dumps
+        shell: pwsh
+        run: |
+          $scenario = '${{ matrix.scenario }}'
+          $artifactDirectory = Join-Path $env:RUNNER_TEMP "usd-tls-artifacts\$scenario"
+          $dumpDirectory = Join-Path $artifactDirectory 'dumps'
+          $warpCacheDirectory = Join-Path $env:RUNNER_TEMP "warp-cache-usd-tls-${{ github.run_id }}-$scenario"
+          New-Item -ItemType Directory -Force -Path $dumpDirectory | Out-Null
+          "USD_TLS_ARTIFACT_DIR=$artifactDirectory" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "WARP_CACHE_PATH=$warpCacheDirectory" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+          $dumpKey = 'HKCU:\Software\Microsoft\Windows\Windows Error Reporting\LocalDumps\python.exe'
+          New-Item -Force -Path $dumpKey | Out-Null
+          New-ItemProperty -Force -Path $dumpKey -Name DumpFolder -PropertyType ExpandString -Value $dumpDirectory | Out-Null
+          New-ItemProperty -Force -Path $dumpKey -Name DumpType -PropertyType DWord -Value 1 | Out-Null
+          New-ItemProperty -Force -Path $dumpKey -Name DumpCount -PropertyType DWord -Value 10 | Out-Null
+
+      - name: Display runner information
+        shell: pwsh
+        run: |
+          hostname
+          Write-Output "RUNNER_NAME=$env:RUNNER_NAME"
+          Write-Output "RUNNER_OS=$env:RUNNER_OS"
+          Write-Output "RUNNER_ARCH=$env:RUNNER_ARCH"
+          Write-Output "ImageOS=$env:ImageOS"
+          Write-Output "ImageVersion=$env:ImageVersion"
+          Get-ComputerInfo | Select-Object WindowsProductName, WindowsVersion, OsBuildNumber
+          nvidia-smi
+
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+          lfs: true
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57  # v8.0.0
+        with:
+          version: "0.11.16"
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Download Warp build artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          name: build-artifact-windows-cuda13
+          path: warp/bin/
+
+      - name: Report Warp diagnostics
+        run: >-
+          uv run --extra dev --extra torch-cu13 python -c
+          "import warp as wp; wp.print_diagnostics(); assert wp.get_cuda_devices(), 'No CUDA device visible to Warp'"
+
+      - name: Run matched loader controls
+        if: matrix.scenario == 'matched-controls'
+        shell: pwsh
+        run: |
+          $failed = $false
+
+          uv run --extra dev --extra torch-cu13 --with 'usd-core==25.5.1' tools/ci/usd_windows_tls_probe.py `
+            --case late-sdf --repeat 16 --workers 8 `
+            --output-dir "$env:USD_TLS_ARTIFACT_DIR\usd-25.5.1-late-sdf"
+          if ($LASTEXITCODE -ne 0) { $failed = $true }
+
+          uv run --extra dev --extra torch-cu13 --with 'usd-core==26.8' tools/ci/usd_windows_tls_probe.py `
+            --case early-tf --repeat 16 --workers 8 `
+            --output-dir "$env:USD_TLS_ARTIFACT_DIR\usd-26.8-early-tf"
+          if ($LASTEXITCODE -ne 0) { $failed = $true }
+
+          uv run --extra dev --extra torch-cu13 --with 'usd-core==26.8' tools/ci/usd_windows_tls_probe.py `
+            --case late-tf --repeat 16 --workers 8 `
+            --output-dir "$env:USD_TLS_ARTIFACT_DIR\usd-26.8-late-tf"
+          if ($LASTEXITCODE -ne 0) { $failed = $true }
+
+          if ($failed) { exit 1 }
+
+      - name: Run TLS thread-pressure sweep
+        if: matrix.scenario == 'tls-thread-pressure'
+        shell: pwsh
+        run: |
+          $failed = $false
+          foreach ($threadCount in 0, 16, 64, 128) {
+            uv run --extra dev --extra torch-cu13 --with 'usd-core==25.5.1' tools/ci/usd_windows_tls_probe.py `
+              --case late-sdf --held-threads $threadCount --repeat 4 --workers 2 `
+              --output-dir "$env:USD_TLS_ARTIFACT_DIR\usd-25.5.1-late-sdf-threads-$threadCount"
+            if ($LASTEXITCODE -ne 0) { $failed = $true }
+
+            uv run --extra dev --extra torch-cu13 --with 'usd-core==26.8' tools/ci/usd_windows_tls_probe.py `
+              --case late-tf --held-threads $threadCount --repeat 4 --workers 2 `
+              --output-dir "$env:USD_TLS_ARTIFACT_DIR\usd-26.8-late-tf-threads-$threadCount"
+            if ($LASTEXITCODE -ne 0) { $failed = $true }
+          }
+
+          if ($failed) { exit 1 }
+
+      - name: Run full suite with lazy USD import
+        if: matrix.scenario == 'full-suite-lazy-26-8'
+        shell: pwsh
+        run: |
+          uv run --extra dev --extra torch-cu13 --with 'usd-core==26.8' -m warp.tests `
+            --junit-report-xml "$env:USD_TLS_ARTIFACT_DIR\rspec.xml" `
+            --coverage --coverage-xml "$env:USD_TLS_ARTIFACT_DIR\coverage.xml" `
+            -s autodetect 2>&1 | Tee-Object -FilePath "$env:USD_TLS_ARTIFACT_DIR\suite.log"
+          exit $LASTEXITCODE
+
+      - name: Run full suite with eager USD import
+        if: matrix.scenario == 'full-suite-eager-26-8'
+        shell: pwsh
+        env:
+          PYTHONPATH: ${{ github.workspace }}/tools/ci/usd_eager_import
+        run: |
+          uv run --extra dev --extra torch-cu13 --with 'usd-core==26.8' -m warp.tests `
+            --junit-report-xml "$env:USD_TLS_ARTIFACT_DIR\rspec.xml" `
+            --coverage --coverage-xml "$env:USD_TLS_ARTIFACT_DIR\coverage.xml" `
+            -s autodetect 2>&1 | Tee-Object -FilePath "$env:USD_TLS_ARTIFACT_DIR\suite.log"
+          exit $LASTEXITCODE
+
+      - name: Upload diagnostic artifacts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: usd-tls-${{ matrix.scenario }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/usd-tls-artifacts/${{ matrix.scenario }}
+          if-no-files-found: warn
+          retention-days: 7
