@@ -41,8 +41,42 @@ import numpy as np  # noqa: E402
 
 import warp as wp  # noqa: E402
 
-pxr = importlib.util.find_spec("pxr")
-USD_AVAILABLE = pxr is not None
+
+def _initialize_usd():
+    """Make an installed USD package loadable before declaring it available."""
+    if importlib.util.find_spec("pxr") is None:
+        return False
+
+    if sys.platform == "win32":
+        # usd-core initializes this variable when pxr is imported, replacing
+        # any value supplied by the caller. Restore runtime directories from
+        # the active environment before loading the first native USD module.
+        import pxr  # noqa: F401, PLC0415
+
+        variable_name = "PXR_USD_WINDOWS_DLL_PATH"
+        search_paths = [path for path in os.environ.get(variable_name, "").split(os.pathsep) if path]
+        normalized_paths = {os.path.normcase(os.path.abspath(path)) for path in search_paths}
+
+        for relative_path in ("bin", os.path.join("Library", "bin")):
+            runtime_directory = os.path.join(sys.prefix, relative_path)
+            if not os.path.isfile(os.path.join(runtime_directory, "msvcp140.dll")):
+                continue
+
+            normalized_path = os.path.normcase(os.path.abspath(runtime_directory))
+            if normalized_path not in normalized_paths:
+                search_paths.append(runtime_directory)
+                normalized_paths.add(normalized_path)
+
+        os.environ[variable_name] = os.pathsep.join(search_paths)
+
+        # Import a native module now so an unusable USD installation fails at
+        # test discovery rather than midway through the suite.
+        from pxr import Tf  # noqa: F401, PLC0415
+
+    return True
+
+
+USD_AVAILABLE = _initialize_usd()
 
 
 def make_isolated_kernel(func, **kwargs):

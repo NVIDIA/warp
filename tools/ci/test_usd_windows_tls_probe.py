@@ -168,22 +168,78 @@ class EagerImportTests(unittest.TestCase):
             self.assertEqual(lines[-1], "python-body")
 
 
+class UsdAvailabilityTests(unittest.TestCase):
+    def test_windows_detection_restores_runtime_path_before_importing_tf(self):
+        with tempfile.TemporaryDirectory() as directory:
+            temporary_root = Path(directory)
+            fake_package_root = temporary_root / "packages"
+            pxr_directory = fake_package_root / "pxr"
+            pxr_directory.mkdir(parents=True)
+
+            fake_prefix = temporary_root / "environment"
+            runtime_directory = fake_prefix / "bin"
+            runtime_directory.mkdir(parents=True)
+            (runtime_directory / "msvcp140.dll").touch()
+
+            (pxr_directory / "__init__.py").write_text(
+                "import os\nos.environ['PXR_USD_WINDOWS_DLL_PATH'] = os.path.dirname(__file__)\n",
+                encoding="utf-8",
+            )
+            (pxr_directory / "Tf.py").write_text(
+                "import os\n"
+                "runtime_directory = os.environ['EXPECTED_USD_RUNTIME_DIRECTORY']\n"
+                "search_paths = os.environ['PXR_USD_WINDOWS_DLL_PATH'].split(os.pathsep)\n"
+                "if runtime_directory not in search_paths:\n"
+                "    raise ImportError('environment runtime directory was not restored')\n"
+                "os.environ['FAKE_TF_IMPORTED'] = '1'\n",
+                encoding="utf-8",
+            )
+
+            environment = os.environ.copy()
+            environment["PYTHONPATH"] = os.pathsep.join(
+                (str(fake_package_root), str(REPOSITORY_ROOT), environment.get("PYTHONPATH", ""))
+            )
+            environment["EXPECTED_USD_RUNTIME_DIRECTORY"] = str(runtime_directory)
+            environment.pop("FAKE_TF_IMPORTED", None)
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-c",
+                    (
+                        "import os, sys; "
+                        f"sys.prefix = {str(fake_prefix)!r}; "
+                        "from warp.tests import unittest_utils; "
+                        "assert unittest_utils.USD_AVAILABLE; "
+                        "assert os.environ.get('FAKE_TF_IMPORTED') == '1'"
+                    ),
+                ],
+                capture_output=True,
+                check=False,
+                encoding="utf-8",
+                env=environment,
+                cwd=REPOSITORY_ROOT,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+
 class DiagnosticWorkflowTests(unittest.TestCase):
-    def test_diagnostic_workflow_runs_only_msvc_resolution_probe(self):
+    def test_diagnostic_workflow_runs_one_patched_full_suite(self):
         workflow_path = REPOSITORY_ROOT / ".github" / "workflows" / "usd-windows-tls-diagnostic.yml"
         self.assertTrue(workflow_path.exists(), f"Missing {workflow_path}")
         workflow = workflow_path.read_text(encoding="utf-8")
 
+        self.assertIn("build-warp-windows-cuda13:", workflow)
+        self.assertIn("needs: build-warp-windows-cuda13", workflow)
         self.assertIn("runs-on: windows-amd64-gpu-rtxpro6000-latest-1", workflow)
-        self.assertIn("Run MSVC resolution probes", workflow)
-        self.assertIn("uv venv .probe-venv", workflow)
-        self.assertIn("uv pip install --python $probePython", workflow)
-        self.assertIn("& $probePython tools/ci/usd_windows_tls_probe.py", workflow)
-        self.assertIn("blosc==1.11.4", workflow)
-        self.assertIn("'after-pxr-dll-path-tf'", workflow)
-        self.assertIn("Report MSVC runtime candidates", workflow)
-        self.assertNotIn("build-warp-windows-cuda13", workflow)
-        self.assertNotIn("--extra dev", workflow)
+        self.assertIn("--with 'usd-core==26.8'", workflow)
+        self.assertIn("unittest_utils.USD_AVAILABLE", workflow)
+        self.assertIn("-m warp.tests", workflow)
+        self.assertIn("--extra dev --extra torch-cu13", workflow)
+        self.assertNotIn("strategy:", workflow)
+        self.assertNotIn("usd-core==25.5.1", workflow)
+        self.assertNotIn("Run MSVC resolution probes", workflow)
         self.assertNotIn("procdump64.exe", workflow)
         self.assertIn("if: always()", workflow)
 
