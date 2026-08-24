@@ -23,6 +23,18 @@ import traceback
 from ctypes import wintypes
 from pathlib import Path
 
+CASES = (
+    "early-tf",
+    "after-msvc-tf",
+    "after-blosc-tf",
+    "after-warp-import-tf",
+    "after-warp-cuda-tf",
+    "after-torch-import-tf",
+    "after-torch-cuda-tf",
+    "late-tf",
+    "late-sdf",
+)
+
 
 @dataclasses.dataclass(frozen=True)
 class CommandResult:
@@ -224,11 +236,45 @@ def hold_threads(count: int):
             thread.join(timeout=30)
 
 
-def warm_cuda_runtimes() -> tuple[object, object]:
-    """Initialize Warp, Torch, and their CUDA runtime state."""
-    emit_checkpoint("before-warp")
+def warm_msvc_runtime() -> list[object]:
+    """Load the MSVC runtime copies supplied in the environment's bin directory."""
+    if os.name != "nt":
+        raise RuntimeError("The MSVC runtime preload is only available on Windows")
 
+    emit_checkpoint("before-msvc-runtime")
+    handles = []
+    bin_directory = Path(sys.prefix) / "bin"
+    for name in ("vcruntime140.dll", "vcruntime140_1.dll", "msvcp140.dll", "msvcp140_atomic_wait.dll"):
+        path = bin_directory / name
+        if path.exists():
+            handles.append(ctypes.WinDLL(str(path)))
+    if not handles:
+        raise RuntimeError(f"No MSVC runtime DLLs found in {bin_directory}")
+    emit_checkpoint("after-msvc-runtime")
+    return handles
+
+
+def import_blosc() -> object:
+    """Import Blosc, which supplies the environment's MSVC runtime DLLs."""
+    emit_checkpoint("before-blosc-import")
+    import blosc  # noqa: PLC0415
+
+    emit_checkpoint("after-blosc-import")
+    return blosc
+
+
+def import_warp() -> object:
+    """Import Warp without explicitly initializing its CUDA runtime."""
+    emit_checkpoint("before-warp-import")
     import warp as wp  # noqa: PLC0415
+
+    emit_checkpoint("after-warp-import")
+    return wp
+
+
+def warm_warp_cuda() -> object:
+    """Initialize Warp and retain one CUDA allocation."""
+    wp = import_warp()
 
     wp.init()
     devices = wp.get_cuda_devices()
@@ -237,8 +283,21 @@ def warm_cuda_runtimes() -> tuple[object, object]:
     warp_array = wp.zeros(1, dtype=wp.float32, device=devices[0])
     wp.synchronize_device(devices[0])
     emit_checkpoint("after-warp-cuda")
+    return warp_array
 
+
+def import_torch() -> object:
+    """Import PyTorch without explicitly initializing its CUDA runtime."""
+    emit_checkpoint("before-torch-import")
     import torch  # noqa: PLC0415
+
+    emit_checkpoint("after-torch-import")
+    return torch
+
+
+def warm_torch_cuda() -> object:
+    """Initialize PyTorch and retain one CUDA allocation."""
+    torch = import_torch()
 
     if not torch.cuda.is_available():
         raise RuntimeError("No CUDA device is visible to PyTorch")
@@ -246,7 +305,12 @@ def warm_cuda_runtimes() -> tuple[object, object]:
     torch_tensor.add_(1)
     torch.cuda.synchronize()
     emit_checkpoint("after-torch-cuda")
-    return warp_array, torch_tensor
+    return torch_tensor
+
+
+def warm_cuda_runtimes() -> tuple[object, object]:
+    """Initialize Warp, PyTorch, and their CUDA runtime state."""
+    return warm_warp_cuda(), warm_torch_cuda()
 
 
 def import_tf() -> None:
@@ -279,21 +343,26 @@ def run_child(case: str, held_thread_count: int, attempt: int) -> int:
     )
 
     try:
-        if case == "early-tf":
-            with hold_threads(held_thread_count):
-                import_tf()
-            runtime_state = warm_cuda_runtimes()
-        else:
-            runtime_state = warm_cuda_runtimes()
-            with hold_threads(held_thread_count):
-                import_tf()
-                if case == "late-sdf":
-                    import_sdf()
-                elif case != "late-tf":
-                    raise ValueError(f"Unknown case: {case}")
+        preloaders = {
+            "early-tf": (),
+            "after-msvc-tf": (warm_msvc_runtime,),
+            "after-blosc-tf": (import_blosc,),
+            "after-warp-import-tf": (import_warp,),
+            "after-warp-cuda-tf": (warm_warp_cuda,),
+            "after-torch-import-tf": (import_torch,),
+            "after-torch-cuda-tf": (warm_torch_cuda,),
+            "late-tf": (warm_cuda_runtimes,),
+            "late-sdf": (warm_cuda_runtimes,),
+        }
+        runtime_state = [preload() for preload in preloaders[case]]
 
-        # Retain CUDA allocations through the final USD import.
-        assert runtime_state
+        with hold_threads(held_thread_count):
+            import_tf()
+            if case == "late-sdf":
+                import_sdf()
+
+        # Retain preloaded modules and allocations through the USD import.
+        assert all(state is not None for state in runtime_state)
         emit_event("complete", attempt=attempt, case=case)
         return 0
     except BaseException as error:
@@ -351,21 +420,20 @@ def run_attempt(
     attempt: int,
     output_directory: Path,
     timeout_seconds: int,
+    procdump_path: Path | None,
 ) -> dict[str, object]:
     """Launch and summarize one fresh child process."""
     stem = f"{case}-threads-{held_thread_count:03d}-attempt-{attempt:03d}"
+    if procdump_path is not None:
+        (output_directory / "dumps" / stem).mkdir(parents=True, exist_ok=True)
     result = run_command(
-        [
-            sys.executable,
-            str(Path(__file__).resolve()),
-            "--child",
-            "--case",
-            case,
-            "--held-threads",
-            str(held_thread_count),
-            "--attempt",
-            str(attempt),
-        ],
+        build_child_command(
+            case=case,
+            held_thread_count=held_thread_count,
+            attempt=attempt,
+            output_directory=output_directory,
+            procdump_path=procdump_path,
+        ),
         stdout_path=output_directory / f"{stem}.stdout.log",
         stderr_path=output_directory / f"{stem}.stderr.log",
         timeout_seconds=timeout_seconds,
@@ -377,6 +445,46 @@ def run_attempt(
         **dataclasses.asdict(result),
         "return_code_hex": result.return_code_hex,
     }
+
+
+def build_child_command(
+    *,
+    case: str,
+    held_thread_count: int,
+    attempt: int,
+    output_directory: Path,
+    procdump_path: Path | None,
+) -> list[str]:
+    """Build a child command, optionally monitored for first-chance access violations."""
+    stem = f"{case}-threads-{held_thread_count:03d}-attempt-{attempt:03d}"
+    child_command = [
+        sys.executable,
+        str(Path(__file__).resolve()),
+        "--child",
+        "--case",
+        case,
+        "--held-threads",
+        str(held_thread_count),
+        "--attempt",
+        str(attempt),
+    ]
+    if procdump_path is None:
+        return child_command
+
+    return [
+        str(procdump_path),
+        "-accepteula",
+        "-mm",
+        "-e",
+        "1",
+        "-f",
+        "C0000005",
+        "-n",
+        "1",
+        "-x",
+        str(output_directory / "dumps" / stem),
+        *child_command,
+    ]
 
 
 def run_parent(args: argparse.Namespace) -> int:
@@ -404,6 +512,7 @@ def run_parent(args: argparse.Namespace) -> int:
                 attempt=attempt,
                 output_directory=output_directory,
                 timeout_seconds=args.child_timeout_seconds,
+                procdump_path=args.procdump,
             )
             for attempt in range(1, args.repeat + 1)
         ]
@@ -432,13 +541,14 @@ def run_parent(args: argparse.Namespace) -> int:
 
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--case", choices=("early-tf", "late-tf", "late-sdf"), required=True)
+    parser.add_argument("--case", choices=CASES, required=True)
     parser.add_argument("--held-threads", type=int, default=0)
     parser.add_argument("--attempt", type=int, default=1, help=argparse.SUPPRESS)
     parser.add_argument("--repeat", type=int, default=1)
     parser.add_argument("--workers", type=int, default=1)
     parser.add_argument("--child-timeout-seconds", type=int, default=300)
     parser.add_argument("--output-dir", type=Path, default=Path("usd-tls-artifacts"))
+    parser.add_argument("--procdump", type=Path)
     parser.add_argument("--child", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
     if args.held_threads < 0:

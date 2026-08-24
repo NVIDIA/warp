@@ -94,6 +94,40 @@ class ChildProcessTests(unittest.TestCase):
         self.assertEqual(return_code, 0)
         self.assertEqual(events, ["warmup", ("hold-enter", 16), "tf", ("hold-exit", 16)])
 
+    def test_import_order_case_runs_only_its_selected_preload(self):
+        events = []
+
+        with (
+            mock.patch.object(probe, "emit_event"),
+            mock.patch.object(probe, "warm_msvc_runtime", side_effect=lambda: events.append("msvc") or 1),
+            mock.patch.object(probe, "import_blosc", side_effect=lambda: events.append("blosc") or 2),
+            mock.patch.object(probe, "import_warp", side_effect=lambda: events.append("warp") or 3),
+            mock.patch.object(probe, "warm_warp_cuda", side_effect=lambda: events.append("warp-cuda") or 4),
+            mock.patch.object(probe, "import_torch", side_effect=lambda: events.append("torch") or 5),
+            mock.patch.object(probe, "warm_torch_cuda", side_effect=lambda: events.append("torch-cuda") or 6),
+            mock.patch.object(probe, "import_tf", side_effect=lambda: events.append("tf")),
+        ):
+            return_code = probe.run_child("after-torch-import-tf", held_thread_count=0, attempt=1)
+
+        self.assertEqual(return_code, 0)
+        self.assertEqual(events, ["torch", "tf"])
+
+    def test_procdump_wraps_child_and_uses_a_unique_dump_directory(self):
+        output_directory = Path(r"C:\artifacts\early-tf")
+        command = probe.build_child_command(
+            case="early-tf",
+            held_thread_count=0,
+            attempt=3,
+            output_directory=output_directory,
+            procdump_path=Path(r"C:\tools\procdump64.exe"),
+        )
+
+        self.assertEqual(command[0], r"C:\tools\procdump64.exe")
+        self.assertIn("-e", command)
+        self.assertIn("C0000005", command)
+        self.assertIn(str(output_directory / "dumps" / "early-tf-threads-000-attempt-003"), command)
+        self.assertIn("--child", command)
+
 
 class EagerImportTests(unittest.TestCase):
     def test_sitecustomize_imports_tf_before_the_python_body(self):
@@ -122,21 +156,18 @@ class EagerImportTests(unittest.TestCase):
 
 
 class DiagnosticWorkflowTests(unittest.TestCase):
-    def test_diagnostic_workflow_serializes_all_four_gpu_scenarios(self):
+    def test_diagnostic_workflow_runs_only_import_order_and_first_chance_probe(self):
         workflow_path = REPOSITORY_ROOT / ".github" / "workflows" / "usd-windows-tls-diagnostic.yml"
         self.assertTrue(workflow_path.exists(), f"Missing {workflow_path}")
         workflow = workflow_path.read_text(encoding="utf-8")
 
         self.assertIn("runs-on: windows-amd64-gpu-rtxpro6000-latest-1", workflow)
-        self.assertIn("fail-fast: false", workflow)
-        self.assertIn("max-parallel: 1", workflow)
-        for scenario in (
-            "matched-controls",
-            "tls-thread-pressure",
-            "full-suite-lazy-26-8",
-            "full-suite-eager-26-8",
-        ):
-            self.assertIn(f"scenario: {scenario}", workflow)
+        self.assertIn("Run import-order and first-chance probes", workflow)
+        self.assertIn("procdump64.exe", workflow)
+        self.assertIn("Get-AuthenticodeSignature", workflow)
+        self.assertIn("'after-torch-import-tf'", workflow)
+        self.assertNotIn("full-suite-lazy-26-8", workflow)
+        self.assertNotIn("full-suite-eager-26-8", workflow)
         self.assertIn("if: always()", workflow)
 
     def test_pull_request_workflow_routes_only_to_the_diagnostic_workflow(self):
