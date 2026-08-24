@@ -12,73 +12,21 @@ env:
   PYTHONFAULTHANDLER: "1"
 
 jobs:
-  build-warp-windows-cuda13:
-    runs-on: windows-2022
-    permissions:
-      contents: read
-    env:
-      UV_PYTHON: "3.12"
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
-        with:
-          persist-credentials: false
-          lfs: true
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57  # v8.0.0
-        with:
-          version: "0.11.16"
-
-      - name: Set up Python
-        run: uv python install
-
-      - name: Restore build artifacts
-        if: github.repository == 'NVIDIA/warp'
-        id: cache-build
-        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
-        with:
-          path: warp/bin/
-          key: build-build-artifact-windows-cuda13-13.0.3-${{ hashFiles('build_lib.py', 'build_llvm.py', 'warp/_src/build_architecture.py', 'warp/_src/build_dll.py', 'warp/native/clang/clang.cpp', 'warp/native/**/*.cpp', 'warp/native/**/*.cu', 'warp/native/**/*.cuh', 'warp/native/**/*.h', 'warp/native/libdevice/*.bc', 'warp/native/warp.map', 'deps/llvm-deps.packman.xml', 'deps/libmathdx-deps.packman.xml', '.github/actions/setup-warp-cuda/action.yml', 'tools/ci/cuda_toolkit.py', 'tools/ci/cuda_toolkit_requirements.json', 'tools/ci/cuda_toolkit_lock.json') }}
-
-      - name: Set up CUDA Toolkit for Warp
-        if: steps.cache-build.outputs.cache-hit != 'true'
-        uses: ./.github/actions/setup-warp-cuda
-        with:
-          version: "13.0.3"
-          platform: windows-x86_64
-          cache-read: ${{ github.repository == 'NVIDIA/warp' }}
-          cache-write: false
-
-      - name: Build Warp
-        if: steps.cache-build.outputs.cache-hit != 'true'
-        env:
-          WARP_CACHE_PATH: ${{ runner.temp }}/warp-cache-usd-tls-${{ github.run_id }}-build
-        run: uv run build_lib.py
-
-      - name: Upload build artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
-        with:
-          name: build-artifact-windows-cuda13
-          path: warp/bin/
-          retention-days: 7
-
-  probe-usd-loader-windows:
-    name: Probe USD import order and first chance
-    needs: build-warp-windows-cuda13
+  probe-msvc-resolution-windows:
+    name: Probe USD MSVC runtime resolution
     runs-on: windows-amd64-gpu-rtxpro6000-latest-1
     permissions:
       contents: read
-    timeout-minutes: 20
+    timeout-minutes: 12
+    env:
+      UV_PYTHON: "3.12"
     steps:
-      - name: Configure task paths
+      - name: Configure artifact path
         shell: pwsh
         run: |
-          $artifactDirectory = Join-Path $env:RUNNER_TEMP 'usd-loader-order-artifacts'
-          $warpCacheDirectory = Join-Path $env:RUNNER_TEMP "warp-cache-usd-loader-${{ github.run_id }}"
+          $artifactDirectory = Join-Path $env:RUNNER_TEMP 'usd-msvc-resolution-artifacts'
           New-Item -ItemType Directory -Force -Path $artifactDirectory | Out-Null
           "USD_TLS_ARTIFACT_DIR=$artifactDirectory" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          "WARP_CACHE_PATH=$warpCacheDirectory" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Display runner information
         shell: pwsh
@@ -96,7 +44,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           persist-credentials: false
-          lfs: true
+          lfs: false
 
       - name: Install uv
         uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57  # v8.0.0
@@ -106,54 +54,58 @@ jobs:
       - name: Set up Python
         run: uv python install
 
-      - name: Download Warp build artifact
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
-        with:
-          name: build-artifact-windows-cuda13
-          path: warp/bin/
-
-      - name: Download and verify ProcDump
+      - name: Prepare minimal probe environment
         shell: pwsh
         run: |
-          $archivePath = Join-Path $env:RUNNER_TEMP 'procdump.zip'
-          $toolDirectory = Join-Path $env:RUNNER_TEMP 'procdump'
-          Invoke-WebRequest -Uri 'https://download.sysinternals.com/files/Procdump.zip' -OutFile $archivePath
-          Expand-Archive -LiteralPath $archivePath -DestinationPath $toolDirectory -Force
+          $probePrefix = uv run --extra dev `
+            --with 'usd-core==26.8' --with 'blosc==1.11.4' `
+            python -c "import sys; print(sys.prefix)"
+          $probePrefix = ($probePrefix | Select-Object -Last 1).Trim()
+          Write-Output "USD_PROBE_PREFIX=$probePrefix"
+          "USD_PROBE_PREFIX=$probePrefix" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
-          $procDumpPath = Join-Path $toolDirectory 'procdump64.exe'
-          $signature = Get-AuthenticodeSignature -LiteralPath $procDumpPath
-          $signature | Format-List Status, StatusMessage, SignerCertificate
-          if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notlike '*Microsoft Corporation*') {
-            throw "ProcDump signature is not valid: $($signature.Status)"
+      - name: Report MSVC runtime candidates
+        shell: pwsh
+        run: |
+          $runtimeNames = @(
+            'msvcp140.dll',
+            'msvcp140_atomic_wait.dll',
+            'vcruntime140.dll',
+            'vcruntime140_1.dll'
+          )
+          $candidates = foreach ($name in $runtimeNames) {
+            Join-Path "$env:WINDIR\System32" $name
+            Join-Path "$env:USD_PROBE_PREFIX\bin" $name
           }
-          "PROCDUMP_PATH=$procDumpPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Get-Item -LiteralPath $candidates -ErrorAction SilentlyContinue |
+            Select-Object FullName, Length, @{
+              Name = 'FileVersion'
+              Expression = { $_.VersionInfo.FileVersion }
+            }, @{
+              Name = 'ProductVersion'
+              Expression = { $_.VersionInfo.ProductVersion }
+            } |
+            Format-List
+          Get-Item -LiteralPath $candidates -ErrorAction SilentlyContinue |
+            Get-FileHash -Algorithm SHA256 |
+            Format-List Path, Hash
 
-      - name: Report Warp diagnostics
-        run: >-
-          uv run --extra dev --extra torch-cu13 python -c
-          "import warp as wp; wp.print_diagnostics(); assert wp.get_cuda_devices(), 'No CUDA device visible to Warp'"
-
-      - name: Run import-order and first-chance probes
+      - name: Run MSVC resolution probes
         shell: pwsh
         run: |
           $failed = $false
-
-          uv run --extra dev --extra torch-cu13 --with 'usd-core==26.8' tools/ci/usd_windows_tls_probe.py `
-            --case early-tf --repeat 1 --workers 1 --procdump "$env:PROCDUMP_PATH" `
-            --output-dir "$env:USD_TLS_ARTIFACT_DIR\early-tf-first-chance"
-          if ($LASTEXITCODE -ne 0) { $failed = $true }
-
           $cases = @(
-            'after-msvc-tf',
-            'after-blosc-tf',
-            'after-warp-import-tf',
-            'after-warp-cuda-tf',
-            'after-torch-import-tf',
-            'after-torch-cuda-tf',
-            'late-tf'
+            'early-tf',
+            'after-msvcp140-tf',
+            'after-atomic-wait-tf',
+            'after-msvc-directory-tf',
+            'after-pxr-dll-path-tf',
+            'after-msvc-tf'
           )
           foreach ($case in $cases) {
-            uv run --extra dev --extra torch-cu13 --with 'usd-core==26.8' tools/ci/usd_windows_tls_probe.py `
+            uv run --extra dev `
+              --with 'usd-core==26.8' --with 'blosc==1.11.4' `
+              python tools/ci/usd_windows_tls_probe.py `
               --case $case --repeat 2 --workers 1 `
               --output-dir "$env:USD_TLS_ARTIFACT_DIR\$case"
             if ($LASTEXITCODE -ne 0) { $failed = $true }
@@ -165,7 +117,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
-          name: usd-loader-order-${{ github.run_id }}
-          path: ${{ runner.temp }}/usd-loader-order-artifacts
+          name: usd-msvc-resolution-${{ github.run_id }}
+          path: ${{ runner.temp }}/usd-msvc-resolution-artifacts
           if-no-files-found: warn
           retention-days: 7

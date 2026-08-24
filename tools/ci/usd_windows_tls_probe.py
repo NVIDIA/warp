@@ -26,6 +26,10 @@ from pathlib import Path
 CASES = (
     "early-tf",
     "after-msvc-tf",
+    "after-msvcp140-tf",
+    "after-atomic-wait-tf",
+    "after-msvc-directory-tf",
+    "after-pxr-dll-path-tf",
     "after-blosc-tf",
     "after-warp-import-tf",
     "after-warp-cuda-tf",
@@ -236,22 +240,67 @@ def hold_threads(count: int):
             thread.join(timeout=30)
 
 
-def warm_msvc_runtime() -> list[object]:
-    """Load the MSVC runtime copies supplied in the environment's bin directory."""
+def msvc_runtime_bin_directory() -> Path:
+    """Return the directory containing environment-provided MSVC runtimes."""
+    return Path(sys.prefix) / "bin"
+
+
+def load_msvc_runtime(names: tuple[str, ...], stage: str) -> list[object]:
+    """Load selected MSVC runtime DLLs from the environment's bin directory."""
     if os.name != "nt":
         raise RuntimeError("The MSVC runtime preload is only available on Windows")
 
-    emit_checkpoint("before-msvc-runtime")
+    emit_checkpoint(f"before-{stage}")
     handles = []
-    bin_directory = Path(sys.prefix) / "bin"
-    for name in ("vcruntime140.dll", "vcruntime140_1.dll", "msvcp140.dll", "msvcp140_atomic_wait.dll"):
+    bin_directory = msvc_runtime_bin_directory()
+    for name in names:
         path = bin_directory / name
         if path.exists():
             handles.append(ctypes.WinDLL(str(path)))
     if not handles:
         raise RuntimeError(f"No MSVC runtime DLLs found in {bin_directory}")
-    emit_checkpoint("after-msvc-runtime")
+    emit_checkpoint(f"after-{stage}")
     return handles
+
+
+def warm_msvc_runtime() -> list[object]:
+    """Load all MSVC runtime copies supplied in the environment's bin directory."""
+    return load_msvc_runtime(
+        ("vcruntime140.dll", "vcruntime140_1.dll", "msvcp140.dll", "msvcp140_atomic_wait.dll"),
+        "msvc-runtime",
+    )
+
+
+def warm_msvcp140() -> list[object]:
+    """Load only the environment-provided MSVCP140 runtime."""
+    return load_msvc_runtime(("msvcp140.dll",), "msvcp140")
+
+
+def warm_atomic_wait() -> list[object]:
+    """Load only the environment-provided MSVCP140 atomic-wait runtime."""
+    return load_msvc_runtime(("msvcp140_atomic_wait.dll",), "msvcp140-atomic-wait")
+
+
+def add_msvc_dll_directory() -> object:
+    """Add the environment's MSVC runtime directory to the process search path."""
+    if os.name != "nt":
+        raise RuntimeError("DLL directories are only available on Windows")
+
+    emit_checkpoint("before-msvc-dll-directory")
+    handle = os.add_dll_directory(str(msvc_runtime_bin_directory()))
+    emit_checkpoint("after-msvc-dll-directory")
+    return handle
+
+
+def extend_pxr_dll_path() -> str:
+    """Make the environment's MSVC runtimes visible to USD's import wrapper."""
+    import pxr  # noqa: PLC0415
+
+    pxr_directory = Path(pxr.__file__).resolve().parent
+    dll_path = os.pathsep.join((str(pxr_directory), str(msvc_runtime_bin_directory())))
+    os.environ["PXR_USD_WINDOWS_DLL_PATH"] = dll_path
+    emit_checkpoint("after-pxr-dll-path")
+    return dll_path
 
 
 def import_blosc() -> object:
@@ -346,6 +395,10 @@ def run_child(case: str, held_thread_count: int, attempt: int) -> int:
         preloaders = {
             "early-tf": (),
             "after-msvc-tf": (warm_msvc_runtime,),
+            "after-msvcp140-tf": (warm_msvcp140,),
+            "after-atomic-wait-tf": (warm_atomic_wait,),
+            "after-msvc-directory-tf": (add_msvc_dll_directory,),
+            "after-pxr-dll-path-tf": (extend_pxr_dll_path,),
             "after-blosc-tf": (import_blosc,),
             "after-warp-import-tf": (import_warp,),
             "after-warp-cuda-tf": (warm_warp_cuda,),

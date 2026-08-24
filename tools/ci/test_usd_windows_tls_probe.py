@@ -112,6 +112,19 @@ class ChildProcessTests(unittest.TestCase):
         self.assertEqual(return_code, 0)
         self.assertEqual(events, ["torch", "tf"])
 
+    def test_pxr_path_case_extends_the_search_path_before_tf(self):
+        events = []
+
+        with (
+            mock.patch.object(probe, "emit_event"),
+            mock.patch.object(probe, "extend_pxr_dll_path", side_effect=lambda: events.append("pxr-path") or 1),
+            mock.patch.object(probe, "import_tf", side_effect=lambda: events.append("tf")),
+        ):
+            return_code = probe.run_child("after-pxr-dll-path-tf", held_thread_count=0, attempt=1)
+
+        self.assertEqual(return_code, 0)
+        self.assertEqual(events, ["pxr-path", "tf"])
+
     def test_procdump_wraps_child_and_uses_a_unique_dump_directory(self):
         output_directory = Path(r"C:\artifacts\early-tf")
         command = probe.build_child_command(
@@ -156,18 +169,19 @@ class EagerImportTests(unittest.TestCase):
 
 
 class DiagnosticWorkflowTests(unittest.TestCase):
-    def test_diagnostic_workflow_runs_only_import_order_and_first_chance_probe(self):
+    def test_diagnostic_workflow_runs_only_msvc_resolution_probe(self):
         workflow_path = REPOSITORY_ROOT / ".github" / "workflows" / "usd-windows-tls-diagnostic.yml"
         self.assertTrue(workflow_path.exists(), f"Missing {workflow_path}")
         workflow = workflow_path.read_text(encoding="utf-8")
 
         self.assertIn("runs-on: windows-amd64-gpu-rtxpro6000-latest-1", workflow)
-        self.assertIn("Run import-order and first-chance probes", workflow)
-        self.assertIn("procdump64.exe", workflow)
-        self.assertIn("Get-AuthenticodeSignature", workflow)
-        self.assertIn("'after-torch-import-tf'", workflow)
-        self.assertNotIn("full-suite-lazy-26-8", workflow)
-        self.assertNotIn("full-suite-eager-26-8", workflow)
+        self.assertIn("Run MSVC resolution probes", workflow)
+        self.assertIn("--extra dev", workflow)
+        self.assertIn("blosc==1.11.4", workflow)
+        self.assertIn("'after-pxr-dll-path-tf'", workflow)
+        self.assertIn("Report MSVC runtime candidates", workflow)
+        self.assertNotIn("build-warp-windows-cuda13", workflow)
+        self.assertNotIn("procdump64.exe", workflow)
         self.assertIn("if: always()", workflow)
 
     def test_pull_request_workflow_routes_only_to_the_diagnostic_workflow(self):
