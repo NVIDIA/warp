@@ -57,10 +57,11 @@ jobs:
       - name: Prepare minimal probe environment
         shell: pwsh
         run: |
-          $probePrefix = uv run --extra dev `
-            --with 'usd-core==26.8' --with 'blosc==1.11.4' `
-            python -c "import sys; print(sys.prefix)"
-          $probePrefix = ($probePrefix | Select-Object -Last 1).Trim()
+          uv venv .probe-venv
+          $probePrefix = (Resolve-Path -LiteralPath .probe-venv).Path
+          $probePython = Join-Path $probePrefix 'Scripts\python.exe'
+          uv pip install --python $probePython `
+            'usd-core==26.8' 'blosc==1.11.4'
           Write-Output "USD_PROBE_PREFIX=$probePrefix"
           "USD_PROBE_PREFIX=$probePrefix" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
@@ -102,10 +103,9 @@ jobs:
             'after-pxr-dll-path-tf',
             'after-msvc-tf'
           )
+          $probePython = Join-Path $env:USD_PROBE_PREFIX 'Scripts\python.exe'
           foreach ($case in $cases) {
-            uv run --extra dev `
-              --with 'usd-core==26.8' --with 'blosc==1.11.4' `
-              python tools/ci/usd_windows_tls_probe.py `
+            & $probePython tools/ci/usd_windows_tls_probe.py `
               --case $case --repeat 2 --workers 1 `
               --output-dir "$env:USD_TLS_ARTIFACT_DIR\$case"
             if ($LASTEXITCODE -ne 0) { $failed = $true }

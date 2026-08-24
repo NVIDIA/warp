@@ -176,11 +176,14 @@ class DiagnosticWorkflowTests(unittest.TestCase):
 
         self.assertIn("runs-on: windows-amd64-gpu-rtxpro6000-latest-1", workflow)
         self.assertIn("Run MSVC resolution probes", workflow)
-        self.assertIn("--extra dev", workflow)
+        self.assertIn("uv venv .probe-venv", workflow)
+        self.assertIn("uv pip install --python $probePython", workflow)
+        self.assertIn("& $probePython tools/ci/usd_windows_tls_probe.py", workflow)
         self.assertIn("blosc==1.11.4", workflow)
         self.assertIn("'after-pxr-dll-path-tf'", workflow)
         self.assertIn("Report MSVC runtime candidates", workflow)
         self.assertNotIn("build-warp-windows-cuda13", workflow)
+        self.assertNotIn("--extra dev", workflow)
         self.assertNotIn("procdump64.exe", workflow)
         self.assertIn("if: always()", workflow)
 
