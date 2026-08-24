@@ -548,11 +548,7 @@
                   
   <section id="installation">
 <h1>Installation<a class="headerlink" href="#installation" title="Link to this heading">#</a></h1>
-<p>Python version 3.10 or newer is required. Warp can run on x86-64 and ARMv8 CPUs on Windows and Linux. macOS requires Apple Silicon (ARM64). GPU support requires a CUDA-capable NVIDIA GPU and driver (minimum GeForce GTX 9xx).</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Intel-based macOS (x86_64) is no longer supported. Users with Intel Macs should use Warp version 1.9.x or earlier.</p>
-</div>
+<p>Warp requires Python 3.10 or newer. We publish <code class="docutils literal notranslate"><span class="pre">warp-lang</span></code> wheels on PyPI for Windows (x86-64), Linux (x86-64 and AArch64), and macOS (Apple Silicon). The Windows x86-64 and Linux wheels support CPU execution and CUDA acceleration. CUDA acceleration requires a supported NVIDIA GPU and driver. The macOS wheels support CPU execution but not Metal acceleration.</p>
 <p>The easiest way to install Warp is from <a class="reference external" href="https://pypi.org/project/warp-lang">PyPI</a>:</p>
 <div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>warp-lang
 </pre></div>
@@ -674,22 +670,27 @@ The <code class="docutils literal notranslate"><span class="pre">[examples]</spa
 </section>
 <section id="building-from-source">
 <h2>Building from Source<a class="headerlink" href="#building-from-source" title="Link to this heading">#</a></h2>
-<p>For developers who want to build the library themselves the following tools are required:</p>
+<p>For developers who want to build the library themselves, the following tools are required:</p>
 <ul class="simple">
 <li><p>(Windows) Microsoft Visual Studio, minimum version 2019</p></li>
 <li><p>(Linux) GCC, minimum version 9.4</p></li>
-<li><p><a class="reference external" href="https://developer.nvidia.com/cuda-toolkit">CUDA Toolkit</a>, minimum version 12.0</p></li>
+<li><p>(macOS) Xcode Command Line Tools</p></li>
 <li><p><a class="reference external" href="https://git-lfs.com">Git Large File Storage</a></p></li>
 </ul>
+<p>A CUDA Toolkit is not required for a CPU-only build. CUDA-enabled builds on Windows and Linux require
+<a class="reference external" href="https://developer.nvidia.com/cuda-toolkit">CUDA Toolkit</a> 12.0 or newer.</p>
 <p>After cloning the repository, users should run:</p>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>python<span class="w"> </span>build_lib.py
 </pre></div>
 </div>
-<p>Upon success, the script will output platform-specific binary files in <code class="docutils literal notranslate"><span class="pre">warp/bin/</span></code>.
-The build script will look for the CUDA Toolkit in its default installation path.
-This path can be overridden by setting the <code class="docutils literal notranslate"><span class="pre">CUDA_PATH</span></code> environment variable. Alternatively,
-the path to the CUDA Toolkit can be passed to the build command as
-<code class="docutils literal notranslate"><span class="pre">--cuda-path=&quot;...&quot;</span></code>.</p>
+<p>Upon success, the script will output platform-specific binary files in <code class="docutils literal notranslate"><span class="pre">warp/bin/</span></code>.</p>
+<p>Unless a CUDA Toolkit path is provided explicitly, <code class="docutils literal notranslate"><span class="pre">build_lib.py</span></code> searches for one in this order:</p>
+<ol class="arabic simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">WARP_CUDA_PATH</span></code>, <code class="docutils literal notranslate"><span class="pre">CUDA_HOME</span></code>, then <code class="docutils literal notranslate"><span class="pre">CUDA_PATH</span></code></p></li>
+<li><p>The CUDA Toolkit containing <code class="docutils literal notranslate"><span class="pre">nvcc</span></code> found on <code class="docutils literal notranslate"><span class="pre">PATH</span></code></p></li>
+<li><p>The standard CUDA installation locations for the operating system</p></li>
+</ol>
+<p>If no CUDA Toolkit is found, <code class="docutils literal notranslate"><span class="pre">build_lib.py</span></code> builds Warp without CUDA support.</p>
 <p>By default, CUDA libraries (cudart, NVRTC, nvJitLink, MathDx) are linked statically
 to produce self-contained binaries. To link against shared CUDA libraries instead,
 pass <code class="docutils literal notranslate"><span class="pre">--use-dynamic-cuda</span></code>:</p>
