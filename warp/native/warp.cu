@@ -4694,14 +4694,9 @@ size_t wp_cuda_compile_program(
 
 #if CUDA_VERSION >= 12080 && CUDA_VERSION < 13000
     // CUDA 12 miscompiles optimized CUBIN texture sampling when texture handles
-    // vary across lanes. Confirmed on CUDA 12.9 for sm_101 and sm_120; sm_121 is
-    // included because it shares the sm_120 family. CUDA 12.8 is covered as a
-    // precaution only: it is a supported build toolkit but is not exercised in
-    // CI, so it has been tested neither way.
-    //
-    // This is the NVRTC target architecture, not the driver-reported one: Warp
-    // remaps Thor's sm_110 to sm_101 when building against CUDA 12.
-    const bool is_affected_texture_cubin_target = arch == 101 || arch == 120 || arch == 121;
+    // vary across lanes on sm_90 and newer targets. CUDA 12.8 is covered as a
+    // precaution because it is not exercised in CI.
+    const bool is_affected_texture_cubin_target = arch >= 90;
 #else
     // CUDA 13 CUBIN has not reproduced the miscompile on any target tested so far.
     const bool is_affected_texture_cubin_target = false;
