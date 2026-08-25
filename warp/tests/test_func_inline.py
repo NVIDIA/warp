@@ -89,6 +89,35 @@ class TestFuncInline(unittest.TestCase):
         self.assertIn("static WP_NOINLINE CUDA_CALLABLE ", source)
         self.assertIn("static WP_NOINLINE CUDA_CALLABLE void adj_", source)
 
+    def test_inline_attr_applied_to_custom_grad_and_replay(self):
+        """Apply the inline attribute to custom gradient and replay hooks, which are separate Functions."""
+
+        @wp.func(noinline=True)
+        def squared(x: float) -> float:
+            return x * x
+
+        @wp.func_grad(squared)
+        def adj_squared(x: float, adj_ret: float):
+            wp.adjoint[x] += 2.0 * x * adj_ret
+
+        @wp.func_replay(squared)
+        def replay_squared(x: float):  # no return annotation: it is matched against the forward args
+            return x * x
+
+        @wp.kernel(enable_backward=True, module="unique")
+        def uses_squared(a: wp.array[float]):
+            a[wp.tid()] = squared(3.0)
+
+        self.assertEqual(squared.custom_grad_func.inline_hint, "noinline")
+        self.assertEqual(squared.custom_replay_func.inline_hint, "noinline")
+
+        source = module_source(uses_squared, "cuda")
+        # Every definition generated for this function, custom hooks included, carries the hint.
+        defs = [line for line in source.splitlines() if line.startswith("static") and "squared" in line]
+        self.assertTrue(defs, "expected generated definitions for the hinted function")
+        for line in defs:
+            self.assertIn("WP_NOINLINE", line, f"missing inline attribute: {line}")
+
     def test_native_snippet_codegen_unaffected(self):
         """Keep generating native snippets, which share the function templates but take no hint."""
         snippet = "out[tid] = a * x[tid];"

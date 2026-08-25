@@ -314,7 +314,8 @@ Function-level settings can be passed as arguments to the :func:`@wp.func <warp.
         # inlined even where the backend compiler would not choose to
         return x * 2.0
 
-Inlining is normally left to the backend compiler, with no way to override it from Python.
+Without either hint, inlining is left to the backend compiler, which decides per function and
+per call site with no way to influence it from Python.
 Inlining a large function into many call sites raises a kernel's peak register count, because
 register allocation is bounded by the worst path through the whole kernel body, and duplicates
 the body at every call site, pressuring the instruction cache. ``noinline`` keeps one copy out

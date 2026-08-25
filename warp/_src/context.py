@@ -1567,6 +1567,7 @@ def func_grad(forward_fn):
                 custom_reverse_num_input_args=len(f.input_types),
                 skip_adding_overload=False,
                 code_transformers=f.adj.transformers,
+                inline_hint=f.inline_hint,
             )
             f.adj.skip_reverse_codegen = True
 
@@ -1644,6 +1645,7 @@ def func_replay(forward_fn):
             skip_reverse_codegen=True,
             skip_adding_overload=True,
             code_transformers=f.adj.transformers,
+            inline_hint=f.inline_hint,
         )
         return replay_fn
 
