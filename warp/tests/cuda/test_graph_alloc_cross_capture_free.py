@@ -3,7 +3,7 @@
 
 """Cross-capture ``wp.array`` deallocation against a shared ``cudaGraph_t``.
 
-Driver-level setup (CUDASTF-style sequential captures into a single graph)::
+Driver-level setup (sequential captures into a single graph)::
 
     G = cudaGraphCreate()
     cudaStreamBeginCaptureToGraph(streamA, G, ...)
@@ -33,8 +33,8 @@ is free to schedule the ``MEM_FREE`` before the consumer kernel completes; once
 the mempool recycles the VA the kernel writes into a freed page and
 ``cudaErrorIllegalAddress`` surfaces from the next CUDA call. This is the same
 class of bug as an unordered free on a forked substream within a single
-capture, but reached through the shared-graph pattern that external
-integrations (e.g. CUDASTF) use for sequential captures into one graph.
+capture, but reached through the shared-graph pattern used to build one graph
+from several sequential capture windows.
 
 This test asserts the correctness invariant directly: every ``MEM_FREE`` node
 produced by Warp during this scenario must have a ``KERNEL`` ancestor in its
