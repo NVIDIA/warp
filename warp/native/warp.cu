@@ -374,7 +374,9 @@ static ContextInfo* get_context_info(CUcontext ctx)
         if (check_cu(cuCtxGetDevice_f(&device))) {
             DeviceInfo* device_info = g_device_map[device];
 
-            // workaround for https://nvbugspro.nvidia.com/bug/4456003
+            // Work around a CUDA driver bug observed with Linux driver 535.54.03: cudaFreeAsync() could crash when
+            // directly freeing a graph allocation on an uninitialized default stream. Prime the stream's allocator
+            // bookkeeping with an ordinary asynchronous allocation and free.
             if (device_info->is_mempool_supported) {
                 void* dummy = NULL;
                 check_cuda(cudaMallocAsync(&dummy, 1, NULL));
@@ -4132,12 +4134,10 @@ bool wp_cuda_graph_insert_if_else(
         return false;
     }
 
-    // int driver_version = wp_cuda_driver_version();
-
-    // IF-ELSE nodes are only supported with CUDA 12.8+
-    // Somehow child graphs produce wrong results when an else branch is used
-    // Seems to be a bug in the CUDA driver: https://nvbugs/5241330
-    if (num_branches == 1 /*|| driver_version >= 12080*/) {
+    // Multi-graph IF-ELSE nodes are supported starting with CUDA 12.8, but CUDA 12.8 and 12.9 drivers
+    // can reparent nodes from child graphs incorrectly during instantiation. Use two single-body conditional nodes
+    // until CUDA 12.x is no longer supported; the driver issue was fixed in CUDA 13.0.
+    if (num_branches == 1) {
         cudaGraphConditionalHandle handle;
         check_cuda(cudaGraphConditionalHandleCreate(&handle, cuda_graph));
 
@@ -4691,6 +4691,32 @@ size_t wp_cuda_compile_program(
     opts.push_back(arch_opt);
     opts.push_back(include_opt);
     opts.push_back("--std=c++17");
+
+#if CUDA_VERSION >= 12080 && CUDA_VERSION < 13000
+    // CUDA 12 miscompiles optimized CUBIN texture sampling when texture handles
+    // vary across lanes. Confirmed on CUDA 12.9 for sm_101 and sm_120; sm_121 is
+    // included because it shares the sm_120 family. CUDA 12.8 is covered as a
+    // precaution only: it is a supported build toolkit but is not exercised in
+    // CI, so it has been tested neither way.
+    //
+    // This is the NVRTC target architecture, not the driver-reported one: Warp
+    // remaps Thor's sm_110 to sm_101 when building against CUDA 12.
+    const bool is_affected_texture_cubin_target = arch == 101 || arch == 120 || arch == 121;
+#else
+    // CUDA 13 CUBIN has not reproduced the miscompile on any target tested so far.
+    const bool is_affected_texture_cubin_target = false;
+#endif
+
+#if CUDA_VERSION >= 12080 && CUDA_VERSION < 12090
+    // Precaution, untested: CUDA 12.8 is not expected to honor optimization
+    // levels here, so even level 0 may trigger the miscompile.
+    const bool optimizations_may_trigger_texture_bug = true;
+#else
+    const bool optimizations_may_trigger_texture_bug = optimization_level > 0;
+#endif
+
+    if (!use_ptx && is_affected_texture_cubin_target && optimizations_may_trigger_texture_bug)
+        opts.push_back("--define-macro=WP_WORKAROUND_CUDA_TEXTURE_CUBIN");
 
     // CUDA 12.9+ supports --Ofast-compile
 #if CUDA_VERSION >= 12090
@@ -5400,19 +5426,42 @@ bool wp_cuda_configure_kernel_shared_memory(void* kernel, int size)
     return true;
 }
 
-int wp_cuda_get_kernel_static_shared_memory(void* context, void* kernel)
+static int get_cuda_kernel_attribute(void* context, void* kernel, CUfunction_attribute attribute)
 {
     if (!kernel)
         return -1;
 
     ContextGuard guard(context);
 
-    int static_smem_bytes = 0;
-    CUresult res = cuFuncGetAttribute_f(&static_smem_bytes, CU_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES, (CUfunction)kernel);
-    if (res != CUDA_SUCCESS)
+    int value = 0;
+    if (!check_cu(cuFuncGetAttribute_f(&value, attribute, (CUfunction)kernel)))
         return -1;
 
-    return static_smem_bytes;
+    return value;
+}
+
+int wp_cuda_get_kernel_static_shared_memory(void* context, void* kernel)
+{
+    return get_cuda_kernel_attribute(context, kernel, CU_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES);
+}
+
+bool wp_cuda_get_kernel_properties(void* context, void* kernel, int* properties, int property_count)
+{
+    constexpr int kernel_property_count = 2;
+    if (!kernel || !properties || property_count != kernel_property_count)
+        return false;
+
+    ContextGuard guard(context);
+    int queried_properties[kernel_property_count] = {};
+
+    if (!check_cu(cuFuncGetAttribute_f(&queried_properties[0], CU_FUNC_ATTRIBUTE_NUM_REGS, (CUfunction)kernel)))
+        return false;
+    if (!check_cu(cuFuncGetAttribute_f(&queried_properties[1], CU_FUNC_ATTRIBUTE_LOCAL_SIZE_BYTES, (CUfunction)kernel)))
+        return false;
+
+    properties[0] = queried_properties[0];
+    properties[1] = queried_properties[1];
+    return true;
 }
 
 bool wp_cuda_set_kernel_cluster_attrs(void* kernel, int cx, int cy, int cz)

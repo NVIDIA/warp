@@ -7,7 +7,7 @@ import io
 import unittest
 import warnings
 import weakref
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 
@@ -944,6 +944,14 @@ class TestStruct(unittest.TestCase):
         class IndexedArrayFieldStruct:
             values: wp.indexedarray[wp.int32]
 
+        @wp.struct
+        class Array2DFieldStruct:
+            values: wp.array2d[wp.int32]
+
+        @wp.struct
+        class IndexedArray2DFieldStruct:
+            values: wp.indexedarray[wp.int32, Literal[2]]
+
         wrong_dtype_array = wp.array([1.0], dtype=wp.float32)
         indices = wp.array([0], dtype=wp.int32)
         wrong_dtype_indexedarray = wp.indexedarray1d(wrong_dtype_array, [indices])
@@ -968,6 +976,21 @@ class TestStruct(unittest.TestCase):
                 s = struct_type()
                 with self.assertRaisesRegex(TypeError, r"Struct field 'values' expects dtype int32, got float32"):
                     s.values = wrong_dtype
+
+        wrong_ndim_array = wp.array([1], dtype=wp.int32)
+        wrong_ndim_indexedarray = wp.indexedarray1d(wrong_ndim_array, [indices])
+        ndim_cases = (
+            (Array2DFieldStruct, "array", wrong_ndim_array),
+            (IndexedArray2DFieldStruct, "indexedarray", wrong_ndim_indexedarray),
+        )
+        for struct_type, case_name, wrong_ndim in ndim_cases:
+            with self.subTest(case_name=case_name, error="wrong_ndim"):
+                s = struct_type()
+                with self.assertRaisesRegex(
+                    TypeError,
+                    r"Struct field 'values' expects an array with 2 dimension\(s\), got 1 dimension\(s\)",
+                ):
+                    s.values = wrong_ndim
 
     def test_struct_scalar_to_composite_field_rejected(self):
         """A single value assigned to a composite struct field must be rejected."""

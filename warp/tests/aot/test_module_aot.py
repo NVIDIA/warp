@@ -348,13 +348,65 @@ class TestModuleAOT(unittest.TestCase):
             shutil.rmtree(TEST_CACHE_DIR, ignore_errors=True)
             TEST_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
-            wp.compile_aot_module(
+            artifact_paths = wp.compile_aot_module(
                 warp.tests.aot.aux_test_hash_reload, arch=arch, module_dir=TEST_CACHE_DIR, use_ptx=True
             )
 
             module_identifier = wp.get_module("warp.tests.aot.aux_test_hash_reload").get_module_identifier()
             expected_path = TEST_CACHE_DIR / f"{module_identifier}.sm{arch}.ptx"
             self.assertTrue(expected_path.exists(), f"Expected compiled PTX file not found: {expected_path}")
+            self.assertEqual(artifact_paths, [expected_path])
+            self.assertIn(b".version", artifact_paths[0].read_bytes())
+        finally:
+            shutil.rmtree(TEST_CACHE_DIR, ignore_errors=True)
+
+    def test_compile_aot_module_returns_cpu_artifact_path(self):
+        """Test that compile_aot_module returns a CPU object artifact path."""
+        try:
+            shutil.rmtree(TEST_CACHE_DIR, ignore_errors=True)
+            TEST_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+            artifact_paths = wp.compile_aot_module(
+                warp.tests.aot.aux_test_hash_reload,
+                device="cpu",
+                module_dir=TEST_CACHE_DIR,
+            )
+
+            self.assertEqual(len(artifact_paths), 1)
+            self.assertIsInstance(artifact_paths[0], Path)
+            self.assertEqual(artifact_paths[0].suffix, ".o")
+            self.assertTrue(artifact_paths[0].exists())
+            self.assertGreater(len(artifact_paths[0].read_bytes()), 0)
+        finally:
+            shutil.rmtree(TEST_CACHE_DIR, ignore_errors=True)
+
+    def test_compile_aot_module_returns_cuda_artifact_paths(self):
+        """Test that compile_aot_module returns CUDA artifact paths for devices and arch lists."""
+        if wp.get_cuda_device_count() == 0:
+            self.skipTest("No CUDA devices found")
+
+        device = wp.get_device("cuda:0")
+
+        try:
+            shutil.rmtree(TEST_CACHE_DIR, ignore_errors=True)
+            TEST_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+            artifact_paths = wp.compile_aot_module(
+                warp.tests.aot.aux_test_hash_reload,
+                device=device,
+                arch=[device.arch],
+                use_ptx=True,
+                module_dir=TEST_CACHE_DIR,
+            )
+
+            # One artifact for the device target, then one per requested arch, in that order.
+            self.assertEqual(len(artifact_paths), 2)
+            for path in artifact_paths:
+                self.assertIsInstance(path, Path)
+                self.assertEqual(path.suffix, ".ptx")
+                self.assertIn(f"sm{device.arch}", path.name)
+                self.assertTrue(path.exists(), f"{path} does not exist")
+                self.assertGreater(len(path.read_bytes()), 0)
         finally:
             shutil.rmtree(TEST_CACHE_DIR, ignore_errors=True)
 
@@ -403,12 +455,14 @@ class TestModuleAOT(unittest.TestCase):
 
             archs = list(wp._src.context.runtime.nvrtc_supported_archs)[:2]
 
-            wp.compile_aot_module(
+            artifact_paths = wp.compile_aot_module(
                 warp.tests.aot.aux_test_hash_reload, arch=archs, module_dir=TEST_CACHE_DIR, use_ptx=False
             )
 
             # Make sure the expected files exist
             module_identifier = wp.get_module("warp.tests.aot.aux_test_hash_reload").get_module_identifier()
+            expected_paths = [TEST_CACHE_DIR / f"{module_identifier}.sm{arch}.cubin" for arch in archs]
+            self.assertEqual(artifact_paths, expected_paths)
             for arch in archs:
                 expected_filename = f"{module_identifier}.sm{arch}.cubin"
                 expected_path = TEST_CACHE_DIR / expected_filename

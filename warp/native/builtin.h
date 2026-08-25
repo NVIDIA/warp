@@ -98,10 +98,12 @@ CUDA_CALLABLE half float_to_half(float x);
 CUDA_CALLABLE float half_to_float(half x);
 
 struct half {
-    CUDA_CALLABLE inline half()
-        : u(0)
-    {
-    }
+    // Keep the payload uninitialized so half remains trivially default
+    // constructible. Value initialization, e.g. half{}, still produces zero.
+    // Keep this unannotated: NVCC ignores CUDA annotations on explicitly
+    // defaulted constructors and emits warning #20012.
+    // cppcheck-suppress uninitMemberVar
+    half() = default;
 
     CUDA_CALLABLE inline half(float f) { *this = float_to_half(f); }
 
@@ -176,10 +178,13 @@ CUDA_CALLABLE wp_bfloat16 float_to_bfloat16(float x);
 CUDA_CALLABLE float bfloat16_to_float(wp_bfloat16 x);
 
 struct wp_bfloat16 {
-    CUDA_CALLABLE inline wp_bfloat16()
-        : u(0)
-    {
-    }
+    // Keep the payload uninitialized so wp_bfloat16 remains trivially default
+    // constructible. Value initialization, e.g. wp_bfloat16{}, still produces zero.
+    // Keep this unannotated: NVCC ignores CUDA annotations on explicitly
+    // defaulted constructors and emits warning #20012.
+    // cppcheck-suppress uninitMemberVar
+    wp_bfloat16() = default;
+
     CUDA_CALLABLE inline wp_bfloat16(float f) { *this = float_to_bfloat16(f); }
 
     unsigned short u;
@@ -1946,14 +1951,6 @@ inline CUDA_CALLABLE int block_dim()
 
 template <int N> inline CUDA_CALLABLE int tid(size_t index, const launch_bounds_t<N>& bounds)
 {
-    // For the 1-D tid() we need to warn the user if we're about to provide a truncated index
-    // Only do this in _DEBUG when called from device to avoid excessive register allocation
-#if defined(_DEBUG) || !defined(__CUDA_ARCH__)
-    if (index > 2147483647) {
-        printf("Warp warning: tid() is returning an overflowed int\n");
-    }
-#endif
-
     launch_coord_t coord = launch_coord(index, bounds);
     return static_cast<int>(coord.i);
 }

@@ -28,6 +28,7 @@ os.environ["XLA_PYTHON_CLIENT_ALLOCATOR"] = "platform"
 ARRAY_SIZE = 1024 * 1024
 TILE_STORE_SIZE = 64
 JAX_TILE_BLOCK_DIM = 64
+JAX_SCALAR_TID_DISABLED = False
 
 
 # Keep test kernels at module scope. Function-local @wp.kernel definitions mark
@@ -78,6 +79,13 @@ def inc_1d_kernel(x: wp.array[float], y: wp.array[float]):
 def inc_2d_kernel(x: wp.array2d[float], y: wp.array2d[float]):
     i, j = wp.tid()
     y[i, j] = x[i, j] + 1.0
+
+
+@wp.kernel
+def compile_time_dead_scalar_tid_kernel(x: wp.array[float], y: wp.array[float]):
+    if JAX_SCALAR_TID_DISABLED:
+        i = wp.tid()
+        y[i] = x[i]
 
 
 @wp.kernel
@@ -520,6 +528,123 @@ def test_jax_kernel_launch_dims(test, device, use_ffi=False):
 
     assert_np_equal(result_1d, expected_1d)
     assert_np_equal(result_2d, expected_2d)
+
+
+def test_jax_kernel_rejects_oversized_scalar_tid_launch_dims(test, device, use_ffi=False):
+    """Reject oversized scalar ``wp.tid()`` dimensions during legacy lowering."""
+    jax = _import_jax()
+    jp = _import_jax_numpy()
+    jax_kernel = _get_experimental_custom_call_jax_kernel()
+    jax_inc = jax_kernel(inc_1d_kernel, launch_dims=(2**31 + 1,), quiet=True)
+
+    @jax.jit
+    def run():
+        return jax_inc(jp.ones(1, dtype=jp.float32))
+
+    with jax.default_device(wp.device_to_jax(device)):
+        with test.assertRaisesRegex(
+            ValueError, r"Warp cannot launch a kernel using scalar wp\.tid\(\) with extent 2147483649"
+        ):
+            run.lower()
+
+
+def test_ffi_jax_kernel_rejects_oversized_explicit_scalar_tid_launch_dims(test, device):
+    """Reject explicit oversized scalar ``wp.tid()`` dimensions during tracing."""
+    jp = _import_jax_numpy()
+    # Keep output allocation small so it cannot mask the launch-dimension error.
+    jax_inc = wp.jax_kernel(
+        inc_1d_kernel,
+        launch_dims=(2**31 + 1,),
+        output_dims=1,
+    )
+
+    @jax.jit
+    def run():
+        return jax_inc(jp.ones(1, dtype=jp.float32))
+
+    with jax.default_device(wp.device_to_jax(device)):
+        with test.assertRaisesRegex(
+            ValueError, r"Warp cannot launch a kernel using scalar wp\.tid\(\) with extent 2147483649"
+        ):
+            run.lower()
+
+
+def test_ffi_jax_kernel_rejects_oversized_inferred_scalar_tid_launch_dims(test, device):
+    """Reject inferred oversized scalar ``wp.tid()`` dimensions during tracing."""
+    jp = _import_jax_numpy()
+    # Keep output allocation small so it cannot mask the launch-dimension error.
+    jax_inc = wp.jax_kernel(inc_1d_kernel, output_dims=1)
+
+    @jax.jit
+    def run(x):
+        return jax_inc(x)
+
+    # Trace the oversized input shape without allocating its storage.
+    abstract_input = jax.ShapeDtypeStruct((2**31 + 1,), jp.float32)
+    with jax.default_device(wp.device_to_jax(device)):
+        with test.assertRaisesRegex(
+            ValueError, r"Warp cannot launch a kernel using scalar wp\.tid\(\) with extent 2147483649"
+        ):
+            run.lower(abstract_input)
+
+
+def test_jax_kernel_accepts_oversized_compile_time_dead_scalar_tid_launch_dims(test, device, use_ffi=False):
+    """Accept oversized launches when codegen removes scalar ``wp.tid()``."""
+    jp = _import_jax_numpy()
+    if use_ffi:
+        jax_noop = wp.jax_kernel(
+            compile_time_dead_scalar_tid_kernel,
+            launch_dims=(2**31 + 1,),
+            output_dims=1,
+            module_preload_mode=wp.JaxModulePreloadMode.NONE,
+        )
+    else:
+        jax_kernel = _get_experimental_custom_call_jax_kernel()
+        jax_noop = jax_kernel(
+            compile_time_dead_scalar_tid_kernel,
+            launch_dims=(2**31 + 1,),
+            quiet=True,
+        )
+
+    @jax.jit
+    def run():
+        return jax_noop(jp.ones(1, dtype=jp.float32))
+
+    with jax.default_device(wp.device_to_jax(device)):
+        test.assertIsNotNone(run.lower())
+
+
+def test_ffi_jax_kernel_validates_all_target_block_dims_during_tracing(test, device):
+    """Validate platform-neutral tracing against CPU and CUDA block sizes."""
+    from warp._src.jax import ffi as ffi_module  # noqa: PLC0415
+
+    jp = _import_jax_numpy()
+    configured_block_dim = 64
+    jax_noop = wp.jax_kernel(
+        compile_time_dead_scalar_tid_kernel,
+        launch_dims=(2**31 + 1,),
+        output_dims=1,
+        block_dim=configured_block_dim,
+        module_preload_mode=wp.JaxModulePreloadMode.NONE,
+    )
+
+    def run():
+        return jax_noop(jp.ones(1, dtype=jp.float32))
+
+    with (
+        warnings.catch_warnings(),
+        mock.patch.object(
+            ffi_module,
+            "_build_kernel_launch_bounds",
+            wraps=ffi_module._build_kernel_launch_bounds,
+        ) as build_bounds,
+    ):
+        warnings.simplefilter("ignore", DeprecationWarning)
+        lowered = jax.jit(run, device=wp.device_to_jax(device)).lower()
+
+    test.assertIsNotNone(lowered)
+    observed_block_dims = {call.args[2] for call in build_bounds.call_args_list}
+    test.assertEqual(observed_block_dims, {1, configured_block_dim})
 
 
 # =========================================================================================================
@@ -3033,6 +3158,7 @@ else:
                 test_jax_kernel_vecmat,
                 test_jax_kernel_multiarg,
                 test_jax_kernel_launch_dims,
+                test_jax_kernel_accepts_oversized_compile_time_dead_scalar_tid_launch_dims,
             )
             backend_neutral_ffi_tests = (
                 *jax_kernel_ffi_tests,
@@ -3046,6 +3172,9 @@ else:
                 test_ffi_jax_kernel_scale_vec_static,
                 test_ffi_jax_kernel_launch_dims_default,
                 test_ffi_jax_kernel_launch_dims_custom,
+                test_ffi_jax_kernel_validates_all_target_block_dims_during_tracing,
+                test_ffi_jax_kernel_rejects_oversized_explicit_scalar_tid_launch_dims,
+                test_ffi_jax_kernel_rejects_oversized_inferred_scalar_tid_launch_dims,
                 # callables
                 test_ffi_jax_callable_scale_constant,
                 test_ffi_jax_callable_scale_static,
@@ -3133,6 +3262,8 @@ else:
                 test_jax_kernel_vecmat,
                 test_jax_kernel_multiarg,
                 test_jax_kernel_launch_dims,
+                test_jax_kernel_rejects_oversized_scalar_tid_launch_dims,
+                test_jax_kernel_accepts_oversized_compile_time_dead_scalar_tid_launch_dims,
             )
             for test_func in legacy_custom_call_tests:
                 add_function_test(

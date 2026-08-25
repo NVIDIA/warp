@@ -56,6 +56,9 @@ class TestModuleLite(unittest.TestCase):
         self.assertIn("does not contain any Warp kernels, functions, or structs", str(context.exception))
         self.assertIn("unittest", str(context.exception))
 
+    def test_internal_add_builtin_is_not_exported(self):
+        self.assertFalse(hasattr(wp, "add_builtin"))
+
     def test_module_lite_eager_source_registration(self):
         """Verify importing a source module directly registers its constructs under the public Warp module name.
 

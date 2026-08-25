@@ -641,7 +641,7 @@ linux-x86_64 test debug mode:
     - df -h
     - !reference [.snippets, move-linux-x86_64-binaries]
   script:
-    - uv run --extra dev -m warp.tests --junit-report-xml rspec.xml --suite debug --warp-debug --failfast
+    - uv run --extra dev -m warp.tests --junit-report-xml rspec.xml --suite debug --warp-debug --isolate-test-processes --failfast
 
 # Note that for throughput reasons this runs on a single-GPU runner
 windows-x86_64 test:
@@ -658,10 +658,9 @@ windows-x86_64 test:
     - !reference [.snippets, install-uv-windows]
     - !reference [.snippets, powershell-section-end-install-deps]
   script:
-    # Locking usd-core to 25.5.1 to work around a frequent loading crash
     - |
       $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
-      uv run --extra dev --extra torch-cu12 --with "jax>=0.5" --with usd-core==25.5.1 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
+      uv run --extra dev --extra torch-cu12 --with "jax>=0.5" -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
 
 windows-x86_64 cuda 13 test:
   stage: test
@@ -677,10 +676,9 @@ windows-x86_64 cuda 13 test:
     - !reference [.snippets, install-uv-windows]
     - !reference [.snippets, powershell-section-end-install-deps]
   script:
-    # Locking usd-core to 25.5.1 to work around a frequent loading crash
     - |
       $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
-      uv run --extra dev --extra torch-cu13 --with "jax>=0.5" --with usd-core==25.5.1 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
+      uv run --extra dev --extra torch-cu13 --with "jax>=0.5" -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
 
 # Only one Windows Blackwell runner currently serves the whole organization, so
 # this job is opt-in on merge requests to avoid saturating it. It still runs
@@ -705,10 +703,9 @@ windows-x86_64-blackwell test:
     - !reference [.snippets, install-uv-windows]
     - !reference [.snippets, powershell-section-end-install-deps]
   script:
-    # Locking usd-core to 25.5.1 to work around a frequent loading crash
     - |
       $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
-      uv run --extra dev --extra torch-cu13 --with usd-core==25.5.1 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
+      uv run --extra dev --extra torch-cu13 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
   tags:
     - win-x86_64-gpu-1x-595.97-blackwell
     - gpu/blackwell
@@ -734,10 +731,9 @@ windows-x86_64 test mgpu:
     - !reference [.snippets, install-uv-windows]
     - !reference [.snippets, powershell-section-end-install-deps]
   script:
-    # Locking usd-core to 25.5.1 to work around a frequent loading crash
     - |
       $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
-      uv run --extra dev --extra torch-cu12 --with usd-core==25.5.1 -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
+      uv run --extra dev --extra torch-cu12 -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
   tags:
     - win-x86_64-gpu-2x-595.97
 

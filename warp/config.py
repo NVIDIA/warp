@@ -14,6 +14,7 @@ setting documentation for details.
 For information on module-level and kernel-level settings, see :doc:`/user_guide/configuration`.
 """
 
+import os as _os
 import sys as _sys
 import types as _types
 from enum import IntEnum as _IntEnum
@@ -132,7 +133,7 @@ Note: Strict and checked modes impact performance.
 """
 
 
-version: str = "1.17.0.dev3"
+version: str = "1.18.0.dev0"
 """Warp version string"""
 
 verify_fp: bool = False
@@ -386,8 +387,13 @@ enable_graph_capture_module_load_by_default: bool = True
 Only affects systems with CUDA driver versions below 12.3.
 """
 
-enable_mempools_at_init: bool = True
-"""Enable CUDA memory pools during device initialization when supported."""
+enable_mempools_at_init: bool = _os.environ.get("WARP_ENABLE_MEMPOOLS_AT_INIT", "1").lower() not in ("0", "false", "no")
+"""Enable CUDA memory pools during device initialization when supported.
+
+Set ``WARP_ENABLE_MEMPOOLS_AT_INIT`` to ``0``, ``false``, or ``no`` before
+importing Warp to disable automatic memory pool initialization (e.g. when
+sharing the process with a framework that owns its own GPU allocator).
+"""
 
 track_memory: bool = False
 """Enable tracking of memory allocations at initialization.

@@ -390,6 +390,31 @@ is handled when ``cuProfilerStop`` is called.  The CUDA API does not guarantee t
 Consult the profiler's documentation to determine whether explicit synchronization is needed to include work that is
 still in flight.
 
+Checking CUDA kernel resource use
+---------------------------------
+
+Use :func:`warp.get_cuda_kernel_properties` to inspect register and local-memory use for a kernel's compiled forward
+CUDA entry point. Warp compiles and loads the requested module variant if necessary, but does not launch the kernel.
+The ``device`` and ``block_dim`` arguments are optional. By default, Warp uses the default device and the kernel
+module's default block dimension. Pass explicit values to inspect the variant for a particular launch:
+
+.. code-block:: python
+
+   properties = wp.get_cuda_kernel_properties(kernel, device=device, block_dim=128)
+   print(properties["register_count"])
+   print(properties["local_memory_size"])
+
+``register_count`` is the number of registers used by each thread. ``local_memory_size`` is the number of local-memory
+bytes used by each thread. Local memory may contain compiler-placed automatic variables and register spills. See the
+`Writing SIMT Kernels chapter of the CUDA Programming Guide
+<https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/writing-cuda-kernels.html>`_ for more information about
+registers and local memory. Future Warp releases may add keys to the returned dictionary.
+
+High register use can limit occupancy, while local-memory accesses may increase device-memory traffic. These values
+do not establish a performance bottleneck by themselves. Use Nsight Compute to measure runtime effects, or
+:func:`warp.get_suggested_block_size` for an occupancy-based block-size recommendation. The values may change with
+the GPU, CUDA toolchain, Warp version, compiler options, or block dimension.
+
 Nsight Compute Profiling
 ------------------------
 

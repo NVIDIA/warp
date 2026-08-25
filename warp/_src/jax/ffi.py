@@ -13,10 +13,10 @@ from collections.abc import Callable
 from enum import IntEnum
 
 import warp as wp
-from warp._src.codegen import get_full_arg_spec, make_full_qualified_name
+from warp._src.codegen import _SCALAR_TID_MAX_EXTENT, get_full_arg_spec, make_full_qualified_name
 from warp._src.context import (
     CudaMemcpyKind,
-    _build_launch_bounds,
+    _build_kernel_launch_bounds,
     _raise_cuda_launch_error,
     _validate_cluster_launch,
     invoke,
@@ -156,6 +156,17 @@ def _load_ffi_module(module, device, block_dim=None):
             f"Failed to load Warp module '{module.name}' on device '{device}' after a previous build failure"
         )
     return module_exec
+
+
+def _validate_ffi_kernel_launch_bounds(dim, kernel, block_dim=None) -> None:
+    """Validate platform-neutral tracing against every possible FFI target."""
+    cuda_block_dim = 256 if block_dim is None else block_dim
+    kernel.module.get_module_hash(cuda_block_dim)
+    _build_kernel_launch_bounds(dim, kernel, cuda_block_dim)
+
+    leading_extent = dim[0] if dim else 1
+    if leading_extent > _SCALAR_TID_MAX_EXTENT and cuda_block_dim != 1:
+        _build_kernel_launch_bounds(dim, kernel, 1)
 
 
 def _preload_ffi_module(module, mode, block_dim=None):
@@ -384,6 +395,11 @@ class FfiKernel:
         else:
             launch_dims = tuple(launch_dims)
 
+        # Tracing is platform-neutral even when lowering later targets a specific
+        # device. Validate oversized launches against both supported target variants
+        # before JAX constructs output buffer types.
+        _validate_ffi_kernel_launch_bounds(launch_dims, self.kernel, self.block_dim)
+
         # output shapes
         if isinstance(output_dims, dict):
             # assume a dictionary of shapes keyed on argument name
@@ -540,7 +556,8 @@ class FfiKernel:
                         # roll batch size into the first launch dimension
                         launch_dims = (batch_size * launch_dims[0], *launch_dims[1:])
 
-                launch_bounds = _build_launch_bounds(launch_dims, self.kernel.adj.kernel_dim)
+                # Revalidate here because vmap can grow the leading extent at runtime.
+                launch_bounds = _build_kernel_launch_bounds(launch_dims, self.kernel, block_dim)
 
                 if platform == _FFI_PLATFORM_CPU:
                     hooks = module_exec.get_kernel_hooks(self.kernel)

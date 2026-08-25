@@ -72,6 +72,10 @@ struct Mesh {
 
 CUDA_CALLABLE inline Mesh mesh_get(uint64_t id) { return *(Mesh*)(id); }
 
+// Return the id of the mesh's internal BVH so it can be queried directly with the bvh_query_* builtins.
+// The id is simply the address of the embedded BVH (bvh_get() casts it straight back to a BVH*).
+CUDA_CALLABLE inline uint64_t mesh_get_bvh(uint64_t id) { return (uint64_t)&(((Mesh*)id)->bvh); }
+
 CUDA_CALLABLE inline int mesh_get_group_root(uint64_t id, int group_id)
 {
     Mesh* mesh = (Mesh*)(id);
@@ -169,10 +173,10 @@ mesh_query_point(uint64_t id, const vec3& point, float max_dist, float& inside, 
             const int end = right_index;
             // loops through primitives in the leaf
             for (int primitive_counter = start; primitive_counter < end; primitive_counter++) {
-                int primitive_index = mesh.bvh.primitive_indices[primitive_counter];
-                int i = mesh.indices[primitive_index * 3 + 0];
-                int j = mesh.indices[primitive_index * 3 + 1];
-                int k = mesh.indices[primitive_index * 3 + 2];
+                int primitive_index = bvh_load_int(mesh.bvh.primitive_indices, primitive_counter);
+                int i = bvh_load_int(mesh.indices, primitive_index * 3 + 0);
+                int j = bvh_load_int(mesh.indices, primitive_index * 3 + 1);
+                int k = bvh_load_int(mesh.indices, primitive_index * 3 + 2);
 
                 vec3 p = mesh.points[i];
                 vec3 q = mesh.points[j];
@@ -360,10 +364,10 @@ CUDA_CALLABLE inline bool mesh_query_point_sign_parity(
             const int end = right_index;
             // loops through primitives in the leaf
             for (int primitive_counter = start; primitive_counter < end; primitive_counter++) {
-                int primitive_index = mesh.bvh.primitive_indices[primitive_counter];
-                int i = mesh.indices[primitive_index * 3 + 0];
-                int j = mesh.indices[primitive_index * 3 + 1];
-                int k = mesh.indices[primitive_index * 3 + 2];
+                int primitive_index = bvh_load_int(mesh.bvh.primitive_indices, primitive_counter);
+                int i = bvh_load_int(mesh.indices, primitive_index * 3 + 0);
+                int j = bvh_load_int(mesh.indices, primitive_index * 3 + 1);
+                int k = bvh_load_int(mesh.indices, primitive_index * 3 + 2);
 
                 vec3 p = mesh.points[i];
                 vec3 q = mesh.points[j];
@@ -542,10 +546,10 @@ mesh_query_point_no_sign(uint64_t id, const vec3& point, float max_dist, int& fa
             const int end = right_index;
             // loops through primitives in the leaf
             for (int primitive_counter = start; primitive_counter < end; primitive_counter++) {
-                int primitive_index = mesh.bvh.primitive_indices[primitive_counter];
-                int i = mesh.indices[primitive_index * 3 + 0];
-                int j = mesh.indices[primitive_index * 3 + 1];
-                int k = mesh.indices[primitive_index * 3 + 2];
+                int primitive_index = bvh_load_int(mesh.bvh.primitive_indices, primitive_counter);
+                int i = bvh_load_int(mesh.indices, primitive_index * 3 + 0);
+                int j = bvh_load_int(mesh.indices, primitive_index * 3 + 1);
+                int k = bvh_load_int(mesh.indices, primitive_index * 3 + 2);
 
                 vec3 p = mesh.points[i];
                 vec3 q = mesh.points[j];
@@ -722,10 +726,10 @@ mesh_query_furthest_point_no_sign(uint64_t id, const vec3& point, float min_dist
             const int end = right_index;
             // loops through primitives in the leaf
             for (int primitive_counter = start; primitive_counter < end; primitive_counter++) {
-                int primitive_index = mesh.bvh.primitive_indices[primitive_counter];
-                int i = mesh.indices[primitive_index * 3 + 0];
-                int j = mesh.indices[primitive_index * 3 + 1];
-                int k = mesh.indices[primitive_index * 3 + 2];
+                int primitive_index = bvh_load_int(mesh.bvh.primitive_indices, primitive_counter);
+                int i = bvh_load_int(mesh.indices, primitive_index * 3 + 0);
+                int j = bvh_load_int(mesh.indices, primitive_index * 3 + 1);
+                int k = bvh_load_int(mesh.indices, primitive_index * 3 + 2);
 
                 vec3 p = mesh.points[i];
                 vec3 q = mesh.points[j];
@@ -908,10 +912,10 @@ CUDA_CALLABLE inline bool mesh_query_point_sign_normal(
             const int end = right_index;
             // loops through primitives in the leaf
             for (int primitive_counter = start; primitive_counter < end; primitive_counter++) {
-                int primitive_index = mesh.bvh.primitive_indices[primitive_counter];
-                int i = mesh.indices[primitive_index * 3 + 0];
-                int j = mesh.indices[primitive_index * 3 + 1];
-                int k = mesh.indices[primitive_index * 3 + 2];
+                int primitive_index = bvh_load_int(mesh.bvh.primitive_indices, primitive_counter);
+                int i = bvh_load_int(mesh.indices, primitive_index * 3 + 0);
+                int j = bvh_load_int(mesh.indices, primitive_index * 3 + 1);
+                int k = bvh_load_int(mesh.indices, primitive_index * 3 + 2);
 
                 vec3 p = mesh.points[i];
                 vec3 q = mesh.points[j];
@@ -1111,10 +1115,10 @@ CUDA_CALLABLE inline float solid_angle_iterative(uint64_t id, const vec3& p, con
             const int end = right_index;
             angle[count - 1] = 0.f;
             for (int primitive_counter = start; primitive_counter < end; primitive_counter++) {
-                int primitive_index = mesh.bvh.primitive_indices[primitive_counter];
-                int i = mesh.indices[primitive_index * 3 + 0];
-                int j = mesh.indices[primitive_index * 3 + 1];
-                int k = mesh.indices[primitive_index * 3 + 2];
+                int primitive_index = bvh_load_int(mesh.bvh.primitive_indices, primitive_counter);
+                int i = bvh_load_int(mesh.indices, primitive_index * 3 + 0);
+                int j = bvh_load_int(mesh.indices, primitive_index * 3 + 1);
+                int k = bvh_load_int(mesh.indices, primitive_index * 3 + 2);
                 angle[count - 1] += robust_solid_angle(mesh.points[i], mesh.points[j], mesh.points[k], p);
                 // printf("Leaf %d, got %f\n", leaf_index, my_data[count - 1]);
             }
@@ -1221,10 +1225,10 @@ CUDA_CALLABLE inline bool mesh_query_point_sign_winding_number(
             const int end = right_index;
             // loops through primitives in the leaf
             for (int primitive_counter = start; primitive_counter < end; primitive_counter++) {
-                int primitive_index = mesh.bvh.primitive_indices[primitive_counter];
-                int i = mesh.indices[primitive_index * 3 + 0];
-                int j = mesh.indices[primitive_index * 3 + 1];
-                int k = mesh.indices[primitive_index * 3 + 2];
+                int primitive_index = bvh_load_int(mesh.bvh.primitive_indices, primitive_counter);
+                int i = bvh_load_int(mesh.indices, primitive_index * 3 + 0);
+                int j = bvh_load_int(mesh.indices, primitive_index * 3 + 1);
+                int k = bvh_load_int(mesh.indices, primitive_index * 3 + 2);
 
                 vec3 p = mesh.points[i];
                 vec3 q = mesh.points[j];
@@ -1799,10 +1803,10 @@ CUDA_CALLABLE inline bool mesh_query_ray(
             const int primitive_end = bvh_query_node_upper_payload(cur_node);
             // Leaf: test all primitives in the leaf.
             for (int pc = primitive_begin; pc < primitive_end; ++pc) {
-                int primitive_index = mesh.bvh.primitive_indices[pc];
-                int i = mesh.indices[primitive_index * 3 + 0];
-                int j = mesh.indices[primitive_index * 3 + 1];
-                int k = mesh.indices[primitive_index * 3 + 2];
+                int primitive_index = bvh_load_int(mesh.bvh.primitive_indices, pc);
+                int i = bvh_load_int(mesh.indices, primitive_index * 3 + 0);
+                int j = bvh_load_int(mesh.indices, primitive_index * 3 + 1);
+                int k = bvh_load_int(mesh.indices, primitive_index * 3 + 2);
 
                 vec3 p = mesh.points[i];
                 vec3 q = mesh.points[j];
@@ -1904,10 +1908,10 @@ mesh_query_ray_anyhit(uint64_t id, const vec3& start, const vec3& dir, float max
             const int primitive_begin = bvh_query_node_lower_payload(cur_node);
             const int primitive_end = bvh_query_node_upper_payload(cur_node);
             for (int pc = primitive_begin; pc < primitive_end; ++pc) {
-                int primitive_index = mesh.bvh.primitive_indices[pc];
-                int i = mesh.indices[primitive_index * 3 + 0];
-                int j = mesh.indices[primitive_index * 3 + 1];
-                int k = mesh.indices[primitive_index * 3 + 2];
+                int primitive_index = bvh_load_int(mesh.bvh.primitive_indices, pc);
+                int i = bvh_load_int(mesh.indices, primitive_index * 3 + 0);
+                int j = bvh_load_int(mesh.indices, primitive_index * 3 + 1);
+                int k = bvh_load_int(mesh.indices, primitive_index * 3 + 2);
 
                 vec3 p = mesh.points[i];
                 vec3 q = mesh.points[j];
@@ -1999,10 +2003,10 @@ CUDA_CALLABLE inline int mesh_query_ray_count_intersections(uint64_t id, const v
                 const int end_index = upper.i;
                 // loops through primitives in the leaf
                 for (int primitive_counter = start_index; primitive_counter < end_index; primitive_counter++) {
-                    int primitive_index = mesh.bvh.primitive_indices[primitive_counter];
-                    int i = mesh.indices[primitive_index * 3 + 0];
-                    int j = mesh.indices[primitive_index * 3 + 1];
-                    int k = mesh.indices[primitive_index * 3 + 2];
+                    int primitive_index = bvh_load_int(mesh.bvh.primitive_indices, primitive_counter);
+                    int i = bvh_load_int(mesh.indices, primitive_index * 3 + 0);
+                    int j = bvh_load_int(mesh.indices, primitive_index * 3 + 1);
+                    int k = bvh_load_int(mesh.indices, primitive_index * 3 + 2);
 
                     vec3 p = mesh.points[i];
                     vec3 q = mesh.points[j];
@@ -2083,10 +2087,10 @@ CUDA_CALLABLE inline bool mesh_query_ray_ordered(
                 const int end_index = right_index;
                 // loops through primitives in the leaf
                 for (int primitive_counter = start_index; primitive_counter < end_index; primitive_counter++) {
-                    int primitive_index = mesh.bvh.primitive_indices[primitive_counter];
-                    int i = mesh.indices[primitive_index * 3 + 0];
-                    int j = mesh.indices[primitive_index * 3 + 1];
-                    int k = mesh.indices[primitive_index * 3 + 2];
+                    int primitive_index = bvh_load_int(mesh.bvh.primitive_indices, primitive_counter);
+                    int i = bvh_load_int(mesh.indices, primitive_index * 3 + 0);
+                    int j = bvh_load_int(mesh.indices, primitive_index * 3 + 1);
+                    int k = bvh_load_int(mesh.indices, primitive_index * 3 + 2);
 
                     vec3 p = mesh.points[i];
                     vec3 q = mesh.points[j];
@@ -2301,10 +2305,10 @@ mesh_query_ray_closest_sign(const Mesh& mesh, const vec3& start, const vec3& dir
             && temp_t < min_t) {
             if (lower.b) {
                 for (int pc = lower.i; pc < upper.i; ++pc) {
-                    int primitive_index = mesh.bvh.primitive_indices[pc];
-                    int i = mesh.indices[primitive_index * 3 + 0];
-                    int j = mesh.indices[primitive_index * 3 + 1];
-                    int k = mesh.indices[primitive_index * 3 + 2];
+                    int primitive_index = bvh_load_int(mesh.bvh.primitive_indices, pc);
+                    int i = bvh_load_int(mesh.indices, primitive_index * 3 + 0);
+                    int j = bvh_load_int(mesh.indices, primitive_index * 3 + 1);
+                    int k = bvh_load_int(mesh.indices, primitive_index * 3 + 2);
 
                     vec3 p = mesh.points[i];
                     vec3 q = mesh.points[j];
@@ -2387,6 +2391,12 @@ mesh_query_inside_parity(uint64_t id, const vec3& p, const vec3 base_dir, int n_
         return 1.0f;
 }
 
+// Mesh query kind, stored in mesh_query_aabb_t::kind for the code paths shared
+// across kinds at runtime (mesh_query_next_dynamic for kind-erased queries, and
+// iter_cmp, the `for face in query:` protocol). The per-kind while-loop iterators
+// are selected at Warp codegen time and never read it.
+enum class MeshQueryKind : uint8_t { AABB = 0, SPHERE = 1 };
+
 // stores state required to traverse the BVH nodes that
 // overlap with a query AABB.
 struct mesh_query_aabb_t {
@@ -2399,6 +2409,8 @@ struct mesh_query_aabb_t {
         , face(0)
         , primitive_counter(-1)
         , last_query_valid(true)
+        , kind(MeshQueryKind::AABB)
+        , radius_sq(0.0f)
     {
     }
 
@@ -2430,43 +2442,47 @@ struct mesh_query_aabb_t {
     // call produced a valid face index. Seeded to true so an initial tile_query_valid()
     // check (before any next() call) reports valid.
     bool last_query_valid;
+    // Read only by the paths shared by all query kinds, which therefore need a runtime
+    // discriminant: mesh_query_next_dynamic (kind-erased queries) and iter_cmp (the
+    // `for face in query:` protocol). The per-kind while-loop iterators are selected at
+    // Warp codegen time from the Python type and never read this.
+    MeshQueryKind kind;
+    // Squared sphere radius for sphere queries (0 for plain AABB queries). Only the square
+    // is stored: every traversal test compares squared distances, and the mesh side has no
+    // capsule mode that would need the linear radius.
+    float radius_sq;
 };
 
 
-CUDA_CALLABLE inline mesh_query_aabb_t mesh_query_aabb(uint64_t id, const vec3& lower, const vec3& upper)
+// Node-overlap test for a mesh query. IsSphere=true uses exact sphere-AABB test;
+// IsSphere=false folds to the original intersect_aabb_aabb test.
+template <bool IsSphere>
+CUDA_CALLABLE inline bool
+mesh_query_node_test(const mesh_query_aabb_t& query, const vec3& node_lower, const vec3& node_upper)
 {
-    // This routine traverses the BVH tree until it finds
-    // the first triangle with an overlapping bvh.
+    if constexpr (IsSphere) {
+        return intersect_sphere_aabb(query.input_lower, query.radius_sq, node_lower, node_upper);
+    } else {
+        return intersect_aabb_aabb(query.input_lower, query.input_upper, node_lower, node_upper);
+    }
+}
 
-    // initialize empty
-    mesh_query_aabb_t query;
-    query.face = -1;
+// Init-time descent to the first overlapping leaf node, which is left on the stack for
+// the iterator.
+template <bool IsSphere> CUDA_CALLABLE inline void mesh_query_descend_impl(mesh_query_aabb_t& query)
+{
+    Mesh& mesh = query.mesh;
 
-    Mesh mesh = mesh_get(id);
-    query.mesh = mesh;
-
-#if BVH_SHARED_STACK
-    __shared__ int stack[BVH_QUERY_STACK_SIZE * WP_TILE_BLOCK_DIM];
-    query.stack.ptr = &stack[threadIdx.x];
-#endif
-
-    query.stack[0] = *mesh.bvh.root;
-    query.count = 1;
-    query.input_lower = lower;
-    query.input_upper = upper;
-
-    // Navigate through the bvh, find the first overlapping leaf node.
     while (query.count) {
         const int nodeIndex = query.stack[--query.count];
         BVHPackedNodeHalf node_lower = bvh_load_node(mesh.bvh.node_lowers, nodeIndex);
         BVHPackedNodeHalf node_upper = bvh_load_node(mesh.bvh.node_uppers, nodeIndex);
 
         if (query.primitive_counter == 0) {
-            if (!intersect_aabb_aabb(
-                    query.input_lower, query.input_upper, reinterpret_cast<vec3&>(node_lower),
-                    reinterpret_cast<vec3&>(node_upper)
+            if (!mesh_query_node_test<IsSphere>(
+                    query, reinterpret_cast<vec3&>(node_lower), reinterpret_cast<vec3&>(node_upper)
                 )) {
-                // Skip this box, it doesn't overlap with our target box.
+                // Skip this box, it doesn't overlap with our query volume.
                 continue;
             }
         }
@@ -2480,66 +2496,222 @@ CUDA_CALLABLE inline mesh_query_aabb_t mesh_query_aabb(uint64_t id, const vec3& 
             // Back up one level and return
             query.primitive_counter = 0;
             query.stack[query.count++] = nodeIndex;
-            return query;
+            return;
         } else {
             query.stack[query.count++] = left_index;
             query.stack[query.count++] = right_index;
         }
     }
+}
 
+CUDA_CALLABLE inline void mesh_query_descend_sphere(mesh_query_aabb_t& query) { mesh_query_descend_impl<true>(query); }
+
+#if BVH_SHARED_STACK
+// One shared-memory traversal stack per kernel, shared by every mesh query kind.
+// Allocated outside the templated factory: each template instantiation would
+// otherwise declare its own slab, so a kernel constructing both AABB and sphere
+// queries would exceed the shared-memory budget.
+CUDA_CALLABLE inline int* mesh_query_shared_stack()
+{
+    __shared__ int stack[BVH_QUERY_STACK_SIZE * WP_TILE_BLOCK_DIM];
+    return stack;
+}
+#endif
+
+// Shared factory for all mesh query kinds. IsSphere selects the init-time descent
+// strategy and the stored kind (read only on the kind-erased paths; statically-typed
+// iterators are selected at Warp codegen time via the Python return type).
+template <bool IsSphere>
+CUDA_CALLABLE inline mesh_query_aabb_t mesh_query_impl(uint64_t id, const vec3& a, const vec3& b, float radius)
+{
+    mesh_query_aabb_t query;
+    query.face = -1;
+    query.kind = IsSphere ? MeshQueryKind::SPHERE : MeshQueryKind::AABB;
+    const float r = max(radius, 0.0f);
+    query.radius_sq = r * r;
+
+    Mesh mesh = mesh_get(id);
+    query.mesh = mesh;
+
+#if BVH_SHARED_STACK
+    query.stack.ptr = &mesh_query_shared_stack()[threadIdx.x];
+#endif
+
+    query.stack[0] = *mesh.bvh.root;
+    query.count = 1;
+    query.primitive_counter = 0;
+    query.input_lower = a;
+    query.input_upper = b;
+
+    // The AABB descent inlines here (CPU and CUDA); the sphere descent runs
+    // its own specialized loop out of line on CPU.
+    if constexpr (IsSphere) {
+        mesh_query_descend_sphere(query);
+    } else {
+        mesh_query_descend_impl<false>(query);
+    }
     return query;
 }
 
-CUDA_CALLABLE inline bool mesh_query_aabb_next(mesh_query_aabb_t& query, int& index)
+CUDA_CALLABLE inline mesh_query_aabb_t mesh_query_aabb(uint64_t id, const vec3& lower, const vec3& upper)
+{
+    return mesh_query_impl<false>(id, lower, upper, 0.0f);
+}
+
+// Sphere query: iterate triangles that intersect the sphere. The broad phase keeps triangles whose AABB is
+// within `radius` of `center` (exact sphere-AABB test); the narrow phase keeps only those whose closest
+// point to `center` is within `radius`.
+CUDA_CALLABLE inline mesh_query_aabb_t mesh_query_sphere(uint64_t id, const vec3& center, float radius)
+{
+    return mesh_query_impl<true>(id, center, center, radius);
+}
+
+// Sphere per-primitive test: broad-phase sphere test against the cached triangle AABB,
+// then an exact closest-point narrow phase (with a fallback for degenerate faces).
+CUDA_CALLABLE inline bool mesh_query_prim_test(const mesh_query_aabb_t& query, const Mesh& mesh, int primitive_index)
+{
+    if (!intersect_sphere_aabb(
+            query.input_lower, query.radius_sq, mesh.lowers[primitive_index], mesh.uppers[primitive_index]
+        ))
+        return false;
+
+    int i = bvh_load_int(mesh.indices, primitive_index * 3 + 0);
+    int j = bvh_load_int(mesh.indices, primitive_index * 3 + 1);
+    int k = bvh_load_int(mesh.indices, primitive_index * 3 + 2);
+    vec3 a = mesh.points[i];
+    vec3 b = mesh.points[j];
+    vec3 c = mesh.points[k];
+
+    const vec3& center = query.input_lower;
+    vec3 cp;
+    // Guard against degenerate (zero-area) faces to avoid NaN from closest_point_to_triangle.
+    vec3 ab = b - a, ac = c - a;
+    if (dot(cross(ab, ac), cross(ab, ac)) == 0.0f) {
+        // Degenerate: collapse to segment or point. Find the longest edge.
+        vec3 bc = c - b;
+        float lab2 = dot(ab, ab), lac2 = dot(ac, ac), lbc2 = dot(bc, bc);
+        vec3 p, q;
+        float len2;
+        if (lab2 >= lac2 && lab2 >= lbc2) {
+            p = a;
+            q = b;
+            len2 = lab2;
+        } else if (lac2 >= lbc2) {
+            p = a;
+            q = c;
+            len2 = lac2;
+        } else {
+            p = b;
+            q = c;
+            len2 = lbc2;
+        }
+        vec3 pq = q - p;
+        float t = (len2 > 0.0f) ? clamp(dot(center - p, pq) / len2, 0.0f, 1.0f) : 0.0f;
+        cp = p + t * pq;
+    } else {
+        vec2 uv = closest_point_to_triangle(a, b, c, center);
+        cp = a * uv[0] + b * uv[1] + c * (1.0f - uv[0] - uv[1]);
+    }
+    vec3 d = cp - center;
+    return dot(d, d) <= query.radius_sq;
+}
+
+// Stub
+CUDA_CALLABLE inline void
+adj_mesh_query_aabb(uint64_t id, const vec3& lower, const vec3& upper, uint64_t, vec3&, vec3&, mesh_query_aabb_t&)
+{
+}
+
+
+// ---------------------------------------------------------------------------
+// Mesh query traversal skeleton and per-kind iterators
+//
+// The skeleton is written once as a function template parameterized by a
+// NodeTest and a PrimitiveTest functor.  Each public iterator instantiates
+// it with the matching pair, producing a dispatch-free loop.  Because each
+// public function is called only from the Python type that represents its
+// query kind, NVCC compiles exactly one loop per kernel -- no dead-branch
+// code bloat and no runtime/literal performance difference.
+// ---------------------------------------------------------------------------
+
+struct AabbNodeTest {
+    CUDA_CALLABLE bool operator()(const mesh_query_aabb_t& q, const vec3& lo, const vec3& hi) const
+    {
+        return intersect_aabb_aabb(q.input_lower, q.input_upper, lo, hi);
+    }
+};
+
+struct SphereNodeTest {
+    CUDA_CALLABLE bool operator()(const mesh_query_aabb_t& q, const vec3& lo, const vec3& hi) const
+    {
+        return intersect_sphere_aabb(q.input_lower, q.radius_sq, lo, hi);
+    }
+};
+
+// Broad-phase AABB primitive test: check the triangle's cached AABB only.
+struct AabbPrimitiveTest {
+    CUDA_CALLABLE bool operator()(const mesh_query_aabb_t& q, const Mesh& m, int pi) const
+    {
+        const vec3 face_lower = bvh_load_vec3(m.lowers, pi);
+        const vec3 face_upper = bvh_load_vec3(m.uppers, pi);
+        return intersect_aabb_aabb(q.input_lower, q.input_upper, face_lower, face_upper);
+    }
+};
+
+// Sphere primitive test: delegates to mesh_query_prim_test which handles
+// the degenerate-face guard and the closest-point narrow phase.
+struct SpherePrimitiveTest {
+    CUDA_CALLABLE bool operator()(const mesh_query_aabb_t& q, const Mesh& m, int pi) const
+    {
+        return mesh_query_prim_test(q, m, pi);
+    }
+};
+
+// TEST_SINGLETON: whether PrimitiveTest must run on singleton leaves. For the plain
+// (broad-phase) AABB iterator the singleton leaf's bounds equal the cached primitive
+// bounds, so the node test already decided the answer; re-running the primitive test
+// costs two extra dependent global loads per visited singleton leaf (measured +9-21%
+// on singleton-leaf trees, e.g. the cuBQL mesh default). The sphere iterator keeps
+// the test - it is its narrow phase.
+template <typename NodeTest, typename PrimitiveTest, bool TEST_SINGLETON = true>
+CUDA_CALLABLE inline bool mesh_query_next_impl(mesh_query_aabb_t& query, int& index)
 {
     Mesh mesh = query.mesh;
-
-    // Navigate through the bvh, find the first overlapping leaf node.
     while (query.count) {
         const int node_index = query.stack[--query.count];
         BVHPackedNodeHalf node_lower = bvh_load_node(mesh.bvh.node_lowers, node_index);
         BVHPackedNodeHalf node_upper = bvh_load_node(mesh.bvh.node_uppers, node_index);
 
-        if (!intersect_aabb_aabb(
-                query.input_lower, query.input_upper, reinterpret_cast<vec3&>(node_lower),
-                reinterpret_cast<vec3&>(node_upper)
-            )) {
-            // Skip this box, it doesn't overlap with our target box.
+        if (!NodeTest {}(query, reinterpret_cast<vec3&>(node_lower), reinterpret_cast<vec3&>(node_upper)))
             continue;
-        }
 
         const int left_index = node_lower.i;
         const int right_index = node_upper.i;
 
-        // Make bounds from this AABB
         if (node_lower.b) {
-            // found leaf, loop through its content primitives
             const int start = left_index;
             const int end = right_index;
 
             if (end - start == 1) {
-                int primitive_index = mesh.bvh.primitive_indices[start];
-                index = primitive_index;
-                query.face = primitive_index;
-                return true;
-            } else {
-                int primitive_index = mesh.bvh.primitive_indices[start + (query.primitive_counter++)];
-                // if already visited the last primitive in the leaf node
-                // move to the next node and reset the primitive counter to 0
-                if (start + query.primitive_counter == end) {
-                    query.primitive_counter = 0;
-                }
-                // otherwise we need to keep this leaf node in stack for a future visit
-                else {
-                    query.count++;
-                }
-
-                if (intersect_aabb_aabb(
-                        query.input_lower, query.input_upper, mesh.lowers[primitive_index], mesh.uppers[primitive_index]
-                    )) {
+                int primitive_index = bvh_load_int(mesh.bvh.primitive_indices, start);
+                bool singleton_hit = true;
+                if constexpr (TEST_SINGLETON)
+                    singleton_hit = PrimitiveTest {}(query, mesh, primitive_index);
+                if (singleton_hit) {
                     index = primitive_index;
                     query.face = primitive_index;
-
+                    return true;
+                }
+            } else {
+                int primitive_index = bvh_load_int(mesh.bvh.primitive_indices, start + (query.primitive_counter++));
+                if (start + query.primitive_counter == end) {
+                    query.primitive_counter = 0;
+                } else {
+                    query.count++;
+                }
+                if (PrimitiveTest {}(query, mesh, primitive_index)) {
+                    index = primitive_index;
+                    query.face = primitive_index;
                     return true;
                 }
             }
@@ -2552,13 +2724,40 @@ CUDA_CALLABLE inline bool mesh_query_aabb_next(mesh_query_aabb_t& query, int& in
     return false;
 }
 
+// Backward-compatible broad-phase AABB iterator. Called by mesh_query_aabb_next
+// (the alias) and by mesh_query_next when the query object is MeshQueryAABB.
+// AabbPrimitiveTest always passes after AabbNodeTest on singleton leaves
+// (leaf AABB == primitive AABB), so the compiler folds it to a single test.
+CUDA_CALLABLE inline bool mesh_query_aabb_next(mesh_query_aabb_t& query, int& index)
+{
+    return mesh_query_next_impl<AabbNodeTest, AabbPrimitiveTest, false>(query, index);
+}
+
+// Sphere iterator -- called from mesh_query_next when the query object is _MeshQuerySphere.
+CUDA_CALLABLE inline bool mesh_query_sphere_next(mesh_query_aabb_t& query, int& index)
+{
+    return mesh_query_next_impl<SphereNodeTest, SpherePrimitiveTest>(query, index);
+}
+
+// Kind-erased iterator (MeshQuery type): used only when the concrete kind is unknown
+// at compile time (a kernel branch merging two kinds, or a function parameter
+// annotated with the parent type), so it dispatches on the kind stored at
+// construction (radius_sq alone cannot distinguish a zero-radius sphere query from
+// an AABB query). The statically-typed iterators above never route through here.
+CUDA_CALLABLE inline bool mesh_query_next_dynamic(mesh_query_aabb_t& query, int& index)
+{
+    if (query.kind == MeshQueryKind::SPHERE)
+        return mesh_query_sphere_next(query, index);
+    return mesh_query_aabb_next(query, index);
+}
 
 CUDA_CALLABLE inline int iter_next(mesh_query_aabb_t& query) { return query.face; }
 
 CUDA_CALLABLE inline bool iter_cmp(mesh_query_aabb_t& query)
 {
-    bool finished = mesh_query_aabb_next(query, query.face);
-    return finished;
+    // The for-loop protocol shares one iter_cmp across all query kinds, so it must
+    // dispatch on the stored kind.
+    return mesh_query_next_dynamic(query, query.face);
 }
 
 CUDA_CALLABLE inline mesh_query_aabb_t iter_reverse(const mesh_query_aabb_t& query)

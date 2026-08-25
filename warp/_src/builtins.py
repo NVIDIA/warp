@@ -14,6 +14,7 @@ import warp._src.context
 from warp._src.codegen import Var, get_arg_value
 from warp._src.logger import log_warning
 from warp._src.types import *
+from warp._src.types import _BvhQueryAabb, _BvhQueryCapsule, _BvhQueryRay, _BvhQuerySphere, _MeshQuerySphere
 
 from .context import add_builtin
 
@@ -1887,18 +1888,30 @@ def transformation_value_func(arg_types: Mapping[str, type], arg_values: Mapping
         if dtype is None:
             dtype = float32
     elif variadic_arg_count == 1:
-        # Initialization by filling a value, e.g.: `wp.transform(123)`,
-        # `wp.transformation(123)`.
         value_type = variadic_arg_types[0]
-        if dtype is None:
-            dtype = value_type
-        elif not warp._src.types.scalars_equal(value_type, dtype):
-            _check_vars_match_dtype(
-                arg_values,
-                variadic_arg_types,
-                dtype,
-                f"the value used to fill this transform is expected to be of the type `{dtype.__name__}`",
-            )
+        if type_is_transformation(value_type):
+            # Copy constructor, e.g.: `wp.transform(other_xform)`,
+            # `wp.transformation(other_xform)`.
+            source_dtype = value_type._wp_scalar_type_
+            if dtype is None:
+                dtype = source_dtype
+            elif not warp._src.types.scalars_equal(source_dtype, dtype):
+                raise RuntimeError(
+                    "copy constructing a transform requires matching source and target dtypes, "
+                    f"got `{source_dtype.__name__}` and `{dtype.__name__}`"
+                )
+        else:
+            # Initialization by filling a value, e.g.: `wp.transform(123)`,
+            # `wp.transformation(123)`.
+            if dtype is None:
+                dtype = value_type
+            elif not warp._src.types.scalars_equal(value_type, dtype):
+                _check_vars_match_dtype(
+                    arg_values,
+                    variadic_arg_types,
+                    dtype,
+                    f"the value used to fill this transform is expected to be of the type `{dtype.__name__}`",
+                )
     elif variadic_arg_count == 7:
         # Initializing by value, e.g.: `wp.transform(1, 2, 3, 4, 5, 6, 7)`.
         if dtype is not None:
@@ -1913,6 +1926,11 @@ def transformation_value_func(arg_types: Mapping[str, type], arg_values: Mapping
                 dtype = scalar_infer_type(variadic_arg_types)
             except RuntimeError:
                 raise RuntimeError("all values given when constructing a transform must have the same type") from None
+    else:
+        raise RuntimeError(
+            f"incompatible number of values given ({variadic_arg_count}) "
+            "when constructing a transform; expected 0, 1, or 7"
+        )
 
     if dtype is None:
         raise RuntimeError("could not infer the `dtype` argument when calling the `wp.transform()` function")
@@ -1949,12 +1967,13 @@ def transformation_dispatch_func(input_types: Mapping[str, type], return_type: A
 
     dtype = return_type._wp_scalar_type_
 
-    variadic_args = args.get("args", ())
-    variadic_arg_count = len(variadic_args)
+    variadic_args = args.get("args")
 
-    if variadic_arg_count == 7:
+    if variadic_args is not None:
+        # Variadic overload, e.g.: `wp.transform(1.5)`, `wp.transform(1, 2, 3, 4, 5, 6, 7)`.
         func_args = tuple(_cast_scalar_constant(a, dtype) for a in variadic_args)
     else:
+        # `p`/`q` overload, e.g.: `wp.transform(wp.vec3(), wp.quat())`.
         func_args = tuple(v for k, v in args.items() if k != "dtype")
         if "p" in args and "q" not in args:
             quat_ident = warp._src.codegen.Var(
@@ -2295,36 +2314,6 @@ add_builtin(
     ),
     group="Spatial Math",
     doc="Extract the bottom (second) part of a 6D screw vector.",
-)
-
-add_builtin(
-    "spatial_jacobian",
-    input_types={
-        "S": array(dtype=vector(length=6, dtype=Float)),
-        "joint_parents": array(dtype=int),
-        "joint_qd_start": array(dtype=int),
-        "joint_start": int,
-        "joint_count": int,
-        "J_start": int,
-        "J_out": array(dtype=Float),
-    },
-    value_type=None,
-    doc="Compute the spatial Jacobian matrix for a kinematic chain.",
-    group="Spatial Math",
-)
-
-add_builtin(
-    "spatial_mass",
-    input_types={
-        "I_s": array(dtype=matrix(shape=(6, 6), dtype=Float)),
-        "joint_start": int,
-        "joint_count": int,
-        "M_start": int,
-        "M": array(dtype=Float),
-    },
-    value_type=None,
-    doc="Compute the composite rigid-body mass matrix for a kinematic chain.",
-    group="Spatial Math",
 )
 
 # ------------------
@@ -4642,6 +4631,16 @@ def tile_assign_value_func(arg_types, arg_values):
                         f"within destination tile of shape {tuple(dst_type.shape)}"
                     )
 
+    # For matrix-dtype tiles, also accept one extra index for row-assign:
+    # assign(dst, i0, ..., iR, row_idx, src_vec) where src is a vector
+    # matching the matrix row length.
+    if src_type is not None and not is_tile(src_type) and type_is_matrix(dst_type.dtype):
+        # num_indices = total args - dst - src
+        num_indices = len(arg_types) - 2
+        tile_shape = dst_type.shape
+        if num_indices == len(tile_shape) + 1:
+            _check_tile_matrix_row_value(src_type, dst_type.dtype, "tile row-assign")
+
     # force the destination tile to shared memory
     dst_type.storage = "shared"
     return None
@@ -4976,6 +4975,9 @@ def tile_extract_value_func(arg_types, arg_values):
     elif type_is_matrix(tile_dtype):
         if num_indices == len(tile_shape):
             return tile_dtype
+        elif num_indices == len(tile_shape) + 1:
+            # row extract: returns a vector of length = matrix column count
+            return vector(length=tile_dtype._shape_[1], dtype=tile_dtype._wp_scalar_type_)
         elif num_indices == len(tile_shape) + 2:
             return tile_dtype._wp_scalar_type_
         else:
@@ -5418,6 +5420,15 @@ def tile_inplace_value_func(arg_types, arg_values):
     arg_types["a"].storage = "shared"
 
     return None
+
+
+def _check_tile_matrix_row_value(value_type, tile_dtype, op_name):
+    row_type = tile_dtype._wp_row_type_
+    if not type_is_vector(value_type) or not types_equal(value_type, row_type):
+        raise TypeError(
+            f"{op_name}: expected a vector source of type {type_repr(row_type)} for matrix-dtype tile row, "
+            f"got {type_repr(value_type)}"
+        )
 
 
 def tile_inplace_tile_value_func(arg_types, arg_values):
@@ -7266,7 +7277,7 @@ add_builtin(
     "bvh_query_aabb",
     input_types={"id": uint64, "low": vec3, "high": vec3, "root": int},
     defaults={"root": -1},
-    value_type=BvhQuery,
+    value_type=_BvhQueryAabb,
     group="Geometry",
     doc="""Construct an axis-aligned bounding box (AABB) query against a BVH.
 
@@ -7321,7 +7332,7 @@ add_builtin(
     "bvh_query_ray",
     input_types={"id": uint64, "start": vec3, "dir": vec3, "root": int},
     defaults={"root": -1},
-    value_type=BvhQuery,
+    value_type=_BvhQueryRay,
     group="Geometry",
     doc="""Construct a ray query against a BVH.
 
@@ -7330,7 +7341,8 @@ add_builtin(
     ``start`` and ``dir`` are given in BVH space, i.e. the same coordinate space as
     the ``lowers``/``uppers`` arrays passed to :class:`warp.Bvh`. ``dir`` need not be normalized,
     but the ``max_dist`` cutoff of :func:`bvh_query_next` is measured in multiples of its length,
-    so normalize it for ``max_dist`` to be a distance in BVH-space units.
+    so normalize it for ``max_dist`` to be a distance in BVH-space units. For capsule sweeps
+    use :func:`bvh_query_capsule` instead.
 
     To restrict traversal to a subtree, set ``root`` to that node's index (for a grouped BVH the
     group root is obtained from :func:`bvh_get_group_root`). If ``root`` is -1 (default),
@@ -7339,7 +7351,7 @@ add_builtin(
     Args:
         id: The BVH identifier
         start: The ray origin, in BVH space
-        dir: The ray direction, in BVH space (see above on normalization)
+        dir: The ray direction, in BVH space (normalize for ``max_dist`` to be a world-space distance)
         root: The node to begin the query from, or -1 (default) for the BVH's global root
 
     Returns:
@@ -7375,8 +7387,112 @@ add_builtin(
 )
 
 add_builtin(
+    "bvh_query_capsule",
+    input_types={"id": uint64, "start": vec3, "dir": vec3, "radius": float, "root": int},
+    defaults={"root": -1},
+    value_type=_BvhQueryCapsule,
+    group="Geometry",
+    doc="""Construct a conservative capsule sweep query against a BVH.
+
+    Iterates over every BVH item whose stored bounding box overlaps the swept capsule. Each node's
+    bounds are inflated by ``radius`` before the ray-slab test (an axis-aligned box inflation, not
+    a true sphere cap), so the query never misses a primitive within ``radius`` of the segment but
+    may return extra candidates near box corners.
+
+    To sweep a closed capsule from ``p0`` to ``p1``, pass ``dir = p1 - p0`` (unnormalized) and
+    ``max_dist = 1.0`` in :func:`bvh_query_next`; contact at both endpoints is included.
+    A zero-length segment (``p0 == p1``) is not supported — use :func:`bvh_query_sphere` instead.
+    A negative ``radius`` is clamped to zero. Advance results with :func:`bvh_query_next`.
+
+    Args:
+        id: The BVH identifier
+        start: The segment start point (``p0``), in BVH space
+        dir: The segment direction (``p1 - p0``), in BVH space
+        radius: The capsule radius; negative values are clamped to zero
+        root: The node to begin the query from, or -1 (default) for the BVH's global root
+
+    Returns:
+        A :class:`warp.BvhQuery`. It is opaque; pass it to :func:`bvh_query_next`.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def capsule_sweep(bvh_id: wp.uint64, p0: wp.vec3, p1: wp.vec3, radius: float,
+                               count: wp.array[wp.int32]):
+                query = wp.bvh_query_capsule(bvh_id, p0, p1 - p0, radius)
+                item = int(0)
+                while wp.bvh_query_next(query, item, 1.0):
+                    wp.atomic_add(count, 0, 1)
+
+            lowers = wp.array([[0.75, -1, -1]], dtype=wp.vec3)
+            uppers = wp.array([[2.0,   1,  1]], dtype=wp.vec3)
+            bvh = wp.Bvh(lowers=lowers, uppers=uppers)
+            count = wp.zeros(1, dtype=wp.int32)
+            wp.launch(capsule_sweep, dim=1,
+                      inputs=[bvh.id, wp.vec3(0.0, 0.0, 0.0), wp.vec3(0.5, 0.0, 0.0), 0.3, count])
+            print(count.numpy()[0])
+
+        .. testoutput::
+
+            1""",
+    export=False,
+    is_differentiable=False,
+)
+
+add_builtin(
+    "bvh_query_sphere",
+    input_types={"id": uint64, "center": vec3, "radius": float, "root": int},
+    defaults={"root": -1},
+    value_type=_BvhQuerySphere,
+    group="Geometry",
+    doc="""Construct a sphere query against a BVH object.
+
+    Iterates over all items whose bounding box overlaps the sphere (exact sphere-AABB squared-distance
+    test). Tangential contact (the nearest point on the AABB surface exactly on the sphere) is included.
+    A negative ``radius`` is clamped to zero. This is a tighter broad-phase than padding a query AABB
+    by the radius, since the sphere is inscribed in the padded box. Advance with :func:`bvh_query_next`.
+
+    Args:
+        id: The BVH identifier
+        center: The center of the sphere in BVH space
+        radius: The radius of the sphere; negative values are clamped to zero
+        root: The node to begin the query from, or -1 (default) for the BVH's global root
+
+    Returns:
+        A :class:`warp.BvhQuery`. It is opaque; pass it to :func:`bvh_query_next`.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def find_items_in_sphere(bvh_id: wp.uint64, center: wp.vec3, radius: float,
+                                     hits: wp.array[wp.int32]):
+                query = wp.bvh_query_sphere(bvh_id, center, radius)
+                item = int(0)
+                while wp.bvh_query_next(query, item):
+                    hits[item] = wp.int32(1)
+
+            lowers = wp.array([[0, 0, 0], [2, 0, 0]], dtype=wp.vec3)
+            uppers = wp.array([[1, 1, 1], [3, 1, 1]], dtype=wp.vec3)
+            bvh = wp.Bvh(lowers=lowers, uppers=uppers)
+            hits = wp.zeros(2, dtype=wp.int32)
+            wp.launch(find_items_in_sphere, dim=1,
+                      inputs=[bvh.id, wp.vec3(0.5, 0.5, 0.5), 0.6, hits])
+            print(hits.numpy().tolist())
+
+        .. testoutput::
+
+            [1, 0]""",
+    export=False,
+    is_differentiable=False,
+)
+
+add_builtin(
     "bvh_query_next",
-    input_types={"query": BvhQuery, "index": int, "max_dist": float},
+    input_types={"query": _BvhQueryAabb, "index": int, "max_dist": float},
     defaults={"max_dist": math.inf},
     value_type=builtins.bool,
     group="Geometry",
@@ -7385,21 +7501,24 @@ add_builtin(
     Writes the index of the current item to ``index`` and returns ``True``; returns ``False`` once
     the query is exhausted (``index`` is then left unchanged). The reported index is the item's
     index into the ``lowers``/``uppers`` arrays passed to :class:`warp.Bvh`. Used in a ``while``
-    loop together with :func:`bvh_query_aabb` or :func:`bvh_query_ray`.
+    loop together with :func:`bvh_query_aabb`, :func:`bvh_query_ray`, :func:`bvh_query_capsule`,
+    or :func:`bvh_query_sphere`.
 
-    For ray queries, ``max_dist`` bounds how far along the ray to look for intersections, measured
-    in multiples of the ray direction's length (so it is a distance only if ``dir`` was normalized).
-    It has no effect on AABB queries.
+    For plain ray queries (:func:`bvh_query_ray`), ``max_dist`` bounds how far along the ray to
+    look for intersections, measured in multiples of ``dir``'s length (so it is a distance only if
+    ``dir`` was normalized). For capsule queries (:func:`bvh_query_capsule`), pass
+    ``dir = p1 - p0`` (unnormalized) together with ``max_dist = 1.0`` to sweep from ``p0`` to
+    ``p1``. ``max_dist`` has no effect on AABB or sphere queries.
 
     Note that increasing ``max_dist`` may miss intersections: a subtree already rejected for being
     beyond ``max_dist`` is never revisited, even if a later, larger ``max_dist`` would reach it. It
     is therefore only safe to monotonically *reduce* ``max_dist`` during a query.
 
     Args:
-        query: The query to advance, from :func:`bvh_query_aabb` or :func:`bvh_query_ray`
+        query: The query to advance, from :func:`bvh_query_aabb`, :func:`bvh_query_ray`, :func:`bvh_query_capsule`, or :func:`bvh_query_sphere`
         index: Output; receives the index of the current overlapping item
         max_dist: For ray queries, the maximum distance along the ray to check for intersections
-            (in multiples of ``dir``'s length). Has no effect on AABB queries.
+            (in multiples of ``dir``'s length). Has no effect on AABB or sphere queries.
 
     Returns:
         ``True`` if another overlapping item was found (its index written to ``index``), ``False``
@@ -7428,6 +7547,59 @@ add_builtin(
         .. testoutput::
 
             [[0.5, 0.5, 0.5], [2.5, 0.5, 0.5], [0.0, 0.0, 0.0]]""",
+    export=False,
+    is_differentiable=False,
+)
+
+add_builtin(
+    "bvh_query_next",
+    input_types={"query": _BvhQueryRay, "index": int, "max_dist": float},
+    defaults={"max_dist": math.inf},
+    value_type=builtins.bool,
+    group="Geometry",
+    native_func="bvh_query_ray_next",
+    doc="""Advance a :func:`bvh_query_ray` query to the next intersected item.""",
+    export=False,
+    is_differentiable=False,
+)
+
+add_builtin(
+    "bvh_query_next",
+    input_types={"query": _BvhQueryCapsule, "index": int, "max_dist": float},
+    defaults={"max_dist": math.inf},
+    value_type=builtins.bool,
+    group="Geometry",
+    native_func="bvh_query_capsule_next",
+    doc="""Advance a :func:`bvh_query_capsule` query to the next intersected item.""",
+    export=False,
+    is_differentiable=False,
+)
+
+add_builtin(
+    "bvh_query_next",
+    input_types={"query": _BvhQuerySphere, "index": int, "max_dist": float},
+    defaults={"max_dist": math.inf},
+    value_type=builtins.bool,
+    group="Geometry",
+    native_func="bvh_query_sphere_next",
+    doc="""Advance a :func:`bvh_query_sphere` query to the next intersected item.""",
+    export=False,
+    is_differentiable=False,
+)
+
+# Erased-parent overload: a query is typed BvhQuery only when its concrete kind is
+# unknown at compile time (a branch merging two kinds, or a function parameter
+# annotated with the parent type), so iteration dispatches on the stored kind.
+# Overload resolution tries the exact kinds above first (see func_match_args), so
+# statically-known queries never pay for this dispatch.
+add_builtin(
+    "bvh_query_next",
+    input_types={"query": BvhQuery, "index": int, "max_dist": float},
+    defaults={"max_dist": math.inf},
+    value_type=builtins.bool,
+    group="Geometry",
+    native_func="bvh_query_next_dynamic",
+    doc="""Advance a BVH query whose kind is selected at runtime to the next overlapping item.""",
     export=False,
     is_differentiable=False,
 )
@@ -9024,6 +9196,26 @@ add_builtin(
 
 
 add_builtin(
+    "mesh_get_bvh",
+    input_types={"id": uint64},
+    value_type=uint64,
+    group="Geometry",
+    doc="""Return the identifier of a mesh's internal BVH.
+
+    The returned id can be passed directly to the ``bvh_query_*`` builtins (:func:`bvh_query_aabb`,
+    :func:`bvh_query_ray`, :func:`bvh_query_capsule`, :func:`bvh_query_sphere`) to run broad-phase
+    bounding-volume queries against
+    the mesh's triangle BVH; the bound indices they return are triangle (face) indices. Works for all
+    BVH backends (including ``"cubql"``), since cuBQL meshes are converted to Warp's native BVH layout.
+
+    Args:
+        id: The mesh identifier""",
+    export=False,
+    is_differentiable=False,
+)
+
+
+add_builtin(
     "mesh_query_aabb",
     input_types={"id": uint64, "low": vec3, "high": vec3},
     value_type=MeshQueryAABB,
@@ -9031,10 +9223,9 @@ add_builtin(
     doc="""Construct an axis-aligned bounding box (AABB) query against a :class:`warp.Mesh`.
 
     Returns a query that iterates over every triangle (face) whose own axis-aligned bounding box
-    overlaps the query box ``[low, high]``, given in the mesh's local space. This is a broad-phase
-    test on bounding boxes: a reported face's triangle may not actually intersect the box, so
-    perform an exact test yourself if required. Advance the query and read each result with
-    :func:`mesh_query_aabb_next`.
+    overlaps the query box ``[low, high]``, given in the mesh's local space. This is a
+    broad-phase-only query: a reported face's triangle bounding box overlaps the box, but the
+    triangle itself may not. Advance the query and read each result with :func:`mesh_query_next`.
 
     Args:
         id: The mesh identifier
@@ -9042,7 +9233,7 @@ add_builtin(
         high: The upper bound of the query box, in the mesh's local space
 
     Returns:
-        A :class:`warp.MeshQueryAABB`. It is opaque; pass it to :func:`mesh_query_aabb_next`, which
+        A :class:`warp.MeshQuery`. It is opaque; pass it to :func:`mesh_query_next`, which
         writes the index of each overlapping face to its ``index`` argument.
 
     Example:
@@ -9053,7 +9244,7 @@ add_builtin(
             def count_faces(mesh_id: wp.uint64, lo: wp.vec3, hi: wp.vec3, out_count: wp.array[wp.int32]):
                 query = wp.mesh_query_aabb(mesh_id, lo, hi)
                 face = int(0)
-                while wp.mesh_query_aabb_next(query, face):
+                while wp.mesh_query_next(query, face):
                     wp.atomic_add(out_count, 0, 1)
 
             points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
@@ -9073,24 +9264,73 @@ add_builtin(
 )
 
 add_builtin(
-    "mesh_query_aabb_next",
+    "mesh_query_sphere",
+    input_types={"id": uint64, "center": vec3, "radius": float},
+    value_type=_MeshQuerySphere,
+    group="Geometry",
+    doc="""Construct a sphere query against a :class:`warp.Mesh`.
+
+    Iterates over mesh triangles that intersect a sphere. A broad phase uses an exact sphere-AABB test
+    to find candidate triangles; a narrow phase keeps only those whose closest point on the triangle
+    is within ``radius`` of ``center``. Tangential contact (closest point exactly on the sphere surface)
+    is included. A negative ``radius`` is clamped to zero. Degenerate (zero-area) faces are handled by
+    falling back to a closest-point-on-longest-edge test. Advance the query with :func:`mesh_query_next`.
+
+    Args:
+        id: The mesh identifier
+        center: The center of the sphere in mesh space
+        radius: The radius of the sphere; negative values are clamped to zero
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def find_tris_in_sphere(mesh_id: wp.uint64, center: wp.vec3, radius: float,
+                                    hits: wp.array[wp.int32]):
+                query = wp.mesh_query_sphere(mesh_id, center, radius)
+                face = int(0)
+                while wp.mesh_query_next(query, face):
+                    hits[face] = wp.int32(1)
+
+            points = wp.array([[0,0,0],[1,0,0],[0,1,0]], dtype=wp.vec3)
+            indices = wp.array([0,1,2], dtype=wp.int32)
+            mesh = wp.Mesh(points=points, indices=indices)
+            hits = wp.zeros(1, dtype=wp.int32)
+            wp.launch(find_tris_in_sphere, dim=1,
+                      inputs=[mesh.id, wp.vec3(0.1, 0.1, 0.0), 0.5, hits])
+            print("hit:", hits.numpy()[0])
+
+        .. testoutput::
+
+            hit: 1""",
+    export=False,
+    is_differentiable=False,
+)
+
+add_builtin(
+    "mesh_query_next",
     input_types={"query": MeshQueryAABB, "index": int},
     value_type=builtins.bool,
     group="Geometry",
-    doc="""Advance a mesh AABB query to the next overlapping triangle and report whether one was found.
+    doc="""Advance a mesh query to the next matching triangle and report whether one was found.
 
-    Writes the index of the current face to ``index`` and returns ``True``; returns ``False`` once
-    no overlapping triangles remain (``index`` is then left unchanged). The reported index is a
-    face index (0-based, into the mesh's triangles), suitable for :func:`mesh_eval_position`,
-    :func:`mesh_eval_face_normal`, and the other face-indexed functions. Used in a ``while`` loop
-    together with :func:`mesh_query_aabb`.
+    Writes the face index of the current result to ``index`` and returns ``True``; returns
+    ``False`` once no more results remain (``index`` is then left unchanged). The reported index
+    is a 0-based face index into the mesh's triangles, suitable for :func:`mesh_eval_position`,
+    :func:`mesh_eval_face_normal`, and the other face-indexed functions.
+
+    What counts as a *match* depends on the query type:
+
+    - :func:`mesh_query_aabb`: triangles whose bounding box overlaps the query box.
+    - :func:`mesh_query_sphere`: triangles whose closest point to the sphere center is within the radius.
 
     Args:
-        query: The query to advance, from :func:`mesh_query_aabb`
-        index: Output; receives the index of the current overlapping face
+        query: The query to advance, from :func:`mesh_query_aabb` or :func:`mesh_query_sphere`
+        index: Output; receives the face index of the current result
 
     Returns:
-        ``True`` if another overlapping triangle was found (its face index written to ``index``),
+        ``True`` if another matching triangle was found (its face index written to ``index``),
         ``False`` if the query is exhausted.
 
     Example:
@@ -9101,7 +9341,7 @@ add_builtin(
             def count_faces(mesh_id: wp.uint64, lo: wp.vec3, hi: wp.vec3, out_count: wp.array[wp.int32]):
                 query = wp.mesh_query_aabb(mesh_id, lo, hi)
                 face = int(0)
-                while wp.mesh_query_aabb_next(query, face):
+                while wp.mesh_query_next(query, face):
                     wp.atomic_add(out_count, 0, 1)
 
             points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
@@ -9116,6 +9356,74 @@ add_builtin(
         .. testoutput::
 
             overlapping faces: 12""",
+    native_func="mesh_query_aabb_next",
+    export=False,
+    is_differentiable=False,
+)
+
+add_builtin(
+    "mesh_query_next",
+    input_types={"query": _MeshQuerySphere, "index": int},
+    value_type=builtins.bool,
+    group="Geometry",
+    doc="""Advance a sphere mesh query to the next matching triangle.
+
+    Overload for queries created by :func:`mesh_query_sphere`.""",
+    native_func="mesh_query_sphere_next",
+    export=False,
+    is_differentiable=False,
+)
+
+# Erased-parent overload: a query is typed MeshQuery only when its concrete kind is
+# unknown at compile time (a branch merging two kinds, or a function parameter
+# annotated with the parent type), so iteration dispatches on the stored kind.
+# Overload resolution tries the exact kinds above first (see func_match_args), so
+# statically-known queries never pay for this dispatch.
+add_builtin(
+    "mesh_query_next",
+    input_types={"query": MeshQuery, "index": int},
+    value_type=builtins.bool,
+    group="Geometry",
+    doc="""Advance a mesh query whose kind is selected at runtime to the next matching triangle.""",
+    native_func="mesh_query_next_dynamic",
+    export=False,
+    is_differentiable=False,
+)
+
+add_builtin(
+    "mesh_query_aabb_next",
+    input_types={"query": MeshQueryAABB, "index": int},
+    value_type=builtins.bool,
+    group="Geometry",
+    doc="""Advance a mesh AABB query to the next overlapping triangle and report whether one was found.
+
+    .. note:: This is an alias for :func:`mesh_query_next`.""",
+    export=False,
+    is_differentiable=False,
+)
+
+add_builtin(
+    "mesh_query_aabb_next",
+    input_types={"query": _MeshQuerySphere, "index": int},
+    value_type=builtins.bool,
+    group="Geometry",
+    doc="""Advance a sphere mesh query to the next matching triangle.
+
+    .. note:: This is an alias for :func:`mesh_query_next`.""",
+    native_func="mesh_query_sphere_next",
+    export=False,
+    is_differentiable=False,
+)
+
+add_builtin(
+    "mesh_query_aabb_next",
+    input_types={"query": MeshQuery, "index": int},
+    value_type=builtins.bool,
+    group="Geometry",
+    doc="""Advance a mesh query to the next matching triangle.
+
+    .. note:: This is an alias for :func:`mesh_query_next`.""",
+    native_func="mesh_query_next_dynamic",
     export=False,
     is_differentiable=False,
 )
@@ -10001,9 +10309,12 @@ for query_type in (
         hidden=True,
         is_differentiable=False,
     )
+# All mesh query kinds share the iterator protocol: concrete kind types resolve to
+# this registration via their erased parent (see func_match_args), and the shared
+# native iter_cmp() dispatches on mesh_query_aabb_t::kind at runtime.
 add_builtin(
     "iter_next",
-    input_types={"query": MeshQueryAABB},
+    input_types={"query": MeshQuery},
     value_type=int,
     group="Utility",
     export=False,
@@ -12248,6 +12559,12 @@ def where_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any
     v_false = arg_types["value_if_false"]
 
     if not types_equal(v_true, v_false):
+        # Sibling query-kind types (or a concrete kind and its erased parent) merge
+        # to the parent: the merged value's kind is only known at runtime, so
+        # iteration dispatches on the kind stored in the query object.
+        joined = type_erasure_join(v_true, v_false)
+        if joined is not None:
+            return joined
         raise RuntimeError(f"where() true value type ({v_true}) must be of the same type as the false type ({v_false})")
 
     if is_tile(v_false):
@@ -13466,6 +13783,15 @@ add_builtin(
     skip_replay=True,
     is_differentiable=False,
 )
+
+
+def matrix_index_row_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+    mat_type = arg_types["a"]
+    row_type = mat_type._wp_row_type_
+
+    return Reference(row_type)
+
+
 # implements &(*matrix)[i, j]
 add_builtin(
     "indexref",
@@ -13761,13 +14087,6 @@ add_builtin(
     group="Utility",
     is_differentiable=False,
 )
-
-
-def matrix_index_row_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
-    mat_type = arg_types["a"]
-    row_type = mat_type._wp_row_type_
-
-    return Reference(row_type)
 
 
 # implements &matrix[i] = row

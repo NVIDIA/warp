@@ -167,7 +167,6 @@ Debug Mode Compilation
 In debug mode, Warp kernels will perform the following additional checks:
 
 * Raise an assertion if there is an array access outside the defined shape.
-* Warn if :func:`wp.tid() <warp.tid>` will return an overflowed value on large grids.
 * (GPU-only) Warn if the CUDA grid dimensions have been capped due to an overflowed number of blocks.
 * (GPU-only) Generate line-number information for device code.
 

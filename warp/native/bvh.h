@@ -17,6 +17,7 @@
 #define USE_LOAD4
 #define BVH_QUERY_STACK_SIZE (32)
 
+
 #define BVH_CONSTRUCTOR_SAH (0)
 #define BVH_CONSTRUCTOR_MEDIAN (1)
 #define BVH_CONSTRUCTOR_LBVH (2)
@@ -239,8 +240,28 @@ __device__ inline wp::BVHPackedNodeHalf bvh_load_node(const wp::BVHPackedNodeHal
     return nodes[index];
 #endif  // USE_LOAD4
 }
+
+// read-only loads for the remaining BVH/mesh query inputs (primitive indices,
+// item bounds, mesh vertex indices); plain pointer dereferences compile to
+// generic loads because the arrays are reached through a descriptor pointer,
+// whereas __ldg uses the read-only data path. AABB queries also load the
+// candidate bounds into locals up front so the short-circuit overlap test
+// compiles to a single predicate chain instead of a branch per component;
+// the eager loads stay gated to the AABB instantiations because the extra
+// live registers measurably hurt the heavier sphere/capsule instantiations
+__device__ inline int bvh_load_int(const int* data, int index) { return __ldg(data + index); }
+
+__device__ inline vec3 bvh_load_vec3(const vec3* data, int index)
+{
+    const float* p = reinterpret_cast<const float*>(data + index);
+    return vec3(__ldg(p + 0), __ldg(p + 1), __ldg(p + 2));
+}
 #else
 inline wp::BVHPackedNodeHalf bvh_load_node(const wp::BVHPackedNodeHalf* nodes, int index) { return nodes[index]; }
+
+inline int bvh_load_int(const int* data, int index) { return data[index]; }
+
+inline vec3 bvh_load_vec3(const vec3* data, int index) { return data[index]; }
 #endif  // __CUDACC__
 
 CUDA_CALLABLE inline int clz(int x)
@@ -398,19 +419,27 @@ struct bvh_stack_t {
     int* ptr;
 };
 
-// stores state required to traverse the BVH nodes that
-// overlap with a query AABB.
+// Query kind, used two ways: as the compile-time tag instantiating bvh_query_test and
+// bvh_query_next_impl (selected at Warp codegen time via the distinct Python types
+// _BvhQueryAabb / _BvhQueryRay / _BvhQueryCapsule / _BvhQuerySphere), and stored in
+// bvh_query_t::kind for the code paths shared across kinds at runtime
+// (bvh_query_next_dynamic and the CPU tiled fallback in tile_bvh.h).
+enum class BvhQueryKind : uint8_t { AABB = 0, RAY = 1, CAPSULE = 2, SPHERE = 3 };
+
+// stores state required to traverse the BVH nodes that overlap with a query.
 struct bvh_query_t {
     CUDA_CALLABLE bvh_query_t()
         : bvh()
         , stack()
         , count(0)
-        , is_ray(false)
+        , primitive_counter(-1)
         , input_lower()
         , input_upper()
         , bounds_nr(0)
-        , primitive_counter(-1)
         , last_query_valid(true)
+        , kind(BvhQueryKind::AABB)
+        , radius(0.0f)
+        , radius_sq(0.0f)
     {
     }
 
@@ -436,29 +465,54 @@ struct bvh_query_t {
     wp::vec3 input_upper;  // dir for ray
 
     int bounds_nr;
-    bool is_ray;
     // Tracks whether the most recent bvh_query_next() / tile_bvh_query_next() call
     // produced a valid index. Seeded to true on construction so an initial
     // tile_query_valid() check (before any next() call) reports valid.
     bool last_query_valid;
+    // Read only by the paths that serve every kind and therefore need a runtime
+    // discriminant: bvh_query_next_dynamic (kind-erased queries) and the CPU tiled
+    // fallback in tile_bvh.h. The codegen-selected per-kind iterators never read it.
+    BvhQueryKind kind;
+    // Minkowski-offset: sphere radius, or ray inflation radius (0 => plain ray / aabb).
+    float radius;
+    float radius_sq;  // pre-computed radius*radius for sphere/capsule node tests
 };
 
+// Node/primitive overlap test, specialized per query kind at compile time: `if constexpr`
+// discards the untaken branches, so each instantiation folds to a dispatch-free test.
+// The ray variants also apply the max_dist predicate (closed endpoint for capsules,
+// half-open for plain rays, matching the original behavior of each).
+template <BvhQueryKind QUERY_KIND>
 CUDA_CALLABLE inline bool
-bvh_query_intersection_test(const bvh_query_t& query, const vec3& node_lower, const vec3& node_upper, float& t)
+bvh_query_test(const bvh_query_t& query, const vec3& node_lower, const vec3& node_upper, const float& max_dist)
 {
-    if (query.is_ray) {
-        return intersect_ray_aabb(query.input_lower, query.input_upper, node_lower, node_upper, t);
+    if constexpr (QUERY_KIND == BvhQueryKind::SPHERE) {
+        // exact sphere-AABB node test using pre-computed radius_sq
+        return intersect_sphere_aabb(query.input_lower, query.radius_sq, node_lower, node_upper);
+    } else if constexpr (QUERY_KIND == BvhQueryKind::CAPSULE) {
+        // Capsule: inflate bounds by radius and use the robust slab test so axis-aligned
+        // directions (rcp_dir = ±inf) correctly handle tangent slabs instead of 0*inf = NaN.
+        // Closed endpoint: contact exactly at max_dist is kept.
+        float t = FLT_MAX;
+        bool hit = intersect_ray_aabb_robust(
+            query.input_lower,
+            vec3(1.0f / query.input_upper[0], 1.0f / query.input_upper[1], 1.0f / query.input_upper[2]),
+            query.input_upper, node_lower - vec3(query.radius), node_upper + vec3(query.radius), t
+        );
+        return hit && !(t > max_dist);
+    } else if constexpr (QUERY_KIND == BvhQueryKind::RAY) {
+        // Plain ray: original slab test with its original half-open max_dist bound.
+        float t = FLT_MAX;
+        bool hit = intersect_ray_aabb(query.input_lower, query.input_upper, node_lower, node_upper, t);
+        return hit && !(t >= max_dist);
     } else {
         return intersect_aabb_aabb(query.input_lower, query.input_upper, node_lower, node_upper);
     }
 }
 
 
-CUDA_CALLABLE inline bvh_query_t bvh_query(uint64_t id, bool is_ray, const vec3& lower, const vec3& upper, int root)
+CUDA_CALLABLE inline bvh_query_t bvh_query(uint64_t id, const vec3& lower, const vec3& upper, int root)
 {
-    // This routine traverses the BVH tree until it finds
-    // the first overlapping bound.
-
     // initialize empty
     bvh_query_t query;
 
@@ -472,9 +526,7 @@ CUDA_CALLABLE inline bvh_query_t bvh_query(uint64_t id, bool is_ray, const vec3&
     BVH bvh = bvh_get(id);
 
     query.bvh = bvh;
-    query.is_ray = is_ray;
 
-    // optimization: make the latest
     query.stack[0] = root == -1 ? *bvh.root : root;
     query.count = 1;
     // ensure node-level AABB tests run on first iteration
@@ -487,15 +539,42 @@ CUDA_CALLABLE inline bvh_query_t bvh_query(uint64_t id, bool is_ray, const vec3&
 
 CUDA_CALLABLE inline bvh_query_t bvh_query_aabb(uint64_t id, const vec3& lower, const vec3& upper, int root)
 {
-    return bvh_query(id, false, lower, upper, root);
+    return bvh_query(id, lower, upper, root);
 }
 
 CUDA_CALLABLE inline bvh_query_t bvh_query_ray(uint64_t id, const vec3& start, const vec3& dir, int root)
 {
-    return bvh_query(id, true, start, 1.0f / dir, root);
+    bvh_query_t query = bvh_query(id, start, 1.0f / dir, root);
+    query.kind = BvhQueryKind::RAY;
+    return query;
 }
 
-CUDA_CALLABLE inline bool bvh_query_next(bvh_query_t& query, int& index, const float& max_dist)
+CUDA_CALLABLE inline bvh_query_t
+bvh_query_capsule(uint64_t id, const vec3& start, const vec3& dir, float radius, int root)
+{
+    bvh_query_t query = bvh_query(id, start, 1.0f / dir, root);
+    query.kind = BvhQueryKind::CAPSULE;
+    query.radius = max(radius, 0.0f);
+    query.radius_sq = query.radius * query.radius;
+    return query;
+}
+
+// Sphere query: returns all bounds within `radius` of `center` using an exact sphere-AABB
+// node test. Reuses the shared bvh_query_next() iterator.
+CUDA_CALLABLE inline bvh_query_t bvh_query_sphere(uint64_t id, const vec3& center, float radius, int root)
+{
+    bvh_query_t query = bvh_query(id, center, center, root);
+    query.kind = BvhQueryKind::SPHERE;
+    query.radius = max(radius, 0.0f);
+    query.radius_sq = query.radius * query.radius;
+    return query;
+}
+
+// Shared traversal skeleton for all bvh query kinds, written once and instantiated per
+// query type. Each instantiation compiles to a dispatch-free loop (bvh_query_test folds
+// the query-kind branches at compile time), matching the original per-kind behavior.
+template <BvhQueryKind QUERY_KIND>
+CUDA_CALLABLE inline bool bvh_query_next_impl(bvh_query_t& query, int& index, const float& max_dist)
 {
     BVH bvh = query.bvh;
 
@@ -507,11 +586,9 @@ CUDA_CALLABLE inline bool bvh_query_next(bvh_query_t& query, int& index, const f
         BVHPackedNodeHalf node_upper = bvh_load_node(bvh.node_uppers, node_index);
 
         if (query.primitive_counter == 0) {
-            float t = FLT_MAX;
-            bool hit = bvh_query_intersection_test(
-                query, reinterpret_cast<vec3&>(node_lower), reinterpret_cast<vec3&>(node_upper), t
-            );
-            if (!hit || (query.is_ray && t >= max_dist)) {
+            if (!bvh_query_test<QUERY_KIND>(
+                    query, reinterpret_cast<vec3&>(node_lower), reinterpret_cast<vec3&>(node_upper), max_dist
+                )) {
                 continue;
             }
         }
@@ -525,12 +602,12 @@ CUDA_CALLABLE inline bool bvh_query_next(bvh_query_t& query, int& index, const f
 
             // Fast path when the actual leaf range contains exactly one primitive
             if (end - start == 1) {
-                int primitive_index = bvh.primitive_indices[start];
+                int primitive_index = bvh_load_int(bvh.primitive_indices, start);
                 index = primitive_index;
                 query.bounds_nr = primitive_index;
                 return true;
             } else {
-                int primitive_index = bvh.primitive_indices[start + (query.primitive_counter++)];
+                int primitive_index = bvh_load_int(bvh.primitive_indices, start + (query.primitive_counter++));
 
                 // if already visited the last primitive in the leaf node
                 // move to the next node and reset the primitive counter to 0
@@ -541,11 +618,15 @@ CUDA_CALLABLE inline bool bvh_query_next(bvh_query_t& query, int& index, const f
                 else {
                     query.stack[query.count++] = node_index;
                 }
-                float t = FLT_MAX;
-                bool hit = bvh_query_intersection_test(
-                    query, bvh.item_lowers[primitive_index], bvh.item_uppers[primitive_index], t
-                );
-                if (!hit || (query.is_ray && t >= max_dist)) {
+                if constexpr (QUERY_KIND == BvhQueryKind::AABB) {
+                    const vec3 item_lower = bvh_load_vec3(bvh.item_lowers, primitive_index);
+                    const vec3 item_upper = bvh_load_vec3(bvh.item_uppers, primitive_index);
+                    if (!bvh_query_test<QUERY_KIND>(query, item_lower, item_upper, max_dist)) {
+                        continue;
+                    }
+                } else if (!bvh_query_test<QUERY_KIND>(
+                               query, bvh.item_lowers[primitive_index], bvh.item_uppers[primitive_index], max_dist
+                           )) {
                     continue;
                 }
                 index = primitive_index;
@@ -562,12 +643,60 @@ CUDA_CALLABLE inline bool bvh_query_next(bvh_query_t& query, int& index, const f
     return false;
 }
 
+// Per-kind public iterators. Each is a thin wrapper around the shared template skeleton;
+// the caller's Python type determines which one gets emitted, so NVCC sees only one
+// traversal loop per kernel — no runtime dispatch, no code bloat.
+
+// AABB query iterator (backward-compatible; _BvhQueryAabb type, existing callers unchanged)
+CUDA_CALLABLE inline bool bvh_query_next(bvh_query_t& query, int& index, const float& max_dist)
+{
+    return bvh_query_next_impl<BvhQueryKind::AABB>(query, index, max_dist);
+}
+
+// Plain ray iterator (_BvhQueryRay type)
+CUDA_CALLABLE inline bool bvh_query_ray_next(bvh_query_t& query, int& index, const float& max_dist)
+{
+    return bvh_query_next_impl<BvhQueryKind::RAY>(query, index, max_dist);
+}
+
+// Capsule iterator (_BvhQueryCapsule type)
+CUDA_CALLABLE inline bool bvh_query_capsule_next(bvh_query_t& query, int& index, const float& max_dist)
+{
+    return bvh_query_next_impl<BvhQueryKind::CAPSULE>(query, index, max_dist);
+}
+
+// Sphere iterator (_BvhQuerySphere type)
+CUDA_CALLABLE inline bool bvh_query_sphere_next(bvh_query_t& query, int& index, const float& max_dist)
+{
+    return bvh_query_next_impl<BvhQueryKind::SPHERE>(query, index, max_dist);
+}
+
+// Kind-erased iterator (BvhQuery type): used only when the concrete kind is unknown
+// at compile time (a kernel branch merging two kinds, or a function parameter
+// annotated with the parent type), so it dispatches on the kind stored at
+// construction. The statically-typed iterators above never route through here.
+CUDA_CALLABLE inline bool bvh_query_next_dynamic(bvh_query_t& query, int& index, const float& max_dist)
+{
+    switch (query.kind) {
+    case BvhQueryKind::RAY:
+        return bvh_query_ray_next(query, index, max_dist);
+    case BvhQueryKind::CAPSULE:
+        return bvh_query_capsule_next(query, index, max_dist);
+    case BvhQueryKind::SPHERE:
+        return bvh_query_sphere_next(query, index, max_dist);
+    default:
+        return bvh_query_next(query, index, max_dist);
+    }
+}
+
 CUDA_CALLABLE inline int iter_next(bvh_query_t& query) { return query.bounds_nr; }
 
 CUDA_CALLABLE inline bool iter_cmp(bvh_query_t& query)
 {
+    // The for-loop protocol shares one iter_cmp across all query kinds, so it must
+    // dispatch on the stored kind.
     float max_dist = FLT_MAX;
-    bool finished = bvh_query_next(query, query.bounds_nr, max_dist);
+    bool finished = bvh_query_next_dynamic(query, query.bounds_nr, max_dist);
     return finished;
 }
 

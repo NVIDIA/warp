@@ -22,6 +22,14 @@ __all__ = [
 ]
 
 
+def _is_kernel_backward_enabled(kernel: wp.Kernel) -> bool:
+    """Return whether backward code generation is enabled for ``kernel``."""
+    return kernel.options.get(
+        "enable_backward",
+        kernel.module.options.get("enable_backward", True),
+    )
+
+
 def gradcheck(
     function: wp.Kernel | Callable,
     dim: tuple[int] | None = None,
@@ -307,7 +315,7 @@ def gradcheck_tape(
             continue
         if kernel.key in blacklist_kernels:
             continue
-        if not kernel.options.get("enable_backward", True):
+        if not _is_kernel_backward_enabled(kernel):
             continue
 
         input_output_mask = input_output_masks.get(kernel.key)
@@ -750,7 +758,7 @@ def jacobian(
         metadata = FunctionMetadata()
 
     if isinstance(function, wp.Kernel):
-        if not function.options.get("enable_backward", True):
+        if not _is_kernel_backward_enabled(function):
             raise ValueError("Kernel must have backward pass enabled to compute Jacobians")
         if outputs is None or len(outputs) == 0:
             raise ValueError("A list of output arguments must be provided to compute kernel Jacobians")
@@ -778,6 +786,12 @@ def jacobian(
             outputs = [outputs]
 
     try:
+        if not isinstance(function, wp.Kernel):
+            for launch in tape.launches:
+                if isinstance(launch, (tuple, list)) and isinstance(launch[0], wp.Kernel):
+                    if not _is_kernel_backward_enabled(launch[0]):
+                        raise ValueError("Kernel must have backward pass enabled to compute Jacobians")
+
         # metadata inference can raise, and can re-evaluate the function
         if metadata.is_empty and not isinstance(function, wp.Kernel):
             metadata.update_from_function(function, inputs, outputs)
@@ -895,8 +909,6 @@ def jacobian_fd(
         metadata = FunctionMetadata()
 
     if isinstance(function, wp.Kernel):
-        if not function.options.get("enable_backward", True):
-            raise ValueError("Kernel must have backward pass enabled to compute Jacobians")
         if outputs is None or len(outputs) == 0:
             raise ValueError("A list of output arguments must be provided to compute kernel Jacobians")
         if device is None:

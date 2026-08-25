@@ -45,8 +45,22 @@ Kernels and User Functions
   Rebinding a function-valued local to a different function or to a non-function value is not supported.
   User functions with ``wp.Function`` parameters also cannot define custom gradient or replay functions.
 
-A limitation of Warp is that each dimension of the grid used to launch a kernel must be representable as a 32-bit
-signed integer. Therefore, no single dimension of a grid should exceed :math:`2^{31}-1`.
+:func:`wp.tid() <warp._src.lang.tid>` returns signed 32-bit thread coordinates. The supported launch extents depend
+on how the kernel uses those coordinates:
+
+* The leading coordinate supports a launch extent up to :math:`2^{31}`, whose largest coordinate is
+  :math:`2^{31}-1`. Warp enforces this limit for kernels that use scalar ``wp.tid()`` and raises a ``ValueError``
+  for a larger leading extent.
+* For tuple-valued ``wp.tid()``, keep each non-leading launch dimension at or below :math:`2^{31}-1`.
+  Multidimensional launch bounds store these extents as signed 32-bit values, so an extent of exactly
+  :math:`2^{31}` can produce incorrect coordinates when an earlier dimension is greater than one. Warp does not
+  currently validate tuple-only launches: a leading extent above :math:`2^{31}` can overflow the first returned
+  coordinate, and a non-leading extent above :math:`2^{31}-1` can corrupt coordinate reconstruction. In a kernel
+  that uses both scalar and tuple-valued ``wp.tid()``, the scalar validation applies only to the leading coordinate.
+
+The total number of threads in a multidimensional grid may exceed :math:`2^{31}` when each returned coordinate stays
+within these limits. Use 64-bit arithmetic when flattening such coordinates into a linear index. See
+:ref:`large-array launch indexing <large_launch_indexing>` for an example.
 
 By default, Warp will try to process one element from the Warp grid in one CUDA thread.
 This is not always possible for kernels launched with multi-dimensional grid bounds, as there are

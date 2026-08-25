@@ -29,9 +29,7 @@ template <typename T> int argmin_tracker(T champion_value, T current_value, int 
 
 #if defined(__CUDA_ARCH__)
 
-// half / float16 needs a dedicated overload: the generic template below builds an
-// anonymous union over T, whose default constructor is deleted when T has a
-// non-trivial default constructor (as half does). Shuffle the raw bits instead.
+// half / float16 uses a dedicated overload to shuffle its 16-bit payload directly.
 inline CUDA_CALLABLE half warp_shuffle_down(half val, int offset, int mask)
 {
     unsigned int bits = static_cast<unsigned int>(val.u);
