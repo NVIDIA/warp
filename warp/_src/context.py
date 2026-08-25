@@ -1284,8 +1284,7 @@ def func(
     *,
     name: str | None = None,
     module: Module | Literal["unique"] | str | None = None,
-    noinline: bool = False,
-    forceinline: bool = False,
+    inline: bool | None = None,
 ) -> Callable[[Callable[_FuncParams, _FuncReturn]], Callable[_FuncParams, _FuncReturn]]:
     """Register a Warp function (decorator with arguments: ``@wp.func(...)``)."""
     ...
@@ -1296,8 +1295,7 @@ def func(
     *,
     name: str | None = None,
     module: Module | Literal["unique"] | str | None = None,
-    noinline: bool = False,
-    forceinline: bool = False,
+    inline: bool | None = None,
 ):
     """Decorator to define a Warp function callable from kernels and other Warp functions.
 
@@ -1308,28 +1306,23 @@ def func(
         module: The Warp module in which to register the function. If ``None``,
             Warp infers the module from ``f``. Pass ``"unique"`` to create a
             new module, or a string to register the function in a named module.
-        noinline: Emit the function out of line instead of letting the backend
-            compiler inline it into its call sites (CUDA ``__noinline__``).
-            Cannot be combined with ``forceinline``.
-        forceinline: Require the function to be inlined, overriding the backend
-            compiler's own heuristic (CUDA ``__forceinline__``). Cannot be
-            combined with ``noinline``.
+        inline: Whether the function is inlined into its call sites. ``None``
+            leaves the choice to the backend compiler. ``True`` requires
+            inlining (CUDA ``__forceinline__``), overriding the compiler's own
+            heuristic. ``False`` keeps the function out of line (CUDA
+            ``__noinline__``).
 
-    Both inline hints cover the generated adjoint as well as the forward function,
-    and are lowered per backend so the decorated function stays valid for CPU and CUDA.
+    The inline hint covers the generated adjoint as well as the forward function, and is
+    lowered per backend so the decorated function stays valid for CPU and CUDA.
 
     See also:
         :func:`warp.kernel` for defining kernels that can be launched on devices.
     """
 
-    if not isinstance(noinline, bool):
-        raise TypeError(f"noinline must be a bool, got {type(noinline).__name__}: {noinline!r}")
-    if not isinstance(forceinline, bool):
-        raise TypeError(f"forceinline must be a bool, got {type(forceinline).__name__}: {forceinline!r}")
-    if noinline and forceinline:
-        raise ValueError("noinline and forceinline cannot be specified together")
+    if inline is not None and not isinstance(inline, bool):
+        raise TypeError(f"inline must be a bool or None, got {type(inline).__name__}: {inline!r}")
 
-    inline_hint = "noinline" if noinline else "forceinline" if forceinline else None
+    inline_hint = None if inline is None else ("forceinline" if inline else "noinline")
 
     frame = inspect.currentframe()
     if frame is None or frame.f_back is None:

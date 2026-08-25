@@ -426,8 +426,8 @@ class TestModuleHasherFunctionOptions(unittest.TestCase):
         the key a shared kernel cache would serve a binary built for a different hint.
         """
 
-        def make(**kwargs):
-            @wp.func(**kwargs, module="unique")
+        def make(inline):
+            @wp.func(inline=inline, module="unique")
             def f(x: float) -> float:
                 return x + 1.0
 
@@ -437,9 +437,9 @@ class TestModuleHasherFunctionOptions(unittest.TestCase):
 
             return f.module
 
-        hashes = {make(**kwargs).hash_module() for kwargs in ({}, {"noinline": True}, {"forceinline": True})}
+        hashes = {make(inline=inline).hash_module() for inline in (None, False, True)}
         self.assertEqual(len(hashes), 3)
-        self.assertEqual(make(noinline=True).hash_module(), make(noinline=True).hash_module())
+        self.assertEqual(make(inline=False).hash_module(), make(inline=False).hash_module())
 
 
 class TestModuleHashing(unittest.TestCase):

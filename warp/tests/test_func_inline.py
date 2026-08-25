@@ -17,7 +17,7 @@ def module_source(kernel, device: str) -> str:
     return ModuleBuilder(kernel.module, options).codegen(device)
 
 
-@wp.func(noinline=True)
+@wp.func(inline=False)
 def scale_out_of_line(x: float) -> float:
     return x * 2.0
 
@@ -37,28 +37,19 @@ def test_noinline_func_runs(test, device):
 
 class TestFuncInline(unittest.TestCase):
     def test_invalid_inline_hint_rejected(self):
-        """Reject non-bool inline hints."""
-        for hint in ("noinline", "forceinline"):
-            for value in (1, 1.5, "yes"):
-                with self.subTest(hint=hint, value=value), self.assertRaisesRegex(TypeError, hint):
+        """Reject non-bool values for the inline hint."""
+        for value in (1, 1.5, "yes"):
+            with self.subTest(value=value), self.assertRaisesRegex(TypeError, "inline must be a bool"):
 
-                    @wp.func(**{hint: value}, module="unique")
-                    def invalid(x: float) -> float:
-                        return x
-
-    def test_conflicting_inline_hints_rejected(self):
-        """Reject noinline and forceinline on the same function."""
-        with self.assertRaisesRegex(ValueError, "noinline and forceinline"):
-
-            @wp.func(noinline=True, forceinline=True, module="unique")
-            def invalid(x: float) -> float:
-                return x
+                @wp.func(inline=value, module="unique")
+                def invalid(x: float) -> float:
+                    return x
 
     def test_codegen_emits_inline_attrs(self):
         """Emit the requested inline attribute for CPU and CUDA, and nothing when none is requested."""
-        for hint, macro in ((None, None), ("noinline", "WP_NOINLINE"), ("forceinline", "WP_FORCEINLINE")):
+        for inline, macro in ((None, None), (False, "WP_NOINLINE"), (True, "WP_FORCEINLINE")):
 
-            @wp.func(**({hint: True} if hint else {}), module="unique")
+            @wp.func(inline=inline, module="unique")
             def helper(x: float) -> float:
                 return x + 1.0
 
@@ -67,7 +58,7 @@ class TestFuncInline(unittest.TestCase):
                 a[wp.tid()] = helper(1.0)
 
             for device in ("cpu", "cuda"):
-                with self.subTest(device=device, hint=hint):
+                with self.subTest(device=device, inline=inline):
                     # NOTE: match on each macro's use, not its name -- the module header
                     # #defines both regardless of whether any function requested them.
                     source = module_source(uses_helper, device)
@@ -77,7 +68,7 @@ class TestFuncInline(unittest.TestCase):
     def test_inline_attr_applied_to_adjoint(self):
         """Apply the inline attribute to the generated adjoint as well as the forward function."""
 
-        @wp.func(noinline=True)
+        @wp.func(inline=False)
         def differentiable(x: float) -> float:
             return x * x
 
@@ -92,7 +83,7 @@ class TestFuncInline(unittest.TestCase):
     def test_inline_attr_applied_to_custom_grad_and_replay(self):
         """Apply the inline attribute to custom gradient and replay hooks, which are separate Functions."""
 
-        @wp.func(noinline=True)
+        @wp.func(inline=False)
         def squared(x: float) -> float:
             return x * x
 

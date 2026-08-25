@@ -288,39 +288,34 @@ Function-level settings can be passed as arguments to the :func:`@wp.func <warp.
      - ``None``
      - Controls which module the function belongs to, following the same rules
        as the equivalent kernel setting.
-   * - ``noinline``
-     - Boolean
-     - ``False``
-     - If ``True``, emit the function out of line instead of letting the backend
-       compiler inline it into its call sites (CUDA ``__noinline__``). Cannot be
-       combined with ``forceinline``.
-   * - ``forceinline``
-     - Boolean
-     - ``False``
-     - If ``True``, require the function to be inlined, overriding the backend
-       compiler's own heuristic (CUDA ``__forceinline__``). Cannot be combined
-       with ``noinline``.
+   * - ``inline``
+     - Boolean | ``None``
+     - ``None``
+     - Whether the function is inlined into its call sites. ``None`` leaves the
+       choice to the backend compiler. ``True`` requires inlining (CUDA
+       ``__forceinline__``), overriding the compiler's own heuristic. ``False``
+       keeps the function out of line (CUDA ``__noinline__``).
 
 .. code-block:: python
 
-    @wp.func(noinline=True)
+    @wp.func(inline=False)
     def expensive_helper(x: wp.vec3) -> wp.vec3:
         # kept out of line in every kernel that calls it
         return wp.normalize(x) * wp.length(x)
 
 
-    @wp.func(forceinline=True)
+    @wp.func(inline=True)
     def cheap_helper(x: float) -> float:
         # inlined even where the backend compiler would not choose to
         return x * 2.0
 
-Without either hint, inlining is left to the backend compiler, which decides per function and
-per call site with no way to influence it from Python.
-Inlining a large function into many call sites raises a kernel's peak register count, because
-register allocation is bounded by the worst path through the whole kernel body, and duplicates
-the body at every call site, pressuring the instruction cache. ``noinline`` keeps one copy out
-of line at the cost of an ABI call; ``forceinline`` is the reverse, for small helpers the
-compiler chose to outline. Either direction is workload dependent and worth measuring.
+Left unset, inlining is decided by the backend compiler, per function and per call site, with
+no way to influence it from Python. Inlining a large function into many call sites raises a
+kernel's peak register count, because register allocation is bounded by the worst path through
+the whole kernel body, and duplicates the body at every call site, pressuring the instruction
+cache. ``inline=False`` keeps one copy out of line at the cost of an ABI call;
+``inline=True`` is the reverse, for small helpers the compiler chose to outline. Either
+direction is workload dependent and worth measuring.
 
-Both hints cover the generated adjoint as well as the forward function, and are lowered per
+The hint covers the generated adjoint as well as the forward function, and is lowered per
 backend, so the same function remains valid for CPU and CUDA.
