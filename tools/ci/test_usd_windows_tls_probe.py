@@ -188,7 +188,7 @@ class EagerImportTests(unittest.TestCase):
             environment["EXPECTED_USD_RUNTIME_DIRECTORY"] = str(Path(sys.prefix) / "bin")
 
             result = subprocess.run(
-                [sys.executable, "-c", "print('python-body')"],
+                [sys.executable, "-c", "from pxr import Tf; assert Tf.VALUE == 'loaded'; print('python-body')"],
                 capture_output=True,
                 check=False,
                 encoding="utf-8",
@@ -196,9 +196,7 @@ class EagerImportTests(unittest.TestCase):
             )
 
             self.assertEqual(result.returncode, 0, result.stderr)
-            lines = result.stdout.splitlines()
-            self.assertIn('"kind": "usd-eager-import"', lines[0])
-            self.assertEqual(lines[-1], "python-body")
+            self.assertEqual(result.stdout.strip(), "python-body")
 
 
 class UsdAvailabilityTests(unittest.TestCase):

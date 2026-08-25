@@ -28,7 +28,7 @@ if importlib.util.find_spec("pxr") is not None:
 
         os.environ[variable_name] = os.pathsep.join(search_paths)
 
-        from pxr import Tf
+        from pxr import Tf  # noqa: F401
     except BaseException as error:
         print(
             json.dumps(
@@ -47,16 +47,3 @@ if importlib.util.find_spec("pxr") is not None:
         )
         # Python's site module otherwise reports and ignores sitecustomize errors.
         os._exit(86)
-
-    print(
-        json.dumps(
-            {
-                "kind": "usd-eager-import",
-                "pid": os.getpid(),
-                "time": time.time(),
-                "tf_module": getattr(Tf, "__file__", None),
-            },
-            sort_keys=True,
-        ),
-        flush=True,
-    )
