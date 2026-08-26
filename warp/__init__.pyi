@@ -2444,6 +2444,10 @@ def transform_inverse(xform: Transformation[Float]) -> Transformation[Float]:
     """Compute the inverse of the transformation ``xform``."""
     ...
 
+def transform_normalize(xform: Transformation[Float]) -> Transformation[Float]:
+    """Normalize the rotational part of the transformation ``xform``, leaving its translation unchanged."""
+    ...
+
 @over
 def spatial_vector(dtype: Float) -> Vector[Float, Literal[6]]:
     """Construct a 6D screw vector.
