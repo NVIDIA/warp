@@ -61,6 +61,8 @@ class SpaceRestriction:
 
     def rebuild(self, device: Optional["wp.DeviceLike"] = None, temporary_store: cache.TemporaryStore | None = None):
         """Rebuild internal indices for the space restriction."""
+        self.node_arg_value.invalidate(self)
+
         max_nodes_per_element = self.space_topology.MAX_NODES_PER_ELEMENT
 
         @cache.dynamic_kernel(

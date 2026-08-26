@@ -712,6 +712,43 @@ def test_capturability(test, device):
         assert_np_equal(A.columns.numpy()[:nnz_ref], columns_ref)
 
 
+def test_restriction_rebuild(test, device):
+    with wp.ScopedDevice(device):
+        geo = fem.Grid2D(res=wp.vec2i(4, 4))
+        space = fem.make_polynomial_space(geo, degree=1)
+
+        cell_mask = wp.zeros(geo.cell_count(), dtype=int, device=device)
+        cell_mask[:2].fill_(1)
+        geo_partition = fem.ExplicitGeometryPartition(geo, cell_mask)
+        space_partition = fem.make_space_partition(
+            space_topology=space.topology,
+            geometry_partition=geo_partition,
+            with_halo=False,
+        )
+        restriction = fem.make_space_restriction(
+            space_partition=space_partition,
+            domain=fem.Cells(geo_partition),
+            device=device,
+        )
+
+        # Get NodeArg before rebuild.
+        restriction.node_arg_value(device)
+
+        # Rebuild dependent FEM objects after expanding the cell mask.
+        cell_mask[:8].fill_(1)
+        geo_partition.rebuild(cell_mask)
+        space_partition.rebuild(device=device)
+        restriction.rebuild(device=device)
+
+        cached_node_arg = restriction.node_arg_value(device)
+
+        # Check NodeArg is updated after rebuild.
+        test.assertTrue(
+            cached_node_arg.dof_partition_indices.ptr == restriction._dof_partition_indices.ptr,
+            "NodeArg is stale after rebuild.",
+        )
+
+
 # -- Device setup and test registration --
 
 devices = get_test_devices()
@@ -767,6 +804,7 @@ add_function_test(TestFemIntegrate, "test_integrate_high_order", test_integrate_
 add_function_test(TestFemIntegrate, "test_padded_sparse_assembly", test_padded_sparse_assembly, devices=cuda_devices)
 add_function_test(TestFemIntegrate, "test_interpolate_reduction", test_interpolate_reduction, devices=devices)
 add_function_test(TestFemIntegrate, "test_capturability", test_capturability, devices=cuda_devices_with_mempool)
+add_function_test(TestFemIntegrate, "test_restriction_rebuild", test_restriction_rebuild, devices=devices)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2, failfast=True)
