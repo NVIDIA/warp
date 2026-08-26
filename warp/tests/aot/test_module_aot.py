@@ -387,6 +387,10 @@ class TestModuleAOT(unittest.TestCase):
 
         device = wp.get_device("cuda:0")
 
+        # Explicit architecture targets must be supported by NVRTC.
+        if device.arch not in wp.get_cuda_supported_archs():
+            self.skipTest(f"NVRTC does not support sm_{device.arch}")
+
         try:
             shutil.rmtree(TEST_CACHE_DIR, ignore_errors=True)
             TEST_CACHE_DIR.mkdir(parents=True, exist_ok=True)
