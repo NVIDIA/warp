@@ -416,9 +416,7 @@ class TestModuleHasherKernelOptions(unittest.TestCase):
         self.assertEqual(make(32).module.hash_module(), make(32).module.hash_module())
 
 
-class TestModuleHasherFunctionOptions(unittest.TestCase):
-    """Regression tests: @wp.func options must participate in ModuleHasher."""
-
+class TestModuleHashing(unittest.TestCase):
     def test_inline_hint_hashed(self):
         """Verify each ``@wp.func`` inline hint produces a distinct module hash.
 
@@ -441,8 +439,6 @@ class TestModuleHasherFunctionOptions(unittest.TestCase):
         self.assertEqual(len(hashes), 3)
         self.assertEqual(make(inline=False).hash_module(), make(inline=False).hash_module())
 
-
-class TestModuleHashing(unittest.TestCase):
     def test_unique_module_import_hash_before_explicit_init(self):
         """Verify unique-module hashing before explicit ``wp.init()``."""
         code = (

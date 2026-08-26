@@ -309,13 +309,12 @@ Function-level settings can be passed as arguments to the :func:`@wp.func <warp.
         # inlined even where the backend compiler would not choose to
         return x * 2.0
 
-Left unset, inlining is decided by the backend compiler, per function and per call site, with
-no way to influence it from Python. Inlining a large function into many call sites raises a
-kernel's peak register count, because register allocation is bounded by the worst path through
-the whole kernel body, and duplicates the body at every call site, pressuring the instruction
-cache. ``inline=False`` keeps one copy out of line at the cost of an ABI call;
-``inline=True`` is the reverse, for small helpers the compiler chose to outline. Either
-direction is workload dependent and worth measuring.
+By default, the backend compiler decides whether to inline a function at each call site. Set
+``inline=False`` to prevent inlining or ``inline=True`` to require it.
+
+Inlining duplicates the function body at each call site. This can increase register pressure and
+instruction-cache use. Keeping a function out of line avoids that duplication but adds
+function-call overhead. The best choice depends on the workload, so measure both options.
 
 The hint covers the generated adjoint as well as the forward function, and is lowered per
 backend, so the same function remains valid for CPU and CUDA.
