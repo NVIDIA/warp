@@ -29,6 +29,8 @@ ARRAY_SIZE = 1024 * 1024
 TILE_STORE_SIZE = 64
 JAX_TILE_BLOCK_DIM = 64
 JAX_SCALAR_TID_DISABLED = False
+JAX_SHARD_MAP_INNER_SIZE = 8
+JAX_SHARD_MAP_MIN_VERSION = (0, 6, 1)
 
 
 # Keep test kernels at module scope. Function-local @wp.kernel definitions mark
@@ -67,6 +69,12 @@ def scale_mat_kernel(a: wp.array[wp.mat22], s: float, out: wp.array[wp.mat22]):
 def noop_kernel(a: wp.array1d[wp.float32], b: wp.array1d[wp.float32]):
     i = wp.tid()
     b[i] = a[i]
+
+
+@wp.kernel
+def flatten_2d_kernel(a: wp.array2d[wp.float32], b: wp.array1d[wp.float32]):
+    i = wp.tid()
+    b[i] = a[i // JAX_SHARD_MAP_INNER_SIZE, i % JAX_SHARD_MAP_INNER_SIZE]
 
 
 @wp.kernel
@@ -1640,6 +1648,143 @@ def _run_ffi_jax_cpu_subprocess(test):
         )
 
     test.assertEqual(result.returncode, 0, msg=f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}")
+
+
+def _get_two_device_jax_cuda_mesh(test):
+    jax = _import_jax()
+    try:
+        devices = jax.local_devices(backend="cuda")
+    except RuntimeError as error:
+        test.skipTest(f"JAX CUDA devices are unavailable: {error}")
+    if len(devices) < 2:
+        test.skipTest("At least two JAX CUDA devices are required")
+    return jax.sharding.Mesh(np.array(devices[:2]), ("replicas",))
+
+
+@unittest.skipUnless(_jax_version() >= JAX_SHARD_MAP_MIN_VERSION, "JAX version too old")
+def test_ffi_shard_map_preserves_vma(test, _device):
+    """Verify that JAX FFI outputs preserve VMA metadata through ``lax.scan``."""
+    jax = _import_jax()
+    jp = _import_jax_numpy()
+    jax_mesh = _get_two_device_jax_cuda_mesh(test)
+    source = jp.arange(128, dtype=jp.float32)
+    expected = np.arange(128, dtype=np.float32)
+
+    ffi_copies = (
+        ("jax_kernel", wp.jax_kernel(noop_kernel, num_outputs=1)),
+        ("jax_callable", wp.jax_callable(cache_key_in_out_first_func, num_outputs=1)),
+    )
+
+    def make_scan_copy(ffi_copy):
+        @jax.shard_map(
+            mesh=jax_mesh,
+            in_specs=jax.sharding.PartitionSpec("replicas"),
+            out_specs=jax.sharding.PartitionSpec("replicas"),
+            check_vma=True,
+        )
+        def scan_copy(x):
+            def body(carry, _):
+                return ffi_copy(carry)[0], None
+
+            return jax.lax.scan(body, x, None, length=2)[0]
+
+        return scan_copy
+
+    for name, ffi_copy in ffi_copies:
+        with test.subTest(wrapper=name):
+            scan_copy = make_scan_copy(ffi_copy)
+            result = scan_copy(source)
+            np.testing.assert_array_equal(np.asarray(result), expected)
+
+
+@unittest.skipUnless(_jax_version() >= JAX_SHARD_MAP_MIN_VERSION, "JAX version too old")
+def test_ffi_shard_map_aggregates_input_vma(test, _device):
+    """Verify that JAX FFI outputs aggregate VMA metadata from all array inputs.
+
+    Exercise kernel and callable wrappers with pure outputs and input-output
+    aliases when only a later input varies across a manual JAX mesh axis.
+    """
+    jax = _import_jax()
+    jp = _import_jax_numpy()
+    jax_mesh = _get_two_device_jax_cuda_mesh(test)
+    invariant = jp.ones(64, dtype=jp.float32)
+    varying = jp.arange(128, dtype=jp.float32)
+
+    ffi_kernel = wp.jax_kernel(multiarg_kernel, num_outputs=2)
+    ffi_callable = wp.jax_callable(cache_key_staging_func, num_outputs=2)
+    ffi_kernel_in_out = wp.jax_kernel(multiarg_kernel, num_outputs=3, in_out_argnames=["b"])
+    ffi_callable_in_out = wp.jax_callable(cache_key_two_in_out_func, num_outputs=2, in_out_argnames=["b"])
+
+    def kernel_copy(invariant, carry):
+        return ffi_kernel(invariant, carry, invariant)[1]
+
+    def callable_copy(invariant, carry):
+        return ffi_callable(invariant, carry)[1]
+
+    def kernel_in_out_copy(invariant, carry):
+        return ffi_kernel_in_out(invariant, carry, carry)[0]
+
+    def callable_in_out_copy(invariant, carry):
+        return ffi_callable_in_out(invariant, carry)[0]
+
+    ffi_copies = (
+        ("jax_kernel", kernel_copy, np.arange(128, dtype=np.float32) + 2.0),
+        ("jax_callable", callable_copy, np.arange(128, dtype=np.float32)),
+        ("jax_kernel_in_out", kernel_in_out_copy, np.arange(128, dtype=np.float32)),
+        ("jax_callable_in_out", callable_in_out_copy, np.arange(128, dtype=np.float32)),
+    )
+
+    def make_scan_copy(ffi_copy):
+        @jax.shard_map(
+            mesh=jax_mesh,
+            in_specs=(jax.sharding.PartitionSpec(), jax.sharding.PartitionSpec("replicas")),
+            out_specs=jax.sharding.PartitionSpec("replicas"),
+            check_vma=True,
+        )
+        def scan_copy(invariant, varying):
+            def body(carry, _):
+                return ffi_copy(invariant, carry), None
+
+            return jax.lax.scan(body, varying, None, length=2)[0]
+
+        return scan_copy
+
+    for name, ffi_copy, expected in ffi_copies:
+        with test.subTest(wrapper=name):
+            scan_copy = make_scan_copy(ffi_copy)
+            result = scan_copy(invariant, varying)
+            np.testing.assert_array_equal(np.asarray(result), expected)
+
+
+@unittest.skipUnless(_jax_version() >= JAX_SHARD_MAP_MIN_VERSION, "JAX version too old")
+def test_ffi_shard_map_vma_rank_change(test, _device):
+    """Verify that JAX FFI preserves VMA metadata for rank-changing outputs.
+
+    Reshape the scan carry to two dimensions before the FFI call and return a
+    one-dimensional output as the next carry.
+    """
+    jax = _import_jax()
+    jp = _import_jax_numpy()
+    jax_mesh = _get_two_device_jax_cuda_mesh(test)
+    local_size = JAX_SHARD_MAP_INNER_SIZE * JAX_SHARD_MAP_INNER_SIZE
+    source = jp.arange(2 * local_size, dtype=jp.float32).reshape((2 * JAX_SHARD_MAP_INNER_SIZE, -1))
+    ffi_flatten = wp.jax_kernel(flatten_2d_kernel, launch_dims=local_size, output_dims=local_size)
+
+    @jax.shard_map(
+        mesh=jax_mesh,
+        in_specs=jax.sharding.PartitionSpec("replicas", None),
+        out_specs=jax.sharding.PartitionSpec("replicas"),
+        check_vma=True,
+    )
+    def scan_flatten(x):
+        def body(carry, _):
+            matrix = carry.reshape((JAX_SHARD_MAP_INNER_SIZE, JAX_SHARD_MAP_INNER_SIZE))
+            return ffi_flatten(matrix)[0], None
+
+        return jax.lax.scan(body, x.reshape((local_size,)), None, length=2)[0]
+
+    result = scan_flatten(source)
+    np.testing.assert_array_equal(np.asarray(result), np.arange(2 * local_size, dtype=np.float32))
 
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
@@ -3251,6 +3396,21 @@ else:
             for test_func in pmap_tests:
                 add_function_test(
                     TestJax, test_func.__name__, test_func, devices=None, device_check=_check_pmap_devices
+                )
+
+        if len(jax_cuda_candidate_devices) >= 2 and jax.__version_info__ >= JAX_SHARD_MAP_MIN_VERSION:
+            shard_map_tests = (
+                test_ffi_shard_map_preserves_vma,
+                test_ffi_shard_map_aggregates_input_vma,
+                test_ffi_shard_map_vma_rank_change,
+            )
+            for test_func in shard_map_tests:
+                add_function_test(
+                    TestJax,
+                    test_func.__name__,
+                    test_func,
+                    devices=None,
+                    device_check=_check_all_jax_cuda_devices,
                 )
 
     if jax_cuda_candidate_devices:
