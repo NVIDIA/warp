@@ -6696,13 +6696,14 @@ cpu_module_header = """
 
 #define builtin_block_dim() wp::block_dim()
 
-// Inline control for @wp.func(inline=...).
+// Inline control for @wp.func(inline=...). __forceinline implies inline on MSVC; elsewhere
+// always_inline needs the inline specifier spelled out alongside it.
 #if defined(_MSC_VER)
 #define WP_NOINLINE __declspec(noinline)
 #define WP_FORCEINLINE __forceinline
 #else
 #define WP_NOINLINE __attribute__((noinline))
-#define WP_FORCEINLINE __attribute__((always_inline))
+#define WP_FORCEINLINE inline __attribute__((always_inline))
 #endif
 
 """
@@ -6751,10 +6752,11 @@ cuda_module_header = """
 #endif
 
 // Inline control for @wp.func(inline=...). Warp compiles device code with WP_NO_CRT, so
-// host_defines.h, which normally defines __noinline__ and __forceinline__, is not included;
-// spell both out as the attributes NVRTC and NVCC accept.
+// host_defines.h, which normally defines __noinline__ and __forceinline__, is not included.
+// Spell them out as it does: always_inline needs the inline specifier alongside it, or the
+// compiler is free to ignore the attribute and emit an out-of-line call.
 #define WP_NOINLINE __attribute__((noinline))
-#define WP_FORCEINLINE __attribute__((always_inline))
+#define WP_FORCEINLINE inline __attribute__((always_inline))
 
 """
 
