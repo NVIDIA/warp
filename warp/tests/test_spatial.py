@@ -3173,8 +3173,6 @@ for dtype in np_float_types:
         devices=devices,
         dtype=dtype,
     )
-    # \TODO: test spatial_mass and spatial_jacobian
-
 add_function_test(
     TestSpatial, "test_transform_getter_setter", test_transform_getter_setter, devices=wp.get_device("cpu")
 )
