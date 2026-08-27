@@ -195,6 +195,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_fixedarray import TestFixedArray
     from warp.tests.test_fp16 import TestFp16
     from warp.tests.test_func import TestFunc
+    from warp.tests.test_func_inline import TestFuncInline
     from warp.tests.test_func_parameter_targets import TestFuncParameterTargets
     from warp.tests.test_future_annotations import TestFutureAnnotations
     from warp.tests.test_generics import TestGenerics
@@ -360,6 +361,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestFixedArray,
         TestFp16,
         TestFunc,
+        TestFuncInline,
         TestFuncParameterTargets,
         TestFutureAnnotations,
         TestGenerics,

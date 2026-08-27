@@ -415,6 +415,28 @@ class TestModuleHasherKernelOptions(unittest.TestCase):
 
 
 class TestModuleHashing(unittest.TestCase):
+    def test_inline_hint_hashed(self):
+        """Verify each ``@wp.func`` inline hint produces a distinct module hash.
+
+        The hint changes only the generated C++/CUDA, not the Python source, so without it in
+        the key a shared kernel cache would serve a binary built for a different hint.
+        """
+
+        def make(inline):
+            @wp.func(inline=inline, module="unique")
+            def f(x: float) -> float:
+                return x + 1.0
+
+            @wp.kernel(enable_backward=False, module=f.module)
+            def k(a: wp.array[float]):
+                a[wp.tid()] = f(1.0)
+
+            return f.module
+
+        hashes = {make(inline=inline).hash_module() for inline in (None, False, True)}
+        self.assertEqual(len(hashes), 3)
+        self.assertEqual(make(inline=False).hash_module(), make(inline=False).hash_module())
+
     def test_unique_module_import_hash_before_explicit_init(self):
         """Verify unique-module hashing before explicit ``wp.init()``."""
         code = (
