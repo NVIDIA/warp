@@ -888,25 +888,3 @@ class IsoSurfaceMarchingCubes(IsoSurfaceBase):
             domain_bounds_lower_corner=domain_bounds_lower_corner,
             domain_bounds_upper_corner=domain_bounds_upper_corner,
         )
-
-
-class MarchingCubes(IsoSurfaceMarchingCubes):
-    """Deprecated alias of :class:`warp.geometry.IsoSurfaceMarchingCubes`.
-
-    .. deprecated:: 1.17
-        Use :class:`warp.geometry.IsoSurfaceMarchingCubes` instead. This alias
-        will be removed in a future version of Warp.
-
-    The alias remains a subclass rather than a plain assignment so that
-    existing type annotations and ``isinstance`` checks against
-    ``wp.MarchingCubes`` keep working during the deprecation period.
-    """
-
-    def __init__(self, *args, **kwargs):
-        log_warning(
-            "wp.MarchingCubes is deprecated and will be removed in a future version of Warp. "
-            "Use wp.geometry.IsoSurfaceMarchingCubes instead.",
-            category=DeprecationWarning,
-            stacklevel=2,
-        )
-        super().__init__(*args, **kwargs)

@@ -427,11 +427,11 @@ class TestMarchingCubes(unittest.TestCase):
     def test_marching_cubes_deprecated_top_level_alias(self):
         """Check that the deprecated wp.MarchingCubes alias warns but still extracts.
 
-        The alias is a subclass rather than a plain assignment, so existing
-        ``isinstance`` checks and type annotations must keep working while the
-        deprecation warning is emitted on construction.
+        The alias resolves through ``warp.__getattr__`` to the new class itself,
+        so ``isinstance`` checks agree in both directions and the deprecation
+        warning is emitted on attribute access.
         """
-        self.assertTrue(issubclass(wp.MarchingCubes, wp.geometry.IsoSurfaceMarchingCubes))
+        self.assertIs(wp.MarchingCubes, wp.geometry.IsoSurfaceMarchingCubes)
 
         node_dim = 16
         field = wp.zeros((node_dim, node_dim, node_dim), dtype=wp.float32)
@@ -461,6 +461,10 @@ class TestMarchingCubes(unittest.TestCase):
         self.assertIn("wp.geometry.IsoSurfaceMarchingCubes", stderr_output)
 
         self.assertIsInstance(iso, wp.geometry.IsoSurfaceBase)
+
+        # An object built through the new name is also an instance of the alias.
+        # The previous subclass alias could not satisfy this direction.
+        self.assertIsInstance(wp.geometry.IsoSurfaceMarchingCubes(8, 8, 8), wp.MarchingCubes)
 
         iso.surface(field, threshold=0.0)
         expected_verts, expected_faces = wp.geometry.IsoSurfaceMarchingCubes.extract(field, threshold=0.0)

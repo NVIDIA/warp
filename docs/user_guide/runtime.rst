@@ -2923,6 +2923,17 @@ The :class:`wp.geometry.IsoSurfaceMarchingCubes
 approximating an isosurface of a 3-D scalar field. The resulting triangle mesh
 can be saved to a USD file using the :class:`warp.render.UsdRenderer`.
 
+.. deprecated:: 1.17
+
+    ``wp.MarchingCubes`` is a deprecated alias of
+    :class:`wp.geometry.IsoSurfaceMarchingCubes
+    <warp.geometry.IsoSurfaceMarchingCubes>` and will be removed in a future
+    version of Warp. It is resolved lazily, so the two names refer to the same
+    class and accessing it emits a warning. Because it is resolved at runtime
+    rather than imported, it does not appear in ``warp/__init__.pyi``; annotate
+    with :class:`wp.geometry.IsoSurfaceMarchingCubes
+    <warp.geometry.IsoSurfaceMarchingCubes>` instead.
+
 .. testcode::
     :skipif: wp.get_cuda_device_count() == 0
 

@@ -629,5 +629,4 @@ Misc
    :nosignatures:
    :toctree: _generated
 
-   MarchingCubes
    RegisteredGLBuffer

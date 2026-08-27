@@ -593,14 +593,25 @@ from warp.config import DeterministicMode as DeterministicMode
 
 from warp._src.math import *
 
-# Deprecated alias of `warp.geometry.IsoSurfaceMarchingCubes`, kept importable from
-# the top level for backward compatibility. The isosurface API itself lives in
-# `warp.geometry`, which must be imported explicitly.
-from warp._src.geometry.marching_cubes import MarchingCubes as MarchingCubes
 from warp._src.context import RegisteredGLBuffer as RegisteredGLBuffer
 
 
 def __getattr__(name):
+    # Deprecated alias of `warp.geometry.IsoSurfaceMarchingCubes`, resolved lazily
+    # so that `wp.MarchingCubes` *is* the new class rather than a subclass of it.
+    # The isosurface API itself lives in `warp.geometry`, imported explicitly.
+    if name == "MarchingCubes":
+        from warp._src.geometry.marching_cubes import IsoSurfaceMarchingCubes  # noqa: PLC0415
+        from warp._src.logger import log_warning  # noqa: PLC0415
+
+        log_warning(
+            "wp.MarchingCubes is deprecated and will be removed in a future version of Warp. "
+            "Use wp.geometry.IsoSurfaceMarchingCubes instead.",
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
+        return IsoSurfaceMarchingCubes
+
     if name == "HashGridQueryH":
         dtype = float16
     elif name == "HashGridQueryD":
