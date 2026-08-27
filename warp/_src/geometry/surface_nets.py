@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import Final, Literal
 
 import warp as wp
-from warp._src.iso_surface import IsoSurfaceBase, resolve_domain_bounds, validate_field
+from warp._src.geometry.iso_surface import IsoSurfaceBase, resolve_domain_bounds, validate_field
 
 # =============================================================================
 # Lookup tables ported from OpenVDB (VolumeToMesh.h)

@@ -106,7 +106,7 @@ is exactly the bound used by `igl::lipschitz_octree_prune`.
 
 ### Key Implementation Details
 
-Module: `warp/_src/sparse_marching_cubes.py` (public re-exports in
+Module: `warp/_src/geometry/sparse_marching_cubes.py` (public re-exports in
 `warp/geometry.py`).
 
 **GPU octree construction** (`_build_lipschitz_octree`). Cells are stored as a

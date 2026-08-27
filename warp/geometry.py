@@ -24,11 +24,13 @@ Usage:
 
 # isort: skip_file
 
-from warp._src.iso_surface import IsoSurfaceBase as IsoSurfaceBase
-from warp._src.marching_cubes import IsoSurfaceMarchingCubes as IsoSurfaceMarchingCubes
-from warp._src.surface_nets import IsoSurfaceNets as IsoSurfaceNets
-from warp._src.sparse_marching_cubes import lipschitz_octree as lipschitz_octree
-from warp._src.sparse_marching_cubes import (
+from warp._src.geometry.iso_surface import IsoSurfaceBase as IsoSurfaceBase
+from warp._src.geometry.marching_cubes import IsoSurfaceMarchingCubes as IsoSurfaceMarchingCubes
+from warp._src.geometry.surface_nets import IsoSurfaceNets as IsoSurfaceNets
+from warp._src.geometry.sparse_marching_cubes import lipschitz_octree as lipschitz_octree
+from warp._src.geometry.sparse_marching_cubes import (
     sparse_marching_cubes_via_lipschitz_pruning as sparse_marching_cubes_via_lipschitz_pruning,
 )
-from warp._src.sparse_marching_cubes import sparse_marching_cubes_from_cells as sparse_marching_cubes_from_cells
+from warp._src.geometry.sparse_marching_cubes import (
+    sparse_marching_cubes_from_cells as sparse_marching_cubes_from_cells,
+)

@@ -6,7 +6,7 @@ from __future__ import annotations
 from typing import Final
 
 import warp as wp
-from warp._src.iso_surface import IsoSurfaceBase, resolve_domain_bounds, validate_field
+from warp._src.geometry.iso_surface import IsoSurfaceBase, resolve_domain_bounds, validate_field
 from warp._src.logger import log_warning
 
 # =============================================================================

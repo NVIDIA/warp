@@ -8,7 +8,7 @@ import numpy as np
 
 import warp as wp
 import warp.geometry
-from warp._src import surface_nets as _surface_nets_module
+from warp._src.geometry import surface_nets as _surface_nets_module
 from warp.tests.unittest_utils import *
 
 
@@ -362,7 +362,7 @@ def _reference_replica(field_np, threshold):
     """Independent NumPy reimplementation of OpenVDB's uniform meshing path.
 
     Derived from VolumeToMesh.h (v13.0.0) and the ported tables only (it
-    shares no code with warp._src.surface_nets, and computes edge crossings
+    shares no code with warp._src.geometry.surface_nets, and computes edge crossings
     from the corner-pair table rather than unrolled per-edge expressions), so
     it pins the intended semantics of every stage: classification, ambiguity
     correction, per-group vertex placement, stitching, and winding.

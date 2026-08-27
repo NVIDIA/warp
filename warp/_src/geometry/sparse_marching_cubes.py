@@ -25,7 +25,7 @@ import numpy as np
 
 import warp as wp
 from warp._src import utils as _wp_utils
-from warp._src.marching_cubes import (
+from warp._src.geometry.marching_cubes import (
     MC_CUBE_CORNER_OFFSETS,
     MC_EDGE_TO_CORNERS,
     _get_mc_case_to_tri_range_table,
