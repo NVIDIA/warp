@@ -115,12 +115,6 @@ class IsoSurfaceBase(ABC):
           for the mesh coordinate scaling.
         domain_bounds_upper_corner (warp.vec3f | tuple | None): The upper bound
           for the mesh coordinate scaling.
-        verts (warp.array | None): An array of vertex positions of type
-          :class:`warp.vec3f` for the output mesh.
-          This is populated by calling the :meth:`~.surface` method.
-        indices (warp.array | None): An array of face vertex indices of type
-          :class:`warp.int32` for the output mesh.
-          This is populated by calling the :meth:`~.surface` method.
     """
 
     def __init__(
@@ -143,8 +137,13 @@ class IsoSurfaceBase(ABC):
         self.domain_bounds_upper_corner = domain_bounds_upper_corner
 
         # Output arrays
-        self.verts = None
-        self.indices = None
+        self.verts: wp.array[wp.vec3f] | None = None
+        """An array of vertex positions of type :class:`warp.vec3f` for the
+        output mesh. This is populated by calling the :meth:`~.surface` method."""
+
+        self.indices: wp.array[wp.int32] | None = None
+        """An array of face vertex indices of type :class:`warp.int32` for the
+        output mesh. This is populated by calling the :meth:`~.surface` method."""
 
     def resize(self, nx: int, ny: int, nz: int) -> None:
         """Update the grid dimensions for the context.
