@@ -854,6 +854,67 @@ code. See <a class="reference internal" href="programming_model/cpp_cuda_workflo
 worked distributed-shared-memory example.</p>
 </section>
 </section>
+<section id="function-settings">
+<h2>Function Settings<a class="headerlink" href="#function-settings" title="Link to this heading">#</a></h2>
+<p>Function-level settings can be passed as arguments to the <a class="reference internal" href="../api_reference/_generated/warp.func.html#warp.func" title="warp.func"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.func</span></code></a> decorator.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<colgroup>
+<col style="width: 20.0%" />
+<col style="width: 15.0%" />
+<col style="width: 15.0%" />
+<col style="width: 50.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Setting</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Default Value</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">name</span></code></p></td>
+<td><p>String</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>Sets the function key used for registration and native code generation.
+If <code class="docutils literal notranslate"><span class="pre">None</span></code>, Warp derives the key from the Python callable.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">module</span></code></p></td>
+<td><p>Module | <code class="docutils literal notranslate"><span class="pre">&quot;unique&quot;</span></code> | str</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>Controls which module the function belongs to, following the same rules
+as the equivalent kernel setting.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">inline</span></code></p></td>
+<td><p>Boolean | <code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>Whether the function is inlined into its call sites. <code class="docutils literal notranslate"><span class="pre">None</span></code> leaves the
+choice to the backend compiler. <code class="docutils literal notranslate"><span class="pre">True</span></code> requires inlining (CUDA
+<code class="docutils literal notranslate"><span class="pre">__forceinline__</span></code>), overriding the compiler’s own heuristic. <code class="docutils literal notranslate"><span class="pre">False</span></code>
+keeps the function out of line (CUDA <code class="docutils literal notranslate"><span class="pre">__noinline__</span></code>).</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func</span><span class="p">(</span><span class="n">inline</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">expensive_helper</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">:</span>
+    <span class="c1"># kept out of line in every kernel that calls it</span>
+    <span class="k">return</span> <span class="n">wp</span><span class="o">.</span><span class="n">normalize</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">*</span> <span class="n">wp</span><span class="o">.</span><span class="n">length</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">func</span><span class="p">(</span><span class="n">inline</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">cheap_helper</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+    <span class="c1"># inlined even where the backend compiler would not choose to</span>
+    <span class="k">return</span> <span class="n">x</span> <span class="o">*</span> <span class="mf">2.0</span>
+</pre></div>
+</div>
+<p>By default, the backend compiler decides whether to inline a function at each call site. Set
+<code class="docutils literal notranslate"><span class="pre">inline=False</span></code> to prevent inlining or <code class="docutils literal notranslate"><span class="pre">inline=True</span></code> to require it.</p>
+<p>Inlining duplicates the function body at each call site. This can increase register pressure and
+instruction-cache use. Keeping a function out of line avoids that duplication but adds
+function-call overhead. The best choice depends on the workload, so measure both options.</p>
+<p>The hint covers the generated adjoint as well as the forward function, and is lowered per
+backend, so the same function remains valid for CPU and CUDA.</p>
+</section>
 </section>
 
 
@@ -911,6 +972,7 @@ worked distributed-shared-memory example.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#cuda-thread-block-clusters">CUDA Thread Block Clusters</a></li>
 </ul>
 </li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#function-settings">Function Settings</a></li>
 </ul>
   </nav></div>
 
