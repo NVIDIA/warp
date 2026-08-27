@@ -40,6 +40,19 @@ def scale_2(
     y[0] = x[0] ** 2.0
 
 
+@wp.func
+def square(x: float):
+    return x * x
+
+
+@wp.kernel(enable_backward=True)
+def scale_through_function(
+    x: wp.array[float],
+    y: wp.array[float],
+):
+    y[0] = square(x[0])
+
+
 def test_options_backward_1(test, device):
     x = wp.array([3.0], dtype=float, requires_grad=True, device=device)
     y = wp.zeros_like(x)
@@ -104,6 +117,24 @@ def test_options_backward_4(test, device):
 
     assert f.getvalue() == expected
     assert_np_equal(tape.gradients[x].numpy(), np.array(0.0))
+
+
+def test_kernel_enable_backward_propagates_to_function(test, device):
+    """Verify that a kernel-level backward override includes called Warp functions."""
+    x = wp.array([3.0], dtype=float, requires_grad=True, device=device)
+    y = wp.zeros_like(x)
+
+    old_enable_backward = wp.get_module_options()["enable_backward"]
+    try:
+        wp.set_module_options({"enable_backward": False})
+
+        with wp.Tape() as tape:
+            wp.launch(scale_through_function, dim=1, inputs=[x, y], device=device)
+
+        tape.backward(y)
+        assert_np_equal(tape.gradients[x].numpy(), np.array(6.0))
+    finally:
+        wp.set_module_options({"enable_backward": old_enable_backward})
 
 
 def test_options_opt_level(test, device):
@@ -344,6 +375,12 @@ add_function_test(TestOptions, "test_options_backward_1", test_options_backward_
 add_function_test(TestOptions, "test_options_backward_2", test_options_backward_2, devices=devices)
 add_function_test(TestOptions, "test_options_backward_3", test_options_backward_3, devices=devices)
 add_function_test(TestOptions, "test_options_backward_4", test_options_backward_4, devices=devices)
+add_function_test(
+    TestOptions,
+    "test_kernel_enable_backward_propagates_to_function",
+    test_kernel_enable_backward_propagates_to_function,
+    devices=devices,
+)
 add_function_test(TestOptions, "test_options_opt_level", test_options_opt_level, devices=devices, check_output=False)
 add_function_test(
     TestOptions, "test_options_cpu_compiler_flags_generic", test_options_cpu_compiler_flags_generic, devices=devices

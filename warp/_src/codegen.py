@@ -7594,18 +7594,16 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None, forward_only
             reverse_body = "\t// user-defined adjoint code\n" + forward_body
         else:
             # Generate adjoint code if:
-            # - enable_backward is True and the function is used by a backward kernel, OR
+            # - the function is used by a backward-enabled kernel, OR
             # - force_adjoint_codegen is True (set by warp.grad() to ensure adjoint exists)
             # Note: Functions using warp.grad() won't have their adjoints called anyway
             # (the reverse call is skipped in add_call), so we can skip generating them.
-            should_generate_adjoint = (
-                options.get("enable_backward", True) and adj.used_by_backward_kernel
-            ) or adj.force_adjoint_codegen
+            should_generate_adjoint = adj.used_by_backward_kernel or adj.force_adjoint_codegen
             should_generate_adjoint = should_generate_adjoint and not adj.uses_grad_call
             if should_generate_adjoint:
                 reverse_body = codegen_func_reverse(adj, func_type="function", device=device)
             else:
-                reverse_body = '\t// reverse mode disabled (module option "enable_backward" is False or no dependent kernel found with "enable_backward")\n'
+                reverse_body = "\t// reverse mode disabled (no backward-enabled kernel depends on this function)\n"
         s += template_prefix + reverse_template.format(
             name=c_func_name,
             return_type=return_type,

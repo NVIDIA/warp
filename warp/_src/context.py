@@ -3230,8 +3230,8 @@ class ModuleBuilder:
         return struct_hashes
 
     def build_kernel(self, kernel):
-        if kernel.options.get("enable_backward", True):
-            kernel.adj.used_by_backward_kernel = True
+        options = self.options | kernel.options
+        kernel.adj.used_by_backward_kernel = options["enable_backward"]
 
         if self._kernel_has_invalid_return_annotation(kernel) or self._kernel_has_value_return(kernel):
             raise WarpCodegenTypeError(f"'{kernel.key}': {_KERNEL_RETURN_ERROR}")
@@ -3258,7 +3258,9 @@ class ModuleBuilder:
     def _propagate_used_by_backward_kernel(self):
         # build_function() memoizes, so a helper built from a forward-only path before a backward
         # kernel reaches it keeps its callees stubbed; re-propagate across the graph to a fixpoint.
-        worklist = [obj.adj for obj in (*self.kernels, *self.functions) if obj.adj.used_by_backward_kernel]
+        for func in self.functions:
+            func.adj.used_by_backward_kernel = False
+        worklist = [kernel.adj for kernel in self.kernels if kernel.adj.used_by_backward_kernel]
         # worklist algorithm: an adj is enqueued only on a False->True flip, so the loop exits even on cycles
         while worklist:
             adj = worklist.pop()
