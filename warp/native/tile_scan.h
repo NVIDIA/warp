@@ -57,8 +57,8 @@ template <typename T, typename Op = OpAdd<T>> inline CUDA_CALLABLE T scan_warp_i
     // Computes an inclusive cumulative sum/max/etc
     Op op;
 #pragma unroll
-    for (int i = 1; i < 32; i *= 2) {
-        auto n = __shfl_up_sync(0xffffffffu, value, i, 32);
+    for (int i = 1; i < WP_TILE_WARP_SIZE; i *= 2) {
+        auto n = __shfl_up_sync(WP_TILE_FULL_WARP_MASK, value, i, WP_TILE_WARP_SIZE);
 
         if (lane >= i)
             value = op(value, n);
@@ -77,7 +77,7 @@ inline CUDA_CALLABLE T scan_warp_exclusive(int lane, T value, T* inclusive_value
         *inclusive_value = inclusive;
 
     // Shift right by 1 to convert inclusive to exclusive
-    T exclusive = __shfl_up_sync(0xffffffffu, inclusive, 1, 32);
+    T exclusive = __shfl_up_sync(WP_TILE_FULL_WARP_MASK, inclusive, 1, WP_TILE_WARP_SIZE);
 
     // Lane 0 gets the identity value
     if (lane == 0)
@@ -96,10 +96,10 @@ inline CUDA_CALLABLE T thread_block_scan(int lane, int warp_index, int num_warps
     T orig_value = value;
 
     if constexpr (exclusive) {
-        value = scan_warp_exclusive<T, Op>(lane, value, lane == 31 ? &sums[warp_index] : nullptr);
+        value = scan_warp_exclusive<T, Op>(lane, value, lane == WP_TILE_WARP_SIZE - 1 ? &sums[warp_index] : nullptr);
     } else {
         value = scan_warp_inclusive<T, Op>(lane, value);
-        if (lane == 31)
+        if (lane == WP_TILE_WARP_SIZE - 1)
             sums[warp_index] = value;
     }
 

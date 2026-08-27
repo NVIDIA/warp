@@ -13,6 +13,21 @@
 
 #define WP_TILE_WARP_SIZE 32
 
+// Companions to WP_TILE_WARP_SIZE, so that code indexing lanes or building lane
+// masks derives everything from one place rather than repeating the literals.
+// These are the CUDA values and change nothing: the mask is still 32 bits wide
+// and __popc/__ffs are the same intrinsics the call sites used directly.
+#define WP_TILE_FULL_WARP_MASK 0xffffffffu
+#define WP_TILE_POPC(mask) __popc(mask)
+#define WP_TILE_FFS(mask) __ffs(mask)
+
+// Type wide enough to hold one bit per lane.
+using wp_tile_warp_mask_t = decltype(WP_TILE_FULL_WARP_MASK);
+
+// Mask of every lane strictly below `lane`. Built from the mask type so the
+// shift cannot overflow if the width is ever changed.
+#define WP_TILE_LANES_BELOW(lane)     ((((wp_tile_warp_mask_t)1) << (lane)) - ((wp_tile_warp_mask_t)1))
+
 namespace wp {
 
 
