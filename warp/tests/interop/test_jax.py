@@ -3096,15 +3096,26 @@ else:
 
     @cache
     def _jax_device_error(device_alias):
-        device = wp.get_device(device_alias)
         try:
-            with jax.default_device(wp.device_to_jax(device)):
-                array = jax.numpy.arange(10, dtype=jax.numpy.float32)
-                array += 1
-            jax.block_until_ready(array)
-        except Exception as error:
-            return f"{type(error).__name__}: {error}"
-        return None
+            result = subprocess.run(
+                [sys.executable, os.path.join(os.path.dirname(__file__), "aux_test_jax_device.py"), device_alias],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+        except subprocess.TimeoutExpired:
+            return "JAX device probe timed out"
+
+        if result.returncode == 0:
+            return None
+
+        output = "\n".join(part.strip() for part in (result.stdout, result.stderr) if part.strip())
+        message = f"JAX device probe exited with code {result.returncode}"
+        if output:
+            message = f"{message}:\n{output}"
+
+        return message
 
     def _check_jax_device(test, device):
         device = wp.get_device(device)
