@@ -15,6 +15,10 @@ from warp.fem.utils import grid_to_hexes, grid_to_quads, grid_to_tets, grid_to_t
 from warp.tests.unittest_utils import *
 
 
+class _CacheIdentityHexmesh(fem.Hexmesh):
+    """Provide an isolated evaluator-cache namespace for cache identity tests."""
+
+
 def _gen_trimesh(Nx, Ny):
     x = np.linspace(0.0, 1.0, Nx + 1)
     y = np.linspace(0.0, 1.0, Ny + 1)
@@ -68,6 +72,11 @@ def _test_geo_cells(
     cell_measures: wp.array[float],
 ):
     wp.atomic_add(cell_measures, s.element_index, fem.measure(domain, s) * s.qp_weight)
+
+
+@fem.integrand(kernel_options={"enable_backward": False})
+def _cell_position(s: fem.Sample, domain: fem.Domain):
+    return domain(s)
 
 
 @fem.integrand(kernel_options={"enable_backward": False, "max_unroll": 2})
@@ -344,6 +353,37 @@ def test_hex_mesh(test, device):
 
     assert_np_equal(side_measures.numpy(), np.full(side_measures.shape, 1.0 / (N**2)), tol=1.0e-4)
     assert_np_equal(cell_measures.numpy(), np.full(cell_measures.shape, 1.0 / (N**3)), tol=1.0e-4)
+
+
+def test_hex_mesh_evaluation_mode_identity(test, device):
+    """Verify that Hexmesh evaluation modes do not share cached evaluators."""
+    with wp.ScopedDevice(device):
+        # Distort vertex 6 so the general trilinear center differs from the parallelepiped shortcut.
+        positions = wp.array(
+            [
+                (0.0, 0.0, 0.0),
+                (1.0, 0.0, 0.0),
+                (1.0, 1.0, 0.0),
+                (0.0, 1.0, 0.0),
+                (0.0, 0.0, 1.0),
+                (1.0, 0.0, 1.0),
+                (2.0, 2.0, 2.0),
+                (0.0, 1.0, 1.0),
+            ],
+            dtype=wp.vec3,
+            device=device,
+        )
+        vertex_indices = wp.array([[0, 1, 2, 3, 4, 5, 6, 7]], dtype=int, device=device)
+
+        # Prime the isolated cache namespace with the shortcut before constructing the general mesh.
+        _CacheIdentityHexmesh(vertex_indices, positions, assume_parallelepiped_cells=True)
+        general_mesh = _CacheIdentityHexmesh(vertex_indices, positions, assume_parallelepiped_cells=False)
+
+        quadrature = fem.RegularQuadrature(fem.Cells(general_mesh), order=0)
+        sampled_position = wp.empty(1, dtype=wp.vec3, device=device)
+        fem.interpolate(_cell_position, dest=sampled_position, at=quadrature)
+
+        np.testing.assert_allclose(sampled_position.numpy(), [[0.625, 0.625, 0.625]])
 
 
 def test_nanogrid(test, device):
@@ -880,6 +920,9 @@ add_function_test(TestFemGeometry, "test_mesh_guess_lookup_radius", test_mesh_gu
 add_function_test(TestFemGeometry, "test_grid_3d", test_grid_3d, devices=devices)
 add_function_test(TestFemGeometry, "test_tet_mesh", test_tet_mesh, devices=devices)
 add_function_test(TestFemGeometry, "test_hex_mesh", test_hex_mesh, devices=devices)
+add_function_test(
+    TestFemGeometry, "test_hex_mesh_evaluation_mode_identity", test_hex_mesh_evaluation_mode_identity, devices=devices
+)
 add_function_test(TestFemGeometry, "test_nanogrid", test_nanogrid, devices=cuda_devices)
 add_function_test(TestFemGeometry, "test_nanogrid_rebuild", test_nanogrid_rebuild, devices=devices)
 add_function_test(
