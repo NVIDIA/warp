@@ -174,6 +174,28 @@ def create_lattice_grid(N):
 
 
 class TestColoring(unittest.TestCase):
+    def test_coloring_rejects_invalid_edge_indices(self):
+        """Verify graph coloring rejects edges with invalid node indices."""
+        node_colors = wp.empty(2, dtype=wp.int32, device="cpu")
+
+        for invalid_edge in ((-1, 0), (0, -1), (2, 0), (0, 2)):
+            with self.subTest(invalid_edge=invalid_edge):
+                edges = wp.array([invalid_edge], dtype=wp.int32, device="cpu")
+
+                with self.assertRaisesRegex(RuntimeError, "Graph coloring failed"):
+                    wp.utils.graph_coloring_assign(edges, node_colors)
+
+    def test_coloring_balance_rejects_invalid_edge_indices(self):
+        """Verify graph coloring balance rejects edges with invalid node indices."""
+        node_colors = wp.array([0, 1], dtype=wp.int32, device="cpu")
+
+        for invalid_edge in ((-1, 0), (0, -1), (2, 0), (0, 2)):
+            with self.subTest(invalid_edge=invalid_edge):
+                edges = wp.array([invalid_edge], dtype=wp.int32, device="cpu")
+
+                with self.assertRaisesRegex(RuntimeError, "Graph coloring balance failed"):
+                    wp.utils.graph_coloring_balance(edges, node_colors, color_count=2, target_max_min_ratio=1.1)
+
     def test_coloring_corner_case(self):
         """Test corner cases: empty graph and simple 2-node graph."""
         # Test 1: Simple 2-node graph with one edge connecting the nodes
