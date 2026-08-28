@@ -1,10 +1,7 @@
 Installation
 ============
 
-Python version 3.10 or newer is required. Warp can run on x86-64 and ARMv8 CPUs on Windows and Linux. macOS requires Apple Silicon (ARM64). GPU support requires a CUDA-capable NVIDIA GPU and driver (minimum GeForce GTX 9xx).
-
-.. note::
-   Intel-based macOS (x86_64) is no longer supported. Users with Intel Macs should use Warp version 1.9.x or earlier.
+Warp requires Python 3.10 or newer. We publish ``warp-lang`` wheels on PyPI for Windows (x86-64), Linux (x86-64 and AArch64), and macOS (Apple Silicon). The Windows x86-64 and Linux wheels support CPU execution and CUDA acceleration. CUDA acceleration requires a supported NVIDIA GPU and driver. The macOS wheels support CPU execution but not Metal acceleration.
 
 The easiest way to install Warp is from `PyPI <https://pypi.org/project/warp-lang>`_:
 
@@ -148,12 +145,15 @@ The following optional dependencies are required to support certain features:
 Building from Source
 --------------------
 
-For developers who want to build the library themselves the following tools are required:
+For developers who want to build the library themselves, the following tools are required:
 
 * (Windows) Microsoft Visual Studio, minimum version 2019
 * (Linux) GCC, minimum version 9.4
-* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_, minimum version 12.0
+* (macOS) Xcode Command Line Tools
 * `Git Large File Storage <https://git-lfs.com>`_
+
+A CUDA Toolkit is not required for a CPU-only build. CUDA-enabled builds on Windows and Linux require
+`CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_ 12.0 or newer.
 
 After cloning the repository, users should run:
 
@@ -162,10 +162,14 @@ After cloning the repository, users should run:
     $ python build_lib.py
 
 Upon success, the script will output platform-specific binary files in ``warp/bin/``.
-The build script will look for the CUDA Toolkit in its default installation path.
-This path can be overridden by setting the ``CUDA_PATH`` environment variable. Alternatively,
-the path to the CUDA Toolkit can be passed to the build command as
-``--cuda-path="..."``.
+
+Unless a CUDA Toolkit path is provided explicitly, ``build_lib.py`` searches for one in this order:
+
+#. ``WARP_CUDA_PATH``, ``CUDA_HOME``, then ``CUDA_PATH``
+#. The CUDA Toolkit containing ``nvcc`` found on ``PATH``
+#. The standard CUDA installation locations for the operating system
+
+If no CUDA Toolkit is found, ``build_lib.py`` builds Warp without CUDA support.
 
 By default, CUDA libraries (cudart, NVRTC, nvJitLink, MathDx) are linked statically
 to produce self-contained binaries. To link against shared CUDA libraries instead,
