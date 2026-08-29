@@ -7,10 +7,13 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 
 ## 2026
 
+- **DarcyWarp: A graphics processing unit (GPU)-accelerated multigrid solver for repeated 2D fixed-transmissivity groundwater solves validated against reference solvers**. *P. Durney, J. Fourie*. September 2026. [DOI:10.1016/j.envsoft.2026.107081](https://doi.org/10.1016/j.envsoft.2026.107081)
 - **SAFE-CHEM: Uncertainty-Aware Policy Switching for Robust Robotic Chemistry**. *L. Jones, S. Shahzad, A. Sana, G. Pizzuto*. August 2026. [arXiv:2608.09303](https://arxiv.org/abs/2608.09303)
 - **Differentiate the Solver, Not the Equation: Reverse-Sweep Adjoints for Block Implicit Simulation**. *L. Shu, Y. Jiang, K. Wu, Y. Yang, L. Guibas, C. Jiang*. August 2026. [arXiv:2608.08559](https://arxiv.org/abs/2608.08559)
+- **PD-SRL: Parallel and Differentiable Surgical Simulation For Accelerated Reinforcement Learning**. *M. Naskret, D. DallAlba, A. Pore, R. Muradore, P. Korzeniowski*. August 2026. [DOI:10.1109/lra.2026.3726778](https://doi.org/10.1109/lra.2026.3726778)
 - **Differentiable Design for Morphogenesis Ⅰ: Simulation and Simulacra**. *O. Beker, B. Dumitrascu*. July 2026. [DOI:10.64898/2026.07.02.736195](https://doi.org/10.64898/2026.07.02.736195)
 - **Mixed Material Point Methods for Stiff Elastoplasticity**. *G. Daviet*. July 2026. [DOI:10.1145/3811345](https://doi.org/10.1145/3811345)
+- **Mosaic: A Benchmark Suite for Differentiable Physics Solvers**. *A. Rehmann, H. Zimmermann, D. Häfner*. June 2026. [arXiv:2606.27895](https://arxiv.org/abs/2606.27895)
 - **Learning to Throw: Agile and Accurate Cable-Suspended Payload Delivery with a Quadrotor**. *Y. Zhai, E. Raimondi, Y. Ren, I. Geles, Y. Armati, J. Xing, D. Scaramuzza*. June 2026. [arXiv:2606.27603](https://arxiv.org/abs/2606.27603)
 - **Embodiment-conditioned Generalist Control for Multirotor Aerial Robots**. *O. Konstantaropoulos, W. Rehberg, M. Kulkarni, K. Alexis*. June 2026. [arXiv:2606.10857](https://arxiv.org/abs/2606.10857)
 - **PhysAgent: Automating Physics-Based 4D Synthesis via Trajectory-Grounded Multi-Agent Feedback**. *C. Lv, J. Ye, Y. Jiang, R. Lin, C. Li*. June 2026. [arXiv:2606.08688](https://arxiv.org/abs/2606.08688)
