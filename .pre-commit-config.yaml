@@ -48,7 +48,7 @@ repos:
       # Update the uv lockfile
       - id: uv-lock
   - repo: https://github.com/crate-ci/typos
-    rev: v1.48.0
+    rev: v1.50.0
     hooks:
       - id: typos
   - repo: https://github.com/pre-commit/mirrors-clang-format
