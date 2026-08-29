@@ -810,7 +810,7 @@ integration (e.g., VS Code format-on-save), install the version specified in <co
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Ubuntu/Debian - Install from apt.llvm.org</span>
 <span class="c1"># See https://apt.llvm.org/ for repository setup instructions</span>
 <span class="c1"># Check .pre-commit-config.yaml for the current version</span>
-sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>clang-format-21
+sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>clang-format-23
 </pre></div>
 </div>
 <p>For other platforms, consult the LLVM documentation for installation instructions. We recommend using pre-commit
@@ -970,11 +970,13 @@ multi-process-safe; concurrent clears cause LLVM crashes. The test suite runner 
 <span class="k">def</span><span class="w"> </span><span class="nf">test_amazing_code_test_one</span><span class="p">(</span><span class="n">test</span><span class="p">,</span> <span class="n">device</span><span class="p">):</span>
     <span class="k">pass</span>
 
+
 <span class="n">devices</span> <span class="o">=</span> <span class="n">get_test_devices</span><span class="p">()</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">TestAmazingCode</span><span class="p">(</span><span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="p">):</span>
     <span class="k">pass</span>
+
 
 <span class="n">add_function_test</span><span class="p">(</span><span class="n">TestAmazingCode</span><span class="p">,</span> <span class="s2">&quot;test_amazing_code_test_one&quot;</span><span class="p">,</span> <span class="n">test_amazing_code_test_one</span><span class="p">,</span> <span class="n">devices</span><span class="o">=</span><span class="n">devices</span><span class="p">)</span>
 
