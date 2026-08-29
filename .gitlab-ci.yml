@@ -46,9 +46,9 @@ variables:
   UV_PYTHON_PREFERENCE: only-managed
   
   # Standard container images (pinned with SHA256 for supply chain security)
-  UV_TRIXIE_IMAGE: "ghcr.io/astral-sh/uv:0.11.16-trixie@sha256:3a10099599f370305314be6af0cf18fdbc65ea5ddadb3731561dd920f1d185b8"
-  UV_TRIXIE_SLIM_IMAGE: "ghcr.io/astral-sh/uv:0.11.16-trixie-slim@sha256:bf3ae2823f0399092f2e47ec7bae6a8e0b389d2310a9bc7f0741f0fa1629040f"
-  UV_TRIXIE_SLIM_ARM_IMAGE: "ghcr.io/astral-sh/uv:0.11.16-trixie-slim@sha256:e4e5baeeb366609825aadbe4387686c39dab036b0cc68d938fcb9a61aa05bf75"
+  UV_TRIXIE_IMAGE: "ghcr.io/astral-sh/uv:0.12.7-trixie@sha256:20cd86504a183da51c633012c37903c41c54837f0ff53f6c2298fd1f001148c9"
+  UV_TRIXIE_SLIM_IMAGE: "ghcr.io/astral-sh/uv:0.12.7-trixie-slim@sha256:bd3571a45f9fcd715ca26938a30ef0bbe85a813d4a7c3e9a7dc0e27997f1a442"
+  UV_TRIXIE_SLIM_ARM_IMAGE: "ghcr.io/astral-sh/uv:0.12.7-trixie-slim@sha256:f0c9e8c3b86decaa94dbb7e134d3a3241b7cf4c8c66da2f1bc257d8036bca972"
   MINIFORGE_IMAGE: "condaforge/miniforge3:25.11.0-0@sha256:d2fadb08950045962fd1cfb1eeb6224442027f03095862e725f4c1c7b17a3caf"
   # Stale pin, and harmless. These tags name older images that still bake in LLVM 21,
   # from before the builder image stopped shipping Clang/LLVM at all. Nothing links
@@ -680,9 +680,8 @@ windows-x86_64 cuda 13 test:
       $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
       uv run --extra dev --extra torch-cu13 --with "jax>=0.5" -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
 
-# Only one Windows Blackwell runner currently serves the whole organization, so
-# this job is opt-in on merge requests to avoid saturating it. It still runs
-# automatically on the default branch, schedules, tags, and release branches.
+# Exercise the omniblue KubeVirt development pool without replacing the generic
+# Windows GPU jobs that cover the existing A40/L40 fleet.
 windows-x86_64-blackwell test:
   stage: test
   needs: [windows-x86_64 build]
@@ -690,13 +689,6 @@ windows-x86_64-blackwell test:
     IPP_RUNNER_EXECUTION_DURATION: "4500"
   extends:
     - .test_common_with_coverage
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_COMMIT_TAG
-    - if: $CI_COMMIT_BRANCH =~ /^release-.*/
-    - if: $CI_PIPELINE_SOURCE == "web"
-    - when: manual # Merge request pipelines: run only on demand
-      allow_failure: true
   before_script:
     - !reference [.snippets, define-powershell-GetTime]
     - !reference [.snippets, powershell-section-start-install-deps]
@@ -707,9 +699,7 @@ windows-x86_64-blackwell test:
       $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
       uv run --extra dev --extra torch-cu13 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
   tags:
-    - win-x86_64-gpu-1x-595.97-blackwell
-    - gpu/blackwell
-    - os/windows
+    - win-x86_64-gpu-1x-595.97-kubevirt-dev
 
 # Optional multi-GPU Windows job (likely longer queue time)
 windows-x86_64 test mgpu:

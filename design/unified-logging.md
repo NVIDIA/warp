@@ -142,6 +142,7 @@ class MyLogger:
     def warning(self, message, category=None, stacklevel=1): ...
     def error(self, message): ...
 
+
 wp.set_logger(MyLogger())
 ```
 

@@ -277,7 +277,7 @@ SpacesInParensOptions:
   InEmptyParentheses: false
   Other:           false
 SpacesInSquareBrackets: false
-Standard:        Latest
+Standard:        c++17
 StatementAttributeLikeMacros:
   - Q_EMIT
 StatementMacros:

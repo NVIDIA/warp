@@ -1815,6 +1815,25 @@ class TestCodeGen(unittest.TestCase):
         builder.codegen("cuda")
         return builder.build_meta()
 
+    def test_module_enable_backward_controls_function_adjoint_codegen(self):
+        """Verify called-function adjoint codegen follows the effective ``enable_backward`` setting."""
+
+        @wp.func
+        def square(x: float):
+            return x * x
+
+        @wp.kernel(module="unique", module_options={"enable_backward": False})
+        def square_kernel(x: wp.array[float], y: wp.array[float]):
+            y[0] = square(x[0])
+
+        square_kernel.module.options["enable_backward"] = True
+        enabled_source = self._codegen_cpu_source(square_kernel)
+        self.assertIn("wp::adj_mul", enabled_source)
+
+        square_kernel.module.options["enable_backward"] = False
+        disabled_source = self._codegen_cpu_source(square_kernel)
+        self.assertNotIn("wp::adj_mul", disabled_source)
+
     def test_grid_stride_precedence(self):
         from warp._src.codegen import resolve_grid_stride  # noqa: PLC0415
 

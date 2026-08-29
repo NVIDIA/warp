@@ -64,6 +64,7 @@ support named allocator types.
 ```python
 from typing import Protocol, runtime_checkable
 
+
 @runtime_checkable
 class Allocator(Protocol):
     def allocate(self, size_in_bytes: int) -> int: ...
@@ -104,6 +105,7 @@ duplication of the validation logic and error message.
 # In Device.__init__, CUDA branch, after existing allocator setup:
 self._custom_allocator = None
 
+
 # Modified get_allocator():
 def get_allocator(self, pinned: bool = False):
     if self.is_cuda:
@@ -143,6 +145,7 @@ def set_cuda_allocator(allocator: Allocator | None) -> None:
     for device in devices:
         device._custom_allocator = allocator
 
+
 def set_device_allocator(device: DeviceLike, allocator: Allocator | None) -> None:
     """Set the memory allocator for a specific CUDA device."""
     device = get_device(device)
@@ -150,6 +153,7 @@ def set_device_allocator(device: DeviceLike, allocator: Allocator | None) -> Non
         raise RuntimeError("Custom allocators are only supported on CUDA devices")
     _validate_allocator(allocator)
     device._custom_allocator = allocator
+
 
 def get_device_allocator(device: DeviceLike) -> Allocator:
     """Get the current effective memory allocator for a device."""
@@ -271,12 +275,14 @@ class RmmAllocator:
         """Return an RMM ``Stream`` wrapping the current Warp device's CUDA stream."""
         from rmm.pylibrmm.stream import Stream as RmmStream
         from warp._src.context import runtime
+
         return RmmStream(obj=runtime.get_current_cuda_device().stream)
 
     def allocate(self, size_in_bytes: int) -> int:
         if size_in_bytes == 0:
             return 0
         import rmm
+
         buf = rmm.DeviceBuffer(size=size_in_bytes, stream=self._get_rmm_stream())
         ptr = buf.ptr
         self._buffers[ptr] = buf
@@ -288,9 +294,7 @@ class RmmAllocator:
         try:
             del self._buffers[ptr]
         except KeyError:
-            raise RuntimeError(
-                f"RmmAllocator.deallocate called with unrecognized pointer {ptr:#x} ..."
-            ) from None
+            raise RuntimeError(f"RmmAllocator.deallocate called with unrecognized pointer {ptr:#x} ...") from None
 ```
 
 ##### Stream handling

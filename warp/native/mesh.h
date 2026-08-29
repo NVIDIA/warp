@@ -2407,7 +2407,8 @@ struct mesh_query_aabb_t {
         , input_lower()
         , input_upper()
         , face(0)
-        , primitive_counter(-1)
+        , prim_cur(0)
+        , prim_end(0)
         , last_query_valid(true)
         , kind(MeshQueryKind::AABB)
         , radius_sq(0.0f)
@@ -2432,8 +2433,11 @@ struct mesh_query_aabb_t {
     wp::vec3 input_lower;
     wp::vec3 input_upper;
 
-    // >= 0 if currently in a packed leaf node
-    int primitive_counter;
+    // primitive range of the packed leaf currently being enumerated;
+    // when prim_cur < prim_end the query resumes mid-leaf on the next
+    // mesh_query_next() call, without re-visiting the leaf node
+    int prim_cur;
+    int prim_end;
 
     // Face
     int face;
@@ -2454,58 +2458,6 @@ struct mesh_query_aabb_t {
 };
 
 
-// Node-overlap test for a mesh query. IsSphere=true uses exact sphere-AABB test;
-// IsSphere=false folds to the original intersect_aabb_aabb test.
-template <bool IsSphere>
-CUDA_CALLABLE inline bool
-mesh_query_node_test(const mesh_query_aabb_t& query, const vec3& node_lower, const vec3& node_upper)
-{
-    if constexpr (IsSphere) {
-        return intersect_sphere_aabb(query.input_lower, query.radius_sq, node_lower, node_upper);
-    } else {
-        return intersect_aabb_aabb(query.input_lower, query.input_upper, node_lower, node_upper);
-    }
-}
-
-// Init-time descent to the first overlapping leaf node, which is left on the stack for
-// the iterator.
-template <bool IsSphere> CUDA_CALLABLE inline void mesh_query_descend_impl(mesh_query_aabb_t& query)
-{
-    Mesh& mesh = query.mesh;
-
-    while (query.count) {
-        const int nodeIndex = query.stack[--query.count];
-        BVHPackedNodeHalf node_lower = bvh_load_node(mesh.bvh.node_lowers, nodeIndex);
-        BVHPackedNodeHalf node_upper = bvh_load_node(mesh.bvh.node_uppers, nodeIndex);
-
-        if (query.primitive_counter == 0) {
-            if (!mesh_query_node_test<IsSphere>(
-                    query, reinterpret_cast<vec3&>(node_lower), reinterpret_cast<vec3&>(node_upper)
-                )) {
-                // Skip this box, it doesn't overlap with our query volume.
-                continue;
-            }
-        }
-
-        const int left_index = node_lower.i;
-        const int right_index = node_upper.i;
-
-        // Make bounds from this AABB
-        if (node_lower.b) {
-            // Reached a leaf node, point to its first primitive
-            // Back up one level and return
-            query.primitive_counter = 0;
-            query.stack[query.count++] = nodeIndex;
-            return;
-        } else {
-            query.stack[query.count++] = left_index;
-            query.stack[query.count++] = right_index;
-        }
-    }
-}
-
-CUDA_CALLABLE inline void mesh_query_descend_sphere(mesh_query_aabb_t& query) { mesh_query_descend_impl<true>(query); }
-
 #if BVH_SHARED_STACK
 // One shared-memory traversal stack per kernel, shared by every mesh query kind.
 // Allocated outside the templated factory: each template instantiation would
@@ -2518,9 +2470,9 @@ CUDA_CALLABLE inline int* mesh_query_shared_stack()
 }
 #endif
 
-// Shared factory for all mesh query kinds. IsSphere selects the init-time descent
-// strategy and the stored kind (read only on the kind-erased paths; statically-typed
-// iterators are selected at Warp codegen time via the Python return type).
+// Shared factory for all mesh query kinds. IsSphere selects the stored kind
+// (read only on the kind-erased paths; statically-typed iterators are selected
+// at Warp codegen time via the Python return type).
 template <bool IsSphere>
 CUDA_CALLABLE inline mesh_query_aabb_t mesh_query_impl(uint64_t id, const vec3& a, const vec3& b, float radius)
 {
@@ -2539,17 +2491,9 @@ CUDA_CALLABLE inline mesh_query_aabb_t mesh_query_impl(uint64_t id, const vec3& 
 
     query.stack[0] = *mesh.bvh.root;
     query.count = 1;
-    query.primitive_counter = 0;
     query.input_lower = a;
     query.input_upper = b;
 
-    // The AABB descent inlines here (CPU and CUDA); the sphere descent runs
-    // its own specialized loop out of line on CPU.
-    if constexpr (IsSphere) {
-        mesh_query_descend_sphere(query);
-    } else {
-        mesh_query_descend_impl<false>(query);
-    }
     return query;
 }
 
@@ -2677,7 +2621,24 @@ template <typename NodeTest, typename PrimitiveTest, bool TEST_SINGLETON = true>
 CUDA_CALLABLE inline bool mesh_query_next_impl(mesh_query_aabb_t& query, int& index)
 {
     Mesh mesh = query.mesh;
-    while (query.count) {
+
+    // A single flat loop: every iteration either emits one primitive from the
+    // packed leaf currently being enumerated, or pops and processes one node.
+    for (;;) {
+        if (query.prim_cur < query.prim_end) {
+            const int primitive_index = bvh_load_int(mesh.bvh.primitive_indices, query.prim_cur++);
+
+            if (PrimitiveTest {}(query, mesh, primitive_index)) {
+                index = primitive_index;
+                query.face = primitive_index;
+                return true;
+            }
+            continue;
+        }
+
+        if (!query.count)
+            return false;
+
         const int node_index = query.stack[--query.count];
         BVHPackedNodeHalf node_lower = bvh_load_node(mesh.bvh.node_lowers, node_index);
         BVHPackedNodeHalf node_upper = bvh_load_node(mesh.bvh.node_uppers, node_index);
@@ -2692,6 +2653,8 @@ CUDA_CALLABLE inline bool mesh_query_next_impl(mesh_query_aabb_t& query, int& in
             const int start = left_index;
             const int end = right_index;
 
+            // Fast path when the leaf contains exactly one primitive: its AABB
+            // is the leaf node's AABB, which just passed the node test above
             if (end - start == 1) {
                 int primitive_index = bvh_load_int(mesh.bvh.primitive_indices, start);
                 bool singleton_hit = true;
@@ -2702,26 +2665,18 @@ CUDA_CALLABLE inline bool mesh_query_next_impl(mesh_query_aabb_t& query, int& in
                     query.face = primitive_index;
                     return true;
                 }
-            } else {
-                int primitive_index = bvh_load_int(mesh.bvh.primitive_indices, start + (query.primitive_counter++));
-                if (start + query.primitive_counter == end) {
-                    query.primitive_counter = 0;
-                } else {
-                    query.count++;
-                }
-                if (PrimitiveTest {}(query, mesh, primitive_index)) {
-                    index = primitive_index;
-                    query.face = primitive_index;
-                    return true;
-                }
+                continue;
             }
+
+            // packed leaf: enumerate its primitives through the scalar cursors,
+            // one per loop iteration, without re-pushing the leaf node
+            query.prim_cur = start;
+            query.prim_end = end;
         } else {
-            query.primitive_counter = 0;
             query.stack[query.count++] = left_index;
             query.stack[query.count++] = right_index;
         }
     }
-    return false;
 }
 
 // Backward-compatible broad-phase AABB iterator. Called by mesh_query_aabb_next

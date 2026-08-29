@@ -6696,6 +6696,16 @@ cpu_module_header = """
 
 #define builtin_block_dim() wp::block_dim()
 
+// Inline control for @wp.func(inline=...). __forceinline implies inline on MSVC; elsewhere
+// always_inline needs the inline specifier spelled out alongside it.
+#if defined(_MSC_VER)
+#define WP_NOINLINE __declspec(noinline)
+#define WP_FORCEINLINE __forceinline
+#else
+#define WP_NOINLINE __attribute__((noinline))
+#define WP_FORCEINLINE inline __attribute__((always_inline))
+#endif
+
 """
 
 cuda_module_header = """
@@ -6740,6 +6750,13 @@ cuda_module_header = """
 #else
 #define WP_ENABLE_SMEM_SPILLING()
 #endif
+
+// Inline control for @wp.func(inline=...). Warp compiles device code with WP_NO_CRT, so
+// host_defines.h, which normally defines __noinline__ and __forceinline__, is not included.
+// Spell them out as it does: always_inline needs the inline specifier alongside it, or the
+// compiler is free to ignore the attribute and emit an out-of-line call.
+#define WP_NOINLINE __attribute__((noinline))
+#define WP_FORCEINLINE inline __attribute__((always_inline))
 
 """
 
@@ -6854,7 +6871,7 @@ CUDA_CALLABLE {name} warp_shuffle_xor({name} val, int lane_mask)
 
 cpu_forward_function_template = """
 // {filename}:{lineno}
-static {return_type} {name}(
+static {inline_attr}{return_type} {name}(
     {forward_args})
 {{
 {forward_body}}}
@@ -6863,7 +6880,7 @@ static {return_type} {name}(
 
 cpu_reverse_function_template = """
 // {filename}:{lineno}
-static void adj_{name}(
+static {inline_attr}void adj_{name}(
     {reverse_args})
 {{
 {reverse_body}}}
@@ -6872,7 +6889,7 @@ static void adj_{name}(
 
 cuda_forward_function_template = """
 // {filename}:{lineno}
-{line_directive}static CUDA_CALLABLE {return_type} {name}(
+{line_directive}static {inline_attr}CUDA_CALLABLE {return_type} {name}(
     {forward_args})
 {{
 {forward_body}{line_directive}}}
@@ -6881,12 +6898,16 @@ cuda_forward_function_template = """
 
 cuda_reverse_function_template = """
 // {filename}:{lineno}
-{line_directive}static CUDA_CALLABLE void adj_{name}(
+{line_directive}static {inline_attr}CUDA_CALLABLE void adj_{name}(
     {reverse_args})
 {{
 {reverse_body}{line_directive}}}
 
 """
+
+# Fills the {inline_attr} slot in the four function templates above. Both macros are defined
+# in both module headers, so a hinted @wp.func stays valid for CPU and CUDA alike.
+_INLINE_ATTRS = {"noinline": "WP_NOINLINE ", "forceinline": "WP_FORCEINLINE "}
 
 # Lean (grid_stride=False) templates: 3D grid with a per-thread early return, no grid-stride loop.
 # The index flattens blockIdx.{z,y,x}; the grid shape (and its uint32 cap) is built in wp_cuda_launch_kernel.
@@ -7457,9 +7478,21 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu", grid_stride=Fals
     return "".join(l.lstrip() if l.lstrip().startswith("#line") else indent_block + l for l in lines)
 
 
-def codegen_func(adj, c_func_name: str, device="cpu", options=None, forward_only=False, reverse_only=False):
+def codegen_func(
+    adj,
+    c_func_name: str,
+    device="cpu",
+    options=None,
+    forward_only=False,
+    reverse_only=False,
+    inline_hint=None,
+):
     if options is None:
         options = {}
+
+    # The hint covers the adjoint too: keeping a large @wp.func out of line is pointless if the
+    # adjoint generated from it is still inlined everywhere.
+    inline_attr = _INLINE_ATTRS.get(inline_hint, "")
 
     # Build line directive for function definition (subtract 1 to account for 1-indexing of AST line numbers)
     # This is used as a catch-all C-to-Python source line mapping for any code that does not have
@@ -7582,6 +7615,7 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None, forward_only
         s += template_prefix + forward_template.format(
             name=c_func_name,
             return_type=return_type,
+            inline_attr=inline_attr,
             forward_args=indent(forward_args),
             forward_body=forward_body,
             filename=adj.filename,
@@ -7594,21 +7628,20 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None, forward_only
             reverse_body = "\t// user-defined adjoint code\n" + forward_body
         else:
             # Generate adjoint code if:
-            # - enable_backward is True and the function is used by a backward kernel, OR
+            # - the function is used by a backward-enabled kernel, OR
             # - force_adjoint_codegen is True (set by warp.grad() to ensure adjoint exists)
             # Note: Functions using warp.grad() won't have their adjoints called anyway
             # (the reverse call is skipped in add_call), so we can skip generating them.
-            should_generate_adjoint = (
-                options.get("enable_backward", True) and adj.used_by_backward_kernel
-            ) or adj.force_adjoint_codegen
+            should_generate_adjoint = adj.used_by_backward_kernel or adj.force_adjoint_codegen
             should_generate_adjoint = should_generate_adjoint and not adj.uses_grad_call
             if should_generate_adjoint:
                 reverse_body = codegen_func_reverse(adj, func_type="function", device=device)
             else:
-                reverse_body = '\t// reverse mode disabled (module option "enable_backward" is False or no dependent kernel found with "enable_backward")\n'
+                reverse_body = "\t// reverse mode disabled (no backward-enabled kernel depends on this function)\n"
         s += template_prefix + reverse_template.format(
             name=c_func_name,
             return_type=return_type,
+            inline_attr=inline_attr,
             reverse_args=indent(reverse_args),
             forward_body=forward_body,
             reverse_body=reverse_body,
@@ -7685,6 +7718,9 @@ def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet, forward_onl
     replay_template = cuda_forward_function_template
     reverse_template = cuda_reverse_function_template
 
+    # @wp.func_native takes no inline hint, but the template slot still has to be filled.
+    inline_attr = ""
+
     s = ""
 
     # Pass 1: Forward and replay (both are "forward-like" functions)
@@ -7692,6 +7728,7 @@ def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet, forward_onl
         s += template_prefix + forward_template.format(
             name=name,
             return_type=return_type,
+            inline_attr=inline_attr,
             forward_args=indent(forward_args),
             forward_body=forward_ref_aliases_str + snippet,
             filename=adj.filename,
@@ -7703,6 +7740,7 @@ def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet, forward_onl
             s += template_prefix + replay_template.format(
                 name="replay_" + name,
                 return_type=return_type,
+                inline_attr=inline_attr,
                 forward_args=indent(forward_args),
                 forward_body=forward_ref_aliases_str + replay_snippet,
                 filename=adj.filename,
@@ -7720,6 +7758,7 @@ def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet, forward_onl
         s += template_prefix + reverse_template.format(
             name=name,
             return_type=return_type,
+            inline_attr=inline_attr,
             reverse_args=indent(reverse_args),
             forward_body=snippet,
             reverse_body=reverse_body,

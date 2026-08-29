@@ -263,7 +263,7 @@ integration (e.g., VS Code format-on-save), install the version specified in `.p
 # Ubuntu/Debian - Install from apt.llvm.org
 # See https://apt.llvm.org/ for repository setup instructions
 # Check .pre-commit-config.yaml for the current version
-sudo apt-get install clang-format-21
+sudo apt-get install clang-format-23
 ```
 
 For other platforms, consult the LLVM documentation for installation instructions. We recommend using pre-commit
@@ -440,11 +440,13 @@ from warp.tests.unittest_utils import *
 def test_amazing_code_test_one(test, device):
     pass
 
+
 devices = get_test_devices()
 
 
 class TestAmazingCode(unittest.TestCase):
     pass
+
 
 add_function_test(TestAmazingCode, "test_amazing_code_test_one", test_amazing_code_test_one, devices=devices)
 
