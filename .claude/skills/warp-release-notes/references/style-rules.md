@@ -330,7 +330,7 @@ with wp.Tape() as tape:
     wp.launch(forward_kernel, dim=N, inputs=[x], outputs=[out])
 out.grad = wp.ones_like(out)
 tape.backward()
-print(out.grad)   # v1.12: ones, v1.13: zeros
+print(out.grad)  # v1.12: ones, v1.13: zeros
 
 # v1.13 migration: keep output grads, pass fresh seeds each call
 out = wp.array(shape=N, dtype=float, requires_grad=True, retain_grad=True)

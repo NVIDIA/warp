@@ -67,11 +67,13 @@ def run(values):
     @wp.kernel
     def first(x: wp.array[wp.float32]):
         x[wp.tid()] += 1.0
+
     wp.launch(first, dim=values.shape, inputs=[values])
 
     @wp.kernel
     def second(x: wp.array[wp.float32]):
         x[wp.tid()] *= 2.0
+
     wp.launch(second, dim=values.shape, inputs=[values])
 ```
 
@@ -153,11 +155,11 @@ late, check that one instead.
 ```python
 # Before
 wp.launch(first, ...)
-wp.set_module_options({"fast_math": True})   # invalidates the module
+wp.set_module_options({"fast_math": True})  # invalidates the module
 wp.launch(second, ...)
 
 # After
-wp.set_module_options({"fast_math": True})   # resolved before anything loads
+wp.set_module_options({"fast_math": True})  # resolved before anything loads
 wp.launch(first, ...)
 wp.launch(second, ...)
 ```
@@ -430,7 +432,7 @@ by the time your code runs, reach the module that exists instead of the default
 it was built from:
 
 ```python
-wp.get_module("pkg.module").options["enable_backward"] = False   # before it loads
+wp.get_module("pkg.module").options["enable_backward"] = False  # before it loads
 ```
 
 That is still application-scoped — it configures this process, not the library's

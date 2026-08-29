@@ -94,11 +94,12 @@ The Python script compiles a SAXPY kernel to CUBIN:
 @wp.kernel
 def saxpy(alpha: wp.float32, x: wp.array(dtype=wp.float32), y: wp.array(dtype=wp.float32)):
     """SAXPY: Single-Precision A·X Plus Y
-    
+
     Computes: y = alpha * x + y
     """
     tid = wp.tid()
     y[tid] = alpha * x[tid] + y[tid]
+
 
 # Compile to CUBIN (use_ptx=False for CUBIN, strip_hash=True for predictable kernel names)
 wp.compile_aot_module("__main__", module_dir="generated/", use_ptx=False, strip_hash=True)

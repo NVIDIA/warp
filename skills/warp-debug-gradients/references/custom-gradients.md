@@ -43,6 +43,7 @@ Three decorators, three distinct jobs:
   def ste_round(x: float) -> float:
       return wp.round(x)
 
+
   @wp.func_grad(ste_round)
   def adj_ste_round(x: float, adj_ret: float):
       wp.adjoint[x] += adj_ret  # identity backward; clip/scale here for variants

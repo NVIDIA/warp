@@ -21,7 +21,7 @@ per-substep states, taped each frame separately, and carried state between
 frames with:
 
 ```python
-self.states[0] = self.states[-1]   # Python REBIND, not a copy
+self.states[0] = self.states[-1]  # Python REBIND, not a copy
 ```
 
 After the first frame, `states[0]` and `states[-1]` are the same object: on
@@ -82,7 +82,7 @@ The stage looked like:
 ```python
 clamped_q = wp.zeros_like(state.particle_q, requires_grad=True)
 wp.launch(clip_kernel, dim=n, inputs=[state.particle_q], outputs=[clamped_q])
-wp.copy(state.particle_q, clamped_q)     # <- the bug
+wp.copy(state.particle_q, clamped_q)  # <- the bug
 ```
 
 `wp.copy` is differentiable and tape-recorded — but its *destination* is

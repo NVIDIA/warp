@@ -8,6 +8,7 @@ anchor: "Debugging Gradients" in the Differentiability guide
 
 ```python
 import warp as wp
+
 wp.config.verify_autograd_array_access = True  # BEFORE kernels load/launch
 ```
 
@@ -60,15 +61,22 @@ forward pass**, not just a kernel:
 ```python
 import warp.autograd
 
+
 def forward(theta: wp.array, loss: wp.array):
     # run the full pipeline: inference, sim steps, loss kernel
     ...
 
+
 ok = wp.autograd.gradcheck(
-    forward, inputs=[theta], outputs=[loss],
-    eps=1e-3, atol=1e-3, rtol=1e-2,          # scale eps to the parameters
-    max_inputs_per_var=32,                    # sample large inputs
-    raise_exception=False, show_summary=True,
+    forward,
+    inputs=[theta],
+    outputs=[loss],
+    eps=1e-3,
+    atol=1e-3,
+    rtol=1e-2,  # scale eps to the parameters
+    max_inputs_per_var=32,  # sample large inputs
+    raise_exception=False,
+    show_summary=True,
 )
 ```
 
@@ -159,7 +167,7 @@ When the signature and checklist leave several candidates:
 ## Tape visualization
 
 ```python
-tape.visualize("tape.dot")   # then: dot -Tsvg tape.dot -o tape.svg
+tape.visualize("tape.dot")  # then: dot -Tsvg tape.dot -o tape.svg
 ```
 
 Arrays render green when `requires_grad=True`, grey otherwise — a fast way to

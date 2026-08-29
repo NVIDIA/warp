@@ -165,7 +165,7 @@ Scope the option to the measured process, before importing the library:
 ```python
 import warp as wp
 
-wp.config.enable_backward = False   # must precede the library import
+wp.config.enable_backward = False  # must precede the library import
 
 import the_library
 ```
