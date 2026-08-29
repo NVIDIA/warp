@@ -657,6 +657,7 @@ def test_radix_sort_pairs_empty(test, device):
 
 
 def test_segmented_sort_pairs_empty(test, device):
+    """Accept an empty segmented sort for each supported key type."""
     keyTypes = [int, wp.float32]
 
     for keyType in keyTypes:
@@ -665,6 +666,20 @@ def test_segmented_sort_pairs_empty(test, device):
         wp.utils.segmented_sort_pairs(
             keys, values, 0, wp.array((), dtype=int, device=device), wp.array((), dtype=int, device=device)
         )
+
+
+def test_segmented_sort_pairs_no_segments(test, device):
+    """Leave the inputs unchanged when one offset defines no segments."""
+    # ``count=1`` requires two elements of sort storage, while one inferred
+    # offset produces zero ranges and therefore no work.
+    keys = wp.array((2, 1), dtype=int, device=device)
+    values = wp.array((20, 10), dtype=int, device=device)
+    segment_offsets = wp.array((0,), dtype=int, device=device)
+
+    wp.utils.segmented_sort_pairs(keys, values, 1, segment_offsets)
+
+    np.testing.assert_array_equal(keys.numpy(), np.array((2, 1)))
+    np.testing.assert_array_equal(values.numpy(), np.array((20, 10)))
 
 
 def test_radix_sort_pairs_error_insufficient_storage(test, device):
@@ -697,6 +712,169 @@ def test_segmented_sort_pairs_error_insufficient_storage(test, device):
                 wp.array((0,), dtype=int, device=device),
                 wp.array((3,), dtype=int, device=device),
             )
+
+
+def test_segmented_sort_pairs_error_negative_count(test, device):
+    """Reject a negative element count before dispatching the sort."""
+    keys = wp.zeros(2, dtype=int, device=device)
+    values = wp.zeros(2, dtype=int, device=device)
+    segment_starts = wp.array((0,), dtype=int, device=device)
+    segment_ends = wp.array((0,), dtype=int, device=device)
+
+    with test.assertRaisesRegex(RuntimeError, r"count must be non-negative, got -1$"):
+        wp.utils.segmented_sort_pairs(keys, values, -1, segment_starts, segment_ends)
+
+
+def test_segmented_sort_pairs_error_invalid_count(test, device):
+    """Reject non-integral counts and counts that exceed the native integer range."""
+    keys = wp.zeros(2, dtype=int, device=device)
+    values = wp.zeros(2, dtype=int, device=device)
+    segment_starts = wp.array((0,), dtype=int, device=device)
+    segment_ends = wp.array((0,), dtype=int, device=device)
+
+    with test.assertRaisesRegex(RuntimeError, r"count must be an integer"):
+        wp.utils.segmented_sort_pairs(keys, values, 1.5, segment_starts, segment_ends)
+
+    # ``1 << 31`` is exactly one past the largest signed 32-bit value accepted
+    # by the native API.
+    with test.assertRaisesRegex(RuntimeError, r"count must not exceed 2147483647, got 2147483648$"):
+        wp.utils.segmented_sort_pairs(keys, values, 1 << 31, segment_starts, segment_ends)
+
+
+def test_segmented_sort_pairs_error_segment_size_mismatch(test, device):
+    """Reject explicit start and end arrays with different lengths."""
+    keys = wp.zeros(8, dtype=int, device=device)
+    values = wp.zeros(8, dtype=int, device=device)
+    segment_starts = wp.array((0, 2), dtype=int, device=device)
+    segment_ends = wp.array((2,), dtype=int, device=device)
+
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"segment_start_indices and segment_end_indices must have the same size \(2 vs 1\)$",
+    ):
+        wp.utils.segmented_sort_pairs(keys, values, 4, segment_starts, segment_ends)
+
+
+def test_segmented_sort_pairs_error_multidimensional_segments(test, device):
+    """Reject multidimensional segment-index arrays before deriving native pointers.
+
+    In inferred-end mode, slicing a multidimensional array with ``[1:]`` moves
+    by one row rather than one element. The extra backing row keeps the old
+    erroneous native read inside the allocation, making this regression test
+    fail safely instead of risking a process crash.
+    """
+    keys = wp.zeros(8, dtype=int, device=device)
+    values = wp.zeros(8, dtype=int, device=device)
+    # The first two rows are the rejected view. The final row safely backs the
+    # extra end-offset read performed by the pre-fix inferred slice.
+    segment_storage = wp.array(np.array(((0, 1), (2, 3), (4, 4)), dtype=np.int32), device=device)
+    segment_starts = segment_storage[:2]
+
+    with test.assertRaisesRegex(RuntimeError, r"segment_start_indices must be one-dimensional"):
+        wp.utils.segmented_sort_pairs(keys, values, 4, segment_starts)
+
+    segment_ends = wp.array(np.array(((2, 4),), dtype=np.int32), device=device)
+    with test.assertRaisesRegex(RuntimeError, r"segment_end_indices must be one-dimensional"):
+        wp.utils.segmented_sort_pairs(keys, values, 4, wp.array((0, 2), dtype=int, device=device), segment_ends)
+
+
+def test_segmented_sort_pairs_error_non_contiguous(test, device):
+    """Reject each non-contiguous array accepted by the segmented-sort interface."""
+    contiguous = wp.zeros(2, dtype=int, device=device)
+    segment_starts = wp.array((0,), dtype=int, device=device)
+    segment_ends = wp.array((1,), dtype=int, device=device)
+
+    keys = wp.zeros(4, dtype=int, device=device)[::2]
+    with test.assertRaisesRegex(RuntimeError, r"requires a contiguous keys array"):
+        wp.utils.segmented_sort_pairs(keys, contiguous, 1, segment_starts, segment_ends)
+
+    values = wp.zeros(4, dtype=int, device=device)[::2]
+    with test.assertRaisesRegex(RuntimeError, r"requires a contiguous values array"):
+        wp.utils.segmented_sort_pairs(contiguous, values, 1, segment_starts, segment_ends)
+
+    segment_starts = wp.array((0, 1), dtype=int, device=device)[::2]
+    with test.assertRaisesRegex(RuntimeError, r"requires a contiguous segment_start_indices array"):
+        wp.utils.segmented_sort_pairs(contiguous, contiguous, 1, segment_starts, segment_ends)
+
+    segment_starts = wp.array((0,), dtype=int, device=device)
+    segment_ends = wp.array((1, 1), dtype=int, device=device)[::2]
+    with test.assertRaisesRegex(RuntimeError, r"requires a contiguous segment_end_indices array"):
+        wp.utils.segmented_sort_pairs(contiguous, contiguous, 1, segment_starts, segment_ends)
+
+
+@contextlib.contextmanager
+def suppress_native_error_output():
+    """Suppress native error output while asserting an expected failure."""
+    from warp._src.context import runtime  # noqa: PLC0415
+
+    saved_error_output = runtime.core.wp_is_error_output_enabled()
+    runtime.core.wp_set_error_output_enabled(False)
+    try:
+        yield
+    finally:
+        runtime.core.wp_set_error_output_enabled(saved_error_output)
+
+
+def test_segmented_sort_pairs_invalid_ranges(test, device):
+    """Reject malformed CPU ranges and treat their CUDA counterparts as empty.
+
+    Exercise both supported key types and each independent range violation.
+    CPU reports the malformed range, while CUDA must leave the entire backing
+    allocation unchanged without synchronously copying offsets to the host.
+    """
+    invalid_ranges = (
+        (-2, -1),  # Both bounds are negative.
+        (-2, 0),  # Only the start is negative.
+        (4, 5),  # The end exceeds ``count=4``.
+        (3, 2),  # The end precedes the start.
+    )
+
+    for key_type in (int, wp.float32):
+        for start, end in invalid_ranges:
+            with test.subTest(key_type=key_type, start=start, end=end):
+                # Start the sort view four elements into a larger allocation.
+                # This kept pre-fix negative offsets inside sentinel storage
+                # during the RED run and lets the test detect any stray writes.
+                key_storage = wp.array(tuple(range(20)), dtype=key_type, device=device)
+                value_storage = wp.array(tuple(range(100, 120)), dtype=int, device=device)
+                keys = key_storage[4:]
+                values = value_storage[4:]
+                segment_starts = wp.array((start,), dtype=int, device=device)
+                segment_ends = wp.array((end,), dtype=int, device=device)
+
+                if device.is_cpu:
+                    with suppress_native_error_output():
+                        with test.assertRaisesRegex(RuntimeError, r"Invalid segment range at index 0"):
+                            wp.utils.segmented_sort_pairs(keys, values, 4, segment_starts, segment_ends)
+                else:
+                    expected_keys = key_storage.numpy()
+                    expected_values = value_storage.numpy()
+                    wp.utils.segmented_sort_pairs(keys, values, 4, segment_starts, segment_ends)
+                    np.testing.assert_array_equal(key_storage.numpy(), expected_keys)
+                    np.testing.assert_array_equal(value_storage.numpy(), expected_values)
+
+
+def test_segmented_sort_pairs_invalid_inferred_range(test, device):
+    """Handle a valid range followed by an inferred range that exceeds the count.
+
+    The offsets define valid ``[0, 2)`` and invalid ``[2, 5)`` ranges for
+    ``count=4``. This verifies that CUDA still sorts the valid range while
+    treating only the invalid range as empty; CPU reports its segment index.
+    """
+    # The first half holds sortable pairs and the second half is the required
+    # radix-sort scratch storage.
+    keys = wp.array((2, 1, 4, 3, 0, 0, 0, 0), dtype=int, device=device)
+    values = wp.array((20, 10, 40, 30, 0, 0, 0, 0), dtype=int, device=device)
+    segment_offsets = wp.array((0, 2, 5), dtype=int, device=device)
+
+    if device.is_cpu:
+        with suppress_native_error_output():
+            with test.assertRaisesRegex(RuntimeError, r"Invalid segment range at index 1"):
+                wp.utils.segmented_sort_pairs(keys, values, 4, segment_offsets)
+    else:
+        wp.utils.segmented_sort_pairs(keys, values, 4, segment_offsets)
+        np.testing.assert_array_equal(keys.numpy()[:4], np.array((1, 2, 4, 3)))
+        np.testing.assert_array_equal(values.numpy()[:4], np.array((10, 20, 40, 30)))
 
 
 def test_radix_sort_pairs_error_unsupported_dtype(test, device):
@@ -1016,6 +1194,38 @@ class TestUtils(unittest.TestCase):
             wp.utils.radix_sort_pairs(keys, values, 1)
 
     @unittest.skipUnless(wp.is_cuda_available(), "Requires CUDA")
+    def test_segmented_sort_pairs_error_devices_mismatch(self):
+        """Reject segment-index arrays stored on a different device."""
+        # Use a zero count to prove device validation runs before the no-op
+        # return and without requiring cross-device data buffers.
+        keys = wp.array((), dtype=int, device="cpu")
+        values = wp.array((), dtype=int, device="cpu")
+        segment_starts = wp.array((), dtype=int, device="cuda:0")
+        segment_ends = wp.array((), dtype=int, device="cuda:0")
+
+        with self.assertRaisesRegex(
+            RuntimeError,
+            r"Keys, values, and segment index array storage devices must match$",
+        ):
+            wp.utils.segmented_sort_pairs(keys, values, 0, segment_starts, segment_ends)
+
+    def test_segmented_sort_pairs_cpu_error_preserves_inputs(self):
+        """Reject a later invalid range before sorting an earlier valid range."""
+        keys_np = np.array((2, 1, 4, 3, 0, 0, 0, 0), dtype=np.int32)
+        values_np = np.array((20, 10, 40, 30, 0, 0, 0, 0), dtype=np.int32)
+        keys = wp.array(keys_np, device="cpu")
+        values = wp.array(values_np, device="cpu")
+        segment_starts = wp.array((0, 2), dtype=wp.int32, device="cpu")
+        segment_ends = wp.array((2, 5), dtype=wp.int32, device="cpu")
+
+        with suppress_native_error_output():
+            with self.assertRaisesRegex(RuntimeError, r"Invalid segment range at index 1"):
+                wp.utils.segmented_sort_pairs(keys, values, 4, segment_starts, segment_ends)
+
+        np.testing.assert_array_equal(keys.numpy(), keys_np)
+        np.testing.assert_array_equal(values.numpy(), values_np)
+
+    @unittest.skipUnless(wp.is_cuda_available(), "Requires CUDA")
     def test_array_inner_error_out_device_mismatch(self):
         a = wp.array((1.0, 2.0, 3.0), dtype=wp.float32, device="cpu")
         b = wp.array((1.0, 2.0, 3.0), dtype=wp.float32, device="cpu")
@@ -1212,11 +1422,56 @@ add_function_test(
     devices=devices,
 )
 add_function_test(TestUtils, "test_segmented_sort_pairs", test_segmented_sort_pairs, devices=devices)
-add_function_test(TestUtils, "test_segmented_sort_pairs_empty", test_segmented_sort_pairs, devices=devices)
+add_function_test(TestUtils, "test_segmented_sort_pairs_empty", test_segmented_sort_pairs_empty, devices=devices)
+add_function_test(
+    TestUtils, "test_segmented_sort_pairs_no_segments", test_segmented_sort_pairs_no_segments, devices=devices
+)
 add_function_test(
     TestUtils,
     "test_segmented_sort_pairs_error_insufficient_storage",
     test_segmented_sort_pairs_error_insufficient_storage,
+    devices=devices,
+)
+add_function_test(
+    TestUtils,
+    "test_segmented_sort_pairs_error_negative_count",
+    test_segmented_sort_pairs_error_negative_count,
+    devices=devices,
+)
+add_function_test(
+    TestUtils,
+    "test_segmented_sort_pairs_error_invalid_count",
+    test_segmented_sort_pairs_error_invalid_count,
+    devices=devices,
+)
+add_function_test(
+    TestUtils,
+    "test_segmented_sort_pairs_error_segment_size_mismatch",
+    test_segmented_sort_pairs_error_segment_size_mismatch,
+    devices=devices,
+)
+add_function_test(
+    TestUtils,
+    "test_segmented_sort_pairs_error_multidimensional_segments",
+    test_segmented_sort_pairs_error_multidimensional_segments,
+    devices=devices,
+)
+add_function_test(
+    TestUtils,
+    "test_segmented_sort_pairs_error_non_contiguous",
+    test_segmented_sort_pairs_error_non_contiguous,
+    devices=devices,
+)
+add_function_test(
+    TestUtils,
+    "test_segmented_sort_pairs_invalid_ranges",
+    test_segmented_sort_pairs_invalid_ranges,
+    devices=devices,
+)
+add_function_test(
+    TestUtils,
+    "test_segmented_sort_pairs_invalid_inferred_range",
+    test_segmented_sort_pairs_invalid_inferred_range,
     devices=devices,
 )
 add_function_test(

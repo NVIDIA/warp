@@ -6,6 +6,7 @@ from __future__ import annotations
 import cProfile
 import gc
 import hashlib
+import operator
 import os
 import sys
 import threading
@@ -261,30 +262,54 @@ def segmented_sort_pairs(
     segment_start_indices: wp.array[wp.int32],
     segment_end_indices: wp.array[wp.int32] = None,
 ):
-    """Sort key-value pairs within segments.
+    """Sort key-value pairs independently within segments.
 
-    This function performs a segmented sort of key-value pairs, where the sorting is done independently within each segment.
-    The segments are defined by their start and optionally end indices.
-    The `keys` and `values` arrays must be large enough to accommodate 2*`count` elements.
+    Segments are defined as half-open ranges by ``segment_start_indices`` and
+    optionally ``segment_end_indices``. Every range must satisfy
+    ``0 <= start <= end <= count``. Segment ranges must not overlap. The
+    non-overlap requirement is not validated, and behavior is undefined when
+    ranges overlap. On CPU, a range that violates the bounds raises a
+    :class:`RuntimeError`. On CUDA, a range that violates the bounds is treated
+    as empty so validation remains asynchronous and compatible with CUDA graph
+    capture.
+
+    For a non-empty sort, all arrays must be contiguous and reside on the same
+    device, and the segment-index arrays must be one-dimensional. The ``keys``
+    and ``values`` arrays must each have room for at least ``2 * count``
+    elements because their second halves are used as temporary storage. When
+    ``count`` is zero, this function returns after validating ``count`` and the
+    array devices.
 
     Args:
-        keys: Array of keys to sort. Must be of type int32 or float32.
-        values: Array of values to sort along with keys. Must be of type int32.
-        count: Number of elements to sort.
-        segment_start_indices: Array containing start index of each segment. Must be of type int32.
-            If segment_end_indices is None, this array must have length at least num_segments + 1,
-            and segment_end_indices will be inferred as segment_start_indices[1:].
-            If segment_end_indices is provided, this array must have length at least num_segments.
-        segment_end_indices: Optional array containing end index of each segment. Must be of type int32 if provided.
-            If None, segment_end_indices will be inferred from segment_start_indices[1:].
-            If provided, must have length at least num_segments.
+        keys: Array of keys to sort. Must be of type ``int32`` or ``float32``.
+        values: Array of values to sort along with ``keys``. Must be of type ``int32``.
+        count: Number of elements to sort. Must fit a signed 32-bit integer.
+        segment_start_indices: Array containing the start index of each segment. Must be of type ``int32``.
+            When ``segment_end_indices`` is ``None``, adjacent entries define
+            each segment, so an array of length N defines N - 1 segments.
+        segment_end_indices: Optional array containing the end index of each segment. Must be of type ``int32``.
+            When provided, it must have the same length as ``segment_start_indices``.
 
     Raises:
-        RuntimeError: If array storage devices don't match, if storage size is insufficient,
-                     if segment_start_indices is not of type int32, or if data types are unsupported.
+        RuntimeError: If ``count`` is not a non-negative signed 32-bit integer, array devices or sizes do not match,
+            storage is insufficient, an array is not contiguous, a segment-index array is not one-dimensional,
+            dtypes are unsupported, or a CPU segment range is invalid.
     """
-    if keys.device != values.device:
-        raise RuntimeError(f"Array storage devices do not match ({keys.device} vs {values.device})")
+    try:
+        count = operator.index(count)
+    except TypeError as e:
+        raise RuntimeError("count must be an integer") from e
+
+    if count < 0:
+        raise RuntimeError(f"count must be non-negative, got {count}")
+    if count > (1 << 31) - 1:
+        raise RuntimeError(f"count must not exceed {(1 << 31) - 1}, got {count}")
+
+    segment_devices_match = segment_start_indices.device == keys.device
+    if segment_end_indices is not None:
+        segment_devices_match = segment_devices_match and segment_end_indices.device == keys.device
+    if keys.device != values.device or not segment_devices_match:
+        raise RuntimeError("Keys, values, and segment index array storage devices must match")
 
     if count == 0:
         return
@@ -292,14 +317,28 @@ def segmented_sort_pairs(
     if keys.size < 2 * count or values.size < 2 * count:
         raise RuntimeError("Array storage must be large enough to contain 2*count elements")
 
+    if not keys.is_contiguous:
+        raise RuntimeError("segmented_sort_pairs() requires a contiguous keys array")
+
+    if not values.is_contiguous:
+        raise RuntimeError("segmented_sort_pairs() requires a contiguous values array")
+
     from warp._src.context import _get_apic_capture_for_device, runtime  # noqa: PLC0415
 
     if segment_start_indices.dtype != wp.int32:
         raise RuntimeError("segment_start_indices array must be of type int32")
 
+    if segment_start_indices.ndim != 1:
+        raise RuntimeError("segment_start_indices must be one-dimensional")
+
+    if not segment_start_indices.is_contiguous:
+        raise RuntimeError("segmented_sort_pairs() requires a contiguous segment_start_indices array")
+
     # Handle case where segment_end_indices is not provided
     if segment_end_indices is None:
         num_segments = max(0, segment_start_indices.size - 1)
+        if num_segments == 0:
+            return
 
         segment_end_indices = segment_start_indices[1:]
         segment_end_indices_ptr = segment_end_indices.ptr
@@ -308,10 +347,25 @@ def segmented_sort_pairs(
         if segment_end_indices.dtype != wp.int32:
             raise RuntimeError("segment_end_indices array must be of type int32")
 
+        if segment_end_indices.ndim != 1:
+            raise RuntimeError("segment_end_indices must be one-dimensional")
+
+        if not segment_end_indices.is_contiguous:
+            raise RuntimeError("segmented_sort_pairs() requires a contiguous segment_end_indices array")
+
+        if segment_start_indices.size != segment_end_indices.size:
+            raise RuntimeError(
+                "segment_start_indices and segment_end_indices must have the same size "
+                f"({segment_start_indices.size} vs {segment_end_indices.size})"
+            )
+
         num_segments = segment_start_indices.size
 
         segment_end_indices_ptr = segment_end_indices.ptr
         segment_start_indices_ptr = segment_start_indices.ptr
+
+    if num_segments == 0:
+        return
 
     # Both CPU (record-only) and CUDA (record-and-execute) APIC captures record an
     # APIC_OP_SEGMENTED_SORT op. Track the keys/values/segment base regions first
@@ -326,7 +380,7 @@ def segmented_sort_pairs(
 
     if keys.device.is_cpu:
         if keys.dtype == wp.int32 and values.dtype == wp.int32:
-            runtime.core.wp_segmented_sort_pairs_int_host(
+            success = runtime.core.wp_segmented_sort_pairs_int_host(
                 keys.ptr,
                 values.ptr,
                 count,
@@ -335,7 +389,7 @@ def segmented_sort_pairs(
                 num_segments,
             )
         elif keys.dtype == wp.float32 and values.dtype == wp.int32:
-            runtime.core.wp_segmented_sort_pairs_float_host(
+            success = runtime.core.wp_segmented_sort_pairs_float_host(
                 keys.ptr,
                 values.ptr,
                 count,
@@ -345,6 +399,8 @@ def segmented_sort_pairs(
             )
         else:
             raise RuntimeError(f"Unsupported data type: {type_repr(keys.dtype)}")
+        if not success:
+            raise RuntimeError(runtime.get_error_string())
     elif keys.device.is_cuda:
         if keys.dtype == wp.int32 and values.dtype == wp.int32:
             runtime.core.wp_segmented_sort_pairs_int_device(
