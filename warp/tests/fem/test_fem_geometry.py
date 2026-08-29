@@ -10,6 +10,7 @@ import numpy as np
 import warp as wp
 import warp.fem as fem
 from warp._src.fem.geometry.closest_point import project_on_tet_at_origin, project_on_tri_at_origin
+from warp._src.fem.utils import compress_node_indices
 from warp.fem import Coords, Domain, Sample, integrand, make_free_sample
 from warp.fem.utils import grid_to_hexes, grid_to_quads, grid_to_tets, grid_to_tris
 from warp.tests.unittest_utils import *
@@ -240,6 +241,47 @@ def test_triangle_mesh(test, device):
 
     assert_np_equal(cell_measures.numpy(), np.full(cell_measures.shape, 0.5 / (N**2)), tol=1.0e-4)
     test.assertAlmostEqual(np.sum(side_measures.numpy()), 2 * (N + 1) + N * math.sqrt(2.0), places=4)
+
+
+def test_mesh_rejects_invalid_vertex_indices(test, device):
+    """Verify that mesh constructors reject out-of-range vertex indices."""
+    mesh_cases = (
+        ("Trimesh", fem.Trimesh2D, "tri_vertex_indices", wp.vec2, 3),
+        ("Quadmesh", fem.Quadmesh2D, "quad_vertex_indices", wp.vec2, 4),
+        ("Tetmesh", fem.Tetmesh, "tet_vertex_indices", wp.vec3, 4),
+        ("Hexmesh", fem.Hexmesh, "hex_vertex_indices", wp.vec3, 8),
+    )
+
+    for mesh_name, mesh_type, index_arg_name, position_dtype, vertex_count in mesh_cases:
+        positions = wp.zeros(vertex_count, dtype=position_dtype, device=device)
+        for invalid_index in (-1, vertex_count, (1 << 31) - 2, fem.NULL_NODE_INDEX):
+            vertex_indices = list(range(vertex_count))
+            vertex_indices[0] = invalid_index
+            connectivity = wp.array([vertex_indices], dtype=int, device=device)
+
+            with test.subTest(mesh=mesh_name, invalid_index=invalid_index):
+                with test.assertRaisesRegex(ValueError, "out of bounds"):
+                    mesh_type(**{index_arg_name: connectivity, "positions": positions})
+
+
+def test_compress_node_indices_ignores_out_of_range_values(test, device):
+    """Verify that node-index compression ignores invalid values without overrunning offsets."""
+    backing_offsets = wp.full(12, -99, dtype=int, device=device)
+    node_offsets = wp.array(ptr=backing_offsets.ptr, shape=(4,), dtype=int, device=device, copy=False)
+    node_indices = wp.array([0, 1, 2, 3, 4, 5, -1], dtype=int, device=device)
+
+    _, sorted_indices, unique_count, unique_indices = compress_node_indices(
+        3, node_indices, node_offsets=node_offsets, return_unique_nodes=True
+    )
+
+    np.testing.assert_array_equal(node_offsets.numpy(), [0, 1, 2, 3])
+    np.testing.assert_array_equal(backing_offsets.numpy()[4:], np.full(8, -99))
+    test.assertEqual(unique_count.numpy()[0], 3)
+    np.testing.assert_array_equal(unique_indices.numpy()[:3], [0, 1, 2])
+
+    sorted_indices.release()
+    unique_count.release()
+    unique_indices.release()
 
 
 def test_quad_mesh(test, device):
@@ -875,6 +917,18 @@ class TestFemGeometry(unittest.TestCase):
 
 add_function_test(TestFemGeometry, "test_grid_2d", test_grid_2d, devices=devices)
 add_function_test(TestFemGeometry, "test_triangle_mesh", test_triangle_mesh, devices=devices)
+add_function_test(
+    TestFemGeometry,
+    "test_mesh_rejects_invalid_vertex_indices",
+    test_mesh_rejects_invalid_vertex_indices,
+    devices=devices,
+)
+add_function_test(
+    TestFemGeometry,
+    "test_compress_node_indices_ignores_out_of_range_values",
+    test_compress_node_indices_ignores_out_of_range_values,
+    devices=devices,
+)
 add_function_test(TestFemGeometry, "test_quad_mesh", test_quad_mesh, devices=devices)
 add_function_test(TestFemGeometry, "test_mesh_guess_lookup_radius", test_mesh_guess_lookup_radius, devices=devices)
 add_function_test(TestFemGeometry, "test_grid_3d", test_grid_3d, devices=devices)

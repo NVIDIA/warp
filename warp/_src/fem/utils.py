@@ -83,7 +83,8 @@ def compress_node_indices(
      - the ``unique_node_count`` array containing the number of unique node indices
      - the ``unique_node_indices`` array containing the sorted list of unique node indices (i.e. the list of indices i for which ``node_offsets[i] < node_offsets[i+1]``)
 
-    Node indices equal to :data:`NULL_NODE_INDEX` will be ignored.
+    Node indices equal to :data:`NULL_NODE_INDEX`, as well as other indices outside the range
+    ``[0, node_count)``, will be ignored.
 
     If the ``node_offsets``, ``sorted_array_indices``, ``unique_node_count`` and ``unique_node_indices`` arrays are provided and adequately shaped, they will be used to store the results instead of creating new arrays.
     """
@@ -101,7 +102,7 @@ def compress_node_indices(
         wp.launch(
             kernel=_prepare_node_sort_kernel,
             dim=index_count,
-            inputs=[node_indices.flatten(), sorted_node_indices, sorted_array_indices, indices_per_element],
+            inputs=[node_count, node_indices.flatten(), sorted_node_indices, sorted_array_indices, indices_per_element],
         )
 
         # Sort indices
@@ -150,6 +151,51 @@ def compress_node_indices(
             return node_offsets, sorted_array_indices
 
         return node_offsets, sorted_array_indices, unique_node_count, unique_node_indices
+
+
+def validate_node_indices(
+    node_count: int,
+    node_indices: wp.array[int],
+    index_name: str = "Node",
+    temporary_store: cache.TemporaryStore | None = None,
+) -> None:
+    """Validate that all node indices are in bounds.
+
+    Args:
+        node_count: Number of available nodes.
+        node_indices: Warp array containing the indices to validate.
+        index_name: Name used to identify an index in error messages.
+        temporary_store: Shared pool from which to allocate temporary arrays.
+
+    Raises:
+        ValueError: If ``node_indices`` contains a value outside ``[0, node_count)``.
+    """
+
+    index_count = node_indices.size
+    if index_count == 0:
+        return
+
+    invalid_array_index = cache.borrow_temporary(temporary_store, shape=(1,), dtype=int, device=node_indices.device)
+    try:
+        invalid_array_index.fill_(index_count)
+
+        wp.launch(
+            kernel=_find_invalid_node_index,
+            dim=index_count,
+            inputs=[node_count, node_indices.flatten(), invalid_array_index],
+            device=node_indices.device,
+        )
+
+        first_invalid = int(host_read_at_index(invalid_array_index, temporary_store=temporary_store))
+    finally:
+        invalid_array_index.release()
+
+    if first_invalid < index_count:
+        invalid_value = int(host_read_at_index(node_indices.flatten(), first_invalid, temporary_store=temporary_store))
+        raise ValueError(
+            f"{index_name} index {invalid_value} at flattened array index {first_invalid} "
+            f"is out of bounds; expected a value in [0, {node_count})"
+        )
 
 
 def host_read_at_index(array: wp.array, index: int = -1, temporary_store: cache.TemporaryStore = None) -> int:
@@ -214,6 +260,7 @@ def masked_indices(
 
 @wp.kernel
 def _prepare_node_sort_kernel(
+    node_count: int,
     node_indices: wp.array(dtype=int),
     sort_keys: wp.array(dtype=int),
     sort_values: wp.array(dtype=int),
@@ -221,8 +268,20 @@ def _prepare_node_sort_kernel(
 ):
     i = wp.tid()
     node = node_indices[i]
-    sort_keys[i] = wp.where(node >= 0, node, NULL_NODE_INDEX)
+    sort_keys[i] = wp.where(node >= 0 and node < node_count, node, NULL_NODE_INDEX)
     sort_values[i] = i // divisor
+
+
+@wp.kernel
+def _find_invalid_node_index(
+    node_count: int,
+    node_indices: wp.array[int],
+    invalid_array_index: wp.array[int],
+):
+    i = wp.tid()
+    node_index = node_indices[i]
+    if node_index < 0 or node_index >= node_count:
+        wp.atomic_min(invalid_array_index, 0, i)
 
 
 @wp.kernel
@@ -240,7 +299,8 @@ def _scatter_node_counts(
         return
 
     node_index = unique_node_indices[i]
-    if node_index == NULL_NODE_INDEX:
+    if node_index < 0 or node_index >= node_counts.shape[0] - 1:
+        unique_node_indices[i] = NULL_NODE_INDEX
         wp.atomic_sub(unique_node_count, 0, 1)
         return
 

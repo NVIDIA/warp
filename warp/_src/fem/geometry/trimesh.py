@@ -16,7 +16,7 @@ from warp._src.fem.types import (
     ElementIndex,
     make_coords,
 )
-from warp._src.fem.utils import compress_node_indices, host_read_at_index, masked_indices
+from warp._src.fem.utils import compress_node_indices, host_read_at_index, masked_indices, validate_node_indices
 from warp._src.types import type_scalar_type
 from warp._src.utils import array_scan
 
@@ -271,6 +271,10 @@ class Trimesh(Geometry):
 
     def _build_topology(self, temporary_store: TemporaryStore):
         device = self.tri_vertex_indices.device
+
+        validate_node_indices(
+            self.vertex_count(), self.tri_vertex_indices, index_name="Vertex", temporary_store=temporary_store
+        )
 
         vertex_tri_offsets, vertex_tri_indices = compress_node_indices(
             self.vertex_count(), self.tri_vertex_indices, temporary_store=temporary_store
