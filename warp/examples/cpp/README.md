@@ -62,10 +62,12 @@ Examples `00` and `01` follow this two-phase workflow.
 ```python
 import warp as wp
 
+
 @wp.kernel
 def my_kernel(x: wp.array(dtype=wp.float32)):
     tid = wp.tid()
     x[tid] = x[tid] * 2.0
+
 
 wp.init()
 wp.compile_aot_module("__main__", module_dir="generated/", strip_hash=True)

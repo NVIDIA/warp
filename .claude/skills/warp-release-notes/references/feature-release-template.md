@@ -237,7 +237,7 @@ shape. Example:
   out = wp.zeros(N, dtype=float, requires_grad=True)
   ...
   tape.backward()
-  print(out.grad)   # v1.12: ones, v1.13: zeros
+  print(out.grad)  # v1.12: ones, v1.13: zeros
 
   # v1.13 migration: ...
   ```

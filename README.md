@@ -32,6 +32,7 @@ import numpy as np
 num_particles = 1_000_000
 dt = 0.01
 
+
 @wp.kernel
 def gravity_step(pos: wp.array[wp.vec3], vel: wp.array[wp.vec3]):
     i = wp.tid()
@@ -40,6 +41,7 @@ def gravity_step(pos: wp.array[wp.vec3], vel: wp.array[wp.vec3]):
     acc = -1000.0 / dist_sq * wp.normalize(position)  # gravitational pull toward origin
     vel[i] = vel[i] + acc * dt
     pos[i] = pos[i] + vel[i] * dt
+
 
 rng = np.random.default_rng(42)
 positions = wp.array(rng.normal(size=(num_particles, 3)), dtype=wp.vec3)

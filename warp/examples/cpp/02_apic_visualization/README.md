@@ -115,12 +115,10 @@ wp.capture_begin(device=device, apic=True)
 for s in range(substeps):  # e.g., 16 iterations
     if s == 0:
         # First substep: apply mouse displacement
-        wp.launch(wave_displace, dim=width * height,
-                  inputs=[grid0, grid1, mouse_pos, ...])
+        wp.launch(wave_displace, dim=width * height, inputs=[grid0, grid1, mouse_pos, ...])
 
     # Every substep: integrate wave equation
-    wp.launch(wave_solve, dim=width * height,
-              inputs=[grid0, grid1, ...])
+    wp.launch(wave_solve, dim=width * height, inputs=[grid0, grid1, ...])
 
     # Swap buffers
     grid0, grid1 = grid1, grid0
@@ -128,12 +126,12 @@ for s in range(substeps):  # e.g., 16 iterations
 graph = wp.capture_end(device=device)
 
 # Save with named bindings
-wp.capture_save(graph, "generated/wave_sim",
-                inputs={"heights": grid1,
-                        "heights_prev": grid0,
-                        "mouse_pos": mouse_pos},
-                outputs={"heights_out": grid1,
-                         "heights_prev_out": grid0})
+wp.capture_save(
+    graph,
+    "generated/wave_sim",
+    inputs={"heights": grid1, "heights_prev": grid0, "mouse_pos": mouse_pos},
+    outputs={"heights_out": grid1, "heights_prev_out": grid0},
+)
 ```
 
 This creates an APIC operation stream describing 17 kernel launches (1 displacement + 16 solves). The stream and module files are later used to construct a fresh CUDA graph.

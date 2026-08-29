@@ -46,9 +46,9 @@ variables:
   UV_PYTHON_PREFERENCE: only-managed
   
   # Standard container images (pinned with SHA256 for supply chain security)
-  UV_TRIXIE_IMAGE: "ghcr.io/astral-sh/uv:0.11.16-trixie@sha256:3a10099599f370305314be6af0cf18fdbc65ea5ddadb3731561dd920f1d185b8"
-  UV_TRIXIE_SLIM_IMAGE: "ghcr.io/astral-sh/uv:0.11.16-trixie-slim@sha256:bf3ae2823f0399092f2e47ec7bae6a8e0b389d2310a9bc7f0741f0fa1629040f"
-  UV_TRIXIE_SLIM_ARM_IMAGE: "ghcr.io/astral-sh/uv:0.11.16-trixie-slim@sha256:e4e5baeeb366609825aadbe4387686c39dab036b0cc68d938fcb9a61aa05bf75"
+  UV_TRIXIE_IMAGE: "ghcr.io/astral-sh/uv:0.12.7-trixie@sha256:20cd86504a183da51c633012c37903c41c54837f0ff53f6c2298fd1f001148c9"
+  UV_TRIXIE_SLIM_IMAGE: "ghcr.io/astral-sh/uv:0.12.7-trixie-slim@sha256:bd3571a45f9fcd715ca26938a30ef0bbe85a813d4a7c3e9a7dc0e27997f1a442"
+  UV_TRIXIE_SLIM_ARM_IMAGE: "ghcr.io/astral-sh/uv:0.12.7-trixie-slim@sha256:f0c9e8c3b86decaa94dbb7e134d3a3241b7cf4c8c66da2f1bc257d8036bca972"
   MINIFORGE_IMAGE: "condaforge/miniforge3:25.11.0-0@sha256:d2fadb08950045962fd1cfb1eeb6224442027f03095862e725f4c1c7b17a3caf"
   # Stale pin, and harmless. These tags name older images that still bake in LLVM 21,
   # from before the builder image stopped shipping Clang/LLVM at all. Nothing links

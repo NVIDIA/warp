@@ -148,7 +148,13 @@ ignore = [
 convention = "google"
 
 [tool.ruff.format]
-exclude = ["warp/__init__.pyi"]
+# These skill trees contain signed artifacts and must remain byte-for-byte
+# aligned with the skill-signing pipeline until formatting is coordinated there.
+exclude = [
+    "skills/warp-compile-time-optimizer/**",
+    "skills/warp-debug-gradients/**",
+    "warp/__init__.pyi",
+]
 quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false

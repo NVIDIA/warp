@@ -117,10 +117,12 @@ def compute_loss(
     error = y_pred - y_true[tid]
     wp.atomic_add(loss, 0, error * error)
 
+
 @wp.kernel
 def update_params(learning_rate: wp.float32, grads: wp.array(dtype=wp.float32), params: wp.array(dtype=wp.float32)):
     tid = wp.tid()
     params[tid] -= learning_rate * grads[tid]
+
 
 # Generate .cu source
 wp.compile_aot_module("__main__", module_dir="generated/", strip_hash=True)
