@@ -548,7 +548,7 @@ class TestCompositeComponentAdjoint(unittest.TestCase):
         # what a user hits, and driving a build through the adjoint leaves a failed
         # build in the kernel's module without the module ever being asked to load.
         # Match the message so an unrelated runtime failure cannot satisfy this assertion.
-        with self.assertRaisesRegex(RuntimeError, "must be of the same type as the reference"):
+        with self.assertRaisesRegex(TypeError, "must be of the same type as the reference"):
             wp.launch(_k_mismatch, n, inputs=[y, src])
 
         # No public API exposes the emitted code, so read it off the adjoint: the

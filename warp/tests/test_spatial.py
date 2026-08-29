@@ -2946,7 +2946,7 @@ class TestSpatial(unittest.TestCase):
         with (
             self.subTest(count=2),
             self.assertRaisesRegex(
-                RuntimeError,
+                ValueError,
                 r"incompatible number of values given \(2\) when constructing a transform; expected 0, 1, or 7$",
             ),
         ):
@@ -2955,7 +2955,7 @@ class TestSpatial(unittest.TestCase):
         with (
             self.subTest(count=3),
             self.assertRaisesRegex(
-                RuntimeError,
+                ValueError,
                 r"incompatible number of values given \(3\) when constructing a transform; expected 0, 1, or 7$",
             ),
         ):
@@ -2969,7 +2969,7 @@ class TestSpatial(unittest.TestCase):
             wp.transformd(wp.transform(1.0))
 
         with self.assertRaisesRegex(
-            RuntimeError,
+            TypeError,
             r"copy constructing a transform requires matching source and target dtypes, "
             r"got `float32` and `float64`$",
         ):

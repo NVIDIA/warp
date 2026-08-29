@@ -251,7 +251,7 @@ def test_anon_constructor_error_shape_arg_missing(test, device):
         wp.types.matrix(1.0, 2.0, 3.0)
 
     with test.assertRaisesRegex(
-        RuntimeError,
+        ValueError,
         r"the `shape` argument must be specified when initializing a matrix by value$",
     ):
         wp.launch(kernel, dim=1, inputs=[], device=device)
@@ -263,7 +263,7 @@ def test_anon_constructor_error_shape_mismatch(test, device):
         wp.types.matrix(wp.types.matrix(shape=(1, 2), dtype=float), shape=(3, 4), dtype=float)
 
     with test.assertRaisesRegex(
-        RuntimeError,
+        ValueError,
         r"incompatible matrix of shape \(3, 4\) given when copy constructing a matrix of shape \(1, 2\)$",
     ):
         wp.launch(kernel, dim=1, inputs=[], device=device)
@@ -275,7 +275,7 @@ def test_anon_constructor_error_type_mismatch(test, device):
         wp.types.matrix(x, shape=(3, 2), dtype=wp.float16)
 
     with test.assertRaisesRegex(
-        RuntimeError,
+        TypeError,
         r"the value used to fill this matrix is expected to be of the type `float16`$",
     ):
         wp.launch(kernel, dim=1, inputs=[wp.float32(1.0)], device=device)
@@ -287,7 +287,7 @@ def test_anon_constructor_error_invalid_arg_count(test, device):
         wp.types.matrix(1.0, 2.0, 3.0, shape=(2, 2), dtype=float)
 
     with test.assertRaisesRegex(
-        RuntimeError,
+        ValueError,
         r"incompatible number of values given \(3\) when constructing a matrix of shape \(2, 2\)$",
     ):
         wp.launch(kernel, dim=1, inputs=[], device=device)
@@ -299,7 +299,7 @@ def test_tpl_constructor_error_incompatible_sizes(test, device):
         wp.mat33(wp.mat22(1.0, 2.0, 3.0, 4.0))
 
     with test.assertRaisesRegex(
-        RuntimeError,
+        ValueError,
         r"incompatible matrix of shape \(3, 3\) given when copy constructing a matrix of shape \(2, 2\)$",
     ):
         wp.launch(kernel, dim=1, inputs=[], device=device)
@@ -311,7 +311,7 @@ def test_tpl_constructor_error_invalid_arg_count(test, device):
         wp.mat22(1.0, 2.0, 3.0)
 
     with test.assertRaisesRegex(
-        RuntimeError,
+        ValueError,
         r"incompatible number of values given \(3\) when constructing a matrix of shape \(2, 2\)$",
     ):
         wp.launch(kernel, dim=1, inputs=[], device=device)
