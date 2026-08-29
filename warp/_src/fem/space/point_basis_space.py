@@ -197,6 +197,10 @@ class PointBasisSpace(BasisSpace):
             use_evaluation_point_index=use_evaluation_point_index,
         )
 
+        kernel_key = self.kernel_func.native_func
+        grad_key = self.kernel_grad_func.native_func if self.kernel_grad_func is not None else "None"
+        self._name = f"{self._topology.name}_{kernel_key}_{grad_key}_{self._distance_space}"
+
         cache.setup_dynamic_attributes(self)
         self._kernel_arg = self.ValueStruct()
         self.kernel_values = kernel_values or {}
@@ -216,7 +220,7 @@ class PointBasisSpace(BasisSpace):
     @property
     def name(self):
         """Unique name of the basis space."""
-        return f"{self._topology.name}_{self.kernel_func.key}_{self._distance_space}"
+        return self._name
 
     @property
     def value(self) -> ShapeFunction.Value:

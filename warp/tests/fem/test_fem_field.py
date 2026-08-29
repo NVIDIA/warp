@@ -8,6 +8,8 @@ import numpy as np
 
 import warp as wp
 import warp.fem as fem
+import warp.tests.fem.aux_test_function_cache_1 as function_cache_module_1
+import warp.tests.fem.aux_test_function_cache_2 as function_cache_module_2
 from warp.fem.linalg import spherical_part
 from warp.fem.utils import (
     grid_to_hexes,
@@ -79,6 +81,42 @@ def aniso_bicubic_grad(x: wp.vec2, scale: wp.vec2):
 
 
 @wp.func
+def _implicit_constant_one(x: wp.vec2):
+    return 1.0
+
+
+@wp.func
+def _implicit_constant_two(x: wp.vec2):
+    return 2.0
+
+
+def _make_deferred_static_implicit_func(values):
+    @wp.func(name="deferred_static_implicit_func", module="unique")
+    def implicit_func(x: wp.vec2):
+        result = 0.0
+        for i in range(wp.static(len(values))):
+            result += wp.static(values[i])
+        return result
+
+    return implicit_func
+
+
+@wp.func
+def _implicit_constant_gradient(x: wp.vec2):
+    return wp.vec2(3.0, 4.0)
+
+
+@wp.func
+def _implicit_vector_constant(x: wp.vec2):
+    return wp.vec2(1.0, 2.0)
+
+
+@wp.func
+def _implicit_constant_divergence(x: wp.vec2):
+    return 5.0
+
+
+@wp.func
 def _expect_near(a: Any, b: Any, tol: float):
     wp.expect_near(a, b, tol)
 
@@ -121,6 +159,11 @@ def _expect_tangential_continuity(s: fem.Sample, domain: fem.Domain, field: fem.
 
     _expect_near(in_t, out_t, 0.0001)
     return 0.0
+
+
+@fem.integrand
+def _div_field(s: fem.Sample, p: fem.Field):
+    return fem.div(p, s)
 
 
 @fem.integrand
@@ -212,6 +255,206 @@ def test_dof_mapper(test, device):
             # Check that value is unitary for Frobenius norm 0.5 * |tau:tau|
             frob_norm2 = 0.5 * wp.ddot(mat, mat)
             test.assertAlmostEqual(frob_norm2, 1.0, places=6)
+
+
+def test_implicit_field_function_identity(test, device):
+    """Verify that implicit fields with different functions do not share evaluators."""
+    with wp.ScopedDevice(device):
+        geo = fem.Grid2D(res=wp.vec2i(2))
+        domain = fem.Cells(geo)
+        space = fem.make_polynomial_space(geo)
+        dest = fem.make_discrete_field(space)
+
+        # Keep every structural cache input equal so only the value function distinguishes the fields.
+        field_one = fem.ImplicitField(domain, func=_implicit_constant_one)
+        field_two = fem.ImplicitField(domain, func=_implicit_constant_two)
+
+        fem.interpolate(field_one, dest=dest)
+        assert_np_equal(dest.dof_values.numpy(), np.ones(9))
+
+        fem.interpolate(field_two, dest=dest)
+        assert_np_equal(dest.dof_values.numpy(), np.full(9, 2.0))
+
+
+def test_implicit_field_function_module_identity(test, device):
+    """Verify that same-named functions from different modules do not share evaluators."""
+    with wp.ScopedDevice(device):
+        geo = fem.Grid2D(res=wp.vec2i(2))
+        domain = fem.Cells(geo)
+        dest = fem.make_polynomial_space(geo).make_field()
+
+        # The paired functions share a Warp key and module name but have distinct native identities.
+        field_one = fem.ImplicitField(domain, func=function_cache_module_1.implicit_func)
+        field_two = fem.ImplicitField(domain, func=function_cache_module_2.implicit_func)
+
+        fem.interpolate(field_one, dest=dest)
+        assert_np_equal(dest.dof_values.numpy(), np.ones(9))
+
+        fem.interpolate(field_two, dest=dest)
+        assert_np_equal(dest.dof_values.numpy(), np.full(9, 2.0))
+
+
+def test_implicit_field_deferred_static_identity(test, device):
+    """Verify that deferred static values distinguish implicit field evaluators."""
+    with wp.ScopedDevice(device):
+        geo = fem.Grid2D(res=wp.vec2i(2))
+        domain = fem.Cells(geo)
+        dest = fem.make_polynomial_space(geo).make_field()
+
+        field_one = fem.ImplicitField(domain, func=_make_deferred_static_implicit_func([1.0, 2.0]))
+        field_two = fem.ImplicitField(domain, func=_make_deferred_static_implicit_func([10.0, 20.0]))
+
+        fem.interpolate(field_one, dest=dest)
+        assert_np_equal(dest.dof_values.numpy(), np.full(9, 3.0))
+
+        fem.interpolate(field_two, dest=dest)
+        assert_np_equal(dest.dof_values.numpy(), np.full(9, 30.0))
+
+
+def test_implicit_field_gradient_module_identity(test, device):
+    """Verify that same-named gradients from different modules do not share evaluators."""
+    with wp.ScopedDevice(device):
+        geo = fem.Grid2D(res=wp.vec2i(2))
+        domain = fem.Cells(geo)
+        dest = fem.make_polynomial_space(geo, dtype=wp.vec2).make_field()
+
+        # Keep the value function fixed so only the gradient function changes the cache identity.
+        field_one = fem.ImplicitField(
+            domain,
+            func=_implicit_constant_one,
+            grad_func=function_cache_module_1.implicit_grad_func,
+            degree=4,
+        )
+        field_two = fem.ImplicitField(
+            domain,
+            func=_implicit_constant_one,
+            grad_func=function_cache_module_2.implicit_grad_func,
+            degree=4,
+        )
+
+        fem.interpolate(grad_field, fields={"p": field_one}, dest=dest)
+        assert_np_equal(dest.dof_values.numpy(), np.tile((3.0, 4.0), (9, 1)))
+
+        fem.interpolate(grad_field, fields={"p": field_two}, dest=dest)
+        assert_np_equal(dest.dof_values.numpy(), np.tile((7.0, 8.0), (9, 1)))
+
+
+def test_implicit_field_divergence_module_identity(test, device):
+    """Verify that same-named divergences from different modules do not share evaluators."""
+    with wp.ScopedDevice(device):
+        geo = fem.Grid2D(res=wp.vec2i(2))
+        domain = fem.Cells(geo)
+        dest = fem.make_polynomial_space(geo).make_field()
+
+        # Keep the value function fixed so only the divergence function changes the cache identity.
+        field_one = fem.ImplicitField(
+            domain,
+            func=_implicit_vector_constant,
+            div_func=function_cache_module_1.implicit_div_func,
+            degree=4,
+        )
+        field_two = fem.ImplicitField(
+            domain,
+            func=_implicit_vector_constant,
+            div_func=function_cache_module_2.implicit_div_func,
+            degree=4,
+        )
+
+        fem.interpolate(_div_field, fields={"p": field_one}, dest=dest)
+        assert_np_equal(dest.dof_values.numpy(), np.full(9, 5.0))
+
+        fem.interpolate(_div_field, fields={"p": field_two}, dest=dest)
+        assert_np_equal(dest.dof_values.numpy(), np.full(9, 6.0))
+
+
+def test_implicit_field_does_not_share_gradient(test, device):
+    """Verify that a gradientless field still rejects gradient evaluation."""
+    with wp.ScopedDevice(device):
+        geo = fem.Grid2D(res=wp.vec2i(2))
+        domain = fem.Cells(geo)
+        vec_space = fem.make_polynomial_space(geo, dtype=wp.vec2)
+        dest = fem.make_discrete_field(vec_space)
+
+        # Build the gradient-capable field first to expose cache contamination in the later field.
+        field_with_gradient = fem.ImplicitField(
+            domain,
+            func=_implicit_constant_one,
+            grad_func=_implicit_constant_gradient,
+            degree=1,
+        )
+        field_without_gradient = fem.ImplicitField(domain, func=_implicit_constant_one, degree=1)
+
+        fem.interpolate(grad_field, fields={"p": field_with_gradient}, dest=dest)
+        assert_np_equal(dest.dof_values.numpy(), np.tile((3.0, 4.0), (9, 1)))
+
+        with test.assertRaisesRegex(TypeError, r"Operator `grad` is not defined"):
+            fem.interpolate(grad_field, fields={"p": field_without_gradient}, dest=dest)
+
+
+def test_implicit_field_does_not_drop_gradient(test, device):
+    """Verify that a later gradient-capable field still evaluates its gradient."""
+    with wp.ScopedDevice(device):
+        geo = fem.Grid2D(res=wp.vec2i(2))
+        domain = fem.Cells(geo)
+        vec_space = fem.make_polynomial_space(geo, dtype=wp.vec2)
+        dest = fem.make_discrete_field(vec_space)
+
+        # Prime the cache without a gradient, then evaluate a later field through interpolation.
+        fem.ImplicitField(domain, func=_implicit_constant_two, degree=2)
+        field_with_gradient = fem.ImplicitField(
+            domain,
+            func=_implicit_constant_two,
+            grad_func=_implicit_constant_gradient,
+            degree=2,
+        )
+
+        fem.interpolate(grad_field, fields={"p": field_with_gradient}, dest=dest)
+        assert_np_equal(dest.dof_values.numpy(), np.tile((3.0, 4.0), (9, 1)))
+
+
+def test_implicit_field_does_not_share_divergence(test, device):
+    """Verify that a divergence-free field still rejects divergence evaluation."""
+    with wp.ScopedDevice(device):
+        geo = fem.Grid2D(res=wp.vec2i(2))
+        domain = fem.Cells(geo)
+        space = fem.make_polynomial_space(geo)
+        dest = fem.make_discrete_field(space)
+
+        # Build the divergence-capable field first to expose cache contamination in the later field.
+        field_with_divergence = fem.ImplicitField(
+            domain,
+            func=_implicit_vector_constant,
+            div_func=_implicit_constant_divergence,
+            degree=3,
+        )
+        field_without_divergence = fem.ImplicitField(domain, func=_implicit_vector_constant, degree=3)
+
+        fem.interpolate(_div_field, fields={"p": field_with_divergence}, dest=dest)
+        assert_np_equal(dest.dof_values.numpy(), np.full(9, 5.0))
+
+        with test.assertRaisesRegex(TypeError, r"Operator `div` is not defined"):
+            fem.interpolate(_div_field, fields={"p": field_without_divergence}, dest=dest)
+
+
+def test_implicit_field_does_not_drop_divergence(test, device):
+    """Verify that a later divergence-capable field still evaluates its divergence."""
+    with wp.ScopedDevice(device):
+        geo = fem.Grid2D(res=wp.vec2i(2))
+        domain = fem.Cells(geo)
+        space = fem.make_polynomial_space(geo)
+        dest = fem.make_discrete_field(space)
+
+        # Prime the cache without divergence, then evaluate a later field through interpolation.
+        fem.ImplicitField(domain, func=_implicit_vector_constant, degree=5)
+        field_with_divergence = fem.ImplicitField(
+            domain,
+            func=_implicit_vector_constant,
+            div_func=_implicit_constant_divergence,
+            degree=5,
+        )
+
+        fem.interpolate(_div_field, fields={"p": field_with_divergence}, dest=dest)
+        assert_np_equal(dest.dof_values.numpy(), np.full(9, 5.0))
 
 
 def test_implicit_fields(test, device):
@@ -487,6 +730,57 @@ class TestFemField(unittest.TestCase):
 
 add_function_test(TestFemField, "test_vector_spaces", test_vector_spaces, devices=devices)
 add_function_test(TestFemField, "test_dof_mapper", test_dof_mapper)
+add_function_test(
+    TestFemField, "test_implicit_field_function_identity", test_implicit_field_function_identity, devices=devices
+)
+add_function_test(
+    TestFemField,
+    "test_implicit_field_function_module_identity",
+    test_implicit_field_function_module_identity,
+    devices=devices,
+)
+add_function_test(
+    TestFemField,
+    "test_implicit_field_deferred_static_identity",
+    test_implicit_field_deferred_static_identity,
+    devices=devices,
+)
+add_function_test(
+    TestFemField,
+    "test_implicit_field_gradient_module_identity",
+    test_implicit_field_gradient_module_identity,
+    devices=devices,
+)
+add_function_test(
+    TestFemField,
+    "test_implicit_field_divergence_module_identity",
+    test_implicit_field_divergence_module_identity,
+    devices=devices,
+)
+add_function_test(
+    TestFemField,
+    "test_implicit_field_does_not_share_gradient",
+    test_implicit_field_does_not_share_gradient,
+    devices=devices,
+)
+add_function_test(
+    TestFemField,
+    "test_implicit_field_does_not_drop_gradient",
+    test_implicit_field_does_not_drop_gradient,
+    devices=devices,
+)
+add_function_test(
+    TestFemField,
+    "test_implicit_field_does_not_share_divergence",
+    test_implicit_field_does_not_share_divergence,
+    devices=devices,
+)
+add_function_test(
+    TestFemField,
+    "test_implicit_field_does_not_drop_divergence",
+    test_implicit_field_does_not_drop_divergence,
+    devices=devices,
+)
 add_function_test(TestFemField, "test_implicit_fields", test_implicit_fields)
 add_function_test(
     TestFemField,

@@ -181,7 +181,7 @@ class Hexmesh(Geometry):
             hex_vertex_indices: warp array of shape (num_hexes, 8) containing vertex indices for each hex
                 following standard ordering (bottom face vertices in counter-clockwise order, then similarly for upper face)
             positions: warp array of shape (num_vertices, 3) containing 3d position for each vertex
-            assume_parallelepiped: If true, assume that all cells are parallelepipeds (cheaper position/gradient evaluations)
+            assume_parallelepiped_cells: If true, assume that all cells are parallelepipeds (cheaper position/gradient evaluations)
             build_bvh: Whether to also build the hex BVH, which is necessary for the global ``fem.lookup`` operator
             temporary_store: shared pool from which to allocate temporary arrays
             cell_env: Optional per-cell environment indices. If provided, ``env_count`` must also be provided.
@@ -225,6 +225,12 @@ class Hexmesh(Geometry):
     @property
     def scalar_type(self):
         return self._scalar_type
+
+    @property
+    def name(self) -> str:
+        """Unique name including the cell evaluation mode."""
+        evaluation_mode = "parallelepiped" if self.parallelepiped_cells else "general"
+        return f"{super().name}_{evaluation_mode}"
 
     def cell_count(self):
         """Number of cells in the mesh."""
