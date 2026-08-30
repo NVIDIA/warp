@@ -61,7 +61,8 @@ jobs:
         env:
           REQUESTED: ${{ inputs.llvm_version }}
         run: |
-          python3 -c "import yaml" 2>/dev/null || python3 -m pip install --quiet pyyaml
+          python3 -m pip install --quiet --no-deps --only-binary=:all: \
+            "PyYAML==6.0.3"
           resolved=$(python3 - "$REQUESTED" <<'EOF'
           import sys
 
