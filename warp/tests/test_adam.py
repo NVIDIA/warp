@@ -244,6 +244,10 @@ def test_adam_invalid_inputs(test, device):
             warp.optim.Adam.step_detail(params, m_dtype, v, 0.02, 0.9, 0.999, 0, 1e-8, params)
         with test.assertRaises(ValueError):
             warp.optim.Adam.step_detail(params, m, v_dtype, 0.02, 0.9, 0.999, 0, 1e-8, params)
+        with test.assertRaises(ValueError):
+            warp.optim.Adam.step_detail(params, None, v, 0.02, 0.9, 0.999, 0, 1e-8, params)
+        with test.assertRaises(ValueError):
+            warp.optim.Adam.step_detail(params, m, None, 0.02, 0.9, 0.999, 0, 1e-8, params)
 
 
 devices = get_test_devices()

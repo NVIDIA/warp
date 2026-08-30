@@ -277,6 +277,8 @@ def test_sgd_invalid_inputs(test, device):
             warp.optim.SGD.step_detail(params, b_dtype, 0.1, 0.9, 0.0, 0.0, False, 0, params)
         with test.assertRaises(ValueError):
             warp.optim.SGD.step_detail(params, b_short, 0.1, 0.9, 0.0, 0.0, False, 0, params)
+        with test.assertRaises(ValueError):
+            warp.optim.SGD.step_detail(params, None, 0.1, 0.9, 0.0, 0.0, False, 0, params)
 
 
 devices = get_test_devices()

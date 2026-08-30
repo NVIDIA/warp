@@ -135,6 +135,8 @@ class SGD:
             raise ValueError(f"Incompatible gradient dtype: expected {params.dtype}, got {g.dtype}")
         if params.shape != g.shape:
             raise ValueError(f"Incompatible gradient shape: expected {params.shape}, got {g.shape}")
+        if b is None and momentum != 0.0:
+            raise ValueError("A momentum buffer is required when momentum is nonzero")
         if b is not None:
             if params.dtype != b.dtype:
                 raise ValueError(f"Incompatible momentum buffer dtype: expected {params.dtype}, got {b.dtype}")

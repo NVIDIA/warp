@@ -181,6 +181,10 @@ class Adam:
             raise ValueError(f"Incompatible gradient dtype: expected {params.dtype}, got {g.dtype}")
         if params.shape != g.shape:
             raise ValueError(f"Incompatible gradient shape: expected {params.shape}, got {g.shape}")
+        if m is None:
+            raise ValueError("A first-moment buffer is required")
+        if v is None:
+            raise ValueError("A second-moment buffer is required")
 
         expected_moment_dtype = wp._src.types.float32 if params.dtype == wp._src.types.float16 else params.dtype
         if m.dtype != expected_moment_dtype:
