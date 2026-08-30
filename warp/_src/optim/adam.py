@@ -181,6 +181,16 @@ class Adam:
             raise ValueError(f"Incompatible gradient dtype: expected {params.dtype}, got {g.dtype}")
         if params.shape != g.shape:
             raise ValueError(f"Incompatible gradient shape: expected {params.shape}, got {g.shape}")
+
+        expected_moment_dtype = wp._src.types.float32 if params.dtype == wp._src.types.float16 else params.dtype
+        if m.dtype != expected_moment_dtype:
+            raise ValueError(f"Incompatible first-moment dtype: expected {expected_moment_dtype}, got {m.dtype}")
+        if m.shape != params.shape:
+            raise ValueError(f"Incompatible first-moment shape: expected {params.shape}, got {m.shape}")
+        if v.dtype != expected_moment_dtype:
+            raise ValueError(f"Incompatible second-moment dtype: expected {expected_moment_dtype}, got {v.dtype}")
+        if v.shape != params.shape:
+            raise ValueError(f"Incompatible second-moment shape: expected {params.shape}, got {v.shape}")
         kernel_inputs = [g, m, v, lr, beta1, beta2, t, eps, params]
         if params.dtype == wp._src.types.float32:
             wp.launch(

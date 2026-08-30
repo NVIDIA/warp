@@ -133,9 +133,12 @@ class SGD:
         """
         if params.dtype != g.dtype:
             raise ValueError(f"Incompatible gradient dtype: expected {params.dtype}, got {g.dtype}")
-        if params.dtype != b.dtype:
-            raise ValueError(f"Incompatible momentum buffer dtype: expected {params.dtype}, got {b.dtype}")
         if params.shape != g.shape:
             raise ValueError(f"Incompatible gradient shape: expected {params.shape}, got {g.shape}")
+        if b is not None:
+            if params.dtype != b.dtype:
+                raise ValueError(f"Incompatible momentum buffer dtype: expected {params.dtype}, got {b.dtype}")
+            if params.shape != b.shape:
+                raise ValueError(f"Incompatible momentum buffer shape: expected {params.shape}, got {b.shape}")
         kernel_inputs = (g, b, lr, momentum, dampening, weight_decay, int(nesterov), t, params)
         wp.launch(sgd_step_kernel, dim=len(params), inputs=kernel_inputs, device=params.device)

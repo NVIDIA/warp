@@ -198,6 +198,7 @@ def test_adam_set_params_migrates_state(test, device):
 
 
 def test_adam_invalid_inputs(test, device):
+    """Verify Adam input validation for uninitialized state, mismatched gradient counts, shapes, and dtypes."""
     with wp.ScopedDevice(device):
         # Uninitialized params
         opt_uninit = warp.optim.Adam()
@@ -226,10 +227,23 @@ def test_adam_invalid_inputs(test, device):
         # Direct step_detail validation
         m = wp.zeros(4, dtype=wp.float32)
         v = wp.zeros(4, dtype=wp.float32)
+        m_short = wp.zeros(2, dtype=wp.float32)
+        v_short = wp.zeros(2, dtype=wp.float32)
+        m_dtype = wp.zeros(4, dtype=wp.float16)
+        v_dtype = wp.zeros(4, dtype=wp.float16)
+
         with test.assertRaises(ValueError):
             warp.optim.Adam.step_detail(g_short, m, v, 0.02, 0.9, 0.999, 0, 1e-8, params)
         with test.assertRaises(ValueError):
             warp.optim.Adam.step_detail(g_dtype, m, v, 0.02, 0.9, 0.999, 0, 1e-8, params)
+        with test.assertRaises(ValueError):
+            warp.optim.Adam.step_detail(params, m_short, v, 0.02, 0.9, 0.999, 0, 1e-8, params)
+        with test.assertRaises(ValueError):
+            warp.optim.Adam.step_detail(params, m, v_short, 0.02, 0.9, 0.999, 0, 1e-8, params)
+        with test.assertRaises(ValueError):
+            warp.optim.Adam.step_detail(params, m_dtype, v, 0.02, 0.9, 0.999, 0, 1e-8, params)
+        with test.assertRaises(ValueError):
+            warp.optim.Adam.step_detail(params, m, v_dtype, 0.02, 0.9, 0.999, 0, 1e-8, params)
 
 
 devices = get_test_devices()

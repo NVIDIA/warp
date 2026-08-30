@@ -239,6 +239,7 @@ def test_sgd_set_params_migrates_state(test, device):
 
 
 def test_sgd_invalid_inputs(test, device):
+    """Verify SGD input validation for uninitialized state, mismatched gradient counts, shapes, and dtypes."""
     with wp.ScopedDevice(device):
         # Uninitialized params
         opt_uninit = warp.optim.SGD()
@@ -266,6 +267,7 @@ def test_sgd_invalid_inputs(test, device):
 
         # Direct step_detail validation
         b = wp.zeros(4, dtype=wp.float32)
+        b_short = wp.zeros(2, dtype=wp.float32)
         b_dtype = wp.zeros(4, dtype=wp.float16)
         with test.assertRaises(ValueError):
             warp.optim.SGD.step_detail(g_short, b, 0.1, 0.9, 0.0, 0.0, False, 0, params)
@@ -273,6 +275,8 @@ def test_sgd_invalid_inputs(test, device):
             warp.optim.SGD.step_detail(g_dtype, b, 0.1, 0.9, 0.0, 0.0, False, 0, params)
         with test.assertRaises(ValueError):
             warp.optim.SGD.step_detail(params, b_dtype, 0.1, 0.9, 0.0, 0.0, False, 0, params)
+        with test.assertRaises(ValueError):
+            warp.optim.SGD.step_detail(params, b_short, 0.1, 0.9, 0.0, 0.0, False, 0, params)
 
 
 devices = get_test_devices()
