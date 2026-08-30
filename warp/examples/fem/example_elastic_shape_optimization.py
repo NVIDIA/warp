@@ -291,9 +291,9 @@ class Example:
         self.renderer = fem_example_utils.Plot()
 
         # Initialize Adam optimizer
-        # Current implementation assumes scalar arrays, so cast our vec2 arrays to scalars
-        self._vertex_positions_scalar = wp.array(self._vertex_positions, dtype=wp.float32).flatten()
-        self._vertex_positions_scalar.grad = wp.array(self._vertex_positions.grad, dtype=wp.float32).flatten()
+        # Adam requires scalar arrays here, so use a zero-copy scalar view of the
+        # vertex positions and their gradient.
+        self._vertex_positions_scalar = self._vertex_positions.view(wp.float32).flatten()
         self.optimizer = Adam([self._vertex_positions_scalar], lr=lr)
 
         self._rebuild_fem_structures(degree)
