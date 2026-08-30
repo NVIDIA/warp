@@ -1,0 +1,1026 @@
+
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Reducing Compilation and Startup Time &#8212; Warp 1.18.0.dev0</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=2a8757ae" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
+
+
+
+    <script src="../../_static/documentation_options.js?v=cbbedd57"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../_static/copybutton.js?v=fd10adb8"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'user_guide/execution_and_performance/reducing_compilation_and_startup_time';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'latest';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <script src="../../_static/copy-page-source.js?v=f9064be3"></script>
+
+    <link rel="icon" href="../../_static/favicon.png"/>
+
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Configuration" href="../configuration.html" />
+    <link rel="prev" title="Deterministic Execution" href="deterministic_execution.html" />
+
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="1.18.0.dev0" />
+  
+    
+    <script src="../../_static/searchtools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script src="../../searchindex.js"></script>
+  
+
+
+  </head>
+
+  <body data-default-mode="">
+
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+  
+  
+  
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.18.0.dev0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.18.0.dev0 - Home"/>
+  
+  
+    <p class="title logo__title">Warp 1.18.0.dev0</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.18.0.dev0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.18.0.dev0 - Home"/>
+  
+  
+    <p class="title logo__title">Warp 1.18.0.dev0</p>
+  
+</a>
+
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+
+
+<nav class="bd-docs-nav bd-links"
+     aria-label="Table of Contents">
+  <p class="bd-links__title" role="heading" aria-level="1">Table of Contents</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../compatibility.html">Compatibility &amp; Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../basics.html">Basics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../runtime.html">Runtime</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../differentiability.html">Differentiability</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../programming_model.html">Programming Model</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../programming_model/generics.html">Generics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../programming_model/tiles.html">Tiles</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../programming_model/code_generation.html">Code Generation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../programming_model/cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../interoperability.html">Interoperability</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../interoperability/pytorch.html">PyTorch Interoperability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../interoperability/jax.html">JAX Interoperability</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="../execution_and_performance.html">Execution and Performance</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="concurrency.html">Concurrency</a></li>
+<li class="toctree-l2"><a class="reference internal" href="memory_management.html">Memory Allocation and Access</a></li>
+<li class="toctree-l2"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deterministic_execution.html">Deterministic Execution</a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">Reducing Compilation and Startup Time</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../limitations.html">Limitations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">FAQ</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Language Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../language_reference/builtins.html">Built-Ins</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp.html">warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_autograd.html">warp.autograd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_build_experimental.html">warp.build_experimental</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_config.html">warp.config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_fem.html">warp.fem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_optim.html">warp.optim</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_render.html">warp.render</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_sparse.html">warp.sparse</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_types.html">warp.types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_utils.html">warp.utils</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Domain Modules</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../domain_modules/sparse.html">Sparse Matrices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../domain_modules/fem.html">FEM Toolkit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../domain_modules/render.html">Rendering</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../project/contribution_guide.html">Contributing to Warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../project/publications.html">Publications using Warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../project/changelog.html">Changelog</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../execution_and_performance.html" class="nav-link">Execution and Performance</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Reducing Compilation and Startup Time</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+
+
+<div class="d-flex justify-content-end w-100">
+  <div class="btn-group copy-page-source pst-js-only" data-page-source-control role="group" aria-label="Page source">
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary"
+      data-copy-page-source
+      data-page-source-url="../../_sources/user_guide/execution_and_performance/reducing_compilation_and_startup_time.rst.txt"
+      disabled
+    >
+      <i class="fa-solid fa-copy" aria-hidden="true"></i>
+      <span data-copy-page-source-label>Copy source</span>
+    </button>
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary dropdown-toggle dropdown-toggle-split"
+      data-bs-toggle="dropdown"
+      aria-expanded="false"
+    >
+      <span class="visually-hidden">Page source options</span>
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end">
+      <li>
+        <a class="dropdown-item" href="../../_sources/user_guide/execution_and_performance/reducing_compilation_and_startup_time.rst.txt">
+          <i class="fa-solid fa-file-code" aria-hidden="true"></i>
+          View source
+        </a>
+      </li>
+    </ul>
+    <span class="visually-hidden" role="status" aria-live="polite" data-copy-page-source-status></span>
+  </div>
+  <noscript>
+    <a href="../../_sources/user_guide/execution_and_performance/reducing_compilation_and_startup_time.rst.txt">
+      <i class="fa-solid fa-file-code" aria-hidden="true"></i> View source
+    </a>
+  </noscript>
+</div>
+</div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="reducing-compilation-and-startup-time">
+<h1>Reducing Compilation and Startup Time<a class="headerlink" href="#reducing-compilation-and-startup-time" title="Link to this heading">#</a></h1>
+<p>Warp loads a module’s kernels the first time one of them is used on a device. If
+no matching binary is cached, Warp compiles the module first. Later runs are
+usually faster because Warp can load the cached binary. Applications with many
+kernels, generic instances, or MathDx-backed tile operations may still spend
+noticeable time compiling.</p>
+<section id="measuring-compilation-and-startup-time">
+<h2>Measuring compilation and startup time<a class="headerlink" href="#measuring-compilation-and-startup-time" title="Link to this heading">#</a></h2>
+<p>Start by checking the module-load output. By default, Warp prints the module
+name, target device, elapsed load time, and whether it compiled the module or
+loaded it from cache. These lines show which modules take time to load and
+whether each was compiled or loaded from cache.</p>
+<p>Set <a class="reference internal" href="../../api_reference/_generated/warp.config.log_level.html#warp.config.log_level" title="warp.config.log_level"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.log_level</span></code></a> to <code class="docutils literal notranslate"><span class="pre">wp.LOG_DEBUG</span></code> to print the start of each
+module load and details such as <code class="docutils literal notranslate"><span class="pre">block_dim</span></code>. Use this output to see which
+module is loading during a long startup pause.</p>
+<p>Compilation can reuse artifacts from several independent caches:</p>
+<ul class="simple">
+<li><p>Warp’s kernel cache.</p></li>
+<li><p>Warp’s LTO cache for MathDx-backed tile operations.</p></li>
+<li><p>The NVIDIA CUDA driver’s compute cache.</p></li>
+</ul>
+<p>See <a class="reference internal" href="profiling.html#benchmarking-cold-start-compilation"><span class="std std-ref">Benchmarking Cold-Start Compilation</span></a> for a cold-start benchmarking
+workflow and compile-time tracing when the total module-load time does not show
+where the delay occurs.</p>
+</section>
+<section id="reduce-compilation-work">
+<h2>Reduce compilation work<a class="headerlink" href="#reduce-compilation-work" title="Link to this heading">#</a></h2>
+<section id="define-kernels-and-overloads-before-first-module-load">
+<h3>Define kernels and overloads before first module load<a class="headerlink" href="#define-kernels-and-overloads-before-first-module-load" title="Link to this heading">#</a></h3>
+<p>Warp compiles kernels by module. Once Warp has compiled or loaded a module
+variant, adding new kernels or overloads changes the module hash. This includes
+kernels defined at runtime inside Python functions. On the next launch, Warp
+loads the resulting variant from cache or compiles it.</p>
+<p>Define a module’s expected kernels and overloads before its first load so later
+launches can reuse the loaded module or cached artifacts.</p>
+<p>Prefer this structure:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">first_kernel</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+    <span class="n">values</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()]</span> <span class="o">*=</span> <span class="mf">2.0</span>
+
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">second_kernel</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+    <span class="n">values</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()]</span> <span class="o">+=</span> <span class="mf">1.0</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="n">values</span><span class="p">):</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">first_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">values</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">values</span><span class="p">])</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">second_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">values</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">values</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>If a kernel must be defined later, use <code class="docutils literal notranslate"><span class="pre">module=&quot;unique&quot;</span></code> to assign it to a
+separate module:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">make_scale_kernel</span><span class="p">(</span><span class="n">scale</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+    <span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">module</span><span class="o">=</span><span class="s2">&quot;unique&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">scale_kernel</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+        <span class="n">values</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()]</span> <span class="o">*=</span> <span class="n">scale</span>
+
+    <span class="k">return</span> <span class="n">scale_kernel</span>
+</pre></div>
+</div>
+<p>The separate module still requires compilation, but it does not change the
+already loaded module. See <a class="reference internal" href="../configuration.html#kernel-settings"><span class="std std-ref">Kernel Settings</span></a> for accepted <code class="docutils literal notranslate"><span class="pre">module</span></code>
+values.</p>
+<p>For generic kernels, declare the type combinations you expect to launch before
+the first launch:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">scale</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span> <span class="n">s</span><span class="p">:</span> <span class="n">Any</span><span class="p">):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">s</span>
+
+
+<span class="n">scale_f32</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">overload</span><span class="p">(</span><span class="n">scale</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span> <span class="s2">&quot;s&quot;</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">})</span>
+<span class="n">scale_f64</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">overload</span><span class="p">(</span><span class="n">scale</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float64</span><span class="p">],</span> <span class="s2">&quot;s&quot;</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float64</span><span class="p">})</span>
+</pre></div>
+</div>
+<p>Only declare overloads that the application actually uses. Excessive overloads
+increase generated code and compile work.</p>
+</section>
+<section id="limit-runtime-specializations">
+<h3>Limit runtime specializations<a class="headerlink" href="#limit-runtime-specializations" title="Link to this heading">#</a></h3>
+<p>Warp normally chooses the CUDA target architecture from the local device, so
+architecture variants matter mainly when compiling modules ahead of time.</p>
+<p>Each compiled module variant has a fixed <code class="docutils literal notranslate"><span class="pre">block_dim</span></code>.
+<a class="reference internal" href="../../api_reference/_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch()</span></code></a> and
+<a class="reference internal" href="../../api_reference/_generated/warp.launch_tiled.html#warp.launch_tiled" title="warp.launch_tiled"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch_tiled()</span></code></a> select the variant that matches
+the launch’s <code class="docutils literal notranslate"><span class="pre">block_dim</span></code>. If it is not loaded, Warp loads it from cache or
+compiles it. When kernels in the same module use different values, Warp may
+compile the whole module once for each value. In that case, group kernels by
+<code class="docutils literal notranslate"><span class="pre">block_dim</span></code> in separate modules, or use <code class="docutils literal notranslate"><span class="pre">module=&quot;unique&quot;</span></code> for a kernel that
+needs its own value.</p>
+<p>When preloading modules, include only the variants the application expects to
+use. Each unused <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> or tile combination adds compile work.</p>
+</section>
+<section id="set-compilation-options-before-importing-or-loading-modules">
+<h3>Set compilation options before importing or loading modules<a class="headerlink" href="#set-compilation-options-before-importing-or-loading-modules" title="Link to this heading">#</a></h3>
+<p>Module options affect compiled output and cache reuse. Configure global
+compilation options before importing modules that define kernels. Changing them
+later can cause modules to use different settings or require additional
+compilation.</p>
+<p>Set module-specific options before the module’s first load. Changing them after
+a launch or explicit load can trigger another compilation and reduce cache
+reuse. Avoid changing the same module’s options repeatedly during a run.</p>
+</section>
+<section id="disable-backward-code-generation-when-gradients-are-not-needed">
+<h3>Disable backward code generation when gradients are not needed<a class="headerlink" href="#disable-backward-code-generation-when-gradients-are-not-needed" title="Link to this heading">#</a></h3>
+<p>Warp generates backward code for kernels that may participate in automatic
+differentiation. If an application does not need gradients for those kernels,
+disable backward code generation to reduce generated code and compile work.</p>
+<p>Disable it globally before module creation:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">enable_backward</span> <span class="o">=</span> <span class="kc">False</span>
+</pre></div>
+</div>
+<p>For modules that do not need gradients, set the module option before the module
+loads:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">my_app.kernels</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">set_module_options</span><span class="p">({</span><span class="s2">&quot;enable_backward&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">},</span> <span class="n">module</span><span class="o">=</span><span class="n">my_app</span><span class="o">.</span><span class="n">kernels</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>For individual kernels, use the decorator option:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">enable_backward</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">integrate</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+    <span class="n">values</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()]</span> <span class="o">+=</span> <span class="mf">1.0</span>
+</pre></div>
+</div>
+<p>Only disable backward generation for kernels whose adjoints will not be used by
+<a class="reference internal" href="../../api_reference/_generated/warp.Tape.html#warp.Tape" title="warp.Tape"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tape</span></code></a> or differentiable framework integrations.</p>
+</section>
+<section id="choose-module-boundaries">
+<h3>Choose module boundaries<a class="headerlink" href="#choose-module-boundaries" title="Link to this heading">#</a></h3>
+<p>Put kernels that are deployed, loaded, and changed together in the same module.
+This can avoid repeating fixed code-generation, compilation, and load costs
+across several small modules.</p>
+<p>Use separate modules for kernels that change independently, are rarely used,
+require different compilation options, or use different CUDA <code class="docutils literal notranslate"><span class="pre">block_dim</span></code>
+values. A broad module can compile more code when its contents or options
+change. Many tiny modules can duplicate shared functions and structs and add
+fixed load-time overhead. Runtime-created unique modules also cannot always be
+preloaded by package name.</p>
+<p>Use <code class="docutils literal notranslate"><span class="pre">module=&quot;unique&quot;</span></code> to isolate one kernel in a separate module. Add
+<code class="docutils literal notranslate"><span class="pre">module_options=...</span></code> when that kernel also needs different compilation
+options:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">module</span><span class="o">=</span><span class="s2">&quot;unique&quot;</span><span class="p">,</span> <span class="n">module_options</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;enable_backward&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">})</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">halve_values</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">values</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*=</span> <span class="mf">0.5</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="compile-known-kernels-before-latency-sensitive-work">
+<h2>Compile known kernels before latency-sensitive work<a class="headerlink" href="#compile-known-kernels-before-latency-sensitive-work" title="Link to this heading">#</a></h2>
+<p>Preloading and ahead-of-time compilation work only for kernels and variants
+that already exist. An application that creates a kernel or specialization
+from runtime data must wait for that data before Warp can compile or load it.
+Create known variants during the build or before latency-sensitive work begins.</p>
+<section id="load-independent-modules-in-parallel">
+<h3>Load independent modules in parallel<a class="headerlink" href="#load-independent-modules-in-parallel" title="Link to this heading">#</a></h3>
+<p>When compilation work is spread across several independent modules,
+<a class="reference internal" href="../../api_reference/_generated/warp.load_module.html#warp.load_module" title="warp.load_module"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.load_module()</span></code></a> can compile or load them
+concurrently:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">my_app.kernels</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">load_module</span><span class="p">(</span>
+    <span class="n">my_app</span><span class="o">.</span><span class="n">kernels</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">,</span>
+    <span class="n">recursive</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">max_workers</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>The submodules must already be imported and registered with Warp. Parallel
+loading offers little benefit when one large module dominates or when module
+loads are short.</p>
+<p>Without multiple workers, <a class="reference internal" href="../../api_reference/_generated/warp.load_module.html#warp.load_module" title="warp.load_module"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.load_module()</span></code></a> runs the
+same compilation earlier, before CUDA graph capture or a frame loop.</p>
+</section>
+<section id="compile-known-modules-for-deployment">
+<h3>Compile known modules for deployment<a class="headerlink" href="#compile-known-modules-for-deployment" title="Link to this heading">#</a></h3>
+<p>For an application with a known set of kernels and a controlled deployment
+environment, use <a class="reference internal" href="../../api_reference/_generated/warp.compile_aot_module.html#warp.compile_aot_module" title="warp.compile_aot_module"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.compile_aot_module()</span></code></a>
+during the build and load its output with
+<a class="reference internal" href="../../api_reference/_generated/warp.load_aot_module.html#warp.load_aot_module" title="warp.load_aot_module"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.load_aot_module()</span></code></a> at runtime. This example
+builds a CUBIN for a deployment GPU with compute capability 9.0:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># build_kernels.py</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">my_app.kernels</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">compile_aot_module</span><span class="p">(</span>
+    <span class="n">my_app</span><span class="o">.</span><span class="n">kernels</span><span class="p">,</span>
+    <span class="n">arch</span><span class="o">=</span><span class="mi">90</span><span class="p">,</span>  <span class="c1"># Deployment GPU has compute capability 9.0</span>
+    <span class="n">module_dir</span><span class="o">=</span><span class="s2">&quot;build/warp_modules&quot;</span><span class="p">,</span>
+    <span class="n">use_ptx</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Deploy <code class="docutils literal notranslate"><span class="pre">build/warp_modules</span></code> with the application to a machine with that GPU
+architecture, then load the module at runtime:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># run_app.py</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">my_app.kernels</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">load_aot_module</span><span class="p">(</span><span class="n">my_app</span><span class="o">.</span><span class="n">kernels</span><span class="p">,</span> <span class="n">module_dir</span><span class="o">=</span><span class="s2">&quot;build/warp_modules&quot;</span><span class="p">,</span> <span class="n">use_ptx</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Choose the output format based on the deployment environment:</p>
+<ul class="simple">
+<li><p>CUBIN avoids driver JIT compilation. Build a CUBIN for each GPU architecture
+the application loads. For a known GPU target, CUBIN may also work with an
+older driver under CUDA minor-version compatibility when PTX produced by the
+same newer Toolkit would not. Features that require a newer driver remain
+unavailable.</p></li>
+<li><p>PTX lets the driver compile for compatible GPU architectures when the module
+loads. The deployed driver must support the PTX emitted by the CUDA Toolkit
+used to build Warp. Without a CUDA forward-compatibility package, PTX
+produced by a newer Toolkit does not work on an older driver.</p></li>
+</ul>
+<p>See <a class="reference internal" href="../compatibility.html"><span class="doc">Compatibility &amp; Support</span></a> for CUDA driver and GPU architecture compatibility.</p>
+</section>
+</section>
+<section id="development-iteration-tradeoffs">
+<h2>Development iteration tradeoffs<a class="headerlink" href="#development-iteration-tradeoffs" title="Link to this heading">#</a></h2>
+<p>These settings can shorten development compile times, but may reduce runtime
+performance or available features. Measure their effect on the target workload.</p>
+<section id="lower-optimization-levels">
+<h3>Lower optimization levels<a class="headerlink" href="#lower-optimization-levels" title="Link to this heading">#</a></h3>
+<p>A lower optimization level may shorten compile time while iterating. For CUDA,
+this setting affects compilation only when the Warp native library was built
+with CUDA Toolkit 12.9 or newer:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">optimization_level</span> <span class="o">=</span> <span class="mi">0</span>
+</pre></div>
+</div>
+<p>Restore the application’s normal optimization level before benchmarking
+runtime performance.</p>
+</section>
+<section id="use-the-native-tile-matmul-fallback">
+<h3>Use the native tile-matmul fallback<a class="headerlink" href="#use-the-native-tile-matmul-fallback" title="Link to this heading">#</a></h3>
+<p>MathDx compilation for <a class="reference internal" href="../../language_reference/_generated/warp.tile_matmul.html#warp._src.lang.tile_matmul" title="warp._src.lang.tile_matmul"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_matmul()</span></code></a>
+can dominate cold compile time, especially when backward code generation adds
+adjoint GEMMs. Different tile dimensions or dtypes can require additional
+MathDx LTO compilation. If it slows development, try the Warp/native GEMM
+fallback temporarily:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">enable_mathdx_gemm</span> <span class="o">=</span> <span class="kc">False</span>
+</pre></div>
+</div>
+<p>Use the module option when only one module should use the fallback:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">my_app.kernels</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">set_module_options</span><span class="p">({</span><span class="s2">&quot;enable_mathdx_gemm&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">},</span> <span class="n">module</span><span class="o">=</span><span class="n">my_app</span><span class="o">.</span><span class="n">kernels</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Other MathDx-backed tile operations, including solvers and FFTs, may also incur
+LTO compilation.</p>
+</section>
+</section>
+<section id="related-documentation">
+<h2>Related documentation<a class="headerlink" href="#related-documentation" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="../programming_model.html#compilation-model"><span class="std std-ref">Compilation Model</span></a> explains Warp’s Python-to-C++/CUDA compilation model
+and module-load output.</p></li>
+<li><p><a class="reference internal" href="../runtime.html"><span class="doc">Runtime</span></a> explains kernel-cache behavior and cache clearing.</p></li>
+<li><p><a class="reference internal" href="../configuration.html"><span class="doc">Configuration</span></a> lists global, module, and kernel options.</p></li>
+<li><p><a class="reference internal" href="../programming_model/generics.html"><span class="doc">Generics</span></a> explains implicit and explicit generic
+instantiation.</p></li>
+<li><p><a class="reference internal" href="../programming_model/tiles.html"><span class="doc">Tiles</span></a> covers tile operations, MathDx requirements,
+and LTO errors.</p></li>
+<li><p><a class="reference internal" href="../programming_model/code_generation.html#code-generation"><span class="std std-ref">Code Generation</span></a> describes generated source, module caching, and
+ahead-of-time workflows.</p></li>
+<li><p><a class="reference internal" href="profiling.html"><span class="doc">Profiling</span></a> describes compile-time tracing and cold-start
+measurement with <a class="reference internal" href="profiling.html#benchmarking-cold-start-compilation"><span class="std std-ref">Benchmarking Cold-Start Compilation</span></a>.</p></li>
+</ul>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="deterministic_execution.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Deterministic Execution</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="../configuration.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Configuration</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+
+
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#measuring-compilation-and-startup-time">Measuring compilation and startup time</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#reduce-compilation-work">Reduce compilation work</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#define-kernels-and-overloads-before-first-module-load">Define kernels and overloads before first module load</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#limit-runtime-specializations">Limit runtime specializations</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#set-compilation-options-before-importing-or-loading-modules">Set compilation options before importing or loading modules</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#disable-backward-code-generation-when-gradients-are-not-needed">Disable backward code generation when gradients are not needed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#choose-module-boundaries">Choose module boundaries</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#compile-known-kernels-before-latency-sensitive-work">Compile known kernels before latency-sensitive work</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#load-independent-modules-in-parallel">Load independent modules in parallel</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#compile-known-modules-for-deployment">Compile known modules for deployment</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#development-iteration-tradeoffs">Development iteration tradeoffs</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#lower-optimization-levels">Lower optimization levels</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#use-the-native-tile-matmul-fallback">Use the native tile-matmul fallback</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#related-documentation">Related documentation</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+
+  
+  <div class="tocsection editthispage">
+    <a href="https://github.com/NVIDIA/warp/edit/main/docs/user_guide/execution_and_performance/reducing_compilation_and_startup_time.rst">
+      <i class="fa-solid fa-pencil"></i>
+      
+      
+        
+          Edit on GitHub
+        
+      
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
+
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+<a class="footer-brand logo" href="https://www.nvidia.com">
+  <img src="../../_static/nvidia-logo-horiz-rgb-1c-blk-for-screen.svg" class="logo__image only-light" alt="NVIDIA"/>
+  <img src="../../_static/nvidia-logo-horiz-rgb-1c-wht-for-screen.svg" class="logo__image only-dark" alt="NVIDIA"/>
+</a></div>
+      
+        <div class="footer-item">
+
+<div class="footer-links">
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/privacy-policy/">Privacy Policy</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/privacy-center/">Your Privacy Choices</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/terms-of-service/">Terms of Service</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/accessibility/">Accessibility</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/company-policies/">Corporate Policies</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/product-security/">Product Security</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/contact/">Contact</a>
+  
+  
+  
+</div>
+</div>
+      
+        <div class="footer-item">
+
+
+
+
+  <p class="copyright">
+    
+      Copyright © 2022-2026 NVIDIA Corporation.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+</div>
+
+  </footer>
+  </body>
+</html>

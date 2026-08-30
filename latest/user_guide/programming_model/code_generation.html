@@ -414,6 +414,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../execution_and_performance/memory_management.html">Memory Allocation and Access</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../execution_and_performance/profiling.html">Profiling</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../execution_and_performance/deterministic_execution.html">Deterministic Execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../execution_and_performance/reducing_compilation_and_startup_time.html">Reducing Compilation and Startup Time</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration</a></li>
@@ -638,7 +639,9 @@ native-function API.</p>
 compute cache that stores JIT-compiled GPU binaries (e.g., native code produced
 from PTX). This driver-level cache is not managed by Warp and is not affected by
 <a class="reference internal" href="../../api_reference/_generated/warp.clear_kernel_cache.html#warp.clear_kernel_cache" title="warp.clear_kernel_cache"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.clear_kernel_cache()</span></code></a>. See <a class="reference internal" href="../execution_and_performance/profiling.html#benchmarking-cold-start-compilation"><span class="std std-ref">Benchmarking Cold-Start Compilation</span></a>
-for details on how to account for it when measuring compilation times.</p>
+for details on how to account for it when measuring compilation times.
+For a practical guide to reducing startup latency and cold compile time, see
+<a class="reference internal" href="../execution_and_performance/reducing_compilation_and_startup_time.html"><span class="doc">Reducing Compilation and Startup Time</span></a>.</p>
 <p>Consider the following example:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">my_func</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>

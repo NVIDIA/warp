@@ -65,7 +65,7 @@
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Debugging" href="debugging.html" />
-    <link rel="prev" title="Deterministic Execution" href="execution_and_performance/deterministic_execution.html" />
+    <link rel="prev" title="Reducing Compilation and Startup Time" href="execution_and_performance/reducing_compilation_and_startup_time.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -414,6 +414,7 @@
 <li class="toctree-l2"><a class="reference internal" href="execution_and_performance/memory_management.html">Memory Allocation and Access</a></li>
 <li class="toctree-l2"><a class="reference internal" href="execution_and_performance/profiling.html">Profiling</a></li>
 <li class="toctree-l2"><a class="reference internal" href="execution_and_performance/deterministic_execution.html">Deterministic Execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="execution_and_performance/reducing_compilation_and_startup_time.html">Reducing Compilation and Startup Time</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Configuration</a></li>
@@ -568,7 +569,9 @@ though some settings only take effect if set prior to initialization.</p>
 <span class="n">wp</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
 </pre></div>
 </div>
-<p>See <a class="reference internal" href="../api_reference/warp_config.html"><span class="doc">warp.config</span></a> for a complete list of global settings.</p>
+<p>See <a class="reference internal" href="../api_reference/warp_config.html"><span class="doc">warp.config</span></a> for a complete list of global settings.
+See <a class="reference internal" href="execution_and_performance/reducing_compilation_and_startup_time.html"><span class="doc">Reducing Compilation and Startup Time</span></a> for
+guidance on settings that affect compilation and startup.</p>
 </section>
 <section id="module-settings">
 <span id="id3"></span><h2>Module Settings<a class="headerlink" href="#module-settings" title="Link to this heading">#</a></h2>
@@ -682,7 +685,7 @@ setting. <code class="docutils literal notranslate"><span class="pre">None</span
 </div>
 </section>
 <section id="kernel-settings">
-<h2>Kernel Settings<a class="headerlink" href="#kernel-settings" title="Link to this heading">#</a></h2>
+<span id="id4"></span><h2>Kernel Settings<a class="headerlink" href="#kernel-settings" title="Link to this heading">#</a></h2>
 <p>Kernel-level settings can be passed as arguments to the <a class="reference internal" href="../api_reference/_generated/warp.kernel_decorator.html#warp.kernel" title="warp.kernel"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.kernel</span></code></a> decorator.</p>
 <div class="pst-scrollable-table-container"><table class="table">
 <colgroup>
@@ -928,12 +931,12 @@ backend, so the same function remains valid for CPU and CUDA.</p>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="execution_and_performance/deterministic_execution.html"
+       href="execution_and_performance/reducing_compilation_and_startup_time.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Deterministic Execution</p>
+        <p class="prev-next-title">Reducing Compilation and Startup Time</p>
       </div>
     </a>
     <a class="right-next"
