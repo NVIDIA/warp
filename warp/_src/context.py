@@ -652,7 +652,13 @@ class Function:
                 default_args = {k: v for k, v in self.defaults.items() if k not in bound_args.arguments}
                 warp._src.codegen.apply_defaults(bound_args, default_args)
 
-            bound_arg_types = tuple(type(x) for x in bound_args.arguments.values())
+            # Arguments that are types themselves, such as `dtype`, are mapped
+            # onto their own identity rather than their metaclass so that
+            # calls passing different types resolve to different descriptors.
+            bound_arg_types = tuple(
+                x if isinstance(x, type) and x in warp._src.types.scalar_and_bool_types else type(x)
+                for x in bound_args.arguments.values()
+            )
 
             # For each of this function's existing overloads, we attempt to pack
             # the given arguments into the C types expected by the corresponding
@@ -771,6 +777,7 @@ class BuiltinCallDesc(NamedTuple):
     arg_types: Sequence[type]  # Types passed to `add_builtin()` or defined by the `export_func` callback.
     param_kinds: Sequence[BuiltinParamKind]  # How to pack a parameter into a C type.
     value_type: Any  # Return type.
+    c_value_type: Any  # Return type of the exported C function, which may differ from `value_type`.
 
 
 @functools.cache
@@ -843,10 +850,27 @@ def get_builtin_call_desc(
         arg_types.append(arg_type)
         param_kinds.append(param_kind)
 
-    # Retrieve the return type.
-    value_type = func.value_func(func_args, None)
+    # Retrieve the return type of the exported C function, which is only
+    # instantiated for the declared default template arguments.
+    c_value_type = func.value_func(func_args, None)
 
-    return BuiltinCallDesc(c_func, arg_types, param_kinds, value_type)
+    # Parameters stripped from the exported C signature by `export_func` are
+    # template arguments, such as `dtype`, that callers pass as types.
+    # Resolve the return type against them so that, for example,
+    # `wp.quat_identity(dtype=wp.float64)` returns a float64 quaternion (GH-1839).
+    value_type = c_value_type
+    if len(func_args) < len(func.input_types):
+        template_arg_types = dict(func_args)
+        for name, param_type in zip(func.input_types.keys(), param_types, strict=False):
+            if name in func_args or param_type is type(None):
+                continue
+            if not warp._src.types.types_equal_generic(func.input_types[name], param_type):
+                return None
+            template_arg_types[name] = param_type
+        if len(template_arg_types) > len(func_args):
+            value_type = func.value_func(template_arg_types, None)
+
+    return BuiltinCallDesc(c_func, arg_types, param_kinds, value_type, c_value_type)
 
 
 def call_builtin_from_desc(
@@ -879,7 +903,9 @@ def call_builtin_from_desc(
         else:
             raise AssertionError(f"Unexpected parameter kind value `{param_kind}`")
 
-    value_type = builtin_desc.value_type
+    # The C function only writes a value of `c_value_type`; the resolved
+    # `value_type` may differ when the caller passed template arguments.
+    value_type = builtin_desc.c_value_type
     if value_type is None:
         ret = None
     else:
@@ -902,6 +928,12 @@ def call_builtin_from_desc(
     return_value = tuple(extract_return_value(x, y, z) for x, y, z in zip(value_type, value_ctype, ret, strict=True))
     if len(return_value) == 1:
         return_value = return_value[0]
+
+    if builtin_desc.value_type is not builtin_desc.c_value_type:
+        # The exported C function is only instantiated for its default
+        # template arguments, so convert the value it wrote into the return
+        # type resolved from the caller's template arguments.
+        return builtin_desc.value_type(return_value)
 
     return return_value
 

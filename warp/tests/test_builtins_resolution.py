@@ -748,6 +748,32 @@ class TestBuiltinsResolution(unittest.TestCase):
         self.assertAlmostEqual(float(result[2]), expected_z, places=1)
         self.assertAlmostEqual(float(result[3]), expected_w, places=1)
 
+    def test_quat_identity_dtype_template_arg(self):
+        q = wp.quat_identity()
+        self.assertIs(q._wp_scalar_type_, wp.float32)
+        self.assertEqual([float(x) for x in q], [0.0, 0.0, 0.0, 1.0])
+
+        for dtype in (wp.float16, wp.float32, wp.float64):
+            q = wp.quat_identity(dtype=dtype)
+            self.assertIs(q._wp_scalar_type_, dtype)
+            self.assertEqual([float(x) for x in q], [0.0, 0.0, 0.0, 1.0])
+
+        with self.assertRaisesRegex(RuntimeError, r"^Couldn't find a function 'quat_identity' compatible"):
+            wp.quat_identity(dtype=wp.int32)
+
+    def test_transform_identity_dtype_template_arg(self):
+        t = wp.transform_identity()
+        self.assertIs(t._wp_scalar_type_, wp.float32)
+        self.assertEqual([float(x) for x in t], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0])
+
+        for dtype in (wp.float16, wp.float32, wp.float64):
+            t = wp.transform_identity(dtype=dtype)
+            self.assertIs(t._wp_scalar_type_, dtype)
+            self.assertEqual([float(x) for x in t], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0])
+
+        with self.assertRaisesRegex(RuntimeError, r"^Couldn't find a function 'transform_identity' compatible"):
+            wp.transform_identity(dtype=wp.int32)
+
 
 for dtype in wp._src.types.int_types:
     add_function_test(
