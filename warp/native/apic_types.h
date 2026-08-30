@@ -286,6 +286,7 @@ struct APICMemtileRecord {
     uint64_t count;  // number of elements
     // followed by srcsize bytes of inline value data
 };  // 32 bytes fixed
+static_assert(sizeof(APICMemtileRecord) == 32, "APICMemtileRecord must remain 32 bytes");
 
 // In-graph allocation (fixed size)
 struct APICAllocRecord {
