@@ -238,6 +238,43 @@ def test_sgd_set_params_migrates_state(test, device):
     test.assertIs(opt.b[1], unmoved_b)
 
 
+def test_sgd_invalid_inputs(test, device):
+    with wp.ScopedDevice(device):
+        # Uninitialized params
+        opt_uninit = warp.optim.SGD()
+        with test.assertRaises(RuntimeError):
+            opt_uninit.step([wp.zeros(4, dtype=wp.float32)])
+
+        params = wp.zeros(4, dtype=wp.float32)
+        opt = warp.optim.SGD([params], lr=0.1)
+
+        # Gradient count mismatch
+        with test.assertRaises(ValueError):
+            opt.step([])
+        with test.assertRaises(ValueError):
+            opt.step([wp.zeros(4, dtype=wp.float32), wp.zeros(4, dtype=wp.float32)])
+
+        # Gradient shape mismatch
+        g_short = wp.zeros(2, dtype=wp.float32)
+        with test.assertRaises(ValueError):
+            opt.step([g_short])
+
+        # Gradient dtype mismatch
+        g_dtype = wp.zeros(4, dtype=wp.float16)
+        with test.assertRaises(ValueError):
+            opt.step([g_dtype])
+
+        # Direct step_detail validation
+        b = wp.zeros(4, dtype=wp.float32)
+        b_dtype = wp.zeros(4, dtype=wp.float16)
+        with test.assertRaises(ValueError):
+            warp.optim.SGD.step_detail(g_short, b, 0.1, 0.9, 0.0, 0.0, False, 0, params)
+        with test.assertRaises(ValueError):
+            warp.optim.SGD.step_detail(g_dtype, b, 0.1, 0.9, 0.0, 0.0, False, 0, params)
+        with test.assertRaises(ValueError):
+            warp.optim.SGD.step_detail(params, b_dtype, 0.1, 0.9, 0.0, 0.0, False, 0, params)
+
+
 devices = get_test_devices()
 
 
@@ -258,6 +295,7 @@ add_function_test(
     test_sgd_set_params_migrates_state,
     devices=get_cuda_test_devices(),
 )
+add_function_test(TestSGD, "test_sgd_invalid_inputs", test_sgd_invalid_inputs, devices=devices)
 
 
 if __name__ == "__main__":
