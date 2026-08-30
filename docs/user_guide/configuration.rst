@@ -31,6 +31,8 @@ For example, the location of the user kernel cache can be changed with:
     wp.init()
 
 See :doc:`../api_reference/warp_config` for a complete list of global settings.
+See :doc:`execution_and_performance/reducing_compilation_and_startup_time` for
+guidance on settings that affect compilation and startup.
 
 .. _module-settings:
 
@@ -96,6 +98,8 @@ The options for a module can also be queried using :func:`wp.get_module_options(
 |``enable_mathdx_solver``              | Boolean | ``None``    | A module-level override of the :attr:`warp.config.enable_mathdx_solver`  |
 |                                      |         |             | setting. ``None`` defers to the global setting at compile time.          |
 +--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
+
+.. _kernel-settings:
 
 Kernel Settings
 ---------------
