@@ -271,6 +271,8 @@ Module Reloading Behavior
 As mentioned in the :ref:`implicit instantiation <implicit_instantiation>` section, launching new kernel overloads triggers the recompilation of the kernel module.  This adds overhead and doesn't play well with Warp's current kernel caching strategy.  Kernel caching relies on hashing the contents of the module, which includes all the concrete kernels and functions encountered in the Python program so far.  Whenever a new kernel or a new instance of a generic kernel is added, the module needs to be reloaded.  Re-running the Python program leads to the same sequence of kernels being added to the module, which means that implicit instantiation of generic kernels will trigger the same module reloading on every run.  This is clearly not ideal, and we intend to improve this behavior in the future.
 
 Using :ref:`explicit instantiation <explicit_instantiation>` is usually a good workaround for this, as long as the overloads are added in the same order before any kernel launches.
+For broader guidance on avoiding module reloads and reducing startup latency,
+see :doc:`../execution_and_performance/reducing_compilation_and_startup_time`.
 
 Note that this issue is not specific to generic kernels.  Adding new regular kernels to a module can also trigger repetitive module reloading if the kernel definitions are intermixed with kernel launches.  For example:
 
