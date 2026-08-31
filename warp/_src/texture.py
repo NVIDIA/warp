@@ -167,8 +167,8 @@ class Texture:
     Supports ``wp.uint8``, ``wp.uint16``, ``wp.uint32``, ``wp.int8``, ``wp.int16``, ``wp.int32``,
     ``wp.float16``, and ``wp.float32`` data types. Unsigned integer textures are read as normalized
     floats in [0, 1]; signed integer textures are normalized to [-1, 1]; float types are returned as-is.
-    The CUDA backend does not promote 32-bit integer formats, so ``wp.uint32`` and ``wp.int32``
-    textures are normalized only on the CPU backend; see :func:`~warp.texture_sample`.
+    On CUDA devices, normalized integer sampling is supported only for 8- and 16-bit formats.
+    Use an 8- or 16-bit integer or floating-point format when sampling textures on CUDA.
 
     This class should not be instantiated directly. A specific subclass should be used instead
     (:class:`Texture1D`, :class:`Texture2D`, or :class:`Texture3D`).

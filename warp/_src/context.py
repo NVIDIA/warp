@@ -1794,18 +1794,19 @@ def kernel(
             :func:`warp.launch` must not exceed the
             ``maxThreadsPerBlock`` value specified here.
         cuda_max_registers: CUDA ``__maxnreg__`` attribute specifying the maximum
-            number of registers allocated per thread. Must be a positive int
-            and cannot be combined with ``launch_bounds``. Only applies to CUDA
-            kernels and is ignored when Warp was built with CUDA Toolkit
-            earlier than 12.4 or when ``wp.config.llvm_cuda`` is ``True``.
+            number of registers allocated per thread. ``cuda_max_registers`` must
+            be a positive int and cannot be combined with ``launch_bounds``. The
+            ``cuda_max_registers`` option applies only to CUDA kernels and is ignored
+            when Warp was built with CUDA Toolkit earlier than 12.4 or when
+            ``wp.config.llvm_cuda`` is ``True``.
         enable_cuda_smem_spilling: If ``True``, allow the CUDA Toolkit used to
             build Warp, when version 13.0 or later, to use shared memory for
-            register spills. Applied independently to the forward and backward
-            kernels and silently ignored when an entry point uses dynamic shared
-            memory, on CPU, with older CUDA Toolkits, in unsupported device-debug
-            compilation, or when ``wp.config.llvm_cuda`` is ``True``. Explicit
-            ``launch_bounds`` are recommended to avoid over-allocating shared
-            memory and reducing occupancy.
+            register spills. Warp applies ``enable_cuda_smem_spilling`` independently
+            to the forward and backward kernels and silently ignores the option when
+            an entry point uses dynamic shared memory, on CPU, with older CUDA
+            Toolkits, in unsupported device-debug compilation, or when
+            ``wp.config.llvm_cuda`` is ``True``. Explicit ``launch_bounds`` are
+            recommended to avoid over-allocating shared memory and reducing occupancy.
         cluster_dim: CUDA Thread Block Cluster size as a 1D CTA count.
             Warp emits CUDA ``__cluster_dims__(cluster_dim, 1, 1)`` because
             kernels use a 1D hardware launch grid. Must be a positive int <= 16
@@ -11732,11 +11733,6 @@ def get_cuda_kernel_properties(
 ) -> dict[str, int]:
     """Return properties of a compiled CUDA kernel.
 
-    The result contains ``"register_count"`` in registers per thread and
-    ``"local_memory_size"`` in bytes per thread. Values may vary with the
-    device, CUDA toolchain, Warp version, compilation options, and
-    ``block_dim``. Future Warp releases may add keys.
-
     Args:
         kernel: A concrete ``@wp.kernel``-decorated kernel or explicitly
             constructed :class:`warp.Kernel`. For a generic kernel, pass an
@@ -11747,7 +11743,11 @@ def get_cuda_kernel_properties(
             use the kernel module default.
 
     Returns:
-        The complete dictionary of exposed CUDA kernel properties.
+        The complete dictionary of exposed CUDA kernel properties. It contains
+        ``"register_count"`` in registers per thread and ``"local_memory_size"``
+        in bytes per thread. Values may vary with the device, CUDA toolchain,
+        Warp version, compilation options, and ``block_dim``. Future Warp releases
+        may add keys.
 
     Raises:
         TypeError: If ``kernel`` is not a Warp kernel.
@@ -11811,8 +11811,8 @@ def get_suggested_block_size(kernel, device: DeviceLike = None) -> tuple[int, in
         kernel: A concrete :class:`warp.Kernel` object, created with
             ``@wp.kernel`` or the :class:`warp.Kernel` constructor. For a
             generic kernel, pass an overload returned by :func:`warp.overload`.
-        device: The target device. If ``None``, uses the default device.
-            For CPU devices, returns ``(1, 1)``.
+        device: The target device. If ``device`` is ``None``, Warp uses the default device.
+            For CPU devices, ``get_suggested_block_size()`` returns ``(1, 1)``.
 
     Returns:
         A tuple ``(block_size, min_grid_size)`` where ``block_size`` is the
@@ -12329,9 +12329,6 @@ def compile_aot_module(
 ) -> list[Path]:
     """Compile a module (ahead of time) for a given device.
 
-    The returned artifact-path contract is experimental and may change without
-    deprecation in future releases.
-
     Args:
         module: The module to compile.
         device: The device or devices to compile the module for. If ``None``,
@@ -12357,7 +12354,8 @@ def compile_aot_module(
         TypeError: If the module argument is not a Module, a types.ModuleType, or a string.
 
     Returns:
-        The paths to the compiled artifacts, in target order.
+        The paths to the compiled artifacts, in target order. The exact artifact paths and their
+        ordering are experimental and may change without deprecation in future releases.
     """
 
     if is_cuda_driver_initialized():
@@ -12597,8 +12595,9 @@ def set_module_options(options: dict[str, Any], module: Any = None):
     * **block_dim**: The default number of threads to assign to each block, defaults to ``256``.
     * **compile_time_trace**: Enable compile-time tracing, defaults to the value of ``warp.config.compile_time_trace``.
     * **strip_hash**: Omit the content hash from compiled kernel file names, defaults to ``False``.
-    * **extra_build_options**: Experimental extra build inputs for CPU and CUDA modules, defaults to ``None``.
-      Set to a :class:`warp.ModuleBuildOptions` instance.
+    * **extra_build_options**: The ``extra_build_options`` option is experimental and accepts a
+      :class:`warp.ModuleBuildOptions` instance that provides extra build inputs for CPU and CUDA
+      modules. The default is ``None``.
     * **default_grid_stride**: Whether kernels in this module that do not set ``grid_stride`` explicitly compile with a grid-stride loop. When ``None`` (the default), defers to ``warp.config.default_grid_stride`` (which defaults to grid-stride); set ``False`` to opt the module's kernels into the lean launch. A per-kernel ``@wp.kernel(grid_stride=...)`` always takes precedence.
 
     Args:
@@ -13604,7 +13603,7 @@ def capture_save(graph: Graph, path: str, inputs: dict | None = None, outputs: d
 
     Args:
         graph: A :class:`Graph` captured with ``apic=True``.
-        path: Output path. The ``.wrp`` extension is added if missing. Creates
+        path: Output path. Warp adds the ``.wrp`` extension if needed and creates
           ``<stem>.wrp`` and ``<stem>_modules/``.
         inputs: Named input arrays (e.g., ``{"positions": pos_array}``).
         outputs: Named output arrays (e.g., ``{"results": result_array}``).
