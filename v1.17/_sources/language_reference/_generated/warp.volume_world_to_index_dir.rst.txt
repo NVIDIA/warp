@@ -13,13 +13,13 @@
    Transform the direction ``xyz`` from world space to the volume's index space using the linear
    part of the volume's affine transform.
    
-   Translation is not applied and the result is not renormalized. For positions, use
-   :func:`~warp.volume_world_to_index` instead.
+   For positions, use :func:`~warp.volume_world_to_index` instead.
    
    :param id: The ``id`` of a :class:`warp.Volume`.
    :param xyz: Direction in world space.
    
-   :returns: The transformed direction in index space with ``float32`` precision.
+   :returns: The transformed direction in index space with ``float32`` precision. Translation is not
+             applied, and the vector is not renormalized.
    
    See :func:`~warp.volume_index_to_world` for a usage example.
 

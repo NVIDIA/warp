@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.volume_store_i &#8212; Warp 1.17.0rc4</title>
+    <title>warp.volume_store_i &#8212; Warp 1.17.0</title>
   
   
   
@@ -70,7 +70,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.17.0rc4" />
+  <meta name="docsearch:version" content="1.17.0" />
   
     
     <script src="../../_static/searchtools.js"></script>
@@ -147,11 +147,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0rc4 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0rc4 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.17.0rc4</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a></div>
     
@@ -291,11 +291,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0rc4 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0rc4 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.17.0rc4</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a>
 
@@ -414,6 +414,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/memory_management.html">Memory Allocation and Access</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/profiling.html">Profiling</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/deterministic_execution.html">Deterministic Execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/reducing_compilation_and_startup_time.html">Reducing Compilation and Startup Time</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/configuration.html">Configuration</a></li>
@@ -584,8 +585,9 @@
 </td></tr></table>
 <p>Store the <a class="reference internal" href="../../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.int32</span></code></a> <code class="docutils literal notranslate"><span class="pre">value</span></code> at the voxel with integer index-space coordinates
 <code class="docutils literal notranslate"><span class="pre">i</span></code>, <code class="docutils literal notranslate"><span class="pre">j</span></code>, <code class="docutils literal notranslate"><span class="pre">k</span></code>.</p>
-<p>Writes only where leaf-level storage exists (see <a class="reference internal" href="warp.volume_store.html#warp._src.lang.volume_store" title="warp._src.lang.volume_store"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_store()</span></code></a>); a no-op outside
-allocated leaves or for non-<code class="docutils literal notranslate"><span class="pre">int32</span></code> volumes. Does not activate voxels. Not differentiable.</p>
+<p><code class="docutils literal notranslate"><span class="pre">id</span></code> must identify an <code class="docutils literal notranslate"><span class="pre">int32</span></code> volume, and the coordinate must have leaf-level storage.
+The call does not allocate storage or activate voxels. See <a class="reference internal" href="warp.volume_store.html#warp._src.lang.volume_store" title="warp._src.lang.volume_store"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_store()</span></code></a>.
+This function is not differentiable.</p>
 <p>See <a class="reference internal" href="warp.volume_store.html#warp._src.lang.volume_store" title="warp._src.lang.volume_store"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_store()</span></code></a> for a usage example.</p>
 </dd></dl>
 

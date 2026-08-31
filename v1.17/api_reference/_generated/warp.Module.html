@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.Module &#8212; Warp 1.17.0rc4</title>
+    <title>warp.Module &#8212; Warp 1.17.0</title>
   
   
   
@@ -70,7 +70,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.17.0rc4" />
+  <meta name="docsearch:version" content="1.17.0" />
   
     
     <script src="../../_static/searchtools.js"></script>
@@ -147,11 +147,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0rc4 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0rc4 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.17.0rc4</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a></div>
     
@@ -291,11 +291,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0rc4 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0rc4 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.17.0rc4</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a>
 
@@ -414,6 +414,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/memory_management.html">Memory Allocation and Access</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/profiling.html">Profiling</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/deterministic_execution.html">Deterministic Execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/reducing_compilation_and_startup_time.html">Reducing Compilation and Startup Time</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/configuration.html">Configuration</a></li>
@@ -507,7 +508,7 @@
 <h1>warp.Module<a class="headerlink" href="#warp-module" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.Module">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Module</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">loader</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/context.py#L3779-L4819"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Module" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Module</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">loader</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/context.py#L3780-L4820"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Module" title="Link to this definition">#</a></dt>
 <dd><p>Warp module containing kernels and functions to be compiled.</p>
 <p class="rubric">Methods</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
@@ -558,7 +559,7 @@
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Module.resolve_options">
-<span class="sig-name descname"><span class="pre">resolve_options</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">block_dim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/context.py#L3862-L3951"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Module.resolve_options" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">resolve_options</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">block_dim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/context.py#L3863-L3952"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Module.resolve_options" title="Link to this definition">#</a></dt>
 <dd><p>Return a fully-resolved copy of the module options.</p>
 <p>Resolves <code class="docutils literal notranslate"><span class="pre">None</span></code> sentinels by falling back to <code class="docutils literal notranslate"><span class="pre">config</span></code> values and
 hardcoded defaults. Also includes global config flags that affect
@@ -578,7 +579,7 @@ in the returned dict. This lets <code class="docutils literal notranslate"><span
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Module.increment_id">
-<span class="sig-name descname"><span class="pre">increment_id</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/codegen.py#L3952-L3956"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Module.increment_id" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">increment_id</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/codegen.py#L3953-L3957"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Module.increment_id" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
@@ -588,12 +589,12 @@ in the returned dict. This lets <code class="docutils literal notranslate"><span
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Module.register_struct">
-<span class="sig-name descname"><span class="pre">register_struct</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">struct</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/context.py#L3957-L3962"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Module.register_struct" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">register_struct</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">struct</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/context.py#L3958-L3963"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Module.register_struct" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Module.register_kernel">
-<span class="sig-name descname"><span class="pre">register_kernel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">kernel</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/context.py#L3963-L3979"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Module.register_kernel" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">register_kernel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">kernel</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/context.py#L3964-L3980"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Module.register_kernel" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -606,12 +607,12 @@ in the returned dict. This lets <code class="docutils literal notranslate"><span
 <dd><em class="sig-param"><span class="n"><span class="pre">skip_adding_overload</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/context.py#L3980-L4042"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Module.register_function" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/context.py#L3981-L4043"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Module.register_function" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Module.hash_module">
-<span class="sig-name descname"><span class="pre">hash_module</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/codegen.py#L4147-L4158"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Module.hash_module" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">hash_module</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/codegen.py#L4148-L4159"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Module.hash_module" title="Link to this definition">#</a></dt>
 <dd><p>Get the hash of the module for the current block_dim.</p>
 <p>This function always creates a new <code class="docutils literal notranslate"><span class="pre">ModuleHasher</span></code> and computes the hash.</p>
 <dl class="field-list simple">
@@ -623,7 +624,7 @@ in the returned dict. This lets <code class="docutils literal notranslate"><span
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Module.get_module_hash">
-<span class="sig-name descname"><span class="pre">get_module_hash</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">block_dim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/codegen.py#L4159-L4192"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Module.get_module_hash" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_module_hash</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">block_dim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/codegen.py#L4160-L4193"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Module.get_module_hash" title="Link to this definition">#</a></dt>
 <dd><p>Get the hash of the module for a block_dim variant.</p>
 <p>If <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> is <code class="docutils literal notranslate"><span class="pre">None</span></code>, use the module-level default. If the
 variant hash has not been computed yet, compute and cache it.</p>
@@ -639,7 +640,7 @@ variant hash has not been computed yet, compute and cache it.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Module.get_module_identifier">
-<span class="sig-name descname"><span class="pre">get_module_identifier</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">block_dim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/context.py#L4246-L4259"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Module.get_module_identifier" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_module_identifier</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">block_dim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/context.py#L4247-L4260"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Module.get_module_identifier" title="Link to this definition">#</a></dt>
 <dd><p>Get an abbreviated module name to use for directories and files in the cache.</p>
 <p>Depending on the setting of the <code class="docutils literal notranslate"><span class="pre">&quot;strip_hash&quot;</span></code> option for this module,
 the module identifier might include a content-dependent hash as a suffix.</p>
@@ -665,7 +666,7 @@ the module identifier might include a content-dependent hash as a suffix.</p>
 <dd><em class="sig-param"><span class="n"><span class="pre">meta_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/context.py#L4647-L4780"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Module.load" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/context.py#L4648-L4781"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Module.load" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -683,17 +684,17 @@ the module identifier might include a content-dependent hash as a suffix.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Module.unload">
-<span class="sig-name descname"><span class="pre">unload</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/context.py#L4781-L4787"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Module.unload" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">unload</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/context.py#L4782-L4788"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Module.unload" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Module.mark_modified">
-<span class="sig-name descname"><span class="pre">mark_modified</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/context.py#L4800-L4808"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Module.mark_modified" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">mark_modified</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/context.py#L4801-L4809"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Module.mark_modified" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Module.get_kernel_hooks">
-<span class="sig-name descname"><span class="pre">get_kernel_hooks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">kernel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/context.py#L4810-L4819"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Module.get_kernel_hooks" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_kernel_hooks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">kernel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/context.py#L4811-L4820"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Module.get_kernel_hooks" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>device</strong> (<a class="reference internal" href="warp.Device.html#warp.Device" title="warp._src.context.Device"><em>Device</em></a>)</p>

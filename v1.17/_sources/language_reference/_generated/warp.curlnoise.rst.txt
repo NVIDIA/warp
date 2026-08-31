@@ -12,28 +12,26 @@
 
    Sample a divergence-free 2D vector field derived from Perlin noise.
    
-   Returns a rotated Perlin-noise gradient, making the field analytically
-   divergence-free. Its continuous flow preserves area, although numerical advection
-   may not. The 3D and 4D overloads instead return the spatial curl of three noise
-   potentials as a :class:`warp.vec3`.
+   Its continuous flow preserves area, although numerical advection may not.
    
    Octave ``i`` uses frequency ``lacunarity ** i`` and weight ``gain ** i``. With
    ``lacunarity > 1`` and ``0 < gain < 1``, later octaves add finer, weaker detail.
    Contributions may cancel, so magnitude is not monotonic in the octave controls.
-   Zero octaves returns zero. Scale the coordinate for feature size and the result for
-   speed.
+   Scale the coordinate for feature size and the result for speed.
    
-   ``state`` selects the field and is not advanced. Results are reproducible per
-   device, but CPU and CUDA values may differ slightly. Differentiable with respect to
-   the coordinate; ``octaves``, ``lacunarity``, and ``gain`` receive no gradient.
+   ``state`` selects the field and is not advanced. For a given Warp version and device
+   backend, results are deterministic for fixed inputs. Exact values may differ between
+   CPU and CUDA or change between Warp versions. This function is differentiable with respect to
+   the coordinate. Currently, ``lacunarity`` and ``gain`` receive no gradient.
    
-   :param state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
-   :param xy: Coordinate to sample. One swirl spans about one unit at the base frequency.
+   :param state: RNG state that selects the noise field (see :func:`rand_init`); never advanced.
+   :param xy: Coordinate to sample.
    :param octaves: Number of noise octaves to sum. Zero returns a zero vector.
    :param lacunarity: Frequency multiplier between successive octaves.
    :param gain: Amplitude multiplier between successive octaves.
    
-   :returns: A divergence-free 2D vector at ``xy``. Not normalized.
+   :returns: A rotated Perlin-noise gradient at ``xy``. The resulting vector field is analytically
+             divergence-free. The vector is not normalized.
    
    .. rubric:: Example
    
@@ -48,11 +46,6 @@
        positions = wp.array([[0.5, 0.5], [1.25, 2.0]], dtype=wp.vec2)
    
        wp.launch(advect, dim=len(positions), inputs=[42, positions, 0.1])
-       print([[round(c, 3) for c in p] for p in positions.numpy().tolist()])
-   
-   .. testoutput::
-   
-       [[0.628, 0.514], [1.256, 2.003]]
    
 
 .. function:: warp._src.lang.curlnoise(state: uint32, xyz: vec3f, octaves: uint32, lacunarity: float32, gain: float32) -> vec3f
@@ -67,16 +60,16 @@
 
    Sample a divergence-free 3D vector field derived from Perlin noise.
    
-   Returns the spatial curl of three Perlin-noise potentials. See :func:`curlnoise` for
-   shared behavior, restrictions, and a usage example.
+   See :func:`curlnoise` for shared behavior, restrictions, and a usage example.
    
-   :param state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
-   :param xyz: Coordinate to sample. One swirl spans about one unit at the base frequency.
+   :param state: RNG state that selects the noise field (see :func:`rand_init`); never advanced.
+   :param xyz: Coordinate to sample.
    :param octaves: Number of noise octaves to sum. Zero returns a zero vector.
    :param lacunarity: Frequency multiplier between successive octaves.
    :param gain: Amplitude multiplier between successive octaves.
    
-   :returns: A divergence-free 3D vector at ``xyz``. Not normalized.
+   :returns: A :class:`warp.vec3` containing the spatial curl of three Perlin-noise potentials at
+             ``xyz``. The resulting vector field is divergence-free. The vector is not normalized.
    
 
 .. function:: warp._src.lang.curlnoise(state: uint32, xyzt: vec4f, octaves: uint32, lacunarity: float32, gain: float32) -> vec3f
@@ -91,17 +84,16 @@
 
    Sample a divergence-free 3D vector field that also varies along a fourth axis.
    
-   Returns a :class:`warp.vec3` spatial curl; the fourth input axis parametrizes the
-   field and is commonly used as time. The field remains divergence-free in the first
-   three axes. See :func:`curlnoise` for shared behavior, restrictions, and a usage
-   example.
+   The fourth input axis parametrizes the field and is commonly used as time. See
+   :func:`curlnoise` for shared behavior, restrictions, and a usage example.
    
-   :param state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
-   :param xyzt: Coordinate to sample, with the fourth component usually time. One swirl
-                spans about one unit at the base frequency.
+   :param state: RNG state that selects the noise field (see :func:`rand_init`); never advanced.
+   :param xyzt: Coordinate to sample, with the fourth component usually time.
    :param octaves: Number of noise octaves to sum. Zero returns a zero vector.
    :param lacunarity: Frequency multiplier between successive octaves.
    :param gain: Amplitude multiplier between successive octaves.
    
-   :returns: A divergence-free 3D vector at ``xyzt``. Not normalized.
+   :returns: A :class:`warp.vec3` containing the spatial curl of three Perlin-noise potentials at
+             ``xyzt``. The vector field is divergence-free in the first three axes. The vector is not
+             normalized.
    

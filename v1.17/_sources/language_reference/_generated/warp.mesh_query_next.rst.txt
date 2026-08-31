@@ -10,21 +10,19 @@
 
    Advance a mesh query to the next matching triangle and report whether one was found.
    
-   Writes the face index of the current result to ``index`` and returns ``True``; returns
-   ``False`` once no more results remain (``index`` is then left unchanged). The reported index
-   is a 0-based face index into the mesh's triangles, suitable for :func:`mesh_eval_position`,
-   :func:`mesh_eval_face_normal`, and the other face-indexed functions.
-   
    What counts as a *match* depends on the query type:
    
    - :func:`mesh_query_aabb`: triangles whose bounding box overlaps the query box.
    - :func:`mesh_query_sphere`: triangles whose closest point to the sphere center is within the radius.
    
    :param query: The query to advance, from :func:`mesh_query_aabb` or :func:`mesh_query_sphere`
-   :param index: Output; receives the face index of the current result
+   :param index: Output; receives the zero-based face index of the current result. The index is
+                 suitable for :func:`mesh_eval_position`, :func:`mesh_eval_face_normal`, and the other
+                 face-indexed functions.
    
    :returns: ``True`` if another matching triangle was found (its face index written to ``index``),
-             ``False`` if the query is exhausted.
+             ``False`` if the query is exhausted. When the function returns ``False``, ``index`` is
+             unchanged.
    
    .. rubric:: Example
    
@@ -59,9 +57,7 @@
 
       * Kernel
 
-   Advance a sphere mesh query to the next matching triangle.
-   
-   Overload for queries created by :func:`mesh_query_sphere`.
+   Advance a sphere mesh query created by :func:`mesh_query_sphere` to the next matching triangle.
 
 .. function:: warp._src.lang.mesh_query_next(query: MeshQuery, index: int32) -> bool
    :noindex:

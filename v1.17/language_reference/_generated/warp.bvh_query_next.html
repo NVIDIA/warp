@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.bvh_query_next &#8212; Warp 1.17.0rc4</title>
+    <title>warp.bvh_query_next &#8212; Warp 1.17.0</title>
   
   
   
@@ -70,7 +70,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.17.0rc4" />
+  <meta name="docsearch:version" content="1.17.0" />
   
     
     <script src="../../_static/searchtools.js"></script>
@@ -147,11 +147,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0rc4 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0rc4 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.17.0rc4</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a></div>
     
@@ -291,11 +291,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0rc4 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0rc4 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.17.0rc4</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a>
 
@@ -414,6 +414,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/memory_management.html">Memory Allocation and Access</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/profiling.html">Profiling</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/deterministic_execution.html">Deterministic Execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/reducing_compilation_and_startup_time.html">Reducing Compilation and Startup Time</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/configuration.html">Configuration</a></li>
@@ -581,11 +582,8 @@
 </ul>
 </td></tr></table>
 <p>Advance a BVH query to the next overlapping item and report whether one was found.</p>
-<p>Writes the index of the current item to <code class="docutils literal notranslate"><span class="pre">index</span></code> and returns <code class="docutils literal notranslate"><span class="pre">True</span></code>; returns <code class="docutils literal notranslate"><span class="pre">False</span></code> once
-the query is exhausted (<code class="docutils literal notranslate"><span class="pre">index</span></code> is then left unchanged). The reported index is the item’s
-index into the <code class="docutils literal notranslate"><span class="pre">lowers</span></code>/<code class="docutils literal notranslate"><span class="pre">uppers</span></code> arrays passed to <a class="reference internal" href="../../api_reference/_generated/warp.Bvh.html#warp.Bvh" title="warp.Bvh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Bvh</span></code></a>. Used in a <code class="docutils literal notranslate"><span class="pre">while</span></code>
-loop together with <a class="reference internal" href="warp.bvh_query_aabb.html#warp._src.lang.bvh_query_aabb" title="warp._src.lang.bvh_query_aabb"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_aabb()</span></code></a>, <a class="reference internal" href="warp.bvh_query_ray.html#warp._src.lang.bvh_query_ray" title="warp._src.lang.bvh_query_ray"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_ray()</span></code></a>, <a class="reference internal" href="warp.bvh_query_capsule.html#warp._src.lang.bvh_query_capsule" title="warp._src.lang.bvh_query_capsule"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_capsule()</span></code></a>,
-or <a class="reference internal" href="warp.bvh_query_sphere.html#warp._src.lang.bvh_query_sphere" title="warp._src.lang.bvh_query_sphere"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_sphere()</span></code></a>.</p>
+<p>Call <a class="reference internal" href="#warp._src.lang.bvh_query_next" title="warp._src.lang.bvh_query_next"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_next()</span></code></a> in a <code class="docutils literal notranslate"><span class="pre">while</span></code> loop together with <a class="reference internal" href="warp.bvh_query_aabb.html#warp._src.lang.bvh_query_aabb" title="warp._src.lang.bvh_query_aabb"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_aabb()</span></code></a>,
+<a class="reference internal" href="warp.bvh_query_ray.html#warp._src.lang.bvh_query_ray" title="warp._src.lang.bvh_query_ray"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_ray()</span></code></a>, <a class="reference internal" href="warp.bvh_query_capsule.html#warp._src.lang.bvh_query_capsule" title="warp._src.lang.bvh_query_capsule"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_capsule()</span></code></a>, or <a class="reference internal" href="warp.bvh_query_sphere.html#warp._src.lang.bvh_query_sphere" title="warp._src.lang.bvh_query_sphere"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_sphere()</span></code></a>.</p>
 <p>For plain ray queries (<a class="reference internal" href="warp.bvh_query_ray.html#warp._src.lang.bvh_query_ray" title="warp._src.lang.bvh_query_ray"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_ray()</span></code></a>), <code class="docutils literal notranslate"><span class="pre">max_dist</span></code> bounds how far along the ray to
 look for intersections, measured in multiples of <code class="docutils literal notranslate"><span class="pre">dir</span></code>’s length (so it is a distance only if
 <code class="docutils literal notranslate"><span class="pre">dir</span></code> was normalized). For capsule queries (<a class="reference internal" href="warp.bvh_query_capsule.html#warp._src.lang.bvh_query_capsule" title="warp._src.lang.bvh_query_capsule"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_capsule()</span></code></a>), pass
@@ -598,14 +596,15 @@ is therefore only safe to monotonically <em>reduce</em> <code class="docutils li
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>query</strong> – The query to advance, from <a class="reference internal" href="warp.bvh_query_aabb.html#warp._src.lang.bvh_query_aabb" title="warp._src.lang.bvh_query_aabb"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_aabb()</span></code></a>, <a class="reference internal" href="warp.bvh_query_ray.html#warp._src.lang.bvh_query_ray" title="warp._src.lang.bvh_query_ray"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_ray()</span></code></a>, <a class="reference internal" href="warp.bvh_query_capsule.html#warp._src.lang.bvh_query_capsule" title="warp._src.lang.bvh_query_capsule"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_capsule()</span></code></a>, or <a class="reference internal" href="warp.bvh_query_sphere.html#warp._src.lang.bvh_query_sphere" title="warp._src.lang.bvh_query_sphere"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_sphere()</span></code></a></p></li>
-<li><p><strong>index</strong> – Output; receives the index of the current overlapping item</p></li>
+<li><p><strong>index</strong> – Output; receives the index of the current overlapping item in the
+<code class="docutils literal notranslate"><span class="pre">lowers</span></code>/<code class="docutils literal notranslate"><span class="pre">uppers</span></code> arrays passed to <a class="reference internal" href="../../api_reference/_generated/warp.Bvh.html#warp.Bvh" title="warp.Bvh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Bvh</span></code></a>.</p></li>
 <li><p><strong>max_dist</strong> – For ray queries, the maximum distance along the ray to check for intersections
-(in multiples of <code class="docutils literal notranslate"><span class="pre">dir</span></code>’s length). Has no effect on AABB or sphere queries.</p></li>
+(in multiples of <code class="docutils literal notranslate"><span class="pre">dir</span></code>’s length). <code class="docutils literal notranslate"><span class="pre">max_dist</span></code> has no effect on AABB or sphere queries.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if another overlapping item was found (its index written to <code class="docutils literal notranslate"><span class="pre">index</span></code>), <code class="docutils literal notranslate"><span class="pre">False</span></code>
-if the query is exhausted.</p>
+if the query is exhausted. When the function returns <code class="docutils literal notranslate"><span class="pre">False</span></code>, <code class="docutils literal notranslate"><span class="pre">index</span></code> is unchanged.</p>
 </dd>
 </dl>
 <p class="rubric">Example</p>

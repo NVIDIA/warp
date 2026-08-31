@@ -11,19 +11,15 @@
 
    Return the linear index associated with integer index-space coordinates ``i``, ``j``, ``k``.
    
-   On NanoVDB ``OnIndex`` and ``OnIndexMask`` grids, active voxels have zero-based indices and
-   inactive voxels return ``-1``. On ``Index`` and ``IndexMask`` grids and on classical value grids,
-   every slot in an allocated leaf has an index regardless of its active mask; coordinates outside
-   allocated leaves return ``-1``. For volumes whose indexable count fits in ``int32``, nonnegative
-   indices lie in ``[0, volume_voxel_count(id))``. Guard against ``-1`` before gathering from a
-   per-voxel array. Not differentiable.
+   This function is not differentiable.
    
    :param id: The ``id`` of a :class:`warp.Volume`.
    :param i: Voxel coordinate along the first index-space axis.
    :param j: Voxel coordinate along the second index-space axis.
    :param k: Voxel coordinate along the third index-space axis.
    
-   :returns: The voxel's linear index, or ``-1`` when the coordinate is not indexable.
+   :returns: The voxel's linear index in ``[0, volume_voxel_count(id))``, or ``-1`` when the coordinate
+             is not indexable. Guard against ``-1`` before gathering from a per-voxel array.
    
    .. rubric:: Example
    

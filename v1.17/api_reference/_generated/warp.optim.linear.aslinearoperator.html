@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.optim.linear.aslinearoperator &#8212; Warp 1.17.0rc4</title>
+    <title>warp.optim.linear.aslinearoperator &#8212; Warp 1.17.0</title>
   
   
   
@@ -70,7 +70,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.17.0rc4" />
+  <meta name="docsearch:version" content="1.17.0" />
   
     
     <script src="../../_static/searchtools.js"></script>
@@ -147,11 +147,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0rc4 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0rc4 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.17.0rc4</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a></div>
     
@@ -291,11 +291,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0rc4 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0rc4 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.17.0rc4</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a>
 
@@ -414,6 +414,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/memory_management.html">Memory Allocation and Access</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/profiling.html">Profiling</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/deterministic_execution.html">Deterministic Execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/reducing_compilation_and_startup_time.html">Reducing Compilation and Startup Time</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/configuration.html">Configuration</a></li>
@@ -529,7 +530,7 @@
 <li><p><strong>batch_offsets</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>) – Optional array of shape <code class="docutils literal notranslate"><span class="pre">(B+1,)</span></code> partitioning scalar degrees of freedom into
 <code class="docutils literal notranslate"><span class="pre">B</span></code> independent subproblems (see <a class="reference internal" href="warp.optim.linear.LinearOperator.html#warp.optim.linear.LinearOperator" title="warp.optim.linear.LinearOperator"><code class="xref py py-class docutils literal notranslate"><span class="pre">LinearOperator</span></code></a>).</p></li>
 <li><p><strong>max_batch_length</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Optional upper bound on the number of scalar degrees of freedom in any subproblem.
-Requires <code class="docutils literal notranslate"><span class="pre">batch_offsets</span></code> (see <a class="reference internal" href="warp.optim.linear.LinearOperator.html#warp.optim.linear.LinearOperator" title="warp.optim.linear.LinearOperator"><code class="xref py py-class docutils literal notranslate"><span class="pre">LinearOperator</span></code></a>).</p></li>
+Specifying <code class="docutils literal notranslate"><span class="pre">max_batch_length</span></code> requires <code class="docutils literal notranslate"><span class="pre">batch_offsets</span></code> (see <a class="reference internal" href="warp.optim.linear.LinearOperator.html#warp.optim.linear.LinearOperator" title="warp.optim.linear.LinearOperator"><code class="xref py py-class docutils literal notranslate"><span class="pre">LinearOperator</span></code></a>).</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>

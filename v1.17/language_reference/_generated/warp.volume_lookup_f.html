@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.volume_lookup_f &#8212; Warp 1.17.0rc4</title>
+    <title>warp.volume_lookup_f &#8212; Warp 1.17.0</title>
   
   
   
@@ -70,7 +70,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.17.0rc4" />
+  <meta name="docsearch:version" content="1.17.0" />
   
     
     <script src="../../_static/searchtools.js"></script>
@@ -147,11 +147,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0rc4 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0rc4 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.17.0rc4</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a></div>
     
@@ -291,11 +291,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0rc4 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0rc4 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.17.0rc4</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a>
 
@@ -414,6 +414,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/memory_management.html">Memory Allocation and Access</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/profiling.html">Profiling</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/deterministic_execution.html">Deterministic Execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/reducing_compilation_and_startup_time.html">Reducing Compilation and Startup Time</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/configuration.html">Configuration</a></li>
@@ -584,10 +585,14 @@
 </td></tr></table>
 <p>Return the <a class="reference internal" href="../../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.float32</span></code></a> value of the voxel at integer index-space coordinates
 <code class="docutils literal notranslate"><span class="pre">i</span></code>, <code class="docutils literal notranslate"><span class="pre">j</span></code>, <code class="docutils literal notranslate"><span class="pre">k</span></code>, without interpolation.</p>
-<p>Returns the resolved NanoVDB value (see <a class="reference internal" href="warp.volume_lookup.html#warp._src.lang.volume_lookup" title="warp._src.lang.volume_lookup"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_lookup()</span></code></a>); the result is <code class="docutils literal notranslate"><span class="pre">0</span></code> if
-<code class="docutils literal notranslate"><span class="pre">id</span></code> is not a <code class="docutils literal notranslate"><span class="pre">float32</span></code> volume. Not differentiable. In kernels, equivalent to
-<a class="reference internal" href="warp.volume_lookup.html#warp._src.lang.volume_lookup" title="warp._src.lang.volume_lookup"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_lookup()</span></code></a> with <code class="docutils literal notranslate"><span class="pre">dtype=float</span></code>.</p>
-<p>See <a class="reference internal" href="warp.volume_lookup.html#warp._src.lang.volume_lookup" title="warp._src.lang.volume_lookup"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_lookup()</span></code></a> for a usage example.</p>
+<p><code class="docutils literal notranslate"><span class="pre">id</span></code> must identify a <code class="docutils literal notranslate"><span class="pre">float32</span></code> volume. This function is not differentiable. In kernels,
+<code class="docutils literal notranslate"><span class="pre">volume_lookup_f()</span></code> is equivalent to <a class="reference internal" href="warp.volume_lookup.html#warp._src.lang.volume_lookup" title="warp._src.lang.volume_lookup"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_lookup()</span></code></a> with <code class="docutils literal notranslate"><span class="pre">dtype=float</span></code>.</p>
+<p>See <a class="reference internal" href="warp.volume_lookup.html#warp._src.lang.volume_lookup" title="warp._src.lang.volume_lookup"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_lookup()</span></code></a> for shared behavior and a usage example.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The resolved <a class="reference internal" href="../../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.float32</span></code></a> voxel value.</p>
+</dd>
+</dl>
 </dd></dl>
 
 </section>

@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.RegisteredGLBuffer &#8212; Warp 1.17.0rc4</title>
+    <title>warp.RegisteredGLBuffer &#8212; Warp 1.17.0</title>
   
   
   
@@ -70,7 +70,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.17.0rc4" />
+  <meta name="docsearch:version" content="1.17.0" />
   
     
     <script src="../../_static/searchtools.js"></script>
@@ -147,11 +147,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0rc4 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0rc4 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.17.0rc4</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a></div>
     
@@ -291,11 +291,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0rc4 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0rc4 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.17.0rc4</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a>
 
@@ -414,6 +414,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/memory_management.html">Memory Allocation and Access</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/profiling.html">Profiling</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/deterministic_execution.html">Deterministic Execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/reducing_compilation_and_startup_time.html">Reducing Compilation and Startup Time</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/configuration.html">Configuration</a></li>
@@ -507,7 +508,7 @@
 <h1>warp.RegisteredGLBuffer<a class="headerlink" href="#warp-registeredglbuffer" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.RegisteredGLBuffer">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">RegisteredGLBuffer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/context.py#L9426-L9579"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.RegisteredGLBuffer" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">RegisteredGLBuffer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/context.py#L9427-L9580"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.RegisteredGLBuffer" title="Link to this definition">#</a></dt>
 <dd><p>Helper class to register a GL buffer with CUDA so that it can be mapped to a Warp array.</p>
 <p>Example usage:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
@@ -602,7 +603,7 @@ stored in the resource will be preserved.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.RegisteredGLBuffer.map">
-<span class="sig-name descname"><span class="pre">map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dtype</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shape</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/context.py#L9527-L9562"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.RegisteredGLBuffer.map" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dtype</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shape</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/context.py#L9528-L9563"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.RegisteredGLBuffer.map" title="Link to this definition">#</a></dt>
 <dd><p>Map the OpenGL buffer to a Warp array.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -622,7 +623,7 @@ stored in the resource will be preserved.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.RegisteredGLBuffer.unmap">
-<span class="sig-name descname"><span class="pre">unmap</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/context.py#L9563-L9579"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.RegisteredGLBuffer.unmap" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">unmap</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/context.py#L9564-L9580"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.RegisteredGLBuffer.unmap" title="Link to this definition">#</a></dt>
 <dd><p>Unmap the OpenGL buffer.</p>
 </dd></dl>
 

@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.kernel &#8212; Warp 1.17.0rc4</title>
+    <title>warp.kernel &#8212; Warp 1.17.0</title>
   
   
   
@@ -70,7 +70,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.17.0rc4" />
+  <meta name="docsearch:version" content="1.17.0" />
   
     
     <script src="../../_static/searchtools.js"></script>
@@ -147,11 +147,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0rc4 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0rc4 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.17.0rc4</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a></div>
     
@@ -291,11 +291,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0rc4 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0rc4 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.17.0rc4</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a>
 
@@ -414,6 +414,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/memory_management.html">Memory Allocation and Access</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/profiling.html">Profiling</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/deterministic_execution.html">Deterministic Execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/reducing_compilation_and_startup_time.html">Reducing Compilation and Startup Time</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/configuration.html">Configuration</a></li>
@@ -524,7 +525,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">grid_stride</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/context.py#L1711-L2022"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.kernel" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/context.py#L1711-L2023"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.kernel" title="Link to this definition">#</a></dt>
 <dd><p>Decorator to register a Warp kernel from a Python function.
 The function must be defined with type annotations for all arguments.
 The function must not return anything.</p>
@@ -597,18 +598,19 @@ kernels. Note: The <code class="docutils literal notranslate"><span class="pre">
 <a class="reference internal" href="warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.launch()</span></code></a> must not exceed the
 <code class="docutils literal notranslate"><span class="pre">maxThreadsPerBlock</span></code> value specified here.</p></li>
 <li><p><strong>cuda_max_registers</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – CUDA <code class="docutils literal notranslate"><span class="pre">__maxnreg__</span></code> attribute specifying the maximum
-number of registers allocated per thread. Must be a positive int
-and cannot be combined with <code class="docutils literal notranslate"><span class="pre">launch_bounds</span></code>. Only applies to CUDA
-kernels and is ignored when Warp was built with CUDA Toolkit
-earlier than 12.4 or when <code class="docutils literal notranslate"><span class="pre">warp.config.llvm_cuda</span></code> is <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></li>
+number of registers allocated per thread. <code class="docutils literal notranslate"><span class="pre">cuda_max_registers</span></code> must
+be a positive int and cannot be combined with <code class="docutils literal notranslate"><span class="pre">launch_bounds</span></code>. The
+<code class="docutils literal notranslate"><span class="pre">cuda_max_registers</span></code> option applies only to CUDA kernels and is ignored
+when Warp was built with CUDA Toolkit earlier than 12.4 or when
+<code class="docutils literal notranslate"><span class="pre">warp.config.llvm_cuda</span></code> is <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></li>
 <li><p><strong>enable_cuda_smem_spilling</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a><em> | </em><em>None</em>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, allow the CUDA Toolkit used to
 build Warp, when version 13.0 or later, to use shared memory for
-register spills. Applied independently to the forward and backward
-kernels and silently ignored when an entry point uses dynamic shared
-memory, on CPU, with older CUDA Toolkits, in unsupported device-debug
-compilation, or when <code class="docutils literal notranslate"><span class="pre">warp.config.llvm_cuda</span></code> is <code class="docutils literal notranslate"><span class="pre">True</span></code>. Explicit
-<code class="docutils literal notranslate"><span class="pre">launch_bounds</span></code> are recommended to avoid over-allocating shared
-memory and reducing occupancy.</p></li>
+register spills. Warp applies <code class="docutils literal notranslate"><span class="pre">enable_cuda_smem_spilling</span></code> independently
+to the forward and backward kernels and silently ignores the option when
+an entry point uses dynamic shared memory, on CPU, with older CUDA
+Toolkits, in unsupported device-debug compilation, or when
+<code class="docutils literal notranslate"><span class="pre">warp.config.llvm_cuda</span></code> is <code class="docutils literal notranslate"><span class="pre">True</span></code>. Explicit <code class="docutils literal notranslate"><span class="pre">launch_bounds</span></code> are
+recommended to avoid over-allocating shared memory and reducing occupancy.</p></li>
 <li><p><strong>cluster_dim</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – CUDA Thread Block Cluster size as a 1D CTA count.
 Warp emits CUDA <code class="docutils literal notranslate"><span class="pre">__cluster_dims__(cluster_dim,</span> <span class="pre">1,</span> <span class="pre">1)</span></code> because
 kernels use a 1D hardware launch grid. Must be a positive int &lt;= 16

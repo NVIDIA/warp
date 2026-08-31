@@ -16,6 +16,8 @@ like :func:`wp.tile_cholesky <warp._src.lang.tile_cholesky>`,
 :func:`wp.tile_fft <warp._src.lang.tile_fft>`, and :func:`wp.tile_matmul <warp._src.lang.tile_matmul>`.
 See `Building with MathDx`_ for more details when building the Warp locally with support for
 these linear-algebra tile operations.
+For guidance on MathDx LTO compile costs and development-time fallback flags,
+see :doc:`../execution_and_performance/reducing_compilation_and_startup_time`.
 
 Execution Model
 ---------------

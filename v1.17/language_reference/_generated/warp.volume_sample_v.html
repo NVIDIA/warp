@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.volume_sample_v &#8212; Warp 1.17.0rc4</title>
+    <title>warp.volume_sample_v &#8212; Warp 1.17.0</title>
   
   
   
@@ -70,7 +70,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.17.0rc4" />
+  <meta name="docsearch:version" content="1.17.0" />
   
     
     <script src="../../_static/searchtools.js"></script>
@@ -147,11 +147,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0rc4 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0rc4 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.17.0rc4</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a></div>
     
@@ -291,11 +291,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0rc4 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0rc4 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.17.0rc4</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a>
 
@@ -414,6 +414,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/memory_management.html">Memory Allocation and Access</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/profiling.html">Profiling</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/deterministic_execution.html">Deterministic Execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/reducing_compilation_and_startup_time.html">Reducing Compilation and Startup Time</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/configuration.html">Configuration</a></li>
@@ -585,9 +586,14 @@
 <p>Sample the vector (<a class="reference internal" href="../../api_reference/_generated/warp.vec3f.html#warp.vec3f" title="warp.vec3f"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3f</span></code></a>) volume given by <code class="docutils literal notranslate"><span class="pre">id</span></code> at the index-space point <code class="docutils literal notranslate"><span class="pre">uvw</span></code>.</p>
 <p><code class="docutils literal notranslate"><span class="pre">uvw</span></code> is in index space (voxel coordinates) and may be fractional; <code class="docutils literal notranslate"><span class="pre">sampling_mode</span></code> must be
 <a class="reference internal" href="../../api_reference/_generated/warp.Volume.html#warp.Volume.CLOSEST" title="warp.Volume.CLOSEST"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.Volume.CLOSEST</span></code></a> or <a class="reference internal" href="../../api_reference/_generated/warp.Volume.html#warp.Volume.LINEAR" title="warp.Volume.LINEAR"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.Volume.LINEAR</span></code></a> and is applied per component. Sampling
-uses the resolved NanoVDB value (see <a class="reference internal" href="warp.volume_sample.html#warp._src.lang.volume_sample" title="warp._src.lang.volume_sample"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_sample()</span></code></a>), and the sample is <code class="docutils literal notranslate"><span class="pre">0</span></code> if
-<code class="docutils literal notranslate"><span class="pre">id</span></code> is not a <code class="docutils literal notranslate"><span class="pre">vec3f</span></code> volume. In kernels, equivalent to <a class="reference internal" href="warp.volume_sample.html#warp._src.lang.volume_sample" title="warp._src.lang.volume_sample"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_sample()</span></code></a> with
-<code class="docutils literal notranslate"><span class="pre">dtype=warp.vec3f</span></code>.</p>
+uses the resolved volume value (see <a class="reference internal" href="warp.volume_sample.html#warp._src.lang.volume_sample" title="warp._src.lang.volume_sample"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_sample()</span></code></a>). <code class="docutils literal notranslate"><span class="pre">id</span></code> must identify a
+<code class="docutils literal notranslate"><span class="pre">vec3f</span></code> volume. In kernels, <code class="docutils literal notranslate"><span class="pre">volume_sample_v()</span></code> is equivalent to
+<a class="reference internal" href="warp.volume_sample.html#warp._src.lang.volume_sample" title="warp._src.lang.volume_sample"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_sample()</span></code></a> with <code class="docutils literal notranslate"><span class="pre">dtype=warp.vec3f</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The sampled <a class="reference internal" href="../../api_reference/_generated/warp.vec3f.html#warp.vec3f" title="warp.vec3f"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3f</span></code></a> value.</p>
+</dd>
+</dl>
 <p>See <a class="reference internal" href="warp.volume_sample.html#warp._src.lang.volume_sample" title="warp._src.lang.volume_sample"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_sample()</span></code></a> for a usage example.</p>
 </dd></dl>
 

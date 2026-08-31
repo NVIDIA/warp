@@ -17,6 +17,8 @@ Guides in this section
   device work with Warp timers, NVTX, and NVIDIA profiling tools.
 * :doc:`Deterministic Execution <execution_and_performance/deterministic_execution>`:
   Reproducibility guarantees, limitations, and performance tradeoffs.
+* :doc:`Reducing Compilation and Startup Time <execution_and_performance/reducing_compilation_and_startup_time>`:
+  Measure and reduce startup latency, cold compilation, and module reloads.
 
 .. toctree::
    :hidden:
@@ -26,3 +28,4 @@ Guides in this section
    execution_and_performance/memory_management
    execution_and_performance/profiling
    execution_and_performance/deterministic_execution
+   execution_and_performance/reducing_compilation_and_startup_time

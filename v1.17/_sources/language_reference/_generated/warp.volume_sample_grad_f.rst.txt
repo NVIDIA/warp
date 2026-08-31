@@ -14,7 +14,9 @@
    index-space point ``uvw``.
    
    ``grad`` receives the gradient of the sampled value with respect to the index-space coordinates
-   ``uvw`` (a :class:`warp.vec3`, zero for :attr:`warp.Volume.CLOSEST`). In kernels, equivalent to
-   :func:`~warp.volume_sample_grad` with ``dtype=float``.
+   ``uvw`` (a :class:`warp.vec3`, zero for :attr:`warp.Volume.CLOSEST`). In kernels,
+   ``volume_sample_grad_f()`` is equivalent to :func:`~warp.volume_sample_grad` with ``dtype=float``.
+   
+   :returns: The sampled :class:`warp.float32` value.
    
    See :func:`~warp.volume_sample_grad` for a usage example.

@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.Texture &#8212; Warp 1.17.0rc4</title>
+    <title>warp.Texture &#8212; Warp 1.17.0</title>
   
   
   
@@ -70,7 +70,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.17.0rc4" />
+  <meta name="docsearch:version" content="1.17.0" />
   
     
     <script src="../../_static/searchtools.js"></script>
@@ -147,11 +147,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0rc4 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0rc4 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.17.0rc4</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a></div>
     
@@ -291,11 +291,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0rc4 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0rc4 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.17.0rc4</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a>
 
@@ -414,6 +414,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/memory_management.html">Memory Allocation and Access</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/profiling.html">Profiling</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/deterministic_execution.html">Deterministic Execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/reducing_compilation_and_startup_time.html">Reducing Compilation and Startup Time</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/configuration.html">Configuration</a></li>
@@ -520,8 +521,8 @@ linear/bilinear/trilinear interpolation and various addressing modes (wrap, clam
 <p>Supports <code class="docutils literal notranslate"><span class="pre">warp.uint8</span></code>, <code class="docutils literal notranslate"><span class="pre">warp.uint16</span></code>, <code class="docutils literal notranslate"><span class="pre">warp.uint32</span></code>, <code class="docutils literal notranslate"><span class="pre">warp.int8</span></code>, <code class="docutils literal notranslate"><span class="pre">warp.int16</span></code>, <code class="docutils literal notranslate"><span class="pre">warp.int32</span></code>,
 <code class="docutils literal notranslate"><span class="pre">warp.float16</span></code>, and <code class="docutils literal notranslate"><span class="pre">warp.float32</span></code> data types. Unsigned integer textures are read as normalized
 floats in [0, 1]; signed integer textures are normalized to [-1, 1]; float types are returned as-is.
-The CUDA backend does not promote 32-bit integer formats, so <code class="docutils literal notranslate"><span class="pre">warp.uint32</span></code> and <code class="docutils literal notranslate"><span class="pre">warp.int32</span></code>
-textures are normalized only on the CPU backend; see <a class="reference internal" href="../../language_reference/_generated/warp.texture_sample.html#warp._src.lang.texture_sample" title="warp._src.lang.texture_sample"><code class="xref py py-func docutils literal notranslate"><span class="pre">texture_sample()</span></code></a>.</p>
+On CUDA devices, normalized integer sampling is supported only for 8- and 16-bit formats.
+Use an 8- or 16-bit integer or floating-point format when sampling textures on CUDA.</p>
 <p>This class should not be instantiated directly. A specific subclass should be used instead
 (<a class="reference internal" href="warp.Texture1D.html#warp.Texture1D" title="warp.Texture1D"><code class="xref py py-class docutils literal notranslate"><span class="pre">Texture1D</span></code></a>, <a class="reference internal" href="warp.Texture2D.html#warp.Texture2D" title="warp.Texture2D"><code class="xref py py-class docutils literal notranslate"><span class="pre">Texture2D</span></code></a>, or <a class="reference internal" href="warp.Texture3D.html#warp.Texture3D" title="warp.Texture3D"><code class="xref py py-class docutils literal notranslate"><span class="pre">Texture3D</span></code></a>).</p>
 <p>Example:</p>

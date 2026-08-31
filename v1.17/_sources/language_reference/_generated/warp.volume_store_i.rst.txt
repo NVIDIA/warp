@@ -11,7 +11,8 @@
    Store the :class:`warp.int32` ``value`` at the voxel with integer index-space coordinates
    ``i``, ``j``, ``k``.
    
-   Writes only where leaf-level storage exists (see :func:`~warp.volume_store`); a no-op outside
-   allocated leaves or for non-``int32`` volumes. Does not activate voxels. Not differentiable.
+   ``id`` must identify an ``int32`` volume, and the coordinate must have leaf-level storage.
+   The call does not allocate storage or activate voxels. See :func:`~warp.volume_store`.
+   This function is not differentiable.
    
    See :func:`~warp.volume_store` for a usage example.

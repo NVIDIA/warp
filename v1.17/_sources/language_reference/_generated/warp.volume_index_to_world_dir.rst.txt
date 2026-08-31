@@ -13,13 +13,13 @@
    Transform the direction ``uvw`` from the volume's index space to world space using the linear
    part of the volume's affine transform.
    
-   Translation is not applied and the result is not renormalized, so a scaling transform changes the
-   vector's length. For positions, use :func:`~warp.volume_index_to_world` instead.
+   For positions, use :func:`~warp.volume_index_to_world` instead.
    
    :param id: The ``id`` of a :class:`warp.Volume`.
    :param uvw: Direction in index space.
    
-   :returns: The transformed direction in world space with ``float32`` precision.
+   :returns: The transformed direction in world space with ``float32`` precision. Translation is not
+             applied, and the vector is not renormalized, so a scaling transform changes its length.
    
    See :func:`~warp.volume_index_to_world` for a usage example.
 

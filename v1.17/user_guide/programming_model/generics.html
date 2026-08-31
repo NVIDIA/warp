@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Generics &#8212; Warp 1.17.0rc4</title>
+    <title>Generics &#8212; Warp 1.17.0</title>
   
   
   
@@ -70,7 +70,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.17.0rc4" />
+  <meta name="docsearch:version" content="1.17.0" />
   
     
     <script src="../../_static/searchtools.js"></script>
@@ -147,11 +147,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0rc4 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0rc4 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.17.0rc4</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a></div>
     
@@ -291,11 +291,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0rc4 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0rc4 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.17.0rc4</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a>
 
@@ -414,6 +414,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../execution_and_performance/memory_management.html">Memory Allocation and Access</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../execution_and_performance/profiling.html">Profiling</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../execution_and_performance/deterministic_execution.html">Deterministic Execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../execution_and_performance/reducing_compilation_and_startup_time.html">Reducing Compilation and Startup Time</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration</a></li>
@@ -764,7 +765,9 @@ Module __main__ load on device &#39;cuda:0&#39; took 179.49 ms
 <section id="module-reloading-behavior">
 <h3>Module Reloading Behavior<a class="headerlink" href="#module-reloading-behavior" title="Link to this heading">#</a></h3>
 <p>As mentioned in the <a class="reference internal" href="#implicit-instantiation"><span class="std std-ref">implicit instantiation</span></a> section, launching new kernel overloads triggers the recompilation of the kernel module.  This adds overhead and doesn’t play well with Warp’s current kernel caching strategy.  Kernel caching relies on hashing the contents of the module, which includes all the concrete kernels and functions encountered in the Python program so far.  Whenever a new kernel or a new instance of a generic kernel is added, the module needs to be reloaded.  Re-running the Python program leads to the same sequence of kernels being added to the module, which means that implicit instantiation of generic kernels will trigger the same module reloading on every run.  This is clearly not ideal, and we intend to improve this behavior in the future.</p>
-<p>Using <a class="reference internal" href="#explicit-instantiation"><span class="std std-ref">explicit instantiation</span></a> is usually a good workaround for this, as long as the overloads are added in the same order before any kernel launches.</p>
+<p>Using <a class="reference internal" href="#explicit-instantiation"><span class="std std-ref">explicit instantiation</span></a> is usually a good workaround for this, as long as the overloads are added in the same order before any kernel launches.
+For broader guidance on avoiding module reloads and reducing startup latency,
+see <a class="reference internal" href="../execution_and_performance/reducing_compilation_and_startup_time.html"><span class="doc">Reducing Compilation and Startup Time</span></a>.</p>
 <p>Note that this issue is not specific to generic kernels.  Adding new regular kernels to a module can also trigger repetitive module reloading if the kernel definitions are intermixed with kernel launches.  For example:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">foo</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>

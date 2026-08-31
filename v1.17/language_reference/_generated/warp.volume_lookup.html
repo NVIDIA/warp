@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.volume_lookup &#8212; Warp 1.17.0rc4</title>
+    <title>warp.volume_lookup &#8212; Warp 1.17.0</title>
   
   
   
@@ -70,7 +70,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.17.0rc4" />
+  <meta name="docsearch:version" content="1.17.0" />
   
     
     <script src="../../_static/searchtools.js"></script>
@@ -147,11 +147,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0rc4 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0rc4 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.17.0rc4</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a></div>
     
@@ -291,11 +291,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0rc4 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0rc4 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.17.0rc4</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a>
 
@@ -414,6 +414,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/memory_management.html">Memory Allocation and Access</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/profiling.html">Profiling</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/deterministic_execution.html">Deterministic Execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/reducing_compilation_and_startup_time.html">Reducing Compilation and Startup Time</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/configuration.html">Configuration</a></li>
@@ -584,11 +585,8 @@
 </td></tr></table>
 <p>Return the value of type <code class="docutils literal notranslate"><span class="pre">dtype</span></code> stored at the voxel with integer index-space coordinates
 <code class="docutils literal notranslate"><span class="pre">i</span></code>, <code class="docutils literal notranslate"><span class="pre">j</span></code>, <code class="docutils literal notranslate"><span class="pre">k</span></code>, without interpolation.</p>
-<p>The lookup follows NanoVDB value resolution: inactive leaf voxels and internal tiles may carry
-stored inactive values that differ from the grid’s root background value. A location with no
-more specific stored value resolves to the background. The result is <code class="docutils literal notranslate"><span class="pre">0</span></code> if the volume does
-not store values of type <code class="docutils literal notranslate"><span class="pre">dtype</span></code>. Not differentiable; use <a class="reference internal" href="warp.volume_sample.html#warp._src.lang.volume_sample" title="warp._src.lang.volume_sample"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_sample()</span></code></a> for
-interpolated reads of floating-point scalar and vector data.</p>
+<p><code class="docutils literal notranslate"><span class="pre">dtype</span></code> must match the volume’s stored value type. This function is not differentiable; use
+<a class="reference internal" href="warp.volume_sample.html#warp._src.lang.volume_sample" title="warp._src.lang.volume_sample"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_sample()</span></code></a> for interpolated reads of floating-point scalar and vector data.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -600,7 +598,11 @@ interpolated reads of floating-point scalar and vector data.</p>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The resolved voxel value of type <code class="docutils literal notranslate"><span class="pre">dtype</span></code>.</p>
+<dd class="field-even"><p>the stored value, or the volume’s background
+value when the location has no stored value.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The resolved voxel value of type <code class="docutils literal notranslate"><span class="pre">dtype</span></code></p>
 </dd>
 </dl>
 <p class="rubric">Example</p>
