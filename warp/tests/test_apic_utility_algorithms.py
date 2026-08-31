@@ -23,6 +23,7 @@ import unittest
 import numpy as np
 
 import warp as wp
+import warp._src.context as context
 from warp.tests.unittest_utils import add_function_test, get_test_devices
 
 
@@ -182,6 +183,44 @@ def test_capture_with_segmented_sort(test, device):
     np.testing.assert_allclose(values.numpy()[:n], np.arange(n - 1, -1, -1, dtype=np.int32))
 
 
+def test_capture_with_invalid_segmented_sort_range(test, device):
+    """Handle segment offsets that become invalid after graph capture.
+
+    Capture a valid range, then mutate its device-resident end offset before
+    replay. This proves replay reads current metadata: CPU must report the
+    invalid range, while CUDA must treat it as empty and preserve both buffers.
+    """
+    n = 4
+    keys_np = np.array((4, 3, 2, 1, 0, 0, 0, 0), dtype=np.int32)
+    values_np = np.array((40, 30, 20, 10, 0, 0, 0, 0), dtype=np.int32)
+    keys = wp.array(keys_np, dtype=wp.int32, device=device)
+    values = wp.array(values_np, dtype=wp.int32, device=device)
+    segment_starts = wp.array((0,), dtype=wp.int32, device=device)
+    segment_ends = wp.array((n,), dtype=wp.int32, device=device)
+
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.utils.segmented_sort_pairs(keys, values, n, segment_starts, segment_ends)
+
+    keys.assign(keys_np)
+    values.assign(values_np)
+    # Move the end one past ``count`` only after capture so the regression
+    # covers replay-time validation rather than wrapper-time structure checks.
+    segment_ends.assign((n + 1,))
+
+    if device.is_cpu:
+        saved_error_output = context.runtime.core.wp_is_error_output_enabled()
+        context.runtime.core.wp_set_error_output_enabled(False)
+        try:
+            with test.assertRaisesRegex(RuntimeError, r"Invalid segment range at index 0"):
+                wp.capture_launch(capture.graph)
+        finally:
+            context.runtime.core.wp_set_error_output_enabled(saved_error_output)
+    else:
+        wp.capture_launch(capture.graph)
+        np.testing.assert_array_equal(keys.numpy(), keys_np)
+        np.testing.assert_array_equal(values.numpy(), values_np)
+
+
 def test_save_load_segmented_sort(test, device):
     """Re-sort a saved and loaded segmented sort on replay.
 
@@ -255,6 +294,42 @@ def test_save_load_segmented_sort_explicit_end(test, device):
     # [n-1 .. 0] becomes [half .. n-1] for segment 0 and [0 .. half-1] for segment 1.
     expected = np.concatenate([np.arange(half, n, dtype=np.float32), np.arange(0, half, dtype=np.float32)])
     np.testing.assert_allclose(result.numpy()[:n], expected)
+
+
+def test_save_load_segmented_sort_explicit_end_same_base(test, device):
+    """Replay same-base explicit segment views without inferring their relationship.
+
+    Place the explicit start and end in non-adjacent views of one allocation.
+    APIC must use both region identity and pointer offsets when deciding whether
+    an end view was inferred from its start array.
+    """
+    n = 16
+    keys = wp.zeros(2 * n, dtype=wp.float32, device=device)
+    values = wp.zeros(2 * n, dtype=wp.int32, device=device)
+    # Put ``end=n`` at the beginning and ``start=0`` at the final element. Both
+    # views share an APIC region, but treating them as adjacent inferred offsets
+    # would request two integers starting at the allocation's last element.
+    segment_storage = wp.array(np.array([n, 0, 0, 0], dtype=np.int32), device=device)
+    segment_start = segment_storage[3:]
+    segment_end = segment_storage[:1]
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.launch(fill_descending_kernel, dim=n, inputs=[keys, values, n], device=device)
+        wp.utils.segmented_sort_pairs(keys, values, n, segment_start, segment_end)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "segmented_sort_explicit_same_base")
+        wp.capture_save(capture.graph, path, outputs={"keys": keys})
+
+        loaded = wp.capture_load(path, device=device)
+        wp.capture_launch(loaded)
+        wp.synchronize_device(device)
+
+        result = wp.empty(2 * n, dtype=wp.float32, device=device)
+        loaded.get_param("keys", result)
+
+    np.testing.assert_allclose(result.numpy()[:n], np.arange(0, n, dtype=np.float32))
 
 
 def test_capture_with_radix_sort(test, device):
@@ -371,6 +446,12 @@ add_function_test(
 )
 add_function_test(
     TestApicSegmentedSort,
+    "test_capture_with_invalid_segmented_sort_range",
+    test_capture_with_invalid_segmented_sort_range,
+    devices=devices,
+)
+add_function_test(
+    TestApicSegmentedSort,
     "test_save_load_segmented_sort",
     test_save_load_segmented_sort,
     devices=devices,
@@ -379,6 +460,12 @@ add_function_test(
     TestApicSegmentedSort,
     "test_save_load_segmented_sort_explicit_end",
     test_save_load_segmented_sort_explicit_end,
+    devices=devices,
+)
+add_function_test(
+    TestApicSegmentedSort,
+    "test_save_load_segmented_sort_explicit_end_same_base",
+    test_save_load_segmented_sort_explicit_end_same_base,
     devices=devices,
 )
 add_function_test(

@@ -304,26 +304,44 @@ void radix_sort_pairs_host(double* keys, int* values, int n, int begin_bit, int 
     radix_sort_pairs_host(keys, values, n, n, begin_bit, end_bit, sizeof(int));
 }
 
-void segmented_sort_pairs_host(
+template <typename KeyType>
+bool segmented_sort_pairs_host_impl(
+    KeyType* keys, int* values, int n, int* segment_start_indices, int* segment_end_indices, int num_segments
+)
+{
+    for (int i = 0; i < num_segments; ++i) {
+        const int start = segment_start_indices[i];
+        const int end = segment_end_indices[i];
+        if (start < 0 || end < start || end > n) {
+            wp::set_error_string(
+                "Warp sort error: Invalid segment range at index %d: [%d, %d) for count %d", i, start, end, n
+            );
+            return false;
+        }
+    }
+
+    for (int i = 0; i < num_segments; ++i) {
+        const int start = segment_start_indices[i];
+        const int end = segment_end_indices[i];
+        if (start == end)
+            continue;
+        radix_sort_pairs_host(keys + start, values + start, end - start, n, 0, 32, sizeof(int));
+    }
+    return true;
+}
+
+bool segmented_sort_pairs_host(
     float* keys, int* values, int n, int* segment_start_indices, int* segment_end_indices, int num_segments
 )
 {
-    for (int i = 0; i < num_segments; ++i) {
-        const int start = segment_start_indices[i];
-        const int end = segment_end_indices[i];
-        radix_sort_pairs_host(keys + start, values + start, end - start, n, 0, 32, sizeof(int));
-    }
+    return segmented_sort_pairs_host_impl(keys, values, n, segment_start_indices, segment_end_indices, num_segments);
 }
 
-void segmented_sort_pairs_host(
+bool segmented_sort_pairs_host(
     int* keys, int* values, int n, int* segment_start_indices, int* segment_end_indices, int num_segments
 )
 {
-    for (int i = 0; i < num_segments; ++i) {
-        const int start = segment_start_indices[i];
-        const int end = segment_end_indices[i];
-        radix_sort_pairs_host(keys + start, values + start, end - start, n, 0, 32, sizeof(int));
-    }
+    return segmented_sort_pairs_host_impl(keys, values, n, segment_start_indices, segment_end_indices, num_segments);
 }
 
 
@@ -436,7 +454,7 @@ void wp_radix_sort_pairs_double_host(uint64_t keys, uint64_t values, int n, int 
     );
 }
 
-void wp_segmented_sort_pairs_float_host(
+bool wp_segmented_sort_pairs_float_host(
     uint64_t keys,
     uint64_t values,
     int n,
@@ -448,14 +466,14 @@ void wp_segmented_sort_pairs_float_host(
     if (apic_capture_segmented_sort(
             keys, values, n, segment_start_indices, segment_end_indices, num_segments, APIC_TYPE_FLOAT32
         ))
-        return;
-    segmented_sort_pairs_host(
+        return true;
+    return segmented_sort_pairs_host(
         reinterpret_cast<float*>(keys), reinterpret_cast<int*>(values), n,
         reinterpret_cast<int*>(segment_start_indices), reinterpret_cast<int*>(segment_end_indices), num_segments
     );
 }
 
-void wp_segmented_sort_pairs_int_host(
+bool wp_segmented_sort_pairs_int_host(
     uint64_t keys,
     uint64_t values,
     int n,
@@ -467,8 +485,8 @@ void wp_segmented_sort_pairs_int_host(
     if (apic_capture_segmented_sort(
             keys, values, n, segment_start_indices, segment_end_indices, num_segments, APIC_TYPE_INT32
         ))
-        return;
-    segmented_sort_pairs_host(
+        return true;
+    return segmented_sort_pairs_host(
         reinterpret_cast<int*>(keys), reinterpret_cast<int*>(values), n, reinterpret_cast<int*>(segment_start_indices),
         reinterpret_cast<int*>(segment_end_indices), num_segments
     );

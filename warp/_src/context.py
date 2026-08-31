@@ -6930,7 +6930,7 @@ class Runtime:
                 ctypes.c_uint64,
                 ctypes.c_int,
             ]
-            self.core.wp_segmented_sort_pairs_int_host.restype = None
+            self.core.wp_segmented_sort_pairs_int_host.restype = ctypes.c_bool
             self.core.wp_segmented_sort_pairs_int_device.argtypes = [
                 ctypes.c_uint64,
                 ctypes.c_uint64,
@@ -6949,7 +6949,7 @@ class Runtime:
                 ctypes.c_uint64,
                 ctypes.c_int,
             ]
-            self.core.wp_segmented_sort_pairs_float_host.restype = None
+            self.core.wp_segmented_sort_pairs_float_host.restype = ctypes.c_bool
             self.core.wp_segmented_sort_pairs_float_device.argtypes = [
                 ctypes.c_uint64,
                 ctypes.c_uint64,

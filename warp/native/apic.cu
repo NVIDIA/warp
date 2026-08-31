@@ -625,11 +625,12 @@ static bool apic_replay_ops_into_cuda_capture(
             // keys/values buffers span 2*count elements (sort scratch).
             size_t keys_bytes = static_cast<size_t>(2) * rec->count * key_size;
             size_t values_bytes = static_cast<size_t>(2) * rec->count * sizeof(int32_t);
-            // Inferred-end captures alias segment_end into the start array (same
-            // region), so the start region spans num_segments+1 entries; explicit-end
-            // captures use two separate num_segments-entry arrays. Match the
-            // span recorded at capture.
-            bool segments_inferred_end = (rec->segstart_region_id == rec->segend_region_id);
+            // Inferred-end captures alias segment_end one int32 past segment_start.
+            // Explicit views can share a region too, so region identity alone is
+            // insufficient to determine the required start span.
+            bool segments_inferred_end = rec->segstart_region_id == rec->segend_region_id
+                && rec->segend_offset >= rec->segstart_offset
+                && rec->segend_offset - rec->segstart_offset == sizeof(int32_t);
             size_t segstart_bytes
                 = (static_cast<size_t>(rec->num_segments) + (segments_inferred_end ? 1 : 0)) * sizeof(int32_t);
             size_t segend_bytes = static_cast<size_t>(rec->num_segments) * sizeof(int32_t);
