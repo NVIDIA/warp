@@ -5354,6 +5354,10 @@ class indexedarray(noncontiguous_array_base[DType, NDim]):
     def grad(self):
         if self.data is None or self.data.grad is None:
             return None
+        if self.ndim > 1:
+            raise NotImplementedError(
+                "Gradient propagation through indexed arrays is only supported for 1-D indexed arrays"
+            )
         return indexedarray(self.data.grad, self.indices[: self.ndim], ndim=self.ndim)
 
     @property

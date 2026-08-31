@@ -10458,6 +10458,16 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
             if warp.config.launch_array_access_mode != warp.config.LaunchArrayAccessMode.RELAXED:
                 _validate_launch_array_access(kernel, arg_name, value, device)
 
+            # the packed ctype class must match the kernel's declared parameter type:
+            # the CPU launch builds the adjoint argument struct from the packed value
+            # types, and the CUDA launch copies sizeof(declared type) bytes per parameter.
+            # A plain array passed as the gradient of an indexed array is therefore
+            # wrapped in an indexedarray_t with no indices; the adjoint kernel
+            # accumulates at indices already remapped through the forward argument.
+            if adjoint and warp._src.types.matches_array_class(arg_type, warp.indexedarray):
+                if isinstance(value, warp.array):
+                    return warp._src.types.indexedarray_t(value, [None] * value.ndim, value.shape)
+
             return value.__ctype__()
 
     # Handle Texture1D, Texture2D and Texture3D types (when used as type annotations)

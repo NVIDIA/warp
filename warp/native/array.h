@@ -1343,8 +1343,10 @@ adj_address(const indexedarray_t<T>& buf, int i, const indexedarray_t<T>& adj_bu
     else if (buf.arr.grad)
         adj_atomic_add(&index_grad(buf.arr, i), adj_output);
 }
-// indexedarray with a regular-array adjoint (as passed by the CUDA codegen): resolve the
-// index indirection, then accumulate into the base grad or the base array's embedded grad
+// indexedarray with a regular-array adjoint: the CUDA codegen declares the adjoint of an
+// indexedarray parameter as a plain array_t (the base array's gradient), while the CPU
+// codegen reuses the forward parameter type (see the overload above). Resolve the index
+// indirection, then accumulate into the adjoint array or the base array's embedded grad
 template <typename T>
 inline CUDA_CALLABLE void
 adj_address(const indexedarray_t<T>& buf, int i, const array_t<T>& adj_buf, int adj_i, const T& adj_output)
