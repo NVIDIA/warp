@@ -165,6 +165,9 @@
 
 ### Documentation
 
+- Add a guide to reducing compilation and startup time, covering measurement, cache reuse, module organization,
+  parallel and ahead-of-time compilation, and development-time tradeoffs
+  ([GH-1499](https://github.com/NVIDIA/warp/issues/1499)).
 - Document safe `wp.Tape` integration in custom `torch.autograd.Function` implementations,
   including zero-copy tensor aliasing, external gradient-buffer ownership, repeated backward calls, `gradcheck`,
   and CUDA stream handling ([GH-1737](https://github.com/NVIDIA/warp/issues/1737)).
