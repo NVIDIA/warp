@@ -1,7 +1,7 @@
 ﻿warp.tile\_load
 ===============
 
-.. function:: warp._src.lang.tile_load(a: Array[Any], shape: tuple[int, ...], offset: tuple[int, ...], storage: str, bounds_check: bool, aligned: bool) -> Tile[Any, tuple[int, ...]]
+.. function:: warp._src.lang.tile_load(a: Array[Any], shape: tuple[int, ...], offset: tuple[int, ...] = ..., storage: str = "register", bounds_check: bool = True, aligned: bool = False) -> Tile[Any, tuple[int, ...]]
 
    .. hlist::
       :columns: 8
@@ -16,8 +16,8 @@
    :param a: The source array in global memory
    :param shape: Shape of the tile to load, must have the same number of dimensions as ``a``
    :param offset: Offset in the source array to begin reading from (optional)
-   :param storage: The storage location for the tile: ``"register"`` for registers
-                   (default) or ``"shared"`` for shared memory.
+   :param storage: The storage location for the tile: ``"register"`` for registers or
+                   ``"shared"`` for shared memory.
    :param bounds_check: Needed for unaligned tiles, but can disable for memory-aligned tiles for faster load times
    :param aligned: If True, skip runtime alignment checks for vectorized loads (shared memory,
                    2D+ tiles only). Has no effect for 1D tiles or register storage. Use when you
@@ -31,7 +31,7 @@
    :returns: A tile with shape as specified and data type the same as the source array.
    
 
-.. function:: warp._src.lang.tile_load(a: Array[Any], shape: int32, offset: int32, storage: str, bounds_check: bool, aligned: bool) -> Tile[Any, tuple[int, ...]]
+.. function:: warp._src.lang.tile_load(a: Array[Any], shape: int32, offset: int32 = ..., storage: str = "register", bounds_check: bool = True, aligned: bool = False) -> Tile[Any, tuple[int, ...]]
    :noindex:
 
    .. hlist::

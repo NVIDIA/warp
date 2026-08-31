@@ -1,7 +1,7 @@
 ﻿warp.mesh\_query\_point\_sign\_parity
 =====================================
 
-.. function:: warp._src.lang.mesh_query_point_sign_parity(id: uint64, point: vec3f, max_dist: float32, n_sample: int32, perturbation_scale: float32) -> MeshQueryPoint
+.. function:: warp._src.lang.mesh_query_point_sign_parity(id: uint64, point: vec3f, max_dist: float32, n_sample: int32 = 1, perturbation_scale: float32 = 0.1) -> MeshQueryPoint
 
    .. hlist::
       :columns: 8

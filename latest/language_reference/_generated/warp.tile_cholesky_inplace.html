@@ -558,7 +558,7 @@
 
 <dl>
 <dd><em class="sig-param"><span class="n"><span class="pre">A</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tile</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../api_reference/_generated/warp.Float.html#warp.Float" title="warp.Float"><span class="pre">Float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">fill_mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">fill_mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'lower'</span></span></em>,</dd>
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#warp._src.lang.tile_cholesky_inplace" title="Link to this definition">#</a></dt>
@@ -581,7 +581,7 @@
 </ul>
 </td></tr></table>
 <p>Compute the Cholesky factorization of a symmetric positive-definite matrix <code class="docutils literal notranslate"><span class="pre">A</span></code> inplace.</p>
-<p>When <code class="docutils literal notranslate"><span class="pre">fill_mode=&quot;lower&quot;</span></code> (default), the lower triangle of <code class="docutils literal notranslate"><span class="pre">A</span></code> is replaced by <code class="docutils literal notranslate"><span class="pre">L</span></code>
+<p>When <code class="docutils literal notranslate"><span class="pre">fill_mode=&quot;lower&quot;</span></code>, the lower triangle of <code class="docutils literal notranslate"><span class="pre">A</span></code> is replaced by <code class="docutils literal notranslate"><span class="pre">L</span></code>
 such that <code class="docutils literal notranslate"><span class="pre">LL^T</span> <span class="pre">=</span> <span class="pre">A</span></code>; the upper triangle is set to zero.
 When <code class="docutils literal notranslate"><span class="pre">fill_mode=&quot;upper&quot;</span></code>, the upper triangle of <code class="docutils literal notranslate"><span class="pre">A</span></code> is replaced by <code class="docutils literal notranslate"><span class="pre">U</span></code>
 such that <code class="docutils literal notranslate"><span class="pre">U^T</span> <span class="pre">U</span> <span class="pre">=</span> <span class="pre">A</span></code>; the lower triangle is set to zero.</p>
@@ -599,7 +599,7 @@ but offers improved performance and uses half the shared memory compared to the 
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>A</strong> – A square, symmetric positive-definite matrix.</p></li>
-<li><p><strong>fill_mode</strong> – <code class="docutils literal notranslate"><span class="pre">&quot;lower&quot;</span></code> (default) or <code class="docutils literal notranslate"><span class="pre">&quot;upper&quot;</span></code>. Must be a compile-time constant.</p></li>
+<li><p><strong>fill_mode</strong> – <code class="docutils literal notranslate"><span class="pre">&quot;lower&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;upper&quot;</span></code>. Must be a compile-time constant.</p></li>
 </ul>
 </dd>
 </dl>

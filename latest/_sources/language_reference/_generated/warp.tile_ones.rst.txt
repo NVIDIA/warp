@@ -1,7 +1,7 @@
 ﻿warp.tile\_ones
 ===============
 
-.. function:: warp._src.lang.tile_ones(shape: tuple[int, ...], dtype: Any, storage: str) -> Tile[Any, tuple[int, ...]]
+.. function:: warp._src.lang.tile_ones(shape: tuple[int, ...], dtype: Any, storage: str = "register") -> Tile[Any, tuple[int, ...]]
 
    .. hlist::
       :columns: 8
@@ -12,13 +12,13 @@
    
    :param shape: Shape of the output tile
    :param dtype: Data type of output tile's elements
-   :param storage: The storage location for the tile: ``"register"`` for registers
-                   (default) or ``"shared"`` for shared memory.
+   :param storage: The storage location for the tile: ``"register"`` for registers or
+                   ``"shared"`` for shared memory.
    
    :returns: A one-initialized tile with shape and data type as specified.
    
 
-.. function:: warp._src.lang.tile_ones(shape: int32, dtype: Any, storage: str) -> Tile[Any, tuple[int, ...]]
+.. function:: warp._src.lang.tile_ones(shape: int32, dtype: Any, storage: str = "register") -> Tile[Any, tuple[int, ...]]
    :noindex:
 
    .. hlist::

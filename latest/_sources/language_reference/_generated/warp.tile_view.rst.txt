@@ -1,7 +1,7 @@
 ﻿warp.tile\_view
 ===============
 
-.. function:: warp._src.lang.tile_view(t: Tile[Any, tuple[int, ...]], offset: tuple, shape: tuple[int, ...]) -> Tile[Any, tuple[int, ...]]
+.. function:: warp._src.lang.tile_view(t: Tile[Any, tuple[int, ...]], offset: tuple, shape: tuple[int, ...] = ...) -> Tile[Any, tuple[int, ...]]
 
    .. hlist::
       :columns: 8

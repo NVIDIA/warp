@@ -1,7 +1,7 @@
 ﻿warp.bvh\_query\_ray
 ====================
 
-.. function:: warp._src.lang.bvh_query_ray(id: uint64, start: vec3f, dir: vec3f, root: int32) -> _BvhQueryRay
+.. function:: warp._src.lang.bvh_query_ray(id: uint64, start: vec3f, dir: vec3f, root: int32 = -1) -> _BvhQueryRay
 
    .. hlist::
       :columns: 8
@@ -19,13 +19,13 @@
    use :func:`bvh_query_capsule` instead.
    
    To restrict traversal to a subtree, set ``root`` to that node's index (for a grouped BVH the
-   group root is obtained from :func:`bvh_get_group_root`). If ``root`` is -1 (default),
+   group root is obtained from :func:`bvh_get_group_root`). If ``root`` is -1,
    traversal starts at the BVH's global root.
    
    :param id: The BVH identifier
    :param start: The ray origin, in BVH space
-   :param dir: The ray direction, in BVH space (normalize for ``max_dist`` to be a world-space distance)
-   :param root: The node to begin the query from, or -1 (default) for the BVH's global root
+   :param dir: The ray direction, in BVH space (see above on normalization)
+   :param root: The node to begin the query from, or -1 for the BVH's global root
    
    :returns: A :class:`warp.BvhQuery`. It is opaque; pass it to :func:`bvh_query_next`, which writes
              the index of each intersected item (an index into the arrays passed to :class:`warp.Bvh`)

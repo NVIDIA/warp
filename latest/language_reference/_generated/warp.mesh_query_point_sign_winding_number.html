@@ -560,8 +560,8 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.uint64.html#warp.uint64" title="warp.uint64"><span class="pre">uint64</span></a></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">point</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.vec3f.html#warp.vec3f" title="warp.vec3f"><span class="pre">vec3f</span></a></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">max_dist</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">accuracy</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">accuracy</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">2.0</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.5</span></span></em>,</dd>
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../../api_reference/_generated/warp.MeshQueryPoint.html#warp.MeshQueryPoint" title="warp.MeshQueryPoint"><span class="pre">MeshQueryPoint</span></a></span></span><a class="headerlink" href="#warp._src.lang.mesh_query_point_sign_winding_number" title="Link to this definition">#</a></dt>
@@ -607,8 +607,8 @@ constraint. If every face satisfying the distance constraint is excluded, the qu
 <li><p><strong>id</strong> – The mesh identifier</p></li>
 <li><p><strong>point</strong> – The query point, in the mesh’s local space</p></li>
 <li><p><strong>max_dist</strong> – Maximum allowed distance to the returned closest point. The query returns no result if no face is strictly closer than this distance.</p></li>
-<li><p><strong>accuracy</strong> – Accuracy for computing the winding number with fast winding number method utilizing second-order dipole approximation, default 2.0</p></li>
-<li><p><strong>threshold</strong> – The threshold of the winding number to be considered inside, default 0.5.</p></li>
+<li><p><strong>accuracy</strong> – Accuracy for computing the winding number with fast winding number method utilizing second-order dipole approximation</p></li>
+<li><p><strong>threshold</strong> – The threshold of the winding number to be considered inside.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>

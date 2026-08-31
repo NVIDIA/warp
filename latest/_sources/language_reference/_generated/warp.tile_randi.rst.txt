@@ -1,7 +1,7 @@
 ﻿warp.tile\_randi
 ================
 
-.. function:: warp._src.lang.tile_randi(shape: tuple[int, ...], rng: uint32, storage: str) -> Tile[Any, tuple[int, ...]]
+.. function:: warp._src.lang.tile_randi(shape: tuple[int, ...], rng: uint32, storage: str = "register") -> Tile[Any, tuple[int, ...]]
 
    .. hlist::
       :columns: 8
@@ -12,8 +12,8 @@
    
    :param shape: Shape of the output tile
    :param rng: Random number generator state, typically from :func:`~warp._src.lang.rand_init`
-   :param storage: The storage location for the tile: ``"register"`` for registers
-                   (default) or ``"shared"`` for shared memory.
+   :param storage: The storage location for the tile: ``"register"`` for registers or
+                   ``"shared"`` for shared memory.
    
    :returns: A tile of random integers with the specified shape.
    
@@ -44,7 +44,7 @@
         [-2096177388 -1835610841  1159339128  -652221052]]
    
 
-.. function:: warp._src.lang.tile_randi(shape: int32, rng: uint32, storage: str) -> Tile[Any, tuple[int, ...]]
+.. function:: warp._src.lang.tile_randi(shape: int32, rng: uint32, storage: str = "register") -> Tile[Any, tuple[int, ...]]
    :noindex:
 
    .. hlist::
@@ -54,7 +54,7 @@
 
    Generate a tile of random integers.
 
-.. function:: warp._src.lang.tile_randi(shape: tuple[int, ...], rng: uint32, min: int32, max: int32, storage: str) -> Tile[Any, tuple[int, ...]]
+.. function:: warp._src.lang.tile_randi(shape: tuple[int, ...], rng: uint32, min: int32, max: int32, storage: str = "register") -> Tile[Any, tuple[int, ...]]
    :noindex:
 
    .. hlist::
@@ -70,8 +70,8 @@
    :param rng: Random number generator state, typically from :func:`~warp._src.lang.rand_init`
    :param min: Minimum value (inclusive) for random integers
    :param max: Maximum value (exclusive) for random integers
-   :param storage: The storage location for the tile: ``"register"`` for registers
-                   (default) or ``"shared"`` for shared memory.
+   :param storage: The storage location for the tile: ``"register"`` for registers or
+                   ``"shared"`` for shared memory.
    
    :returns: A tile of random integers in the range [min, max) with the specified shape.
    
@@ -102,7 +102,7 @@
         [ 3  0  3 -1]]
    
 
-.. function:: warp._src.lang.tile_randi(shape: int32, rng: uint32, min: int32, max: int32, storage: str) -> Tile[Any, tuple[int, ...]]
+.. function:: warp._src.lang.tile_randi(shape: int32, rng: uint32, min: int32, max: int32, storage: str = "register") -> Tile[Any, tuple[int, ...]]
    :noindex:
 
    .. hlist::

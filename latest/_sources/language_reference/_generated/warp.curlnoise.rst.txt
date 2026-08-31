@@ -1,7 +1,7 @@
 ﻿warp.curlnoise
 ==============
 
-.. function:: warp._src.lang.curlnoise(state: uint32, xy: vec2f, octaves: uint32, lacunarity: float32, gain: float32) -> vec2f
+.. function:: warp._src.lang.curlnoise(state: uint32, xy: vec2f, octaves: uint32 = uint32(1), lacunarity: float32 = 2.0, gain: float32 = 0.5) -> vec2f
 
    .. hlist::
       :columns: 8
@@ -55,7 +55,7 @@
        [[0.628, 0.514], [1.256, 2.003]]
    
 
-.. function:: warp._src.lang.curlnoise(state: uint32, xyz: vec3f, octaves: uint32, lacunarity: float32, gain: float32) -> vec3f
+.. function:: warp._src.lang.curlnoise(state: uint32, xyz: vec3f, octaves: uint32 = uint32(1), lacunarity: float32 = 2.0, gain: float32 = 0.5) -> vec3f
    :noindex:
 
    .. hlist::
@@ -79,7 +79,7 @@
    :returns: A divergence-free 3D vector at ``xyz``. Not normalized.
    
 
-.. function:: warp._src.lang.curlnoise(state: uint32, xyzt: vec4f, octaves: uint32, lacunarity: float32, gain: float32) -> vec3f
+.. function:: warp._src.lang.curlnoise(state: uint32, xyzt: vec4f, octaves: uint32 = uint32(1), lacunarity: float32 = 2.0, gain: float32 = 0.5) -> vec3f
    :noindex:
 
    .. hlist::

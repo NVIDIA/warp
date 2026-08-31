@@ -1,7 +1,7 @@
 ﻿warp.transformation
 ===================
 
-.. function:: warp._src.lang.transformation(p: Vector[Float, Literal[3]], q: Quaternion[Float], dtype: Float) -> Transformation[Float]
+.. function:: warp._src.lang.transformation(p: Vector[Float, Literal[3]], q: Quaternion[Float] = ..., dtype: Float = ...) -> Transformation[Float]
 
    .. hlist::
       :columns: 8
@@ -13,7 +13,7 @@
    
    Use translation ``p`` and rotation ``q``.
 
-.. function:: warp._src.lang.transformation(*args: Float, dtype: Float) -> Transformation[Float]
+.. function:: warp._src.lang.transformation(*args: Float, dtype: Float = ...) -> Transformation[Float]
    :noindex:
 
    .. hlist::

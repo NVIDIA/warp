@@ -1,7 +1,7 @@
 ﻿warp.tile\_arange
 =================
 
-.. function:: warp._src.lang.tile_arange(*args: Scalar, dtype: Scalar, storage: str) -> Tile[Scalar, tuple[int]]
+.. function:: warp._src.lang.tile_arange(*args: Scalar, dtype: Scalar = ..., storage: str = "register") -> Tile[float32, tuple[int]]
 
    .. hlist::
       :columns: 8
@@ -15,9 +15,9 @@
    - ``(start, stop, step)``: Generates values from ``start`` to ``stop - 1`` with a step size
    
    :param args: Variable-length positional arguments, interpreted as:
-   :param dtype: Data type of output tile's elements (optional, default: ``float``)
-   :param storage: The storage location for the tile: ``"register"`` for registers
-                   (default) or ``"shared"`` for shared memory.
+   :param dtype: Data type of output tile's elements (``float`` if not provided)
+   :param storage: The storage location for the tile: ``"register"`` for registers or
+                   ``"shared"`` for shared memory.
    
    :returns: A tile with ``shape=(n)`` with linearly spaced elements of specified data type.
    

@@ -1,7 +1,7 @@
 ﻿warp.tile
 =========
 
-.. function:: warp._src.lang.tile(x: Any, preserve_type: bool) -> Tile[Any, tuple]
+.. function:: warp._src.lang.tile(x: Any, preserve_type: bool = False) -> Tile[Any, tuple]
 
    .. hlist::
       :columns: 8

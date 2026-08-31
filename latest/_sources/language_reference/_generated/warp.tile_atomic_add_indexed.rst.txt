@@ -1,7 +1,7 @@
 ﻿warp.tile\_atomic\_add\_indexed
 ===============================
 
-.. function:: warp._src.lang.tile_atomic_add_indexed(a: Array[Any], indices: Tile[int32, tuple[int]], t: Tile[Any, tuple[int, ...]], offset: tuple[int, ...], axis: int32) -> Tile[Any, tuple[int, ...]]
+.. function:: warp._src.lang.tile_atomic_add_indexed(a: Array[Any], indices: Tile[int32, tuple[int]], t: Tile[Any, tuple[int, ...]], offset: tuple[int, ...] = ..., axis: int32 = 0) -> Tile[Any, tuple[int, ...]]
 
    .. hlist::
       :columns: 8

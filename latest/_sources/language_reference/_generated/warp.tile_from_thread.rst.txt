@@ -1,7 +1,7 @@
 ﻿warp.tile\_from\_thread
 =======================
 
-.. function:: warp._src.lang.tile_from_thread(shape: tuple[int, ...], value: Any, thread_idx: int32, storage: str) -> Tile[Any, tuple[int, ...]]
+.. function:: warp._src.lang.tile_from_thread(shape: tuple[int, ...], value: Any, thread_idx: int32, storage: str = "register") -> Tile[Any, tuple[int, ...]]
 
    .. hlist::
       :columns: 8
@@ -18,8 +18,8 @@
    :param shape: Shape of the output tile
    :param value: Per-thread value (only the value from ``thread_idx`` is used)
    :param thread_idx: Index of the thread whose value should fill the tile
-   :param storage: The storage location for the tile: ``"register"`` for registers
-                   (default) or ``"shared"`` for shared memory.
+   :param storage: The storage location for the tile: ``"register"`` for registers or
+                   ``"shared"`` for shared memory.
    
    :returns: A tile filled with the value from the specified thread.
    
@@ -70,7 +70,7 @@
    differences that affect portable tile code.
    
 
-.. function:: warp._src.lang.tile_from_thread(shape: int32, value: Any, thread_idx: int32, storage: str) -> Tile[Any, tuple[int, ...]]
+.. function:: warp._src.lang.tile_from_thread(shape: int32, value: Any, thread_idx: int32, storage: str = "register") -> Tile[Any, tuple[int, ...]]
    :noindex:
 
    .. hlist::

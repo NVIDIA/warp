@@ -1,7 +1,7 @@
 ﻿warp.tile\_load\_indexed
 ========================
 
-.. function:: warp._src.lang.tile_load_indexed(a: Array[Any], indices: Tile[int32, tuple[int]], shape: tuple[int, ...], offset: tuple[int, ...], axis: int32, storage: str) -> Tile[Any, tuple[int, ...]]
+.. function:: warp._src.lang.tile_load_indexed(a: Array[Any], indices: Tile[int32, tuple[int]], shape: tuple[int, ...], offset: tuple[int, ...] = ..., axis: int32 = 0, storage: str = "register") -> Tile[Any, tuple[int, ...]]
 
    .. hlist::
       :columns: 8
@@ -16,7 +16,7 @@
    :param shape: Shape of the tile to load, must have the same number of dimensions as ``a``, and along ``axis``, it must have the same number of elements as the ``indices`` tile.
    :param offset: Offset in the source array to begin reading from (optional)
    :param axis: Axis of ``a`` that indices refer to
-   :param storage: The storage location for the tile: ``"register"`` for registers (default) or ``"shared"`` for shared memory.
+   :param storage: The storage location for the tile: ``"register"`` for registers or ``"shared"`` for shared memory.
    
    :returns: A tile with shape as specified and data type the same as the source array.
    

@@ -1,7 +1,7 @@
 ﻿warp.expect\_near
 =================
 
-.. function:: warp._src.lang.expect_near(a: Float, b: Float, tolerance: Float) -> None
+.. function:: warp._src.lang.expect_near(a: Float, b: Float, tolerance: Float = 1e-06) -> None
 
    .. hlist::
       :columns: 8
@@ -13,7 +13,7 @@
    
    Compare scalar values.
 
-.. function:: warp._src.lang.expect_near(a: Vector[Float, Any], b: Vector[Float, Any], tolerance: Float) -> None
+.. function:: warp._src.lang.expect_near(a: Vector[Float, Any], b: Vector[Float, Any], tolerance: Float = 1e-06) -> None
    :noindex:
 
    .. hlist::
@@ -26,7 +26,7 @@
    
    Compare each vector element.
 
-.. function:: warp._src.lang.expect_near(a: Quaternion[Float], b: Quaternion[Float], tolerance: Float) -> None
+.. function:: warp._src.lang.expect_near(a: Quaternion[Float], b: Quaternion[Float], tolerance: Float = 1e-06) -> None
    :noindex:
 
    .. hlist::
@@ -39,7 +39,7 @@
    
    Compare each quaternion component.
 
-.. function:: warp._src.lang.expect_near(a: Matrix[Float, Any, Any], b: Matrix[Float, Any, Any], tolerance: Float) -> None
+.. function:: warp._src.lang.expect_near(a: Matrix[Float, Any, Any], b: Matrix[Float, Any, Any], tolerance: Float = 1e-06) -> None
    :noindex:
 
    .. hlist::

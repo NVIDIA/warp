@@ -560,7 +560,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.uint64.html#warp.uint64" title="warp.uint64"><span class="pre">uint64</span></a></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.vec3f.html#warp.vec3f" title="warp.vec3f"><span class="pre">vec3f</span></a></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.vec3f.html#warp.vec3f" title="warp.vec3f"><span class="pre">vec3f</span></a></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">-1</span></span></em>,</dd>
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">_BvhQueryRay</span></span></span><a class="headerlink" href="#warp._src.lang.bvh_query_ray" title="Link to this definition">#</a></dt>
@@ -591,15 +591,15 @@ but the <code class="docutils literal notranslate"><span class="pre">max_dist</s
 so normalize it for <code class="docutils literal notranslate"><span class="pre">max_dist</span></code> to be a distance in BVH-space units. For capsule sweeps
 use <a class="reference internal" href="warp.bvh_query_capsule.html#warp._src.lang.bvh_query_capsule" title="warp._src.lang.bvh_query_capsule"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_capsule()</span></code></a> instead.</p>
 <p>To restrict traversal to a subtree, set <code class="docutils literal notranslate"><span class="pre">root</span></code> to that node’s index (for a grouped BVH the
-group root is obtained from <a class="reference internal" href="warp.bvh_get_group_root.html#warp._src.lang.bvh_get_group_root" title="warp._src.lang.bvh_get_group_root"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_get_group_root()</span></code></a>). If <code class="docutils literal notranslate"><span class="pre">root</span></code> is -1 (default),
+group root is obtained from <a class="reference internal" href="warp.bvh_get_group_root.html#warp._src.lang.bvh_get_group_root" title="warp._src.lang.bvh_get_group_root"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_get_group_root()</span></code></a>). If <code class="docutils literal notranslate"><span class="pre">root</span></code> is -1,
 traversal starts at the BVH’s global root.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>id</strong> – The BVH identifier</p></li>
 <li><p><strong>start</strong> – The ray origin, in BVH space</p></li>
-<li><p><strong>dir</strong> – The ray direction, in BVH space (normalize for <code class="docutils literal notranslate"><span class="pre">max_dist</span></code> to be a world-space distance)</p></li>
-<li><p><strong>root</strong> – The node to begin the query from, or -1 (default) for the BVH’s global root</p></li>
+<li><p><strong>dir</strong> – The ray direction, in BVH space (see above on normalization)</p></li>
+<li><p><strong>root</strong> – The node to begin the query from, or -1 for the BVH’s global root</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>

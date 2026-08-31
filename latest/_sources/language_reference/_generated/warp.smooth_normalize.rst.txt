@@ -1,7 +1,7 @@
 ﻿warp.smooth\_normalize
 ======================
 
-.. function:: warp._src.lang.smooth_normalize(v: Any, delta: float) -> Any
+.. function:: warp._src.lang.smooth_normalize(v: Any, delta: float = 1.0) -> Any
 
    .. hlist::
       :columns: 8
@@ -18,7 +18,7 @@
    
    :param v: The vector to normalize.
    :type v: Vector[Float, Any]
-   :param delta: The threshold value, defaults to 1.0.
+   :param delta: The threshold value.
    :type delta: float
    
    :returns: The normalized vector.

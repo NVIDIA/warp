@@ -1,7 +1,7 @@
 ﻿warp.quat\_identity
 ===================
 
-.. function:: warp._src.lang.quat_identity(dtype: Float) -> quatf
+.. function:: warp._src.lang.quat_identity(dtype: Float = ...) -> quatf
 
    .. hlist::
       :columns: 8

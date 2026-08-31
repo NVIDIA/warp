@@ -1,7 +1,7 @@
 ﻿warp.tile\_scatter\_add
 =======================
 
-.. function:: warp._src.lang.tile_scatter_add(a: Tile[Any, tuple[int, ...]], i: int32, value: Any, has_value: bool, atomic: bool) -> None
+.. function:: warp._src.lang.tile_scatter_add(a: Tile[Any, tuple[int, ...]], i: int32, value: Any, has_value: bool, atomic: bool = True) -> None
 
    .. hlist::
       :columns: 8
@@ -21,7 +21,7 @@
    :param i: Index of the element to add to.
    :param value: The value to add (must match the tile's dtype).
    :param has_value: Whether this thread should perform the add.
-   :param atomic: If True (default), use atomic add for safe concurrent writes.
+   :param atomic: If True, use atomic add for safe concurrent writes.
                   Set to False when indices are guaranteed unique across threads
                   (e.g., lane-parallel writes) for better performance.
    
@@ -50,7 +50,7 @@
        [2. 2. 2. 2.]
    
 
-.. function:: warp._src.lang.tile_scatter_add(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, value: Any, has_value: bool, atomic: bool) -> None
+.. function:: warp._src.lang.tile_scatter_add(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, value: Any, has_value: bool, atomic: bool = True) -> None
    :noindex:
 
    .. hlist::
@@ -61,7 +61,7 @@
 
    
 
-.. function:: warp._src.lang.tile_scatter_add(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32, value: Any, has_value: bool, atomic: bool) -> None
+.. function:: warp._src.lang.tile_scatter_add(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32, value: Any, has_value: bool, atomic: bool = True) -> None
    :noindex:
 
    .. hlist::
@@ -72,7 +72,7 @@
 
    
 
-.. function:: warp._src.lang.tile_scatter_add(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32, l: int32, value: Any, has_value: bool, atomic: bool) -> None
+.. function:: warp._src.lang.tile_scatter_add(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32, l: int32, value: Any, has_value: bool, atomic: bool = True) -> None
    :noindex:
 
    .. hlist::

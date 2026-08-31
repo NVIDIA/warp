@@ -1,7 +1,7 @@
 ﻿warp.tile\_squeeze
 ==================
 
-.. function:: warp._src.lang.tile_squeeze(t: Tile[Any, tuple[int, ...]], axis: tuple[int, ...]) -> Tile[Any, tuple[int, ...]]
+.. function:: warp._src.lang.tile_squeeze(t: Tile[Any, tuple[int, ...]], axis: tuple[int, ...] = ...) -> Tile[Any, tuple[int, ...]]
 
    .. hlist::
       :columns: 8

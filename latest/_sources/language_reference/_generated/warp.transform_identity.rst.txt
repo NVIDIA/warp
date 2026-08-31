@@ -1,7 +1,7 @@
 ﻿warp.transform\_identity
 ========================
 
-.. function:: warp._src.lang.transform_identity(dtype: Float) -> transformf
+.. function:: warp._src.lang.transform_identity(dtype: Float = ...) -> transformf
 
    .. hlist::
       :columns: 8

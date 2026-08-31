@@ -1,7 +1,7 @@
 ﻿warp.tile\_store
 ================
 
-.. function:: warp._src.lang.tile_store(a: Array[Any], t: Tile[Any, tuple[int, ...]], offset: tuple[int, ...], bounds_check: bool, aligned: bool) -> None
+.. function:: warp._src.lang.tile_store(a: Array[Any], t: Tile[Any, tuple[int, ...]], offset: tuple[int, ...] = ..., bounds_check: bool = True, aligned: bool = False) -> None
 
    .. hlist::
       :columns: 8
@@ -27,7 +27,7 @@
                    release builds they cause silent data corruption.
    
 
-.. function:: warp._src.lang.tile_store(a: Array[Any], t: Tile[Any, tuple[int, ...]], offset: int32, bounds_check: bool, aligned: bool) -> None
+.. function:: warp._src.lang.tile_store(a: Array[Any], t: Tile[Any, tuple[int, ...]], offset: int32 = ..., bounds_check: bool = True, aligned: bool = False) -> None
    :noindex:
 
    .. hlist::

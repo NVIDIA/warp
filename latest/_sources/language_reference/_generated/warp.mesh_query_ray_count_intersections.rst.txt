@@ -1,7 +1,7 @@
 ﻿warp.mesh\_query\_ray\_count\_intersections
 ===========================================
 
-.. function:: warp._src.lang.mesh_query_ray_count_intersections(id: uint64, start: vec3f, dir: vec3f, root: int32) -> int
+.. function:: warp._src.lang.mesh_query_ray_count_intersections(id: uint64, start: vec3f, dir: vec3f, root: int32 = -1) -> int
 
    .. hlist::
       :columns: 8
@@ -19,12 +19,12 @@
    
    The ``root`` parameter can be obtained using the :func:`mesh_get_group_root` function when creating a grouped mesh.
    When ``root`` is a valid (>=0) value, the traversal will be confined to the subtree starting from the root.
-   If ``root`` is -1 (default), traversal starts at the mesh's global root.
+   If ``root`` is -1, traversal starts at the mesh's global root.
    
    :param id: The mesh identifier
    :param start: The ray origin, in the mesh's local space
    :param dir: The ray direction, in the mesh's local space (only its direction matters; the count is independent of its length)
-   :param root: The root node index for grouped BVH queries, or -1 for global root (optional, default: -1)
+   :param root: The root node index for grouped BVH queries, or -1 for global root
    
    :returns: The number of intersections (with ``t >= 0``) between the ray and the mesh.
    

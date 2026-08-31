@@ -1,7 +1,7 @@
 ﻿warp.tile\_atomic\_add
 ======================
 
-.. function:: warp._src.lang.tile_atomic_add(a: Array[Any], t: Tile[Any, tuple[int, ...]], offset: tuple[int, ...], bounds_check: bool) -> Tile[Any, tuple[int, ...]]
+.. function:: warp._src.lang.tile_atomic_add(a: Array[Any], t: Tile[Any, tuple[int, ...]], offset: tuple[int, ...] = ..., bounds_check: bool = True) -> Tile[Any, tuple[int, ...]]
 
    .. hlist::
       :columns: 8
@@ -21,7 +21,7 @@
    :returns: A tile with the same dimensions and data type as the source tile, holding the original value of the destination elements.
    
 
-.. function:: warp._src.lang.tile_atomic_add(a: Array[Any], t: Tile[Any, tuple[int, ...]], offset: int32, bounds_check: bool) -> Tile[Any, tuple[int, ...]]
+.. function:: warp._src.lang.tile_atomic_add(a: Array[Any], t: Tile[Any, tuple[int, ...]], offset: int32 = ..., bounds_check: bool = True) -> Tile[Any, tuple[int, ...]]
    :noindex:
 
    .. hlist::

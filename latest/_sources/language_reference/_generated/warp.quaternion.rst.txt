@@ -1,7 +1,7 @@
 ﻿warp.quaternion
 ===============
 
-.. function:: warp._src.lang.quaternion(dtype: Float) -> Quaternion[Float]
+.. function:: warp._src.lang.quaternion(dtype: Float = ...) -> Quaternion[Float]
 
    .. hlist::
       :columns: 8
@@ -14,7 +14,7 @@
    Zero-initialize the quaternion. Quaternions are laid out as
    ``[ix, iy, iz, r]``, where ``ix``, ``iy``, ``iz`` are the imaginary part, and ``r`` the real part.
 
-.. function:: warp._src.lang.quaternion(x: Float, y: Float, z: Float, w: Float, dtype: Scalar) -> Quaternion[Float]
+.. function:: warp._src.lang.quaternion(x: Float, y: Float, z: Float, w: Float, dtype: Float = ...) -> Quaternion[Float]
    :noindex:
 
    .. hlist::
@@ -27,7 +27,7 @@
    
    Use the supplied components (type inferred from component type).
 
-.. function:: warp._src.lang.quaternion(ijk: Vector[Float, Literal[3]], real: Float, dtype: Float) -> Quaternion[Float]
+.. function:: warp._src.lang.quaternion(ijk: Vector[Float, Literal[3]], real: Float, dtype: Float = ...) -> Quaternion[Float]
    :noindex:
 
    .. hlist::
@@ -40,7 +40,7 @@
    
    Use the supplied vector/scalar (type inferred from scalar type).
 
-.. function:: warp._src.lang.quaternion(quat: Quaternion[Float], dtype: Float) -> Quaternion[Float]
+.. function:: warp._src.lang.quaternion(quat: Quaternion[Float], dtype: Float = ...) -> Quaternion[Float]
    :noindex:
 
    .. hlist::

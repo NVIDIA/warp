@@ -560,7 +560,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.uint64.html#warp.uint64" title="warp.uint64"><span class="pre">uint64</span></a></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.vec3f.html#warp.vec3f" title="warp.vec3f"><span class="pre">vec3f</span></a></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.vec3f.html#warp.vec3f" title="warp.vec3f"><span class="pre">vec3f</span></a></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">-1</span></span></em>,</dd>
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#warp._src.lang.mesh_query_ray_count_intersections" title="Link to this definition">#</a></dt>
@@ -590,14 +590,14 @@ traversing to count all intersections along the entire ray.</p>
 An odd number of intersections indicates the origin is inside the mesh, while an even number indicates it is outside.</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">root</span></code> parameter can be obtained using the <a class="reference internal" href="warp.mesh_get_group_root.html#warp._src.lang.mesh_get_group_root" title="warp._src.lang.mesh_get_group_root"><code class="xref py py-func docutils literal notranslate"><span class="pre">mesh_get_group_root()</span></code></a> function when creating a grouped mesh.
 When <code class="docutils literal notranslate"><span class="pre">root</span></code> is a valid (&gt;=0) value, the traversal will be confined to the subtree starting from the root.
-If <code class="docutils literal notranslate"><span class="pre">root</span></code> is -1 (default), traversal starts at the mesh’s global root.</p>
+If <code class="docutils literal notranslate"><span class="pre">root</span></code> is -1, traversal starts at the mesh’s global root.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>id</strong> – The mesh identifier</p></li>
 <li><p><strong>start</strong> – The ray origin, in the mesh’s local space</p></li>
 <li><p><strong>dir</strong> – The ray direction, in the mesh’s local space (only its direction matters; the count is independent of its length)</p></li>
-<li><p><strong>root</strong> – The root node index for grouped BVH queries, or -1 for global root (optional, default: -1)</p></li>
+<li><p><strong>root</strong> – The root node index for grouped BVH queries, or -1 for global root</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>

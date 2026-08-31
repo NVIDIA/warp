@@ -1,7 +1,7 @@
 ﻿warp.texture\_sample
 ====================
 
-.. function:: warp._src.lang.texture_sample(tex: Texture1D, u: float32, dtype: Any, lod: float32) -> Any
+.. function:: warp._src.lang.texture_sample(tex: Texture1D, u: float32, dtype: Any, lod: float32 = -1.0) -> Any
 
    .. hlist::
       :columns: 8
@@ -73,7 +73,7 @@
        5.0 1.0 1.0
    
 
-.. function:: warp._src.lang.texture_sample(tex: Texture2D, uv: vec2f, dtype: Any, lod: float32) -> Any
+.. function:: warp._src.lang.texture_sample(tex: Texture2D, uv: vec2f, dtype: Any, lod: float32 = -1.0) -> Any
    :noindex:
 
    .. hlist::
@@ -118,7 +118,7 @@
    :class:`warp.Texture`. On CUDA, ``WRAP`` and ``MIRROR`` are treated as ``CLAMP`` when
    ``normalized_coords=False`` (the CPU sampler honors them).
 
-.. function:: warp._src.lang.texture_sample(tex: Texture2D, u: float32, v: float32, dtype: Any, lod: float32) -> Any
+.. function:: warp._src.lang.texture_sample(tex: Texture2D, u: float32, v: float32, dtype: Any, lod: float32 = -1.0) -> Any
    :noindex:
 
    .. hlist::
@@ -166,7 +166,7 @@
    :class:`warp.Texture`. On CUDA, ``WRAP`` and ``MIRROR`` are treated as ``CLAMP`` when
    ``normalized_coords=False`` (the CPU sampler honors them).
 
-.. function:: warp._src.lang.texture_sample(tex: Texture3D, uvw: vec3f, dtype: Any, lod: float32) -> Any
+.. function:: warp._src.lang.texture_sample(tex: Texture3D, uvw: vec3f, dtype: Any, lod: float32 = -1.0) -> Any
    :noindex:
 
    .. hlist::
@@ -212,7 +212,7 @@
    :class:`warp.Texture`. On CUDA, ``WRAP`` and ``MIRROR`` are treated as ``CLAMP`` when
    ``normalized_coords=False`` (the CPU sampler honors them).
 
-.. function:: warp._src.lang.texture_sample(tex: Texture3D, u: float32, v: float32, w: float32, dtype: Any, lod: float32) -> Any
+.. function:: warp._src.lang.texture_sample(tex: Texture3D, u: float32, v: float32, w: float32, dtype: Any, lod: float32 = -1.0) -> Any
    :noindex:
 
    .. hlist::

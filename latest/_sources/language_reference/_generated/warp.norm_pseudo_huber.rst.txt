@@ -1,7 +1,7 @@
 ﻿warp.norm\_pseudo\_huber
 ========================
 
-.. function:: warp._src.lang.norm_pseudo_huber(v: Any, delta: float) -> float
+.. function:: warp._src.lang.norm_pseudo_huber(v: Any, delta: float = 1.0) -> float
 
    .. hlist::
       :columns: 8
@@ -19,7 +19,7 @@
    
    :param v: The vector to compute the Huber norm of.
    :type v: Vector[Float, Any]
-   :param delta: The threshold value, defaults to 1.0.
+   :param delta: The threshold value.
    :type delta: float
    
    :returns: The Huber norm of the vector.

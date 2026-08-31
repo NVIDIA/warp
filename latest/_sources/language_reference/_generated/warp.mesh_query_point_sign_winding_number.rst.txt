@@ -1,7 +1,7 @@
 ﻿warp.mesh\_query\_point\_sign\_winding\_number
 ==============================================
 
-.. function:: warp._src.lang.mesh_query_point_sign_winding_number(id: uint64, point: vec3f, max_dist: float32, accuracy: float32, threshold: float32) -> MeshQueryPoint
+.. function:: warp._src.lang.mesh_query_point_sign_winding_number(id: uint64, point: vec3f, max_dist: float32, accuracy: float32 = 2.0, threshold: float32 = 0.5) -> MeshQueryPoint
 
    .. hlist::
       :columns: 8
@@ -31,8 +31,8 @@
    :param id: The mesh identifier
    :param point: The query point, in the mesh's local space
    :param max_dist: Maximum allowed distance to the returned closest point. The query returns no result if no face is strictly closer than this distance.
-   :param accuracy: Accuracy for computing the winding number with fast winding number method utilizing second-order dipole approximation, default 2.0
-   :param threshold: The threshold of the winding number to be considered inside, default 0.5.
+   :param accuracy: Accuracy for computing the winding number with fast winding number method utilizing second-order dipole approximation
+   :param threshold: The threshold of the winding number to be considered inside.
    
    :returns: A :class:`warp.MeshQueryPoint`. Check ``result`` first (``True`` if a face within
              ``max_dist`` was found), then read ``sign`` (< 0 if ``point`` is inside the mesh, >= 0 if

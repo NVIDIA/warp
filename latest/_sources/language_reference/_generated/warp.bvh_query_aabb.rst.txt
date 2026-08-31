@@ -1,7 +1,7 @@
 ﻿warp.bvh\_query\_aabb
 =====================
 
-.. function:: warp._src.lang.bvh_query_aabb(id: uint64, low: vec3f, high: vec3f, root: int32) -> _BvhQueryAabb
+.. function:: warp._src.lang.bvh_query_aabb(id: uint64, low: vec3f, high: vec3f, root: int32 = -1) -> _BvhQueryAabb
 
    .. hlist::
       :columns: 8
@@ -16,13 +16,13 @@
    as the ``lowers``/``uppers`` arrays passed to :class:`warp.Bvh`.
    
    To restrict traversal to a subtree, set ``root`` to that node's index (for a grouped BVH the
-   group root is obtained from :func:`bvh_get_group_root`). If ``root`` is -1 (default),
+   group root is obtained from :func:`bvh_get_group_root`). If ``root`` is -1,
    traversal starts at the BVH's global root.
    
    :param id: The BVH identifier
    :param low: The lower bound of the query box, in BVH space
    :param high: The upper bound of the query box, in BVH space
-   :param root: The node to begin the query from, or -1 (default) for the BVH's global root
+   :param root: The node to begin the query from, or -1 for the BVH's global root
    
    :returns: A :class:`warp.BvhQuery`. It is opaque; pass it to :func:`bvh_query_next`,
              which writes the index of each overlapping item (an index into the arrays passed to :class:`warp.Bvh`)

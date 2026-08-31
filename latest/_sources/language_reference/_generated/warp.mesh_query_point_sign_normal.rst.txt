@@ -1,7 +1,7 @@
 ﻿warp.mesh\_query\_point\_sign\_normal
 =====================================
 
-.. function:: warp._src.lang.mesh_query_point_sign_normal(id: uint64, point: vec3f, max_dist: float32, epsilon: float32) -> MeshQueryPoint
+.. function:: warp._src.lang.mesh_query_point_sign_normal(id: uint64, point: vec3f, max_dist: float32, epsilon: float32 = 0.001) -> MeshQueryPoint
 
    .. hlist::
       :columns: 8
@@ -23,7 +23,7 @@
    :param point: The query point, in the mesh's local space
    :param max_dist: Maximum allowed distance to the returned closest point. The query returns no result if no face is strictly closer than this distance.
    :param epsilon: Epsilon treating distance values as equal, when locating the minimum distance vertex/face/edge, as a
-                   fraction of the average edge length, also for treating closest point as being on edge/vertex default 1e-3.
+                   fraction of the average edge length, also for treating closest point as being on edge/vertex.
    
    :returns: A :class:`warp.MeshQueryPoint`. Check ``result`` first (``True`` if a face within
              ``max_dist`` was found), then read ``sign`` (< 0 if ``point`` is inside the mesh, >= 0 if
