@@ -178,11 +178,8 @@ class BsrMatrix(Generic[_BlockType]):
     def uncompress_rows(self, out: wp.array = None) -> wp.array:
         """Compute the row index for each stored block slot from the compressed row offsets.
 
-        The method writes ``nnz`` entries. When ``out`` is omitted, it allocates
-        an array of that length. Entries outside active row ranges are ``-1``.
-        When ``out`` is provided, entries beyond ``nnz`` are unchanged. For a
-        compact matrix, use :meth:`nnz_sync` before treating the result as COO
-        row data:
+        For a compact matrix, use :meth:`nnz_sync` before treating the result as
+        COO row data:
 
         .. code-block:: python
 
@@ -194,7 +191,10 @@ class BsrMatrix(Generic[_BlockType]):
               ``nnz`` elements on the matrix's device.
 
         Returns:
-            The output array.
+            A one-dimensional integer array containing the row index for each stored block slot in its first
+            ``nnz`` elements. Entries outside active row ranges are ``-1``. If ``out`` is omitted, Warp
+            allocates an array of length ``nnz`` on the matrix's device. Otherwise, the function returns
+            ``out`` after updating its first ``nnz`` elements; any remaining elements are unchanged.
         """
         if out is None:
             out = wp.empty(self.nnz, dtype=int, device=self.device)
@@ -213,11 +213,14 @@ class BsrMatrix(Generic[_BlockType]):
         Ensures that any ongoing transfer of ``offsets[nrow]`` from the device offsets array to the host has completed,
         or, if none has been scheduled yet, starts a new transfer and waits for it to complete.
 
-        Then updates the host-side nnz upper bound to match ``offsets[nrow]``, and returns it. For compact matrices,
-        this is the active stored block count. For padded matrices, this is the total row-capacity storage size,
-        not necessarily the active block count.
+        The method then updates the host-side ``nnz`` upper bound to match ``offsets[nrow]``.
 
         See also :meth:`notify_nnz_changed`.
+
+        Returns:
+            The updated host-side ``nnz`` value. For compact matrices, this is the active stored block count.
+            For padded matrices, this is the total row-capacity storage size, not necessarily the active block
+            count.
 
         Raises:
             RuntimeError: If called during a live CUDA graph capture because
@@ -1535,11 +1538,7 @@ def bsr_from_triplets(
     with ``topology="padded"``.
 
     This function sums duplicate coordinates. When ``prune_numerical_zeros=True``, it omits zero-valued input
-    blocks. The returned matrix can therefore have fewer active blocks than input triplets, while ``nnz``
-    initially remains equal to the input array length. Call :meth:`BsrMatrix.nnz_sync` to obtain the exact
-    compact count before slicing ``columns`` and ``values``. Entries beyond the active count are not part of
-    the matrix and may be uninitialized. If nonzero duplicate blocks sum to zero, the result remains an active
-    explicit-zero block until it is pruned by :func:`bsr_compress`.
+    blocks.
 
     Use :func:`bsr_copy` to copy a matrix or change its scalar type or block shape. Use :func:`bsr_compress`
     to pack active blocks into compact storage and optionally prune explicit zeros. Neither operation requires
@@ -1553,6 +1552,14 @@ def bsr_from_triplets(
         values: Block values for each non-zero. Must be either a one-dimensional array with data type identical
           to the ``dest`` matrix's block type, or a 3d array with data type equal to the ``dest`` matrix's scalar type.
         prune_numerical_zeros: If ``True``, will ignore the zero-valued blocks.
+
+    Returns:
+        A compact BSR matrix containing the summed triplets. The matrix can have fewer active blocks than
+        input triplets, while ``nnz`` initially remains equal to the input array length. Call
+        :meth:`BsrMatrix.nnz_sync` to obtain the exact compact count before slicing ``columns`` and
+        ``values``. Entries beyond the active count are not part of the matrix and may be uninitialized.
+        If nonzero duplicate blocks sum to zero, the matrix retains an active explicit-zero block until
+        it is pruned by :func:`bsr_compress`.
     """
 
     if values.ndim == 3:
