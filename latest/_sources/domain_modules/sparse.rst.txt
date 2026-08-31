@@ -110,10 +110,10 @@ For example:
 Stored Block Count
 ~~~~~~~~~~~~~~~~~~
 
-Warp computes the number of stored blocks on the device and does not automatically synchronize it to the host.
-This avoids the cost of a device-to-host transfer and allows graph capture. The :attr:`BsrMatrix.nnz` attribute
-is a host-side upper bound on the number of stored block slots used by sparse operations. The ``columns`` and
-``values`` arrays may have additional allocated capacity. For compact matrices, the active count is stored on
+Warp computes the number of stored blocks on the device and does not automatically transfer or synchronize it to
+the host. This avoids the cost of a device-to-host transfer and allows graph capture. The :attr:`BsrMatrix.nnz`
+attribute is a host-side upper bound on the number of stored block slots used by sparse operations. The ``columns``
+and ``values`` arrays may have additional allocated capacity. For compact matrices, the active count is stored on
 the device at ``offsets[nrow]``.
 
 A topology-changing operation may leave a compact matrix's ``nnz`` larger than the active count until
@@ -138,11 +138,20 @@ Do not assume that the current value of ``A.nnz`` is exact. Before exporting a c
 
 .. note::
 
-    The :meth:`BsrMatrix.nnz_sync` method ensures that any ongoing transfer
-    of ``offsets[nrow]`` from the device offsets array to the host has completed
-    and updates the nnz upper bound. For compact matrices, this is the active
-    stored block count. For padded matrices, this is the total row-capacity
-    storage size, not necessarily the active block count.
+    The :meth:`BsrMatrix.nnz_sync` method starts a synchronous transfer of
+    ``offsets[nrow]`` from the device offsets array to the host and updates the
+    nnz upper bound. For compact matrices, this is the active stored block count.
+    For padded matrices, this is the total row-capacity storage size, not
+    necessarily the active block count. Warp reuses the transfer resources
+    allocated by previous calls on the same matrix.
+
+.. deprecated:: 1.18
+
+    :meth:`BsrMatrix.copy_nnz_async` starts an asynchronous transfer but will be
+    removed in a future release. The pending transfer can be unsafe when matrix
+    topology updates use multiple streams or when it is captured and replayed in
+    a CUDA graph, potentially producing a stale host-side count. Prefer
+    :meth:`BsrMatrix.nnz_sync` when the exact host-side count is required.
 
 .. note::
 
