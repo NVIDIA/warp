@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>C++ and CUDA Workflows &#8212; Warp 1.16.1</title>
+    <title>C++ and CUDA Workflows &#8212; Warp 1.17.0</title>
   
   
   
@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=3d681599" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=2a8757ae" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
@@ -44,7 +44,7 @@
 
 
 
-    <script src="../../_static/documentation_options.js?v=d123bb80"></script>
+    <script src="../../_static/documentation_options.js?v=755b3f99"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -53,11 +53,12 @@
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.16';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.17';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
     <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <script src="../../_static/copy-page-source.js?v=f9064be3"></script>
 
     <link rel="icon" href="../../_static/favicon.png"/>
 
@@ -69,7 +70,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.16.1" />
+  <meta name="docsearch:version" content="1.17.0" />
   
     
     <script src="../../_static/searchtools.js"></script>
@@ -146,11 +147,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.16.1 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.16.1 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.16.1</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a></div>
     
@@ -290,11 +291,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.16.1 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.16.1 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.16.1</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a>
 
@@ -413,6 +414,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../execution_and_performance/memory_management.html">Memory Allocation and Access</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../execution_and_performance/profiling.html">Profiling</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../execution_and_performance/deterministic_execution.html">Deterministic Execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../execution_and_performance/reducing_compilation_and_startup_time.html">Reducing Compilation and Startup Time</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration</a></li>
@@ -428,6 +430,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp.html">warp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_autograd.html">warp.autograd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_build_experimental.html">warp.build_experimental</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_config.html">warp.config</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_fem.html">warp.fem</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_optim.html">warp.optim</a></li>
@@ -444,7 +447,7 @@
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../../project/contribution_guide.html">Contribution Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../project/contribution_guide.html">Contributing to Warp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../project/publications.html">Publications using Warp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../project/changelog.html">Changelog</a></li>
 </ul>
@@ -496,10 +499,43 @@
       
         <div class="header-article-item">
 
+
+
 <div class="d-flex justify-content-end w-100">
-  <a href="../../_sources/user_guide/programming_model/cpp_cuda_workflows.rst.txt">
-    <i class="fa-solid fa-file-code"></i> View page source
-  </a>
+  <div class="btn-group copy-page-source pst-js-only" data-page-source-control role="group" aria-label="Page source">
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary"
+      data-copy-page-source
+      data-page-source-url="../../_sources/user_guide/programming_model/cpp_cuda_workflows.rst.txt"
+      disabled
+    >
+      <i class="fa-solid fa-copy" aria-hidden="true"></i>
+      <span data-copy-page-source-label>Copy source</span>
+    </button>
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary dropdown-toggle dropdown-toggle-split"
+      data-bs-toggle="dropdown"
+      aria-expanded="false"
+    >
+      <span class="visually-hidden">Page source options</span>
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end">
+      <li>
+        <a class="dropdown-item" href="../../_sources/user_guide/programming_model/cpp_cuda_workflows.rst.txt">
+          <i class="fa-solid fa-file-code" aria-hidden="true"></i>
+          View source
+        </a>
+      </li>
+    </ul>
+    <span class="visually-hidden" role="status" aria-live="polite" data-copy-page-source-status></span>
+  </div>
+  <noscript>
+    <a href="../../_sources/user_guide/programming_model/cpp_cuda_workflows.rst.txt">
+      <i class="fa-solid fa-file-code" aria-hidden="true"></i> View source
+    </a>
+  </noscript>
 </div>
 </div>
       
@@ -892,6 +928,176 @@ safety, and portability.</p></li>
 </ul>
 </section>
 </section>
+<section id="external-build-inputs">
+<h2>External Build Inputs<a class="headerlink" href="#external-build-inputs" title="Link to this heading">#</a></h2>
+<div class="admonition-experimental admonition">
+<p class="admonition-title">Experimental</p>
+<p>The external-compilation APIs described in this section are experimental
+and may change without deprecation in future releases.</p>
+</div>
+<p>Extra build inputs for a module can be grouped in
+<a class="reference internal" href="../../api_reference/_generated/warp.ModuleBuildOptions.html#warp.ModuleBuildOptions" title="warp.ModuleBuildOptions"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ModuleBuildOptions</span></code></a>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">build_options</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">ModuleBuildOptions</span><span class="p">(</span>
+    <span class="n">extra_cuda_include_dirs</span><span class="o">=</span><span class="p">[</span><span class="n">my_cuda_include_dir</span><span class="p">],</span>
+    <span class="n">extra_cpu_include_dirs</span><span class="o">=</span><span class="p">[</span><span class="n">my_cpu_include_dir</span><span class="p">],</span>
+    <span class="n">extra_cuda_preamble</span><span class="o">=</span><span class="s1">&#39;#include &quot;my_cuda_addon.h&quot;&#39;</span><span class="p">,</span>
+    <span class="n">extra_cpu_preamble</span><span class="o">=</span><span class="s1">&#39;#include &quot;my_cpu_addon.h&quot;&#39;</span><span class="p">,</span>
+    <span class="n">extra_build_dependencies</span><span class="o">=</span><span class="p">[</span><span class="n">my_cuda_addon_header</span><span class="p">,</span> <span class="n">my_cpu_addon_header</span><span class="p">],</span>
+<span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">set_module_options</span><span class="p">({</span><span class="s2">&quot;extra_build_options&quot;</span><span class="p">:</span> <span class="n">build_options</span><span class="p">})</span>
+</pre></div>
+</div>
+<p>The preambles are inserted after Warp’s own headers, but before codegen-only
+cast macros and the generated code. An external header may therefore use public
+Warp macros such as <code class="docutils literal notranslate"><span class="pre">CUDA_CALLABLE</span></code> and ordinary C++ function-style casts,
+and the generated kernels see everything the preamble declares. A preamble
+cannot define macros that Warp’s headers consume, because those are already
+included.</p>
+<p>Warp hashes the configured include-directory paths, but not the contents of
+headers resolved through them. List external headers and other build inputs in
+<code class="docutils literal notranslate"><span class="pre">extra_build_dependencies</span></code> so Warp also hashes their contents. Dependency
+contents are re-read whenever the module hash is recomputed — after
+<code class="docutils literal notranslate"><span class="pre">wp.set_module_options()</span></code> or in a new process — not on every launch.</p>
+<p>Changes to a <a class="reference internal" href="../../api_reference/_generated/warp.ModuleBuildOptions.html#warp.ModuleBuildOptions" title="warp.ModuleBuildOptions"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ModuleBuildOptions</span></code></a> instance
+take effect when it is passed to <a class="reference internal" href="../../api_reference/_generated/warp.set_module_options.html#warp.set_module_options" title="warp.set_module_options"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.set_module_options()</span></code></a>. After modifying an instance, call
+<code class="docutils literal notranslate"><span class="pre">wp.set_module_options()</span></code> again so Warp invalidates the module’s cached
+compilation state.</p>
+<p>If more than one addon contributes build inputs, combine them without
+discarding earlier settings:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">current</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_module_options</span><span class="p">(</span><span class="n">kernel</span><span class="o">.</span><span class="n">module</span><span class="p">)[</span><span class="s2">&quot;extra_build_options&quot;</span><span class="p">]</span>
+<span class="k">if</span> <span class="n">current</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">current</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">ModuleBuildOptions</span><span class="p">()</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">set_module_options</span><span class="p">(</span>
+    <span class="p">{</span><span class="s2">&quot;extra_build_options&quot;</span><span class="p">:</span> <span class="n">current</span><span class="o">.</span><span class="n">merged</span><span class="p">(</span><span class="n">addon_build_options</span><span class="p">)},</span>
+    <span class="n">module</span><span class="o">=</span><span class="n">kernel</span><span class="o">.</span><span class="n">module</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="external-native-value-types">
+<h2>External Native Value Types<a class="headerlink" href="#external-native-value-types" title="Link to this heading">#</a></h2>
+<p>External C++ value types can be used directly as kernel annotations, built-in
+arguments and return values, Warp struct fields, and array dtypes. Define the
+host ABI with <a class="reference external" href="https://docs.python.org/3/library/ctypes.html#ctypes.Structure" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ctypes.Structure</span></code></a> and register the same class:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">ctypes</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Color</span><span class="p">(</span><span class="n">ctypes</span><span class="o">.</span><span class="n">Structure</span><span class="p">):</span>
+    <span class="n">_fields_</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_float</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;g&quot;</span><span class="p">,</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_float</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_float</span><span class="p">),</span>
+    <span class="p">]</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">build_experimental</span><span class="o">.</span><span class="n">add_native_type</span><span class="p">(</span>
+    <span class="n">Color</span><span class="p">,</span>
+    <span class="n">native_name</span><span class="o">=</span><span class="s2">&quot;render::Color&quot;</span><span class="p">,</span>
+    <span class="n">fields</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;r&quot;</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="s2">&quot;g&quot;</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="s2">&quot;b&quot;</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">},</span>
+    <span class="n">initializer</span><span class="o">=</span><span class="s2">&quot;aggregate&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>The exact C++ definition must be made visible using the module preamble and
+include-directory options above. Warp emits compile-time checks for standard
+layout, trivial copyability, size, and alignment. CPU and CUDA compilation
+also check each exposed member’s C++ type. CPU compilation checks every exposed
+field offset, while CUDA compilation checks each field size. Setting
+<code class="docutils literal notranslate"><span class="pre">initializer=&quot;aggregate&quot;</span></code> opts into ordered field construction such as
+<code class="docutils literal notranslate"><span class="pre">Color(r,</span> <span class="pre">g,</span> <span class="pre">b)</span></code> inside kernels. In this mode, <code class="docutils literal notranslate"><span class="pre">fields</span></code> must contain every
+ctypes field in declaration order. Without it, only default construction is
+available.</p>
+<p>Pass <code class="docutils literal notranslate"><span class="pre">fields=None</span></code> (the default) for an opaque type. Opaque values can cross
+kernel and registered built-in boundaries and can be stored in arrays, but
+their members and captured constants are not exposed. Warp does not manage
+resources referenced by opaque values; the external package remains
+responsible for their ownership and lifetime.</p>
+<p>Native value types do not automatically gain arithmetic or differentiation.
+Register operations explicitly with <a class="reference internal" href="../../api_reference/_generated/warp.build_experimental.add_builtin.html#warp.build_experimental.add_builtin" title="warp.build_experimental.add_builtin"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.build_experimental.add_builtin()</span></code></a>, and use
+arrays without <code class="docutils literal notranslate"><span class="pre">requires_grad</span></code>.</p>
+</section>
+<section id="complete-addon-example">
+<h2>Complete Addon Example<a class="headerlink" href="#complete-addon-example" title="Link to this heading">#</a></h2>
+<p>An addon should register its types and built-ins when imported, then expose a
+small helper that applies its build inputs to the module containing the user’s
+kernels. For example, <code class="docutils literal notranslate"><span class="pre">my_addon.py</span></code> can contain:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">ctypes</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+
+<span class="n">include_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">&quot;include&quot;</span>
+<span class="n">header</span> <span class="o">=</span> <span class="n">include_dir</span> <span class="o">/</span> <span class="s2">&quot;my_addon.h&quot;</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Color</span><span class="p">(</span><span class="n">ctypes</span><span class="o">.</span><span class="n">Structure</span><span class="p">):</span>
+    <span class="n">_fields_</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_float</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;g&quot;</span><span class="p">,</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_float</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_float</span><span class="p">),</span>
+    <span class="p">]</span>
+
+
+<span class="n">wp</span><span class="o">.</span><span class="n">build_experimental</span><span class="o">.</span><span class="n">add_native_type</span><span class="p">(</span>
+    <span class="n">Color</span><span class="p">,</span>
+    <span class="n">native_name</span><span class="o">=</span><span class="s2">&quot;my_addon::Color&quot;</span><span class="p">,</span>
+    <span class="n">fields</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;r&quot;</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="s2">&quot;g&quot;</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="s2">&quot;b&quot;</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">},</span>
+    <span class="n">initializer</span><span class="o">=</span><span class="s2">&quot;aggregate&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">build_experimental</span><span class="o">.</span><span class="n">add_builtin</span><span class="p">(</span>
+    <span class="s2">&quot;my_addon_scale_color&quot;</span><span class="p">,</span>
+    <span class="p">{</span><span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="n">Color</span><span class="p">,</span> <span class="s2">&quot;factor&quot;</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">},</span>
+    <span class="n">Color</span><span class="p">,</span>
+    <span class="n">native_name</span><span class="o">=</span><span class="s2">&quot;my_addon::scale_color&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">_build_options</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">ModuleBuildOptions</span><span class="p">(</span>
+    <span class="n">extra_cuda_include_dirs</span><span class="o">=</span><span class="p">[</span><span class="n">include_dir</span><span class="p">],</span>
+    <span class="n">extra_cpu_include_dirs</span><span class="o">=</span><span class="p">[</span><span class="n">include_dir</span><span class="p">],</span>
+    <span class="n">extra_cuda_preamble</span><span class="o">=</span><span class="s1">&#39;#include &quot;my_addon.h&quot;&#39;</span><span class="p">,</span>
+    <span class="n">extra_cpu_preamble</span><span class="o">=</span><span class="s1">&#39;#include &quot;my_addon.h&quot;&#39;</span><span class="p">,</span>
+    <span class="n">extra_build_dependencies</span><span class="o">=</span><span class="p">[</span><span class="n">header</span><span class="p">],</span>
+<span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">configure_module</span><span class="p">(</span><span class="n">module</span><span class="p">):</span>
+    <span class="n">current</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_module_options</span><span class="p">(</span><span class="n">module</span><span class="p">)[</span><span class="s2">&quot;extra_build_options&quot;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">current</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">current</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">ModuleBuildOptions</span><span class="p">()</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">set_module_options</span><span class="p">(</span>
+        <span class="p">{</span><span class="s2">&quot;extra_build_options&quot;</span><span class="p">:</span> <span class="n">current</span><span class="o">.</span><span class="n">merged</span><span class="p">(</span><span class="n">_build_options</span><span class="p">)},</span>
+        <span class="n">module</span><span class="o">=</span><span class="n">module</span><span class="p">,</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+<p>Users import the addon before compiling kernels that call its built-ins, and
+configure each kernel module before its first launch or AOT compilation:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">my_addon</span>
+
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">scale_colors</span><span class="p">(</span><span class="n">colors</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">my_addon</span><span class="o">.</span><span class="n">Color</span><span class="p">],</span> <span class="n">factor</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">colors</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">my_addon_scale_color</span><span class="p">(</span><span class="n">colors</span><span class="p">[</span><span class="n">tid</span><span class="p">],</span> <span class="n">factor</span><span class="p">)</span>
+
+
+<span class="n">my_addon</span><span class="o">.</span><span class="n">configure_module</span><span class="p">(</span><span class="n">scale_colors</span><span class="o">.</span><span class="n">module</span><span class="p">)</span>
+
+<span class="c1"># A normal wp.launch() now JIT-compiles with the addon&#39;s build inputs.</span>
+<span class="c1"># For external runtimes, AOT compilation returns the generated artifact.</span>
+<span class="n">artifacts</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">compile_aot_module</span><span class="p">(</span>
+    <span class="n">scale_colors</span><span class="o">.</span><span class="n">module</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">,</span>
+    <span class="n">use_ptx</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Registered built-in names share Warp’s global kernel namespace. Addons should
+use a package-specific prefix unless they intentionally add an overload to an
+existing Warp operation. Registrations are process-global and equivalent
+registrations are idempotent, which makes normal module reloads safe.</p>
+</section>
 <section id="ahead-of-time-c-cuda-workflows">
 <h2>Ahead-of-Time C++/CUDA Workflows<a class="headerlink" href="#ahead-of-time-c-cuda-workflows" title="Link to this heading">#</a></h2>
 <p>Warp can compile kernels ahead of time and write the generated CUDA source,
@@ -918,12 +1124,13 @@ on the native type headers such as <code class="docutils literal notranslate"><s
 <p>API Capture (APIC) can serialize a captured Warp graph to a <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> file plus a
 companion module directory. The saved graph can later be loaded from Python or
 from a standalone C++ program that links against the Warp native library.</p>
-<p>See <a class="reference internal" href="../runtime.html#apic-save-load"><span class="std std-ref">Saving and Loading Graphs</span></a> for the C API surface, serialization format notes, and
+<p>See <a class="reference internal" href="../runtime.html#apic-save-load"><span class="std std-ref">API Capture: Saving and Loading Graphs</span></a> for the C API surface, serialization format notes, and
 current limitations. The C++ examples cover both device families:</p>
 <ul class="simple">
 <li><p><a class="reference external" href="https://github.com/NVIDIA/warp/tree/main/warp/examples/cpp/02_apic_visualization">02_apic_visualization</a>
-captures a CUDA graph in Python, loads it from C++, updates named inputs, and
-replays the frame with <code class="docutils literal notranslate"><span class="pre">cudaGraphLaunch()</span></code>.</p></li>
+records and saves a CUDA workload in Python. The C++ loader reconstructs a
+CUDA graph, updates named inputs, and replays the frame with
+<code class="docutils literal notranslate"><span class="pre">cudaGraphLaunch()</span></code>.</p></li>
 <li><p><a class="reference external" href="https://github.com/NVIDIA/warp/tree/main/warp/examples/cpp/03_apic_visualization_cpu">03_apic_visualization_cpu</a>
 captures and replays on the CPU device. The C++ viewer does not link against
 CUDA. It loads recorded CPU kernel objects and replays the graph with
@@ -1019,6 +1226,9 @@ compilation.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#native-function-limitations">Native Function Limitations</a></li>
 </ul>
 </li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#external-build-inputs">External Build Inputs</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#external-native-value-types">External Native Value Types</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#complete-addon-example">Complete Addon Example</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ahead-of-time-c-cuda-workflows">Ahead-of-Time C++/CUDA Workflows</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#api-capture-replay-from-c">API Capture Replay from C++</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#native-library-headers">Native Library Headers</a></li>
@@ -1030,7 +1240,7 @@ compilation.</p></li>
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/release-1.16/docs/user_guide/programming_model/cpp_cuda_workflows.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/release-1.17/docs/user_guide/programming_model/cpp_cuda_workflows.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

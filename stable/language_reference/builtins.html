@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Built-Ins &#8212; Warp 1.16.1</title>
+    <title>Built-Ins &#8212; Warp 1.17.0</title>
   
   
   
@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=3d681599" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=2a8757ae" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
@@ -44,7 +44,7 @@
 
 
 
-    <script src="../_static/documentation_options.js?v=d123bb80"></script>
+    <script src="../_static/documentation_options.js?v=755b3f99"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -54,11 +54,12 @@
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.16';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.17';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
     <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <script src="../_static/copy-page-source.js?v=f9064be3"></script>
 
     <link rel="icon" href="../_static/favicon.png"/>
 
@@ -70,7 +71,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.16.1" />
+  <meta name="docsearch:version" content="1.17.0" />
   
     
     <script src="../_static/searchtools.js"></script>
@@ -147,11 +148,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.16.1 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.16.1 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.16.1</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a></div>
     
@@ -291,11 +292,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.16.1 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.16.1 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.16.1</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a>
 
@@ -414,6 +415,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../user_guide/execution_and_performance/memory_management.html">Memory Allocation and Access</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../user_guide/execution_and_performance/profiling.html">Profiling</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../user_guide/execution_and_performance/deterministic_execution.html">Deterministic Execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../user_guide/execution_and_performance/reducing_compilation_and_startup_time.html">Reducing Compilation and Startup Time</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../user_guide/configuration.html">Configuration</a></li>
@@ -429,6 +431,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp.html">warp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_autograd.html">warp.autograd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_build_experimental.html">warp.build_experimental</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_config.html">warp.config</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_fem.html">warp.fem</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_optim.html">warp.optim</a></li>
@@ -445,7 +448,7 @@
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../project/contribution_guide.html">Contribution Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../project/contribution_guide.html">Contributing to Warp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../project/publications.html">Publications using Warp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../project/changelog.html">Changelog</a></li>
 </ul>
@@ -494,10 +497,43 @@
       
         <div class="header-article-item">
 
+
+
 <div class="d-flex justify-content-end w-100">
-  <a href="../_sources/language_reference/builtins.rst.txt">
-    <i class="fa-solid fa-file-code"></i> View page source
-  </a>
+  <div class="btn-group copy-page-source pst-js-only" data-page-source-control role="group" aria-label="Page source">
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary"
+      data-copy-page-source
+      data-page-source-url="../_sources/language_reference/builtins.rst.txt"
+      disabled
+    >
+      <i class="fa-solid fa-copy" aria-hidden="true"></i>
+      <span data-copy-page-source-label>Copy source</span>
+    </button>
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary dropdown-toggle dropdown-toggle-split"
+      data-bs-toggle="dropdown"
+      aria-expanded="false"
+    >
+      <span class="visually-hidden">Page source options</span>
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end">
+      <li>
+        <a class="dropdown-item" href="../_sources/language_reference/builtins.rst.txt">
+          <i class="fa-solid fa-file-code" aria-hidden="true"></i>
+          View source
+        </a>
+      </li>
+    </ul>
+    <span class="visually-hidden" role="status" aria-live="polite" data-copy-page-source-status></span>
+  </div>
+  <noscript>
+    <a href="../_sources/language_reference/builtins.rst.txt">
+      <i class="fa-solid fa-file-code" aria-hidden="true"></i> View source
+    </a>
+  </noscript>
 </div>
 </div>
       
@@ -888,12 +924,6 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.spatial_dot.html#warp._src.lang.spatial_dot" title="warp._src.lang.spatial_dot"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spatial_dot</span></code></a></p></td>
 <td><p>Compute the dot product of two 6D screw vectors.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.spatial_jacobian.html#warp._src.lang.spatial_jacobian" title="warp._src.lang.spatial_jacobian"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spatial_jacobian</span></code></a></p></td>
-<td><p>Compute the spatial Jacobian matrix for a kinematic chain.</p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.spatial_mass.html#warp._src.lang.spatial_mass" title="warp._src.lang.spatial_mass"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spatial_mass</span></code></a></p></td>
-<td><p>Compute the composite rigid-body mass matrix for a kinematic chain.</p></td>
-</tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.spatial_top.html#warp._src.lang.spatial_top" title="warp._src.lang.spatial_top"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spatial_top</span></code></a></p></td>
 <td><p>Extract the top (first) part of a 6D screw vector.</p></td>
 </tr>
@@ -1126,17 +1156,23 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.bvh_query_aabb_tiled.html#warp._src.lang.bvh_query_aabb_tiled" title="warp._src.lang.bvh_query_aabb_tiled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bvh_query_aabb_tiled</span></code></a></p></td>
 <td><p>Construct an axis-aligned bounding box (AABB) query against a BVH for thread-block parallel traversal.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.bvh_query_next.html#warp._src.lang.bvh_query_next" title="warp._src.lang.bvh_query_next"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bvh_query_next</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.bvh_query_capsule.html#warp._src.lang.bvh_query_capsule" title="warp._src.lang.bvh_query_capsule"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bvh_query_capsule</span></code></a></p></td>
+<td><p>Construct a conservative capsule sweep query against a BVH.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.bvh_query_next.html#warp._src.lang.bvh_query_next" title="warp._src.lang.bvh_query_next"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bvh_query_next</span></code></a></p></td>
 <td><p>Advance a BVH query to the next overlapping item and report whether one was found.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.bvh_query_next_tiled.html#warp._src.lang.bvh_query_next_tiled" title="warp._src.lang.bvh_query_next_tiled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bvh_query_next_tiled</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.bvh_query_next_tiled.html#warp._src.lang.bvh_query_next_tiled" title="warp._src.lang.bvh_query_next_tiled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bvh_query_next_tiled</span></code></a></p></td>
 <td><p>Move to the next bound in a thread-block parallel BVH query and return results as a tile.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.bvh_query_ray.html#warp._src.lang.bvh_query_ray" title="warp._src.lang.bvh_query_ray"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bvh_query_ray</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.bvh_query_ray.html#warp._src.lang.bvh_query_ray" title="warp._src.lang.bvh_query_ray"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bvh_query_ray</span></code></a></p></td>
 <td><p>Construct a ray query against a BVH.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.bvh_query_ray_tiled.html#warp._src.lang.bvh_query_ray_tiled" title="warp._src.lang.bvh_query_ray_tiled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bvh_query_ray_tiled</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.bvh_query_ray_tiled.html#warp._src.lang.bvh_query_ray_tiled" title="warp._src.lang.bvh_query_ray_tiled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bvh_query_ray_tiled</span></code></a></p></td>
 <td><p>Construct a ray query against a BVH for thread-block parallel traversal.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.bvh_query_sphere.html#warp._src.lang.bvh_query_sphere" title="warp._src.lang.bvh_query_sphere"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bvh_query_sphere</span></code></a></p></td>
+<td><p>Construct a sphere query against a BVH object.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.closest_point_edge_edge.html#warp._src.lang.closest_point_edge_edge" title="warp._src.lang.closest_point_edge_edge"><code class="xref py py-obj docutils literal notranslate"><span class="pre">closest_point_edge_edge</span></code></a></p></td>
 <td><p>Find the closest points between two edges (line segments) <code class="docutils literal notranslate"><span class="pre">[p1,</span> <span class="pre">q1]</span></code> and <code class="docutils literal notranslate"><span class="pre">[p2,</span> <span class="pre">q2]</span></code>.</p></td>
@@ -1165,32 +1201,38 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.mesh_get.html#warp._src.lang.mesh_get" title="warp._src.lang.mesh_get"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_get</span></code></a></p></td>
 <td><p>Retrieve the <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a> object identified by <code class="docutils literal notranslate"><span class="pre">id</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.mesh_get_group_root.html#warp._src.lang.mesh_get_group_root" title="warp._src.lang.mesh_get_group_root"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_get_group_root</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.mesh_get_bvh.html#warp._src.lang.mesh_get_bvh" title="warp._src.lang.mesh_get_bvh"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_get_bvh</span></code></a></p></td>
+<td><p>Return the identifier of a mesh's internal BVH.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.mesh_get_group_root.html#warp._src.lang.mesh_get_group_root" title="warp._src.lang.mesh_get_group_root"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_get_group_root</span></code></a></p></td>
 <td><p>Get the root of a group in a <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.mesh_get_index.html#warp._src.lang.mesh_get_index" title="warp._src.lang.mesh_get_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_get_index</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.mesh_get_index.html#warp._src.lang.mesh_get_index" title="warp._src.lang.mesh_get_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_get_index</span></code></a></p></td>
 <td><p>Look up the vertex index stored at a face-vertex position in the <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a>'s index buffer.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.mesh_get_point.html#warp._src.lang.mesh_get_point" title="warp._src.lang.mesh_get_point"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_get_point</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.mesh_get_point.html#warp._src.lang.mesh_get_point" title="warp._src.lang.mesh_get_point"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_get_point</span></code></a></p></td>
 <td><p>Look up the position of a face's vertex in the <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.mesh_get_velocity.html#warp._src.lang.mesh_get_velocity" title="warp._src.lang.mesh_get_velocity"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_get_velocity</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.mesh_get_velocity.html#warp._src.lang.mesh_get_velocity" title="warp._src.lang.mesh_get_velocity"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_get_velocity</span></code></a></p></td>
 <td><p>Look up the velocity of a face's vertex in the <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.mesh_query_aabb.html#warp._src.lang.mesh_query_aabb" title="warp._src.lang.mesh_query_aabb"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_query_aabb</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.mesh_query_aabb.html#warp._src.lang.mesh_query_aabb" title="warp._src.lang.mesh_query_aabb"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_query_aabb</span></code></a></p></td>
 <td><p>Construct an axis-aligned bounding box (AABB) query against a <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.mesh_query_aabb_next.html#warp._src.lang.mesh_query_aabb_next" title="warp._src.lang.mesh_query_aabb_next"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_query_aabb_next</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.mesh_query_aabb_next.html#warp._src.lang.mesh_query_aabb_next" title="warp._src.lang.mesh_query_aabb_next"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_query_aabb_next</span></code></a></p></td>
 <td><p>Advance a mesh AABB query to the next overlapping triangle and report whether one was found.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.mesh_query_aabb_next_tiled.html#warp._src.lang.mesh_query_aabb_next_tiled" title="warp._src.lang.mesh_query_aabb_next_tiled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_query_aabb_next_tiled</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.mesh_query_aabb_next_tiled.html#warp._src.lang.mesh_query_aabb_next_tiled" title="warp._src.lang.mesh_query_aabb_next_tiled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_query_aabb_next_tiled</span></code></a></p></td>
 <td><p>Move to the next triangle in a thread-block parallel mesh AABB query and return results as a tile.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.mesh_query_aabb_tiled.html#warp._src.lang.mesh_query_aabb_tiled" title="warp._src.lang.mesh_query_aabb_tiled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_query_aabb_tiled</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.mesh_query_aabb_tiled.html#warp._src.lang.mesh_query_aabb_tiled" title="warp._src.lang.mesh_query_aabb_tiled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_query_aabb_tiled</span></code></a></p></td>
 <td><p>Construct an axis-aligned bounding box (AABB) query against a <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a> for thread-block parallel traversal.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.mesh_query_furthest_point_no_sign.html#warp._src.lang.mesh_query_furthest_point_no_sign" title="warp._src.lang.mesh_query_furthest_point_no_sign"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_query_furthest_point_no_sign</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.mesh_query_furthest_point_no_sign.html#warp._src.lang.mesh_query_furthest_point_no_sign" title="warp._src.lang.mesh_query_furthest_point_no_sign"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_query_furthest_point_no_sign</span></code></a></p></td>
 <td><p>Compute the furthest point on the <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a> with identifier <code class="docutils literal notranslate"><span class="pre">id</span></code> to the given point in space.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.mesh_query_next.html#warp._src.lang.mesh_query_next" title="warp._src.lang.mesh_query_next"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_query_next</span></code></a></p></td>
+<td><p>Advance a mesh query to the next matching triangle and report whether one was found.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.mesh_query_point.html#warp._src.lang.mesh_query_point" title="warp._src.lang.mesh_query_point"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_query_point</span></code></a></p></td>
 <td><p>Compute the closest point on the <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a> with identifier <code class="docutils literal notranslate"><span class="pre">id</span></code> to the given <code class="docutils literal notranslate"><span class="pre">point</span></code> in space.</p></td>
@@ -1216,6 +1258,9 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.mesh_query_ray_count_intersections.html#warp._src.lang.mesh_query_ray_count_intersections" title="warp._src.lang.mesh_query_ray_count_intersections"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_query_ray_count_intersections</span></code></a></p></td>
 <td><p>Count the number of intersections between a ray and a <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a>.</p></td>
 </tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.mesh_query_sphere.html#warp._src.lang.mesh_query_sphere" title="warp._src.lang.mesh_query_sphere"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_query_sphere</span></code></a></p></td>
+<td><p>Construct a sphere query against a <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a>.</p></td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -1225,70 +1270,70 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.volume_index_to_world.html#warp._src.lang.volume_index_to_world" title="warp._src.lang.volume_index_to_world"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_index_to_world</span></code></a></p></td>
-<td><p>Transform a point <code class="docutils literal notranslate"><span class="pre">uvw</span></code> defined in volume index space to world space given the volume's intrinsic affine transformation.</p></td>
+<td><p>Transform the point <code class="docutils literal notranslate"><span class="pre">uvw</span></code> from the volume's index space (voxel coordinates) to world space using the volume's affine index-to-world transform.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.volume_index_to_world_dir.html#warp._src.lang.volume_index_to_world_dir" title="warp._src.lang.volume_index_to_world_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_index_to_world_dir</span></code></a></p></td>
-<td><p>Transform a direction <code class="docutils literal notranslate"><span class="pre">uvw</span></code> defined in volume index space to world space given the volume's intrinsic affine transformation.</p></td>
+<td><p>Transform the direction <code class="docutils literal notranslate"><span class="pre">uvw</span></code> from the volume's index space to world space using the linear part of the volume's affine transform.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.volume_lookup.html#warp._src.lang.volume_lookup" title="warp._src.lang.volume_lookup"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_lookup</span></code></a></p></td>
-<td><p>Query the value of voxel with coordinates <code class="docutils literal notranslate"><span class="pre">i</span></code>, <code class="docutils literal notranslate"><span class="pre">j</span></code>, <code class="docutils literal notranslate"><span class="pre">k</span></code> for a volume of type <code class="docutils literal notranslate"><span class="pre">dtype</span></code>.</p></td>
+<td><p>Return the value of type <code class="docutils literal notranslate"><span class="pre">dtype</span></code> stored at the voxel with integer index-space coordinates <code class="docutils literal notranslate"><span class="pre">i</span></code>, <code class="docutils literal notranslate"><span class="pre">j</span></code>, <code class="docutils literal notranslate"><span class="pre">k</span></code>, without interpolation.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.volume_lookup_f.html#warp._src.lang.volume_lookup_f" title="warp._src.lang.volume_lookup_f"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_lookup_f</span></code></a></p></td>
-<td><p>Query the value of voxel with coordinates <code class="docutils literal notranslate"><span class="pre">i</span></code>, <code class="docutils literal notranslate"><span class="pre">j</span></code>, <code class="docutils literal notranslate"><span class="pre">k</span></code>.</p></td>
+<td><p>Return the <a class="reference internal" href="../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.float32</span></code></a> value of the voxel at integer index-space coordinates <code class="docutils literal notranslate"><span class="pre">i</span></code>, <code class="docutils literal notranslate"><span class="pre">j</span></code>, <code class="docutils literal notranslate"><span class="pre">k</span></code>, without interpolation.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.volume_lookup_i.html#warp._src.lang.volume_lookup_i" title="warp._src.lang.volume_lookup_i"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_lookup_i</span></code></a></p></td>
-<td><p>Query the <a class="reference internal" href="../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.int32</span></code></a> value of voxel with coordinates <code class="docutils literal notranslate"><span class="pre">i</span></code>, <code class="docutils literal notranslate"><span class="pre">j</span></code>, <code class="docutils literal notranslate"><span class="pre">k</span></code>.</p></td>
+<td><p>Return the <a class="reference internal" href="../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.int32</span></code></a> value of the voxel at integer index-space coordinates <code class="docutils literal notranslate"><span class="pre">i</span></code>, <code class="docutils literal notranslate"><span class="pre">j</span></code>, <code class="docutils literal notranslate"><span class="pre">k</span></code>, without interpolation.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.volume_lookup_index.html#warp._src.lang.volume_lookup_index" title="warp._src.lang.volume_lookup_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_lookup_index</span></code></a></p></td>
-<td><p>Query the index associated with the voxel at coordinates <code class="docutils literal notranslate"><span class="pre">i</span></code>, <code class="docutils literal notranslate"><span class="pre">j</span></code>, <code class="docutils literal notranslate"><span class="pre">k</span></code>.</p></td>
+<td><p>Return the linear index associated with integer index-space coordinates <code class="docutils literal notranslate"><span class="pre">i</span></code>, <code class="docutils literal notranslate"><span class="pre">j</span></code>, <code class="docutils literal notranslate"><span class="pre">k</span></code>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.volume_lookup_v.html#warp._src.lang.volume_lookup_v" title="warp._src.lang.volume_lookup_v"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_lookup_v</span></code></a></p></td>
-<td><p>Query the vector value of voxel with coordinates <code class="docutils literal notranslate"><span class="pre">i</span></code>, <code class="docutils literal notranslate"><span class="pre">j</span></code>, <code class="docutils literal notranslate"><span class="pre">k</span></code>.</p></td>
+<td><p>Return the <a class="reference internal" href="../api_reference/_generated/warp.vec3f.html#warp.vec3f" title="warp.vec3f"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3f</span></code></a> value of the voxel at integer index-space coordinates <code class="docutils literal notranslate"><span class="pre">i</span></code>, <code class="docutils literal notranslate"><span class="pre">j</span></code>, <code class="docutils literal notranslate"><span class="pre">k</span></code>, without interpolation.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.volume_sample.html#warp._src.lang.volume_sample" title="warp._src.lang.volume_sample"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_sample</span></code></a></p></td>
-<td><p>Sample the volume of type <code class="docutils literal notranslate"><span class="pre">dtype</span></code> given by <code class="docutils literal notranslate"><span class="pre">id</span></code> at the volume local-space point <code class="docutils literal notranslate"><span class="pre">uvw</span></code>.</p></td>
+<td><p>Sample the volume of type <code class="docutils literal notranslate"><span class="pre">dtype</span></code> given by <code class="docutils literal notranslate"><span class="pre">id</span></code> at the index-space point <code class="docutils literal notranslate"><span class="pre">uvw</span></code>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.volume_sample_f.html#warp._src.lang.volume_sample_f" title="warp._src.lang.volume_sample_f"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_sample_f</span></code></a></p></td>
-<td><p>Sample the volume given by <code class="docutils literal notranslate"><span class="pre">id</span></code> at the volume local-space point <code class="docutils literal notranslate"><span class="pre">uvw</span></code>.</p></td>
+<td><p>Sample the <a class="reference internal" href="../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.float32</span></code></a> volume given by <code class="docutils literal notranslate"><span class="pre">id</span></code> at the index-space point <code class="docutils literal notranslate"><span class="pre">uvw</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.volume_sample_grad.html#warp._src.lang.volume_sample_grad" title="warp._src.lang.volume_sample_grad"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_sample_grad</span></code></a></p></td>
-<td><p>Sample the volume given by <code class="docutils literal notranslate"><span class="pre">id</span></code> and its gradient at the volume local-space point <code class="docutils literal notranslate"><span class="pre">uvw</span></code>.</p></td>
+<td><p>Sample the volume of type <code class="docutils literal notranslate"><span class="pre">dtype</span></code> given by <code class="docutils literal notranslate"><span class="pre">id</span></code> and its spatial gradient at the index-space point <code class="docutils literal notranslate"><span class="pre">uvw</span></code>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.volume_sample_grad_f.html#warp._src.lang.volume_sample_grad_f" title="warp._src.lang.volume_sample_grad_f"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_sample_grad_f</span></code></a></p></td>
-<td><p>Sample the volume and its gradient given by <code class="docutils literal notranslate"><span class="pre">id</span></code> at the volume local-space point <code class="docutils literal notranslate"><span class="pre">uvw</span></code>.</p></td>
+<td><p>Sample the <a class="reference internal" href="../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.float32</span></code></a> volume given by <code class="docutils literal notranslate"><span class="pre">id</span></code> and its gradient at the index-space point <code class="docutils literal notranslate"><span class="pre">uvw</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.volume_sample_grad_index.html#warp._src.lang.volume_sample_grad_index" title="warp._src.lang.volume_sample_grad_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_sample_grad_index</span></code></a></p></td>
-<td><p>Sample the volume given by <code class="docutils literal notranslate"><span class="pre">id</span></code> and its gradient at the volume local-space point <code class="docutils literal notranslate"><span class="pre">uvw</span></code>.</p></td>
+<td><p>Sample the volume given by <code class="docutils literal notranslate"><span class="pre">id</span></code> and its spatial gradient at the index-space point <code class="docutils literal notranslate"><span class="pre">uvw</span></code>, reading voxel values from a separate <code class="docutils literal notranslate"><span class="pre">voxel_data</span></code> array.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.volume_sample_i.html#warp._src.lang.volume_sample_i" title="warp._src.lang.volume_sample_i"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_sample_i</span></code></a></p></td>
-<td><p>Sample the <a class="reference internal" href="../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.int32</span></code></a> volume given by <code class="docutils literal notranslate"><span class="pre">id</span></code> at the volume local-space point <code class="docutils literal notranslate"><span class="pre">uvw</span></code>.</p></td>
+<td><p>Sample the <a class="reference internal" href="../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.int32</span></code></a> volume given by <code class="docutils literal notranslate"><span class="pre">id</span></code> at the index-space point <code class="docutils literal notranslate"><span class="pre">uvw</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.volume_sample_index.html#warp._src.lang.volume_sample_index" title="warp._src.lang.volume_sample_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_sample_index</span></code></a></p></td>
-<td><p>Sample the volume given by <code class="docutils literal notranslate"><span class="pre">id</span></code> at the volume local-space point <code class="docutils literal notranslate"><span class="pre">uvw</span></code>.</p></td>
+<td><p>Sample the volume given by <code class="docutils literal notranslate"><span class="pre">id</span></code> at the index-space point <code class="docutils literal notranslate"><span class="pre">uvw</span></code>, reading voxel values from a separate <code class="docutils literal notranslate"><span class="pre">voxel_data</span></code> array.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.volume_sample_v.html#warp._src.lang.volume_sample_v" title="warp._src.lang.volume_sample_v"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_sample_v</span></code></a></p></td>
-<td><p>Sample the vector volume given by <code class="docutils literal notranslate"><span class="pre">id</span></code> at the volume local-space point <code class="docutils literal notranslate"><span class="pre">uvw</span></code>.</p></td>
+<td><p>Sample the vector (<a class="reference internal" href="../api_reference/_generated/warp.vec3f.html#warp.vec3f" title="warp.vec3f"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3f</span></code></a>) volume given by <code class="docutils literal notranslate"><span class="pre">id</span></code> at the index-space point <code class="docutils literal notranslate"><span class="pre">uvw</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.volume_store.html#warp._src.lang.volume_store" title="warp._src.lang.volume_store"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_store</span></code></a></p></td>
-<td><p>Store <code class="docutils literal notranslate"><span class="pre">value</span></code> at the voxel with coordinates <code class="docutils literal notranslate"><span class="pre">i</span></code>, <code class="docutils literal notranslate"><span class="pre">j</span></code>, <code class="docutils literal notranslate"><span class="pre">k</span></code>.</p></td>
+<td><p>Store <code class="docutils literal notranslate"><span class="pre">value</span></code> at the voxel with integer index-space coordinates <code class="docutils literal notranslate"><span class="pre">i</span></code>, <code class="docutils literal notranslate"><span class="pre">j</span></code>, <code class="docutils literal notranslate"><span class="pre">k</span></code>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.volume_store_f.html#warp._src.lang.volume_store_f" title="warp._src.lang.volume_store_f"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_store_f</span></code></a></p></td>
-<td><p>Store <code class="docutils literal notranslate"><span class="pre">value</span></code> at the voxel with coordinates <code class="docutils literal notranslate"><span class="pre">i</span></code>, <code class="docutils literal notranslate"><span class="pre">j</span></code>, <code class="docutils literal notranslate"><span class="pre">k</span></code>.</p></td>
+<td><p>Store the <a class="reference internal" href="../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.float32</span></code></a> <code class="docutils literal notranslate"><span class="pre">value</span></code> at the voxel with integer index-space coordinates <code class="docutils literal notranslate"><span class="pre">i</span></code>, <code class="docutils literal notranslate"><span class="pre">j</span></code>, <code class="docutils literal notranslate"><span class="pre">k</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.volume_store_i.html#warp._src.lang.volume_store_i" title="warp._src.lang.volume_store_i"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_store_i</span></code></a></p></td>
-<td><p>Store <code class="docutils literal notranslate"><span class="pre">value</span></code> at the voxel with coordinates <code class="docutils literal notranslate"><span class="pre">i</span></code>, <code class="docutils literal notranslate"><span class="pre">j</span></code>, <code class="docutils literal notranslate"><span class="pre">k</span></code>.</p></td>
+<td><p>Store the <a class="reference internal" href="../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.int32</span></code></a> <code class="docutils literal notranslate"><span class="pre">value</span></code> at the voxel with integer index-space coordinates <code class="docutils literal notranslate"><span class="pre">i</span></code>, <code class="docutils literal notranslate"><span class="pre">j</span></code>, <code class="docutils literal notranslate"><span class="pre">k</span></code>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.volume_store_v.html#warp._src.lang.volume_store_v" title="warp._src.lang.volume_store_v"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_store_v</span></code></a></p></td>
-<td><p>Store <code class="docutils literal notranslate"><span class="pre">value</span></code> at the voxel with coordinates <code class="docutils literal notranslate"><span class="pre">i</span></code>, <code class="docutils literal notranslate"><span class="pre">j</span></code>, <code class="docutils literal notranslate"><span class="pre">k</span></code>.</p></td>
+<td><p>Store the <a class="reference internal" href="../api_reference/_generated/warp.vec3f.html#warp.vec3f" title="warp.vec3f"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3f</span></code></a> <code class="docutils literal notranslate"><span class="pre">value</span></code> at the voxel with integer index-space coordinates <code class="docutils literal notranslate"><span class="pre">i</span></code>, <code class="docutils literal notranslate"><span class="pre">j</span></code>, <code class="docutils literal notranslate"><span class="pre">k</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.volume_voxel_count.html#warp._src.lang.volume_voxel_count" title="warp._src.lang.volume_voxel_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_voxel_count</span></code></a></p></td>
 <td><p>Return the number of indexable voxels in the volume given by <code class="docutils literal notranslate"><span class="pre">id</span></code>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.volume_world_to_index.html#warp._src.lang.volume_world_to_index" title="warp._src.lang.volume_world_to_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_world_to_index</span></code></a></p></td>
-<td><p>Transform a point <code class="docutils literal notranslate"><span class="pre">xyz</span></code> defined in volume world space to the volume's index space given the volume's intrinsic affine transformation.</p></td>
+<td><p>Transform the point <code class="docutils literal notranslate"><span class="pre">xyz</span></code> from world space to the volume's index space (voxel coordinates) using the inverse of the volume's affine index-to-world transform.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.volume_world_to_index_dir.html#warp._src.lang.volume_world_to_index_dir" title="warp._src.lang.volume_world_to_index_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_world_to_index_dir</span></code></a></p></td>
-<td><p>Transform a direction <code class="docutils literal notranslate"><span class="pre">xyz</span></code> defined in volume world space to the volume's index space given the volume's intrinsic affine transformation.</p></td>
+<td><p>Transform the direction <code class="docutils literal notranslate"><span class="pre">xyz</span></code> from world space to the volume's index space using the linear part of the volume's affine transform.</p></td>
 </tr>
 </tbody>
 </table>
@@ -1310,13 +1355,13 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.curlnoise.html#warp._src.lang.curlnoise" title="warp._src.lang.curlnoise"><code class="xref py py-obj docutils literal notranslate"><span class="pre">curlnoise</span></code></a></p></td>
-<td><p>Divergence-free vector field based on Perlin noise.</p></td>
+<td><p>Sample a divergence-free 2D vector field derived from Perlin noise.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.noise.html#warp._src.lang.noise" title="warp._src.lang.noise"><code class="xref py py-obj docutils literal notranslate"><span class="pre">noise</span></code></a></p></td>
-<td><p>Non-periodic Perlin-style noise.</p></td>
+<td><p>Sample 1D non-periodic Perlin noise.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.pnoise.html#warp._src.lang.pnoise" title="warp._src.lang.pnoise"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pnoise</span></code></a></p></td>
-<td><p>Periodic Perlin-style noise.</p></td>
+<td><p>Sample 1D Perlin noise that repeats with an integer period.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.poisson.html#warp._src.lang.poisson" title="warp._src.lang.poisson"><code class="xref py py-obj docutils literal notranslate"><span class="pre">poisson</span></code></a></p></td>
 <td><p>Generate a random sample from a Poisson distribution.</p></td>
@@ -1597,7 +1642,7 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/release-1.16/docs/language_reference/builtins.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/release-1.17/docs/language_reference/builtins.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

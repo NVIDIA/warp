@@ -7,13 +7,13 @@
   {
     "version": "1.17",
     "url": "https://nvidia.github.io/warp/v1.17/",
-    "name": "1.17 (prerelease)"
+    "name": "1.17 (stable)",
+    "preferred": true
   },
   {
     "version": "1.16",
     "url": "https://nvidia.github.io/warp/v1.16/",
-    "name": "1.16 (stable)",
-    "preferred": true
+    "name": "1.16"
   },
   {
     "version": "1.15",

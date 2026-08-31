@@ -10,9 +10,43 @@
       * Python
       * Differentiable
 
-   Periodic Perlin-style noise.
+   Sample 1D Perlin noise that repeats with an integer period.
    
-   Sample 1D noise.
+   Wraps the :func:`noise` lattice every ``px`` cells, with one cell per input unit.
+   ``state`` selects the field and is not advanced. Values have the same scale and
+   determinism behavior as :func:`noise`.
+   
+   Period arguments must be positive. Negative coordinates are currently unsupported.
+   The field is differentiable with respect to coordinates. Period arguments receive
+   no Warp autodiff gradient.
+   
+   :param state: RNG state that selects the noise field (see :func:`rand_init`); never advanced.
+   :param x: Coordinate to sample. One noise feature spans one unit.
+   :param px: Period along x, in units. ``px`` must be greater than zero.
+   
+   :returns: The noise value at ``x``.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def sample_periodic_noise(seed: int, coords: wp.array[float], values: wp.array[float]):
+           tid = wp.tid()
+           state = wp.rand_init(seed)
+           values[tid] = wp.pnoise(state, coords[tid], 4)
+   
+       # a point, then the same point shifted by one and by two periods
+       coords = wp.array([0.75, 4.75, 8.75], dtype=float)
+       values = wp.zeros(len(coords), dtype=float)
+   
+       wp.launch(sample_periodic_noise, dim=len(coords), inputs=[42, coords], outputs=[values])
+       print(np.allclose(values.numpy(), values.numpy()[0]))
+   
+   .. testoutput::
+   
+       True
+   
 
 .. function:: warp._src.lang.pnoise(state: uint32, xy: vec2f, px: int32, py: int32) -> float
    :noindex:
@@ -24,9 +58,17 @@
       * Python
       * Differentiable
 
-   Periodic Perlin-style noise.
+   Sample 2D Perlin noise that repeats with an integer period.
    
-   Sample 2D noise.
+   See :func:`pnoise` for shared behavior, restrictions, and a usage example.
+   
+   :param state: RNG state that selects the noise field (see :func:`rand_init`); never advanced.
+   :param xy: Coordinate to sample. One noise feature spans one unit.
+   :param px: Period along x, in units. ``px`` must be greater than zero.
+   :param py: Period along y, in units. ``py`` must be greater than zero.
+   
+   :returns: The noise value at ``xy``.
+   
 
 .. function:: warp._src.lang.pnoise(state: uint32, xyz: vec3f, px: int32, py: int32, pz: int32) -> float
    :noindex:
@@ -38,9 +80,18 @@
       * Python
       * Differentiable
 
-   Periodic Perlin-style noise.
+   Sample 3D Perlin noise that repeats with an integer period.
    
-   Sample 3D noise.
+   See :func:`pnoise` for shared behavior, restrictions, and a usage example.
+   
+   :param state: RNG state that selects the noise field (see :func:`rand_init`); never advanced.
+   :param xyz: Coordinate to sample. One noise feature spans one unit.
+   :param px: Period along x, in units. ``px`` must be greater than zero.
+   :param py: Period along y, in units. ``py`` must be greater than zero.
+   :param pz: Period along z, in units. ``pz`` must be greater than zero.
+   
+   :returns: The noise value at ``xyz``.
+   
 
 .. function:: warp._src.lang.pnoise(state: uint32, xyzt: vec4f, px: int32, py: int32, pz: int32, pt: int32) -> float
    :noindex:
@@ -52,6 +103,17 @@
       * Python
       * Differentiable
 
-   Periodic Perlin-style noise.
+   Sample 4D Perlin noise that repeats with an integer period.
    
-   Sample 4D noise.
+   The fourth coordinate is commonly used as looping time. See :func:`pnoise` for
+   shared behavior, restrictions, and a usage example.
+   
+   :param state: RNG state that selects the noise field (see :func:`rand_init`); never advanced.
+   :param xyzt: Coordinate to sample. One noise feature spans one unit.
+   :param px: Period along x, in units. ``px`` must be greater than zero.
+   :param py: Period along y, in units. ``py`` must be greater than zero.
+   :param pz: Period along z, in units. ``pz`` must be greater than zero.
+   :param pt: Period along the fourth axis, in units. ``pt`` must be greater than zero.
+   
+   :returns: The noise value at ``xyzt``.
+   

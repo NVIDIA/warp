@@ -1,7 +1,7 @@
 ﻿warp.bvh\_query\_aabb
 =====================
 
-.. function:: warp._src.lang.bvh_query_aabb(id: uint64, low: vec3f, high: vec3f, root: int32) -> BvhQuery
+.. function:: warp._src.lang.bvh_query_aabb(id: uint64, low: vec3f, high: vec3f, root: int32) -> _BvhQueryAabb
 
    .. hlist::
       :columns: 8

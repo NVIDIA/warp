@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Differentiability &#8212; Warp 1.16.1</title>
+    <title>Differentiability &#8212; Warp 1.17.0</title>
   
   
   
@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=3d681599" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=2a8757ae" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
@@ -44,7 +44,7 @@
 
 
 
-    <script src="../_static/documentation_options.js?v=d123bb80"></script>
+    <script src="../_static/documentation_options.js?v=755b3f99"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -54,11 +54,12 @@
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.16';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.17';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
     <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <script src="../_static/copy-page-source.js?v=f9064be3"></script>
 
     <link rel="icon" href="../_static/favicon.png"/>
 
@@ -70,7 +71,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.16.1" />
+  <meta name="docsearch:version" content="1.17.0" />
   
     
     <script src="../_static/searchtools.js"></script>
@@ -147,11 +148,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.16.1 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.16.1 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.16.1</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a></div>
     
@@ -291,11 +292,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.16.1 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.16.1 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.16.1</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a>
 
@@ -414,6 +415,7 @@
 <li class="toctree-l2"><a class="reference internal" href="execution_and_performance/memory_management.html">Memory Allocation and Access</a></li>
 <li class="toctree-l2"><a class="reference internal" href="execution_and_performance/profiling.html">Profiling</a></li>
 <li class="toctree-l2"><a class="reference internal" href="execution_and_performance/deterministic_execution.html">Deterministic Execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="execution_and_performance/reducing_compilation_and_startup_time.html">Reducing Compilation and Startup Time</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a></li>
@@ -429,6 +431,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp.html">warp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_autograd.html">warp.autograd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_build_experimental.html">warp.build_experimental</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_config.html">warp.config</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_fem.html">warp.fem</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_optim.html">warp.optim</a></li>
@@ -445,7 +448,7 @@
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../project/contribution_guide.html">Contribution Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../project/contribution_guide.html">Contributing to Warp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../project/publications.html">Publications using Warp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../project/changelog.html">Changelog</a></li>
 </ul>
@@ -494,10 +497,43 @@
       
         <div class="header-article-item">
 
+
+
 <div class="d-flex justify-content-end w-100">
-  <a href="../_sources/user_guide/differentiability.rst.txt">
-    <i class="fa-solid fa-file-code"></i> View page source
-  </a>
+  <div class="btn-group copy-page-source pst-js-only" data-page-source-control role="group" aria-label="Page source">
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary"
+      data-copy-page-source
+      data-page-source-url="../_sources/user_guide/differentiability.rst.txt"
+      disabled
+    >
+      <i class="fa-solid fa-copy" aria-hidden="true"></i>
+      <span data-copy-page-source-label>Copy source</span>
+    </button>
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary dropdown-toggle dropdown-toggle-split"
+      data-bs-toggle="dropdown"
+      aria-expanded="false"
+    >
+      <span class="visually-hidden">Page source options</span>
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end">
+      <li>
+        <a class="dropdown-item" href="../_sources/user_guide/differentiability.rst.txt">
+          <i class="fa-solid fa-file-code" aria-hidden="true"></i>
+          View source
+        </a>
+      </li>
+    </ul>
+    <span class="visually-hidden" role="status" aria-live="polite" data-copy-page-source-status></span>
+  </div>
+  <noscript>
+    <a href="../_sources/user_guide/differentiability.rst.txt">
+      <i class="fa-solid fa-file-code" aria-hidden="true"></i> View source
+    </a>
+  </noscript>
 </div>
 </div>
       
@@ -740,7 +776,7 @@ PyTorch equivalents (for comparison):</p>
 <section id="jacobians">
 <h2>Jacobians<a class="headerlink" href="#jacobians" title="Link to this heading">#</a></h2>
 <p>To compute the Jacobian matrix <span class="math notranslate nohighlight">\(J\in\mathbb{R}^{m\times n}\)</span> of a multi-valued function <span class="math notranslate nohighlight">\(f: \mathbb{R}^n \to \mathbb{R}^m\)</span>,
-we can evaluate an entire row of the Jacobian in parallel by finding the Jacobian-vector product <span class="math notranslate nohighlight">\(J^\top \mathbf{e}\)</span>.
+we can evaluate an entire row of the Jacobian in parallel by finding the vector-Jacobian product <span class="math notranslate nohighlight">\(\mathbf{e}^\top J\)</span>.
 The vector <span class="math notranslate nohighlight">\(\mathbf{e}\in\mathbb{R}^m\)</span> selects the indices in the output buffer to differentiate with respect to.
 In Warp, instead of passing a scalar loss buffer to <a class="reference internal" href="../api_reference/_generated/warp.Tape.html#warp.Tape.backward" title="warp.Tape.backward"><code class="xref py py-meth docutils literal notranslate"><span class="pre">warp.Tape.backward()</span></code></a>,
 we pass a dictionary <code class="docutils literal notranslate"><span class="pre">grads</span></code> mapping from the function output array to the selection vector <span class="math notranslate nohighlight">\(\mathbf{e}\)</span>
@@ -872,8 +908,8 @@ This allows users to define code that should replace the automatically generated
 <span class="math notranslate nohighlight">\(\color{green}{g(x)}\)</span>, which we refer to as “replay” function (that matches the original function definition by default),
 and its derivative <span class="math notranslate nohighlight">\(\color{blue}{g^\prime(x)}\)</span>, referred to as “grad”.</p>
 <p>Both the replay and the grad implementations can be customized by the user. They are defined as follows:</p>
-<div class="pst-scrollable-table-container"><table class="table" id="id7">
-<caption><span class="caption-text">Customizing the replay and grad versions of function <code class="docutils literal notranslate"><span class="pre">myfunc</span></code></span><a class="headerlink" href="#id7" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id8">
+<caption><span class="caption-text">Customizing the replay and grad versions of function <code class="docutils literal notranslate"><span class="pre">myfunc</span></code></span><a class="headerlink" href="#id8" title="Link to this table">#</a></caption>
 <colgroup>
 <col style="width: 100.0%" />
 </colgroup>
@@ -1626,7 +1662,7 @@ then be safely updated with in-place addition or subtraction (<code class="docut
 will invalidate gradient computations related to the vector, matrix, or quaternion.</p>
 </section>
 <section id="dynamic-loops">
-<h3>Dynamic Loops<a class="headerlink" href="#dynamic-loops" title="Link to this heading">#</a></h3>
+<span id="id7"></span><h3>Dynamic Loops<a class="headerlink" href="#dynamic-loops" title="Link to this heading">#</a></h3>
 <p>Currently, dynamic loops are not replayed or unrolled in the backward pass, meaning intermediate values that are
 meant to be computed in the loop and may be necessary for adjoint calculations are not updated.</p>
 <p>In the following example, the correct gradient is computed because the <code class="docutils literal notranslate"><span class="pre">x</span></code> array adjoints do not depend on intermediate values of <code class="docutils literal notranslate"><span class="pre">sum</span></code>:</p>
@@ -1750,10 +1786,11 @@ the <cite>final</cite> value of a local variable is necessary for the adjoint co
 <p>In the backward pass, when computing the adjoint for <code class="docutils literal notranslate"><span class="pre">sum</span></code>, which is used to compute the adjoint for the <code class="docutils literal notranslate"><span class="pre">x</span></code> array, there is a division by zero:
 <code class="docutils literal notranslate"><span class="pre">norm</span></code> is not recomputed in the backward pass because dynamic loops are not replayed. This means that <code class="docutils literal notranslate"><span class="pre">norm</span></code> is 0.0 at the start of the adjoint calculation
 rather than the value computed in the forward pass, 3.0.</p>
-<p>There is a different remedy for this particular scenario. One can force a dynamic loop to replay in the backward pass by migrating the body of the loop to
-a Warp function:</p>
+<p>There is a workaround for this case. During the backward pass, Warp skips dynamic loops in the kernel body, but it replays calls to Warp functions.
+Replaying a function call runs the function again, including any dynamic loop it contains, and recomputes its return values. We can therefore move the loop
+into a Warp function that returns the accumulated values and keep the division in the kernel:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">loop</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">weights</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">iters</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">weighted_sum</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">weights</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">iters</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
     <span class="nb">sum</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
     <span class="n">norm</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
 
@@ -1767,7 +1804,7 @@ a Warp function:</p>
 
 <span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">dynamic_loop_sum</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">weights</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">loss</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">iters</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
-    <span class="nb">sum</span><span class="p">,</span> <span class="n">norm</span> <span class="o">=</span> <span class="n">loop</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">weights</span><span class="p">,</span> <span class="n">iters</span><span class="p">)</span>
+    <span class="nb">sum</span><span class="p">,</span> <span class="n">norm</span> <span class="o">=</span> <span class="n">weighted_sum</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">weights</span><span class="p">,</span> <span class="n">iters</span><span class="p">)</span>
 
     <span class="n">l</span> <span class="o">=</span> <span class="nb">sum</span> <span class="o">/</span> <span class="n">norm</span>
     <span class="n">wp</span><span class="o">.</span><span class="n">atomic_add</span><span class="p">(</span><span class="n">loss</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">l</span><span class="p">)</span>
@@ -1775,7 +1812,7 @@ a Warp function:</p>
 
 <span class="n">iters</span> <span class="o">=</span> <span class="mi">3</span>
 <span class="n">x</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="n">iters</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<span class="n">weights</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="n">iters</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">weights</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="n">iters</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="n">loss</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
 <span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">Tape</span><span class="p">()</span> <span class="k">as</span> <span class="n">tape</span><span class="p">:</span>
@@ -1790,13 +1827,69 @@ a Warp function:</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[0.33333334 0.33333334 0.33333334]
 </pre></div>
 </div>
-<p>However, this only works because the <code class="docutils literal notranslate"><span class="pre">x</span></code> array adjoints do not require an intermediate
-value for <code class="docutils literal notranslate"><span class="pre">sum</span></code>; they only need the adjoint of <code class="docutils literal notranslate"><span class="pre">sum</span></code>. In general this workaround is only valid for simple add/subtract operations such as
-<code class="docutils literal notranslate"><span class="pre">+=</span></code> or <code class="docutils literal notranslate"><span class="pre">-=</span></code>.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>In a subsequent release, we will enable users to force-unroll dynamic loops in some circumstances, thereby obviating these workarounds.</p>
+<p>The backward pass handles <code class="docutils literal notranslate"><span class="pre">weighted_sum()</span></code> in two stages. It first replays the original function to recompute its return values. It then runs the
+function’s generated adjoint to propagate gradients to <code class="docutils literal notranslate"><span class="pre">x</span></code> and <code class="docutils literal notranslate"><span class="pre">weights</span></code>. In detail:</p>
+<ol class="arabic simple">
+<li><p>Warp calls <code class="docutils literal notranslate"><span class="pre">weighted_sum()</span></code> again while replaying the kernel. The function runs its dynamic loop and recomputes the final values of <code class="docutils literal notranslate"><span class="pre">sum</span></code> and
+<code class="docutils literal notranslate"><span class="pre">norm</span></code>. The kernel’s reverse sweep then reads these values where it needs them: the adjoint of the division <code class="docutils literal notranslate"><span class="pre">l</span> <span class="pre">=</span> <span class="pre">sum</span> <span class="pre">/</span> <span class="pre">norm</span></code> evaluates
+<span class="math notranslate nohighlight">\(\partial l / \partial \mathrm{sum} = 1 / \mathrm{norm}\)</span> and <span class="math notranslate nohighlight">\(\partial l / \partial \mathrm{norm} = -\mathrm{sum} / \mathrm{norm}^2\)</span>
+with the recomputed values, producing correct adjoints of <code class="docutils literal notranslate"><span class="pre">sum</span></code> and <code class="docutils literal notranslate"><span class="pre">norm</span></code>.</p></li>
+<li><p>Warp runs the generated adjoint of <code class="docutils literal notranslate"><span class="pre">weighted_sum()</span></code> to propagate those adjoints into <code class="docutils literal notranslate"><span class="pre">x</span></code> and <code class="docutils literal notranslate"><span class="pre">weights</span></code>. The adjoint rebuilds the function’s local
+variables by re-executing its statements, with one exception: it never runs the dynamic loop forward, so the accumulators stay at their pre-loop values
+(here, 0.0) instead of their final sums. The adjoint does iterate over the loop range, but backward and only to apply the adjoint of each statement in
+the loop body. That is enough here because the adjoint of <code class="docutils literal notranslate"><span class="pre">sum</span> <span class="pre">+=</span> <span class="pre">x[i]</span> <span class="pre">*</span> <span class="pre">w</span></code> needs only <code class="docutils literal notranslate"><span class="pre">w</span></code> (recomputed each iteration from <code class="docutils literal notranslate"><span class="pre">weights</span></code>) and the
+adjoint of <code class="docutils literal notranslate"><span class="pre">sum</span></code>, never the value of <code class="docutils literal notranslate"><span class="pre">sum</span></code> itself.</p></li>
+</ol>
+<p>This limits the workaround in two ways:</p>
+<ul class="simple">
+<li><p>Warp can differentiate simple <code class="docutils literal notranslate"><span class="pre">+=</span></code> and <code class="docutils literal notranslate"><span class="pre">-=</span></code> accumulations inside the loop because their adjoints do not depend on intermediate accumulator values.
+Other operations inside the loop body remain subject to the restrictions described earlier in this section.</p></li>
+<li><p>After the loop, the function’s adjoint differentiates any use of an accumulator at its pre-loop value. Operations whose derivatives do not depend on the
+accumulated value, such as scaling by a constant, still produce correct gradients inside the function. Operations whose derivatives do need the final
+value, such as the division <code class="docutils literal notranslate"><span class="pre">sum</span> <span class="pre">/</span> <span class="pre">norm</span></code>, must be performed in the caller, where the replayed call provides the correct values.</p></li>
+</ul>
+<p>To illustrate the second limitation, suppose we instead perform the division inside the Warp function:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">weighted_mean</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">weights</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">iters</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+    <span class="nb">sum</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">norm</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">iters</span><span class="p">):</span>
+        <span class="n">w</span> <span class="o">=</span> <span class="n">weights</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="n">norm</span> <span class="o">+=</span> <span class="n">w</span>
+        <span class="nb">sum</span> <span class="o">+=</span> <span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">w</span>
+
+    <span class="k">return</span> <span class="nb">sum</span> <span class="o">/</span> <span class="n">norm</span>
+
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">dynamic_loop_divide</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">weights</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">loss</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">iters</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+    <span class="n">l</span> <span class="o">=</span> <span class="n">weighted_mean</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">weights</span><span class="p">,</span> <span class="n">iters</span><span class="p">)</span>
+
+    <span class="n">wp</span><span class="o">.</span><span class="n">atomic_add</span><span class="p">(</span><span class="n">loss</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">l</span><span class="p">)</span>
+
+
+<span class="n">iters</span> <span class="o">=</span> <span class="mi">3</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="n">iters</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">weights</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="n">iters</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">loss</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">Tape</span><span class="p">()</span> <span class="k">as</span> <span class="n">tape</span><span class="p">:</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">dynamic_loop_divide</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">x</span><span class="p">,</span> <span class="n">weights</span><span class="p">,</span> <span class="n">loss</span><span class="p">,</span> <span class="n">iters</span><span class="p">])</span>
+
+<span class="n">tape</span><span class="o">.</span><span class="n">backward</span><span class="p">(</span><span class="n">loss</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">grad</span><span class="p">)</span>
+</pre></div>
 </div>
+<p>The forward pass computes the correct loss, but the adjoint of the division is evaluated with <code class="docutils literal notranslate"><span class="pre">norm</span></code> still at its pre-loop value of 0.0, producing incorrect
+gradients:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[inf inf inf]
+</pre></div>
+</div>
+<p>The pre-loop value read by the adjoint is not necessarily zero, so this failure is not always as visible as an <code class="docutils literal notranslate"><span class="pre">inf</span></code>: the backward pass may instead
+produce zeros or finite but incorrect gradients. As a rule, return the raw accumulated values from the function and move any operation whose derivative
+depends on them to the caller.</p>
 </section>
 </section>
 </section>
@@ -1888,7 +1981,7 @@ value for <code class="docutils literal notranslate"><span class="pre">sum</span
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/release-1.16/docs/user_guide/differentiability.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/release-1.17/docs/user_guide/differentiability.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

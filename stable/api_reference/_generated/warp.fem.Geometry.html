@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.fem.Geometry &#8212; Warp 1.16.1</title>
+    <title>warp.fem.Geometry &#8212; Warp 1.17.0</title>
   
   
   
@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=3d681599" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=2a8757ae" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
@@ -44,7 +44,7 @@
 
 
 
-    <script src="../../_static/documentation_options.js?v=d123bb80"></script>
+    <script src="../../_static/documentation_options.js?v=755b3f99"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -53,11 +53,12 @@
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.16';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.17';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
     <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <script src="../../_static/copy-page-source.js?v=f9064be3"></script>
 
     <link rel="icon" href="../../_static/favicon.png"/>
 
@@ -69,7 +70,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.16.1" />
+  <meta name="docsearch:version" content="1.17.0" />
   
     
     <script src="../../_static/searchtools.js"></script>
@@ -146,11 +147,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.16.1 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.16.1 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.16.1</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a></div>
     
@@ -290,11 +291,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.16.1 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.16.1 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.16.1</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a>
 
@@ -413,6 +414,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/memory_management.html">Memory Allocation and Access</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/profiling.html">Profiling</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/deterministic_execution.html">Deterministic Execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/reducing_compilation_and_startup_time.html">Reducing Compilation and Startup Time</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/configuration.html">Configuration</a></li>
@@ -428,6 +430,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../warp.html">warp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_autograd.html">warp.autograd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_build_experimental.html">warp.build_experimental</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_config.html">warp.config</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_fem.html">warp.fem</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_optim.html">warp.optim</a></li>
@@ -444,7 +447,7 @@
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../../project/contribution_guide.html">Contribution Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../project/contribution_guide.html">Contributing to Warp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../project/publications.html">Publications using Warp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../project/changelog.html">Changelog</a></li>
 </ul>
@@ -492,19 +495,6 @@
     </div>
   
   
-    <div class="header-article-items__end">
-      
-        <div class="header-article-item">
-
-<div class="d-flex justify-content-end w-100">
-  <a href="../../_sources/api_reference/_generated/warp.fem.Geometry.rst.txt">
-    <i class="fa-solid fa-file-code"></i> View page source
-  </a>
-</div>
-</div>
-      
-    </div>
-  
 </div>
 </div>
               
@@ -518,7 +508,7 @@
 <h1>warp.fem.Geometry<a class="headerlink" href="#warp-fem-geometry" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.fem.Geometry">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">Geometry</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L39-L966"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">Geometry</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L39-L966"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry" title="Link to this definition">#</a></dt>
 <dd><p>Interface class for discrete geometries</p>
 <p>A geometry is composed of cells and sides. Sides may be boundary or interior (between cells).</p>
 <p class="rubric">Methods</p>
@@ -703,7 +693,7 @@
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.Geometry.scalar_type">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">scalar_type</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L51-L55"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.scalar_type" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">scalar_type</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L51-L55"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.scalar_type" title="Link to this definition">#</a></dt>
 <dd><p>Scalar type (<code class="docutils literal notranslate"><span class="pre">warp.float32</span></code> or <code class="docutils literal notranslate"><span class="pre">warp.float64</span></code>) for this geometry’s coordinate and weight computations.</p>
 </dd></dl>
 
@@ -721,37 +711,37 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.cell_count">
-<span class="sig-name descname"><span class="pre">cell_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L66-L69"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.cell_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">cell_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L66-L69"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.cell_count" title="Link to this definition">#</a></dt>
 <dd><p>Number of cells in the geometry</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.side_count">
-<span class="sig-name descname"><span class="pre">side_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L70-L73"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">side_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L70-L73"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_count" title="Link to this definition">#</a></dt>
 <dd><p>Number of sides in the geometry</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.boundary_side_count">
-<span class="sig-name descname"><span class="pre">boundary_side_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L74-L77"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.boundary_side_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">boundary_side_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L74-L77"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.boundary_side_count" title="Link to this definition">#</a></dt>
 <dd><p>Number of boundary sides (sides with a single neighbour cell) in the geometry</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.environment_count">
-<span class="sig-name descname"><span class="pre">environment_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L78-L81"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.environment_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">environment_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L78-L81"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.environment_count" title="Link to this definition">#</a></dt>
 <dd><p>Number of topologically independent environments represented by this geometry.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.Geometry.cell_env">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cell_env</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L82-L86"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.cell_env" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cell_env</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L82-L86"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.cell_env" title="Link to this definition">#</a></dt>
 <dd><p>Optional per-cell environment indices.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.reference_cell">
-<span class="sig-name descname"><span class="pre">reference_cell</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L87-L90"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.reference_cell" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">reference_cell</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L87-L90"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.reference_cell" title="Link to this definition">#</a></dt>
 <dd><p>Prototypical element for a cell</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -762,7 +752,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.reference_side">
-<span class="sig-name descname"><span class="pre">reference_side</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L91-L94"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.reference_side" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">reference_side</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L91-L94"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.reference_side" title="Link to this definition">#</a></dt>
 <dd><p>Prototypical element for a side</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -773,19 +763,19 @@
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.Geometry.cell_dimension">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cell_dimension</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L95-L99"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.cell_dimension" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cell_dimension</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L95-L99"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.cell_dimension" title="Link to this definition">#</a></dt>
 <dd><p>Manifold dimension of the geometry cells</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.Geometry.base">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">base</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#warp.fem.Geometry" title="warp._src.fem.geometry.geometry.Geometry"><span class="pre">Geometry</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L100-L104"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.base" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">base</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#warp.fem.Geometry" title="warp._src.fem.geometry.geometry.Geometry"><span class="pre">Geometry</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L100-L104"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.base" title="Link to this definition">#</a></dt>
 <dd><p>Return the base geometry from which this geometry derives its topology. Usually <cite>self</cite>.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.Geometry.name">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">name</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L105-L114"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.name" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">name</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L105-L114"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.name" title="Link to this definition">#</a></dt>
 <dd><p>Name of the geometry, including environment and scalar type suffixes.</p>
 </dd></dl>
 
@@ -809,12 +799,12 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.cell_arg_value">
-<span class="sig-name descname"><span class="pre">cell_arg_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/cache.py#L341-L352"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.cell_arg_value" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">cell_arg_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/cache.py#L341-L352"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.cell_arg_value" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.fill_cell_arg">
-<span class="sig-name descname"><span class="pre">fill_cell_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L134-L139"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.fill_cell_arg" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">fill_cell_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L134-L139"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.fill_cell_arg" title="Link to this definition">#</a></dt>
 <dd><p>Fill the arguments to be passed to cell-related device functions</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -825,7 +815,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.cell_position">
-<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cell_position</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L140-L144"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.cell_position" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cell_position</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L140-L144"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.cell_position" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning the world position of a cell sample point</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -839,7 +829,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.cell_deformation_gradient">
-<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cell_deformation_gradient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L145-L149"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.cell_deformation_gradient" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cell_deformation_gradient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L145-L149"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.cell_deformation_gradient" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning the transpose of the gradient of world position with respect to reference cell</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -853,7 +843,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.cell_inverse_deformation_gradient">
-<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cell_inverse_deformation_gradient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L150-L156"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.cell_inverse_deformation_gradient" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cell_inverse_deformation_gradient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L150-L156"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.cell_inverse_deformation_gradient" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning the matrix right-transforming a gradient w.r.t. cell space to a gradient w.r.t. world space
 (i.e. the inverse deformation gradient)</p>
 <dl class="field-list simple">
@@ -868,7 +858,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.cell_measure">
-<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cell_measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L157-L161"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.cell_measure" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cell_measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L157-L161"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.cell_measure" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning the measure determinant (e.g. volume, area) at a given point</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -895,7 +885,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.cell_normal">
-<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cell_normal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L171-L177"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.cell_normal" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cell_normal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L171-L177"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.cell_normal" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning the element normal at a sample point.</p>
 <p>For elements with the same dimension as the embedding space, this will be zero.</p>
 <dl class="field-list simple">
@@ -923,12 +913,12 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.side_arg_value">
-<span class="sig-name descname"><span class="pre">side_arg_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/cache.py#L341-L352"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_arg_value" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">side_arg_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/cache.py#L341-L352"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_arg_value" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.fill_side_arg">
-<span class="sig-name descname"><span class="pre">fill_side_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L195-L200"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.fill_side_arg" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">fill_side_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L195-L200"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.fill_side_arg" title="Link to this definition">#</a></dt>
 <dd><p>Fill the arguments to be passed to side-related device functions</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -939,12 +929,12 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.side_index_arg_value">
-<span class="sig-name descname"><span class="pre">side_index_arg_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/cache.py#L341-L352"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_index_arg_value" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">side_index_arg_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/cache.py#L341-L352"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_index_arg_value" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.fill_side_index_arg">
-<span class="sig-name descname"><span class="pre">fill_side_index_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L208-L213"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.fill_side_index_arg" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">fill_side_index_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L208-L213"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.fill_side_index_arg" title="Link to this definition">#</a></dt>
 <dd><p>Fill the arguments to be passed to side-related device functions</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -955,7 +945,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.boundary_side_index">
-<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">boundary_side_index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary_side_index</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L214-L218"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.boundary_side_index" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">boundary_side_index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary_side_index</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L214-L218"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.boundary_side_index" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning the side index corresponding to a boundary side</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -969,7 +959,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.side_position">
-<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">side_position</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L219-L223"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_position" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">side_position</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L219-L223"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_position" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning the side position at a sample point</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -983,7 +973,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.side_deformation_gradient">
-<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">side_deformation_gradient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L224-L228"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_deformation_gradient" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">side_deformation_gradient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L224-L228"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_deformation_gradient" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning the gradient of world position with respect to reference side</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1005,7 +995,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">coords</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L229-L235"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_inner_inverse_deformation_gradient" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L229-L235"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_inner_inverse_deformation_gradient" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning the matrix right-transforming a gradient w.r.t. inner cell space to a gradient w.r.t. world space
 (i.e. the inverse deformation gradient)</p>
 <dl class="field-list simple">
@@ -1029,7 +1019,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">coords</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L236-L242"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_outer_inverse_deformation_gradient" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L236-L242"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_outer_inverse_deformation_gradient" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning the matrix right-transforming a gradient w.r.t. outer cell space to a gradient w.r.t. world space
 (i.e. the inverse deformation gradient)</p>
 <dl class="field-list simple">
@@ -1045,7 +1035,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.side_measure">
-<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">side_measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L243-L247"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_measure" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">side_measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L243-L247"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_measure" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning the measure determinant (e.g. volume, area) at a given point</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1059,7 +1049,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.side_measure_ratio">
-<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">side_measure_ratio</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L248-L252"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_measure_ratio" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">side_measure_ratio</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L248-L252"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_measure_ratio" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning the ratio of the measure of a side to that of its neighbour cells</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1073,7 +1063,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.side_normal">
-<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">side_normal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L253-L257"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_normal" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">side_normal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L253-L257"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_normal" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning the element normal at a sample point</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1100,7 +1090,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.side_inner_cell_index">
-<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">side_inner_cell_index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">side_index</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L268-L272"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_inner_cell_index" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">side_inner_cell_index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">side_index</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L268-L272"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_inner_cell_index" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning the inner cell index for a given side</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1114,7 +1104,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.side_outer_cell_index">
-<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">side_outer_cell_index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">side_index</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L273-L277"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_outer_cell_index" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">side_outer_cell_index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">side_index</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L273-L277"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_outer_cell_index" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning the outer cell index for a given side</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1128,7 +1118,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.side_inner_cell_coords">
-<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">side_inner_cell_coords</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">side_index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">side_coords</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L278-L282"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_inner_cell_coords" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">side_inner_cell_coords</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">side_index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">side_coords</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L278-L282"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_inner_cell_coords" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning the coordinates of a point on a side in the inner cell</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1143,7 +1133,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.side_outer_cell_coords">
-<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">side_outer_cell_coords</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">side_index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">side_coords</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L283-L287"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_outer_cell_coords" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">side_outer_cell_coords</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">side_index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">side_coords</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L283-L287"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_outer_cell_coords" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning the coordinates of a point on a side in the outer cell</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1167,7 +1157,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">element_coords</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L288-L297"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_from_cell_coords" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L288-L297"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_from_cell_coords" title="Link to this definition">#</a></dt>
 <dd><p>Device function converting coordinates on a cell to coordinates on a side, or <a class="reference internal" href="warp.fem.OUTSIDE.html#warp.fem.OUTSIDE" title="warp.fem.OUTSIDE"><code class="xref py py-data docutils literal notranslate"><span class="pre">warp.fem.OUTSIDE</span></code></a></p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1183,7 +1173,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.side_to_cell_arg">
-<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">side_to_cell_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">side_arg</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L298-L302"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_to_cell_arg" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">side_to_cell_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">side_arg</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L298-L302"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_to_cell_arg" title="Link to this definition">#</a></dt>
 <dd><p>Device function converting a side-related argument value to a cell-related argument value, for promoting trace samples to the full space</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1194,7 +1184,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.make_filtered_cell_lookup">
-<span class="sig-name descname"><span class="pre">make_filtered_cell_lookup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filter_func</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L644-L721"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.make_filtered_cell_lookup" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">make_filtered_cell_lookup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filter_func</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L644-L721"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.make_filtered_cell_lookup" title="Link to this definition">#</a></dt>
 <dd><p>Create a filtered cell lookup function.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1211,7 +1201,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.supports_cell_lookup">
-<span class="sig-name descname"><span class="pre">supports_cell_lookup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L831-L834"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.supports_cell_lookup" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">supports_cell_lookup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L831-L834"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.supports_cell_lookup" title="Link to this definition">#</a></dt>
 <dd><p>Return whether cell lookups are supported on the given device.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -1222,7 +1212,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.update_bvh">
-<span class="sig-name descname"><span class="pre">update_bvh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L835-L864"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.update_bvh" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">update_bvh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L835-L864"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.update_bvh" title="Link to this definition">#</a></dt>
 <dd><p>Refit the geometry’s BVH if it exists on <code class="docutils literal notranslate"><span class="pre">device</span></code>, or build it from scratch otherwise.</p>
 <p>Refitting the BVH is cheaper than rebuilding it from scratch, and is generally preferred
 when the geometry positions are modified without significant changes to the topology.</p>
@@ -1231,7 +1221,7 @@ when the geometry positions are modified without significant changes to the topo
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.build_bvh">
-<span class="sig-name descname"><span class="pre">build_bvh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L865-L908"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.build_bvh" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">build_bvh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L865-L908"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.build_bvh" title="Link to this definition">#</a></dt>
 <dd><p>Rebuild the geometry’s Bounding Volume Hierarchy (BVH) for <code class="docutils literal notranslate"><span class="pre">device</span></code> from scratch.</p>
 <p>Many geometries rely on a BVH for the <a class="reference internal" href="warp.fem.lookup.html#warp.fem.lookup" title="warp.fem.lookup"><code class="xref py py-func docutils literal notranslate"><span class="pre">lookup()</span></code></a> and <a class="reference internal" href="warp.fem.partition_lookup.html#warp.fem.partition_lookup" title="warp.fem.partition_lookup"><code class="xref py py-func docutils literal notranslate"><span class="pre">partition_lookup()</span></code></a> operators to be functional.</p>
 <p>If building a BVH is not supported for this geometry, a <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">TypeError</span></code></a> is raised.</p>
@@ -1247,7 +1237,7 @@ separated by less than ~1e-7 in world space.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.cell_bvh_groups">
-<span class="sig-name descname"><span class="pre">cell_bvh_groups</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L909-L937"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.cell_bvh_groups" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">cell_bvh_groups</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L909-L937"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.cell_bvh_groups" title="Link to this definition">#</a></dt>
 <dd><p>Return optional per-cell BVH group indices on <code class="docutils literal notranslate"><span class="pre">device</span></code>.</p>
 </dd></dl>
 
@@ -1258,13 +1248,13 @@ separated by less than ~1e-7 in world space.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.cell_env_arg_value">
-<span class="sig-name descname"><span class="pre">cell_env_arg_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L950-L956"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.cell_env_arg_value" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">cell_env_arg_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L950-L956"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.cell_env_arg_value" title="Link to this definition">#</a></dt>
 <dd><p>Return per-cell environment indices for geometry argument structs.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.bvh_id">
-<span class="sig-name descname"><span class="pre">bvh_id</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/geometry.py#L957-L966"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.bvh_id" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">bvh_id</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/fem/geometry/geometry.py#L957-L966"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.bvh_id" title="Link to this definition">#</a></dt>
 <dd><p>Return the BVH identifier for the given device, or <code class="docutils literal notranslate"><span class="pre">0</span></code> if unavailable.</p>
 </dd></dl>
 
@@ -1380,22 +1370,6 @@ separated by less than ~1e-7 in world space.</p>
 </li>
 </ul>
   </nav></div>
-
-  <div class="sidebar-secondary-item">
-
-  
-  <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/release-1.16/docs/api_reference/_generated/warp.fem.Geometry.rst">
-      <i class="fa-solid fa-pencil"></i>
-      
-      
-        
-          Edit on GitHub
-        
-      
-    </a>
-  </div>
-</div>
 
 </div></div>
               

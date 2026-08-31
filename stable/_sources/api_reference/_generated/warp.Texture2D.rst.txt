@@ -11,9 +11,7 @@
    .. autosummary::
    
       ~Texture2D.copy_from
-      ~Texture2D.copy_from_array
       ~Texture2D.copy_to
-      ~Texture2D.copy_to_array
    
    
    

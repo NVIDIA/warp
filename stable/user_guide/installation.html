@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Installation &#8212; Warp 1.16.1</title>
+    <title>Installation &#8212; Warp 1.17.0</title>
   
   
   
@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=3d681599" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=2a8757ae" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
@@ -44,7 +44,7 @@
 
 
 
-    <script src="../_static/documentation_options.js?v=d123bb80"></script>
+    <script src="../_static/documentation_options.js?v=755b3f99"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -53,11 +53,12 @@
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.16';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.17';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
     <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <script src="../_static/copy-page-source.js?v=f9064be3"></script>
 
     <link rel="icon" href="../_static/favicon.png"/>
 
@@ -69,7 +70,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.16.1" />
+  <meta name="docsearch:version" content="1.17.0" />
   
     
     <script src="../_static/searchtools.js"></script>
@@ -146,11 +147,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.16.1 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.16.1 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.16.1</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a></div>
     
@@ -290,11 +291,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.16.1 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.16.1 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.16.1</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a>
 
@@ -413,6 +414,7 @@
 <li class="toctree-l2"><a class="reference internal" href="execution_and_performance/memory_management.html">Memory Allocation and Access</a></li>
 <li class="toctree-l2"><a class="reference internal" href="execution_and_performance/profiling.html">Profiling</a></li>
 <li class="toctree-l2"><a class="reference internal" href="execution_and_performance/deterministic_execution.html">Deterministic Execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="execution_and_performance/reducing_compilation_and_startup_time.html">Reducing Compilation and Startup Time</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a></li>
@@ -428,6 +430,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp.html">warp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_autograd.html">warp.autograd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_build_experimental.html">warp.build_experimental</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_config.html">warp.config</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_fem.html">warp.fem</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_optim.html">warp.optim</a></li>
@@ -444,7 +447,7 @@
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../project/contribution_guide.html">Contribution Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../project/contribution_guide.html">Contributing to Warp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../project/publications.html">Publications using Warp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../project/changelog.html">Changelog</a></li>
 </ul>
@@ -493,10 +496,43 @@
       
         <div class="header-article-item">
 
+
+
 <div class="d-flex justify-content-end w-100">
-  <a href="../_sources/user_guide/installation.rst.txt">
-    <i class="fa-solid fa-file-code"></i> View page source
-  </a>
+  <div class="btn-group copy-page-source pst-js-only" data-page-source-control role="group" aria-label="Page source">
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary"
+      data-copy-page-source
+      data-page-source-url="../_sources/user_guide/installation.rst.txt"
+      disabled
+    >
+      <i class="fa-solid fa-copy" aria-hidden="true"></i>
+      <span data-copy-page-source-label>Copy source</span>
+    </button>
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary dropdown-toggle dropdown-toggle-split"
+      data-bs-toggle="dropdown"
+      aria-expanded="false"
+    >
+      <span class="visually-hidden">Page source options</span>
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end">
+      <li>
+        <a class="dropdown-item" href="../_sources/user_guide/installation.rst.txt">
+          <i class="fa-solid fa-file-code" aria-hidden="true"></i>
+          View source
+        </a>
+      </li>
+    </ul>
+    <span class="visually-hidden" role="status" aria-live="polite" data-copy-page-source-status></span>
+  </div>
+  <noscript>
+    <a href="../_sources/user_guide/installation.rst.txt">
+      <i class="fa-solid fa-file-code" aria-hidden="true"></i> View source
+    </a>
+  </noscript>
 </div>
 </div>
       
@@ -513,11 +549,7 @@
                   
   <section id="installation">
 <h1>Installation<a class="headerlink" href="#installation" title="Link to this heading">#</a></h1>
-<p>Python version 3.10 or newer is required. Warp can run on x86-64 and ARMv8 CPUs on Windows and Linux. macOS requires Apple Silicon (ARM64). GPU support requires a CUDA-capable NVIDIA GPU and driver (minimum GeForce GTX 9xx).</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Intel-based macOS (x86_64) is no longer supported. Users with Intel Macs should use Warp version 1.9.x or earlier.</p>
-</div>
+<p>Warp requires Python 3.10 or newer. We publish <code class="docutils literal notranslate"><span class="pre">warp-lang</span></code> wheels on PyPI for Windows (x86-64), Linux (x86-64 and AArch64), and macOS (Apple Silicon). The Windows x86-64 and Linux wheels support CPU execution and CUDA acceleration. CUDA acceleration requires a supported NVIDIA GPU and driver. The macOS wheels support CPU execution but not Metal acceleration.</p>
 <p>The easiest way to install Warp is from <a class="reference external" href="https://pypi.org/project/warp-lang">PyPI</a>:</p>
 <div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>warp-lang
 </pre></div>
@@ -569,13 +601,13 @@ the <code class="docutils literal notranslate"><span class="pre">pip</span> <spa
 </thead>
 <tbody>
 <tr class="row-even"><td><p>Linux aarch64</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">https://github.com/NVIDIA/warp/releases/download/v1.16.0/warp_lang-1.16.0+cu13-py3-none-manylinux_2_34_aarch64.whl</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">https://github.com/NVIDIA/warp/releases/download/v1.17.0/warp_lang-1.17.0+cu13-py3-none-manylinux_2_34_aarch64.whl</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p>Linux x86-64</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">https://github.com/NVIDIA/warp/releases/download/v1.16.0/warp_lang-1.16.0+cu13-py3-none-manylinux_2_28_x86_64.whl</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">https://github.com/NVIDIA/warp/releases/download/v1.17.0/warp_lang-1.17.0+cu13-py3-none-manylinux_2_28_x86_64.whl</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p>Windows x86-64</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">https://github.com/NVIDIA/warp/releases/download/v1.16.0/warp_lang-1.16.0+cu13-py3-none-win_amd64.whl</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">https://github.com/NVIDIA/warp/releases/download/v1.17.0/warp_lang-1.17.0+cu13-py3-none-win_amd64.whl</span></code></p></td>
 </tr>
 </tbody>
 </table>
@@ -639,22 +671,27 @@ The <code class="docutils literal notranslate"><span class="pre">[examples]</spa
 </section>
 <section id="building-from-source">
 <h2>Building from Source<a class="headerlink" href="#building-from-source" title="Link to this heading">#</a></h2>
-<p>For developers who want to build the library themselves the following tools are required:</p>
+<p>For developers who want to build the library themselves, the following tools are required:</p>
 <ul class="simple">
 <li><p>(Windows) Microsoft Visual Studio, minimum version 2019</p></li>
 <li><p>(Linux) GCC, minimum version 9.4</p></li>
-<li><p><a class="reference external" href="https://developer.nvidia.com/cuda-toolkit">CUDA Toolkit</a>, minimum version 12.0</p></li>
+<li><p>(macOS) Xcode Command Line Tools</p></li>
 <li><p><a class="reference external" href="https://git-lfs.com">Git Large File Storage</a></p></li>
 </ul>
+<p>A CUDA Toolkit is not required for a CPU-only build. CUDA-enabled builds on Windows and Linux require
+<a class="reference external" href="https://developer.nvidia.com/cuda-toolkit">CUDA Toolkit</a> 12.0 or newer.</p>
 <p>After cloning the repository, users should run:</p>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>python<span class="w"> </span>build_lib.py
 </pre></div>
 </div>
-<p>Upon success, the script will output platform-specific binary files in <code class="docutils literal notranslate"><span class="pre">warp/bin/</span></code>.
-The build script will look for the CUDA Toolkit in its default installation path.
-This path can be overridden by setting the <code class="docutils literal notranslate"><span class="pre">CUDA_PATH</span></code> environment variable. Alternatively,
-the path to the CUDA Toolkit can be passed to the build command as
-<code class="docutils literal notranslate"><span class="pre">--cuda-path=&quot;...&quot;</span></code>.</p>
+<p>Upon success, the script will output platform-specific binary files in <code class="docutils literal notranslate"><span class="pre">warp/bin/</span></code>.</p>
+<p>Unless a CUDA Toolkit path is provided explicitly, <code class="docutils literal notranslate"><span class="pre">build_lib.py</span></code> searches for one in this order:</p>
+<ol class="arabic simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">WARP_CUDA_PATH</span></code>, <code class="docutils literal notranslate"><span class="pre">CUDA_HOME</span></code>, then <code class="docutils literal notranslate"><span class="pre">CUDA_PATH</span></code></p></li>
+<li><p>The CUDA Toolkit containing <code class="docutils literal notranslate"><span class="pre">nvcc</span></code> found on <code class="docutils literal notranslate"><span class="pre">PATH</span></code></p></li>
+<li><p>The standard CUDA installation locations for the operating system</p></li>
+</ol>
+<p>If no CUDA Toolkit is found, <code class="docutils literal notranslate"><span class="pre">build_lib.py</span></code> builds Warp without CUDA support.</p>
 <p>By default, CUDA libraries (cudart, NVRTC, nvJitLink, MathDx) are linked statically
 to produce self-contained binaries. To link against shared CUDA libraries instead,
 pass <code class="docutils literal notranslate"><span class="pre">--use-dynamic-cuda</span></code>:</p>
@@ -999,7 +1036,7 @@ for more details on how to use Warp in Omniverse.</p>
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/release-1.16/docs/user_guide/installation.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/release-1.17/docs/user_guide/installation.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

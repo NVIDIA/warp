@@ -11,6 +11,30 @@
 
    Return the number of indexable voxels in the volume given by ``id``.
    
-   For active-voxel index grids, this is the active voxel count. For dense tile grids, this is the number of
-   allocated leaf nodes multiplied by 512. The result is a 32-bit signed integer and is capped at ``2**31 - 1``
-   because voxel-index APIs use 32-bit indices.
+   :func:`~warp.volume_voxel_count` and :func:`~warp.volume_lookup_index` support volumes with at
+   most ``2**31 - 1`` indexable voxels. This function is not differentiable.
+   
+   :param id: The ``id`` of a :class:`warp.Volume`.
+   
+   :returns: The number of indexable voxels. This is the required size of a per-voxel ``voxel_data``
+             array (as used by :func:`~warp.volume_sample_index`) and the exclusive upper bound of
+             indices returned by :func:`~warp.volume_lookup_index`.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def count(vid: wp.uint64, out: wp.array[wp.int32]):
+           out[0] = wp.volume_voxel_count(vid)
+   
+       voxels = wp.array([[0, 0, 0], [1, 0, 0]], dtype=wp.vec3i)
+       volume = wp.Volume.allocate_by_voxels(voxels, voxel_size=1.0)
+       out = wp.zeros(1, dtype=wp.int32)
+       wp.launch(count, dim=1, inputs=[volume.id], outputs=[out])
+       print(int(out.numpy()[0]))
+   
+   .. testoutput::
+   
+       2
+   

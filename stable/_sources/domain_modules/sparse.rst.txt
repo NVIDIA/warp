@@ -105,40 +105,56 @@ For example:
     D = bsr_copy(A, block_shape=(3, 3))       # 3x3 blocks don't divide 8x8 evenly
 
 
-Non-Zero Block Count
-~~~~~~~~~~~~~~~~~~~~
+.. _non-zero-block-count:
 
-The number of non-zero blocks in a BSR matrix is computed on the device and not automatically synchronized to the host to avoid performance overhead and allow graph capture. 
-The :attr:`BsrMatrix.nnz` attribute of a BSR matrix is always an upper bound for the stored block array size.
-For compact matrices, the actual active count is stored on the device at ``offsets[nrow]``.
+Stored Block Count
+~~~~~~~~~~~~~~~~~~
+
+Warp computes the number of stored blocks on the device and does not automatically synchronize it to the host.
+This avoids the cost of a device-to-host transfer and allows graph capture. The :attr:`BsrMatrix.nnz` attribute
+is a host-side upper bound on the number of stored block slots used by sparse operations. The ``columns`` and
+``values`` arrays may have additional allocated capacity. For compact matrices, the active count is stored on
+the device at ``offsets[nrow]``.
+
+A topology-changing operation may leave a compact matrix's ``nnz`` larger than the active count until
+:meth:`BsrMatrix.nnz_sync` updates it. For example, :func:`bsr_from_triplets` sums duplicate coordinates and,
+when ``prune_numerical_zeros=True``, omits zero-valued input blocks. Its ``nnz`` initially equals the number of
+input triplets even when the matrix has fewer active blocks. If nonzero duplicate blocks sum to zero, the
+result remains an active explicit-zero block until it is pruned by :func:`bsr_compress`. Entries in ``columns``
+and ``values`` beyond the active count are not part of the matrix and may be uninitialized.
 
 To get the exact count on host, you can explicitly synchronize using :meth:`BsrMatrix.nnz_sync`:
 
 .. code-block:: python
 
-    # The nnz attribute is an upper bound
+    # The nnz attribute is a host-side upper bound
     upper_bound = A.nnz
 
-    # Get offsets[nrow] on host
+    # Read offsets[nrow] into the host-side count
     storage_nnz = A.nnz_sync()
+
+Do not assume that the current value of ``A.nnz`` is exact. Before exporting a compact matrix to COO, call
+``A.nnz_sync()`` and slice the row, column, and value arrays to the returned count.
 
 .. note::
 
     The :meth:`BsrMatrix.nnz_sync` method ensures that any ongoing transfer
     of ``offsets[nrow]`` from the device offsets array to the host has completed
     and updates the nnz upper bound. For compact matrices, this is the active
-    non-zero block count. For padded matrices, this is the total row-capacity
+    stored block count. For padded matrices, this is the total row-capacity
     storage size, not necessarily the active block count.
 
 .. note::
 
-    During CPU APIC graph capture, :meth:`BsrMatrix.nnz_sync` performs its host
+    During CPU graph capture, :meth:`BsrMatrix.nnz_sync` performs its host
     readback outside the recorded stream when the matrix topology has not been
     changed by the capture. If the same capture has already recorded a topology
     update for that matrix, :meth:`BsrMatrix.nnz_sync` raises
     :exc:`NotImplementedError`; read the count after replay instead.
 
-If the number of non-zeros has been changed from outside of the :mod:`warp.sparse` builtin functions, for instance by direct modifications to the offsets array, use the :meth:`BsrMatrix.notify_nnz_changed` method to ensure consistency.
+If the stored block count has been changed from outside of the :mod:`warp.sparse` builtin functions, for
+instance by direct modifications to the offsets array, use the :meth:`BsrMatrix.notify_nnz_changed` method to
+ensure consistency.
 
 Row Capacity and Padded Topology
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -268,6 +284,9 @@ You can convert a BSR matrix back to coordinate (COO) format using the matrix's 
     # - rows[i] is the row index of block i
     # - cols[i] is the column index of block i
     # - vals[i] is the value of block i
+
+If the goal is to copy the matrix or change its scalar type or block shape, use :func:`bsr_copy` instead of
+exporting and rebuilding the triplets. Use :func:`bsr_compress` to pack active blocks into compact storage.
 
 For matrices with row padding, :meth:`BsrMatrix.uncompress_rows` returns an array sized to :attr:`BsrMatrix.nnz` and uses ``-1`` for slack entries. Use :func:`bsr_compress` first when a compact COO export is required:
 

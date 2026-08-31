@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Tiles &#8212; Warp 1.16.1</title>
+    <title>Tiles &#8212; Warp 1.17.0</title>
   
   
   
@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=3d681599" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=2a8757ae" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
@@ -44,7 +44,7 @@
 
 
 
-    <script src="../../_static/documentation_options.js?v=d123bb80"></script>
+    <script src="../../_static/documentation_options.js?v=755b3f99"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -53,11 +53,12 @@
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.16';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.17';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
     <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <script src="../../_static/copy-page-source.js?v=f9064be3"></script>
 
     <link rel="icon" href="../../_static/favicon.png"/>
 
@@ -69,7 +70,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.16.1" />
+  <meta name="docsearch:version" content="1.17.0" />
   
     
     <script src="../../_static/searchtools.js"></script>
@@ -146,11 +147,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.16.1 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.16.1 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.16.1</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a></div>
     
@@ -290,11 +291,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.16.1 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.16.1 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.16.1</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a>
 
@@ -413,6 +414,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../execution_and_performance/memory_management.html">Memory Allocation and Access</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../execution_and_performance/profiling.html">Profiling</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../execution_and_performance/deterministic_execution.html">Deterministic Execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../execution_and_performance/reducing_compilation_and_startup_time.html">Reducing Compilation and Startup Time</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration</a></li>
@@ -428,6 +430,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp.html">warp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_autograd.html">warp.autograd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_build_experimental.html">warp.build_experimental</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_config.html">warp.config</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_fem.html">warp.fem</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_optim.html">warp.optim</a></li>
@@ -444,7 +447,7 @@
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../../project/contribution_guide.html">Contribution Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../project/contribution_guide.html">Contributing to Warp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../project/publications.html">Publications using Warp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../project/changelog.html">Changelog</a></li>
 </ul>
@@ -496,10 +499,43 @@
       
         <div class="header-article-item">
 
+
+
 <div class="d-flex justify-content-end w-100">
-  <a href="../../_sources/user_guide/programming_model/tiles.rst.txt">
-    <i class="fa-solid fa-file-code"></i> View page source
-  </a>
+  <div class="btn-group copy-page-source pst-js-only" data-page-source-control role="group" aria-label="Page source">
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary"
+      data-copy-page-source
+      data-page-source-url="../../_sources/user_guide/programming_model/tiles.rst.txt"
+      disabled
+    >
+      <i class="fa-solid fa-copy" aria-hidden="true"></i>
+      <span data-copy-page-source-label>Copy source</span>
+    </button>
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary dropdown-toggle dropdown-toggle-split"
+      data-bs-toggle="dropdown"
+      aria-expanded="false"
+    >
+      <span class="visually-hidden">Page source options</span>
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end">
+      <li>
+        <a class="dropdown-item" href="../../_sources/user_guide/programming_model/tiles.rst.txt">
+          <i class="fa-solid fa-file-code" aria-hidden="true"></i>
+          View source
+        </a>
+      </li>
+    </ul>
+    <span class="visually-hidden" role="status" aria-live="polite" data-copy-page-source-status></span>
+  </div>
+  <noscript>
+    <a href="../../_sources/user_guide/programming_model/tiles.rst.txt">
+      <i class="fa-solid fa-file-code" aria-hidden="true"></i> View source
+    </a>
+  </noscript>
 </div>
 </div>
       
@@ -526,7 +562,9 @@ of the MathDx library to back linear-algebra tile operations
 like <a class="reference internal" href="../../language_reference/_generated/warp.tile_cholesky.html#warp._src.lang.tile_cholesky" title="warp._src.lang.tile_cholesky"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_cholesky</span></code></a>,
 <a class="reference internal" href="../../language_reference/_generated/warp.tile_fft.html#warp._src.lang.tile_fft" title="warp._src.lang.tile_fft"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_fft</span></code></a>, and <a class="reference internal" href="../../language_reference/_generated/warp.tile_matmul.html#warp._src.lang.tile_matmul" title="warp._src.lang.tile_matmul"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_matmul</span></code></a>.
 See <a class="reference internal" href="#building-with-mathdx">Building with MathDx</a> for more details when building the Warp locally with support for
-these linear-algebra tile operations.</p>
+these linear-algebra tile operations.
+For guidance on MathDx LTO compile costs and development-time fallback flags,
+see <a class="reference internal" href="../execution_and_performance/reducing_compilation_and_startup_time.html"><span class="doc">Reducing Compilation and Startup Time</span></a>.</p>
 </section>
 <section id="execution-model">
 <h2>Execution Model<a class="headerlink" href="#execution-model" title="Link to this heading">#</a></h2>
@@ -625,6 +663,155 @@ memory to allow random accessing. A thread synchronization must also follow, to 
 <p>Note that shared memory is a limited resource, and so the tile size must be set appropriately to avoid exceeding the hardware limitations.
 Otherwise, kernel compilation may fail.</p>
 <p>Note that shared memory tile allocations are guaranteed to be 16-byte aligned.</p>
+<section id="shared-memory-budget">
+<span id="tile-shared-memory-budget"></span><h4>Shared Memory Budget<a class="headerlink" href="#shared-memory-budget" title="Link to this heading">#</a></h4>
+<p>Currently, Warp computes a kernel’s shared memory request by summing every expression in
+the kernel body that creates an <em>owning</em> shared tile: one with its own shared-memory
+allocation, as opposed to a <em>non-owning</em> view onto another tile’s storage. The sum does not
+consider how many tiles are live at any one point. Warp does not yet perform live-range
+analysis or reuse shared-memory slots, so a tile’s storage remains reserved after its last
+use.</p>
+<p>This matters most for fused kernels built from chained tile operations, since each
+operation that returns a new tile adds its own storage to the request:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">TILE_DIM</span> <span class="o">=</span> <span class="mi">32</span>   <span class="c1"># one 32x32 float32 tile = 4,096 B</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">chained</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array3d</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">b</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array3d</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array3d</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">A</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">a</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">TILE_DIM</span><span class="p">,</span> <span class="n">TILE_DIM</span><span class="p">),</span> <span class="n">storage</span><span class="o">=</span><span class="s2">&quot;shared&quot;</span><span class="p">)</span>   <span class="c1"># site 1</span>
+    <span class="n">B</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">b</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">TILE_DIM</span><span class="p">,</span> <span class="n">TILE_DIM</span><span class="p">),</span> <span class="n">storage</span><span class="o">=</span><span class="s2">&quot;shared&quot;</span><span class="p">)</span>   <span class="c1"># site 2</span>
+    <span class="n">T1</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_matmul</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">B</span><span class="p">)</span>                                              <span class="c1"># site 3</span>
+    <span class="n">T2</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_matmul</span><span class="p">(</span><span class="n">T1</span><span class="p">,</span> <span class="n">B</span><span class="p">)</span>                                             <span class="c1"># site 4</span>
+    <span class="n">T3</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_matmul</span><span class="p">(</span><span class="n">T2</span><span class="p">,</span> <span class="n">B</span><span class="p">)</span>                                             <span class="c1"># site 5</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">T3</span><span class="p">)</span>
+
+<span class="c1"># requests 5 x 4,096 = 20,480 B, although at most three tiles are ever live</span>
+</pre></div>
+</div>
+<p>For forward-only execution, writing the same computation so each result lands in an
+existing tile brings the request down to the three tiles it declares:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">enable_backward</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">reused_forward_only</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array3d</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">b</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array3d</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array3d</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">A</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">a</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">TILE_DIM</span><span class="p">,</span> <span class="n">TILE_DIM</span><span class="p">),</span> <span class="n">storage</span><span class="o">=</span><span class="s2">&quot;shared&quot;</span><span class="p">)</span>          <span class="c1"># site 1</span>
+    <span class="n">B</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">b</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">TILE_DIM</span><span class="p">,</span> <span class="n">TILE_DIM</span><span class="p">),</span> <span class="n">storage</span><span class="o">=</span><span class="s2">&quot;shared&quot;</span><span class="p">)</span>          <span class="c1"># site 2</span>
+    <span class="n">T</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">TILE_DIM</span><span class="p">,</span> <span class="n">TILE_DIM</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">storage</span><span class="o">=</span><span class="s2">&quot;shared&quot;</span><span class="p">)</span>  <span class="c1"># site 3</span>
+    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+        <span class="n">wp</span><span class="o">.</span><span class="n">tile_matmul</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">B</span><span class="p">,</span> <span class="n">T</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">beta</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>   <span class="c1"># writes into T, no new tile</span>
+        <span class="n">wp</span><span class="o">.</span><span class="n">tile_assign</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">T</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">A</span><span class="p">)</span>
+
+<span class="c1"># requests 3 x 4,096 = 12,288 B</span>
+</pre></div>
+</div>
+<p>This rewrite preserves the forward result, but it overwrites intermediate values needed by
+the backward pass, so it does not preserve the gradients of <code class="docutils literal notranslate"><span class="pre">chained</span></code>.</p>
+<p>The per-site sum has two exceptions:</p>
+<ul class="simple">
+<li><p><strong>Non-owning views do not increase the shared memory request.</strong> Slices,
+<a class="reference internal" href="../../language_reference/_generated/warp.tile_view.html#warp._src.lang.tile_view" title="warp._src.lang.tile_view"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_view</span></code></a>, and
+<a class="reference internal" href="../../language_reference/_generated/warp.tile_transpose.html#warp._src.lang.tile_transpose" title="warp._src.lang.tile_transpose"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_transpose</span></code></a> alias an existing tile’s storage,
+so they do not require a separate shared-memory reservation.</p></li>
+<li><p><strong>Called functions share one scratch region, however many times you call them.</strong> The shared
+tiles a <a class="reference internal" href="../../api_reference/_generated/warp.func.html#warp.func" title="warp.func"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.func</span></code></a> creates are scratch space it gives back when it returns,
+so a later call reuses the same bytes instead of adding to the request. A kernel reserves
+enough for the largest single callee it uses, on top of its own total. That figure is itself
+a total, so a chain of nested calls adds up along the deepest path.</p></li>
+</ul>
+<p>The following kernel illustrates both exceptions:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">TILE_S</span> <span class="o">=</span> <span class="mi">16</span>  <span class="c1"># one 16x16 float32 tile = 1,024 B</span>
+<span class="n">TILE_L</span> <span class="o">=</span> <span class="mi">32</span>  <span class="c1"># one 32x32 float32 tile = 4,096 B</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">small_scratch</span><span class="p">(</span><span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array3d</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">index</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+    <span class="c1"># Owning tile in the callee: 1,024 B</span>
+    <span class="n">scratch</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_ones</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">TILE_S</span><span class="p">,</span> <span class="n">TILE_S</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">storage</span><span class="o">=</span><span class="s2">&quot;shared&quot;</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="n">index</span><span class="p">],</span> <span class="n">scratch</span><span class="p">)</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">large_scratch</span><span class="p">(</span><span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array3d</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">index</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+    <span class="c1"># Owning tile in the callee: 4,096 B</span>
+    <span class="n">scratch</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_ones</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">TILE_L</span><span class="p">,</span> <span class="n">TILE_L</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">storage</span><span class="o">=</span><span class="s2">&quot;shared&quot;</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="n">index</span><span class="p">],</span> <span class="n">scratch</span><span class="p">)</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">accounting</span><span class="p">(</span><span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array3d</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+    <span class="c1"># Owning tile in the kernel: 1,024 B</span>
+    <span class="n">owned</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">TILE_S</span><span class="p">,</span> <span class="n">TILE_S</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">storage</span><span class="o">=</span><span class="s2">&quot;shared&quot;</span><span class="p">)</span>
+
+    <span class="c1"># This view aliases owned and adds no shared-memory reservation</span>
+    <span class="n">view</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_transpose</span><span class="p">(</span><span class="n">owned</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">view</span><span class="p">)</span>
+
+    <span class="c1"># Three calls, one scratch region, sized by the largest callee: 4,096 B</span>
+    <span class="n">small_scratch</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">small_scratch</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">large_scratch</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+
+    <span class="c1"># Forward request: 1,024 B kernel + 4,096 B callee scratch = 5,120 B</span>
+</pre></div>
+</div>
+<p>The two rules pull in opposite directions. Warp sums the owning tiles a body creates, so one more
+<code class="docutils literal notranslate"><span class="pre">wp.tile_zeros</span></code> in <code class="docutils literal notranslate"><span class="pre">accounting</span></code> would raise the request by 1,024 B. It takes a maximum over
+the functions a kernel calls, so one more <code class="docutils literal notranslate"><span class="pre">small_scratch(out,</span> <span class="pre">4)</span></code> would not change it at all.</p>
+<p>When <code class="docutils literal notranslate"><span class="pre">enable_backward</span></code> is left on, the backward kernel pairs each owning shared tile with
+an equally sized gradient buffer, so those tiles cost twice as much. A kernel therefore
+requests exactly twice its forward total. One that calls a <code class="docutils literal notranslate"><span class="pre">&#64;wp.func</span></code> with a custom
+gradient can request less, because the gradient body is counted once instead of doubled.</p>
+<p>To bring a kernel back within the budget, start with the changes that apply to any kernel:</p>
+<ul class="simple">
+<li><p>Loop over smaller tiles instead of operating on one large tile. A blocked matrix multiply
+that accumulates partial products over slices of the inner dimension reserves only those
+slices and the accumulator, whatever the size of the full result.</p></li>
+<li><p>Reduce tile dimensions, or use a smaller data type when the resulting precision is
+acceptable.</p></li>
+<li><p>Prefer transpose and slice views over materializing a new tile.</p></li>
+</ul>
+<p>A loop reuses its tiles only while Warp leaves it rolled. Warp unrolls a loop whose trip count
+is a compile-time constant no greater than <a class="reference internal" href="../../api_reference/_generated/warp.config.max_unroll.html#warp.config.max_unroll" title="warp.config.max_unroll"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.max_unroll</span></code></a> (16 by default), and
+each unrolled iteration creates its own tiles, so the request grows with the trip count
+instead of staying flat. Measured on sm_86, a blocked multiply with two 1,024 B slices and a
+1,024 B accumulator requests 3,072 B when the loop bound arrives as a kernel argument, and
+17,408 B when the same loop reads <code class="docutils literal notranslate"><span class="pre">range(8)</span></code>.</p>
+<p>Those per-iteration tiles are also what the backward pass reads back, so rolling a loop to hold
+the request flat can change gradients while leaving the forward result intact. Roll one freely
+in a forward-only kernel, and read <a class="reference internal" href="../differentiability.html#dynamic-loops"><span class="std std-ref">Dynamic Loops</span></a> before rolling one that is
+differentiated.</p>
+<p>Reducing the launch dimension does not help. The request is per block and follows from the
+tiles a kernel creates, so a smaller grid or batch leaves it unchanged.</p>
+<p>The remaining options depend on whether the kernel participates in automatic
+differentiation.</p>
+<p><strong>Forward-only kernels.</strong> When gradients are not required, set <code class="docutils literal notranslate"><span class="pre">enable_backward=False</span></code>
+and reuse shared storage aggressively:</p>
+<ul class="simple">
+<li><p>Use the in-place forms, which do not support automatic differentiation:
+<a class="reference internal" href="../../language_reference/_generated/warp.tile_cholesky_inplace.html#warp._src.lang.tile_cholesky_inplace" title="warp._src.lang.tile_cholesky_inplace"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_cholesky_inplace</span></code></a>,
+<a class="reference internal" href="../../language_reference/_generated/warp.tile_lower_solve_inplace.html#warp._src.lang.tile_lower_solve_inplace" title="warp._src.lang.tile_lower_solve_inplace"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_lower_solve_inplace</span></code></a>, and
+<a class="reference internal" href="../../language_reference/_generated/warp.tile_upper_solve_inplace.html#warp._src.lang.tile_upper_solve_inplace" title="warp._src.lang.tile_upper_solve_inplace"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_upper_solve_inplace</span></code></a>.</p></li>
+<li><p>Pass an existing tile as the output of
+<a class="reference internal" href="../../language_reference/_generated/warp.tile_matmul.html#warp._src.lang.tile_matmul" title="warp._src.lang.tile_matmul"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_matmul</span></code></a> and use <code class="docutils literal notranslate"><span class="pre">alpha</span></code> and <code class="docutils literal notranslate"><span class="pre">beta</span></code> to
+accumulate into it, instead of binding each product to a new name.</p></li>
+<li><p>Copy into a tile you already own with <a class="reference internal" href="../../language_reference/_generated/warp.tile_assign.html#warp._src.lang.tile_assign" title="warp._src.lang.tile_assign"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_assign</span></code></a>.</p></li>
+</ul>
+<p><strong>Differentiable kernels.</strong> Preserve the intermediate values needed by the backward pass.
+Split a long fused kernel into differentiable phases, store the intermediates that pass needs
+in distinct arrays, and record every launch on the same <a class="reference internal" href="../../api_reference/_generated/warp.Tape.html#warp.Tape" title="warp.Tape"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tape</span></code></a>. This trades shared
+memory for global memory and additional launches.</p>
+<p>The output-tile form of <a class="reference internal" href="../../language_reference/_generated/warp.tile_matmul.html#warp._src.lang.tile_matmul" title="warp._src.lang.tile_matmul"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_matmul</span></code></a> and
+<a class="reference internal" href="../../language_reference/_generated/warp.tile_assign.html#warp._src.lang.tile_assign" title="warp._src.lang.tile_assign"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_assign</span></code></a> have adjoints, but repeated reuse can
+overwrite values needed by an earlier operation’s adjoint. Do not assume that a
+forward-equivalent rewrite preserves gradients. Check the complete kernel with
+<a class="reference internal" href="../../api_reference/_generated/warp.autograd.gradcheck.html#warp.autograd.gradcheck" title="warp.autograd.gradcheck"><code class="xref py py-func docutils literal notranslate"><span class="pre">gradcheck</span></code></a> or a recorded sequence with
+<a class="reference internal" href="../../api_reference/_generated/warp.autograd.gradcheck_tape.html#warp.autograd.gradcheck_tape" title="warp.autograd.gradcheck_tape"><code class="xref py py-func docutils literal notranslate"><span class="pre">gradcheck_tape</span></code></a>.</p>
+<p>Compare the total against
+<a class="reference internal" href="../../api_reference/_generated/warp.Device.html#warp.Device.max_shared_memory_per_block" title="warp.Device.max_shared_memory_per_block"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Device.max_shared_memory_per_block</span></code></a> for the
+target device, leaving room for the static shared memory Warp reserves per block: at least
+four bytes per thread, or <code class="docutils literal notranslate"><span class="pre">4</span> <span class="pre">*</span> <span class="pre">block_dim</span></code>. A kernel launches only when its dynamic request
+<em>plus</em> that static reservation fits within the device budget. So a request slightly below
+<code class="docutils literal notranslate"><span class="pre">max_shared_memory_per_block</span></code> can still fail, and raising <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> lowers the dynamic
+ceiling without changing the tiles themselves. Warp does not report an oversized budget at
+compile time; see <a class="reference internal" href="#shared-memory-overflow">Shared memory overflow</a> for how the failure surfaces.</p>
+</section>
 <section id="shared-tile-load-performance">
 <h4>Shared Tile Load Performance<a class="headerlink" href="#shared-tile-load-performance" title="Link to this heading">#</a></h4>
 <p>When loading tiles into shared memory, Warp uses a three-tier cascade to maximize memory bandwidth:</p>
@@ -1943,9 +2130,10 @@ directly read elements assigned to other threads. See <a class="reference intern
 enabling random access. They are required for operations such as
 <a class="reference internal" href="../../language_reference/_generated/warp.tile_matmul.html#warp._src.lang.tile_matmul" title="warp._src.lang.tile_matmul"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_matmul()</span></code></a> that need to read arbitrary
 elements. Shared memory is a limited per-block resource whose size varies by
-architecture. Query the budget for a specific device with
-<a class="reference internal" href="../../api_reference/_generated/warp.Device.html#warp.Device.max_shared_memory_per_block" title="warp.Device.max_shared_memory_per_block"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Device.max_shared_memory_per_block</span></code></a>.
-Tiles that exceed the budget cause a kernel launch failure. See <a class="reference internal" href="#shared-memory-tiles">Shared Memory Tiles</a>.</p>
+architecture, and a kernel has to fit every shared tile it creates, not just the largest
+one. A launch fails once that total runs over what the device allows. See
+<a class="reference internal" href="#shared-memory-tiles">Shared Memory Tiles</a> for the storage model, and <a class="reference internal" href="#tile-shared-memory-budget"><span class="std std-ref">Shared Memory Budget</span></a> for how
+Warp arrives at the total and how much of the device limit you can actually spend.</p>
 <p>Warp migrates tiles from register to shared memory automatically when an operation
 requires it. For example, <a class="reference internal" href="../../language_reference/_generated/warp.tile_matmul.html#warp._src.lang.tile_matmul" title="warp._src.lang.tile_matmul"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_matmul()</span></code></a> will
 move its operands to shared memory as needed. Writing to an individual tile element
@@ -1984,18 +2172,32 @@ asserts. Only use <code class="docutils literal notranslate"><span class="pre">a
 </section>
 <section id="shared-memory-overflow">
 <h3>Shared memory overflow<a class="headerlink" href="#shared-memory-overflow" title="Link to this heading">#</a></h3>
-<p><em>Why does my kernel fail when I increase the tile size?</em></p>
-<p>Tile sizes that exceed the device’s per-block shared memory budget surface differently
-depending on the operation. For non-MathDx shared-storage tiles, you may see a load-time
-warning that the kernel’s shared-memory configuration exceeds the device’s per-block
-maximum, followed by <code class="docutils literal notranslate"><span class="pre">CUDA_ERROR_LAUNCH_OUT_OF_RESOURCES</span></code> at launch. For MathDx-backed
-operations (<a class="reference internal" href="../../language_reference/_generated/warp.tile_matmul.html#warp._src.lang.tile_matmul" title="warp._src.lang.tile_matmul"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_matmul()</span></code></a>,
+<p><em>My kernel exceeds the device’s shared memory budget. How does that surface?</em></p>
+<p>The symptom depends on whether the kernel’s total request is too large or a single
+operation’s own requirement is too large.</p>
+<p>When the <strong>kernel total</strong> exceeds the budget, Warp emits a warning the first time the
+kernel’s hooks are resolved, naming the requested and available byte counts:
+<code class="docutils literal notranslate"><span class="pre">Failed</span> <span class="pre">to</span> <span class="pre">configure</span> <span class="pre">kernel</span> <span class="pre">dynamic</span> <span class="pre">shared</span> <span class="pre">memory</span> <span class="pre">for</span> <span class="pre">this</span> <span class="pre">device,</span> <span class="pre">tried</span> <span class="pre">to</span> <span class="pre">configure</span>
+<span class="pre">...</span> <span class="pre">for</span> <span class="pre">N</span> <span class="pre">bytes,</span> <span class="pre">but</span> <span class="pre">maximum</span> <span class="pre">available</span> <span class="pre">is</span> <span class="pre">M</span></code>. The launch then fails with
+<code class="docutils literal notranslate"><span class="pre">CUDA</span> <span class="pre">error</span> <span class="pre">1:</span> <span class="pre">invalid</span> <span class="pre">argument</span></code>. That launch error does not mention shared memory, so
+the earlier warning is the diagnostic to look for.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">maximum</span> <span class="pre">available</span></code> figure in that warning is the raw device budget and does not
+subtract the static shared memory reserved per block, so the warning can report a requested
+size that is <em>smaller</em> than the maximum it prints and still be a genuine overflow. Compare
+against <code class="docutils literal notranslate"><span class="pre">max_shared_memory_per_block</span> <span class="pre">-</span> <span class="pre">4</span> <span class="pre">*</span> <span class="pre">block_dim</span></code> instead, which is the ceiling as long
+as nothing else in the kernel claims static shared memory. See
+<a class="reference internal" href="#tile-shared-memory-budget"><span class="std std-ref">Shared Memory Budget</span></a>.</p>
+<p>When a <strong>single MathDx-backed operation</strong> (<a class="reference internal" href="../../language_reference/_generated/warp.tile_matmul.html#warp._src.lang.tile_matmul" title="warp._src.lang.tile_matmul"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_matmul()</span></code></a>,
 <a class="reference internal" href="../../language_reference/_generated/warp.tile_fft.html#warp._src.lang.tile_fft" title="warp._src.lang.tile_fft"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_fft()</span></code></a>,
-<a class="reference internal" href="../../language_reference/_generated/warp.tile_cholesky.html#warp._src.lang.tile_cholesky" title="warp._src.lang.tile_cholesky"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_cholesky()</span></code></a>), the failure surfaces at LTO
-compile time, typically as
-<code class="docutils literal notranslate"><span class="pre">Failed</span> <span class="pre">to</span> <span class="pre">compile</span> <span class="pre">LTO</span> <span class="pre">'...'.</span> <span class="pre">Set</span> <span class="pre">the</span> <span class="pre">environment</span> <span class="pre">variable</span> <span class="pre">LIBMATHDX_LOG_LEVEL=5</span> <span class="pre">and</span> <span class="pre">rerun</span> <span class="pre">for</span> <span class="pre">more</span> <span class="pre">details.</span></code> In both cases, reduce tile dimensions or switch to a smaller data type,
-and query <a class="reference internal" href="../../api_reference/_generated/warp.Device.html#warp.Device.max_shared_memory_per_block" title="warp.Device.max_shared_memory_per_block"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Device.max_shared_memory_per_block</span></code></a>
-to see the budget. See <a class="reference internal" href="#mathdx"><span class="std std-ref">Failed to compile LTO Error Message</span></a> for more details.</p>
+<a class="reference internal" href="../../language_reference/_generated/warp.tile_cholesky.html#warp._src.lang.tile_cholesky" title="warp._src.lang.tile_cholesky"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_cholesky()</span></code></a>) cannot fit on its own, the
+failure comes earlier, at LTO compile time, typically as
+<code class="docutils literal notranslate"><span class="pre">Failed</span> <span class="pre">to</span> <span class="pre">compile</span> <span class="pre">LTO</span> <span class="pre">'...'.</span> <span class="pre">Set</span> <span class="pre">the</span> <span class="pre">environment</span> <span class="pre">variable</span> <span class="pre">LIBMATHDX_LOG_LEVEL=5</span> <span class="pre">and</span> <span class="pre">rerun</span> <span class="pre">for</span> <span class="pre">more</span> <span class="pre">details.</span></code>
+See <a class="reference internal" href="#mathdx"><span class="std std-ref">Failed to compile LTO Error Message</span></a> for more details.</p>
+<p><a class="reference internal" href="../../api_reference/_generated/warp.Device.html#warp.Device.max_shared_memory_per_block" title="warp.Device.max_shared_memory_per_block"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Device.max_shared_memory_per_block</span></code></a> reports
+the device limit, and the static reservation puts the usable figure below it. Reducing tile
+dimensions or switching to a smaller data type lowers the request, but the total also grows
+with the number of shared tiles the kernel creates, which is often the larger factor in a
+fused kernel. See <a class="reference internal" href="#tile-shared-memory-budget"><span class="std std-ref">Shared Memory Budget</span></a>.</p>
 </section>
 <section id="out-of-bounds-handling">
 <h3>Out-of-bounds handling<a class="headerlink" href="#out-of-bounds-handling" title="Link to this heading">#</a></h3>
@@ -2129,6 +2331,7 @@ values for continued SIMT work. See <a class="reference internal" href="#tiles-a
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#tile-storage">Tile Storage</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#register-tiles">Register Tiles</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#shared-memory-tiles">Shared Memory Tiles</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#shared-memory-budget">Shared Memory Budget</a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#shared-tile-load-performance">Shared Tile Load Performance</a></li>
 </ul>
 </li>
@@ -2190,7 +2393,7 @@ values for continued SIMT work. See <a class="reference internal" href="#tiles-a
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/release-1.16/docs/user_guide/programming_model/tiles.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/release-1.17/docs/user_guide/programming_model/tiles.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

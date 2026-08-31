@@ -11,6 +11,7 @@ Submodules
 
 These modules are automatically available when you ``import warp``.
 
+- :mod:`warp.build_experimental`
 - :mod:`warp.config`
 - :mod:`warp.types`
 - :mod:`warp.utils`
@@ -225,6 +226,7 @@ Spatial Acceleration
    HashGrid
    HashGridQuery
    Mesh
+   MeshQuery
    MeshQueryAABB
    MeshQueryAABBTiled
    MeshQueryPoint
@@ -298,6 +300,8 @@ Kernel Execution
    Kernel
    Launch
    Module
+   ModuleBuildOptions
+   get_cuda_kernel_properties
    get_suggested_block_size
    launch
    launch_tiled

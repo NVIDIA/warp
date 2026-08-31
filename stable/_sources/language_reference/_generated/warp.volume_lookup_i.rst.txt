@@ -9,6 +9,13 @@
       * Kernel
       * Python
 
-   Query the :class:`warp.int32` value of voxel with coordinates ``i``, ``j``, ``k``.
+   Return the :class:`warp.int32` value of the voxel at integer index-space coordinates ``i``,
+   ``j``, ``k``, without interpolation.
    
-   If the voxel at this index does not exist, this function returns the background value.
+   ``id`` must identify an ``int32`` volume. This function is not differentiable. In kernels,
+   ``volume_lookup_i()`` is equivalent to :func:`~warp.volume_lookup` with ``dtype=warp.int32``.
+   
+   See :func:`~warp.volume_lookup` for shared behavior and a usage example.
+   
+   :returns: The resolved :class:`warp.int32` voxel value.
+   

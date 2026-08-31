@@ -9,7 +9,33 @@
       * Kernel
       * Python
 
-   Query the index associated with the voxel at coordinates ``i``, ``j``, ``k``.
+   Return the linear index associated with integer index-space coordinates ``i``, ``j``, ``k``.
    
-   If the voxel at this index does not exist, this function returns -1.
-   This function is available for both index grids and classical volumes.
+   This function is not differentiable.
+   
+   :param id: The ``id`` of a :class:`warp.Volume`.
+   :param i: Voxel coordinate along the first index-space axis.
+   :param j: Voxel coordinate along the second index-space axis.
+   :param k: Voxel coordinate along the third index-space axis.
+   
+   :returns: The voxel's linear index in ``[0, volume_voxel_count(id))``, or ``-1`` when the coordinate
+             is not indexable. Guard against ``-1`` before gathering from a per-voxel array.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def lookup_index(vid: wp.uint64, out: wp.array[wp.int32]):
+           out[0] = wp.volume_lookup_index(vid, 1, 0, 0)
+   
+       voxels = wp.array([[0, 0, 0], [1, 0, 0]], dtype=wp.vec3i)
+       volume = wp.Volume.allocate_by_voxels(voxels, voxel_size=1.0)
+       out = wp.zeros(1, dtype=wp.int32)
+       wp.launch(lookup_index, dim=1, inputs=[volume.id], outputs=[out])
+       print(int(out.numpy()[0]))
+   
+   .. testoutput::
+   
+       1
+   

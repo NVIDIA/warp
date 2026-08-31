@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.bvh_query_next &#8212; Warp 1.16.1</title>
+    <title>warp.bvh_query_next &#8212; Warp 1.17.0</title>
   
   
   
@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=3d681599" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=2a8757ae" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
@@ -44,7 +44,7 @@
 
 
 
-    <script src="../../_static/documentation_options.js?v=d123bb80"></script>
+    <script src="../../_static/documentation_options.js?v=755b3f99"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -53,23 +53,24 @@
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.16';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.17';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
     <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <script src="../../_static/copy-page-source.js?v=f9064be3"></script>
 
     <link rel="icon" href="../../_static/favicon.png"/>
 
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="warp.bvh_query_next_tiled" href="warp.bvh_query_next_tiled.html" />
-    <link rel="prev" title="warp.bvh_query_aabb_tiled" href="warp.bvh_query_aabb_tiled.html" />
+    <link rel="prev" title="warp.bvh_query_capsule" href="warp.bvh_query_capsule.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.16.1" />
+  <meta name="docsearch:version" content="1.17.0" />
   
     
     <script src="../../_static/searchtools.js"></script>
@@ -146,11 +147,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.16.1 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.16.1 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.16.1</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a></div>
     
@@ -290,11 +291,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.16.1 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.16.1 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.16.1</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a>
 
@@ -413,6 +414,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/memory_management.html">Memory Allocation and Access</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/profiling.html">Profiling</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/deterministic_execution.html">Deterministic Execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/reducing_compilation_and_startup_time.html">Reducing Compilation and Startup Time</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/configuration.html">Configuration</a></li>
@@ -428,6 +430,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp.html">warp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_autograd.html">warp.autograd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_build_experimental.html">warp.build_experimental</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_config.html">warp.config</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_fem.html">warp.fem</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_optim.html">warp.optim</a></li>
@@ -444,7 +447,7 @@
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../../project/contribution_guide.html">Contribution Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../project/contribution_guide.html">Contributing to Warp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../project/publications.html">Publications using Warp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../project/changelog.html">Changelog</a></li>
 </ul>
@@ -496,10 +499,43 @@
       
         <div class="header-article-item">
 
+
+
 <div class="d-flex justify-content-end w-100">
-  <a href="../../_sources/language_reference/_generated/warp.bvh_query_next.rst.txt">
-    <i class="fa-solid fa-file-code"></i> View page source
-  </a>
+  <div class="btn-group copy-page-source pst-js-only" data-page-source-control role="group" aria-label="Page source">
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary"
+      data-copy-page-source
+      data-page-source-url="../../_sources/language_reference/_generated/warp.bvh_query_next.rst.txt"
+      disabled
+    >
+      <i class="fa-solid fa-copy" aria-hidden="true"></i>
+      <span data-copy-page-source-label>Copy source</span>
+    </button>
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary dropdown-toggle dropdown-toggle-split"
+      data-bs-toggle="dropdown"
+      aria-expanded="false"
+    >
+      <span class="visually-hidden">Page source options</span>
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end">
+      <li>
+        <a class="dropdown-item" href="../../_sources/language_reference/_generated/warp.bvh_query_next.rst.txt">
+          <i class="fa-solid fa-file-code" aria-hidden="true"></i>
+          View source
+        </a>
+      </li>
+    </ul>
+    <span class="visually-hidden" role="status" aria-live="polite" data-copy-page-source-status></span>
+  </div>
+  <noscript>
+    <a href="../../_sources/language_reference/_generated/warp.bvh_query_next.rst.txt">
+      <i class="fa-solid fa-file-code" aria-hidden="true"></i> View source
+    </a>
+  </noscript>
 </div>
 </div>
       
@@ -521,7 +557,7 @@
 <span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">bvh_query_next</span></span><span class="sig-paren">(</span>
 
 <dl>
-<dd><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.BvhQuery.html#warp.BvhQuery" title="warp.BvhQuery"><span class="pre">BvhQuery</span></a></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_BvhQueryAabb</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">max_dist</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em>,</dd>
 </dl>
@@ -546,28 +582,29 @@
 </ul>
 </td></tr></table>
 <p>Advance a BVH query to the next overlapping item and report whether one was found.</p>
-<p>Writes the index of the current item to <code class="docutils literal notranslate"><span class="pre">index</span></code> and returns <code class="docutils literal notranslate"><span class="pre">True</span></code>; returns <code class="docutils literal notranslate"><span class="pre">False</span></code> once
-the query is exhausted (<code class="docutils literal notranslate"><span class="pre">index</span></code> is then left unchanged). The reported index is the item’s
-index into the <code class="docutils literal notranslate"><span class="pre">lowers</span></code>/<code class="docutils literal notranslate"><span class="pre">uppers</span></code> arrays passed to <a class="reference internal" href="../../api_reference/_generated/warp.Bvh.html#warp.Bvh" title="warp.Bvh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Bvh</span></code></a>. Used in a <code class="docutils literal notranslate"><span class="pre">while</span></code>
-loop together with <a class="reference internal" href="warp.bvh_query_aabb.html#warp._src.lang.bvh_query_aabb" title="warp._src.lang.bvh_query_aabb"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_aabb()</span></code></a> or <a class="reference internal" href="warp.bvh_query_ray.html#warp._src.lang.bvh_query_ray" title="warp._src.lang.bvh_query_ray"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_ray()</span></code></a>.</p>
-<p>For ray queries, <code class="docutils literal notranslate"><span class="pre">max_dist</span></code> bounds how far along the ray to look for intersections, measured
-in multiples of the ray direction’s length (so it is a distance only if <code class="docutils literal notranslate"><span class="pre">dir</span></code> was normalized).
-It has no effect on AABB queries.</p>
+<p>Call <a class="reference internal" href="#warp._src.lang.bvh_query_next" title="warp._src.lang.bvh_query_next"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_next()</span></code></a> in a <code class="docutils literal notranslate"><span class="pre">while</span></code> loop together with <a class="reference internal" href="warp.bvh_query_aabb.html#warp._src.lang.bvh_query_aabb" title="warp._src.lang.bvh_query_aabb"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_aabb()</span></code></a>,
+<a class="reference internal" href="warp.bvh_query_ray.html#warp._src.lang.bvh_query_ray" title="warp._src.lang.bvh_query_ray"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_ray()</span></code></a>, <a class="reference internal" href="warp.bvh_query_capsule.html#warp._src.lang.bvh_query_capsule" title="warp._src.lang.bvh_query_capsule"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_capsule()</span></code></a>, or <a class="reference internal" href="warp.bvh_query_sphere.html#warp._src.lang.bvh_query_sphere" title="warp._src.lang.bvh_query_sphere"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_sphere()</span></code></a>.</p>
+<p>For plain ray queries (<a class="reference internal" href="warp.bvh_query_ray.html#warp._src.lang.bvh_query_ray" title="warp._src.lang.bvh_query_ray"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_ray()</span></code></a>), <code class="docutils literal notranslate"><span class="pre">max_dist</span></code> bounds how far along the ray to
+look for intersections, measured in multiples of <code class="docutils literal notranslate"><span class="pre">dir</span></code>’s length (so it is a distance only if
+<code class="docutils literal notranslate"><span class="pre">dir</span></code> was normalized). For capsule queries (<a class="reference internal" href="warp.bvh_query_capsule.html#warp._src.lang.bvh_query_capsule" title="warp._src.lang.bvh_query_capsule"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_capsule()</span></code></a>), pass
+<code class="docutils literal notranslate"><span class="pre">dir</span> <span class="pre">=</span> <span class="pre">p1</span> <span class="pre">-</span> <span class="pre">p0</span></code> (unnormalized) together with <code class="docutils literal notranslate"><span class="pre">max_dist</span> <span class="pre">=</span> <span class="pre">1.0</span></code> to sweep from <code class="docutils literal notranslate"><span class="pre">p0</span></code> to
+<code class="docutils literal notranslate"><span class="pre">p1</span></code>. <code class="docutils literal notranslate"><span class="pre">max_dist</span></code> has no effect on AABB or sphere queries.</p>
 <p>Note that increasing <code class="docutils literal notranslate"><span class="pre">max_dist</span></code> may miss intersections: a subtree already rejected for being
 beyond <code class="docutils literal notranslate"><span class="pre">max_dist</span></code> is never revisited, even if a later, larger <code class="docutils literal notranslate"><span class="pre">max_dist</span></code> would reach it. It
 is therefore only safe to monotonically <em>reduce</em> <code class="docutils literal notranslate"><span class="pre">max_dist</span></code> during a query.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>query</strong> – The query to advance, from <a class="reference internal" href="warp.bvh_query_aabb.html#warp._src.lang.bvh_query_aabb" title="warp._src.lang.bvh_query_aabb"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_aabb()</span></code></a> or <a class="reference internal" href="warp.bvh_query_ray.html#warp._src.lang.bvh_query_ray" title="warp._src.lang.bvh_query_ray"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_ray()</span></code></a></p></li>
-<li><p><strong>index</strong> – Output; receives the index of the current overlapping item</p></li>
+<li><p><strong>query</strong> – The query to advance, from <a class="reference internal" href="warp.bvh_query_aabb.html#warp._src.lang.bvh_query_aabb" title="warp._src.lang.bvh_query_aabb"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_aabb()</span></code></a>, <a class="reference internal" href="warp.bvh_query_ray.html#warp._src.lang.bvh_query_ray" title="warp._src.lang.bvh_query_ray"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_ray()</span></code></a>, <a class="reference internal" href="warp.bvh_query_capsule.html#warp._src.lang.bvh_query_capsule" title="warp._src.lang.bvh_query_capsule"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_capsule()</span></code></a>, or <a class="reference internal" href="warp.bvh_query_sphere.html#warp._src.lang.bvh_query_sphere" title="warp._src.lang.bvh_query_sphere"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_sphere()</span></code></a></p></li>
+<li><p><strong>index</strong> – Output; receives the index of the current overlapping item in the
+<code class="docutils literal notranslate"><span class="pre">lowers</span></code>/<code class="docutils literal notranslate"><span class="pre">uppers</span></code> arrays passed to <a class="reference internal" href="../../api_reference/_generated/warp.Bvh.html#warp.Bvh" title="warp.Bvh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Bvh</span></code></a>.</p></li>
 <li><p><strong>max_dist</strong> – For ray queries, the maximum distance along the ray to check for intersections
-(in multiples of <code class="docutils literal notranslate"><span class="pre">dir</span></code>’s length). Has no effect on AABB queries.</p></li>
+(in multiples of <code class="docutils literal notranslate"><span class="pre">dir</span></code>’s length). <code class="docutils literal notranslate"><span class="pre">max_dist</span></code> has no effect on AABB or sphere queries.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if another overlapping item was found (its index written to <code class="docutils literal notranslate"><span class="pre">index</span></code>), <code class="docutils literal notranslate"><span class="pre">False</span></code>
-if the query is exhausted.</p>
+if the query is exhausted. When the function returns <code class="docutils literal notranslate"><span class="pre">False</span></code>, <code class="docutils literal notranslate"><span class="pre">index</span></code> is unchanged.</p>
 </dd>
 </dl>
 <p class="rubric">Example</p>
@@ -593,6 +630,134 @@ if the query is exhausted.</p>
 </div>
 </dd></dl>
 
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">bvh_query_next</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_BvhQueryRay</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_dist</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../../api_reference/_generated/warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></span></span></dt>
+<dd><table class="hlist"><tr><td><ul class="simple">
+<li><p>Kernel</p></li>
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td></tr></table>
+<p>Advance a <a class="reference internal" href="warp.bvh_query_ray.html#warp._src.lang.bvh_query_ray" title="warp._src.lang.bvh_query_ray"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_ray()</span></code></a> query to the next intersected item.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">bvh_query_next</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_BvhQueryCapsule</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_dist</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../../api_reference/_generated/warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></span></span></dt>
+<dd><table class="hlist"><tr><td><ul class="simple">
+<li><p>Kernel</p></li>
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td></tr></table>
+<p>Advance a <a class="reference internal" href="warp.bvh_query_capsule.html#warp._src.lang.bvh_query_capsule" title="warp._src.lang.bvh_query_capsule"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_capsule()</span></code></a> query to the next intersected item.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">bvh_query_next</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_BvhQuerySphere</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_dist</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../../api_reference/_generated/warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></span></span></dt>
+<dd><table class="hlist"><tr><td><ul class="simple">
+<li><p>Kernel</p></li>
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td></tr></table>
+<p>Advance a <a class="reference internal" href="warp.bvh_query_sphere.html#warp._src.lang.bvh_query_sphere" title="warp._src.lang.bvh_query_sphere"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_sphere()</span></code></a> query to the next intersected item.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">bvh_query_next</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.BvhQuery.html#warp.BvhQuery" title="warp.BvhQuery"><span class="pre">BvhQuery</span></a></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_dist</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../../api_reference/_generated/warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></span></span></dt>
+<dd><table class="hlist"><tr><td><ul class="simple">
+<li><p>Kernel</p></li>
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td></tr></table>
+<p>Advance a BVH query whose kind is selected at runtime to the next overlapping item.</p>
+</dd></dl>
+
 </section>
 
 
@@ -606,12 +771,12 @@ if the query is exhausted.</p>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.bvh_query_aabb_tiled.html"
+       href="warp.bvh_query_capsule.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.bvh_query_aabb_tiled</p>
+        <p class="prev-next-title">warp.bvh_query_capsule</p>
       </div>
     </a>
     <a class="right-next"
@@ -652,7 +817,7 @@ if the query is exhausted.</p>
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/release-1.16/docs/language_reference/_generated/warp.bvh_query_next.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/release-1.17/docs/language_reference/_generated/warp.bvh_query_next.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

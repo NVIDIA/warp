@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.render.UsdRenderer &#8212; Warp 1.16.1</title>
+    <title>warp.render.UsdRenderer &#8212; Warp 1.17.0</title>
   
   
   
@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=3d681599" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=2a8757ae" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
@@ -44,7 +44,7 @@
 
 
 
-    <script src="../../_static/documentation_options.js?v=d123bb80"></script>
+    <script src="../../_static/documentation_options.js?v=755b3f99"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -53,11 +53,12 @@
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.16';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.17';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
     <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <script src="../../_static/copy-page-source.js?v=f9064be3"></script>
 
     <link rel="icon" href="../../_static/favicon.png"/>
 
@@ -69,7 +70,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.16.1" />
+  <meta name="docsearch:version" content="1.17.0" />
   
     
     <script src="../../_static/searchtools.js"></script>
@@ -146,11 +147,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.16.1 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.16.1 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.16.1</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a></div>
     
@@ -290,11 +291,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.16.1 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.16.1 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.16.1</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a>
 
@@ -413,6 +414,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/memory_management.html">Memory Allocation and Access</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/profiling.html">Profiling</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/deterministic_execution.html">Deterministic Execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/reducing_compilation_and_startup_time.html">Reducing Compilation and Startup Time</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/configuration.html">Configuration</a></li>
@@ -428,6 +430,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../warp.html">warp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_autograd.html">warp.autograd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_build_experimental.html">warp.build_experimental</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_config.html">warp.config</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_fem.html">warp.fem</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_optim.html">warp.optim</a></li>
@@ -444,7 +447,7 @@
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../../project/contribution_guide.html">Contribution Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../project/contribution_guide.html">Contributing to Warp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../project/publications.html">Publications using Warp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../project/changelog.html">Changelog</a></li>
 </ul>
@@ -492,19 +495,6 @@
     </div>
   
   
-    <div class="header-article-items__end">
-      
-        <div class="header-article-item">
-
-<div class="d-flex justify-content-end w-100">
-  <a href="../../_sources/api_reference/_generated/warp.render.UsdRenderer.rst.txt">
-    <i class="fa-solid fa-file-code"></i> View page source
-  </a>
-</div>
-</div>
-      
-    </div>
-  
 </div>
 </div>
               
@@ -518,7 +508,7 @@
 <h1>warp.render.UsdRenderer<a class="headerlink" href="#warp-render-usdrenderer" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.render.UsdRenderer">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.render.</span></span><span class="sig-name descname"><span class="pre">UsdRenderer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stage</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">up_axis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Y'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">60</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scaling</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/render/render_usd.py#L74-L1041"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.render.</span></span><span class="sig-name descname"><span class="pre">UsdRenderer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stage</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">up_axis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Y'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">60</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scaling</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/render/render_usd.py#L74-L1041"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer" title="Link to this definition">#</a></dt>
 <dd><p>USD-based renderer for creating 3D visualizations and animations.</p>
 <p>This renderer writes geometric primitives, meshes, and point clouds to
 Universal Scene Description (USD) files, which can be viewed in USD-compatible
@@ -607,7 +597,7 @@ If a string path is provided, a new USD stage will be created at that location.<
 </div>
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.render.UsdRenderer.begin_frame">
-<span class="sig-name descname"><span class="pre">begin_frame</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/render/render_usd.py#L162-L170"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer.begin_frame" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">begin_frame</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/render/render_usd.py#L162-L170"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer.begin_frame" title="Link to this definition">#</a></dt>
 <dd><p>Set the current time code for subsequent writes.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -618,13 +608,13 @@ If a string path is provided, a new USD stage will be created at that location.<
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.render.UsdRenderer.end_frame">
-<span class="sig-name descname"><span class="pre">end_frame</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/render/render_usd.py#L171-L174"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer.end_frame" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">end_frame</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/render/render_usd.py#L171-L174"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer.end_frame" title="Link to this definition">#</a></dt>
 <dd><p>End the current frame (no-op for USD).</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.render.UsdRenderer.register_body">
-<span class="sig-name descname"><span class="pre">register_body</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">body_name</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/render/render_usd.py#L175-L186"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer.register_body" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">register_body</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">body_name</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/render/render_usd.py#L175-L186"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer.register_body" title="Link to this definition">#</a></dt>
 <dd><p>Create a transform prim for a body.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -650,7 +640,7 @@ If a string path is provided, a new USD stage will be created at that location.<
 <dd><em class="sig-param"><span class="n"><span class="pre">visible</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/render/render_usd.py#L196-L234"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer.add_shape_instance" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/render/render_usd.py#L196-L234"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer.add_shape_instance" title="Link to this definition">#</a></dt>
 <dd><p>Instance a previously defined shape.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -689,7 +679,7 @@ If a string path is provided, a new USD stage will be created at that location.<
 <dd><em class="sig-param"><span class="n"><span class="pre">visible</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/render/render_usd.py#L235-L300"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer.render_plane" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/render/render_usd.py#L235-L300"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer.render_plane" title="Link to this definition">#</a></dt>
 <dd><p>Render a plane with the given dimensions.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -712,7 +702,7 @@ If a string path is provided, a new USD stage will be created at that location.<
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.render.UsdRenderer.render_ground">
-<span class="sig-name descname"><span class="pre">render_ground</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plane</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/render/render_usd.py#L301-L347"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer.render_ground" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">render_ground</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plane</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/render/render_usd.py#L301-L347"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer.render_ground" title="Link to this definition">#</a></dt>
 <dd><p>Render a ground plane.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -740,7 +730,7 @@ offset the plane.</p></li>
 <dd><em class="sig-param"><span class="n"><span class="pre">visible</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/render/render_usd.py#L348-L398"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer.render_sphere" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/render/render_usd.py#L348-L398"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer.render_sphere" title="Link to this definition">#</a></dt>
 <dd><p>Debug helper to add a sphere for visualization</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -775,7 +765,7 @@ offset the plane.</p></li>
 <dd><em class="sig-param"><span class="n"><span class="pre">visible</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/render/render_usd.py#L399-L454"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer.render_capsule" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/render/render_usd.py#L399-L454"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer.render_capsule" title="Link to this definition">#</a></dt>
 <dd><p>Debug helper to add a capsule for visualization</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -812,7 +802,7 @@ offset the plane.</p></li>
 <dd><em class="sig-param"><span class="n"><span class="pre">visible</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/render/render_usd.py#L455-L510"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer.render_cylinder" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/render/render_usd.py#L455-L510"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer.render_cylinder" title="Link to this definition">#</a></dt>
 <dd><p>Debug helper to add a cylinder for visualization</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -849,7 +839,7 @@ offset the plane.</p></li>
 <dd><em class="sig-param"><span class="n"><span class="pre">visible</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/render/render_usd.py#L511-L566"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer.render_cone" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/render/render_usd.py#L511-L566"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer.render_cone" title="Link to this definition">#</a></dt>
 <dd><p>Debug helper to add a cone for visualization</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -884,7 +874,7 @@ offset the plane.</p></li>
 <dd><em class="sig-param"><span class="n"><span class="pre">visible</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/render/render_usd.py#L567-L616"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer.render_box" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/render/render_usd.py#L567-L616"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer.render_box" title="Link to this definition">#</a></dt>
 <dd><p>Debug helper to add a box for visualization</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -904,7 +894,7 @@ offset the plane.</p></li>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.render.UsdRenderer.render_ref">
-<span class="sig-name descname"><span class="pre">render_ref</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pos</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rot</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/render/render_usd.py#L617-L647"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer.render_ref" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">render_ref</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pos</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rot</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/render/render_usd.py#L617-L647"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer.render_ref" title="Link to this definition">#</a></dt>
 <dd><p>Reference an external USD asset.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -939,7 +929,7 @@ offset the plane.</p></li>
 <dd><em class="sig-param"><span class="n"><span class="pre">visible</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/render/render_usd.py#L648-L730"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer.render_mesh" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/render/render_usd.py#L648-L730"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer.render_mesh" title="Link to this definition">#</a></dt>
 <dd><p>Create or update a mesh prim.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -983,7 +973,7 @@ offset the plane.</p></li>
 <dd><em class="sig-param"><span class="n"><span class="pre">visible</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/render/render_usd.py#L731-L816"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer.render_arrow" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/render/render_usd.py#L731-L816"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer.render_arrow" title="Link to this definition">#</a></dt>
 <dd><p>Render an arrow composed of a cylinder and a cone.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1021,7 +1011,7 @@ offset the plane.</p></li>
 <dd><em class="sig-param"><span class="n"><span class="pre">visible</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/render/render_usd.py#L817-L878"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer.render_line_list" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/render/render_usd.py#L817-L878"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer.render_line_list" title="Link to this definition">#</a></dt>
 <dd><p>Debug helper to add a line list as a set of capsules</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1049,7 +1039,7 @@ offset the plane.</p></li>
 <dd><em class="sig-param"><span class="n"><span class="pre">visible</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/render/render_usd.py#L879-L939"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer.render_line_strip" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/render/render_usd.py#L879-L939"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer.render_line_strip" title="Link to this definition">#</a></dt>
 <dd><p>Render a line strip as capsules.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1077,7 +1067,7 @@ offset the plane.</p></li>
 <dd><em class="sig-param"><span class="n"><span class="pre">visible</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/render/render_usd.py#L940-L1025"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer.render_points" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/render/render_usd.py#L940-L1025"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer.render_points" title="Link to this definition">#</a></dt>
 <dd><p>Render points as spheres or USD points.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1098,7 +1088,7 @@ offset the plane.</p></li>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.render.UsdRenderer.save">
-<span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/render/render_usd.py#L1026-L1041"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer.save" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/render/render_usd.py#L1026-L1041"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer.save" title="Link to this definition">#</a></dt>
 <dd><p>Save the USD stage to disk.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -1183,22 +1173,6 @@ offset the plane.</p></li>
 </li>
 </ul>
   </nav></div>
-
-  <div class="sidebar-secondary-item">
-
-  
-  <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/release-1.16/docs/api_reference/_generated/warp.render.UsdRenderer.rst">
-      <i class="fa-solid fa-pencil"></i>
-      
-      
-        
-          Edit on GitHub
-        
-      
-    </a>
-  </div>
-</div>
 
 </div></div>
               

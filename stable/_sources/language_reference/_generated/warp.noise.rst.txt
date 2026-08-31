@@ -10,9 +10,40 @@
       * Python
       * Differentiable
 
-   Non-periodic Perlin-style noise.
+   Sample 1D non-periodic Perlin noise.
    
-   Sample 1D noise.
+   Samples a smooth, deterministic field on an integer lattice with one cell per input
+   unit. ``state`` selects the field and is not advanced. Scale the coordinate to
+   change feature size and the result to change amplitude.
+   
+   The field is differentiable with respect to the coordinate. For a given Warp version
+   and device backend, results are deterministic for fixed inputs. Exact values may differ
+   between CPU and CUDA or change between Warp versions. Use :func:`pnoise` for periodic noise.
+   
+   When a coordinate component's magnitude reaches ``2^23`` (about 8.4e6), ``float32``
+   spacing is at least one input unit, so the field may lose variation. Coordinate
+   components must currently remain within the signed 32-bit lattice-index range.
+   
+   :param state: RNG state that selects the noise field (see :func:`rand_init`); never advanced.
+   :param x: Coordinate to sample. One noise feature spans one unit.
+   
+   :returns: The noise value at ``x``. Values across the field are centered on zero.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def sample_noise(seed: int, coords: wp.array[float], values: wp.array[float]):
+           tid = wp.tid()
+           state = wp.rand_init(seed)
+           values[tid] = wp.noise(state, coords[tid])
+   
+       coords = wp.array([0.5, 2.25, 4.75], dtype=float)
+       values = wp.zeros(len(coords), dtype=float)
+   
+       wp.launch(sample_noise, dim=len(coords), inputs=[42, coords], outputs=[values])
+   
 
 .. function:: warp._src.lang.noise(state: uint32, xy: vec2f) -> float
    :noindex:
@@ -24,9 +55,15 @@
       * Python
       * Differentiable
 
-   Non-periodic Perlin-style noise.
+   Sample 2D non-periodic Perlin noise.
    
-   Sample 2D noise.
+   See :func:`noise` for shared behavior, restrictions, and a usage example.
+   
+   :param state: RNG state that selects the noise field (see :func:`rand_init`); never advanced.
+   :param xy: Coordinate to sample. One noise feature spans one unit.
+   
+   :returns: The noise value at ``xy``.
+   
 
 .. function:: warp._src.lang.noise(state: uint32, xyz: vec3f) -> float
    :noindex:
@@ -38,9 +75,15 @@
       * Python
       * Differentiable
 
-   Non-periodic Perlin-style noise.
+   Sample 3D non-periodic Perlin noise.
    
-   Sample 3D noise.
+   See :func:`noise` for shared behavior, restrictions, and a usage example.
+   
+   :param state: RNG state that selects the noise field (see :func:`rand_init`); never advanced.
+   :param xyz: Coordinate to sample. One noise feature spans one unit.
+   
+   :returns: The noise value at ``xyz``.
+   
 
 .. function:: warp._src.lang.noise(state: uint32, xyzt: vec4f) -> float
    :noindex:
@@ -52,6 +95,13 @@
       * Python
       * Differentiable
 
-   Non-periodic Perlin-style noise.
+   Sample 4D non-periodic Perlin noise.
    
-   Sample 4D noise.
+   The fourth coordinate is commonly used as time to animate a 3D field. See
+   :func:`noise` for shared behavior, restrictions, and a usage example.
+   
+   :param state: RNG state that selects the noise field (see :func:`rand_init`); never advanced.
+   :param xyzt: Coordinate to sample. One noise feature spans one unit.
+   
+   :returns: The noise value at ``xyzt``.
+   

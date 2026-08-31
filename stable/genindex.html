@@ -8,7 +8,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Index &#8212; Warp 1.16.1</title>
+    <title>Index &#8212; Warp 1.17.0</title>
   
   
   
@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=3d681599" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=2a8757ae" />
   
   <!-- So that users can add custom icons -->
   <script defer src="_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
@@ -43,7 +43,7 @@
 
 
 
-    <script src="_static/documentation_options.js?v=d123bb80"></script>
+    <script src="_static/documentation_options.js?v=755b3f99"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -52,11 +52,12 @@
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.16';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.17';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
     <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <script src="_static/copy-page-source.js?v=f9064be3"></script>
 
     <link rel="icon" href="_static/favicon.png"/>
 
@@ -66,7 +67,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.16.1" />
+  <meta name="docsearch:version" content="1.17.0" />
   
     
     <script src="_static/searchtools.js"></script>
@@ -143,11 +144,11 @@
       
     
     
-    <img src="_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.16.1 - Home"/>
-    <img src="_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.16.1 - Home"/>
+    <img src="_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.16.1</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a></div>
     
@@ -283,11 +284,11 @@
       
     
     
-    <img src="_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.16.1 - Home"/>
-    <img src="_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.16.1 - Home"/>
+    <img src="_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.16.1</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a>
 
@@ -406,6 +407,7 @@
 <li class="toctree-l2"><a class="reference internal" href="user_guide/execution_and_performance/memory_management.html">Memory Allocation and Access</a></li>
 <li class="toctree-l2"><a class="reference internal" href="user_guide/execution_and_performance/profiling.html">Profiling</a></li>
 <li class="toctree-l2"><a class="reference internal" href="user_guide/execution_and_performance/deterministic_execution.html">Deterministic Execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/execution_and_performance/reducing_compilation_and_startup_time.html">Reducing Compilation and Startup Time</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="user_guide/configuration.html">Configuration</a></li>
@@ -421,6 +423,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="api_reference/warp.html">warp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api_reference/warp_autograd.html">warp.autograd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api_reference/warp_build_experimental.html">warp.build_experimental</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api_reference/warp_config.html">warp.config</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api_reference/warp_fem.html">warp.fem</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api_reference/warp_optim.html">warp.optim</a></li>
@@ -437,7 +440,7 @@
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="project/contribution_guide.html">Contribution Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="project/contribution_guide.html">Contributing to Warp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="project/publications.html">Publications using Warp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="project/changelog.html">Changelog</a></li>
 </ul>
@@ -512,6 +515,10 @@
 </li>
       <li><a href="api_reference/_generated/warp.fem.AdaptiveNanogrid.html#warp.fem.AdaptiveNanogrid">AdaptiveNanogrid (class in warp.fem)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.build_experimental.add_builtin.html#warp.build_experimental.add_builtin">add_builtin() (in module warp.build_experimental)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.build_experimental.add_native_type.html#warp.build_experimental.add_native_type">add_native_type() (in module warp.build_experimental)</a>
+</li>
       <li><a href="api_reference/_generated/warp.Function.html#warp.Function.add_overload">add_overload() (warp.Function method)</a>
 
       <ul>
@@ -556,10 +563,10 @@
 </li>
       <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.allocate_by_voxels">allocate_by_voxels() (warp.Volume class method)</a>
 </li>
-      <li><a href="api_reference/_generated/warp.render.OpenGLRenderer.html#warp.render.OpenGLRenderer.allocate_shape_instances">allocate_shape_instances() (warp.render.OpenGLRenderer method)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api_reference/_generated/warp.render.OpenGLRenderer.html#warp.render.OpenGLRenderer.allocate_shape_instances">allocate_shape_instances() (warp.render.OpenGLRenderer method)</a>
+</li>
       <li><a href="api_reference/_generated/warp.Allocator.html#warp.Allocator">Allocator (class in warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.utils.AllocatorRmm.html#warp.utils.AllocatorRmm">AllocatorRmm (class in warp.utils)</a>
@@ -844,6 +851,8 @@
 </li>
         <li><a href="language_reference/_generated/warp.bvh_query_aabb_tiled.html#warp._src.lang.bvh_query_aabb_tiled">warp._src.lang.bvh_query_aabb_tiled()</a>
 </li>
+        <li><a href="language_reference/_generated/warp.bvh_query_capsule.html#warp._src.lang.bvh_query_capsule">warp._src.lang.bvh_query_capsule()</a>
+</li>
         <li><a href="language_reference/_generated/warp.bvh_query_next.html#warp._src.lang.bvh_query_next">warp._src.lang.bvh_query_next()</a>
 </li>
         <li><a href="language_reference/_generated/warp.bvh_query_next_tiled.html#warp._src.lang.bvh_query_next_tiled">warp._src.lang.bvh_query_next_tiled()</a>
@@ -851,6 +860,8 @@
         <li><a href="language_reference/_generated/warp.bvh_query_ray.html#warp._src.lang.bvh_query_ray">warp._src.lang.bvh_query_ray()</a>
 </li>
         <li><a href="language_reference/_generated/warp.bvh_query_ray_tiled.html#warp._src.lang.bvh_query_ray_tiled">warp._src.lang.bvh_query_ray_tiled()</a>
+</li>
+        <li><a href="language_reference/_generated/warp.bvh_query_sphere.html#warp._src.lang.bvh_query_sphere">warp._src.lang.bvh_query_sphere()</a>
 </li>
         <li><a href="language_reference/_generated/warp.cast.html#warp._src.lang.cast">warp._src.lang.cast()</a>
 </li>
@@ -968,6 +979,8 @@
 </li>
         <li><a href="language_reference/_generated/warp.mesh_get.html#warp._src.lang.mesh_get">warp._src.lang.mesh_get()</a>
 </li>
+        <li><a href="language_reference/_generated/warp.mesh_get_bvh.html#warp._src.lang.mesh_get_bvh">warp._src.lang.mesh_get_bvh()</a>
+</li>
         <li><a href="language_reference/_generated/warp.mesh_get_group_root.html#warp._src.lang.mesh_get_group_root">warp._src.lang.mesh_get_group_root()</a>
 </li>
         <li><a href="language_reference/_generated/warp.mesh_get_index.html#warp._src.lang.mesh_get_index">warp._src.lang.mesh_get_index()</a>
@@ -986,6 +999,8 @@
 </li>
         <li><a href="language_reference/_generated/warp.mesh_query_furthest_point_no_sign.html#warp._src.lang.mesh_query_furthest_point_no_sign">warp._src.lang.mesh_query_furthest_point_no_sign()</a>
 </li>
+        <li><a href="language_reference/_generated/warp.mesh_query_next.html#warp._src.lang.mesh_query_next">warp._src.lang.mesh_query_next()</a>
+</li>
         <li><a href="language_reference/_generated/warp.mesh_query_point.html#warp._src.lang.mesh_query_point">warp._src.lang.mesh_query_point()</a>
 </li>
         <li><a href="language_reference/_generated/warp.mesh_query_point_no_sign.html#warp._src.lang.mesh_query_point_no_sign">warp._src.lang.mesh_query_point_no_sign()</a>
@@ -1001,6 +1016,8 @@
         <li><a href="language_reference/_generated/warp.mesh_query_ray_anyhit.html#warp._src.lang.mesh_query_ray_anyhit">warp._src.lang.mesh_query_ray_anyhit()</a>
 </li>
         <li><a href="language_reference/_generated/warp.mesh_query_ray_count_intersections.html#warp._src.lang.mesh_query_ray_count_intersections">warp._src.lang.mesh_query_ray_count_intersections()</a>
+</li>
+        <li><a href="language_reference/_generated/warp.mesh_query_sphere.html#warp._src.lang.mesh_query_sphere">warp._src.lang.mesh_query_sphere()</a>
 </li>
         <li><a href="language_reference/_generated/warp.min.html#warp._src.lang.min">warp._src.lang.min()</a>
 </li>
@@ -1135,10 +1152,6 @@
         <li><a href="language_reference/_generated/warp.spatial_cross_dual.html#warp._src.lang.spatial_cross_dual">warp._src.lang.spatial_cross_dual()</a>
 </li>
         <li><a href="language_reference/_generated/warp.spatial_dot.html#warp._src.lang.spatial_dot">warp._src.lang.spatial_dot()</a>
-</li>
-        <li><a href="language_reference/_generated/warp.spatial_jacobian.html#warp._src.lang.spatial_jacobian">warp._src.lang.spatial_jacobian()</a>
-</li>
-        <li><a href="language_reference/_generated/warp.spatial_mass.html#warp._src.lang.spatial_mass">warp._src.lang.spatial_mass()</a>
 </li>
         <li><a href="language_reference/_generated/warp.spatial_top.html#warp._src.lang.spatial_top">warp._src.lang.spatial_top()</a>
 </li>
@@ -1767,13 +1780,9 @@
 </li>
       <li><a href="api_reference/_generated/warp.Texture.html#warp.Texture.copy_from">copy_from() (warp.Texture method)</a>
 </li>
-      <li><a href="api_reference/_generated/warp.Texture.html#warp.Texture.copy_from_array">copy_from_array() (warp.Texture method)</a>
-</li>
       <li><a href="api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.copy_nnz_async">copy_nnz_async() (warp.sparse.BsrMatrix method)</a>
 </li>
       <li><a href="api_reference/_generated/warp.Texture.html#warp.Texture.copy_to">copy_to() (warp.Texture method)</a>
-</li>
-      <li><a href="api_reference/_generated/warp.Texture.html#warp.Texture.copy_to_array">copy_to_array() (warp.Texture method)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.space.CovariantFunctionSpace.html#warp.fem.space.CovariantFunctionSpace">CovariantFunctionSpace (class in warp.fem.space)</a>
 </li>
@@ -2833,6 +2842,8 @@
 </li>
       <li><a href="api_reference/_generated/warp.get_cuda_driver_version.html#warp.get_cuda_driver_version">get_cuda_driver_version() (in module warp)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.get_cuda_kernel_properties.html#warp.get_cuda_kernel_properties">get_cuda_kernel_properties() (in module warp)</a>
+</li>
       <li><a href="api_reference/_generated/warp.get_cuda_max_cluster_dim.html#warp.get_cuda_max_cluster_dim">get_cuda_max_cluster_dim() (in module warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.Device.html#warp.Device.get_cuda_output_format">get_cuda_output_format() (warp.Device method)</a>
@@ -3807,6 +3818,8 @@
 </li>
       <li><a href="api_reference/_generated/warp.optim.linear.LinearOperator.html#warp.optim.linear.LinearOperator.matvec">matvec (warp.optim.linear.LinearOperator property)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.optim.linear.LinearOperator.html#warp.optim.linear.LinearOperator.max_batch_length">max_batch_length (warp.optim.linear.LinearOperator property)</a>
+</li>
       <li><a href="api_reference/_generated/warp.Launch.html#warp.Launch.max_blocks">max_blocks (warp.Launch attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.RebuildInfo.max_leaf_node_count">max_leaf_node_count (warp.Volume.RebuildInfo attribute)</a>
@@ -3855,7 +3868,11 @@
       </ul></li>
       <li><a href="api_reference/_generated/warp.MemoryKind.html#warp.MemoryKind">MemoryKind (class in warp)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.ModuleBuildOptions.html#warp.ModuleBuildOptions.merged">merged() (warp.ModuleBuildOptions method)</a>
+</li>
       <li><a href="api_reference/_generated/warp.Mesh.html#warp.Mesh">Mesh (class in warp)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.MeshQuery.html#warp.MeshQuery">MeshQuery (class in warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.MeshQueryAABB.html#warp.MeshQueryAABB">MeshQueryAABB (class in warp)</a>
 </li>
@@ -3878,6 +3895,8 @@
         <li><a href="api_reference/warp.html#module-warp">warp</a>
 </li>
         <li><a href="api_reference/warp_autograd.html#module-warp.autograd">warp.autograd</a>
+</li>
+        <li><a href="api_reference/warp_build_experimental.html#module-warp.build_experimental">warp.build_experimental</a>
 </li>
         <li><a href="api_reference/warp_config.html#module-warp.config">warp.config</a>
 </li>
@@ -3917,6 +3936,8 @@
       <li><a href="api_reference/_generated/warp.fem.Integrand.html#warp.fem.Integrand.module">module (warp.fem.Integrand attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.Graph.html#warp.Graph.module_execs">module_execs (warp.Graph attribute)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.ModuleBuildOptions.html#warp.ModuleBuildOptions">ModuleBuildOptions (class in warp)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -6036,6 +6057,13 @@
 </li>
       </ul></li>
       <li>
+    warp._src.lang.bvh_query_capsule()
+
+      <ul>
+        <li><a href="language_reference/_generated/warp.bvh_query_capsule.html#warp._src.lang.bvh_query_capsule">built-in function</a>
+</li>
+      </ul></li>
+      <li>
     warp._src.lang.bvh_query_next()
 
       <ul>
@@ -6061,6 +6089,13 @@
 
       <ul>
         <li><a href="language_reference/_generated/warp.bvh_query_ray_tiled.html#warp._src.lang.bvh_query_ray_tiled">built-in function</a>
+</li>
+      </ul></li>
+      <li>
+    warp._src.lang.bvh_query_sphere()
+
+      <ul>
+        <li><a href="language_reference/_generated/warp.bvh_query_sphere.html#warp._src.lang.bvh_query_sphere">built-in function</a>
 </li>
       </ul></li>
       <li>
@@ -6470,6 +6505,13 @@
 </li>
       </ul></li>
       <li>
+    warp._src.lang.mesh_get_bvh()
+
+      <ul>
+        <li><a href="language_reference/_generated/warp.mesh_get_bvh.html#warp._src.lang.mesh_get_bvh">built-in function</a>
+</li>
+      </ul></li>
+      <li>
     warp._src.lang.mesh_get_group_root()
 
       <ul>
@@ -6533,6 +6575,13 @@
 </li>
       </ul></li>
       <li>
+    warp._src.lang.mesh_query_next()
+
+      <ul>
+        <li><a href="language_reference/_generated/warp.mesh_query_next.html#warp._src.lang.mesh_query_next">built-in function</a>
+</li>
+      </ul></li>
+      <li>
     warp._src.lang.mesh_query_point()
 
       <ul>
@@ -6586,6 +6635,13 @@
 
       <ul>
         <li><a href="language_reference/_generated/warp.mesh_query_ray_count_intersections.html#warp._src.lang.mesh_query_ray_count_intersections">built-in function</a>
+</li>
+      </ul></li>
+      <li>
+    warp._src.lang.mesh_query_sphere()
+
+      <ul>
+        <li><a href="language_reference/_generated/warp.mesh_query_sphere.html#warp._src.lang.mesh_query_sphere">built-in function</a>
 </li>
       </ul></li>
       <li>
@@ -6945,6 +7001,8 @@
         <li><a href="language_reference/_generated/warp.sample_unit_hemisphere_surface.html#warp._src.lang.sample_unit_hemisphere_surface">built-in function</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     warp._src.lang.sample_unit_ring()
 
@@ -6966,8 +7024,6 @@
         <li><a href="language_reference/_generated/warp.sample_unit_sphere_surface.html#warp._src.lang.sample_unit_sphere_surface">built-in function</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     warp._src.lang.sample_unit_square()
 
@@ -7057,20 +7113,6 @@
 
       <ul>
         <li><a href="language_reference/_generated/warp.spatial_dot.html#warp._src.lang.spatial_dot">built-in function</a>
-</li>
-      </ul></li>
-      <li>
-    warp._src.lang.spatial_jacobian()
-
-      <ul>
-        <li><a href="language_reference/_generated/warp.spatial_jacobian.html#warp._src.lang.spatial_jacobian">built-in function</a>
-</li>
-      </ul></li>
-      <li>
-    warp._src.lang.spatial_mass()
-
-      <ul>
-        <li><a href="language_reference/_generated/warp.spatial_mass.html#warp._src.lang.spatial_mass">built-in function</a>
 </li>
       </ul></li>
       <li>
@@ -7932,6 +7974,13 @@
 
       <ul>
         <li><a href="api_reference/warp_autograd.html#module-warp.autograd">module</a>
+</li>
+      </ul></li>
+      <li>
+    warp.build_experimental
+
+      <ul>
+        <li><a href="api_reference/warp_build_experimental.html#module-warp.build_experimental">module</a>
 </li>
       </ul></li>
       <li>

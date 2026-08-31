@@ -8,4 +8,11 @@
 
       * Kernel
 
-   Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``.
+   Store the :class:`warp.vec3f` ``value`` at the voxel with integer index-space coordinates
+   ``i``, ``j``, ``k``.
+   
+   ``id`` must identify a ``vec3f`` volume, and the coordinate must have leaf-level storage.
+   The call does not allocate storage or activate voxels. See :func:`~warp.volume_store`.
+   This function is not differentiable.
+   
+   See :func:`~warp.volume_store` for a usage example.

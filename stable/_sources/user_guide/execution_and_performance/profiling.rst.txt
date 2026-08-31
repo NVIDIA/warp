@@ -54,7 +54,7 @@ With the example above, the result might look like this:
 
     Demo took 4.91 ms
 
-The timing values will vary slightly from run to run and will depend on the system hardware and current load.  The sample results presented here were obtained on a system with one RTX 4090 GPU, one RTX 3090 GPU, and an AMD Ryzen Threadripper Pro 5965WX CPU.  For each GPU, the code allocates and initializes an array with 10 million floating point elements.  It then launches the ``inc_loop`` kernel three times on the array.  The kernel increments each array element a given number of times - 500, 1000, and 1500.  Finally, the code copies the array contents to the CPU.
+The timing values will vary slightly from run to run and will depend on the system hardware and current load.  The sample results presented here were obtained on a system with one RTX 4090 GPU, one RTX 3090 GPU, and an AMD Ryzen Threadripper Pro 5965WX CPU.  For each GPU, the code allocates and initializes an array with 10 million floating point elements.  It then launches the ``inc_loop`` kernel three times on the array.  The kernel increments each array element a given number of times: 500, 1000, and 1500.  Finally, the code copies the array contents to the CPU.
 
 Profiling complex programs with many asynchronous and concurrent operations can be tricky.
 Profiling tools like `NVIDIA Nsight Systems <https://developer.nvidia.com/nsight-systems>`_ can present the results
@@ -199,7 +199,7 @@ and aggregate the results as desired.
 The second argument is a string indent that should be printed at the beginning of each line.
 This is for compatibility with :class:`ScopedTimer` indenting rules used with nested timers.
 
-Here is an example of a custom reporting function, which aggregates the total time spend in forward and backward kernels:
+Here is an example of a custom reporting function, which aggregates the total time spent in forward and backward kernels:
 
 .. code:: python
 
@@ -288,7 +288,7 @@ CUDA events can be used for timing purposes outside of the ``ScopedTimer``.  Her
         wp.record_event(e1)
 
         a = wp.zeros(n, dtype=float)
-        wp.launch(inc, dim=n, inputs=[a])    
+        wp.launch(inc, dim=n, inputs=[a])
 
         # ...end timing
         wp.record_event(e2)
@@ -389,6 +389,31 @@ The attached profiler and its configuration determine which activities are colle
 is handled when ``cuProfilerStop`` is called.  The CUDA API does not guarantee that this call synchronizes the device.
 Consult the profiler's documentation to determine whether explicit synchronization is needed to include work that is
 still in flight.
+
+Checking CUDA kernel resource use
+---------------------------------
+
+Use :func:`warp.get_cuda_kernel_properties` to inspect register and local-memory use for a kernel's compiled forward
+CUDA entry point. Warp compiles and loads the requested module variant if necessary, but does not launch the kernel.
+The ``device`` and ``block_dim`` arguments are optional. By default, Warp uses the default device and the kernel
+module's default block dimension. Pass explicit values to inspect the variant for a particular launch:
+
+.. code-block:: python
+
+   properties = wp.get_cuda_kernel_properties(kernel, device=device, block_dim=128)
+   print(properties["register_count"])
+   print(properties["local_memory_size"])
+
+``register_count`` is the number of registers used by each thread. ``local_memory_size`` is the number of local-memory
+bytes used by each thread. Local memory may contain compiler-placed automatic variables and register spills. See the
+`Writing SIMT Kernels chapter of the CUDA Programming Guide
+<https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/writing-cuda-kernels.html>`_ for more information about
+registers and local memory. Future Warp releases may add keys to the returned dictionary.
+
+High register use can limit occupancy, while local-memory accesses may increase device-memory traffic. These values
+do not establish a performance bottleneck by themselves. Use Nsight Compute to measure runtime effects, or
+:func:`warp.get_suggested_block_size` for an occupancy-based block-size recommendation. The values may change with
+the GPU, CUDA toolchain, Warp version, compiler options, or block dimension.
 
 Nsight Compute Profiling
 ------------------------
@@ -562,64 +587,71 @@ Python source files that do not affect the module hash but make the line-correla
 Profiling Module Compilation
 ----------------------------
 
-Versions of Warp built with at least CUDA 12.8 support the generation of
-`Trace Event Format <https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU/preview?tab=t.0#heading=h.yr4qxyxotyw>`__
-files when compiling modules for the GPU. This feature can be used to identify
-bottlenecks in the runtime compilation process.
-
-By setting the global configuration option :attr:`warp.config.compile_time_trace` to ``True``,
-an additional JSON file with the suffix ``_compile-time-trace.json`` will be
-generated in the corresponding kernel cache directory (see :attr:`warp.config.kernel_cache_dir`)
-when modules are compiled. This file can be opened in a viewer like a Chromium browser's built-in
-profiler (e.g. ``chrome://tracing/`` or ``edge://tracing/``) or the `Perfetto UI <https://ui.perfetto.dev/>`__.
-
-For more information about profiling the compilation process, see the NVIDIA Developer blog post
-`Optimizing Compile Times for CUDA C++ <https://developer.nvidia.com/blog/optimizing-compile-times-for-cuda-c/>`__.
+Start with Warp's module-load output. It reports the module name, target device,
+elapsed load time, and whether Warp compiled the module or loaded it from cache.
+If startup is slow, use the cold-start workflow below to determine whether the
+time is spent generating Warp code, compiling CUDA or MathDx code, accessing
+the CUDA driver cache, or starting the rest of the application.
 
 .. _benchmarking-cold-start-compilation:
 
 Benchmarking Cold-Start Compilation
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-When benchmarking module compilation times, clearing Warp's kernel cache alone
-is not sufficient to reach a true "cold" cache state. The NVIDIA CUDA driver
-maintains a separate cache layer that must also be accounted for.
+Cold-start conditions depend on the work being measured. Clearing Warp's kernel
+cache forces Warp to regenerate and compile the workload's modules. MathDx LTO
+compilation and CUDA driver JIT compilation use separate caches that can be
+reset independently.
 
-Two-Layer Cache System
-^^^^^^^^^^^^^^^^^^^^^^
+Caches involved
+^^^^^^^^^^^^^^^
 
-Warp maintains its own **kernel cache** (see :attr:`warp.config.kernel_cache_dir`)
-that stores generated C++/CUDA source files and compiled binaries. This cache is
-cleared with :func:`warp.clear_kernel_cache`. Separately, when kernels use tile-based
-linear algebra operations backed by NVIDIA's MathDx libraries (cuBLASDx/cuFFTDx),
-Warp compiles LTO (link-time optimization) objects that are stored in a dedicated
-**LTO cache**. This cache is cleared with :func:`warp.clear_lto_cache`. Both
-functions should be called to fully clear Warp's compilation artifacts.
+Warp's kernel cache (see :attr:`warp.config.kernel_cache_dir`) stores generated
+C++/CUDA source files and compiled binaries. Clear it with
+:func:`wp.clear_kernel_cache() <warp.clear_kernel_cache>`. MathDx-backed tile
+operations store LTO (link-time optimization) objects in the ``lto``
+subdirectory of the same versioned Warp cache directory. Setting
+``WARP_CACHE_PATH`` changes the common root for both cache types. For example,
+the default cache root for Warp 1.17.0 on Linux is
+``~/.cache/warp/1.17.0/``. Clear the LTO cache with
+:func:`wp.clear_lto_cache() <warp.clear_lto_cache>`.
 
-In addition, the NVIDIA CUDA driver maintains a **compute cache** that stores
-JIT-compiled GPU binaries produced from PTX or other intermediate representations.
-This driver-level cache is completely independent of Warp and is not affected by
-Warp's cache-clearing functions. Its default location is:
+The NVIDIA CUDA driver compute cache stores JIT-compiled GPU binaries produced
+from PTX or other intermediate representations. This cache is independent of
+Warp, so Warp's cache-clearing functions do not affect it. Its default location
+is:
 
 - **Linux**: ``~/.nv/ComputeCache``
 - **Windows**: ``%APPDATA%\NVIDIA\ComputeCache``
 
-Both cache layers must be addressed to achieve a true cold-start compilation
-benchmark.
+Clear Warp's kernel cache to measure Python-side code generation and native
+compilation. Clear the LTO cache when cold MathDx compilation is in scope. Clear
+the CUDA compute cache when the workload loads PTX and the benchmark is intended
+to include driver JIT compilation or cache I/O.
 
-Steps for Accurate Cold-Start Benchmarking
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Cold-Start Benchmarking Approaches
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-To measure true cold-start compilation time:
+For a simple local benchmark, clear the caches for the work being measured. Make
+sure no other Warp or CUDA processes are using these caches because clearing
+shared caches can disrupt their work.
 
-1. Clear Warp's caches in Python:
+1. Clear Warp's kernel cache in Python:
 
    .. code-block:: python
 
        wp.clear_kernel_cache()
+
+   For MathDx-backed operations, also clear the LTO cache when measuring cold
+   LTO compilation:
+
+   .. code-block:: python
+
        wp.clear_lto_cache()
 
-2. Address the CUDA compute cache using **one** of the following approaches:
+2. When the workload loads PTX and the benchmark includes driver JIT
+   compilation or cache I/O, choose one way to clear or disable the CUDA
+   compute cache:
 
    **Option A**: Delete the compute cache contents before running:
 
@@ -637,17 +669,53 @@ To measure true cold-start compilation time:
 
        CUDA_CACHE_DISABLE=1 python my_benchmark.py
 
-These two approaches can produce different timings. Disabling the cache with
-``CUDA_CACHE_DISABLE=1`` can be *faster* than deleting cache contents because
-it avoids disk I/O overhead from cache lookup and write operations. When the
-cache is enabled but empty, the driver still performs file-system operations to
-search for and write cache entries. Choose the approach that best matches your
-benchmarking scenario: Option A reflects normal operation with an empty cache,
-while Option B eliminates all cache-related overhead.
+The two options measure different conditions. With an empty but enabled cache,
+the driver still searches for entries and writes new ones. Setting
+``CUDA_CACHE_DISABLE=1`` skips that file-system work, so it may be faster than
+deleting the existing entries. Option A measures normal operation with an empty
+cache. Option B measures compilation without CUDA cache I/O.
+
+To avoid clearing shared Warp caches, give Warp a fresh cache root:
+
+.. code-block:: bash
+
+    WARP_CACHE_PATH="$(mktemp -d)" python my_benchmark.py
+
+This gives the Warp kernel and LTO caches a fresh root without clearing shared
+caches. When measuring PTX driver JIT compilation or cache I/O, set
+``CUDA_CACHE_PATH`` to another empty directory. This setting isolates the
+driver's on-disk JIT cache, but not other CUDA driver state.
+
+Optional GPU Compile-Time Trace
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Warp builds that compile GPU modules with NVRTC using CUDA 12.8 or newer can
+produce a GPU compilation trace.
+Enable :attr:`warp.config.compile_time_trace` before Warp creates the target
+module. In practice, set it before importing a module that defines Warp kernels,
+or before defining the first Warp kernel in the current module. The trace breaks
+down CUDA compiler time beyond the total module-load time:
+
+.. code-block:: python
+
+    import warp as wp
+
+    wp.config.compile_time_trace = True
+
+Warp writes a ``*_compile-time-trace.json`` file in the corresponding kernel
+cache directory (see :attr:`warp.config.kernel_cache_dir`) when it compiles a
+module. Open the file with a Trace Event Format viewer such as
+``chrome://tracing``, ``edge://tracing``, or the `Perfetto UI
+<https://ui.perfetto.dev/>`__. Compare the trace duration with the module-load
+time to see whether CUDA compiler work dominates. A longer module-load time can
+come from surrounding work such as Warp code generation, LTO compilation, CUDA
+driver cache activity, or application startup.
 
 Additional References
 ^^^^^^^^^^^^^^^^^^^^^
 
+- `Optimizing Compile Times for CUDA C++ <https://developer.nvidia.com/blog/optimizing-compile-times-for-cuda-c/>`__
+  - Background on CUDA compile-time tracing and compiler bottlenecks.
 - `CUDA Programming Guide: CUDA Environment Variables <https://docs.nvidia.com/cuda/cuda-c-programming-guide/#cuda-environment-variables>`__
   - Authoritative reference for ``CUDA_CACHE_DISABLE``, ``CUDA_CACHE_PATH``, and other cache-related environment variables.
 - `CUDA Pro Tip: Understand Fat Binaries and JIT Caching <https://developer.nvidia.com/blog/cuda-pro-tip-understand-fat-binaries-jit-caching/>`__

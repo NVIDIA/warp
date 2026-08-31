@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Debugging &#8212; Warp 1.16.1</title>
+    <title>Debugging &#8212; Warp 1.17.0</title>
   
   
   
@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=3d681599" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=2a8757ae" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
@@ -44,7 +44,7 @@
 
 
 
-    <script src="../_static/documentation_options.js?v=d123bb80"></script>
+    <script src="../_static/documentation_options.js?v=755b3f99"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -53,11 +53,12 @@
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.16';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.17';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
     <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <script src="../_static/copy-page-source.js?v=f9064be3"></script>
 
     <link rel="icon" href="../_static/favicon.png"/>
 
@@ -69,7 +70,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.16.1" />
+  <meta name="docsearch:version" content="1.17.0" />
   
     
     <script src="../_static/searchtools.js"></script>
@@ -146,11 +147,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.16.1 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.16.1 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.16.1</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a></div>
     
@@ -290,11 +291,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.16.1 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.16.1 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.16.1</p>
+    <p class="title logo__title">Warp 1.17.0</p>
   
 </a>
 
@@ -413,6 +414,7 @@
 <li class="toctree-l2"><a class="reference internal" href="execution_and_performance/memory_management.html">Memory Allocation and Access</a></li>
 <li class="toctree-l2"><a class="reference internal" href="execution_and_performance/profiling.html">Profiling</a></li>
 <li class="toctree-l2"><a class="reference internal" href="execution_and_performance/deterministic_execution.html">Deterministic Execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="execution_and_performance/reducing_compilation_and_startup_time.html">Reducing Compilation and Startup Time</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a></li>
@@ -428,6 +430,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp.html">warp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_autograd.html">warp.autograd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_build_experimental.html">warp.build_experimental</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_config.html">warp.config</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_fem.html">warp.fem</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_optim.html">warp.optim</a></li>
@@ -444,7 +447,7 @@
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../project/contribution_guide.html">Contribution Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../project/contribution_guide.html">Contributing to Warp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../project/publications.html">Publications using Warp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../project/changelog.html">Changelog</a></li>
 </ul>
@@ -493,10 +496,43 @@
       
         <div class="header-article-item">
 
+
+
 <div class="d-flex justify-content-end w-100">
-  <a href="../_sources/user_guide/debugging.rst.txt">
-    <i class="fa-solid fa-file-code"></i> View page source
-  </a>
+  <div class="btn-group copy-page-source pst-js-only" data-page-source-control role="group" aria-label="Page source">
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary"
+      data-copy-page-source
+      data-page-source-url="../_sources/user_guide/debugging.rst.txt"
+      disabled
+    >
+      <i class="fa-solid fa-copy" aria-hidden="true"></i>
+      <span data-copy-page-source-label>Copy source</span>
+    </button>
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary dropdown-toggle dropdown-toggle-split"
+      data-bs-toggle="dropdown"
+      aria-expanded="false"
+    >
+      <span class="visually-hidden">Page source options</span>
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end">
+      <li>
+        <a class="dropdown-item" href="../_sources/user_guide/debugging.rst.txt">
+          <i class="fa-solid fa-file-code" aria-hidden="true"></i>
+          View source
+        </a>
+      </li>
+    </ul>
+    <span class="visually-hidden" role="status" aria-live="polite" data-copy-page-source-status></span>
+  </div>
+  <noscript>
+    <a href="../_sources/user_guide/debugging.rst.txt">
+      <i class="fa-solid fa-file-code" aria-hidden="true"></i> View source
+    </a>
+  </noscript>
 </div>
 </div>
       
@@ -653,7 +689,6 @@ Warp’s built-in default logger.</p>
 <p>In debug mode, Warp kernels will perform the following additional checks:</p>
 <ul class="simple">
 <li><p>Raise an assertion if there is an array access outside the defined shape.</p></li>
-<li><p>Warn if <a class="reference internal" href="../language_reference/_generated/warp.tid.html#warp._src.lang.tid" title="warp._src.lang.tid"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tid()</span></code></a> will return an overflowed value on large grids.</p></li>
 <li><p>(GPU-only) Warn if the CUDA grid dimensions have been capped due to an overflowed number of blocks.</p></li>
 <li><p>(GPU-only) Generate line-number information for device code.</p></li>
 </ul>
@@ -712,7 +747,7 @@ the debugger should be attached, and a breakpoint inserted into the generated co
 <p class="admonition-title">Note</p>
 <p>Generated kernel code is not a 1:1 correspondence with the original Python code, but individual operations can still be replayed and variables inspected.</p>
 </div>
-<p>Also see <a class="extlink-github reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/tests/walkthrough_debug.py">warp/tests/walkthrough_debug.py</a> for an example of how to debug Warp kernel code running on the CPU.</p>
+<p>Also see <a class="extlink-github reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/tests/walkthrough_debug.py">warp/tests/walkthrough_debug.py</a> for an example of how to debug Warp kernel code running on the CPU.</p>
 <p>Breakpoints can also be inserted into Warp kernels running on GPU devices on Linux systems by using the
 <a class="reference external" href="https://docs.python.org/3/library/functions.html#breakpoint" title="(in Python v3.14)"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.breakpoint()</span></code></a> function and <a class="reference external" href="https://docs.nvidia.com/cuda/cuda-gdb/index.html">CUDA-GDB</a>
 or the <a class="reference external" href="https://developer.nvidia.com/nsight-visual-studio-code-edition">NVIDIA Nsight Visual Studio Code Edition (VSCE)</a>
@@ -756,6 +791,37 @@ conflicts when using multiple processes and to support the caching of runtime-de
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">cache_kernels</span> <span class="o">=</span> <span class="kc">False</span>
 </pre></div>
 </div>
+</section>
+<section id="cross-device-array-access">
+<h2>Cross-Device Array Access<a class="headerlink" href="#cross-device-array-access" title="Link to this heading">#</a></h2>
+<p>A cross-device launch runs a kernel on one device with an array allocated on
+another. If the launch device cannot access the array, a CPU kernel may fail
+with a segmentation fault (<code class="docutils literal notranslate"><span class="pre">SIGSEGV</span></code>), or CUDA may report error 700
+(<code class="docutils literal notranslate"><span class="pre">an</span> <span class="pre">illegal</span> <span class="pre">memory</span> <span class="pre">access</span> <span class="pre">was</span> <span class="pre">encountered</span></code>). The default
+<code class="docutils literal notranslate"><span class="pre">wp.config.LaunchArrayAccessMode.RELAXED</span></code> mode does not check array
+accessibility before a kernel runs.</p>
+<p>Whether a cross-device launch is valid depends on which device accesses the
+array and how the array was allocated. System capabilities and access settings
+also matter, so the same launch may work on one system and fail on another. Use
+<a class="reference internal" href="../api_reference/_generated/warp.can_access.html#warp.can_access" title="warp.can_access"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.can_access(device,</span> <span class="pre">array)</span></code></a> to check a specific
+allocation. See <a class="reference internal" href="execution_and_performance/memory_management.html#cross-device-memory-access"><span class="std std-ref">Cross-Device Memory Access</span></a> for the full access model and
+platform-specific examples.</p>
+<p>To diagnose a suspected cross-device array access failure without rejecting
+supported access, enable checked validation:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">launch_array_access_mode</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">LaunchArrayAccessMode</span><span class="o">.</span><span class="n">CHECKED</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">CHECKED</span></code> raises a <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code> before execution when Warp can determine
+that an array is inaccessible. If Warp cannot verify a custom or externally
+managed allocation, it emits a warning and allows the launch to proceed.</p>
+<p>Use <code class="docutils literal notranslate"><span class="pre">STRICT</span></code> to require every Warp array argument to be allocated on the
+launch device. It also rejects cross-device allocations that the hardware
+could access:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">launch_array_access_mode</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">LaunchArrayAccessMode</span><span class="o">.</span><span class="n">STRICT</span>
+</pre></div>
+</div>
+<p>See <a class="reference internal" href="execution_and_performance/memory_management.html#launch-array-access-checks"><span class="std std-ref">Checked Launch Validation</span></a> for the complete behavior, limitations,
+and performance considerations.</p>
 </section>
 <section id="cuda-error-verification">
 <h2>CUDA Error Verification<a class="headerlink" href="#cuda-error-verification" title="Link to this heading">#</a></h2>
@@ -887,6 +953,7 @@ static variables is not detected, because the JIT does not run kernel module con
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#assertions">Assertions</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#step-through-debugging">Step-Through Debugging</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#generated-code">Generated Code</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cross-device-array-access">Cross-Device Array Access</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cuda-error-verification">CUDA Error Verification</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#detecting-non-finite-values">Detecting Non-Finite Values</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cuda-toolkit-debugging-tools">CUDA Toolkit Debugging Tools</a></li>
@@ -898,7 +965,7 @@ static variables is not detected, because the JIT does not run kernel module con
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/release-1.16/docs/user_guide/debugging.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/release-1.17/docs/user_guide/debugging.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

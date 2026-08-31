@@ -9,4 +9,14 @@
       * Kernel
       * Python
 
-   Sample the :class:`warp.int32` volume given by ``id`` at the volume local-space point ``uvw``.
+   Sample the :class:`warp.int32` volume given by ``id`` at the index-space point ``uvw``.
+   
+   Integer volumes only support nearest-voxel sampling, so there is no ``sampling_mode`` argument
+   (:attr:`warp.Volume.CLOSEST` is always used). This function is not differentiable. ``uvw`` is
+   in index space (voxel coordinates) and may be fractional; it is rounded to the nearest voxel.
+   Currently, exact halfway cases are rounded away from zero. Sampling uses the resolved volume
+   value (see :func:`~warp.volume_sample`). ``id`` must identify an ``int32`` volume.
+   
+   :returns: The sampled :class:`warp.int32` value.
+   
+   See :func:`~warp.volume_sample` for a usage example.

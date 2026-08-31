@@ -252,7 +252,7 @@ Jacobians
 #########
 
 To compute the Jacobian matrix :math:`J\in\mathbb{R}^{m\times n}` of a multi-valued function :math:`f: \mathbb{R}^n \to \mathbb{R}^m`,
-we can evaluate an entire row of the Jacobian in parallel by finding the Jacobian-vector product :math:`J^\top \mathbf{e}`.
+we can evaluate an entire row of the Jacobian in parallel by finding the vector-Jacobian product :math:`\mathbf{e}^\top J`.
 The vector :math:`\mathbf{e}\in\mathbb{R}^m` selects the indices in the output buffer to differentiate with respect to.
 In Warp, instead of passing a scalar loss buffer to :meth:`warp.Tape.backward`,
 we pass a dictionary ``grads`` mapping from the function output array to the selection vector :math:`\mathbf{e}`
@@ -1275,6 +1275,8 @@ important caveat: each component may only be assigned a value once (not includin
 then be safely updated with in-place addition or subtraction (``+=`` or ``-=``) operations, but direct re-assignment (``=``)
 will invalidate gradient computations related to the vector, matrix, or quaternion.
 
+.. _dynamic_loops:
+
 Dynamic Loops
 ^^^^^^^^^^^^^
 Currently, dynamic loops are not replayed or unrolled in the backward pass, meaning intermediate values that are
@@ -1418,13 +1420,14 @@ In the backward pass, when computing the adjoint for ``sum``, which is used to c
 ``norm`` is not recomputed in the backward pass because dynamic loops are not replayed. This means that ``norm`` is 0.0 at the start of the adjoint calculation
 rather than the value computed in the forward pass, 3.0.
 
-There is a different remedy for this particular scenario. One can force a dynamic loop to replay in the backward pass by migrating the body of the loop to
-a Warp function:
+There is a workaround for this case. During the backward pass, Warp skips dynamic loops in the kernel body, but it replays calls to Warp functions.
+Replaying a function call runs the function again, including any dynamic loop it contains, and recomputes its return values. We can therefore move the loop
+into a Warp function that returns the accumulated values and keep the division in the kernel:
 
 .. testcode::
 
     @wp.func
-    def loop(x: wp.array[float], weights: wp.array[float], iters: int):
+    def weighted_sum(x: wp.array[float], weights: wp.array[float], iters: int):
         sum = float(0.0)
         norm = float(0.0)
 
@@ -1438,7 +1441,7 @@ a Warp function:
 
     @wp.kernel
     def dynamic_loop_sum(x: wp.array[float], weights: wp.array[float], loss: wp.array[float], iters: int):
-        sum, norm = loop(x, weights, iters)
+        sum, norm = weighted_sum(x, weights, iters)
 
         l = sum / norm
         wp.atomic_add(loss, 0, l)
@@ -1446,7 +1449,7 @@ a Warp function:
 
     iters = 3
     x = wp.full(shape=iters, value=1.0, dtype=float, requires_grad=True)
-    weights = wp.full(shape=iters, value=0.5, dtype=float, requires_grad=True)
+    weights = wp.full(shape=iters, value=1.0, dtype=float, requires_grad=True)
     loss = wp.zeros(1, dtype=float, requires_grad=True)
 
     with wp.Tape() as tape:
@@ -1462,10 +1465,70 @@ Now, the above code produces the expected results:
 
     [0.33333334 0.33333334 0.33333334]
 
-However, this only works because the ``x`` array adjoints do not require an intermediate
-value for ``sum``; they only need the adjoint of ``sum``. In general this workaround is only valid for simple add/subtract operations such as
-``+=`` or ``-=``.
+The backward pass handles ``weighted_sum()`` in two stages. It first replays the original function to recompute its return values. It then runs the
+function's generated adjoint to propagate gradients to ``x`` and ``weights``. In detail:
 
-.. note:: 
+1. Warp calls ``weighted_sum()`` again while replaying the kernel. The function runs its dynamic loop and recomputes the final values of ``sum`` and
+   ``norm``. The kernel's reverse sweep then reads these values where it needs them: the adjoint of the division ``l = sum / norm`` evaluates
+   :math:`\partial l / \partial \mathrm{sum} = 1 / \mathrm{norm}` and :math:`\partial l / \partial \mathrm{norm} = -\mathrm{sum} / \mathrm{norm}^2`
+   with the recomputed values, producing correct adjoints of ``sum`` and ``norm``.
+2. Warp runs the generated adjoint of ``weighted_sum()`` to propagate those adjoints into ``x`` and ``weights``. The adjoint rebuilds the function's local
+   variables by re-executing its statements, with one exception: it never runs the dynamic loop forward, so the accumulators stay at their pre-loop values
+   (here, 0.0) instead of their final sums. The adjoint does iterate over the loop range, but backward and only to apply the adjoint of each statement in
+   the loop body. That is enough here because the adjoint of ``sum += x[i] * w`` needs only ``w`` (recomputed each iteration from ``weights``) and the
+   adjoint of ``sum``, never the value of ``sum`` itself.
 
-    In a subsequent release, we will enable users to force-unroll dynamic loops in some circumstances, thereby obviating these workarounds.
+This limits the workaround in two ways:
+
+* Warp can differentiate simple ``+=`` and ``-=`` accumulations inside the loop because their adjoints do not depend on intermediate accumulator values.
+  Other operations inside the loop body remain subject to the restrictions described earlier in this section.
+* After the loop, the function's adjoint differentiates any use of an accumulator at its pre-loop value. Operations whose derivatives do not depend on the
+  accumulated value, such as scaling by a constant, still produce correct gradients inside the function. Operations whose derivatives do need the final
+  value, such as the division ``sum / norm``, must be performed in the caller, where the replayed call provides the correct values.
+
+To illustrate the second limitation, suppose we instead perform the division inside the Warp function:
+
+.. testcode::
+
+    @wp.func
+    def weighted_mean(x: wp.array[float], weights: wp.array[float], iters: int):
+        sum = float(0.0)
+        norm = float(0.0)
+
+        for i in range(iters):
+            w = weights[i]
+            norm += w
+            sum += x[i] * w
+
+        return sum / norm
+
+
+    @wp.kernel
+    def dynamic_loop_divide(x: wp.array[float], weights: wp.array[float], loss: wp.array[float], iters: int):
+        l = weighted_mean(x, weights, iters)
+
+        wp.atomic_add(loss, 0, l)
+
+
+    iters = 3
+    x = wp.full(shape=iters, value=1.0, dtype=float, requires_grad=True)
+    weights = wp.full(shape=iters, value=1.0, dtype=float, requires_grad=True)
+    loss = wp.zeros(1, dtype=float, requires_grad=True)
+
+    with wp.Tape() as tape:
+        wp.launch(dynamic_loop_divide, dim=1, inputs=[x, weights, loss, iters])
+
+    tape.backward(loss)
+
+    print(x.grad)
+
+The forward pass computes the correct loss, but the adjoint of the division is evaluated with ``norm`` still at its pre-loop value of 0.0, producing incorrect
+gradients:
+
+.. testoutput::
+
+    [inf inf inf]
+
+The pre-loop value read by the adjoint is not necessarily zero, so this failure is not always as visible as an ``inf``: the backward pass may instead
+produce zeros or finite but incorrect gradients. As a rule, return the raw accumulated values from the function and move any operation whose derivative
+depends on them to the caller.
