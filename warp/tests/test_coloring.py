@@ -174,6 +174,67 @@ def create_lattice_grid(N):
 
 
 class TestColoring(unittest.TestCase):
+    def test_coloring_native_rejects_invalid_edge_shapes(self):
+        """Verify native graph coloring rejects malformed edge array shapes."""
+        # Direct runtime binding access requires explicitly initializing Warp.
+        wp.init()
+        core = wp._src.context.runtime.core
+
+        edge_shapes = (
+            (0,),  # 1D, empty
+            (3,),  # 1D, non-empty
+            (0, 1),  # 2D, single column, empty
+            (1, 0),  # 2D, zero columns, one row
+            (1, 1),  # 2D, single column, one row
+            (2, 1),  # 2D, single column, several rows
+            (1, 2, 2),  # 3D
+        )
+
+        for edge_shape in edge_shapes:
+            with self.subTest(edge_shape=edge_shape):
+                edges = wp.empty(edge_shape, dtype=wp.int32, device="cpu")
+                node_colors = wp.empty(2, dtype=wp.int32, device="cpu")
+
+                color_count = core.wp_graph_coloring(
+                    2,
+                    edges.__ctype__(),
+                    int(wp.utils.GraphColoringAlgorithm.MCS),
+                    node_colors.__ctype__(),
+                )
+                self.assertEqual(color_count, -1)
+
+                node_colors = wp.array([0, 1], dtype=wp.int32, device="cpu")
+                max_min_ratio = core.wp_balance_coloring(
+                    2,
+                    edges.__ctype__(),
+                    2,
+                    1.1,
+                    node_colors.__ctype__(),
+                )
+                self.assertEqual(max_min_ratio, -1.0)
+
+    def test_coloring_rejects_invalid_edge_indices(self):
+        """Verify graph coloring rejects edges with invalid node indices."""
+        node_colors = wp.empty(2, dtype=wp.int32, device="cpu")
+
+        for invalid_edge in ((-1, 0), (0, -1), (2, 0), (0, 2)):
+            with self.subTest(invalid_edge=invalid_edge):
+                edges = wp.array([invalid_edge], dtype=wp.int32, device="cpu")
+
+                with self.assertRaisesRegex(RuntimeError, "Graph coloring failed"):
+                    wp.utils.graph_coloring_assign(edges, node_colors)
+
+    def test_coloring_balance_rejects_invalid_edge_indices(self):
+        """Verify graph coloring balance rejects edges with invalid node indices."""
+        node_colors = wp.array([0, 1], dtype=wp.int32, device="cpu")
+
+        for invalid_edge in ((-1, 0), (0, -1), (2, 0), (0, 2)):
+            with self.subTest(invalid_edge=invalid_edge):
+                edges = wp.array([invalid_edge], dtype=wp.int32, device="cpu")
+
+                with self.assertRaisesRegex(RuntimeError, "Graph coloring balance failed"):
+                    wp.utils.graph_coloring_balance(edges, node_colors, color_count=2, target_max_min_ratio=1.1)
+
     def test_coloring_corner_case(self):
         """Test corner cases: empty graph and simple 2-node graph."""
         # Test 1: Simple 2-node graph with one edge connecting the nodes

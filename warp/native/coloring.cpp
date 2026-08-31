@@ -40,6 +40,12 @@ struct Graph {
     Graph(int num_nodes_in, const wp::array_t<int>& edges)
         : num_nodes(num_nodes_in)
     {
+        if (edges.ndim != 2 || edges.shape[1] != 2) {
+            fprintf(stderr, "The edges array must have shape (edge_count, 2)!\n");
+            valid = false;
+            return;
+        }
+
         node_offsets.resize(num_nodes + 1, 0);
         node_colors.resize(num_nodes, -1);
 
@@ -49,6 +55,16 @@ struct Graph {
         for (size_t edge_idx = 0; edge_idx < edges.shape[0]; edge_idx++) {
             int e0 = *address(edges, edge_idx, 0);
             int e1 = *address(edges, edge_idx, 1);
+
+            if (e0 < 0 || e0 >= num_nodes || e1 < 0 || e1 >= num_nodes) {
+                fprintf(
+                    stderr, "Graph edge %zu has endpoints (%d, %d), but valid node indices are in the range [0, %d).\n",
+                    edge_idx, e0, e1, num_nodes
+                );
+                valid = false;
+                return;
+            }
+
             node_degrees[e0] += 1;
             node_degrees[e1] += 1;
         }
@@ -89,6 +105,7 @@ struct Graph {
     std::vector<int> graph_flatten;
     std::vector<int> node_offsets;
     std::vector<int> node_colors;
+    bool valid = true;
 };
 
 void convert_to_color_groups(
@@ -506,6 +523,10 @@ int wp_graph_coloring(int num_nodes, wp::array_t<int> edges, int algorithm, wp::
     // convert to a format that coloring algorithm can recognize
 
     Graph graph(num_nodes, edges);
+    if (!graph.valid) {
+        // Color counts are non-negative, so use -1 to signal failure.
+        return -1;
+    }
 
     int num_colors = -1;
     switch (algorithm) {
@@ -542,6 +563,11 @@ float wp_balance_coloring(
 )
 {
     Graph graph(num_nodes, edges);
+    if (!graph.valid) {
+        // Ratios are non-negative, so use -1.f to signal failure.
+        return -1.f;
+    }
+
     // copy the color info to graph
     memcpy(graph.node_colors.data(), node_colors.data, num_nodes * sizeof(int));
     if (num_colors > 1) {
