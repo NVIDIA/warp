@@ -346,12 +346,12 @@ class Function:
             )
 
             # record input types
-            for name, type in self.adj.arg_types.items():
+            for name, arg_type in self.adj.arg_types.items():
                 if name == "return":
-                    self.value_func = create_value_func(type)
+                    self.value_func = create_value_func(arg_type)
 
                 else:
-                    self.input_types[name] = type
+                    self.input_types[name] = arg_type
 
             # Record any default parameter values.
             if not self.defaults:
@@ -402,6 +402,19 @@ class Function:
             )
             signature_params.append(param)
         self.signature = inspect.Signature(signature_params)
+
+        # Generic built-ins expand each logical Python signature into many
+        # concrete type specializations. This lightweight key captures the
+        # binding shape and default argument types without repeatedly hashing
+        # the full ``inspect.Signature`` while resolving those specializations.
+        self._call_shape = tuple(
+            (
+                param.name,
+                param.kind,
+                inspect.Parameter.empty if param.default is inspect.Parameter.empty else type(param.default),
+            )
+            for param in signature_params
+        )
 
         # scope for resolving overloads, the locals() where the function is defined
         if scope_locals is None:
@@ -639,32 +652,80 @@ class Function:
         return None
 
     def get_builtin(self, *args, **kwargs) -> BuiltinCallDesc:
+        # Preserve the primary signature as a fast path and as a keyword alias
+        # for compatible overloads that use different parameter names.
         try:
-            # Try to bind the given arguments to the function's signature.
-            # This is not checking whether the argument types are matching,
-            # rather it's just assigning each argument to the corresponding
-            # function parameter.
             bound_args = self.signature.bind(*args, **kwargs)
         except TypeError:
             pass
         else:
+            primary_supplied_arguments = None
+            primary_default_indices = None
             if self.defaults:
-                # Populate the bound arguments with any default values.
+                # Preserve the caller-supplied arguments so validation can be deferred until another overload matches.
+                primary_supplied_arguments = bound_args.arguments
                 default_args = {k: v for k, v in self.defaults.items() if k not in bound_args.arguments}
                 warp._src.codegen.apply_defaults(bound_args, default_args)
 
             bound_arg_types = tuple(type(x) for x in bound_args.arguments.values())
 
-            # For each of this function's existing overloads, we attempt to pack
-            # the given arguments into the C types expected by the corresponding
-            # parameters, and we rinse and repeat until we get a match.
             for overload in self.overloads:
                 if overload.generic:
                     continue
 
                 desc = get_builtin_call_desc(overload, bound_arg_types)
                 if desc is not None:
+                    # Do not let primary-signature defaults satisfy required parameters on another overload.
+                    if overload is not self and primary_supplied_arguments is not None:
+                        if primary_default_indices is None:
+                            primary_default_indices = tuple(
+                                index
+                                for index, name in enumerate(self.signature.parameters)
+                                if name not in primary_supplied_arguments and name in self.defaults
+                            )
+                        if primary_default_indices:
+                            overload_default_indices = {index for index, _ in desc.overload_defaults_by_index}
+                            if not all(index in overload_default_indices for index in primary_default_indices):
+                                continue
                     return desc
+
+        # Fall back to signatures that accept different argument counts or
+        # overload-specific parameter names. Bind once per distinct call shape
+        # because many concrete type specializations share each call shape. The
+        # primary shape was already exhausted above, whether its binding
+        # succeeded or failed, so do not revisit its overloads.
+        bindings_by_call_shape: dict[tuple, tuple[tuple[type, ...], inspect.Signature] | None] = {
+            self._call_shape: None
+        }
+        for overload in self.overloads:
+            if overload.generic:
+                continue
+
+            call_shape = overload._call_shape
+            if call_shape in bindings_by_call_shape:
+                cached_binding = bindings_by_call_shape[call_shape]
+                if cached_binding is None:
+                    continue
+                bound_arg_types, binding_signature = cached_binding
+            else:
+                try:
+                    bound_args = overload.signature.bind(*args, **kwargs)
+                except TypeError:
+                    bindings_by_call_shape[call_shape] = None
+                    continue
+
+                if overload.defaults:
+                    # Populate the bound arguments with any default values.
+                    default_args = {k: v for k, v in overload.defaults.items() if k not in bound_args.arguments}
+                    warp._src.codegen.apply_defaults(bound_args, default_args)
+
+                bound_arg_types = tuple(type(x) for x in bound_args.arguments.values())
+                binding_signature = overload.signature
+                bindings_by_call_shape[call_shape] = (bound_arg_types, binding_signature)
+
+            desc = get_builtin_call_desc(overload, bound_arg_types)
+            if desc is not None:
+                return desc._replace(binding_signature=binding_signature)
 
         # overload resolution or call failed
         raise RuntimeError(
@@ -673,11 +734,18 @@ class Function:
         )
 
     def call_builtin(self, desc: BuiltinCallDesc, *args, **kwargs) -> Any:
-        bound_args = self.signature.bind(*args, **kwargs)
+        binding_signature = desc.binding_signature or self.signature
+        bound_args = binding_signature.bind(*args, **kwargs)
 
-        if self.defaults:
-            # Populate the bound arguments with any default values.
-            default_args = {k: v for k, v in self.defaults.items() if k not in bound_args.arguments}
+        if desc.overload_defaults_by_index:
+            # Apply defaults from the selected overload by position so the
+            # binding signature can still use different parameter names.
+            binding_param_names = tuple(binding_signature.parameters)
+            default_args = {
+                binding_param_names[index]: value
+                for index, value in desc.overload_defaults_by_index
+                if binding_param_names[index] not in bound_args.arguments
+            }
             warp._src.codegen.apply_defaults(bound_args, default_args)
 
         bound_args = tuple(bound_args.arguments.values())
@@ -772,6 +840,11 @@ class BuiltinCallDesc(NamedTuple):
     arg_types: Sequence[type]  # Types passed to `add_builtin()` or defined by the `export_func` callback.
     param_kinds: Sequence[BuiltinParamKind]  # How to pack a parameter into a C type.
     value_type: Any  # Return type.
+    binding_signature: inspect.Signature | None = None  # Optional override; None uses the primary signature.
+    # Keep these pairs in a tuple so the collection cannot be changed after the
+    # descriptor is created. The indices let us apply defaults to signatures
+    # that use different parameter names.
+    overload_defaults_by_index: tuple[tuple[int, Any], ...] = ()
 
 
 @functools.cache
@@ -791,14 +864,14 @@ def get_builtin_call_desc(
     if func.mangled_name is None:
         return None
 
-    # Retrieve the built-in function from Warp's dll.
-    c_func = getattr(warp._src.context.runtime.core, func.mangled_name)
+    if len(func.input_types) != len(param_types):
+        return None
 
-    # Runtime arguments that are to be passed to the function, not its template signature.
-    if func.export_func is not None:
-        func_args = func.export_func(func.input_types)
-    else:
-        func_args = func.input_types
+    exported_signature = resolve_exported_function_sig(func)
+    if exported_signature is None:
+        return None
+
+    func_args, value_type = exported_signature
 
     arg_types = []
     param_kinds = []
@@ -844,10 +917,21 @@ def get_builtin_call_desc(
         arg_types.append(arg_type)
         param_kinds.append(param_kind)
 
-    # Retrieve the return type.
-    value_type = func.value_func(func_args, None)
+    # Retrieve the built-in function from Warp's dll only after confirming that
+    # this overload is exported and compatible with the given parameters.
+    c_func = getattr(warp._src.context.runtime.core, func.mangled_name)
 
-    return BuiltinCallDesc(c_func, arg_types, param_kinds, value_type)
+    overload_defaults_by_index = tuple(
+        (index, func.defaults[name]) for index, name in enumerate(func.signature.parameters) if name in func.defaults
+    )
+
+    return BuiltinCallDesc(
+        c_func,
+        arg_types,
+        param_kinds,
+        value_type,
+        overload_defaults_by_index=overload_defaults_by_index,
+    )
 
 
 def call_builtin_from_desc(
