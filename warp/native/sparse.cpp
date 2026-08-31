@@ -38,8 +38,7 @@ void bsr_compress_inplace_host_impl(
     int* bsr_row_counts,
     int* bsr_columns,
     void* bsr_values,
-    uint64_t prune_zero_mask,
-    int* bsr_nnz
+    uint64_t prune_zero_mask
 )
 {
     T* values = nullptr;
@@ -94,10 +93,6 @@ void bsr_compress_inplace_host_impl(
             bsr_zero_block(block, block_size, values);
         }
     }
-
-    if (bsr_nnz != nullptr) {
-        *bsr_nnz = write;
-    }
 }
 
 // Record a host BSR-from-triplets topology build into the active APIC byte
@@ -122,8 +117,7 @@ bool apic_capture_bsr_from_triplets(
     int* summed_block_indices,
     int* bsr_offsets,
     const int* bsr_row_counts,
-    int* bsr_columns,
-    int* bsr_nnz
+    int* bsr_columns
 )
 {
     APICState* state = wp_apic_get_recording_state();
@@ -166,16 +160,12 @@ bool apic_capture_bsr_from_triplets(
             state, reinterpret_cast<uint64_t>(bsr_row_counts), static_cast<uint64_t>(row_count) * sizeof(int32_t)
         );
     APICAddress bc_addr = apic_resolve_host_ptr(state, reinterpret_cast<uint64_t>(bsr_columns), bsr_columns_bytes);
-    APICAddress bnnz_addr;
-    if (bsr_nnz)
-        bnnz_addr = apic_resolve_host_ptr(state, reinterpret_cast<uint64_t>(bsr_nnz), sizeof(int32_t));
-
     apic_record_bsr_from_triplets(
         state, block_size, scalar_size_in_bytes, row_count, col_count, nnz, scalar_zero_mask, masked_topology ? 1 : 0,
         tpl_nnz_addr.region_id, tpl_nnz_addr.offset, tpl_rows_addr.region_id, tpl_rows_addr.offset,
         tpl_columns_addr.region_id, tpl_columns_addr.offset, tpl_values_addr.region_id, tpl_values_addr.offset,
         sbo_addr.region_id, sbo_addr.offset, sbi_addr.region_id, sbi_addr.offset, bo_addr.region_id, bo_addr.offset,
-        brc_addr.region_id, brc_addr.offset, bc_addr.region_id, bc_addr.offset, bnnz_addr.region_id, bnnz_addr.offset
+        brc_addr.region_id, brc_addr.offset, bc_addr.region_id, bc_addr.offset, -1, 0
     );
     return true;
 }
@@ -280,9 +270,7 @@ WP_API void wp_bsr_matrix_from_triplets_host(
     int* tpl_block_indices,
     int* bsr_offsets,
     const int* bsr_row_counts,
-    int* bsr_columns,
-    int* bsr_nnz,
-    void* bsr_nnz_event
+    int* bsr_columns
 )
 {
     // Under CPU graph capture, record the topology build (so it replays with
@@ -291,7 +279,7 @@ WP_API void wp_bsr_matrix_from_triplets_host(
     if (apic_capture_bsr_from_triplets(
             block_size, scalar_size_in_bytes, row_count, col_count, nnz, tpl_nnz, tpl_rows, tpl_columns, tpl_values,
             scalar_zero_mask, masked_topology, tpl_block_offsets, tpl_block_indices, bsr_offsets, bsr_row_counts,
-            bsr_columns, bsr_nnz
+            bsr_columns
         ))
         return;
 
@@ -405,10 +393,6 @@ WP_API void wp_bsr_matrix_from_triplets_host(
         // free our temporary buffers
         wp_free_host(tpl_block_offsets);
         wp_free_host(tpl_block_indices);
-    }
-
-    if (bsr_nnz != nullptr) {
-        *bsr_nnz = bsr_offsets[row_count];
     }
 }
 
@@ -531,17 +515,10 @@ WP_API void wp_bsr_compress_inplace_host(
     int* bsr_row_counts,
     int* bsr_columns,
     void* bsr_values,
-    bool compress_values,
-    int* bsr_nnz,
-    void* bsr_nnz_event
+    bool compress_values
 )
 {
-    (void)bsr_nnz_event;
-
     if (row_count <= 0) {
-        if (make_compact && bsr_nnz != nullptr) {
-            *bsr_nnz = 0;
-        }
         return;
     }
 
@@ -550,8 +527,7 @@ WP_API void wp_bsr_compress_inplace_host(
 
     if (values_to_write == nullptr && !prune_from_input_values) {
         bsr_compress_inplace_host_impl<wp::float32, false>(
-            row_count, 0, nnz_upper_bound, false, make_compact, bsr_offsets, bsr_row_counts, bsr_columns, nullptr, 0,
-            bsr_nnz
+            row_count, 0, nnz_upper_bound, false, make_compact, bsr_offsets, bsr_row_counts, bsr_columns, nullptr, 0
         );
         return;
     }
@@ -561,25 +537,25 @@ WP_API void wp_bsr_compress_inplace_host(
         case sizeof(uint8_t):
             bsr_compress_inplace_host_impl<uint8_t, false>(
                 row_count, block_size, nnz_upper_bound, prune_numerical_zeros, make_compact, bsr_offsets,
-                bsr_row_counts, bsr_columns, bsr_values, scalar_zero_mask, bsr_nnz
+                bsr_row_counts, bsr_columns, bsr_values, scalar_zero_mask
             );
             break;
         case sizeof(uint16_t):
             bsr_compress_inplace_host_impl<uint16_t, false>(
                 row_count, block_size, nnz_upper_bound, prune_numerical_zeros, make_compact, bsr_offsets,
-                bsr_row_counts, bsr_columns, bsr_values, scalar_zero_mask, bsr_nnz
+                bsr_row_counts, bsr_columns, bsr_values, scalar_zero_mask
             );
             break;
         case sizeof(uint32_t):
             bsr_compress_inplace_host_impl<uint32_t, false>(
                 row_count, block_size, nnz_upper_bound, prune_numerical_zeros, make_compact, bsr_offsets,
-                bsr_row_counts, bsr_columns, bsr_values, scalar_zero_mask, bsr_nnz
+                bsr_row_counts, bsr_columns, bsr_values, scalar_zero_mask
             );
             break;
         case sizeof(uint64_t):
             bsr_compress_inplace_host_impl<uint64_t, false>(
                 row_count, block_size, nnz_upper_bound, prune_numerical_zeros, make_compact, bsr_offsets,
-                bsr_row_counts, bsr_columns, bsr_values, scalar_zero_mask, bsr_nnz
+                bsr_row_counts, bsr_columns, bsr_values, scalar_zero_mask
             );
             break;
         }
@@ -591,14 +567,14 @@ WP_API void wp_bsr_compress_inplace_host(
         if (scalar_size_in_bytes == sizeof(wp::float32))
             bsr_compress_inplace_host_impl<wp::float32, true>(
                 row_count, block_size, nnz_upper_bound, prune_numerical_zeros, make_compact, bsr_offsets,
-                bsr_row_counts, bsr_columns, values_to_write, 0, bsr_nnz
+                bsr_row_counts, bsr_columns, values_to_write, 0
             );
         break;
     case BSR_SCALAR_FLOAT64:
         if (scalar_size_in_bytes == sizeof(wp::float64))
             bsr_compress_inplace_host_impl<wp::float64, true>(
                 row_count, block_size, nnz_upper_bound, prune_numerical_zeros, make_compact, bsr_offsets,
-                bsr_row_counts, bsr_columns, values_to_write, 0, bsr_nnz
+                bsr_row_counts, bsr_columns, values_to_write, 0
             );
         break;
     }
@@ -622,9 +598,7 @@ WP_API void wp_bsr_matrix_from_triplets_device(
     int* summed_block_indices,
     int* bsr_offsets,
     const int* bsr_row_counts,
-    int* bsr_columns,
-    int* bsr_nnz,
-    void* bsr_nnz_event
+    int* bsr_columns
 )
 {
 }
@@ -660,9 +634,7 @@ WP_API void wp_bsr_compress_inplace_device(
     int* bsr_row_counts,
     int* bsr_columns,
     void* bsr_values,
-    bool compress_values,
-    int* bsr_nnz,
-    void* bsr_nnz_event
+    bool compress_values
 )
 {
 }

@@ -7571,8 +7571,6 @@ class Runtime:
                 ctypes.POINTER(ctypes.c_int),  # bsr_offsets
                 ctypes.POINTER(ctypes.c_int),  # bsr_row_counts
                 ctypes.POINTER(ctypes.c_int),  # bsr_columns
-                ctypes.POINTER(ctypes.c_int),  # bsr_nnz
-                ctypes.c_void_p,  # bsr_nnz_event
             ]
 
             self.core.wp_bsr_matrix_from_triplets_host.argtypes = bsr_matrix_from_triplets_argtypes
@@ -7608,8 +7606,6 @@ class Runtime:
                 ctypes.POINTER(ctypes.c_int),  # bsr_columns
                 ctypes.c_void_p,  # bsr_values
                 ctypes.c_bool,  # compress_values
-                ctypes.POINTER(ctypes.c_int),  # bsr_nnz
-                ctypes.c_void_p,  # bsr_nnz_event
             ]
             self.core.wp_bsr_compress_inplace_host.argtypes = bsr_compress_inplace_argtypes
             self.core.wp_bsr_compress_inplace_device.argtypes = bsr_compress_inplace_argtypes

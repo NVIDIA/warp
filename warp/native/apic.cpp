@@ -2490,15 +2490,10 @@ static bool apic_cpu_replay_stream(
                     static_cast<size_t>(reinterpret_cast<const int*>(bsr_offsets)[rec->row_count]) * sizeof(int32_t)
                 );
             void* bsr_columns = resolve_ptr(rec->bsr_columns_region_id, rec->bsr_columns_offset, bsr_columns_bytes);
-            void* bsr_nnz = rec->bsr_nnz_region_id >= 0
-                ? resolve_ptr(rec->bsr_nnz_region_id, rec->bsr_nnz_offset, sizeof(int32_t))
-                : nullptr;
-
             if (!tpl_rows || !tpl_columns || !summed_block_offsets || !summed_block_indices || !bsr_offsets
                 || !bsr_columns || (rec->tpl_nnz_region_id >= 0 && !tpl_nnz)
                 || (rec->tpl_values_region_id >= 0 && !tpl_values)
-                || (rec->bsr_row_counts_region_id >= 0 && !bsr_row_counts)
-                || (rec->bsr_nnz_region_id >= 0 && !bsr_nnz)) {
+                || (rec->bsr_row_counts_region_id >= 0 && !bsr_row_counts)) {
                 fprintf(stderr, "APIC: Error - bsr-from-triplets pointer resolution failed at operation %u\n", i);
                 return false;
             }
@@ -2510,7 +2505,7 @@ static bool apic_cpu_replay_stream(
                 reinterpret_cast<const int*>(tpl_columns), tpl_values, rec->scalar_zero_mask, rec->masked_topology != 0,
                 reinterpret_cast<int*>(summed_block_offsets), reinterpret_cast<int*>(summed_block_indices),
                 reinterpret_cast<int*>(bsr_offsets), reinterpret_cast<const int*>(bsr_row_counts),
-                reinterpret_cast<int*>(bsr_columns), reinterpret_cast<int*>(bsr_nnz), nullptr
+                reinterpret_cast<int*>(bsr_columns)
             );
             break;
         }

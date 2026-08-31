@@ -210,8 +210,7 @@ class BsrMatrix(Generic[_BlockType]):
     def nnz_sync(self) -> int:
         """Synchronize the stored block upper bound from the device ``offsets`` array to the host.
 
-        Ensures that any ongoing transfer of ``offsets[nrow]`` from the device offsets array to the host has completed,
-        or, if none has been scheduled yet, starts a new transfer and waits for it to complete.
+        Copies ``offsets[nrow]`` from the device offsets array to the host and waits for the transfer to complete.
 
         The method then updates the host-side ``nnz`` upper bound to match ``offsets[nrow]``.
 
@@ -253,13 +252,15 @@ class BsrMatrix(Generic[_BlockType]):
                 )
             paused_graph = capture_pause(device=self.device)
         try:
-            buf, event = self._nnz_transfer_if_any()
+            buf, event = self._nnz_transfer_if_pending()
             if buf is None:
-                buf, event = self._copy_nnz_async()
+                buf, event = self._setup_nnz_transfer()
+                self._start_nnz_transfer(buf, event)
 
             if event is not None:
                 wp.synchronize_event(event)
             self.nnz = int(buf.numpy()[0])
+            BsrMatrix.__setattr__(self, "_nnz_transfer_pending", False)
         finally:
             if paused_graph is not None:
                 capture_resume(paused_graph, device=self.device)
@@ -333,7 +334,7 @@ class BsrMatrix(Generic[_BlockType]):
               default to `nnz`. The caller is responsible for ensuring it is greater
               or equal to the true ``offsets[nrow]`` value.
         """
-        self._copy_nnz_async()
+        self._refresh_nnz_transfer_if_pending()
         if nnz is None:
             if nnz_capacity is None:
                 self.nnz_sync()
@@ -343,27 +344,39 @@ class BsrMatrix(Generic[_BlockType]):
         _bsr_ensure_fits(self, nnz=nnz, capacity=nnz_capacity)
 
     def copy_nnz_async(self) -> None:
-        """Start the asynchronous transfer of ``offsets[nrow]`` from the device offsets array to host.
+        """Start an asynchronous transfer of ``offsets[nrow]`` to host memory.
 
-        Deprecated; prefer :meth:`notify_nnz_changed` instead, which will make sure to resize arrays if necessary.
+        .. deprecated:: 1.18
+            This method will be removed in a future release. Prefer :meth:`nnz_sync`, which avoids keeping a
+            potentially stale transfer pending between calls. An asynchronous transfer may be unsafe when matrix
+            topology updates use other streams or when the transfer is captured and replayed in a CUDA graph.
+
+        This method does not update ``nnz``. A later :meth:`nnz_sync` waits for and uses the transferred value.
+        Topology-changing operations restart a pending transfer but do not create one.
         """
         log_warning(
-            "The `copy_nnz_async` method is deprecated and will be removed in a future version. Prefer `notify_nnz_changed` instead.",
+            "The `copy_nnz_async` method is deprecated and will be removed in a future version. Its asynchronous "
+            "transfer may be unsafe with multiple streams or CUDA graph capture; call `nnz_sync` to synchronously "
+            "update the host-side block count.",
             category=DeprecationWarning,
             stacklevel=2,
         )
         self._copy_nnz_async()
 
-    def _copy_nnz_async(self) -> tuple[wp.array, wp.Event]:
+    def _copy_nnz_async(self) -> tuple[wp.array | None, wp.Event | None]:
         buf, event = self._setup_nnz_transfer()
+        self._start_nnz_transfer(buf, event)
+        BsrMatrix.__setattr__(self, "_nnz_transfer_pending", buf is not None)
+        return buf, event
+
+    def _start_nnz_transfer(self, buf: wp.array | None, event: wp.Event | None) -> None:
         if buf is not None:
             stream = wp.get_stream(self.device) if self.device.is_cuda else None
             wp.copy(src=self.offsets, dest=buf, src_offset=self.nrow, count=1, stream=stream)
             if event is not None:
                 stream.record_event(event, external=True)
-        return buf, event
 
-    def _setup_nnz_transfer(self) -> tuple[wp.array, wp.Event]:
+    def _setup_nnz_transfer(self) -> tuple[wp.array | None, wp.Event | None]:
         buf, event = self._nnz_transfer_if_any()
         if buf is not None:
             return buf, event
@@ -376,8 +389,17 @@ class BsrMatrix(Generic[_BlockType]):
 
         return buf, event
 
-    def _nnz_transfer_if_any(self) -> tuple[wp.array, wp.Event]:
+    def _nnz_transfer_if_any(self) -> tuple[wp.array | None, wp.Event | None]:
         return getattr(self, "_nnz_transfer", (None, None))
+
+    def _nnz_transfer_if_pending(self) -> tuple[wp.array | None, wp.Event | None]:
+        if getattr(self, "_nnz_transfer_pending", False):
+            return self._nnz_transfer_if_any()
+        return None, None
+
+    def _refresh_nnz_transfer_if_pending(self) -> None:
+        if getattr(self, "_nnz_transfer_pending", False):
+            self._copy_nnz_async()
 
     def _ensure_status(self) -> wp.array:
         status = self._status_if_any()
@@ -869,10 +891,6 @@ def _optional_ctypes_pointer(array: wp.array | None, ctype):
     return None if array is None else ctypes.cast(array.ptr, ctypes.POINTER(ctype))
 
 
-def _optional_ctypes_event(event: wp.Event | None):
-    return None if event is None else event.cuda_event
-
-
 def _bsr_status_message(status: int) -> str:
     if status == _BSR_STATUS_SUCCESS:
         return "success"
@@ -903,7 +921,6 @@ def _bsr_try_native_compress_inplace(src: BsrMatrix, prune_numerical_zeros: bool
 
     scalar_values = src.scalar_values
     zero_value_mask = _zero_value_masks.get(src.scalar_type, 0) if prune_numerical_zeros else 0
-    nnz_buf, nnz_event = src._setup_nnz_transfer() if compact else (None, None)
     with wp.ScopedDevice(src.device):
         native_func(
             src.nrow,
@@ -919,9 +936,9 @@ def _bsr_try_native_compress_inplace(src: BsrMatrix, prune_numerical_zeros: bool
             ctypes.cast(src.columns.ptr, ctypes.POINTER(ctypes.c_int32)),
             ctypes.c_void_p(scalar_values.ptr),
             True,  # compress_values
-            _optional_ctypes_pointer(nnz_buf, ctype=ctypes.c_int32),
-            _optional_ctypes_event(nnz_event),
         )
+    if compact:
+        src._refresh_nnz_transfer_if_pending()
 
     return None
 
@@ -964,7 +981,6 @@ def _bsr_try_native_compress_indices_inplace(
     except AttributeError:
         return "requires native symbolic compression support"
 
-    nnz_buf, nnz_event = src._setup_nnz_transfer() if compact else (None, None)
     with wp.ScopedDevice(src.device):
         native_func(
             src.nrow,
@@ -980,9 +996,9 @@ def _bsr_try_native_compress_indices_inplace(
             ctypes.cast(src.columns.ptr, ctypes.POINTER(ctypes.c_int32)),
             _optional_ctypes_pointer(values_to_prune, ctype=ctypes.c_int32),
             False,  # compress_values
-            _optional_ctypes_pointer(nnz_buf, ctype=ctypes.c_int32),
-            _optional_ctypes_event(nnz_event),
         )
+    if compact:
+        src._refresh_nnz_transfer_if_pending()
 
     return None
 
@@ -1023,25 +1039,52 @@ def _bsr_set_from_triplets_native(
     dest_offsets: wp.array,
     dest_row_counts: wp.array | None,
     dest_columns: wp.array,
-    nnz_buf: wp.array | None,
-    nnz_event: wp.Event | None,
 ) -> None:
     from warp._src.context import _get_apic_capture_for_device, runtime  # noqa: PLC0415
 
     device = dest.device
-
-    # from_triplets does a host nnz readback (bsr_offsets[row_count]) after its own
-    # offset kernels, which cannot be captured into a CUDA graph and cannot be
-    # recorded into the APIC byte stream for replay. Reject under a CUDA APIC
-    # capture at this native choke point so direct and internal callers (bsr_mm,
-    # bsr_axpy, ...) are all caught before the device function runs. The CPU path
-    # records APIC_OP_BSR_FROM_TRIPLETS and is unaffected.
     apic_capture = _get_apic_capture_for_device(device)
-    if device.is_cuda and apic_capture is not None:
-        raise NotImplementedError(
-            "APIC capture does not support bsr_set_from_triplets() on CUDA arrays: it requires a host nnz "
-            "readback that cannot be captured. Build the BSR topology outside the captured region."
-        )
+
+    refresh_nnz_transfer = not masked and dest_offsets is dest.offsets
+
+    # Empty compact topology still needs a recordable operation on CPU, where
+    # APIC capture defers work instead of executing it. A native call with no
+    # triplets emits no semantic record, while zero_() is captured on both CPU
+    # and CUDA.
+    if nnz == 0:
+        if not masked:
+            dest_offsets.zero_()
+            if dest_row_counts is not None:
+                dest_row_counts.zero_()
+            if device.is_cpu and apic_capture is not None:
+                _mark_apic_deferred_nnz_update(dest, apic_capture)
+            if refresh_nnz_transfer:
+                dest._refresh_nnz_transfer_if_pending()
+        return
+
+    if apic_capture is not None:
+        if summed_triplet_offsets is None and summed_triplet_indices is None:
+            summed_triplet_offsets = wp.empty(shape=(nnz,), dtype=wp.int32, device=device)
+            summed_triplet_indices = wp.empty(shape=(nnz,), dtype=wp.int32, device=device)
+        elif summed_triplet_offsets is None or summed_triplet_indices is None:
+            raise RuntimeError("APIC capture requires both summed-triplet work arrays")
+
+        # Register every semantic input and output before the native recorder
+        # resolves their pointers, including capture-scoped scratch allocations.
+        for array in (
+            rows,
+            columns,
+            values,
+            count,
+            summed_triplet_offsets,
+            summed_triplet_indices,
+            dest_offsets,
+            dest_row_counts,
+            dest_columns,
+        ):
+            apic_capture.track_array(array)
+        if device.is_cpu:
+            _mark_apic_deferred_nnz_update(dest, apic_capture)
 
     if device.is_cpu:
         native_func = runtime.core.wp_bsr_matrix_from_triplets_host
@@ -1068,9 +1111,9 @@ def _bsr_set_from_triplets_native(
             ctypes.cast(dest_offsets.ptr, ctypes.POINTER(ctypes.c_int32)),
             _optional_ctypes_pointer(dest_row_counts, ctype=ctypes.c_int32),
             ctypes.cast(dest_columns.ptr, ctypes.POINTER(ctypes.c_int32)),
-            _optional_ctypes_pointer(nnz_buf, ctype=ctypes.c_int32),
-            _optional_ctypes_event(nnz_event),
         )
+    if refresh_nnz_transfer:
+        dest._refresh_nnz_transfer_if_pending()
 
 
 @wp.kernel(module="unique")
@@ -1347,27 +1390,16 @@ def bsr_set_from_triplets(
         from warp._src.context import _get_apic_capture_for_device  # noqa: PLC0415
 
         apic_capture = _get_apic_capture_for_device(device) if device.is_cpu else None
-        cpu_apic_capture = apic_capture is not None
 
         compact_offsets = wp.empty(shape=(dest.nrow + 1,), dtype=wp.int32, device=device)
         compact_columns = wp.empty(shape=(nnz,), dtype=wp.int32, device=device)
-        needs_summed_triplets = values is not None or cpu_apic_capture
+        needs_summed_triplets = values is not None or apic_capture is not None
         summed_triplet_offsets = (
             wp.empty(shape=(nnz,), dtype=wp.int32, device=device) if needs_summed_triplets else None
         )
         summed_triplet_indices = (
             wp.empty(shape=(nnz,), dtype=wp.int32, device=device) if needs_summed_triplets else None
         )
-        if cpu_apic_capture:
-            apic_capture.track_array(rows)
-            apic_capture.track_array(columns)
-            apic_capture.track_array(values)
-            apic_capture.track_array(summed_triplet_offsets)
-            apic_capture.track_array(summed_triplet_indices)
-            apic_capture.track_array(compact_offsets)
-            apic_capture.track_array(compact_columns)
-            apic_capture.track_array(count)
-
         _bsr_set_from_triplets_native(
             dest,
             rows,
@@ -1382,8 +1414,6 @@ def bsr_set_from_triplets(
             compact_offsets,
             None,
             compact_columns,
-            None,
-            None,
         )
 
         compact_blocks = (
@@ -1454,36 +1484,12 @@ def bsr_set_from_triplets(
     scalar_type = dest.scalar_type
     zero_value_mask = _zero_value_masks.get(scalar_type, 0) if prune_numerical_zeros and values is not None else 0
 
-    apic_capture = None
-    cpu_apic_capture = False
-    if device.is_cpu:
-        from warp._src.context import _get_apic_capture_for_device  # noqa: PLC0415
+    from warp._src.context import _get_apic_capture_for_device  # noqa: PLC0415
 
-        apic_capture = _get_apic_capture_for_device(device)
-        cpu_apic_capture = apic_capture is not None
-
-    nnz_buf, nnz_event = dest._setup_nnz_transfer()
-    needs_summed_triplets = values is not None or cpu_apic_capture
+    apic_capture = _get_apic_capture_for_device(device)
+    needs_summed_triplets = values is not None or apic_capture is not None
     summed_triplet_offsets = wp.empty(shape=(nnz,), dtype=wp.int32, device=device) if needs_summed_triplets else None
     summed_triplet_indices = wp.empty(shape=(nnz,), dtype=wp.int32, device=device) if needs_summed_triplets else None
-
-    if device.is_cpu:
-        # On CPU the topology build dispatches to wp_bsr_matrix_from_triplets_host,
-        # which records an APIC_OP_BSR_FROM_TRIPLETS op under capture. Track the
-        # input/output base regions first so the recorded op references real
-        # region IDs (matches the sort / runlength_encode tracking).
-        if cpu_apic_capture:
-            apic_capture.track_array(rows)
-            apic_capture.track_array(columns)
-            apic_capture.track_array(values)
-            apic_capture.track_array(summed_triplet_offsets)
-            apic_capture.track_array(summed_triplet_indices)
-            apic_capture.track_array(dest.offsets)
-            apic_capture.track_array(dest.columns)
-            apic_capture.track_array(dest.row_counts)
-            apic_capture.track_array(count)
-            apic_capture.track_array(nnz_buf)
-            _mark_apic_deferred_nnz_update(dest, apic_capture)
 
     _bsr_set_from_triplets_native(
         dest,
@@ -1499,8 +1505,6 @@ def bsr_set_from_triplets(
         dest.offsets,
         dest.row_counts,
         dest.columns,
-        nnz_buf,
-        nnz_event,
     )
 
     if values is not None:
@@ -2413,7 +2417,6 @@ def bsr_assign(
             _bsr_ensure_fits(dest, nnz=nnz_alloc)
 
             # Compute destination offsets from triplets
-            nnz_buf, nnz_event = dest._setup_nnz_transfer()
             _bsr_set_from_triplets_native(
                 dest=dest,
                 rows=dest_rows,
@@ -2428,8 +2431,6 @@ def bsr_assign(
                 dest_offsets=dest.offsets,
                 dest_row_counts=None,
                 dest_columns=dest.columns,
-                nnz_buf=nnz_buf,
-                nnz_event=nnz_event,
             )
             _bsr_set_compact_row_counts(dest)
 
@@ -2833,7 +2834,8 @@ def bsr_set_transpose(
                 None,  # status
             )
 
-            dest._copy_nnz_async()
+            dest._refresh_nnz_transfer_if_pending()
+
             _bsr_set_compact_row_counts(dest)
 
     wp.launch(
@@ -3563,8 +3565,6 @@ def bsr_axpy(
         _bsr_ensure_fits(y, nnz=sum_nnz)
 
         old_y_nnz = y_nnz
-        nnz_buf, nnz_event = y._setup_nnz_transfer()
-
         _bsr_set_from_triplets_native(
             dest=y,
             rows=work_arrays._sum_rows,
@@ -3579,8 +3579,6 @@ def bsr_axpy(
             dest_offsets=y.offsets,
             dest_row_counts=None,
             dest_columns=y.columns,
-            nnz_buf=nnz_buf,
-            nnz_event=nnz_event,
         )
         _bsr_set_compact_row_counts(y)
 
@@ -4557,7 +4555,6 @@ def bsr_mm(
         if z.columns.shape[0] < mm_nnz:
             z.columns = wp.empty(shape=(mm_nnz,), dtype=int, device=device)
 
-        nnz_buf, nnz_event = z._setup_nnz_transfer()
         summed_triplet_offsets = wp.empty(shape=(mm_nnz,), dtype=wp.int32, device=device)
         summed_triplet_indices = wp.empty(shape=(mm_nnz,), dtype=wp.int32, device=device)
 
@@ -4575,8 +4572,6 @@ def bsr_mm(
             dest_offsets=z.offsets,
             dest_row_counts=None,
             dest_columns=z.columns,
-            nnz_buf=nnz_buf,
-            nnz_event=nnz_event,
         )
         _bsr_set_compact_row_counts(z)
 

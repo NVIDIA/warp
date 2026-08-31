@@ -576,9 +576,7 @@ WP_API void wp_bsr_matrix_from_triplets_host(
     int* summed_block_indices,
     int* bsr_offsets,
     const int* bsr_row_counts,
-    int* bsr_columns,
-    int* bsr_nnz,
-    void* bsr_nnz_event
+    int* bsr_columns
 );
 WP_API void wp_bsr_matrix_from_triplets_device(
     int block_size,
@@ -596,9 +594,7 @@ WP_API void wp_bsr_matrix_from_triplets_device(
     int* summed_block_indices,
     int* bsr_offsets,
     const int* bsr_row_counts,
-    int* bsr_columns,
-    int* bsr_nnz,
-    void* bsr_nnz_event
+    int* bsr_columns
 );
 
 WP_API void wp_bsr_transpose_host(
@@ -641,9 +637,7 @@ WP_API void wp_bsr_compress_inplace_host(
     int* bsr_row_counts,
     int* bsr_columns,
     void* bsr_values,
-    bool compress_values,
-    int* bsr_nnz,
-    void* bsr_nnz_event
+    bool compress_values
 );
 WP_API void wp_bsr_compress_inplace_device(
     int row_count,
@@ -658,9 +652,7 @@ WP_API void wp_bsr_compress_inplace_device(
     int* bsr_row_counts,
     int* bsr_columns,
     void* bsr_values,
-    bool compress_values,
-    int* bsr_nnz,
-    void* bsr_nnz_event
+    bool compress_values
 );
 
 

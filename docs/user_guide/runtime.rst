@@ -2025,12 +2025,23 @@ graphs replay them from current inputs: kernel launches (forward, adjoint, and r
 :func:`wp.utils.radix_sort_pairs() <warp.utils.radix_sort_pairs>`,
 :func:`wp.utils.segmented_sort_pairs() <warp.utils.segmented_sort_pairs>`,
 :func:`wp.utils.runlength_encode() <warp.utils.runlength_encode>` (with an explicit
-``run_count``), :func:`wp.sparse.bsr_set_transpose() <warp.sparse.bsr_set_transpose>`, and
+``run_count``), :func:`wp.sparse.bsr_from_triplets() <warp.sparse.bsr_from_triplets>`,
+:func:`wp.sparse.bsr_set_from_triplets() <warp.sparse.bsr_set_from_triplets>` with compact or padded topology,
+:func:`wp.sparse.bsr_assign() <warp.sparse.bsr_assign>`,
+:func:`wp.sparse.bsr_axpy() <warp.sparse.bsr_axpy>`,
+:func:`wp.sparse.bsr_mm() <warp.sparse.bsr_mm>` when no host count readback is required,
+:func:`wp.sparse.bsr_set_transpose() <warp.sparse.bsr_set_transpose>`, and
 :func:`wp.capture_if() <warp.capture_if>` / :func:`wp.capture_while() <warp.capture_while>`
 conditionals. Unlike the CPU path, CUDA host code for these helper operations
 issues CUDA operations while CUDA stream capture is active so the driver
 records graph nodes. No GPU reduction executes during capture; GPU work begins
 only when the graph is launched.
+
+The graph-capturable :func:`wp.sparse.bsr_mm() <warp.sparse.bsr_mm>` forms are
+also saveable with APIC: use ``topology="masked"``, ``reuse_topology=True``,
+``max_new_nnz``, or padded topology with supplied work arrays. The default compact
+path without a reusable topology or an explicit bound requires a host count
+readback and remains unavailable during graph capture.
 
 During a matching-device CUDA ``apic=True`` capture, non-empty calls to
 :func:`wp.utils.array_sum() <warp.utils.array_sum>` and
@@ -2048,9 +2059,6 @@ region:
 - :meth:`HashGrid.build() <warp.HashGrid.build>`, because ``HashGrid``
   resources and their process-local IDs cannot yet be serialized. Use
   ``apic=False`` for live CUDA graph capture.
-- :func:`wp.sparse.bsr_set_from_triplets() <warp.sparse.bsr_set_from_triplets>` (and the
-  ``warp.sparse`` matrix products that build topology with it), because it reads the resulting
-  ``nnz`` back to the host after its own kernels, which a captured graph cannot reproduce.
 - Non-contiguous :meth:`array.fill_() <warp.array.fill_>`, indexed/Fabric ``fill_()``, and
   contiguous fills whose value is larger than 3968 bytes.
 - The host-return form of :func:`wp.utils.runlength_encode() <warp.utils.runlength_encode>`
