@@ -14,8 +14,10 @@
    
    ``uvw`` is in index space (voxel coordinates) and may be fractional; ``sampling_mode`` must be
    :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR` and is applied per component. Sampling
-   uses the resolved NanoVDB value (see :func:`~warp.volume_sample`), and the sample is ``0`` if
-   ``id`` is not a ``vec3f`` volume. In kernels, equivalent to :func:`~warp.volume_sample` with
-   ``dtype=warp.vec3f``.
+   uses the resolved volume value (see :func:`~warp.volume_sample`). ``id`` must identify a
+   ``vec3f`` volume. In kernels, ``volume_sample_v()`` is equivalent to
+   :func:`~warp.volume_sample` with ``dtype=warp.vec3f``.
+   
+   :returns: The sampled :class:`warp.vec3f` value.
    
    See :func:`~warp.volume_sample` for a usage example.

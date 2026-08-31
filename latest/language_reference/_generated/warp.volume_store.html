@@ -584,11 +584,9 @@
 </ul>
 </td></tr></table>
 <p>Store <code class="docutils literal notranslate"><span class="pre">value</span></code> at the voxel with integer index-space coordinates <code class="docutils literal notranslate"><span class="pre">i</span></code>, <code class="docutils literal notranslate"><span class="pre">j</span></code>, <code class="docutils literal notranslate"><span class="pre">k</span></code>.</p>
-<p>A value is written when the coordinate has leaf-level storage, whether or not that voxel is
-active. The call does not allocate a leaf, activate a voxel, or modify the background value; it
-is a no-op outside allocated leaves and when the volume’s stored type does not match <code class="docutils literal notranslate"><span class="pre">value</span></code>.
-Allocate leaf topology with <a class="reference internal" href="../../api_reference/_generated/warp.Volume.html#warp.Volume.allocate_by_tiles" title="warp.Volume.allocate_by_tiles"><code class="xref py py-meth docutils literal notranslate"><span class="pre">warp.Volume.allocate_by_tiles()</span></code></a> before storing. Not
-differentiable.</p>
+<p><code class="docutils literal notranslate"><span class="pre">value</span></code> must match the volume’s stored value type, and the coordinate must have leaf-level
+storage. Allocate leaf topology with <a class="reference internal" href="../../api_reference/_generated/warp.Volume.html#warp.Volume.allocate_by_tiles" title="warp.Volume.allocate_by_tiles"><code class="xref py py-meth docutils literal notranslate"><span class="pre">warp.Volume.allocate_by_tiles()</span></code></a> before storing.
+The call does not allocate storage or activate voxels. This function is not differentiable.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">

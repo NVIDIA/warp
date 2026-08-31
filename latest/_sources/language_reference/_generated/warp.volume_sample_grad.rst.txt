@@ -19,10 +19,11 @@
    Four-component vector data is not supported by this function.
    
    For floating-point scalar and vector data under :attr:`warp.Volume.LINEAR`, this is the gradient
-   of the trilinear interpolant. At integer voxel planes, where that interpolant is generally not
-   differentiable, the gradient comes from the cell on the positive side. Under
-   :attr:`warp.Volume.CLOSEST` the gradient is zero; use ``CLOSEST`` for integer data. The gradient
-   is with respect to index-space coordinates, not world space.
+   of the trilinear interpolant away from integer voxel planes. The interpolant is not generally
+   differentiable at those planes. Currently, the gradient comes from the cell on the positive
+   side, but callers should not rely on that behavior. Under :attr:`warp.Volume.CLOSEST` the
+   gradient is zero; use ``CLOSEST`` for integer data. The gradient is with respect to index-space
+   coordinates, not world space.
    
    :param id: The ``id`` of a :class:`warp.Volume` to sample.
    :param uvw: Sampling location in index space (voxel coordinates); may be fractional.

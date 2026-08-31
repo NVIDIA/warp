@@ -584,12 +584,7 @@
 </ul>
 </td></tr></table>
 <p>Return the linear index associated with integer index-space coordinates <code class="docutils literal notranslate"><span class="pre">i</span></code>, <code class="docutils literal notranslate"><span class="pre">j</span></code>, <code class="docutils literal notranslate"><span class="pre">k</span></code>.</p>
-<p>On NanoVDB <code class="docutils literal notranslate"><span class="pre">OnIndex</span></code> and <code class="docutils literal notranslate"><span class="pre">OnIndexMask</span></code> grids, active voxels have zero-based indices and
-inactive voxels return <code class="docutils literal notranslate"><span class="pre">-1</span></code>. On <code class="docutils literal notranslate"><span class="pre">Index</span></code> and <code class="docutils literal notranslate"><span class="pre">IndexMask</span></code> grids and on classical value grids,
-every slot in an allocated leaf has an index regardless of its active mask; coordinates outside
-allocated leaves return <code class="docutils literal notranslate"><span class="pre">-1</span></code>. For volumes whose indexable count fits in <code class="docutils literal notranslate"><span class="pre">int32</span></code>, nonnegative
-indices lie in <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">volume_voxel_count(id))</span></code>. Guard against <code class="docutils literal notranslate"><span class="pre">-1</span></code> before gathering from a
-per-voxel array. Not differentiable.</p>
+<p>This function is not differentiable.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -600,7 +595,8 @@ per-voxel array. Not differentiable.</p>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The voxel’s linear index, or <code class="docutils literal notranslate"><span class="pre">-1</span></code> when the coordinate is not indexable.</p>
+<dd class="field-even"><p>The voxel’s linear index in <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">volume_voxel_count(id))</span></code>, or <code class="docutils literal notranslate"><span class="pre">-1</span></code> when the coordinate
+is not indexable. Guard against <code class="docutils literal notranslate"><span class="pre">-1</span></code> before gathering from a per-voxel array.</p>
 </dd>
 </dl>
 <p class="rubric">Example</p>

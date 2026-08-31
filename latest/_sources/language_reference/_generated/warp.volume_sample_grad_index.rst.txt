@@ -19,10 +19,11 @@
    Four-component vector data is not supported by this function.
    
    For floating-point scalar and vector data under :attr:`warp.Volume.LINEAR`, the function is
-   differentiable with respect to ``uvw``, ``voxel_data``, and ``background``. At integer voxel
-   planes, the gradient and reverse-mode derivative with respect to ``uvw`` come from the cell on
-   the positive side. Under :attr:`warp.Volume.CLOSEST`, ``grad`` and the derivative with respect to
-   ``uvw`` are zero; use ``CLOSEST`` for integer data.
+   differentiable with respect to ``uvw``, ``voxel_data``, and ``background`` away from integer
+   voxel planes. The field is not generally differentiable at those planes. Currently, the
+   gradient and reverse-mode derivative with respect to ``uvw`` come from the cell on the positive
+   side, but callers should not rely on that behavior. Under :attr:`warp.Volume.CLOSEST`, ``grad``
+   and the derivative with respect to ``uvw`` are zero; use ``CLOSEST`` for integer data.
    
    :param id: The ``id`` of a :class:`warp.Volume` providing the topology and voxel indices.
    :param uvw: Sampling location in index space (voxel coordinates); may be fractional.
@@ -30,9 +31,8 @@
                          integer data.
    :param voxel_data: Per-voxel values indexed by each voxel's linear index; shares the dtype of
                       ``background``. See :func:`~warp.volume_sample_index` for sizing requirements.
-   :param background: Value used for inactive voxels on ``OnIndex`` and ``OnIndexMask`` grids and
-                      outside allocated leaves on ``Index`` and ``IndexMask`` grids and classical value grids;
-                      its dtype must match ``voxel_data``.
+   :param background: Value used when a sampled location has no indexable voxel; its dtype must match
+                      ``voxel_data``.
    :param grad: Output gradient of the sampled value with respect to ``uvw``.
    
    :returns: The sampled value, of the same dtype as ``voxel_data``.

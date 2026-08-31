@@ -13,9 +13,11 @@
    Sample the :class:`warp.float32` volume given by ``id`` at the index-space point ``uvw``.
    
    ``uvw`` is in index space (voxel coordinates) and may be fractional; ``sampling_mode`` must be
-   :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`. Sampling uses the resolved NanoVDB
-   value (see :func:`~warp.volume_sample`), and the sample is ``0`` if ``id`` is not a ``float32``
-   volume. In kernels, equivalent to :func:`~warp.volume_sample` with ``dtype=float``, which
+   :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`. Sampling uses the resolved volume
+   value (see :func:`~warp.volume_sample`). ``id`` must identify a ``float32`` volume. In kernels,
+   ``volume_sample_f()`` is equivalent to :func:`~warp.volume_sample` with ``dtype=float``, which
    documents the coordinate-frame, value-resolution, boundary, and differentiability behavior.
+   
+   :returns: The sampled :class:`warp.float32` value.
    
    See :func:`~warp.volume_sample` for a usage example.

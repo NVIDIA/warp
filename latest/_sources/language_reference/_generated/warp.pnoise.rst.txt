@@ -14,26 +14,17 @@
    
    Wraps the :func:`noise` lattice every ``px`` cells, with one cell per input unit.
    ``state`` selects the field and is not advanced. Values have the same scale and
-   device-reproducibility behavior as :func:`noise`.
+   determinism behavior as :func:`noise`.
    
-   Periods must be positive; zero invokes undefined behavior. Samples repeat under
-   whole-period shifts when the original and shifted coordinates remain on the same
-   side of zero. A shift that crosses zero may produce a different value, so use
-   non-negative coordinates when the field must repeat seamlessly.
+   Period arguments must be positive. Negative coordinates are currently unsupported.
+   The field is differentiable with respect to coordinates. Period arguments receive
+   no Warp autodiff gradient.
    
-   With negative coordinates, the field has one non-smooth boundary per period along
-   each axis. In 1D, the value is continuous across these boundaries, but Warp
-   autodiff reports a one-sided coordinate derivative. In vector overloads, crossing
-   a boundary can instead produce a finite value jump when another coordinate is
-   fractional. Away from these boundaries, the field is differentiable with respect
-   to coordinates. Period arguments receive no Warp autodiff gradient.
-   
-   :param state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
+   :param state: RNG state that selects the noise field (see :func:`rand_init`); never advanced.
    :param x: Coordinate to sample. One noise feature spans one unit.
-   :param px: Period along x, in units. Must be greater than zero.
+   :param px: Period along x, in units. ``px`` must be greater than zero.
    
-   :returns: The noise value at ``x``. Exactly zero at integer coordinates, with a
-             theoretical range of ``±0.5``.
+   :returns: The noise value at ``x``.
    
    .. rubric:: Example
    
@@ -50,11 +41,11 @@
        values = wp.zeros(len(coords), dtype=float)
    
        wp.launch(sample_periodic_noise, dim=len(coords), inputs=[42, coords], outputs=[values])
-       print([round(v, 3) for v in values.numpy().tolist()])
+       print(np.allclose(values.numpy(), values.numpy()[0]))
    
    .. testoutput::
    
-       [0.174, 0.174, 0.174]
+       True
    
 
 .. function:: warp._src.lang.pnoise(state: uint32, xy: vec2f, px: int32, py: int32) -> float
@@ -71,13 +62,12 @@
    
    See :func:`pnoise` for shared behavior, restrictions, and a usage example.
    
-   :param state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
+   :param state: RNG state that selects the noise field (see :func:`rand_init`); never advanced.
    :param xy: Coordinate to sample. One noise feature spans one unit.
-   :param px: Period along x, in units. Must be greater than zero.
-   :param py: Period along y, in units. Must be greater than zero.
+   :param px: Period along x, in units. ``px`` must be greater than zero.
+   :param py: Period along y, in units. ``py`` must be greater than zero.
    
-   :returns: The noise value at ``xy``. Exactly zero when every component is an integer,
-             with a theoretical range of ``±sqrt(2)/2``.
+   :returns: The noise value at ``xy``.
    
 
 .. function:: warp._src.lang.pnoise(state: uint32, xyz: vec3f, px: int32, py: int32, pz: int32) -> float
@@ -94,14 +84,13 @@
    
    See :func:`pnoise` for shared behavior, restrictions, and a usage example.
    
-   :param state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
+   :param state: RNG state that selects the noise field (see :func:`rand_init`); never advanced.
    :param xyz: Coordinate to sample. One noise feature spans one unit.
-   :param px: Period along x, in units. Must be greater than zero.
-   :param py: Period along y, in units. Must be greater than zero.
-   :param pz: Period along z, in units. Must be greater than zero.
+   :param px: Period along x, in units. ``px`` must be greater than zero.
+   :param py: Period along y, in units. ``py`` must be greater than zero.
+   :param pz: Period along z, in units. ``pz`` must be greater than zero.
    
-   :returns: The noise value at ``xyz``. Exactly zero when every component is an integer,
-             with a theoretical range of ``±sqrt(3)/2``.
+   :returns: The noise value at ``xyz``.
    
 
 .. function:: warp._src.lang.pnoise(state: uint32, xyzt: vec4f, px: int32, py: int32, pz: int32, pt: int32) -> float
@@ -119,13 +108,12 @@
    The fourth coordinate is commonly used as looping time. See :func:`pnoise` for
    shared behavior, restrictions, and a usage example.
    
-   :param state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
+   :param state: RNG state that selects the noise field (see :func:`rand_init`); never advanced.
    :param xyzt: Coordinate to sample. One noise feature spans one unit.
-   :param px: Period along x, in units. Must be greater than zero.
-   :param py: Period along y, in units. Must be greater than zero.
-   :param pz: Period along z, in units. Must be greater than zero.
-   :param pt: Period along the fourth axis, in units. Must be greater than zero.
+   :param px: Period along x, in units. ``px`` must be greater than zero.
+   :param py: Period along y, in units. ``py`` must be greater than zero.
+   :param pz: Period along z, in units. ``pz`` must be greater than zero.
+   :param pt: Period along the fourth axis, in units. ``pt`` must be greater than zero.
    
-   :returns: The noise value at ``xyzt``. Exactly zero when every component is an integer,
-             with a theoretical range of ``±1``.
+   :returns: The noise value at ``xyzt``.
    

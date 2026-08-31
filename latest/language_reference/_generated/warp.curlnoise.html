@@ -586,30 +586,28 @@
 </ul>
 </td></tr></table>
 <p>Sample a divergence-free 2D vector field derived from Perlin noise.</p>
-<p>Returns a rotated Perlin-noise gradient, making the field analytically
-divergence-free. Its continuous flow preserves area, although numerical advection
-may not. The 3D and 4D overloads instead return the spatial curl of three noise
-potentials as a <a class="reference internal" href="../../api_reference/_generated/warp.vec3.html#warp.vec3" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3</span></code></a>.</p>
+<p>Its continuous flow preserves area, although numerical advection may not.</p>
 <p>Octave <code class="docutils literal notranslate"><span class="pre">i</span></code> uses frequency <code class="docutils literal notranslate"><span class="pre">lacunarity</span> <span class="pre">**</span> <span class="pre">i</span></code> and weight <code class="docutils literal notranslate"><span class="pre">gain</span> <span class="pre">**</span> <span class="pre">i</span></code>. With
 <code class="docutils literal notranslate"><span class="pre">lacunarity</span> <span class="pre">&gt;</span> <span class="pre">1</span></code> and <code class="docutils literal notranslate"><span class="pre">0</span> <span class="pre">&lt;</span> <span class="pre">gain</span> <span class="pre">&lt;</span> <span class="pre">1</span></code>, later octaves add finer, weaker detail.
 Contributions may cancel, so magnitude is not monotonic in the octave controls.
-Zero octaves returns zero. Scale the coordinate for feature size and the result for
-speed.</p>
-<p><code class="docutils literal notranslate"><span class="pre">state</span></code> selects the field and is not advanced. Results are reproducible per
-device, but CPU and CUDA values may differ slightly. Differentiable with respect to
-the coordinate; <code class="docutils literal notranslate"><span class="pre">octaves</span></code>, <code class="docutils literal notranslate"><span class="pre">lacunarity</span></code>, and <code class="docutils literal notranslate"><span class="pre">gain</span></code> receive no gradient.</p>
+Scale the coordinate for feature size and the result for speed.</p>
+<p><code class="docutils literal notranslate"><span class="pre">state</span></code> selects the field and is not advanced. For a given Warp version and device
+backend, results are deterministic for fixed inputs. Exact values may differ between
+CPU and CUDA or change between Warp versions. This function is differentiable with respect to
+the coordinate. Currently, <code class="docutils literal notranslate"><span class="pre">lacunarity</span></code> and <code class="docutils literal notranslate"><span class="pre">gain</span></code> receive no gradient.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>state</strong> – RNG state used as a hash seed (see <a class="reference internal" href="warp.rand_init.html#warp._src.lang.rand_init" title="warp._src.lang.rand_init"><code class="xref py py-func docutils literal notranslate"><span class="pre">rand_init()</span></code></a>), never advanced.</p></li>
-<li><p><strong>xy</strong> – Coordinate to sample. One swirl spans about one unit at the base frequency.</p></li>
+<li><p><strong>state</strong> – RNG state that selects the noise field (see <a class="reference internal" href="warp.rand_init.html#warp._src.lang.rand_init" title="warp._src.lang.rand_init"><code class="xref py py-func docutils literal notranslate"><span class="pre">rand_init()</span></code></a>); never advanced.</p></li>
+<li><p><strong>xy</strong> – Coordinate to sample.</p></li>
 <li><p><strong>octaves</strong> – Number of noise octaves to sum. Zero returns a zero vector.</p></li>
 <li><p><strong>lacunarity</strong> – Frequency multiplier between successive octaves.</p></li>
 <li><p><strong>gain</strong> – Amplitude multiplier between successive octaves.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>A divergence-free 2D vector at <code class="docutils literal notranslate"><span class="pre">xy</span></code>. Not normalized.</p>
+<dd class="field-even"><p>A rotated Perlin-noise gradient at <code class="docutils literal notranslate"><span class="pre">xy</span></code>. The resulting vector field is analytically
+divergence-free. The vector is not normalized.</p>
 </dd>
 </dl>
 <p class="rubric">Example</p>
@@ -622,10 +620,6 @@ the coordinate; <code class="docutils literal notranslate"><span class="pre">oct
 <span class="n">positions</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.25</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec2</span><span class="p">)</span>
 
 <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">advect</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">positions</span><span class="p">),</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="mi">42</span><span class="p">,</span> <span class="n">positions</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">])</span>
-<span class="nb">print</span><span class="p">([[</span><span class="nb">round</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">p</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">positions</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">()])</span>
-</pre></div>
-</div>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[[0.628, 0.514], [1.256, 2.003]]
 </pre></div>
 </div>
 </dd></dl>
@@ -664,20 +658,20 @@ the coordinate; <code class="docutils literal notranslate"><span class="pre">oct
 </ul>
 </td></tr></table>
 <p>Sample a divergence-free 3D vector field derived from Perlin noise.</p>
-<p>Returns the spatial curl of three Perlin-noise potentials. See <a class="reference internal" href="#warp._src.lang.curlnoise" title="warp._src.lang.curlnoise"><code class="xref py py-func docutils literal notranslate"><span class="pre">curlnoise()</span></code></a> for
-shared behavior, restrictions, and a usage example.</p>
+<p>See <a class="reference internal" href="#warp._src.lang.curlnoise" title="warp._src.lang.curlnoise"><code class="xref py py-func docutils literal notranslate"><span class="pre">curlnoise()</span></code></a> for shared behavior, restrictions, and a usage example.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>state</strong> – RNG state used as a hash seed (see <a class="reference internal" href="warp.rand_init.html#warp._src.lang.rand_init" title="warp._src.lang.rand_init"><code class="xref py py-func docutils literal notranslate"><span class="pre">rand_init()</span></code></a>), never advanced.</p></li>
-<li><p><strong>xyz</strong> – Coordinate to sample. One swirl spans about one unit at the base frequency.</p></li>
+<li><p><strong>state</strong> – RNG state that selects the noise field (see <a class="reference internal" href="warp.rand_init.html#warp._src.lang.rand_init" title="warp._src.lang.rand_init"><code class="xref py py-func docutils literal notranslate"><span class="pre">rand_init()</span></code></a>); never advanced.</p></li>
+<li><p><strong>xyz</strong> – Coordinate to sample.</p></li>
 <li><p><strong>octaves</strong> – Number of noise octaves to sum. Zero returns a zero vector.</p></li>
 <li><p><strong>lacunarity</strong> – Frequency multiplier between successive octaves.</p></li>
 <li><p><strong>gain</strong> – Amplitude multiplier between successive octaves.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>A divergence-free 3D vector at <code class="docutils literal notranslate"><span class="pre">xyz</span></code>. Not normalized.</p>
+<dd class="field-even"><p>A <a class="reference internal" href="../../api_reference/_generated/warp.vec3.html#warp.vec3" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3</span></code></a> containing the spatial curl of three Perlin-noise potentials at
+<code class="docutils literal notranslate"><span class="pre">xyz</span></code>. The resulting vector field is divergence-free. The vector is not normalized.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -716,23 +710,22 @@ shared behavior, restrictions, and a usage example.</p>
 </ul>
 </td></tr></table>
 <p>Sample a divergence-free 3D vector field that also varies along a fourth axis.</p>
-<p>Returns a <a class="reference internal" href="../../api_reference/_generated/warp.vec3.html#warp.vec3" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3</span></code></a> spatial curl; the fourth input axis parametrizes the
-field and is commonly used as time. The field remains divergence-free in the first
-three axes. See <a class="reference internal" href="#warp._src.lang.curlnoise" title="warp._src.lang.curlnoise"><code class="xref py py-func docutils literal notranslate"><span class="pre">curlnoise()</span></code></a> for shared behavior, restrictions, and a usage
-example.</p>
+<p>The fourth input axis parametrizes the field and is commonly used as time. See
+<a class="reference internal" href="#warp._src.lang.curlnoise" title="warp._src.lang.curlnoise"><code class="xref py py-func docutils literal notranslate"><span class="pre">curlnoise()</span></code></a> for shared behavior, restrictions, and a usage example.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>state</strong> – RNG state used as a hash seed (see <a class="reference internal" href="warp.rand_init.html#warp._src.lang.rand_init" title="warp._src.lang.rand_init"><code class="xref py py-func docutils literal notranslate"><span class="pre">rand_init()</span></code></a>), never advanced.</p></li>
-<li><p><strong>xyzt</strong> – Coordinate to sample, with the fourth component usually time. One swirl
-spans about one unit at the base frequency.</p></li>
+<li><p><strong>state</strong> – RNG state that selects the noise field (see <a class="reference internal" href="warp.rand_init.html#warp._src.lang.rand_init" title="warp._src.lang.rand_init"><code class="xref py py-func docutils literal notranslate"><span class="pre">rand_init()</span></code></a>); never advanced.</p></li>
+<li><p><strong>xyzt</strong> – Coordinate to sample, with the fourth component usually time.</p></li>
 <li><p><strong>octaves</strong> – Number of noise octaves to sum. Zero returns a zero vector.</p></li>
 <li><p><strong>lacunarity</strong> – Frequency multiplier between successive octaves.</p></li>
 <li><p><strong>gain</strong> – Amplitude multiplier between successive octaves.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>A divergence-free 3D vector at <code class="docutils literal notranslate"><span class="pre">xyzt</span></code>. Not normalized.</p>
+<dd class="field-even"><p>A <a class="reference internal" href="../../api_reference/_generated/warp.vec3.html#warp.vec3" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3</span></code></a> containing the spatial curl of three Perlin-noise potentials at
+<code class="docutils literal notranslate"><span class="pre">xyzt</span></code>. The vector field is divergence-free in the first three axes. The vector is not
+normalized.</p>
 </dd>
 </dl>
 </dd></dl>

@@ -10,11 +10,9 @@
 
    Store ``value`` at the voxel with integer index-space coordinates ``i``, ``j``, ``k``.
    
-   A value is written when the coordinate has leaf-level storage, whether or not that voxel is
-   active. The call does not allocate a leaf, activate a voxel, or modify the background value; it
-   is a no-op outside allocated leaves and when the volume's stored type does not match ``value``.
-   Allocate leaf topology with :meth:`warp.Volume.allocate_by_tiles` before storing. Not
-   differentiable.
+   ``value`` must match the volume's stored value type, and the coordinate must have leaf-level
+   storage. Allocate leaf topology with :meth:`warp.Volume.allocate_by_tiles` before storing.
+   The call does not allocate storage or activate voxels. This function is not differentiable.
    
    :param id: The ``id`` of a :class:`warp.Volume` to modify.
    :param i: Voxel coordinate along the first index-space axis.

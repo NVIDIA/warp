@@ -10,11 +10,8 @@
 
    Advance a BVH query to the next overlapping item and report whether one was found.
    
-   Writes the index of the current item to ``index`` and returns ``True``; returns ``False`` once
-   the query is exhausted (``index`` is then left unchanged). The reported index is the item's
-   index into the ``lowers``/``uppers`` arrays passed to :class:`warp.Bvh`. Used in a ``while``
-   loop together with :func:`bvh_query_aabb`, :func:`bvh_query_ray`, :func:`bvh_query_capsule`,
-   or :func:`bvh_query_sphere`.
+   Call :func:`bvh_query_next` in a ``while`` loop together with :func:`bvh_query_aabb`,
+   :func:`bvh_query_ray`, :func:`bvh_query_capsule`, or :func:`bvh_query_sphere`.
    
    For plain ray queries (:func:`bvh_query_ray`), ``max_dist`` bounds how far along the ray to
    look for intersections, measured in multiples of ``dir``'s length (so it is a distance only if
@@ -27,12 +24,13 @@
    is therefore only safe to monotonically *reduce* ``max_dist`` during a query.
    
    :param query: The query to advance, from :func:`bvh_query_aabb`, :func:`bvh_query_ray`, :func:`bvh_query_capsule`, or :func:`bvh_query_sphere`
-   :param index: Output; receives the index of the current overlapping item
+   :param index: Output; receives the index of the current overlapping item in the
+                 ``lowers``/``uppers`` arrays passed to :class:`warp.Bvh`.
    :param max_dist: For ray queries, the maximum distance along the ray to check for intersections
-                    (in multiples of ``dir``'s length). Has no effect on AABB or sphere queries.
+                    (in multiples of ``dir``'s length). ``max_dist`` has no effect on AABB or sphere queries.
    
    :returns: ``True`` if another overlapping item was found (its index written to ``index``), ``False``
-             if the query is exhausted.
+             if the query is exhausted. When the function returns ``False``, ``index`` is unchanged.
    
    .. rubric:: Example
    

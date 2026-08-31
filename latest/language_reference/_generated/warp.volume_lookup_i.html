@@ -585,10 +585,14 @@
 </td></tr></table>
 <p>Return the <a class="reference internal" href="../../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.int32</span></code></a> value of the voxel at integer index-space coordinates <code class="docutils literal notranslate"><span class="pre">i</span></code>,
 <code class="docutils literal notranslate"><span class="pre">j</span></code>, <code class="docutils literal notranslate"><span class="pre">k</span></code>, without interpolation.</p>
-<p>Returns the resolved NanoVDB value (see <a class="reference internal" href="warp.volume_lookup.html#warp._src.lang.volume_lookup" title="warp._src.lang.volume_lookup"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_lookup()</span></code></a>); the result is <code class="docutils literal notranslate"><span class="pre">0</span></code> if
-<code class="docutils literal notranslate"><span class="pre">id</span></code> is not an <code class="docutils literal notranslate"><span class="pre">int32</span></code> volume. Not differentiable. In kernels, equivalent to
-<a class="reference internal" href="warp.volume_lookup.html#warp._src.lang.volume_lookup" title="warp._src.lang.volume_lookup"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_lookup()</span></code></a> with <code class="docutils literal notranslate"><span class="pre">dtype=warp.int32</span></code>.</p>
-<p>See <a class="reference internal" href="warp.volume_lookup.html#warp._src.lang.volume_lookup" title="warp._src.lang.volume_lookup"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_lookup()</span></code></a> for a usage example.</p>
+<p><code class="docutils literal notranslate"><span class="pre">id</span></code> must identify an <code class="docutils literal notranslate"><span class="pre">int32</span></code> volume. This function is not differentiable. In kernels,
+<code class="docutils literal notranslate"><span class="pre">volume_lookup_i()</span></code> is equivalent to <a class="reference internal" href="warp.volume_lookup.html#warp._src.lang.volume_lookup" title="warp._src.lang.volume_lookup"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_lookup()</span></code></a> with <code class="docutils literal notranslate"><span class="pre">dtype=warp.int32</span></code>.</p>
+<p>See <a class="reference internal" href="warp.volume_lookup.html#warp._src.lang.volume_lookup" title="warp._src.lang.volume_lookup"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_lookup()</span></code></a> for shared behavior and a usage example.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The resolved <a class="reference internal" href="../../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.int32</span></code></a> voxel value.</p>
+</dd>
+</dl>
 </dd></dl>
 
 </section>

@@ -581,10 +581,6 @@
 </ul>
 </td></tr></table>
 <p>Advance a mesh query to the next matching triangle and report whether one was found.</p>
-<p>Writes the face index of the current result to <code class="docutils literal notranslate"><span class="pre">index</span></code> and returns <code class="docutils literal notranslate"><span class="pre">True</span></code>; returns
-<code class="docutils literal notranslate"><span class="pre">False</span></code> once no more results remain (<code class="docutils literal notranslate"><span class="pre">index</span></code> is then left unchanged). The reported index
-is a 0-based face index into the mesh’s triangles, suitable for <a class="reference internal" href="warp.mesh_eval_position.html#warp._src.lang.mesh_eval_position" title="warp._src.lang.mesh_eval_position"><code class="xref py py-func docutils literal notranslate"><span class="pre">mesh_eval_position()</span></code></a>,
-<a class="reference internal" href="warp.mesh_eval_face_normal.html#warp._src.lang.mesh_eval_face_normal" title="warp._src.lang.mesh_eval_face_normal"><code class="xref py py-func docutils literal notranslate"><span class="pre">mesh_eval_face_normal()</span></code></a>, and the other face-indexed functions.</p>
 <p>What counts as a <em>match</em> depends on the query type:</p>
 <ul class="simple">
 <li><p><a class="reference internal" href="warp.mesh_query_aabb.html#warp._src.lang.mesh_query_aabb" title="warp._src.lang.mesh_query_aabb"><code class="xref py py-func docutils literal notranslate"><span class="pre">mesh_query_aabb()</span></code></a>: triangles whose bounding box overlaps the query box.</p></li>
@@ -594,12 +590,15 @@ is a 0-based face index into the mesh’s triangles, suitable for <a class="refe
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>query</strong> – The query to advance, from <a class="reference internal" href="warp.mesh_query_aabb.html#warp._src.lang.mesh_query_aabb" title="warp._src.lang.mesh_query_aabb"><code class="xref py py-func docutils literal notranslate"><span class="pre">mesh_query_aabb()</span></code></a> or <a class="reference internal" href="warp.mesh_query_sphere.html#warp._src.lang.mesh_query_sphere" title="warp._src.lang.mesh_query_sphere"><code class="xref py py-func docutils literal notranslate"><span class="pre">mesh_query_sphere()</span></code></a></p></li>
-<li><p><strong>index</strong> – Output; receives the face index of the current result</p></li>
+<li><p><strong>index</strong> – Output; receives the zero-based face index of the current result. The index is
+suitable for <a class="reference internal" href="warp.mesh_eval_position.html#warp._src.lang.mesh_eval_position" title="warp._src.lang.mesh_eval_position"><code class="xref py py-func docutils literal notranslate"><span class="pre">mesh_eval_position()</span></code></a>, <a class="reference internal" href="warp.mesh_eval_face_normal.html#warp._src.lang.mesh_eval_face_normal" title="warp._src.lang.mesh_eval_face_normal"><code class="xref py py-func docutils literal notranslate"><span class="pre">mesh_eval_face_normal()</span></code></a>, and the other
+face-indexed functions.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if another matching triangle was found (its face index written to <code class="docutils literal notranslate"><span class="pre">index</span></code>),
-<code class="docutils literal notranslate"><span class="pre">False</span></code> if the query is exhausted.</p>
+<code class="docutils literal notranslate"><span class="pre">False</span></code> if the query is exhausted. When the function returns <code class="docutils literal notranslate"><span class="pre">False</span></code>, <code class="docutils literal notranslate"><span class="pre">index</span></code> is
+unchanged.</p>
 </dd>
 </dl>
 <p class="rubric">Example</p>
@@ -653,8 +652,7 @@ is a 0-based face index into the mesh’s triangles, suitable for <a class="refe
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Advance a sphere mesh query to the next matching triangle.</p>
-<p>Overload for queries created by <a class="reference internal" href="warp.mesh_query_sphere.html#warp._src.lang.mesh_query_sphere" title="warp._src.lang.mesh_query_sphere"><code class="xref py py-func docutils literal notranslate"><span class="pre">mesh_query_sphere()</span></code></a>.</p>
+<p>Advance a sphere mesh query created by <a class="reference internal" href="warp.mesh_query_sphere.html#warp._src.lang.mesh_query_sphere" title="warp._src.lang.mesh_query_sphere"><code class="xref py py-func docutils literal notranslate"><span class="pre">mesh_query_sphere()</span></code></a> to the next matching triangle.</p>
 </dd></dl>
 
 <dl class="py function">

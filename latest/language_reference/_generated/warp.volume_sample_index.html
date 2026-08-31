@@ -586,12 +586,9 @@
 </td></tr></table>
 <p>Sample the volume given by <code class="docutils literal notranslate"><span class="pre">id</span></code> at the index-space point <code class="docutils literal notranslate"><span class="pre">uvw</span></code>, reading voxel values from
 a separate <code class="docutils literal notranslate"><span class="pre">voxel_data</span></code> array.</p>
-<p>On NanoVDB <code class="docutils literal notranslate"><span class="pre">OnIndex</span></code> and <code class="docutils literal notranslate"><span class="pre">OnIndexMask</span></code> grids, each active voxel maps to a linear index into
-<code class="docutils literal notranslate"><span class="pre">voxel_data</span></code> and <code class="docutils literal notranslate"><span class="pre">background</span></code> supplies inactive voxels. On <code class="docutils literal notranslate"><span class="pre">Index</span></code> and <code class="docutils literal notranslate"><span class="pre">IndexMask</span></code> grids
-and on classical value grids, every slot in an allocated leaf maps to <code class="docutils literal notranslate"><span class="pre">voxel_data</span></code> regardless
-of its active mask; <code class="docutils literal notranslate"><span class="pre">background</span></code> is used outside allocated leaves. This lets several fields
-share one topology. See <a class="reference internal" href="../../api_reference/_generated/warp.Volume.html#warp.Volume.allocate_by_voxels" title="warp.Volume.allocate_by_voxels"><code class="xref py py-meth docutils literal notranslate"><span class="pre">warp.Volume.allocate_by_voxels()</span></code></a> and
-<a class="reference internal" href="warp.volume_lookup_index.html#warp._src.lang.volume_lookup_index" title="warp._src.lang.volume_lookup_index"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_lookup_index()</span></code></a>.</p>
+<p>Each indexable voxel maps to a zero-based element of <code class="docutils literal notranslate"><span class="pre">voxel_data</span></code>. <code class="docutils literal notranslate"><span class="pre">background</span></code> is used when
+a sampled location has no indexable voxel. This lets several fields share one topology. See
+<a class="reference internal" href="../../api_reference/_generated/warp.Volume.html#warp.Volume.allocate_by_voxels" title="warp.Volume.allocate_by_voxels"><code class="xref py py-meth docutils literal notranslate"><span class="pre">warp.Volume.allocate_by_voxels()</span></code></a> and <a class="reference internal" href="warp.volume_lookup_index.html#warp._src.lang.volume_lookup_index" title="warp._src.lang.volume_lookup_index"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_lookup_index()</span></code></a>.</p>
 <p><code class="docutils literal notranslate"><span class="pre">uvw</span></code> is in index space (voxel coordinates) and may be fractional. Sampling modes and boundary
 conventions match <a class="reference internal" href="warp.volume_sample.html#warp._src.lang.volume_sample" title="warp._src.lang.volume_sample"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_sample()</span></code></a>; use <code class="docutils literal notranslate"><span class="pre">CLOSEST</span></code> for integer data. For
 floating-point scalar and vector data, <code class="docutils literal notranslate"><span class="pre">LINEAR</span></code> is differentiable with respect to <code class="docutils literal notranslate"><span class="pre">uvw</span></code>,
@@ -604,14 +601,12 @@ floating-point scalar and vector data, <code class="docutils literal notranslate
 <li><p><strong>uvw</strong> – Sampling location in index space (voxel coordinates); may be fractional.</p></li>
 <li><p><strong>sampling_mode</strong> – <a class="reference internal" href="../../api_reference/_generated/warp.Volume.html#warp.Volume.CLOSEST" title="warp.Volume.CLOSEST"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.Volume.CLOSEST</span></code></a> or <a class="reference internal" href="../../api_reference/_generated/warp.Volume.html#warp.Volume.LINEAR" title="warp.Volume.LINEAR"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.Volume.LINEAR</span></code></a>; use <code class="docutils literal notranslate"><span class="pre">CLOSEST</span></code> for
 integer data.</p></li>
-<li><p><strong>voxel_data</strong> – Per-voxel values indexed by each voxel’s linear index. For volumes whose
-indexable count fits in <code class="docutils literal notranslate"><span class="pre">int32</span></code>, must hold at least <a class="reference internal" href="warp.volume_voxel_count.html#warp._src.lang.volume_voxel_count" title="warp._src.lang.volume_voxel_count"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_voxel_count()</span></code></a>
-entries. <a class="reference internal" href="../../api_reference/_generated/warp.Volume.html#warp.Volume.get_voxel_count" title="warp.Volume.get_voxel_count"><code class="xref py py-meth docutils literal notranslate"><span class="pre">warp.Volume.get_voxel_count()</span></code></a> returns a host-side capacity that is safe
-for allocation but may exceed the live indexable count for rebuildable volumes. The
-array’s dtype must match <code class="docutils literal notranslate"><span class="pre">background</span></code>.</p></li>
-<li><p><strong>background</strong> – Value used for inactive voxels on <code class="docutils literal notranslate"><span class="pre">OnIndex</span></code> and <code class="docutils literal notranslate"><span class="pre">OnIndexMask</span></code> grids and
-outside allocated leaves on <code class="docutils literal notranslate"><span class="pre">Index</span></code> and <code class="docutils literal notranslate"><span class="pre">IndexMask</span></code> grids and classical value grids;
-its dtype must match <code class="docutils literal notranslate"><span class="pre">voxel_data</span></code>.</p></li>
+<li><p><strong>voxel_data</strong> – Per-voxel values indexed by each voxel’s linear index. The array must provide at
+least <a class="reference internal" href="warp.volume_voxel_count.html#warp._src.lang.volume_voxel_count" title="warp._src.lang.volume_voxel_count"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_voxel_count()</span></code></a> entries; use
+<a class="reference internal" href="../../api_reference/_generated/warp.Volume.html#warp.Volume.get_voxel_count" title="warp.Volume.get_voxel_count"><code class="xref py py-meth docutils literal notranslate"><span class="pre">warp.Volume.get_voxel_count()</span></code></a> when allocating it from Python. Its dtype must match
+<code class="docutils literal notranslate"><span class="pre">background</span></code>.</p></li>
+<li><p><strong>background</strong> – Value used when a sampled location has no indexable voxel; its dtype must match
+<code class="docutils literal notranslate"><span class="pre">voxel_data</span></code>.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>

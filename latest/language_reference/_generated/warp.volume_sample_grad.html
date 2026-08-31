@@ -592,10 +592,11 @@ with respect to the index-space coordinates <code class="docutils literal notran
 <a class="reference internal" href="../../api_reference/_generated/warp.vec3d.html#warp.vec3d" title="warp.vec3d"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3d</span></code></a>, it is a 3-by-3 Jacobian matrix with one row per value component.
 Four-component vector data is not supported by this function.</p>
 <p>For floating-point scalar and vector data under <a class="reference internal" href="../../api_reference/_generated/warp.Volume.html#warp.Volume.LINEAR" title="warp.Volume.LINEAR"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.Volume.LINEAR</span></code></a>, this is the gradient
-of the trilinear interpolant. At integer voxel planes, where that interpolant is generally not
-differentiable, the gradient comes from the cell on the positive side. Under
-<a class="reference internal" href="../../api_reference/_generated/warp.Volume.html#warp.Volume.CLOSEST" title="warp.Volume.CLOSEST"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.Volume.CLOSEST</span></code></a> the gradient is zero; use <code class="docutils literal notranslate"><span class="pre">CLOSEST</span></code> for integer data. The gradient
-is with respect to index-space coordinates, not world space.</p>
+of the trilinear interpolant away from integer voxel planes. The interpolant is not generally
+differentiable at those planes. Currently, the gradient comes from the cell on the positive
+side, but callers should not rely on that behavior. Under <a class="reference internal" href="../../api_reference/_generated/warp.Volume.html#warp.Volume.CLOSEST" title="warp.Volume.CLOSEST"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.Volume.CLOSEST</span></code></a> the
+gradient is zero; use <code class="docutils literal notranslate"><span class="pre">CLOSEST</span></code> for integer data. The gradient is with respect to index-space
+coordinates, not world space.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">

@@ -584,8 +584,7 @@
 </td></tr></table>
 <p>Transform the direction <code class="docutils literal notranslate"><span class="pre">xyz</span></code> from world space to the volume’s index space using the linear
 part of the volume’s affine transform.</p>
-<p>Translation is not applied and the result is not renormalized. For positions, use
-<a class="reference internal" href="warp.volume_world_to_index.html#warp._src.lang.volume_world_to_index" title="warp._src.lang.volume_world_to_index"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_world_to_index()</span></code></a> instead.</p>
+<p>For positions, use <a class="reference internal" href="warp.volume_world_to_index.html#warp._src.lang.volume_world_to_index" title="warp._src.lang.volume_world_to_index"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_world_to_index()</span></code></a> instead.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -594,7 +593,8 @@ part of the volume’s affine transform.</p>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The transformed direction in index space with <code class="docutils literal notranslate"><span class="pre">float32</span></code> precision.</p>
+<dd class="field-even"><p>The transformed direction in index space with <code class="docutils literal notranslate"><span class="pre">float32</span></code> precision. Translation is not
+applied, and the vector is not renormalized.</p>
 </dd>
 </dl>
 <p>See <a class="reference internal" href="warp.volume_index_to_world.html#warp._src.lang.volume_index_to_world" title="warp._src.lang.volume_index_to_world"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_index_to_world()</span></code></a> for a usage example.</p>

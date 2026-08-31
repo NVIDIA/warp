@@ -585,11 +585,8 @@
 </td></tr></table>
 <p>Return the value of type <code class="docutils literal notranslate"><span class="pre">dtype</span></code> stored at the voxel with integer index-space coordinates
 <code class="docutils literal notranslate"><span class="pre">i</span></code>, <code class="docutils literal notranslate"><span class="pre">j</span></code>, <code class="docutils literal notranslate"><span class="pre">k</span></code>, without interpolation.</p>
-<p>The lookup follows NanoVDB value resolution: inactive leaf voxels and internal tiles may carry
-stored inactive values that differ from the grid’s root background value. A location with no
-more specific stored value resolves to the background. The result is <code class="docutils literal notranslate"><span class="pre">0</span></code> if the volume does
-not store values of type <code class="docutils literal notranslate"><span class="pre">dtype</span></code>. Not differentiable; use <a class="reference internal" href="warp.volume_sample.html#warp._src.lang.volume_sample" title="warp._src.lang.volume_sample"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_sample()</span></code></a> for
-interpolated reads of floating-point scalar and vector data.</p>
+<p><code class="docutils literal notranslate"><span class="pre">dtype</span></code> must match the volume’s stored value type. This function is not differentiable; use
+<a class="reference internal" href="warp.volume_sample.html#warp._src.lang.volume_sample" title="warp._src.lang.volume_sample"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_sample()</span></code></a> for interpolated reads of floating-point scalar and vector data.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -601,7 +598,11 @@ interpolated reads of floating-point scalar and vector data.</p>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The resolved voxel value of type <code class="docutils literal notranslate"><span class="pre">dtype</span></code>.</p>
+<dd class="field-even"><p>the stored value, or the volume’s background
+value when the location has no stored value.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The resolved voxel value of type <code class="docutils literal notranslate"><span class="pre">dtype</span></code></p>
 </dd>
 </dl>
 <p class="rubric">Example</p>

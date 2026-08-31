@@ -18,31 +18,30 @@
    :param u: U coordinate. With ``normalized_coords=True``, texel ``i`` at a mip level of width
              ``level_width`` is centered at ``(i + 0.5) / level_width``. With
              ``normalized_coords=False``, texel ``i`` of a single-level texture is centered at
-             ``i + 0.5`` on both backends. For a mipmapped texture on the CPU backend, coordinates
-             remain in base-level texel space and the center is
-             ``(i + 0.5) * base_width / level_width``. CUDA mipmapped textures require normalized
-             coordinates. Coordinates and filtering footprints beyond the texture are handled by its
-             address mode.
+             ``i + 0.5``. Mipmapped textures should use normalized coordinates. Unnormalized
+             coordinates for mipmapped textures are currently accepted only on the CPU backend and
+             may be unsupported in a future release. Coordinates and filtering footprints beyond the
+             texture are handled by its address mode.
    :param dtype: The return type, which selects how many channels are read: ``float`` (1 channel),
                  :class:`warp.vec2f` (2), or :class:`warp.vec4f` (4). Use the type matching the texture's
-                 :attr:`~warp.Texture.num_channels`. The CPU backend normalizes unsigned integer data to
-                 ``[0, 1]`` and signed integer data to ``[-1, 1]``. The CUDA backend does the same for
-                 8- and 16-bit integer formats but does not promote 32-bit ones, so an ``int32`` or
-                 ``uint32`` texture yields neither a normalized nor a numerically converted value there;
-                 use an 8- or 16-bit or a floating-point format instead. Floating-point texture data is
-                 returned as ``float32`` channel values without normalization.
-   :param lod: Mipmap level-of-detail as a float. When omitted or negative, mip level 0 is sampled.
-               Nonnegative values are clamped to the texture's available mip-level range. Fractional
-               values blend between neighbouring mip levels when ``mip_filter_mode`` is
+                 :attr:`~warp.Texture.num_channels`.
+   :param lod: Mipmap level-of-detail as a float. The default selects mip level 0. Currently, any
+               negative value also selects mip level 0. Nonnegative values are clamped to the
+               texture's available mip-level range. Fractional values blend between neighbouring mip
+               levels when ``mip_filter_mode`` is
                :attr:`warp.TextureFilterMode.LINEAR`; the coordinate is evaluated independently at
-               each level used in the blend. Ignored for textures created with a single mip level.
+               each level used in the blend. The ``lod`` argument is ignored for textures created with a single mip level.
    
-   :returns: The sampled value of the specified ``dtype``.
+   :returns: The sampled value of the specified ``dtype``. The CPU backend normalizes unsigned integer
+             data to ``[0, 1]`` and signed integer data to ``[-1, 1]``. On CUDA devices, normalized
+             integer sampling is supported only for 8- and 16-bit formats; use an 8- or 16-bit integer
+             or floating-point texture. Floating-point texture data is returned as ``float32`` channel
+             values without normalization.
    
    The filtering mode (:class:`warp.TextureFilterMode`) and the addressing of out-of-range
    coordinates (:class:`warp.TextureAddressMode`) are those set when the texture was created; see
-   :class:`warp.Texture`. On CUDA, ``WRAP`` and ``MIRROR`` are treated as ``CLAMP`` when
-   ``normalized_coords=False`` (the CPU sampler honors them).
+   :class:`warp.Texture`. Currently, CUDA textures with unnormalized coordinates support only
+   ``CLAMP`` and ``BORDER`` address modes. Use normalized coordinates with ``WRAP`` or ``MIRROR``.
    
    .. rubric:: Example
    
@@ -92,31 +91,30 @@
               ``(i, j)`` at a mip level of size ``(level_width, level_height)`` is centered at
               ``((i + 0.5) / level_width, (j + 0.5) / level_height)``. With
               ``normalized_coords=False``, texel ``(i, j)`` of a single-level texture is centered at
-              ``(i + 0.5, j + 0.5)`` on both backends. For a mipmapped texture on the CPU backend,
-              coordinates remain in base-level texel space and the center is
-              ``((i + 0.5) * base_width / level_width, (j + 0.5) * base_height / level_height)``. CUDA
-              mipmapped textures require normalized coordinates. Coordinates and filtering footprints
-              beyond the texture are handled by its per-axis address modes.
+              ``(i + 0.5, j + 0.5)``. Mipmapped textures should use normalized coordinates.
+              Unnormalized coordinates for mipmapped textures are currently accepted only on the CPU
+              backend and may be unsupported in a future release. Coordinates and filtering
+              footprints beyond the texture are handled by its per-axis address modes.
    :param dtype: The return type, which selects how many channels are read: ``float`` (1 channel),
                  :class:`warp.vec2f` (2), or :class:`warp.vec4f` (4). Use the type matching the texture's
-                 :attr:`~warp.Texture.num_channels`. The CPU backend normalizes unsigned integer data to
-                 ``[0, 1]`` and signed integer data to ``[-1, 1]``. The CUDA backend does the same for
-                 8- and 16-bit integer formats but does not promote 32-bit ones, so an ``int32`` or
-                 ``uint32`` texture yields neither a normalized nor a numerically converted value there;
-                 use an 8- or 16-bit or a floating-point format instead. Floating-point texture data is
-                 returned as ``float32`` channel values without normalization.
-   :param lod: Mipmap level-of-detail as a float. When omitted or negative, mip level 0 is sampled.
-               Nonnegative values are clamped to the texture's available mip-level range. Fractional
-               values blend between neighbouring mip levels when ``mip_filter_mode`` is
+                 :attr:`~warp.Texture.num_channels`.
+   :param lod: Mipmap level-of-detail as a float. The default selects mip level 0. Currently, any
+               negative value also selects mip level 0. Nonnegative values are clamped to the
+               texture's available mip-level range. Fractional values blend between neighbouring mip
+               levels when ``mip_filter_mode`` is
                :attr:`warp.TextureFilterMode.LINEAR`; the coordinates are evaluated independently at
-               each level used in the blend. Ignored for textures created with a single mip level.
+               each level used in the blend. The ``lod`` argument is ignored for textures created with a single mip level.
    
-   :returns: The sampled value of the specified ``dtype``.
+   :returns: The sampled value of the specified ``dtype``. The CPU backend normalizes unsigned integer
+             data to ``[0, 1]`` and signed integer data to ``[-1, 1]``. On CUDA devices, normalized
+             integer sampling is supported only for 8- and 16-bit formats; use an 8- or 16-bit integer
+             or floating-point texture. Floating-point texture data is returned as ``float32`` channel
+             values without normalization.
    
    The filtering mode (:class:`warp.TextureFilterMode`) and the addressing of out-of-range
    coordinates (:class:`warp.TextureAddressMode`) are those set when the texture was created; see
-   :class:`warp.Texture`. On CUDA, ``WRAP`` and ``MIRROR`` are treated as ``CLAMP`` when
-   ``normalized_coords=False`` (the CPU sampler honors them).
+   :class:`warp.Texture`. Currently, CUDA textures with unnormalized coordinates support only
+   ``CLAMP`` and ``BORDER`` address modes. Use normalized coordinates with ``WRAP`` or ``MIRROR``.
 
 .. function:: warp._src.lang.texture_sample(tex: Texture2D, u: float32, v: float32, dtype: Any, lod: float32 = -1.0) -> Any
    :noindex:
@@ -135,36 +133,34 @@
    :param tex: The 2D texture to sample.
    :param u: U coordinate. At a mip level of width ``level_width``, texel column ``i`` is centered at
              ``(i + 0.5) / level_width`` when ``normalized_coords=True``. With unnormalized
-             coordinates, its center is ``i + 0.5`` in a single-level texture on both backends; for a
-             mipmapped texture on the CPU backend, its center is
-             ``(i + 0.5) * base_width / level_width``.
+             coordinates, its center is ``i + 0.5`` in a single-level texture.
    :param v: V coordinate. At a mip level of height ``level_height``, texel row ``j`` is centered at
              ``(j + 0.5) / level_height`` when ``normalized_coords=True``. With unnormalized
-             coordinates, its center is ``j + 0.5`` in a single-level texture on both backends; for a
-             mipmapped texture on the CPU backend, its center is
-             ``(j + 0.5) * base_height / level_height``. CUDA mipmapped textures require normalized
-             coordinates. Coordinates and filtering footprints beyond the texture are handled by its
-             per-axis address modes.
+             coordinates, its center is ``j + 0.5`` in a single-level texture. Mipmapped textures
+             should use normalized coordinates. Unnormalized coordinates for mipmapped textures are
+             currently accepted only on the CPU backend and may be unsupported in a future release.
+             Coordinates and filtering footprints beyond the texture are handled by its per-axis
+             address modes.
    :param dtype: The return type, which selects how many channels are read: ``float`` (1 channel),
                  :class:`warp.vec2f` (2), or :class:`warp.vec4f` (4). Use the type matching the texture's
-                 :attr:`~warp.Texture.num_channels`. The CPU backend normalizes unsigned integer data to
-                 ``[0, 1]`` and signed integer data to ``[-1, 1]``. The CUDA backend does the same for
-                 8- and 16-bit integer formats but does not promote 32-bit ones, so an ``int32`` or
-                 ``uint32`` texture yields neither a normalized nor a numerically converted value there;
-                 use an 8- or 16-bit or a floating-point format instead. Floating-point texture data is
-                 returned as ``float32`` channel values without normalization.
-   :param lod: Mipmap level-of-detail as a float. When omitted or negative, mip level 0 is sampled.
-               Nonnegative values are clamped to the texture's available mip-level range. Fractional
-               values blend between neighbouring mip levels when ``mip_filter_mode`` is
+                 :attr:`~warp.Texture.num_channels`.
+   :param lod: Mipmap level-of-detail as a float. The default selects mip level 0. Currently, any
+               negative value also selects mip level 0. Nonnegative values are clamped to the
+               texture's available mip-level range. Fractional values blend between neighbouring mip
+               levels when ``mip_filter_mode`` is
                :attr:`warp.TextureFilterMode.LINEAR`; the coordinates are evaluated independently at
-               each level used in the blend. Ignored for textures created with a single mip level.
+               each level used in the blend. The ``lod`` argument is ignored for textures created with a single mip level.
    
-   :returns: The sampled value of the specified ``dtype``.
+   :returns: The sampled value of the specified ``dtype``. The CPU backend normalizes unsigned integer
+             data to ``[0, 1]`` and signed integer data to ``[-1, 1]``. On CUDA devices, normalized
+             integer sampling is supported only for 8- and 16-bit formats; use an 8- or 16-bit integer
+             or floating-point texture. Floating-point texture data is returned as ``float32`` channel
+             values without normalization.
    
    The filtering mode (:class:`warp.TextureFilterMode`) and the addressing of out-of-range
    coordinates (:class:`warp.TextureAddressMode`) are those set when the texture was created; see
-   :class:`warp.Texture`. On CUDA, ``WRAP`` and ``MIRROR`` are treated as ``CLAMP`` when
-   ``normalized_coords=False`` (the CPU sampler honors them).
+   :class:`warp.Texture`. Currently, CUDA textures with unnormalized coordinates support only
+   ``CLAMP`` and ``BORDER`` address modes. Use normalized coordinates with ``WRAP`` or ``MIRROR``.
 
 .. function:: warp._src.lang.texture_sample(tex: Texture3D, uvw: vec3f, dtype: Any, lod: float32 = -1.0) -> Any
    :noindex:
@@ -185,32 +181,30 @@
                ``(i, j, k)`` at a mip level of size ``(level_width, level_height, level_depth)`` is
                centered at ``((i + 0.5) / level_width, (j + 0.5) / level_height, (k + 0.5) / level_depth)``.
                With ``normalized_coords=False``, texel ``(i, j, k)`` of a single-level texture is
-               centered at ``(i + 0.5, j + 0.5, k + 0.5)`` on both backends. For a mipmapped texture on
-               the CPU backend, coordinates remain in base-level texel space and the center is
-               ``((i + 0.5) * base_width / level_width, (j + 0.5) * base_height / level_height,
-               (k + 0.5) * base_depth / level_depth)``. CUDA mipmapped textures require normalized
-               coordinates. Coordinates and filtering footprints beyond the texture are handled by its
-               per-axis address modes.
+               centered at ``(i + 0.5, j + 0.5, k + 0.5)``. Mipmapped textures should use normalized
+               coordinates. Unnormalized coordinates for mipmapped textures are currently accepted
+               only on the CPU backend and may be unsupported in a future release. Coordinates and
+               filtering footprints beyond the texture are handled by its per-axis address modes.
    :param dtype: The return type, which selects how many channels are read: ``float`` (1 channel),
                  :class:`warp.vec2f` (2), or :class:`warp.vec4f` (4). Use the type matching the texture's
-                 :attr:`~warp.Texture.num_channels`. The CPU backend normalizes unsigned integer data to
-                 ``[0, 1]`` and signed integer data to ``[-1, 1]``. The CUDA backend does the same for
-                 8- and 16-bit integer formats but does not promote 32-bit ones, so an ``int32`` or
-                 ``uint32`` texture yields neither a normalized nor a numerically converted value there;
-                 use an 8- or 16-bit or a floating-point format instead. Floating-point texture data is
-                 returned as ``float32`` channel values without normalization.
-   :param lod: Mipmap level-of-detail as a float. When omitted or negative, mip level 0 is sampled.
-               Nonnegative values are clamped to the texture's available mip-level range. Fractional
-               values blend between neighbouring mip levels when ``mip_filter_mode`` is
+                 :attr:`~warp.Texture.num_channels`.
+   :param lod: Mipmap level-of-detail as a float. The default selects mip level 0. Currently, any
+               negative value also selects mip level 0. Nonnegative values are clamped to the
+               texture's available mip-level range. Fractional values blend between neighbouring mip
+               levels when ``mip_filter_mode`` is
                :attr:`warp.TextureFilterMode.LINEAR`; the coordinates are evaluated independently at
-               each level used in the blend. Ignored for textures created with a single mip level.
+               each level used in the blend. The ``lod`` argument is ignored for textures created with a single mip level.
    
-   :returns: The sampled value of the specified ``dtype``.
+   :returns: The sampled value of the specified ``dtype``. The CPU backend normalizes unsigned integer
+             data to ``[0, 1]`` and signed integer data to ``[-1, 1]``. On CUDA devices, normalized
+             integer sampling is supported only for 8- and 16-bit formats; use an 8- or 16-bit integer
+             or floating-point texture. Floating-point texture data is returned as ``float32`` channel
+             values without normalization.
    
    The filtering mode (:class:`warp.TextureFilterMode`) and the addressing of out-of-range
    coordinates (:class:`warp.TextureAddressMode`) are those set when the texture was created; see
-   :class:`warp.Texture`. On CUDA, ``WRAP`` and ``MIRROR`` are treated as ``CLAMP`` when
-   ``normalized_coords=False`` (the CPU sampler honors them).
+   :class:`warp.Texture`. Currently, CUDA textures with unnormalized coordinates support only
+   ``CLAMP`` and ``BORDER`` address modes. Use normalized coordinates with ``WRAP`` or ``MIRROR``.
 
 .. function:: warp._src.lang.texture_sample(tex: Texture3D, u: float32, v: float32, w: float32, dtype: Any, lod: float32 = -1.0) -> Any
    :noindex:
@@ -229,38 +223,34 @@
    :param tex: The 3D texture to sample.
    :param u: U coordinate. At a mip level of width ``level_width``, texel column ``i`` is centered at
              ``(i + 0.5) / level_width`` when ``normalized_coords=True``. With unnormalized
-             coordinates, its center is ``i + 0.5`` in a single-level texture on both backends; for a
-             mipmapped texture on the CPU backend, its center is
-             ``(i + 0.5) * base_width / level_width``.
+             coordinates, its center is ``i + 0.5`` in a single-level texture.
    :param v: V coordinate. At a mip level of height ``level_height``, texel row ``j`` is centered at
              ``(j + 0.5) / level_height`` when ``normalized_coords=True``. With unnormalized
-             coordinates, its center is ``j + 0.5`` in a single-level texture on both backends; for a
-             mipmapped texture on the CPU backend, its center is
-             ``(j + 0.5) * base_height / level_height``.
+             coordinates, its center is ``j + 0.5`` in a single-level texture.
    :param w: W coordinate. At a mip level of depth ``level_depth``, texel depth index ``k`` is centered
              at ``(k + 0.5) / level_depth`` when ``normalized_coords=True``. With unnormalized
-             coordinates, its center is ``k + 0.5`` in a single-level texture on both backends; for a
-             mipmapped texture on the CPU backend, its center is
-             ``(k + 0.5) * base_depth / level_depth``. CUDA mipmapped textures require normalized
-             coordinates. Coordinates and filtering footprints beyond the texture are handled by its
-             per-axis address modes.
+             coordinates, its center is ``k + 0.5`` in a single-level texture. Mipmapped textures
+             should use normalized coordinates. Unnormalized coordinates for mipmapped textures are
+             currently accepted only on the CPU backend and may be unsupported in a future release.
+             Coordinates and filtering footprints beyond the texture are handled by its per-axis
+             address modes.
    :param dtype: The return type, which selects how many channels are read: ``float`` (1 channel),
                  :class:`warp.vec2f` (2), or :class:`warp.vec4f` (4). Use the type matching the texture's
-                 :attr:`~warp.Texture.num_channels`. The CPU backend normalizes unsigned integer data to
-                 ``[0, 1]`` and signed integer data to ``[-1, 1]``. The CUDA backend does the same for
-                 8- and 16-bit integer formats but does not promote 32-bit ones, so an ``int32`` or
-                 ``uint32`` texture yields neither a normalized nor a numerically converted value there;
-                 use an 8- or 16-bit or a floating-point format instead. Floating-point texture data is
-                 returned as ``float32`` channel values without normalization.
-   :param lod: Mipmap level-of-detail as a float. When omitted or negative, mip level 0 is sampled.
-               Nonnegative values are clamped to the texture's available mip-level range. Fractional
-               values blend between neighbouring mip levels when ``mip_filter_mode`` is
+                 :attr:`~warp.Texture.num_channels`.
+   :param lod: Mipmap level-of-detail as a float. The default selects mip level 0. Currently, any
+               negative value also selects mip level 0. Nonnegative values are clamped to the
+               texture's available mip-level range. Fractional values blend between neighbouring mip
+               levels when ``mip_filter_mode`` is
                :attr:`warp.TextureFilterMode.LINEAR`; the coordinates are evaluated independently at
-               each level used in the blend. Ignored for textures created with a single mip level.
+               each level used in the blend. The ``lod`` argument is ignored for textures created with a single mip level.
    
-   :returns: The sampled value of the specified ``dtype``.
+   :returns: The sampled value of the specified ``dtype``. The CPU backend normalizes unsigned integer
+             data to ``[0, 1]`` and signed integer data to ``[-1, 1]``. On CUDA devices, normalized
+             integer sampling is supported only for 8- and 16-bit formats; use an 8- or 16-bit integer
+             or floating-point texture. Floating-point texture data is returned as ``float32`` channel
+             values without normalization.
    
    The filtering mode (:class:`warp.TextureFilterMode`) and the addressing of out-of-range
    coordinates (:class:`warp.TextureAddressMode`) are those set when the texture was created; see
-   :class:`warp.Texture`. On CUDA, ``WRAP`` and ``MIRROR`` are treated as ``CLAMP`` when
-   ``normalized_coords=False`` (the CPU sampler honors them).
+   :class:`warp.Texture`. Currently, CUDA textures with unnormalized coordinates support only
+   ``CLAMP`` and ``BORDER`` address modes. Use normalized coordinates with ``WRAP`` or ``MIRROR``.

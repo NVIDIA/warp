@@ -593,10 +593,11 @@ length-three vector with the same scalar type. For <a class="reference internal"
 <a class="reference internal" href="../../api_reference/_generated/warp.vec3d.html#warp.vec3d" title="warp.vec3d"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3d</span></code></a> data, it is a 3-by-3 Jacobian matrix with one row per value component.
 Four-component vector data is not supported by this function.</p>
 <p>For floating-point scalar and vector data under <a class="reference internal" href="../../api_reference/_generated/warp.Volume.html#warp.Volume.LINEAR" title="warp.Volume.LINEAR"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.Volume.LINEAR</span></code></a>, the function is
-differentiable with respect to <code class="docutils literal notranslate"><span class="pre">uvw</span></code>, <code class="docutils literal notranslate"><span class="pre">voxel_data</span></code>, and <code class="docutils literal notranslate"><span class="pre">background</span></code>. At integer voxel
-planes, the gradient and reverse-mode derivative with respect to <code class="docutils literal notranslate"><span class="pre">uvw</span></code> come from the cell on
-the positive side. Under <a class="reference internal" href="../../api_reference/_generated/warp.Volume.html#warp.Volume.CLOSEST" title="warp.Volume.CLOSEST"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.Volume.CLOSEST</span></code></a>, <code class="docutils literal notranslate"><span class="pre">grad</span></code> and the derivative with respect to
-<code class="docutils literal notranslate"><span class="pre">uvw</span></code> are zero; use <code class="docutils literal notranslate"><span class="pre">CLOSEST</span></code> for integer data.</p>
+differentiable with respect to <code class="docutils literal notranslate"><span class="pre">uvw</span></code>, <code class="docutils literal notranslate"><span class="pre">voxel_data</span></code>, and <code class="docutils literal notranslate"><span class="pre">background</span></code> away from integer
+voxel planes. The field is not generally differentiable at those planes. Currently, the
+gradient and reverse-mode derivative with respect to <code class="docutils literal notranslate"><span class="pre">uvw</span></code> come from the cell on the positive
+side, but callers should not rely on that behavior. Under <a class="reference internal" href="../../api_reference/_generated/warp.Volume.html#warp.Volume.CLOSEST" title="warp.Volume.CLOSEST"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.Volume.CLOSEST</span></code></a>, <code class="docutils literal notranslate"><span class="pre">grad</span></code>
+and the derivative with respect to <code class="docutils literal notranslate"><span class="pre">uvw</span></code> are zero; use <code class="docutils literal notranslate"><span class="pre">CLOSEST</span></code> for integer data.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -606,9 +607,8 @@ the positive side. Under <a class="reference internal" href="../../api_reference
 integer data.</p></li>
 <li><p><strong>voxel_data</strong> – Per-voxel values indexed by each voxel’s linear index; shares the dtype of
 <code class="docutils literal notranslate"><span class="pre">background</span></code>. See <a class="reference internal" href="warp.volume_sample_index.html#warp._src.lang.volume_sample_index" title="warp._src.lang.volume_sample_index"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_sample_index()</span></code></a> for sizing requirements.</p></li>
-<li><p><strong>background</strong> – Value used for inactive voxels on <code class="docutils literal notranslate"><span class="pre">OnIndex</span></code> and <code class="docutils literal notranslate"><span class="pre">OnIndexMask</span></code> grids and
-outside allocated leaves on <code class="docutils literal notranslate"><span class="pre">Index</span></code> and <code class="docutils literal notranslate"><span class="pre">IndexMask</span></code> grids and classical value grids;
-its dtype must match <code class="docutils literal notranslate"><span class="pre">voxel_data</span></code>.</p></li>
+<li><p><strong>background</strong> – Value used when a sampled location has no indexable voxel; its dtype must match
+<code class="docutils literal notranslate"><span class="pre">voxel_data</span></code>.</p></li>
 <li><p><strong>grad</strong> – Output gradient of the sampled value with respect to <code class="docutils literal notranslate"><span class="pre">uvw</span></code>.</p></li>
 </ul>
 </dd>
