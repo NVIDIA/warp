@@ -1389,6 +1389,6 @@ jobs:
       - name: Set up Python
         run: uv python install
       - name: Run pyright on stub file
-        run: uvx pyright warp/__init__.pyi
+        run: uvx pyright warp/__init__.pyi tools/ci/stub_typecheck_fixture.py
       - name: Run mypy on stub file
-        run: uvx mypy warp/__init__.pyi --follow-imports=silent
+        run: uvx mypy warp/__init__.pyi tools/ci/stub_typecheck_fixture.py --follow-imports=silent

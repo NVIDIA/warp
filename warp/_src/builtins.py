@@ -1690,7 +1690,7 @@ add_builtin(
 )
 add_builtin(
     "quaternion",
-    input_types={"x": Float, "y": Float, "z": Float, "w": Float, "dtype": Scalar},
+    input_types={"x": Float, "y": Float, "z": Float, "w": Float, "dtype": Float},
     defaults={"dtype": None},
     value_func=quaternion_value_func,
     export_func=lambda input_types: {k: v for k, v in input_types.items() if k != "dtype"},
@@ -2372,9 +2372,9 @@ add_builtin(
 
     Args:
         shape: Shape of the output tile
-        dtype: Data type of output tile's elements (default float)
-        storage: The storage location for the tile: ``"register"`` for registers
-            (default) or ``"shared"`` for shared memory.
+        dtype: Data type of output tile's elements
+        storage: The storage location for the tile: ``"register"`` for registers or
+            ``"shared"`` for shared memory.
 
     Returns:
         A zero-initialized tile with shape and data type as specified.""",
@@ -2451,8 +2451,8 @@ add_builtin(
     Args:
         shape: Shape of the output tile
         dtype: Data type of output tile's elements
-        storage: The storage location for the tile: ``"register"`` for registers
-            (default) or ``"shared"`` for shared memory.
+        storage: The storage location for the tile: ``"register"`` for registers or
+            ``"shared"`` for shared memory.
 
     Returns:
         A one-initialized tile with shape and data type as specified.""",
@@ -2538,9 +2538,9 @@ add_builtin(
 
     Args:
         shape: Shape of the output tile
-        dtype: Data type of output tile's elements (default float)
-        storage: The storage location for the tile: ``"register"`` for registers
-            (default) or ``"shared"`` for shared memory.
+        dtype: Data type of output tile's elements
+        storage: The storage location for the tile: ``"register"`` for registers or
+            ``"shared"`` for shared memory.
 
     Returns:
         An uninitialized tile with the requested shape and data type.""",
@@ -2628,8 +2628,8 @@ add_builtin(
         shape: Shape of the output tile
         value: Value to fill the tile with
         dtype: Data type of output tile's elements
-        storage: The storage location for the tile: ``"register"`` for registers
-            (default) or ``"shared"`` for shared memory.
+        storage: The storage location for the tile: ``"register"`` for registers or
+            ``"shared"`` for shared memory.
 
     Returns:
         A tile filled with the specified value.""",
@@ -2701,8 +2701,8 @@ add_builtin(
         shape: Shape of the output tile
         value: Per-thread value (only the value from ``thread_idx`` is used)
         thread_idx: Index of the thread whose value should fill the tile
-        storage: The storage location for the tile: ``"register"`` for registers
-            (default) or ``"shared"`` for shared memory.
+        storage: The storage location for the tile: ``"register"`` for registers or
+            ``"shared"`` for shared memory.
 
     Returns:
         A tile filled with the value from the specified thread.
@@ -2839,8 +2839,8 @@ add_builtin(
     Args:
         shape: Shape of the output tile
         rng: Random number generator state, typically from :func:`~warp._src.lang.rand_init`
-        storage: The storage location for the tile: ``"register"`` for registers
-            (default) or ``"shared"`` for shared memory.
+        storage: The storage location for the tile: ``"register"`` for registers or
+            ``"shared"`` for shared memory.
 
     Returns:
         A tile of random integers with the specified shape.
@@ -2904,8 +2904,8 @@ add_builtin(
         rng: Random number generator state, typically from :func:`~warp._src.lang.rand_init`
         min: Minimum value (inclusive) for random integers
         max: Maximum value (exclusive) for random integers
-        storage: The storage location for the tile: ``"register"`` for registers
-            (default) or ``"shared"`` for shared memory.
+        storage: The storage location for the tile: ``"register"`` for registers or
+            ``"shared"`` for shared memory.
 
     Returns:
         A tile of random integers in the range [min, max) with the specified shape.
@@ -3022,8 +3022,8 @@ add_builtin(
     Args:
         shape: Shape of the output tile
         rng: Random number generator state, typically from :func:`~warp._src.lang.rand_init`
-        storage: The storage location for the tile: ``"register"`` for registers
-            (default) or ``"shared"`` for shared memory.
+        storage: The storage location for the tile: ``"register"`` for registers or
+            ``"shared"`` for shared memory.
 
     Returns:
         A tile of random floats in the range [0, 1) with the specified shape.
@@ -3087,8 +3087,8 @@ add_builtin(
         rng: Random number generator state, typically from :func:`~warp._src.lang.rand_init`
         min: Minimum value (inclusive) for random floats
         max: Maximum value (exclusive) for random floats
-        storage: The storage location for the tile: ``"register"`` for registers
-            (default) or ``"shared"`` for shared memory.
+        storage: The storage location for the tile: ``"register"`` for registers or
+            ``"shared"`` for shared memory.
 
     Returns:
         A tile of random floats in the range [min, max) with the specified shape.
@@ -3140,9 +3140,11 @@ add_builtin(
 
 
 def tile_arange_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
-    # return generic type (for doc builds)
+    # Result when the optional `dtype` argument is omitted, as used by doc builds
+    # and the type stubs. `tile_arange()` defaults to `float`, unlike the value
+    # constructors, which infer `dtype` from their arguments.
     if arg_types is None:
-        return tile(dtype=Scalar, shape=tuple[int])
+        return tile(dtype=float32, shape=tuple[int])
 
     if "args" not in arg_values:
         raise TypeError("tile_arange() requires at least one positional argument specifying the range")
@@ -3238,9 +3240,9 @@ add_builtin(
 
     Args:
         args: Variable-length positional arguments, interpreted as:
-        dtype: Data type of output tile's elements (optional, default: ``float``)
-        storage: The storage location for the tile: ``"register"`` for registers
-            (default) or ``"shared"`` for shared memory.
+        dtype: Data type of output tile's elements (``float`` if not provided)
+        storage: The storage location for the tile: ``"register"`` for registers or
+            ``"shared"`` for shared memory.
 
     Returns:
         A tile with ``shape=(n)`` with linearly spaced elements of specified data type.""",
@@ -3338,8 +3340,8 @@ add_builtin(
         a: The source array in global memory
         shape: Shape of the tile to load, must have the same number of dimensions as ``a``
         offset: Offset in the source array to begin reading from (optional)
-        storage: The storage location for the tile: ``"register"`` for registers
-            (default) or ``"shared"`` for shared memory.
+        storage: The storage location for the tile: ``"register"`` for registers or
+            ``"shared"`` for shared memory.
         bounds_check: Needed for unaligned tiles, but can disable for memory-aligned tiles for faster load times
         aligned: If True, skip runtime alignment checks for vectorized loads (shared memory,
             2D+ tiles only). Has no effect for 1D tiles or register storage. Use when you
@@ -3470,7 +3472,7 @@ add_builtin(
         shape: Shape of the tile to load, must have the same number of dimensions as ``a``, and along ``axis``, it must have the same number of elements as the ``indices`` tile.
         offset: Offset in the source array to begin reading from (optional)
         axis: Axis of ``a`` that indices refer to
-        storage: The storage location for the tile: ``"register"`` for registers (default) or ``"shared"`` for shared memory.
+        storage: The storage location for the tile: ``"register"`` for registers or ``"shared"`` for shared memory.
 
     Returns:
         A tile with shape as specified and data type the same as the source array.
@@ -5215,7 +5217,7 @@ add_builtin(
         i: Index of the element to add to.
         value: The value to add (must match the tile's dtype).
         has_value: Whether this thread should perform the add.
-        atomic: If True (default), use atomic add for safe concurrent writes.
+        atomic: If True, use atomic add for safe concurrent writes.
             Set to False when indices are guaranteed unique across threads
             (e.g., lane-parallel writes) for better performance.
 
@@ -7287,14 +7289,14 @@ add_builtin(
     as the ``lowers``/``uppers`` arrays passed to :class:`warp.Bvh`.
 
     To restrict traversal to a subtree, set ``root`` to that node's index (for a grouped BVH the
-    group root is obtained from :func:`bvh_get_group_root`). If ``root`` is -1 (default),
+    group root is obtained from :func:`bvh_get_group_root`). If ``root`` is -1,
     traversal starts at the BVH's global root.
 
     Args:
         id: The BVH identifier
         low: The lower bound of the query box, in BVH space
         high: The upper bound of the query box, in BVH space
-        root: The node to begin the query from, or -1 (default) for the BVH's global root
+        root: The node to begin the query from, or -1 for the BVH's global root
 
     Returns:
         A :class:`warp.BvhQuery`. It is opaque; pass it to :func:`bvh_query_next`,
@@ -7345,14 +7347,14 @@ add_builtin(
     use :func:`bvh_query_capsule` instead.
 
     To restrict traversal to a subtree, set ``root`` to that node's index (for a grouped BVH the
-    group root is obtained from :func:`bvh_get_group_root`). If ``root`` is -1 (default),
+    group root is obtained from :func:`bvh_get_group_root`). If ``root`` is -1,
     traversal starts at the BVH's global root.
 
     Args:
         id: The BVH identifier
         start: The ray origin, in BVH space
-        dir: The ray direction, in BVH space (normalize for ``max_dist`` to be a world-space distance)
-        root: The node to begin the query from, or -1 (default) for the BVH's global root
+        dir: The ray direction, in BVH space (see above on normalization)
+        root: The node to begin the query from, or -1 for the BVH's global root
 
     Returns:
         A :class:`warp.BvhQuery`. It is opaque; pass it to :func:`bvh_query_next`, which writes
@@ -8812,7 +8814,7 @@ add_builtin(
         point: The query point, in the mesh's local space
         max_dist: Maximum allowed distance to the returned closest point. The query returns no result if no face is strictly closer than this distance.
         epsilon: Epsilon treating distance values as equal, when locating the minimum distance vertex/face/edge, as a
-            fraction of the average edge length, also for treating closest point as being on edge/vertex default 1e-3.
+            fraction of the average edge length, also for treating closest point as being on edge/vertex.
 
     Returns:
         A :class:`warp.MeshQueryPoint`. Check ``result`` first (``True`` if a face within
@@ -8935,8 +8937,8 @@ add_builtin(
         id: The mesh identifier
         point: The query point, in the mesh's local space
         max_dist: Maximum allowed distance to the returned closest point. The query returns no result if no face is strictly closer than this distance.
-        accuracy: Accuracy for computing the winding number with fast winding number method utilizing second-order dipole approximation, default 2.0
-        threshold: The threshold of the winding number to be considered inside, default 0.5.
+        accuracy: Accuracy for computing the winding number with fast winding number method utilizing second-order dipole approximation
+        threshold: The threshold of the winding number to be considered inside.
 
     Returns:
         A :class:`warp.MeshQueryPoint`. Check ``result`` first (``True`` if a face within
@@ -8997,7 +8999,7 @@ add_builtin(
 
     The ``root`` parameter can be obtained using the :func:`mesh_get_group_root` function when creating a grouped mesh.
     When ``root`` is a valid (>=0) value, the traversal will be confined to the subtree starting from the root.
-    If ``root`` is -1 (default), traversal starts at the mesh's global root.
+    If ``root`` is -1, traversal starts at the mesh's global root.
     The query will only traverse down from that node, limiting traversal to that subtree.
 
     Args:
@@ -9036,14 +9038,14 @@ add_builtin(
 
     The ``root`` parameter can be obtained using the :func:`mesh_get_group_root` function when creating a grouped mesh.
     When ``root`` is a valid (>=0) value, the traversal will be confined to the subtree starting from the root.
-    If ``root`` is -1 (default), traversal starts at the mesh's global root.
+    If ``root`` is -1, traversal starts at the mesh's global root.
 
     Args:
         id: The mesh identifier
         start: The ray origin, in the mesh's local space
         dir: The ray direction, in the mesh's local space (see above on normalization)
         max_t: The maximum distance along the ray to check for intersections (in multiples of ``dir``'s length)
-        root: The root node index for grouped BVH queries, or -1 for global root (optional, default: -1)
+        root: The root node index for grouped BVH queries, or -1 for global root
 
     Returns:
         A :class:`warp.MeshQueryRay`. Check ``result`` first (``True`` if a hit within ``max_t`` was
@@ -9101,14 +9103,14 @@ add_builtin(
 
     The ``root`` parameter can be obtained using the :func:`mesh_get_group_root` function when creating a grouped mesh.
     When ``root`` is a valid (>=0) value, the traversal will be confined to the subtree starting from the root.
-    If ``root`` is -1 (default), traversal starts at the mesh's global root.
+    If ``root`` is -1, traversal starts at the mesh's global root.
 
     Args:
         id: The mesh identifier
         start: The ray origin, in the mesh's local space
         dir: The ray direction, in the mesh's local space
         max_t: The maximum distance along the ray to check for intersections (in multiples of ``dir``'s length)
-        root: The root node index for grouped BVH queries, or -1 for global root (optional, default: -1)
+        root: The root node index for grouped BVH queries, or -1 for global root
 
     Returns:
         ``True`` if the ray intersects any face within ``max_t``, ``False`` otherwise.
@@ -9159,13 +9161,13 @@ add_builtin(
 
     The ``root`` parameter can be obtained using the :func:`mesh_get_group_root` function when creating a grouped mesh.
     When ``root`` is a valid (>=0) value, the traversal will be confined to the subtree starting from the root.
-    If ``root`` is -1 (default), traversal starts at the mesh's global root.
+    If ``root`` is -1, traversal starts at the mesh's global root.
 
     Args:
         id: The mesh identifier
         start: The ray origin, in the mesh's local space
         dir: The ray direction, in the mesh's local space (only its direction matters; the count is independent of its length)
-        root: The root node index for grouped BVH queries, or -1 for global root (optional, default: -1)
+        root: The root node index for grouped BVH queries, or -1 for global root
 
     Returns:
         The number of intersections (with ``t >= 0``) between the ray and the mesh.
@@ -16249,8 +16251,8 @@ add_builtin(
         a: A tile with ``shape=(M, K)``
         b: A tile with ``shape=(K, N)``
         out: A tile with ``shape=(M, N)``
-        alpha: Scaling factor (default 1.0)
-        beta: Accumulator factor (default 1.0)
+        alpha: Scaling factor
+        beta: Accumulator factor
 """,
     group="Tile Primitives",
     export=False,
@@ -16282,7 +16284,7 @@ add_builtin(
     Args:
         a: A tile with ``shape=(M, K)``
         b: A tile with ``shape=(K, N)``
-        alpha: Scaling factor (default 1.0)
+        alpha: Scaling factor
 
     Returns:
         A tile with ``shape=(M, N)``
@@ -16820,7 +16822,7 @@ add_builtin(
     variadic=True,
     doc="""Compute the Cholesky factorization of a symmetric positive-definite matrix ``A``.
 
-    When ``fill_mode="lower"`` (default), returns lower-triangular ``L`` such that ``LL^T = A``.
+    When ``fill_mode="lower"``, returns lower-triangular ``L`` such that ``LL^T = A``.
     When ``fill_mode="upper"``, returns upper-triangular ``U`` such that ``U^T U = A``.
 
     The ``fill_mode`` parameter must be a compile-time constant.
@@ -16835,7 +16837,7 @@ add_builtin(
 
     Args:
         A: A square, symmetric positive-definite matrix.
-        fill_mode: ``"lower"`` (default) or ``"upper"``. Must be a compile-time constant.
+        fill_mode: ``"lower"`` or ``"upper"``. Must be a compile-time constant.
 
     Returns:
         A triangular matrix ``L`` or ``U``.""",
@@ -16854,7 +16856,7 @@ add_builtin(
     variadic=True,
     doc="""Compute the Cholesky factorization of a symmetric positive-definite matrix ``A`` inplace.
 
-    When ``fill_mode="lower"`` (default), the lower triangle of ``A`` is replaced by ``L``
+    When ``fill_mode="lower"``, the lower triangle of ``A`` is replaced by ``L``
     such that ``LL^T = A``; the upper triangle is set to zero.
     When ``fill_mode="upper"``, the upper triangle of ``A`` is replaced by ``U``
     such that ``U^T U = A``; the lower triangle is set to zero.
@@ -16870,7 +16872,7 @@ add_builtin(
 
     Args:
         A: A square, symmetric positive-definite matrix.
-        fill_mode: ``"lower"`` (default) or ``"upper"``. Must be a compile-time constant.""",
+        fill_mode: ``"lower"`` or ``"upper"``. Must be a compile-time constant.""",
     group="Tile Primitives",
     export=False,
     is_differentiable=False,
@@ -17036,7 +17038,7 @@ add_builtin(
     variadic=True,
     doc="""Solve for ``x`` in ``Ax = y`` given the Cholesky factor of ``A``.
 
-    When ``fill_mode="lower"`` (default), ``L`` is lower-triangular such that ``LL^T = A``.
+    When ``fill_mode="lower"``, ``L`` is lower-triangular such that ``LL^T = A``.
     When ``fill_mode="upper"``, ``L`` is upper-triangular ``U`` such that ``U^T U = A``.
 
     The ``fill_mode`` parameter must be a compile-time constant.
@@ -17050,7 +17052,7 @@ add_builtin(
     Args:
         L: A square triangular Cholesky factor of ``A``.
         y: A 1D or 2D tile of length ``M``.
-        fill_mode: ``"lower"`` (default) or ``"upper"``. Must be a compile-time constant.
+        fill_mode: ``"lower"`` or ``"upper"``. Must be a compile-time constant.
 
     Returns:
         A tile of the same shape as ``y`` such that ``Ax = y``.""",
@@ -17073,7 +17075,7 @@ add_builtin(
     variadic=True,
     doc="""Solve for ``x`` in ``Ax = y`` by overwriting ``y`` with ``x``.
 
-    When ``fill_mode="lower"`` (default), ``L`` is lower-triangular such that ``LL^T = A``.
+    When ``fill_mode="lower"``, ``L`` is lower-triangular such that ``LL^T = A``.
     When ``fill_mode="upper"``, ``L`` is upper-triangular ``U`` such that ``U^T U = A``.
 
     The ``fill_mode`` parameter must be a compile-time constant.
@@ -17088,7 +17090,7 @@ add_builtin(
     Args:
         L: A square triangular Cholesky factor of ``A``.
         y: A 1D or 2D tile of length ``M`` that gets overwritten by ``x`` where ``Ax = y``.
-        fill_mode: ``"lower"`` (default) or ``"upper"``. Must be a compile-time constant.""",
+        fill_mode: ``"lower"`` or ``"upper"``. Must be a compile-time constant.""",
     group="Tile Primitives",
     export=False,
     is_differentiable=False,

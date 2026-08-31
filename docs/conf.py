@@ -354,6 +354,34 @@ def normalize_docstring(doc: str) -> str:
     return re.sub(r"^(:(rtype|type\s+\w+):.*)\bwp\.", r"\1warp.", rst, flags=re.MULTILINE) if "wp." in rst else rst
 
 
+def _with_defaults(func, args: dict[str, str]) -> dict[str, str]:
+    """Append each registered default value to the rendered parameter annotations.
+
+    Uses the same renderer as the type stub so that the documented signature and
+    the IDE hint show either the substituted value or ``...`` for an internally
+    inferred omission sentinel.
+
+    Args:
+        func: The built-in whose ``defaults`` supply the values.
+        args: The rendered annotation per ``input_types`` key.
+
+    Returns:
+        A new mapping with ``= value`` appended wherever a default is registered.
+    """
+    result = {}
+    for key, annotation in args.items():
+        # ``input_types`` keeps the ``*``/``**`` prefix that ``defaults`` omits.
+        name = key.lstrip("*")
+        if key.startswith("*") or name not in func.defaults:
+            result[key] = annotation
+            continue
+
+        value = func.defaults[name]
+        result[key] = f"{annotation} = {wp._src.context.format_default_value(value)}"
+
+    return result
+
+
 def _get_builtin_overloads_info(symbol: str) -> list[dict[str, object]]:
     head = wp._src.context.builtin_functions[symbol]
 
@@ -366,8 +394,10 @@ def _get_builtin_overloads_info(symbol: str) -> list[dict[str, object]]:
     overloads_info = []
     seen_overloads = set()
     for func in visible_overloads:
+        # Warp scalar annotations stay narrow here: unlike the type stub, the
+        # rendered documentation favours readability over checkability.
         args = {k: wp._src.context.type_str(v) for k, v in func.input_types.items()}
-        args_str = ", ".join(f"{k}: {v}" for k, v in args.items())
+        args_str = ", ".join(f"{k}: {v}" for k, v in _with_defaults(func, args).items())
 
         try:
             return_type = wp._src.context.type_str(func.value_func(None, None))

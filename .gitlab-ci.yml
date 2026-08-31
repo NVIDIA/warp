@@ -278,8 +278,8 @@ type-check stubs:
   extends:
     - .ipp_lnx_x86_64_cpu_micro
   script:
-    - uvx pyright warp/__init__.pyi
-    - uvx mypy warp/__init__.pyi --follow-imports=silent
+    - uvx pyright warp/__init__.pyi tools/ci/stub_typecheck_fixture.py
+    - uvx mypy warp/__init__.pyi tools/ci/stub_typecheck_fixture.py --follow-imports=silent
 
 # This job tests code snippets in the documentation
 doctest:
