@@ -197,6 +197,59 @@ def test_adam_set_params_migrates_state(test, device):
     test.assertIs(opt.v[1], unmoved_v)
 
 
+def test_adam_invalid_inputs(test, device):
+    """Verify Adam input validation for uninitialized state, mismatched gradient counts, shapes, and dtypes."""
+    with wp.ScopedDevice(device):
+        # Uninitialized params
+        opt_uninit = warp.optim.Adam()
+        with test.assertRaises(RuntimeError):
+            opt_uninit.step([wp.zeros(4, dtype=wp.float32)])
+
+        params = wp.zeros(4, dtype=wp.float32)
+        opt = warp.optim.Adam([params], lr=0.02)
+
+        # Gradient count mismatch
+        with test.assertRaises(ValueError):
+            opt.step([])
+        with test.assertRaises(ValueError):
+            opt.step([wp.zeros(4, dtype=wp.float32), wp.zeros(4, dtype=wp.float32)])
+
+        # Gradient shape mismatch
+        g_short = wp.zeros(2, dtype=wp.float32)
+        with test.assertRaises(ValueError):
+            opt.step([g_short])
+
+        # Gradient dtype mismatch
+        g_dtype = wp.zeros(4, dtype=wp.float16)
+        with test.assertRaises(ValueError):
+            opt.step([g_dtype])
+
+        # Direct step_detail validation
+        m = wp.zeros(4, dtype=wp.float32)
+        v = wp.zeros(4, dtype=wp.float32)
+        m_short = wp.zeros(2, dtype=wp.float32)
+        v_short = wp.zeros(2, dtype=wp.float32)
+        m_dtype = wp.zeros(4, dtype=wp.float16)
+        v_dtype = wp.zeros(4, dtype=wp.float16)
+
+        with test.assertRaises(ValueError):
+            warp.optim.Adam.step_detail(g_short, m, v, 0.02, 0.9, 0.999, 0, 1e-8, params)
+        with test.assertRaises(ValueError):
+            warp.optim.Adam.step_detail(g_dtype, m, v, 0.02, 0.9, 0.999, 0, 1e-8, params)
+        with test.assertRaises(ValueError):
+            warp.optim.Adam.step_detail(params, m_short, v, 0.02, 0.9, 0.999, 0, 1e-8, params)
+        with test.assertRaises(ValueError):
+            warp.optim.Adam.step_detail(params, m, v_short, 0.02, 0.9, 0.999, 0, 1e-8, params)
+        with test.assertRaises(ValueError):
+            warp.optim.Adam.step_detail(params, m_dtype, v, 0.02, 0.9, 0.999, 0, 1e-8, params)
+        with test.assertRaises(ValueError):
+            warp.optim.Adam.step_detail(params, m, v_dtype, 0.02, 0.9, 0.999, 0, 1e-8, params)
+        with test.assertRaises(ValueError):
+            warp.optim.Adam.step_detail(params, None, v, 0.02, 0.9, 0.999, 0, 1e-8, params)
+        with test.assertRaises(ValueError):
+            warp.optim.Adam.step_detail(params, m, None, 0.02, 0.9, 0.999, 0, 1e-8, params)
+
+
 devices = get_test_devices()
 
 
@@ -216,6 +269,7 @@ add_function_test(
     test_adam_set_params_migrates_state,
     devices=get_cuda_test_devices(),
 )
+add_function_test(TestAdam, "test_adam_invalid_inputs", test_adam_invalid_inputs, devices=devices)
 
 
 if __name__ == "__main__":

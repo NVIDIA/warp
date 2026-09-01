@@ -152,7 +152,10 @@ class Adam:
         Args:
             grad: List of gradient arrays matching ``params``.
         """
-        assert self.params is not None
+        if self.params is None:
+            raise RuntimeError("Optimizer parameters have not been initialized. Call set_params() first.")
+        if len(grad) != len(self.params):
+            raise ValueError(f"Expected {len(self.params)} gradient arrays, got {len(grad)}")
         for i in range(len(self.params)):
             Adam.step_detail(
                 grad[i], self.m[i], self.v[i], self.lr, self.beta1, self.beta2, self.t, self.eps, self.params[i]
@@ -174,8 +177,24 @@ class Adam:
             eps: Numerical stability term.
             params: Parameter array to update in-place.
         """
-        assert params.dtype == g.dtype
-        assert params.shape == g.shape
+        if params.dtype != g.dtype:
+            raise ValueError(f"Incompatible gradient dtype: expected {params.dtype}, got {g.dtype}")
+        if params.shape != g.shape:
+            raise ValueError(f"Incompatible gradient shape: expected {params.shape}, got {g.shape}")
+        if m is None:
+            raise ValueError("A first-moment buffer is required")
+        if v is None:
+            raise ValueError("A second-moment buffer is required")
+
+        expected_moment_dtype = wp._src.types.float32 if params.dtype == wp._src.types.float16 else params.dtype
+        if m.dtype != expected_moment_dtype:
+            raise ValueError(f"Incompatible first-moment dtype: expected {expected_moment_dtype}, got {m.dtype}")
+        if m.shape != params.shape:
+            raise ValueError(f"Incompatible first-moment shape: expected {params.shape}, got {m.shape}")
+        if v.dtype != expected_moment_dtype:
+            raise ValueError(f"Incompatible second-moment dtype: expected {expected_moment_dtype}, got {v.dtype}")
+        if v.shape != params.shape:
+            raise ValueError(f"Incompatible second-moment shape: expected {params.shape}, got {v.shape}")
         kernel_inputs = [g, m, v, lr, beta1, beta2, t, eps, params]
         if params.dtype == wp._src.types.float32:
             wp.launch(

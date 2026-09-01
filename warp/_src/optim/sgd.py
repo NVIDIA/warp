@@ -98,7 +98,10 @@ class SGD:
         Args:
             grad: List of gradient arrays matching ``params``.
         """
-        assert self.params is not None
+        if self.params is None:
+            raise RuntimeError("Optimizer parameters have not been initialized. Call set_params() first.")
+        if len(grad) != len(self.params):
+            raise ValueError(f"Expected {len(self.params)} gradient arrays, got {len(grad)}")
         for i in range(len(self.params)):
             SGD.step_detail(
                 grad[i],
@@ -128,8 +131,16 @@ class SGD:
             t: Current step index.
             params: Parameter array to update in-place.
         """
-        assert params.dtype == g.dtype
-        assert params.dtype == b.dtype
-        assert params.shape == g.shape
+        if params.dtype != g.dtype:
+            raise ValueError(f"Incompatible gradient dtype: expected {params.dtype}, got {g.dtype}")
+        if params.shape != g.shape:
+            raise ValueError(f"Incompatible gradient shape: expected {params.shape}, got {g.shape}")
+        if b is None and momentum != 0.0:
+            raise ValueError("A momentum buffer is required when momentum is nonzero")
+        if b is not None:
+            if params.dtype != b.dtype:
+                raise ValueError(f"Incompatible momentum buffer dtype: expected {params.dtype}, got {b.dtype}")
+            if params.shape != b.shape:
+                raise ValueError(f"Incompatible momentum buffer shape: expected {params.shape}, got {b.shape}")
         kernel_inputs = (g, b, lr, momentum, dampening, weight_decay, int(nesterov), t, params)
         wp.launch(sgd_step_kernel, dim=len(params), inputs=kernel_inputs, device=params.device)
