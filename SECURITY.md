@@ -39,8 +39,7 @@ acknowledgements as appropriate. For current program details, see the
 [NVIDIA Product Security](https://www.nvidia.com/en-us/security/) portal.
 
 If a potential vulnerability is reported through a public channel, maintainers
-may limit public discussion and redirect the reporter to a private channel. The
-reporting channel does not determine the report's technical scope or validity.
+may limit public discussion and redirect the reporter to a private channel.
 
 ## Security Architecture & Context
 
@@ -131,12 +130,12 @@ The following scenarios represent the primary security concerns for Warp:
    headers, metadata, compression records, and grid buffers before making them
    available to native volume operations. Malformed data can target bounds and
    size calculations, decompression, resource consumption, and native memory
-   access. **Security stance:** Native process termination, GPU faults, memory
-   corruption, information disclosure, or disproportionate resource exhaustion
-   caused by malformed data through this supported API are in scope for
-   assessment. A handled validation or unsupported-format error is not a
-   vulnerability, nor is an application failure caused only by not handling
-   such an error.
+   access. **Security stance:** Warp treats serialized fields as untrusted. It
+   validates fixed-size names and file-derived offsets, counts, sizes, and
+   resolved ranges before exposing metadata or using it for native memory
+   access. Validation defects that cause native process termination, GPU faults,
+   memory corruption, information disclosure, or disproportionate resource
+   exhaustion are in scope for assessment.
 
 3. **Kernel cache or compiled artifact tampering:** Warp loads cached object
    files, PTX/CUBIN modules, LTO artifacts, and `.meta` files from the configured
@@ -174,8 +173,7 @@ The following scenarios represent the primary security concerns for Warp:
    executable artifacts; Warp does not sandbox intentionally malicious modules.
    Defects that cause Warp to load more than the caller explicitly trusted,
    cross another trust boundary, or occur with a valid artifact produced by a
-   supported Warp workflow remain in scope. Other malformed-artifact failures
-   may still warrant defense-in-depth hardening.
+   supported Warp workflow remain in scope.
 
 7. **Toolchain and dependency substitution during source builds:**
    `build_lib.py` discovers CUDA through `WARP_CUDA_PATH`, `CUDA_HOME`,
@@ -214,9 +212,10 @@ The following scenarios represent the primary security concerns for Warp:
   executable-artifact bundle. Callers must load bundles only from trusted
   sources. `warp.capture_load()` is not a sandbox or security boundary for
   attacker-controlled artifacts.
-- Applications that accept NanoVDB data from untrusted sources bound input and
-  decompressed sizes according to their threat model. Warp aims to fail safely
-  on malformed NanoVDB data, but does not provide application-level quotas or a
+- Applications that accept NanoVDB data from untrusted sources must limit input
+  and decompressed sizes according to their threat model. Warp validates
+  serialized metadata and rejects data that would cause access outside the
+  volume allocation. It does not provide application-level quotas or a
   general-purpose parser sandbox.
 - Examples and their optional third-party USD and image parsers are local
   developer workflows, not hardened ingestion services for attacker-controlled
@@ -237,13 +236,19 @@ external-compilation interfaces, supported interop APIs, APIC graph loading,
 Volume/NanoVDB loading, memory management, release artifacts, or build/release
 tooling.
 
-Reports involving malformed NanoVDB data are in scope for assessment when a
-supported Warp API causes native process termination, GPU faults, memory
-corruption, information disclosure, or disproportionate resource exhaustion.
-A handled validation or unsupported-format error is not a vulnerability.
-Resource exhaustion caused only by intentionally excessive input is generally
-out of scope unless a comparatively small input causes disproportionate
-consumption.
+Listing a class of reports as in scope for assessment does not mean that every
+instance is a security vulnerability or establish its severity. Classification
+depends on the affected trust boundary and the demonstrated confidentiality,
+integrity, and availability impact.
+
+Malformed NanoVDB data is in scope for assessment when a validation defect in
+`warp.Volume.load_from_nvdb()` causes native process termination, GPU faults,
+memory corruption, information disclosure, or disproportionate resource
+exhaustion. The input's delivery path does not change Warp's responsibility for
+memory safety. Applications remain responsible for deciding who may submit data
+and for enforcing authentication, authorization, and resource quotas. Resource
+exhaustion caused only by intentionally excessive input is generally out of
+scope unless a comparatively small input causes disproportionate consumption.
 
 USD and image parsing in examples is primarily implemented by optional
 third-party libraries. Defects that reproduce in those parsers without Warp are
@@ -260,9 +265,29 @@ attacker-controlled artifacts.
 
 Defects that require an intentionally malicious APIC bundle, without a trust
 boundary bypass, are generally treated as robustness or defense-in-depth issues
-rather than vulnerabilities in Warp's supported security model. Warp may still
-accept fixes for such defects, especially when they address memory safety with
-focused, low-risk validation.
+rather than vulnerabilities in Warp's supported security model.
+
+The following paths contain vendored third-party or separately maintained
+component code:
+
+- `tools/packman/` (NVIDIA Packman)
+- `warp/_src/thirdparty/` (multiple upstream projects; see the source
+  attribution in each file)
+- `warp/native/cuBQL/` (NVIDIA cuBQL)
+- `warp/native/nanovdb/` (OpenVDB NanoVDB)
+
+Vulnerabilities confined to code under these paths and reproducible in the
+corresponding upstream project or component are outside the scope of Warp's
+security policy. Report them through the upstream project's security policy or
+vulnerability-reporting channel. For Packman vulnerabilities, use the NVIDIA
+PSIRT reporting channels above and identify Packman as the affected component;
+these reports are routed separately from Warp vulnerabilities.
+
+Vulnerabilities caused by Warp-specific modifications, configuration, packaging,
+or integration of vendored code remain in scope. If it is unclear whether a
+vulnerability originates in Warp or the upstream project, report it privately
+through one of Warp's reporting channels above; Warp maintainers will triage it
+and coordinate with the upstream project when appropriate.
 
 The following are generally out of scope unless they demonstrate a vulnerability
 inside Warp itself:
@@ -274,12 +299,15 @@ inside Warp itself:
 - Denial of service caused only by intentionally launching extremely large
   kernels, allocating excessive memory, or running examples with unrealistic
   local inputs.
-- Misconfigured deployments where a service exposes Warp compilation or asset
-  loading to unauthenticated users without upstream validation.
+- Missing authentication, authorization, rate limiting, quotas, or other
+  controls in an application that embeds Warp. These controls are the
+  application's responsibility. Remote reachability and attacker-visible
+  information disclosure are assessed from the actual deployment and data
+  flow.
 - Issues in third-party frameworks or drivers that can be reproduced without
   Warp and do not involve a Warp-specific integration path.
 
-## Dependency And Lockfile Security
+## Dependency and Lockfile Security
 
 Warp declares its published Python packaging contract in `pyproject.toml`.
 `uv.lock` defines the repository's development, testing, documentation, and CI
