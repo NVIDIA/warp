@@ -687,12 +687,8 @@ inline CUDA_CALLABLE void radix_sort_thread_block_core(
 
     int num_bits_to_sort = 32;  // Sort all bits because that's what the bitonic fast pass does as well
 
-    // WP_TILE_WARP_SIZE, not a hardcoded 32. The callers size shared_mem as
-    // num_warps = (WP_TILE_BLOCK_DIM + WP_TILE_WARP_SIZE - 1) / WP_TILE_WARP_SIZE,
-    // so a literal here is a second, independent definition of the warp width.
-    // If the two ever disagree the warp index can exceed num_warps and write
-    // past the end of shared_mem -- silently, with no compile error and
-    // no launch failure.
+    // shared_mem holds one row per tile warp, so warp_id must be derived from
+    // the same WP_TILE_WARP_SIZE the callers use to size it.
     const int warp_id = thread_id / WP_TILE_WARP_SIZE;
     const int lane_id = thread_id & (WP_TILE_WARP_SIZE - 1);
 
@@ -728,7 +724,7 @@ inline CUDA_CALLABLE void radix_sort_thread_block_core(
 
             for (int b = 0; b < num_scan_buckets; b++) {
                 bool contributes = digit == b;
-                int sum_per_warp = warp_scan_inclusive(lane_id, 0xFFFFFFFF, contributes);
+                int sum_per_warp = warp_scan_inclusive(lane_id, WP_TILE_FULL_WARP_MASK, contributes);
 
                 if (lane_id == WP_TILE_WARP_SIZE - 1)
                     shared_mem[warp_id][b] = sum_per_warp;
@@ -809,7 +805,7 @@ inline CUDA_CALLABLE void radix_sort_thread_block_core(
 
             for (int b = 0; b < num_scan_buckets; b++) {
                 bool contributes = digit == b;
-                int sum_per_warp = warp_scan_inclusive(lane_id, 0xFFFFFFFF, contributes);
+                int sum_per_warp = warp_scan_inclusive(lane_id, WP_TILE_FULL_WARP_MASK, contributes);
                 if (lane_id == WP_TILE_WARP_SIZE - 1)
                     shared_mem[warp_id][b] = sum_per_warp;
 
