@@ -7454,7 +7454,7 @@ class Runtime:
                 ctypes.c_float * 9,
                 ctypes.c_char * 16,
             ]
-            self.core.wp_volume_get_grid_info.restype = ctypes.c_char_p
+            self.core.wp_volume_get_grid_info.restype = ctypes.c_void_p
             self.core.wp_volume_get_blind_data_count.argtypes = [
                 ctypes.c_uint64,
             ]
@@ -7467,7 +7467,7 @@ class Runtime:
                 ctypes.POINTER(ctypes.c_uint32),
                 ctypes.c_char * 16,
             ]
-            self.core.wp_volume_get_blind_data_info.restype = ctypes.c_char_p
+            self.core.wp_volume_get_blind_data_info.restype = ctypes.c_void_p
 
             self.core.wp_texture_create_device.argtypes = [
                 ctypes.c_void_p,  # context

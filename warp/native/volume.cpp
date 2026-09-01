@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cstring>
 #include <map>
+#include <vector>
 
 using namespace wp;
 
@@ -24,8 +25,9 @@ struct VolumeDesc {
     pnanovdb_grid_t grid_data {};
     pnanovdb_tree_t tree_data {};
 
-    // Host-accessible version of the blind metadata (copy if GPU, alias if CPU)
-    pnanovdb_gridblindmetadata_t* blind_metadata = nullptr;
+    // Keep a host-side snapshot so accessors use the same validated, stable
+    // metadata for host and device volumes.
+    std::vector<pnanovdb_gridblindmetadata_t> blind_metadata;
 
     // CUDA context for this volume (NULL if CPU)
     void* context = nullptr;
@@ -61,6 +63,83 @@ bool volume_exists(const void* id)
     return volume_get_descriptor((uint64_t)id, volume);
 }
 
+bool volume_resolve_relative_range(
+    uint64_t base_offset, int64_t relative_offset, uint64_t value_count, uint32_t value_size, uint64_t grid_size
+)
+{
+    if (base_offset > grid_size)
+        return false;
+
+    uint64_t data_offset;
+    if (relative_offset < 0) {
+        // Avoid negating INT64_MIN directly; -(x + 1) remains representable.
+        const uint64_t magnitude = uint64_t(-(relative_offset + 1)) + 1;
+        if (magnitude > base_offset)
+            return false;
+        data_offset = base_offset - magnitude;
+    } else {
+        const uint64_t offset = uint64_t(relative_offset);
+        if (offset > grid_size - base_offset)
+            return false;
+        data_offset = base_offset + offset;
+    }
+
+    // Division avoids overflowing when converting the element count to bytes.
+    return value_size == 0 || value_count <= (grid_size - data_offset) / value_size;
+}
+
+bool volume_validate_grid_metadata(
+    const pnanovdb_grid_t& grid_data, uint64_t buffer_size, uint64_t& metadata_offset, uint64_t& metadata_size
+)
+{
+    // A NanoVDB grid starts with a grid header followed by a tree header.
+    const uint64_t minimum_grid_size = sizeof(pnanovdb_grid_t) + sizeof(pnanovdb_tree_t);
+    if (grid_data.grid_size < minimum_grid_size || grid_data.grid_size > buffer_size)
+        return false;
+
+    // Names cross the C ABI and must terminate within their fixed-size fields.
+    if (std::memchr(grid_data.grid_name, '\0', sizeof(grid_data.grid_name)) == nullptr)
+        return false;
+
+    // The metadata table offset is relative to the grid and must resolve within it.
+    if (grid_data.blind_metadata_offset < 0)
+        return false;
+
+    metadata_offset = uint64_t(grid_data.blind_metadata_offset);
+    if (metadata_offset > grid_data.grid_size)
+        return false;
+
+    const uint64_t available = grid_data.grid_size - metadata_offset;
+    // Bound the count before computing the table size to avoid multiplication overflow.
+    if (grid_data.blind_metadata_count > available / sizeof(pnanovdb_gridblindmetadata_t))
+        return false;
+
+    metadata_size = uint64_t(grid_data.blind_metadata_count) * sizeof(pnanovdb_gridblindmetadata_t);
+    return true;
+}
+
+bool volume_validate_blind_metadata(
+    const pnanovdb_grid_t& grid_data,
+    const std::vector<pnanovdb_gridblindmetadata_t>& blind_metadata,
+    uint64_t metadata_offset
+)
+{
+    for (uint64_t i = 0; i < blind_metadata.size(); ++i) {
+        const pnanovdb_gridblindmetadata_t& metadata = blind_metadata[i];
+        if (std::memchr(metadata.name, '\0', sizeof(metadata.name)) == nullptr)
+            return false;
+
+        // NanoVDB data offsets are relative to the containing metadata entry.
+        const uint64_t entry_offset = metadata_offset + i * sizeof(pnanovdb_gridblindmetadata_t);
+        if (!volume_resolve_relative_range(
+                entry_offset, metadata.data_offset, metadata.value_count, metadata.value_size, grid_data.grid_size
+            )) {
+            return false;
+        }
+    }
+    return true;
+}
+
 void volume_add_descriptor(uint64_t id, VolumeDesc&& volumeDesc) { g_volume_descriptors[id] = std::move(volumeDesc); }
 
 void volume_rem_descriptor(uint64_t id) { g_volume_descriptors.erase(id); }
@@ -69,10 +148,13 @@ void volume_copy_live_metadata(const VolumeDesc* volume, pnanovdb_grid_t& grid_d
 {
     if (volume->context) {
         ContextGuard guard(volume->context);
-        wp_memcpy_d2h(WP_CURRENT_CONTEXT, &grid_data, volume->buffer, sizeof(pnanovdb_grid_t));
+        void* stream = wp_cuda_stream_get_current();
+        wp_memcpy_d2h(WP_CURRENT_CONTEXT, &grid_data, volume->buffer, sizeof(pnanovdb_grid_t), stream);
         wp_memcpy_d2h(
-            WP_CURRENT_CONTEXT, &tree_data, static_cast<pnanovdb_grid_t*>(volume->buffer) + 1, sizeof(pnanovdb_tree_t)
+            WP_CURRENT_CONTEXT, &tree_data, static_cast<pnanovdb_grid_t*>(volume->buffer) + 1, sizeof(pnanovdb_tree_t),
+            stream
         );
+        wp_cuda_stream_synchronize(stream);
     } else {
         std::memcpy(&grid_data, volume->buffer, sizeof(pnanovdb_grid_t));
         std::memcpy(&tree_data, static_cast<pnanovdb_grid_t*>(volume->buffer) + 1, sizeof(pnanovdb_tree_t));
@@ -157,6 +239,18 @@ uint64_t wp_volume_create_host(void* buf, uint64_t size, bool copy, bool owner)
         size = volume.grid_data.grid_size;
     }
 
+    uint64_t metadata_offset;
+    uint64_t metadata_size;
+    if (!volume_validate_grid_metadata(volume.grid_data, size, metadata_offset, metadata_size))
+        return 0;
+
+    volume.blind_metadata.resize(volume.grid_data.blind_metadata_count);
+    if (metadata_size > 0) {
+        std::memcpy(volume.blind_metadata.data(), static_cast<uint8_t*>(buf) + metadata_offset, metadata_size);
+    }
+    if (!volume_validate_blind_metadata(volume.grid_data, volume.blind_metadata, metadata_offset))
+        return 0;
+
     // Copy or alias buffer
     volume.size_in_bytes = size;
     if (copy) {
@@ -167,11 +261,6 @@ uint64_t wp_volume_create_host(void* buf, uint64_t size, bool copy, bool owner)
         volume.buffer = buf;
         volume.owner = owner;
     }
-
-    // Alias blind metadata
-    volume.blind_metadata = reinterpret_cast<pnanovdb_gridblindmetadata_t*>(
-        static_cast<uint8_t*>(volume.buffer) + volume.grid_data.blind_metadata_offset
-    );
 
     uint64_t id = (uint64_t)volume.buffer;
 
@@ -196,9 +285,10 @@ uint64_t wp_volume_create_device(void* context, void* buf, uint64_t size, bool c
     VolumeDesc volume;
     volume.context = context ? context : wp_cuda_context_get_current();
 
-    wp_memcpy_d2h(WP_CURRENT_CONTEXT, &volume.grid_data, buf, sizeof(pnanovdb_grid_t));
-    wp_memcpy_d2h(WP_CURRENT_CONTEXT, &volume.tree_data, (pnanovdb_grid_t*)buf + 1, sizeof(pnanovdb_tree_t));
-    // no sync needed since the above copies are to pageable memory
+    void* stream = wp_cuda_stream_get_current();
+    wp_memcpy_d2h(WP_CURRENT_CONTEXT, &volume.grid_data, buf, sizeof(pnanovdb_grid_t), stream);
+    wp_memcpy_d2h(WP_CURRENT_CONTEXT, &volume.tree_data, (pnanovdb_grid_t*)buf + 1, sizeof(pnanovdb_tree_t), stream);
+    wp_cuda_stream_synchronize(stream);
 
     if (volume.grid_data.magic != PNANOVDB_MAGIC_NUMBER && volume.grid_data.magic != PNANOVDB_MAGIC_GRID)
         return 0;
@@ -206,6 +296,22 @@ uint64_t wp_volume_create_device(void* context, void* buf, uint64_t size, bool c
     if (size == 0) {
         size = volume.grid_data.grid_size;
     }
+
+    uint64_t metadata_offset;
+    uint64_t metadata_size;
+    if (!volume_validate_grid_metadata(volume.grid_data, size, metadata_offset, metadata_size))
+        return 0;
+
+    volume.blind_metadata.resize(volume.grid_data.blind_metadata_count);
+    if (metadata_size > 0) {
+        wp_memcpy_d2h(
+            WP_CURRENT_CONTEXT, volume.blind_metadata.data(), static_cast<uint8_t*>(buf) + metadata_offset,
+            metadata_size, stream
+        );
+        wp_cuda_stream_synchronize(stream);
+    }
+    if (!volume_validate_blind_metadata(volume.grid_data, volume.blind_metadata, metadata_offset))
+        return 0;
 
     // Copy or alias data buffer
     volume.size_in_bytes = size;
@@ -217,15 +323,6 @@ uint64_t wp_volume_create_device(void* context, void* buf, uint64_t size, bool c
         volume.buffer = buf;
         volume.owner = owner;
     }
-
-    // Make blind metadata accessible on host
-    const uint64_t blindmetadata_size = volume.grid_data.blind_metadata_count * sizeof(pnanovdb_gridblindmetadata_t);
-    volume.blind_metadata
-        = static_cast<pnanovdb_gridblindmetadata_t*>(wp_alloc_pinned(blindmetadata_size, "(native:volume)"));
-    wp_memcpy_d2h(
-        WP_CURRENT_CONTEXT, volume.blind_metadata,
-        static_cast<uint8_t*>(volume.buffer) + volume.grid_data.blind_metadata_offset, blindmetadata_size
-    );
 
     uint64_t id = (uint64_t)volume.buffer;
     volume_add_descriptor(id, std::move(volume));
@@ -735,7 +832,6 @@ void wp_volume_destroy_device(uint64_t id)
         if (volume->owner) {
             wp_free_device(WP_CURRENT_CONTEXT, volume->buffer);
         }
-        wp_free_pinned(volume->blind_metadata);
         volume_rem_descriptor(id);
     }
 }

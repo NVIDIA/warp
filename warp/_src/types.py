@@ -6318,6 +6318,7 @@ class Volume:
     LINEAR = constant(1)
     """Enum value to specify trilinear interpolation during sampling"""
     _NANOVDB_LEAF_TABLE_COUNT: ClassVar[int] = 512
+    _NANOVDB_NAME_SIZE: ClassVar[int] = 256
 
     class RebuildInfo(NamedTuple):
         """Capacity metadata for a :class:`Volume` allocated with rebuild support.
@@ -6546,6 +6547,15 @@ class Volume:
         transform_matrix: mat33f
         """Linear part of the index-to-world transform"""
 
+    @staticmethod
+    def _decode_nvdb_name(name_ptr: int) -> str:
+        """Decode a fixed-size NanoVDB name field."""
+        name = ctypes.string_at(name_ptr, Volume._NANOVDB_NAME_SIZE)
+        terminator = name.find(b"\0")
+        if terminator < 0:
+            raise RuntimeError("Invalid NanoVDB name")
+        return name[:terminator].decode("ascii")
+
     def get_grid_info(self) -> Volume.GridInfo:
         """Return the metadata associated with this Volume."""
 
@@ -6570,7 +6580,7 @@ class Volume:
             raise RuntimeError("Invalid volume")
 
         return Volume.GridInfo(
-            name.decode("ascii"),
+            Volume._decode_nvdb_name(name),
             grid_size.value,
             grid_index.value,
             grid_count.value,
@@ -6672,11 +6682,11 @@ class Volume:
             type_str_buffer,
         )
 
-        if buf.value is None:
+        if buf.value is None or name is None:
             raise RuntimeError("Invalid feature array")
 
         return Volume.FeatureArrayInfo(
-            name.decode("ascii"),
+            Volume._decode_nvdb_name(name),
             buf.value,
             value_size.value,
             value_count.value,

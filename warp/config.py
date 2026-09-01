@@ -133,7 +133,7 @@ Note: Strict and checked modes impact performance.
 """
 
 
-version: str = "1.18.0.dev1"
+version: str = "1.18.0.dev2"
 """Warp version string"""
 
 verify_fp: bool = False
