@@ -242,6 +242,10 @@ def preconditioner(A: _Matrix, ptype: str = "diag") -> LinearOperator:
 
          - ``"diag"``: Diagonal (a.k.a. Jacobi) preconditioner
          - ``"diag_abs"``: Similar to Jacobi, but using the absolute value of diagonal coefficients
+         - ``"block_jacobi"``: Block-Jacobi preconditioner. Requires ``A`` to be a
+           :class:`warp.sparse.BsrMatrix` with square blocks; each diagonal block is inverted
+           via Cholesky factorization, so blocks must individually be symmetric positive-definite.
+           Falls back to ``"diag"`` for 1x1-block (CSR) matrices.
          - ``"id"``: Identity (null) preconditioner
     """
 
@@ -249,8 +253,106 @@ def preconditioner(A: _Matrix, ptype: str = "diag") -> LinearOperator:
         return None
     if ptype in ("diag", "diag_abs"):
         return _make_jacobi_preconditioner(A, use_abs=ptype == "diag_abs")
+    if ptype == "block_jacobi":
+        return _make_block_jacobi_preconditioner(A)
 
     raise ValueError(f"Unsupported preconditioner type '{ptype}'")
+
+
+def _make_block_jacobi_preconditioner(A: _Matrix) -> LinearOperator:
+    if not isinstance(A, sparse.BsrMatrix):
+        raise ValueError("Block-Jacobi preconditioner requires a warp.sparse.BsrMatrix input")
+
+    block_shape = A.block_shape
+    if block_shape[0] != block_shape[1]:
+        raise ValueError(f"Block-Jacobi preconditioner requires square matrix blocks, got shape {block_shape}")
+
+    block_size = block_shape[0]
+    if block_size == 1:
+        # A CSR matrix; block-Jacobi degenerates to standard (scalar) Jacobi.
+        return _make_jacobi_preconditioner(A, use_abs=False)
+
+    scalar_type = A.scalar_type
+    device = A.device
+
+    # One matrix block per row, laid out contiguously; reinterpret as a flat
+    # (dim * block_size, block_size) scalar array so the Cholesky kernels below
+    # can address each block with a simple tile_load/tile_store offset.
+    A_diag = sparse.bsr_get_diag(A)
+    dim = A_diag.shape[0]
+    A_flat = A_diag.view(scalar_type).reshape((dim * block_size, block_size))
+    L_flat = wp.empty(shape=A_flat.shape, dtype=scalar_type, device=device)
+    scratch = wp.empty(shape=(dim * block_size,), dtype=scalar_type, device=device)
+
+    factorize_kernel, solve_kernel = _create_block_jacobi_kernels(block_size)
+    wp.launch_tiled(factorize_kernel, dim=[dim], inputs=[A_flat, L_flat], block_dim=32, device=device)
+
+    def block_jacobi_mv(x, y, z, alpha, beta):
+        xf = _as_scalar_array(x)
+        wp.launch_tiled(solve_kernel, dim=[dim], inputs=[L_flat, xf, scratch], block_dim=32, device=device)
+        wp.launch(
+            _affine_combine_kernel,
+            dim=scratch.shape,
+            device=device,
+            inputs=[scratch, _as_scalar_array(y), _as_scalar_array(z), scalar_type(alpha), scalar_type(beta)],
+        )
+
+    return LinearOperator(
+        (dim * block_size, dim * block_size),
+        A.dtype,
+        device,
+        matvec=block_jacobi_mv,
+    )
+
+
+@functools.cache
+def _create_block_jacobi_kernels(block_size: int):
+    @wp.kernel(module="unique")
+    def factorize_kernel(
+        A_flat: wp.array2d(dtype=Any),
+        L_flat: wp.array2d(dtype=Any),
+    ):
+        # One CUDA block (tile) per matrix block; L L^T = A_flat's diagonal block.
+        i = wp.tid()
+        off = i * block_size
+        A_tile = wp.tile_load(A_flat, shape=(block_size, block_size), offset=(off, 0))
+        L_tile = wp.tile_cholesky(A_tile)
+        wp.tile_store(L_flat, L_tile, offset=(off, 0))
+
+    @wp.kernel(module="unique")
+    def solve_kernel(
+        L_flat: wp.array2d(dtype=Any),
+        x: wp.array(dtype=Any),
+        s: wp.array(dtype=Any),
+    ):
+        # s = A_diag^-1 x, one 12x12-style block solve per tile via forward/backward substitution.
+        i = wp.tid()
+        off = i * block_size
+        L_tile = wp.tile_load(L_flat, shape=(block_size, block_size), offset=(off, 0))
+        rhs = wp.tile_load(x, shape=(block_size,), offset=(off,))
+        wp.tile_cholesky_solve_inplace(L_tile, rhs)
+        wp.tile_store(s, rhs, offset=(off,))
+
+    return factorize_kernel, solve_kernel
+
+
+@wp.kernel(module="unique")
+def _affine_combine_kernel(
+    s: wp.array(dtype=Any),
+    y: wp.array(dtype=Any),
+    z: wp.array(dtype=Any),
+    alpha: Any,
+    beta: Any,
+):
+    # z = alpha * s + beta * y, matching the generalized matvec contract z = alpha * (M @ x) + beta * y
+    i = wp.tid()
+    zero = type(alpha)(0)
+    out = z.dtype(zero)
+    if alpha != zero:
+        out += alpha * s[i]
+    if beta != zero:
+        out += beta * y[i]
+    z[i] = out
 
 
 def _make_jacobi_preconditioner(A: _Matrix, use_abs: bool) -> LinearOperator:
