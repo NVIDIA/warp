@@ -55,7 +55,7 @@ class Platform(NamedTuple):
     os: str
     arch: str
     fancy_name: str
-    extension: str
+    extensions: tuple[str, ...]
     tag: str
 
     def name(self) -> str:
@@ -69,11 +69,11 @@ class Platform(NamedTuple):
 
 
 platforms = [
-    Platform("windows", "x86_64", "Windows x86-64", ".dll", "win_amd64"),
-    Platform("windows", "aarch64", "Windows ARM64", ".dll", "win_arm64"),
-    Platform("linux", "x86_64", "Linux x86-64", ".so", "manylinux_2_28_x86_64"),
-    Platform("linux", "aarch64", "Linux AArch64", ".so", "manylinux_2_34_aarch64"),
-    Platform("macos", "aarch64", "macOS ARM64", ".dylib", "macosx_11_0_arm64"),
+    Platform("windows", "x86_64", "Windows x86-64", (".dll", ".lib"), "win_amd64"),
+    Platform("windows", "aarch64", "Windows ARM64", (".dll", ".lib"), "win_arm64"),
+    Platform("linux", "x86_64", "Linux x86-64", (".so",), "manylinux_2_28_x86_64"),
+    Platform("linux", "aarch64", "Linux AArch64", (".so",), "manylinux_2_34_aarch64"),
+    Platform("macos", "aarch64", "macOS ARM64", (".dylib",), "macosx_11_0_arm64"),
 ]
 
 
@@ -89,7 +89,7 @@ def detect_warp_libraries():
     warp_bin = pathlib.Path("warp/bin")
     for file in warp_bin.rglob("*.*"):
         for p in platforms:
-            if os.path.splitext(file.name)[1] == p.extension:
+            if os.path.splitext(file.name)[1] in p.extensions:
                 # If this is a local build, assume we want a wheel for this machine's architecture
                 if file.parent.name == "bin" and p.os == machine_os() and p.arch == machine_architecture():
                     detected_libraries.add(Library(file.name, "bin/", p))
@@ -186,6 +186,14 @@ class BinaryDistribution(setuptools.Distribution):
         return True
 
 
+WINDOWS_REQUIRED_LIBRARIES = {
+    "warp.dll",
+    "warp.lib",
+    "warp-clang.dll",
+    "warp-clang.lib",
+}
+
+
 def get_warp_libraries(platform):
     libraries = []
     for library in detected_libraries:
@@ -196,6 +204,12 @@ def get_warp_libraries(platform):
                 shutil.copyfile(src, dst)
 
             libraries.append("bin/" + library.file)
+
+    if platform.os == "windows":
+        found = {pathlib.PurePosixPath(path).name for path in libraries}
+        missing = sorted(WINDOWS_REQUIRED_LIBRARIES - found)
+        if missing:
+            raise RuntimeError(f"Missing required {platform.fancy_name} native libraries: {', '.join(missing)}")
 
     return libraries
 

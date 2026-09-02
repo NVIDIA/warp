@@ -108,6 +108,11 @@ my_kernel_cuda_kernel_forward<<<grid, block>>>(dim, arr_x);
 
 Examples `02` and `03` use `wp.capture_begin(..., apic=True)` and `wp.capture_save()` to write a `.wrp` file plus a companion `_modules` directory. The standalone C++ application loads both artifacts through the APIC API. The CUDA example reconstructs a CUDA graph for replay; the CPU example directly interprets the recorded operation stream.
 
+Both examples link Warp's native shared libraries directly. Their CMake files
+model Windows DLLs and import libraries as imported shared targets, while the
+CPU example uses `warp_clang.h` and links `warp-clang` for module loading and
+symbol lookup.
+
 ## Key Concepts
 
 ### Warp AOT Header
