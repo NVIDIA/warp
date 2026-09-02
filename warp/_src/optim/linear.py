@@ -262,6 +262,12 @@ def preconditioner(A: _Matrix, ptype: str = "diag") -> LinearOperator:
 
 
 def _make_block_jacobi_preconditioner(A: _Matrix) -> LinearOperator:
+    """Build a block-Jacobi preconditioner from the diagonal blocks of a BsrMatrix.
+
+    Factorizes each diagonal block of ``A`` via Cholesky and returns a :class:`LinearOperator`
+    whose ``matvec`` applies the corresponding block-diagonal inverse. Falls back to scalar
+    Jacobi for 1x1-block (CSR) matrices; see :func:`preconditioner` for the full contract.
+    """
     if not isinstance(A, sparse.BsrMatrix):
         raise ValueError("Block-Jacobi preconditioner requires a warp.sparse.BsrMatrix input")
 
@@ -294,6 +300,7 @@ def _make_block_jacobi_preconditioner(A: _Matrix) -> LinearOperator:
     wp.launch_tiled(factorize_kernel, dim=[dim], inputs=[A_flat, L_flat], block_dim=32, device=device)
 
     def block_jacobi_mv(x, y, z, alpha, beta):
+        """Compute ``z = alpha * (blockdiag(A)^-1 @ x) + beta * y``, the block-Jacobi matvec."""
         xf = _as_scalar_array(x)
         wp.launch_tiled(solve_kernel, dim=[dim], inputs=[L_flat, xf, scratch], block_dim=32, device=device)
         wp.launch(
@@ -313,12 +320,15 @@ def _make_block_jacobi_preconditioner(A: _Matrix) -> LinearOperator:
 
 @functools.cache
 def _create_block_jacobi_kernels(block_size: int):
+    """Build (and cache, per block size) the tile-Cholesky factorize/solve kernel pair
+    used by the block-Jacobi preconditioner."""
+
     @wp.kernel(module="unique")
     def factorize_kernel(
         A_flat: wp.array2d(dtype=Any),
         L_flat: wp.array2d(dtype=Any),
     ):
-        # One CUDA block (tile) per matrix block; L L^T = A_flat's diagonal block.
+        """Cholesky-factorize one ``block_size x block_size`` diagonal block per tile: L L^T = A_flat's block."""
         i = wp.tid()
         off = i * block_size
         A_tile = wp.tile_load(A_flat, shape=(block_size, block_size), offset=(off, 0))
@@ -331,7 +341,7 @@ def _create_block_jacobi_kernels(block_size: int):
         x: wp.array(dtype=Any),
         s: wp.array(dtype=Any),
     ):
-        # s = A_diag^-1 x, one 12x12-style block solve per tile via forward/backward substitution.
+        """Solve ``s = A_diag^-1 x`` one block per tile, via forward/backward substitution on ``L_flat``."""
         i = wp.tid()
         off = i * block_size
         L_tile = wp.tile_load(L_flat, shape=(block_size, block_size), offset=(off, 0))
@@ -350,7 +360,8 @@ def _affine_combine_kernel(
     alpha: Any,
     beta: Any,
 ):
-    # z = alpha * s + beta * y, matching the generalized matvec contract z = alpha * (M @ x) + beta * y
+    """Compute ``z = alpha * s + beta * y``, matching the generalized matvec contract
+    ``z = alpha * (M @ x) + beta * y`` given a precomputed ``s = M @ x``."""
     i = wp.tid()
     zero = type(alpha)(0)
     out = z.dtype(zero)

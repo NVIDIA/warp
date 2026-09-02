@@ -980,8 +980,8 @@ def _make_block_spd_system(num_blocks, block_size, seed, dtype, device, coupling
 
 
 def test_block_jacobi_preconditioner_correctness(test, device):
-    # Verify the block-Jacobi preconditioner's matvec matches a direct inverse
-    # of the diagonal blocks, for a couple of different block sizes.
+    """Verify the block-Jacobi preconditioner's matvec matches a direct inverse
+    of the diagonal blocks, for a couple of different block sizes."""
     for block_size in (3, 12):
         A, _b, diag_blocks = _make_block_spd_system(
             num_blocks=6, block_size=block_size, seed=100 + block_size, dtype=wp.float32, device=device
@@ -1001,9 +1001,9 @@ def test_block_jacobi_preconditioner_correctness(test, device):
 
 
 def test_block_jacobi_preconditioner_convergence(test, device):
-    # On a block-diagonally-dominant system, block-Jacobi should converge in no more
-    # iterations than scalar (diagonal) Jacobi, and strictly fewer on a system with
-    # meaningful intra-block coupling.
+    """On a block-diagonally-dominant system, block-Jacobi should converge in no more
+    iterations than scalar (diagonal) Jacobi, and strictly fewer on a system with
+    meaningful intra-block coupling."""
     A, b, _diag_blocks = _make_block_spd_system(
         num_blocks=8, block_size=12, seed=99, dtype=wp.float64, device=device, coupling=0.2
     )
@@ -1022,7 +1022,7 @@ def test_block_jacobi_preconditioner_convergence(test, device):
 
 
 def test_block_jacobi_preconditioner_scalar_fallback(test, device):
-    # 1x1-block (CSR) matrices should fall back to standard scalar Jacobi rather than error.
+    """1x1-block (CSR) matrices should fall back to standard scalar Jacobi rather than error."""
     A, _b, _diag_blocks = _make_block_spd_system(num_blocks=16, block_size=1, seed=321, dtype=wp.float32, device=device)
     M_diag = preconditioner(A, "diag")
     M_bj = preconditioner(A, "block_jacobi")
@@ -1037,15 +1037,15 @@ def test_block_jacobi_preconditioner_scalar_fallback(test, device):
 
 
 def test_block_jacobi_preconditioner_errors(test, device):
-    # Non-square blocks are rejected; dense (non-BsrMatrix) input is rejected.
+    """Non-square blocks are rejected; dense (non-BsrMatrix) input is rejected."""
     A, _b = _make_spd_system(n=16, seed=321, dtype=wp.float32, device=device)
     with test.assertRaises(ValueError):
         preconditioner(A, "block_jacobi")
 
 
 def test_block_jacobi_preconditioner_unsupported_dtype(test, device):
-    # wp.tile_cholesky only supports float32/float64; block sizes > 1 with any
-    # other scalar type must fail fast with a clear error, not a kernel-compile error.
+    """wp.tile_cholesky only supports float32/float64; block sizes > 1 with any
+    other scalar type must fail fast with a clear error, not a kernel-compile error."""
     A, _b, _diag_blocks = _make_block_spd_system(num_blocks=4, block_size=3, seed=321, dtype=wp.float16, device=device)
     with test.assertRaises(ValueError):
         preconditioner(A, "block_jacobi")
