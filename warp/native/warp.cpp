@@ -1276,25 +1276,29 @@ WP_API int wp_cuda_get_max_cluster_dim(void* context, void* kernel, int block_di
 WP_API void wp_cuda_set_context_restore_policy(bool always_restore) { }
 WP_API int wp_cuda_get_context_restore_policy() { return false; }
 
-WP_API void wp_array_scan_int_device(
+WP_API bool wp_array_scan_int_device(
     uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
 )
 {
+    return false;
 }
-WP_API void wp_array_scan_int64_device(
+WP_API bool wp_array_scan_int64_device(
     uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
 )
 {
+    return false;
 }
-WP_API void wp_array_scan_float_device(
+WP_API bool wp_array_scan_float_device(
     uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
 )
 {
+    return false;
 }
-WP_API void wp_array_scan_double_device(
+WP_API bool wp_array_scan_double_device(
     uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
 )
 {
+    return false;
 }
 
 WP_API bool wp_cuda_graphics_map(void* context, void* resource) { return false; }

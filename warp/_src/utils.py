@@ -138,7 +138,11 @@ def array_scan(in_array: wp.array, out_array: wp.array, inclusive: bool = True) 
         else:
             raise RuntimeError(f"Unsupported data type: {type_repr(in_array.dtype)}")
 
-    native_func(in_array.ptr, out_array.ptr, in_array.size, in_stride, out_stride, type_length, inclusive)
+    status = native_func(in_array.ptr, out_array.ptr, in_array.size, in_stride, out_stride, type_length, inclusive)
+
+    # Only the CUDA implementations return a status.
+    if in_array.device.is_cuda and not status:
+        raise RuntimeError(runtime.get_error_string())
 
 
 def radix_sort_pairs(

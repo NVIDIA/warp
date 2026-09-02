@@ -6865,6 +6865,7 @@ class Runtime:
                 ctypes.c_int,
                 ctypes.c_bool,
             ]
+            self.core.wp_array_scan_int_device.restype = ctypes.c_bool
             self.core.wp_array_scan_int64_device.argtypes = [
                 ctypes.c_uint64,
                 ctypes.c_uint64,
@@ -6874,6 +6875,7 @@ class Runtime:
                 ctypes.c_int,
                 ctypes.c_bool,
             ]
+            self.core.wp_array_scan_int64_device.restype = ctypes.c_bool
             self.core.wp_array_scan_float_device.argtypes = [
                 ctypes.c_uint64,
                 ctypes.c_uint64,
@@ -6883,6 +6885,7 @@ class Runtime:
                 ctypes.c_int,
                 ctypes.c_bool,
             ]
+            self.core.wp_array_scan_float_device.restype = ctypes.c_bool
             self.core.wp_array_scan_double_device.argtypes = [
                 ctypes.c_uint64,
                 ctypes.c_uint64,
@@ -6892,6 +6895,7 @@ class Runtime:
                 ctypes.c_int,
                 ctypes.c_bool,
             ]
+            self.core.wp_array_scan_double_device.restype = ctypes.c_bool
 
             self.core.wp_radix_sort_pairs_int_host.argtypes = [
                 ctypes.c_uint64,

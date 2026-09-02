@@ -2403,36 +2403,36 @@ static void apic_capture_array_scan_device(
     );
 }
 
-void wp_array_scan_int_device(
+bool wp_array_scan_int_device(
     uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
 )
 {
     apic_capture_array_scan_device(in, out, len, in_stride, out_stride, type_len, APIC_TYPE_INT32, inclusive);
-    scan_device((const int*)in, (int*)out, len, in_stride, out_stride, type_len, inclusive);
+    return scan_device((const int*)in, (int*)out, len, in_stride, out_stride, type_len, inclusive);
 }
 
-void wp_array_scan_int64_device(
+bool wp_array_scan_int64_device(
     uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
 )
 {
     apic_capture_array_scan_device(in, out, len, in_stride, out_stride, type_len, APIC_TYPE_INT64, inclusive);
-    scan_device((const int64_t*)in, (int64_t*)out, len, in_stride, out_stride, type_len, inclusive);
+    return scan_device((const int64_t*)in, (int64_t*)out, len, in_stride, out_stride, type_len, inclusive);
 }
 
-void wp_array_scan_float_device(
+bool wp_array_scan_float_device(
     uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
 )
 {
     apic_capture_array_scan_device(in, out, len, in_stride, out_stride, type_len, APIC_TYPE_FLOAT32, inclusive);
-    scan_device((const float*)in, (float*)out, len, in_stride, out_stride, type_len, inclusive);
+    return scan_device((const float*)in, (float*)out, len, in_stride, out_stride, type_len, inclusive);
 }
 
-void wp_array_scan_double_device(
+bool wp_array_scan_double_device(
     uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
 )
 {
     apic_capture_array_scan_device(in, out, len, in_stride, out_stride, type_len, APIC_TYPE_FLOAT64, inclusive);
-    scan_device((const double*)in, (double*)out, len, in_stride, out_stride, type_len, inclusive);
+    return scan_device((const double*)in, (double*)out, len, in_stride, out_stride, type_len, inclusive);
 }
 
 int wp_cuda_driver_version()

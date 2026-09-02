@@ -544,26 +544,31 @@ static bool apic_replay_ops_into_cuda_capture(
             // g_apic_state is null during rebuild, so these execute (not record)
             // on the capture stream set as current above. Same entry points
             // wp.utils.array_scan() dispatches to.
+            bool scan_ok;
             if (rec->dtype == APIC_TYPE_INT32)
-                wp_array_scan_int_device(
+                scan_ok = wp_array_scan_int_device(
                     reinterpret_cast<uint64_t>(src), reinterpret_cast<uint64_t>(dst), static_cast<int>(rec->length),
                     rec->in_stride, rec->out_stride, rec->type_len, rec->inclusive != 0
                 );
             else if (rec->dtype == APIC_TYPE_INT64)
-                wp_array_scan_int64_device(
+                scan_ok = wp_array_scan_int64_device(
                     reinterpret_cast<uint64_t>(src), reinterpret_cast<uint64_t>(dst), static_cast<int>(rec->length),
                     rec->in_stride, rec->out_stride, rec->type_len, rec->inclusive != 0
                 );
             else if (rec->dtype == APIC_TYPE_FLOAT32)
-                wp_array_scan_float_device(
+                scan_ok = wp_array_scan_float_device(
                     reinterpret_cast<uint64_t>(src), reinterpret_cast<uint64_t>(dst), static_cast<int>(rec->length),
                     rec->in_stride, rec->out_stride, rec->type_len, rec->inclusive != 0
                 );
             else
-                wp_array_scan_double_device(
+                scan_ok = wp_array_scan_double_device(
                     reinterpret_cast<uint64_t>(src), reinterpret_cast<uint64_t>(dst), static_cast<int>(rec->length),
                     rec->in_stride, rec->out_stride, rec->type_len, rec->inclusive != 0
                 );
+            if (!scan_ok) {
+                // The scan has already recorded the CUDA reason; do not overwrite it.
+                success = false;
+            }
             break;
         }
 

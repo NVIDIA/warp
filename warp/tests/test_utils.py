@@ -9,7 +9,9 @@ import subprocess
 import sys
 import unittest
 import warnings
+from unittest.mock import patch
 
+from warp._src import context as _context
 from warp._src import logger as _logger
 from warp._src.logger import log_warning
 from warp.tests.unittest_utils import *
@@ -185,6 +187,18 @@ def test_array_scan_error_unsupported_dtype(test, device):
     with test.assertRaisesRegex(
         RuntimeError,
         r"Unsupported data type: vec3h$",
+    ):
+        wp.utils.array_scan(values, result, True)
+
+
+def test_array_scan_error_device_failure_is_reported(test, device):
+    """A failed device scan raises instead of leaving the output silently unwritten."""
+    values = wp.zeros(16, dtype=wp.int32, device=device)
+    result = wp.zeros(16, dtype=wp.int32, device=device)
+
+    with (
+        patch.object(_context.runtime.core, "wp_array_scan_int_device", lambda *args: False),
+        test.assertRaises(RuntimeError),
     ):
         wp.utils.array_scan(values, result, True)
 
@@ -904,6 +918,7 @@ def parenthesized_multiline_lambda():
 
 
 devices = get_test_devices()
+cuda_devices = get_cuda_test_devices()
 
 
 class TestUtils(unittest.TestCase):
@@ -1252,6 +1267,12 @@ add_function_test(
     TestUtils, "test_array_inner_error_unsupported_dtype", test_array_inner_error_unsupported_dtype, devices=devices
 )
 add_function_test(TestUtils, "test_array_cast", test_array_cast, devices=devices)
+add_function_test(
+    TestUtils,
+    "test_array_scan_error_device_failure_is_reported",
+    test_array_scan_error_device_failure_is_reported,
+    devices=cuda_devices,
+)
 add_function_test(
     TestUtils,
     "test_array_cast_error_unsupported_partial_cast",
