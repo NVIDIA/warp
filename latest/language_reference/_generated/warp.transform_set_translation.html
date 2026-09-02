@@ -582,7 +582,38 @@
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Set the translational part of a transform <code class="docutils literal notranslate"><span class="pre">xform</span></code>.</p>
+<p>Set the translational part of the transform <code class="docutils literal notranslate"><span class="pre">xform</span></code> in place, leaving its rotation unchanged.</p>
+<p>In a kernel, <code class="docutils literal notranslate"><span class="pre">xform.p</span> <span class="pre">=</span> <span class="pre">p</span></code> is equivalent.</p>
+<p>Do not pass an array element directly: <code class="docutils literal notranslate"><span class="pre">wp.transform_set_translation(xforms[i],</span> <span class="pre">p)</span></code> modifies
+a discarded copy and contributes no gradients. Use <code class="docutils literal notranslate"><span class="pre">xforms[i].p</span> <span class="pre">=</span> <span class="pre">p</span></code>, or load, modify, and
+store the element.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>xform</strong> – Transformation to modify in place.</p></li>
+<li><p><strong>p</strong> – New translation.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">offset</span><span class="p">(</span><span class="n">xforms</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">transform</span><span class="p">],</span> <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">transform</span><span class="p">]):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">xform</span> <span class="o">=</span> <span class="n">xforms</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">transform_set_translation</span><span class="p">(</span><span class="n">xform</span><span class="p">,</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">))</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">transform_set_rotation</span><span class="p">(</span><span class="n">xform</span><span class="p">,</span> <span class="n">wp</span><span class="o">.</span><span class="n">quat_identity</span><span class="p">())</span>
+    <span class="n">out</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">xform</span>
+
+<span class="n">xform</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">),</span> <span class="n">wp</span><span class="o">.</span><span class="n">quat_rpy</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">wp</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">))</span>
+<span class="n">xforms</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">xform</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">transform</span><span class="p">)</span>
+<span class="n">out</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">transform</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">offset</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">xforms</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="mi">3</span><span class="p">))</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[[0. 0. 1. 0. 0. 0. 1.]]
+</pre></div>
+</div>
 </dd></dl>
 
 </section>

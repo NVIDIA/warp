@@ -581,7 +581,18 @@
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Extract the rotational part of transform <code class="docutils literal notranslate"><span class="pre">xform</span></code>.</p>
+<p>Return the rotation component of <code class="docutils literal notranslate"><span class="pre">xform</span></code> (<code class="docutils literal notranslate"><span class="pre">xform.q</span></code>).</p>
+<p>The quaternion is returned as stored, in <code class="docutils literal notranslate"><span class="pre">(x,</span> <span class="pre">y,</span> <span class="pre">z,</span> <span class="pre">w)</span></code> order, without normalization.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>xform</strong> – Transformation to read from.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The rotation from components 3 through 6 of <code class="docutils literal notranslate"><span class="pre">xform</span></code>, as a quaternion of the same scalar
+type as <code class="docutils literal notranslate"><span class="pre">xform</span></code>.</p>
+</dd>
+</dl>
+<p>See <a class="reference internal" href="warp.transform_get_translation.html#warp._src.lang.transform_get_translation" title="warp._src.lang.transform_get_translation"><code class="xref py py-func docutils literal notranslate"><span class="pre">transform_get_translation()</span></code></a> for a usage example.</p>
 </dd></dl>
 
 </section>

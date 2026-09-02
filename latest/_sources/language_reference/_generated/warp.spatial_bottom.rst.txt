@@ -10,4 +10,13 @@
       * Python
       * Differentiable
 
-   Extract the bottom (second) part of a 6D screw vector.
+   Return the linear velocity or force stored in ``svec``.
+   
+   See :func:`~warp.spatial_top` to access the angular velocity or torque stored in components 0
+   through 2.
+   
+   :param svec: Spatial vector to read from.
+   
+   :returns: Components 3 through 5 of ``svec``, as a 3D vector of the same scalar type.
+   
+   See :func:`~warp.spatial_top` for a usage example.

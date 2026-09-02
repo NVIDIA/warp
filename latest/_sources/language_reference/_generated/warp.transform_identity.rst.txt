@@ -10,3 +10,29 @@
       * Python
 
    Construct an identity transform with zero translation and identity rotation.
+   
+   The result is neutral under composition and leaves points and vectors unchanged. Unlike a
+   zero-argument :func:`~warp.transformation`, it contains a valid rotation quaternion.
+   
+   :param dtype: Scalar type of the components. Defaults to ``float32``.
+   
+   :returns: The identity transformation.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def reset(out: wp.array[wp.transform]):
+           i = wp.tid()
+           out[i] = wp.transform_identity()
+   
+       out = wp.empty(2, dtype=wp.transform)
+       wp.launch(reset, dim=out.shape, outputs=[out])
+       print(out.numpy())
+   
+   .. testoutput::
+   
+       [[0. 0. 0. 0. 0. 0. 1.]
+        [0. 0. 0. 0. 0. 0. 1.]]
+   

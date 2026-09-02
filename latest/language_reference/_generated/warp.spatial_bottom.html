@@ -581,7 +581,18 @@
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Extract the bottom (second) part of a 6D screw vector.</p>
+<p>Return the linear velocity or force stored in <code class="docutils literal notranslate"><span class="pre">svec</span></code>.</p>
+<p>See <a class="reference internal" href="warp.spatial_top.html#warp._src.lang.spatial_top" title="warp._src.lang.spatial_top"><code class="xref py py-func docutils literal notranslate"><span class="pre">spatial_top()</span></code></a> to access the angular velocity or torque stored in components 0
+through 2.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>svec</strong> – Spatial vector to read from.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Components 3 through 5 of <code class="docutils literal notranslate"><span class="pre">svec</span></code>, as a 3D vector of the same scalar type.</p>
+</dd>
+</dl>
+<p>See <a class="reference internal" href="warp.spatial_top.html#warp._src.lang.spatial_top" title="warp._src.lang.spatial_top"><code class="xref py py-func docutils literal notranslate"><span class="pre">spatial_top()</span></code></a> for a usage example.</p>
 </dd></dl>
 
 </section>

@@ -10,4 +10,39 @@
       * Python
       * Differentiable
 
-   Compute the cross product of two 6D screw vectors.
+   Return the spatial cross product of ``a`` and ``b``, treating both as twists.
+   
+   The operation is antisymmetric: ``spatial_cross(a, b) == -spatial_cross(b, a)``. It computes
+   velocity-product terms used in spatial-acceleration calculations for moving coordinate frames.
+   Use :func:`~warp.spatial_cross_dual` when ``b`` is a wrench. Both arguments must have the same
+   scalar type.
+   
+   :param a: First spatial vector, interpreted as a twist.
+   :param b: Second spatial vector, interpreted as a twist.
+   
+   :returns: The spatial vector ``(w_a x w_b, v_a x w_b + w_a x v_b)``, where
+             ``a = (w_a, v_a)`` and ``b = (w_b, v_b)``.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def compute_spatial_cross(
+           a: wp.array[wp.spatial_vector],
+           b: wp.array[wp.spatial_vector],
+           out: wp.array[wp.spatial_vector],
+       ):
+           i = wp.tid()
+           out[i] = wp.spatial_cross(a[i], b[i])
+   
+       a = wp.array([wp.spatial_vector(0.0, 0.0, 1.0, 0.0, 0.0, 0.0)], dtype=wp.spatial_vector)
+       b = wp.array([wp.spatial_vector(0.0, 0.0, 0.0, 1.0, 0.0, 0.0)], dtype=wp.spatial_vector)
+       out = wp.empty(1, dtype=wp.spatial_vector)
+       wp.launch(compute_spatial_cross, dim=1, inputs=[a, b], outputs=[out])
+       print(out.numpy())
+   
+   .. testoutput::
+   
+       [[0. 0. 0. 0. 1. 0.]]
+   

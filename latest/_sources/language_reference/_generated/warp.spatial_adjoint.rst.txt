@@ -9,4 +9,41 @@
       * Kernel
       * Differentiable
 
-   Construct a 6x6 spatial inertial matrix from two 3x3 diagonal blocks.
+   Construct a 6x6 spatial matrix from the two 3x3 blocks ``r`` and ``s``.
+   
+   For a rigid transform ``(R, p)``, setting ``r = R`` and ``s = skew(p) * R`` constructs the
+   matrix that maps twist ``(w, v)`` to ``(R * w, cross(p, R * w) + R * v)``. Wrenches transform
+   differently from twists; use :func:`~warp.transform_wrench` to transform them.
+   
+   :param r: Block placed on both diagonals.
+   :param s: Block placed in the lower-left corner.
+   
+   :returns: The 6x6 block matrix ``[[r, 0], [s, r]]``.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def build(out: wp.array[wp.spatial_matrix]):
+           r = wp.mat33(1.0, 0.0, 0.0,
+                        0.0, 1.0, 0.0,
+                        0.0, 0.0, 1.0)
+           s = wp.mat33(0.0, -3.0, 2.0,
+                        3.0, 0.0, -1.0,
+                        -2.0, 1.0, 0.0)
+           out[0] = wp.spatial_adjoint(r, s)
+   
+       out = wp.empty(1, dtype=wp.spatial_matrix)
+       wp.launch(build, dim=1, outputs=[out])
+       print(out.numpy()[0])
+   
+   .. testoutput::
+   
+       [[ 1.  0.  0.  0.  0.  0.]
+        [ 0.  1.  0.  0.  0.  0.]
+        [ 0.  0.  1.  0.  0.  0.]
+        [ 0. -3.  2.  1.  0.  0.]
+        [ 3.  0. -1.  0.  1.  0.]
+        [-2.  1.  0.  0.  0.  1.]]
+   

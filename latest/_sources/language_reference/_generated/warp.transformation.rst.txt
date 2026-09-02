@@ -9,9 +9,45 @@
       * Kernel
       * Differentiable
 
-   Construct a transformation.
+   Construct a transformation from translation ``p`` and rotation ``q``.
    
-   Use translation ``p`` and rotation ``q``.
+   ``q`` is not normalized; transform operations assume it has unit length and may distort
+   otherwise. Autodiff treats the four quaternion components as independent variables and does not
+   enforce unit length. Re-normalize ``q`` after applying gradient updates, or use a unit-length
+   parameterization.
+   
+   All arguments must have the same scalar type. For construction in the Python scope, use
+   :class:`warp.transform`, :class:`warp.transformh`, or :class:`warp.transformd`.
+   
+   :param p: Translation vector in ``(x, y, z)`` order, added after applying the rotation.
+   :param q: Rotation quaternion in ``(x, y, z, w)`` order, applied before the translation. It must
+             have unit length.
+   :param dtype: Scalar type of the components, inferred from ``p`` and ``q`` when omitted.
+   
+   :returns: The transformation, stored as ``(p.x, p.y, p.z, q.x, q.y, q.z, q.w)``, which maps ``x`` to
+             ``quat_rotate(q, x) + p``.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def make_transforms(out: wp.array[wp.transform]):
+           q = wp.quat_from_axis_angle(wp.vec3(0.0, 0.0, 1.0), wp.pi / 2.0)
+           out[0] = wp.transformation(wp.vec3(1.0, 2.0, 3.0), q)
+           out[1] = wp.transformation(wp.vec3(1.0, 2.0, 3.0))  # identity rotation
+           out[2] = wp.transformation(1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 1.0)  # from components
+   
+       out = wp.empty(3, dtype=wp.transform)
+       wp.launch(make_transforms, dim=1, outputs=[out])
+       print(np.round(out.numpy(), 3))
+   
+   .. testoutput::
+   
+       [[1.    2.    3.    0.    0.    0.707 0.707]
+        [1.    2.    3.    0.    0.    0.    1.   ]
+        [1.    2.    3.    0.    0.    0.    1.   ]]
+   
 
 .. function:: warp._src.lang.transformation(*args: Float, dtype: Float = ...) -> Transformation[Float]
    :noindex:
@@ -22,6 +58,16 @@
       * Kernel
       * Differentiable
 
-   Construct a transformation.
+   Construct a transformation from component values.
    
-   Build a spatial transform vector from components.
+   One scalar fills all seven components. Seven scalars specify ``(px, py, pz, qx, qy, qz, qw)``
+   and must have the same type. With no arguments, all components are zero, including the
+   quaternion; use :func:`~warp.transform_identity` for an identity.
+   
+   See the overload that accepts ``p`` and ``q`` for an example.
+   
+   :param args: No arguments, one scalar, or seven scalar components.
+   :param dtype: Scalar type of the components, inferred from the arguments when omitted.
+   
+   :returns: The transformation.
+   

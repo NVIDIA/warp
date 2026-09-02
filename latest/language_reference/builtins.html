@@ -869,37 +869,37 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <td><p>Construct a transformation from a 4x4 matrix.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.transform_get_rotation.html#warp._src.lang.transform_get_rotation" title="warp._src.lang.transform_get_rotation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform_get_rotation</span></code></a></p></td>
-<td><p>Extract the rotational part of transform <code class="docutils literal notranslate"><span class="pre">xform</span></code>.</p></td>
+<td><p>Return the rotation component of <code class="docutils literal notranslate"><span class="pre">xform</span></code> (<code class="docutils literal notranslate"><span class="pre">xform.q</span></code>).</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.transform_get_translation.html#warp._src.lang.transform_get_translation" title="warp._src.lang.transform_get_translation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform_get_translation</span></code></a></p></td>
-<td><p>Extract the translational part of transform <code class="docutils literal notranslate"><span class="pre">xform</span></code>.</p></td>
+<td><p>Return the translation component of <code class="docutils literal notranslate"><span class="pre">xform</span></code> (<code class="docutils literal notranslate"><span class="pre">xform.p</span></code>).</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.transform_identity.html#warp._src.lang.transform_identity" title="warp._src.lang.transform_identity"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform_identity</span></code></a></p></td>
 <td><p>Construct an identity transform with zero translation and identity rotation.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.transform_inverse.html#warp._src.lang.transform_inverse" title="warp._src.lang.transform_inverse"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform_inverse</span></code></a></p></td>
-<td><p>Compute the inverse of the transformation <code class="docutils literal notranslate"><span class="pre">xform</span></code>.</p></td>
+<td><p>Return the inverse of <code class="docutils literal notranslate"><span class="pre">xform</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.transform_multiply.html#warp._src.lang.transform_multiply" title="warp._src.lang.transform_multiply"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform_multiply</span></code></a></p></td>
-<td><p>Multiply two rigid body transformations together.</p></td>
+<td><p>Return the composition of transformations <code class="docutils literal notranslate"><span class="pre">a</span></code> and <code class="docutils literal notranslate"><span class="pre">b</span></code>, applying <code class="docutils literal notranslate"><span class="pre">b</span></code> before <code class="docutils literal notranslate"><span class="pre">a</span></code>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.transform_point.html#warp._src.lang.transform_point" title="warp._src.lang.transform_point"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform_point</span></code></a></p></td>
-<td><p>Apply a transform to a point.</p></td>
+<td><p>Return <code class="docutils literal notranslate"><span class="pre">point</span></code> transformed by <code class="docutils literal notranslate"><span class="pre">xform</span></code>, with rotation applied before translation.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.transform_set_rotation.html#warp._src.lang.transform_set_rotation" title="warp._src.lang.transform_set_rotation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform_set_rotation</span></code></a></p></td>
-<td><p>Set the rotational part of a transform <code class="docutils literal notranslate"><span class="pre">xform</span></code>.</p></td>
+<td><p>Set the rotational part of the transform <code class="docutils literal notranslate"><span class="pre">xform</span></code> in place, leaving its translation unchanged.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.transform_set_translation.html#warp._src.lang.transform_set_translation" title="warp._src.lang.transform_set_translation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform_set_translation</span></code></a></p></td>
-<td><p>Set the translational part of a transform <code class="docutils literal notranslate"><span class="pre">xform</span></code>.</p></td>
+<td><p>Set the translational part of the transform <code class="docutils literal notranslate"><span class="pre">xform</span></code> in place, leaving its rotation unchanged.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.transform_to_matrix.html#warp._src.lang.transform_to_matrix" title="warp._src.lang.transform_to_matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform_to_matrix</span></code></a></p></td>
 <td><p>Convert a transformation to a 4x4 matrix.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.transform_vector.html#warp._src.lang.transform_vector" title="warp._src.lang.transform_vector"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform_vector</span></code></a></p></td>
-<td><p>Apply a transform to a vector.</p></td>
+<td><p>Return <code class="docutils literal notranslate"><span class="pre">vec</span></code> transformed by the rotation of <code class="docutils literal notranslate"><span class="pre">xform</span></code>, ignoring its translation.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.transformation.html#warp._src.lang.transformation" title="warp._src.lang.transformation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transformation</span></code></a></p></td>
-<td><p>Construct a transformation.</p></td>
+<td><p>Construct a transformation from translation <code class="docutils literal notranslate"><span class="pre">p</span></code> and rotation <code class="docutils literal notranslate"><span class="pre">q</span></code>.</p></td>
 </tr>
 </tbody>
 </table>
@@ -910,25 +910,25 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.spatial_adjoint.html#warp._src.lang.spatial_adjoint" title="warp._src.lang.spatial_adjoint"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spatial_adjoint</span></code></a></p></td>
-<td><p>Construct a 6x6 spatial inertial matrix from two 3x3 diagonal blocks.</p></td>
+<td><p>Construct a 6x6 spatial matrix from the two 3x3 blocks <code class="docutils literal notranslate"><span class="pre">r</span></code> and <code class="docutils literal notranslate"><span class="pre">s</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.spatial_bottom.html#warp._src.lang.spatial_bottom" title="warp._src.lang.spatial_bottom"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spatial_bottom</span></code></a></p></td>
-<td><p>Extract the bottom (second) part of a 6D screw vector.</p></td>
+<td><p>Return the linear velocity or force stored in <code class="docutils literal notranslate"><span class="pre">svec</span></code>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.spatial_cross.html#warp._src.lang.spatial_cross" title="warp._src.lang.spatial_cross"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spatial_cross</span></code></a></p></td>
-<td><p>Compute the cross product of two 6D screw vectors.</p></td>
+<td><p>Return the spatial cross product of <code class="docutils literal notranslate"><span class="pre">a</span></code> and <code class="docutils literal notranslate"><span class="pre">b</span></code>, treating both as twists.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.spatial_cross_dual.html#warp._src.lang.spatial_cross_dual" title="warp._src.lang.spatial_cross_dual"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spatial_cross_dual</span></code></a></p></td>
-<td><p>Compute the dual cross product of two 6D screw vectors.</p></td>
+<td><p>Return the spatial force cross product of twist <code class="docutils literal notranslate"><span class="pre">a</span></code> and wrench <code class="docutils literal notranslate"><span class="pre">b</span></code>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.spatial_dot.html#warp._src.lang.spatial_dot" title="warp._src.lang.spatial_dot"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spatial_dot</span></code></a></p></td>
-<td><p>Compute the dot product of two 6D screw vectors.</p></td>
+<td><p>Return the dot product of two 6D spatial vectors.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.spatial_top.html#warp._src.lang.spatial_top" title="warp._src.lang.spatial_top"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spatial_top</span></code></a></p></td>
-<td><p>Extract the top (first) part of a 6D screw vector.</p></td>
+<td><p>Return the angular velocity or torque stored in <code class="docutils literal notranslate"><span class="pre">svec</span></code>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.spatial_vector.html#warp._src.lang.spatial_vector" title="warp._src.lang.spatial_vector"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spatial_vector</span></code></a></p></td>
-<td><p>Construct a 6D screw vector.</p></td>
+<td><p>Return a zero 6D spatial vector.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.transform_twist.html#warp._src.lang.transform_twist" title="warp._src.lang.transform_twist"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform_twist</span></code></a></p></td>
 <td><p>Transform a spatial twist between coordinate frames.</p></td>

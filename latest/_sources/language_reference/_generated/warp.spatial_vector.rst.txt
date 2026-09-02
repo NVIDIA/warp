@@ -9,9 +9,14 @@
       * Kernel
       * Differentiable
 
-   Construct a 6D screw vector.
+   Return a zero 6D spatial vector.
    
-   Zero-initialize the vector.
+   See the overload that accepts ``w`` and ``v`` for an example.
+   
+   :param dtype: Scalar type of the components. Defaults to ``float32``.
+   
+   :returns: The zero spatial vector.
+   
 
 .. function:: warp._src.lang.spatial_vector(w: Vector[Float, Literal[3]], v: Vector[Float, Literal[3]], dtype: Float = ...) -> Vector[Float, Literal[6]]
    :noindex:
@@ -22,9 +27,37 @@
       * Kernel
       * Differentiable
 
-   Construct a 6D screw vector.
+   Construct a 6D spatial vector from the two 3D vectors ``w`` and ``v``.
    
-   Use two 3D vectors.
+   A spatial vector can represent a twist ``(angular velocity, linear velocity)`` or a wrench
+   ``(torque, force)``. Warp does not distinguish these interpretations at the type level. Both
+   vectors must have the same scalar type.
+   
+   :param w: First 3D part: angular velocity for a twist or torque for a wrench.
+   :param v: Last 3D part: linear velocity for a twist or force for a wrench.
+   :param dtype: Scalar type of the components, inferred from ``w`` and ``v`` when omitted.
+   
+   :returns: The spatial vector ``(w.x, w.y, w.z, v.x, v.y, v.z)``.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def make_twists(out: wp.array[wp.spatial_vector]):
+           # spinning about the z axis while moving along x
+           out[0] = wp.spatial_vector(wp.vec3(0.0, 0.0, 2.0), wp.vec3(1.0, 0.0, 0.0))
+           out[1] = wp.spatial_vector(0.0, 0.0, 2.0, 1.0, 0.0, 0.0)
+   
+       out = wp.empty(2, dtype=wp.spatial_vector)
+       wp.launch(make_twists, dim=1, outputs=[out])
+       print(out.numpy())
+   
+   .. testoutput::
+   
+       [[0. 0. 2. 1. 0. 0.]
+        [0. 0. 2. 1. 0. 0.]]
+   
 
 .. function:: warp._src.lang.spatial_vector(wx: Float, wy: Float, wz: Float, vx: Float, vy: Float, vz: Float, dtype: Float = ...) -> Vector[Float, Literal[6]]
    :noindex:
@@ -35,6 +68,19 @@
       * Kernel
       * Differentiable
 
-   Construct a 6D screw vector.
+   Construct a 6D spatial vector from six scalar components.
    
-   Use six scalar values.
+   See the overload that accepts ``w`` and ``v`` for the twist and wrench interpretations. All
+   values must have the same scalar type.
+   
+   :param wx: First component of the first 3D part.
+   :param wy: Second component of the first 3D part.
+   :param wz: Third component of the first 3D part.
+   :param vx: First component of the last 3D part.
+   :param vy: Second component of the last 3D part.
+   :param vz: Third component of the last 3D part.
+   :param dtype: Scalar type of the components, inferred from the arguments when omitted.
+   
+   :returns: The spatial vector ``(wx, wy, wz, vx, vy, vz)``.
+   
+   See the overload that accepts ``w`` and ``v`` for an example.

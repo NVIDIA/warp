@@ -10,4 +10,37 @@
       * Python
       * Differentiable
 
-   Compute the dot product of two 6D screw vectors.
+   Return the dot product of two 6D spatial vectors.
+   
+   A wrench dotted with a twist gives instantaneous power. Both arguments must have the same
+   scalar type.
+   
+   :param a: First spatial vector.
+   :param b: Second spatial vector.
+   
+   :returns: The dot product, as a scalar of the same type as the arguments.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def compute_power(
+           twists: wp.array[wp.spatial_vector],
+           wrenches: wp.array[wp.spatial_vector],
+           out: wp.array[float],
+       ):
+           i = wp.tid()
+           out[i] = wp.spatial_dot(wrenches[i], twists[i])
+   
+       # spinning at 2 rad/s about z under a torque of 3 N.m about z
+       twists = wp.array([wp.spatial_vector(0.0, 0.0, 2.0, 1.0, 0.0, 0.0)], dtype=wp.spatial_vector)
+       wrenches = wp.array([wp.spatial_vector(0.0, 0.0, 3.0, 0.0, 0.0, 0.0)], dtype=wp.spatial_vector)
+       out = wp.empty(1, dtype=float)
+       wp.launch(compute_power, dim=1, inputs=[twists, wrenches], outputs=[out])
+       print(out.numpy())
+   
+   .. testoutput::
+   
+       [6.]
+   

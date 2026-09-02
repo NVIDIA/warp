@@ -582,8 +582,21 @@
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Apply a transform to a vector.</p>
-<p>Treat the homogeneous coordinate as w=0 (rotation only).</p>
+<p>Return <code class="docutils literal notranslate"><span class="pre">vec</span></code> transformed by the rotation of <code class="docutils literal notranslate"><span class="pre">xform</span></code>, ignoring its translation.</p>
+<p><code class="docutils literal notranslate"><span class="pre">xform.q</span></code> must have unit length; otherwise the result may distort. Use
+<a class="reference internal" href="warp.transform_point.html#warp._src.lang.transform_point" title="warp._src.lang.transform_point"><code class="xref py py-func docutils literal notranslate"><span class="pre">transform_point()</span></code></a> to transform positions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>xform</strong> – Transformation whose rotation is applied.</p></li>
+<li><p><strong>vec</strong> – Direction vector to transform, which need not be normalized.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">quat_rotate(xform.q,</span> <span class="pre">vec)</span></code>, equivalent to using homogeneous coordinate <code class="docutils literal notranslate"><span class="pre">w</span> <span class="pre">=</span> <span class="pre">0</span></code>.</p>
+</dd>
+</dl>
+<p>See <a class="reference internal" href="warp.transform_point.html#warp._src.lang.transform_point" title="warp._src.lang.transform_point"><code class="xref py py-func docutils literal notranslate"><span class="pre">transform_point()</span></code></a> for a usage example.</p>
 </dd></dl>
 
 <dl class="py function">
@@ -616,12 +629,23 @@
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Apply a transform to a vector.</p>
-<p>Treat the homogeneous coordinate as w=0.</p>
-<p>The transformation is applied treating <code class="docutils literal notranslate"><span class="pre">vec</span></code> as a column vector, e.g.: <code class="docutils literal notranslate"><span class="pre">y</span> <span class="pre">=</span> <span class="pre">mat*vec</span></code>.</p>
-<p>This is in contrast to some libraries, notably USD, which applies transforms to row vectors, <code class="docutils literal notranslate"><span class="pre">y^T</span> <span class="pre">=</span> <span class="pre">vec^T*mat^T</span></code>.
-If the transform is coming from a library that uses row-vectors, then users should transpose the transformation
-matrix before calling this method.</p>
+<p>Return <code class="docutils literal notranslate"><span class="pre">vec</span></code> transformed by the 4x4 matrix <code class="docutils literal notranslate"><span class="pre">mat</span></code>, using homogeneous coordinate <code class="docutils literal notranslate"><span class="pre">w</span> <span class="pre">=</span> <span class="pre">0</span></code>.</p>
+<p>Matrices that use row-vector conventions, such as those from USD, must be transposed. When
+<code class="docutils literal notranslate"><span class="pre">mat</span></code> contains non-uniform scale, transform normals using the inverse transpose of its
+upper-left 3x3 linear component, then normalize the result. Use <a class="reference internal" href="warp.transform_point.html#warp._src.lang.transform_point" title="warp._src.lang.transform_point"><code class="xref py py-func docutils literal notranslate"><span class="pre">transform_point()</span></code></a>
+to transform positions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mat</strong> – Transformation matrix, applied to a column vector.</p></li>
+<li><p><strong>vec</strong> – Direction vector to transform, which need not be normalized.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The first three components of <code class="docutils literal notranslate"><span class="pre">mat</span> <span class="pre">*</span> <span class="pre">(vec.x,</span> <span class="pre">vec.y,</span> <span class="pre">vec.z,</span> <span class="pre">0)</span></code>, ignoring translation.</p>
+</dd>
+</dl>
+<p>See <a class="reference internal" href="warp.transform_point.html#warp._src.lang.transform_point" title="warp._src.lang.transform_point"><code class="xref py py-func docutils literal notranslate"><span class="pre">transform_point()</span></code></a> for a usage example.</p>
 </dd></dl>
 
 </section>

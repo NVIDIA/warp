@@ -10,4 +10,38 @@
       * Python
       * Differentiable
 
-   Multiply two rigid body transformations together.
+   Return the composition of transformations ``a`` and ``b``, applying ``b`` before ``a``.
+   
+   With unit quaternions, the operation is associative but not commutative, and
+   ``transform_point(a * b, x) == transform_point(a, transform_point(b, x))``. Non-unit
+   quaternions may distort and invalidate these identities.
+   
+   :param a: Outer transformation, applied second.
+   :param b: Inner transformation, applied first.
+   
+   :returns: The composed transformation, with translation ``a.p + quat_rotate(a.q, b.p)`` and rotation
+             ``a.q * b.q``.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def compose(
+           a: wp.array[wp.transform], b: wp.array[wp.transform], out: wp.array[wp.transform]
+       ):
+           i = wp.tid()
+           out[i] = wp.transform_multiply(a[i], b[i])
+   
+       # a turns a quarter turn about the z axis and shifts along x, b only shifts along x
+       a = wp.array([wp.transform(wp.vec3(1.0, 0.0, 0.0), wp.quat_rpy(0.0, 0.0, wp.pi / 2.0))],
+                    dtype=wp.transform)
+       b = wp.array([wp.transform(wp.vec3(2.0, 0.0, 0.0), wp.quat_identity())], dtype=wp.transform)
+       out = wp.empty(1, dtype=wp.transform)
+       wp.launch(compose, dim=1, inputs=[a, b], outputs=[out])
+       print(np.round(out.numpy(), 3))
+   
+   .. testoutput::
+   
+       [[1.    2.    0.    0.    0.    0.707 0.707]]
+   

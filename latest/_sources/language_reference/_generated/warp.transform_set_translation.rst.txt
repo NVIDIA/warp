@@ -10,4 +10,36 @@
       * Python
       * Differentiable
 
-   Set the translational part of a transform ``xform``.
+   Set the translational part of the transform ``xform`` in place, leaving its rotation unchanged.
+   
+   In a kernel, ``xform.p = p`` is equivalent.
+   
+   Do not pass an array element directly: ``wp.transform_set_translation(xforms[i], p)`` modifies
+   a discarded copy and contributes no gradients. Use ``xforms[i].p = p``, or load, modify, and
+   store the element.
+   
+   :param xform: Transformation to modify in place.
+   :param p: New translation.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def offset(xforms: wp.array[wp.transform], out: wp.array[wp.transform]):
+           i = wp.tid()
+           xform = xforms[i]
+           wp.transform_set_translation(xform, wp.vec3(0.0, 0.0, 1.0))
+           wp.transform_set_rotation(xform, wp.quat_identity())
+           out[i] = xform
+   
+       xform = wp.transform(wp.vec3(1.0, 2.0, 3.0), wp.quat_rpy(0.0, 0.0, wp.pi / 2.0))
+       xforms = wp.array([xform], dtype=wp.transform)
+       out = wp.empty(1, dtype=wp.transform)
+       wp.launch(offset, dim=1, inputs=[xforms], outputs=[out])
+       print(np.round(out.numpy(), 3))
+   
+   .. testoutput::
+   
+       [[0. 0. 1. 0. 0. 0. 1.]]
+   

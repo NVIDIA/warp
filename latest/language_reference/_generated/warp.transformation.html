@@ -582,8 +582,45 @@
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Construct a transformation.</p>
-<p>Use translation <code class="docutils literal notranslate"><span class="pre">p</span></code> and rotation <code class="docutils literal notranslate"><span class="pre">q</span></code>.</p>
+<p>Construct a transformation from translation <code class="docutils literal notranslate"><span class="pre">p</span></code> and rotation <code class="docutils literal notranslate"><span class="pre">q</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">q</span></code> is not normalized; transform operations assume it has unit length and may distort
+otherwise. Autodiff treats the four quaternion components as independent variables and does not
+enforce unit length. Re-normalize <code class="docutils literal notranslate"><span class="pre">q</span></code> after applying gradient updates, or use a unit-length
+parameterization.</p>
+<p>All arguments must have the same scalar type. For construction in the Python scope, use
+<a class="reference internal" href="../../api_reference/_generated/warp.transform.html#warp.transform" title="warp.transform"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.transform</span></code></a>, <a class="reference internal" href="../../api_reference/_generated/warp.transformh.html#warp.transformh" title="warp.transformh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.transformh</span></code></a>, or <a class="reference internal" href="../../api_reference/_generated/warp.transformd.html#warp.transformd" title="warp.transformd"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.transformd</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>p</strong> – Translation vector in <code class="docutils literal notranslate"><span class="pre">(x,</span> <span class="pre">y,</span> <span class="pre">z)</span></code> order, added after applying the rotation.</p></li>
+<li><p><strong>q</strong> – Rotation quaternion in <code class="docutils literal notranslate"><span class="pre">(x,</span> <span class="pre">y,</span> <span class="pre">z,</span> <span class="pre">w)</span></code> order, applied before the translation. It must
+have unit length.</p></li>
+<li><p><strong>dtype</strong> – Scalar type of the components, inferred from <code class="docutils literal notranslate"><span class="pre">p</span></code> and <code class="docutils literal notranslate"><span class="pre">q</span></code> when omitted.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The transformation, stored as <code class="docutils literal notranslate"><span class="pre">(p.x,</span> <span class="pre">p.y,</span> <span class="pre">p.z,</span> <span class="pre">q.x,</span> <span class="pre">q.y,</span> <span class="pre">q.z,</span> <span class="pre">q.w)</span></code>, which maps <code class="docutils literal notranslate"><span class="pre">x</span></code> to
+<code class="docutils literal notranslate"><span class="pre">quat_rotate(q,</span> <span class="pre">x)</span> <span class="pre">+</span> <span class="pre">p</span></code>.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">make_transforms</span><span class="p">(</span><span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">transform</span><span class="p">]):</span>
+    <span class="n">q</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">quat_from_axis_angle</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span> <span class="n">wp</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">)</span>
+    <span class="n">out</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">transformation</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">),</span> <span class="n">q</span><span class="p">)</span>
+    <span class="n">out</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">transformation</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">))</span>  <span class="c1"># identity rotation</span>
+    <span class="n">out</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">transformation</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>  <span class="c1"># from components</span>
+
+<span class="n">out</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">transform</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">make_transforms</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="mi">3</span><span class="p">))</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[[1.    2.    3.    0.    0.    0.707 0.707]
+ [1.    2.    3.    0.    0.    0.    1.   ]
+ [1.    2.    3.    0.    0.    0.    1.   ]]
+</pre></div>
+</div>
 </dd></dl>
 
 <dl class="py function">
@@ -615,8 +652,22 @@
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Construct a transformation.</p>
-<p>Build a spatial transform vector from components.</p>
+<p>Construct a transformation from component values.</p>
+<p>One scalar fills all seven components. Seven scalars specify <code class="docutils literal notranslate"><span class="pre">(px,</span> <span class="pre">py,</span> <span class="pre">pz,</span> <span class="pre">qx,</span> <span class="pre">qy,</span> <span class="pre">qz,</span> <span class="pre">qw)</span></code>
+and must have the same type. With no arguments, all components are zero, including the
+quaternion; use <a class="reference internal" href="warp.transform_identity.html#warp._src.lang.transform_identity" title="warp._src.lang.transform_identity"><code class="xref py py-func docutils literal notranslate"><span class="pre">transform_identity()</span></code></a> for an identity.</p>
+<p>See the overload that accepts <code class="docutils literal notranslate"><span class="pre">p</span></code> and <code class="docutils literal notranslate"><span class="pre">q</span></code> for an example.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>args</strong> – No arguments, one scalar, or seven scalar components.</p></li>
+<li><p><strong>dtype</strong> – Scalar type of the components, inferred from the arguments when omitted.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The transformation.</p>
+</dd>
+</dl>
 </dd></dl>
 
 </section>

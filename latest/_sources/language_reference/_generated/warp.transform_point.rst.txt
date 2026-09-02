@@ -10,9 +10,45 @@
       * Python
       * Differentiable
 
-   Apply a transform to a point.
+   Return ``point`` transformed by ``xform``, with rotation applied before translation.
    
-   Treat the homogeneous coordinate as w=1 (translation and rotation).
+   ``xform.q`` must have unit length; otherwise the result may distort. Use
+   :func:`~warp.transform_vector` to transform directions.
+   
+   :param xform: Transformation to apply.
+   :param point: Point to transform.
+   
+   :returns: ``quat_rotate(xform.q, point) + xform.p``, equivalent to using homogeneous coordinate
+             ``w = 1``.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def apply(
+           xform: wp.transform,
+           points: wp.array[wp.vec3],
+           out_points: wp.array[wp.vec3],
+           out_vectors: wp.array[wp.vec3],
+       ):
+           i = wp.tid()
+           out_points[i] = wp.transform_point(xform, points[i])
+           out_vectors[i] = wp.transform_vector(xform, points[i])
+   
+       xform = wp.transform(wp.vec3(0.0, 0.0, 5.0), wp.quat_rpy(0.0, 0.0, wp.pi / 2.0))
+       points = wp.array([wp.vec3(1.0, 2.0, 0.0)], dtype=wp.vec3)
+       out_points = wp.empty(1, dtype=wp.vec3)
+       out_vectors = wp.empty(1, dtype=wp.vec3)
+       wp.launch(apply, dim=1, inputs=[xform, points], outputs=[out_points, out_vectors])
+       print(np.round(out_points.numpy(), 3))  # rotated and translated
+       print(np.round(out_vectors.numpy(), 3))  # rotated only
+   
+   .. testoutput::
+   
+       [[-2.  1.  5.]]
+       [[-2.  1.  0.]]
+   
 
 .. function:: warp._src.lang.transform_point(mat: Matrix[Float, Literal[4], Literal[4]], point: Vector[Float, Literal[3]]) -> Vector[Float, Literal[3]]
    :noindex:
@@ -24,12 +60,46 @@
       * Python
       * Differentiable
 
-   Apply a transform to a point.
+   Return ``point`` transformed by the 4x4 matrix ``mat``, using homogeneous coordinate ``w = 1``.
    
-   Treat the homogeneous coordinate as w=1.
+   The fourth component is discarded without a perspective divide. Matrices that use row-vector
+   conventions, such as those from USD, must be transposed. Use :func:`~warp.transform_vector` to
+   transform directions.
    
-   The transformation is applied treating ``point`` as a column vector, e.g.: ``y = mat*point``.
+   :param mat: Transformation matrix, applied to a column vector.
+   :param point: Point to transform.
    
-   This is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = point^T*mat^T``.
-   If the transform is coming from a library that uses row-vectors, then users should transpose the transformation
-   matrix before calling this method.
+   :returns: The first three components of ``mat * (point.x, point.y, point.z, 1)``.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def apply(
+           mat: wp.mat44,
+           points: wp.array[wp.vec3],
+           out_points: wp.array[wp.vec3],
+           out_vectors: wp.array[wp.vec3],
+       ):
+           i = wp.tid()
+           out_points[i] = wp.transform_point(mat, points[i])
+           out_vectors[i] = wp.transform_vector(mat, points[i])
+   
+       # scale by 2 along x and translate by 5 along z
+       mat = wp.mat44(2.0, 0.0, 0.0, 0.0,
+                      0.0, 1.0, 0.0, 0.0,
+                      0.0, 0.0, 1.0, 5.0,
+                      0.0, 0.0, 0.0, 1.0)
+       points = wp.array([wp.vec3(1.0, 2.0, 3.0)], dtype=wp.vec3)
+       out_points = wp.empty(1, dtype=wp.vec3)
+       out_vectors = wp.empty(1, dtype=wp.vec3)
+       wp.launch(apply, dim=1, inputs=[mat, points], outputs=[out_points, out_vectors])
+       print(out_points.numpy())  # translation included
+       print(out_vectors.numpy())  # translation ignored
+   
+   .. testoutput::
+   
+       [[2. 2. 8.]]
+       [[2. 2. 3.]]
+   

@@ -10,4 +10,38 @@
       * Python
       * Differentiable
 
-   Compute the dual cross product of two 6D screw vectors.
+   Return the spatial force cross product of twist ``a`` and wrench ``b``.
+   
+   This is the wrench counterpart of :func:`~warp.spatial_cross`: the second operand and result are
+   both wrenches. "Dual" refers to the wrench-twist dot product, which computes mechanical power.
+   The operation is not antisymmetric, so its operands are not interchangeable. Both arguments
+   must have the same scalar type.
+   
+   :param a: Twist represented as a spatial vector.
+   :param b: Wrench represented as a spatial vector.
+   
+   :returns: The wrench ``(w x n + v x f, w x f)``, where ``a = (w, v)`` and ``b = (n, f)``.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def compute_spatial_cross_dual(
+           twists: wp.array[wp.spatial_vector],
+           wrenches: wp.array[wp.spatial_vector],
+           out: wp.array[wp.spatial_vector],
+       ):
+           i = wp.tid()
+           out[i] = wp.spatial_cross_dual(twists[i], wrenches[i])
+   
+       twists = wp.array([wp.spatial_vector(0.0, 0.0, 1.0, 1.0, 0.0, 0.0)], dtype=wp.spatial_vector)
+       wrenches = wp.array([wp.spatial_vector(0.0, 0.0, 0.0, 0.0, 1.0, 0.0)], dtype=wp.spatial_vector)
+       out = wp.empty(1, dtype=wp.spatial_vector)
+       wp.launch(compute_spatial_cross_dual, dim=1, inputs=[twists, wrenches], outputs=[out])
+       print(out.numpy())
+   
+   .. testoutput::
+   
+       [[ 0.  0.  1. -1.  0.  0.]]
+   

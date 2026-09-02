@@ -10,4 +10,13 @@
       * Python
       * Differentiable
 
-   Extract the rotational part of transform ``xform``.
+   Return the rotation component of ``xform`` (``xform.q``).
+   
+   The quaternion is returned as stored, in ``(x, y, z, w)`` order, without normalization.
+   
+   :param xform: Transformation to read from.
+   
+   :returns: The rotation from components 3 through 6 of ``xform``, as a quaternion of the same scalar
+             type as ``xform``.
+   
+   See :func:`~warp.transform_get_translation` for a usage example.

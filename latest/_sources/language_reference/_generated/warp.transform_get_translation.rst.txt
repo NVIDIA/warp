@@ -10,4 +10,37 @@
       * Python
       * Differentiable
 
-   Extract the translational part of transform ``xform``.
+   Return the translation component of ``xform`` (``xform.p``).
+   
+   :param xform: Transformation to read from.
+   
+   :returns: The translation from components 0 through 2 of ``xform``, as a 3D vector of the same scalar
+             type as ``xform``.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def split(
+           xforms: wp.array[wp.transform],
+           translations: wp.array[wp.vec3],
+           rotations: wp.array[wp.quat],
+       ):
+           i = wp.tid()
+           translations[i] = wp.transform_get_translation(xforms[i])
+           rotations[i] = wp.transform_get_rotation(xforms[i])
+   
+       xform = wp.transform(wp.vec3(1.0, 2.0, 3.0), wp.quat_rpy(0.0, 0.0, wp.pi / 2.0))
+       xforms = wp.array([xform], dtype=wp.transform)
+       translations = wp.empty(1, dtype=wp.vec3)
+       rotations = wp.empty(1, dtype=wp.quat)
+       wp.launch(split, dim=1, inputs=[xforms], outputs=[translations, rotations])
+       print(np.round(translations.numpy(), 3))
+       print(np.round(rotations.numpy(), 3))
+   
+   .. testoutput::
+   
+       [[1. 2. 3.]]
+       [[0.    0.    0.707 0.707]]
+   

@@ -10,9 +10,17 @@
       * Python
       * Differentiable
 
-   Apply a transform to a vector.
+   Return ``vec`` transformed by the rotation of ``xform``, ignoring its translation.
    
-   Treat the homogeneous coordinate as w=0 (rotation only).
+   ``xform.q`` must have unit length; otherwise the result may distort. Use
+   :func:`~warp.transform_point` to transform positions.
+   
+   :param xform: Transformation whose rotation is applied.
+   :param vec: Direction vector to transform, which need not be normalized.
+   
+   :returns: ``quat_rotate(xform.q, vec)``, equivalent to using homogeneous coordinate ``w = 0``.
+   
+   See :func:`~warp.transform_point` for a usage example.
 
 .. function:: warp._src.lang.transform_vector(mat: Matrix[Float, Literal[4], Literal[4]], vec: Vector[Float, Literal[3]]) -> Vector[Float, Literal[3]]
    :noindex:
@@ -24,12 +32,16 @@
       * Python
       * Differentiable
 
-   Apply a transform to a vector.
+   Return ``vec`` transformed by the 4x4 matrix ``mat``, using homogeneous coordinate ``w = 0``.
    
-   Treat the homogeneous coordinate as w=0.
+   Matrices that use row-vector conventions, such as those from USD, must be transposed. When
+   ``mat`` contains non-uniform scale, transform normals using the inverse transpose of its
+   upper-left 3x3 linear component, then normalize the result. Use :func:`~warp.transform_point`
+   to transform positions.
    
-   The transformation is applied treating ``vec`` as a column vector, e.g.: ``y = mat*vec``.
+   :param mat: Transformation matrix, applied to a column vector.
+   :param vec: Direction vector to transform, which need not be normalized.
    
-   This is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = vec^T*mat^T``.
-   If the transform is coming from a library that uses row-vectors, then users should transpose the transformation
-   matrix before calling this method.
+   :returns: The first three components of ``mat * (vec.x, vec.y, vec.z, 0)``, ignoring translation.
+   
+   See :func:`~warp.transform_point` for a usage example.

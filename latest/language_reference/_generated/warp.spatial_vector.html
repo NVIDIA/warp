@@ -580,8 +580,16 @@
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Construct a 6D screw vector.</p>
-<p>Zero-initialize the vector.</p>
+<p>Return a zero 6D spatial vector.</p>
+<p>See the overload that accepts <code class="docutils literal notranslate"><span class="pre">w</span></code> and <code class="docutils literal notranslate"><span class="pre">v</span></code> for an example.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>dtype</strong> – Scalar type of the components. Defaults to <code class="docutils literal notranslate"><span class="pre">float32</span></code>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The zero spatial vector.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -614,8 +622,38 @@
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Construct a 6D screw vector.</p>
-<p>Use two 3D vectors.</p>
+<p>Construct a 6D spatial vector from the two 3D vectors <code class="docutils literal notranslate"><span class="pre">w</span></code> and <code class="docutils literal notranslate"><span class="pre">v</span></code>.</p>
+<p>A spatial vector can represent a twist <code class="docutils literal notranslate"><span class="pre">(angular</span> <span class="pre">velocity,</span> <span class="pre">linear</span> <span class="pre">velocity)</span></code> or a wrench
+<code class="docutils literal notranslate"><span class="pre">(torque,</span> <span class="pre">force)</span></code>. Warp does not distinguish these interpretations at the type level. Both
+vectors must have the same scalar type.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>w</strong> – First 3D part: angular velocity for a twist or torque for a wrench.</p></li>
+<li><p><strong>v</strong> – Last 3D part: linear velocity for a twist or force for a wrench.</p></li>
+<li><p><strong>dtype</strong> – Scalar type of the components, inferred from <code class="docutils literal notranslate"><span class="pre">w</span></code> and <code class="docutils literal notranslate"><span class="pre">v</span></code> when omitted.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The spatial vector <code class="docutils literal notranslate"><span class="pre">(w.x,</span> <span class="pre">w.y,</span> <span class="pre">w.z,</span> <span class="pre">v.x,</span> <span class="pre">v.y,</span> <span class="pre">v.z)</span></code>.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">make_twists</span><span class="p">(</span><span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">spatial_vector</span><span class="p">]):</span>
+    <span class="c1"># spinning about the z axis while moving along x</span>
+    <span class="n">out</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">spatial_vector</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">),</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">))</span>
+    <span class="n">out</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">spatial_vector</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+
+<span class="n">out</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">spatial_vector</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">make_twists</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[[0. 0. 2. 1. 0. 0.]
+ [0. 0. 2. 1. 0. 0.]]
+</pre></div>
+</div>
 </dd></dl>
 
 <dl class="py function">
@@ -652,8 +690,26 @@
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Construct a 6D screw vector.</p>
-<p>Use six scalar values.</p>
+<p>Construct a 6D spatial vector from six scalar components.</p>
+<p>See the overload that accepts <code class="docutils literal notranslate"><span class="pre">w</span></code> and <code class="docutils literal notranslate"><span class="pre">v</span></code> for the twist and wrench interpretations. All
+values must have the same scalar type.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>wx</strong> – First component of the first 3D part.</p></li>
+<li><p><strong>wy</strong> – Second component of the first 3D part.</p></li>
+<li><p><strong>wz</strong> – Third component of the first 3D part.</p></li>
+<li><p><strong>vx</strong> – First component of the last 3D part.</p></li>
+<li><p><strong>vy</strong> – Second component of the last 3D part.</p></li>
+<li><p><strong>vz</strong> – Third component of the last 3D part.</p></li>
+<li><p><strong>dtype</strong> – Scalar type of the components, inferred from the arguments when omitted.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The spatial vector <code class="docutils literal notranslate"><span class="pre">(wx,</span> <span class="pre">wy,</span> <span class="pre">wz,</span> <span class="pre">vx,</span> <span class="pre">vy,</span> <span class="pre">vz)</span></code>.</p>
+</dd>
+</dl>
+<p>See the overload that accepts <code class="docutils literal notranslate"><span class="pre">w</span></code> and <code class="docutils literal notranslate"><span class="pre">v</span></code> for an example.</p>
 </dd></dl>
 
 </section>

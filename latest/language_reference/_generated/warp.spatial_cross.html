@@ -582,7 +582,43 @@
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Compute the cross product of two 6D screw vectors.</p>
+<p>Return the spatial cross product of <code class="docutils literal notranslate"><span class="pre">a</span></code> and <code class="docutils literal notranslate"><span class="pre">b</span></code>, treating both as twists.</p>
+<p>The operation is antisymmetric: <code class="docutils literal notranslate"><span class="pre">spatial_cross(a,</span> <span class="pre">b)</span> <span class="pre">==</span> <span class="pre">-spatial_cross(b,</span> <span class="pre">a)</span></code>. It computes
+velocity-product terms used in spatial-acceleration calculations for moving coordinate frames.
+Use <a class="reference internal" href="warp.spatial_cross_dual.html#warp._src.lang.spatial_cross_dual" title="warp._src.lang.spatial_cross_dual"><code class="xref py py-func docutils literal notranslate"><span class="pre">spatial_cross_dual()</span></code></a> when <code class="docutils literal notranslate"><span class="pre">b</span></code> is a wrench. Both arguments must have the same
+scalar type.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>a</strong> – First spatial vector, interpreted as a twist.</p></li>
+<li><p><strong>b</strong> – Second spatial vector, interpreted as a twist.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The spatial vector <code class="docutils literal notranslate"><span class="pre">(w_a</span> <span class="pre">x</span> <span class="pre">w_b,</span> <span class="pre">v_a</span> <span class="pre">x</span> <span class="pre">w_b</span> <span class="pre">+</span> <span class="pre">w_a</span> <span class="pre">x</span> <span class="pre">v_b)</span></code>, where
+<code class="docutils literal notranslate"><span class="pre">a</span> <span class="pre">=</span> <span class="pre">(w_a,</span> <span class="pre">v_a)</span></code> and <code class="docutils literal notranslate"><span class="pre">b</span> <span class="pre">=</span> <span class="pre">(w_b,</span> <span class="pre">v_b)</span></code>.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_spatial_cross</span><span class="p">(</span>
+    <span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">spatial_vector</span><span class="p">],</span>
+    <span class="n">b</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">spatial_vector</span><span class="p">],</span>
+    <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">spatial_vector</span><span class="p">],</span>
+<span class="p">):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">out</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">spatial_cross</span><span class="p">(</span><span class="n">a</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">b</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+<span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">wp</span><span class="o">.</span><span class="n">spatial_vector</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">spatial_vector</span><span class="p">)</span>
+<span class="n">b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">wp</span><span class="o">.</span><span class="n">spatial_vector</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">spatial_vector</span><span class="p">)</span>
+<span class="n">out</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">spatial_vector</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">compute_spatial_cross</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[[0. 0. 0. 0. 1. 0.]]
+</pre></div>
+</div>
 </dd></dl>
 
 </section>

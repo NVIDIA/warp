@@ -581,7 +581,45 @@
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Construct a 6x6 spatial inertial matrix from two 3x3 diagonal blocks.</p>
+<p>Construct a 6x6 spatial matrix from the two 3x3 blocks <code class="docutils literal notranslate"><span class="pre">r</span></code> and <code class="docutils literal notranslate"><span class="pre">s</span></code>.</p>
+<p>For a rigid transform <code class="docutils literal notranslate"><span class="pre">(R,</span> <span class="pre">p)</span></code>, setting <code class="docutils literal notranslate"><span class="pre">r</span> <span class="pre">=</span> <span class="pre">R</span></code> and <code class="docutils literal notranslate"><span class="pre">s</span> <span class="pre">=</span> <span class="pre">skew(p)</span> <span class="pre">*</span> <span class="pre">R</span></code> constructs the
+matrix that maps twist <code class="docutils literal notranslate"><span class="pre">(w,</span> <span class="pre">v)</span></code> to <code class="docutils literal notranslate"><span class="pre">(R</span> <span class="pre">*</span> <span class="pre">w,</span> <span class="pre">cross(p,</span> <span class="pre">R</span> <span class="pre">*</span> <span class="pre">w)</span> <span class="pre">+</span> <span class="pre">R</span> <span class="pre">*</span> <span class="pre">v)</span></code>. Wrenches transform
+differently from twists; use <a class="reference internal" href="warp.transform_wrench.html#warp._src.lang.transform_wrench" title="warp._src.lang.transform_wrench"><code class="xref py py-func docutils literal notranslate"><span class="pre">transform_wrench()</span></code></a> to transform them.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>r</strong> – Block placed on both diagonals.</p></li>
+<li><p><strong>s</strong> – Block placed in the lower-left corner.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The 6x6 block matrix <code class="docutils literal notranslate"><span class="pre">[[r,</span> <span class="pre">0],</span> <span class="pre">[s,</span> <span class="pre">r]]</span></code>.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">build</span><span class="p">(</span><span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">spatial_matrix</span><span class="p">]):</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">mat33</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span>
+                 <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span>
+                 <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">mat33</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span>
+                 <span class="mf">3.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">,</span>
+                 <span class="o">-</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">out</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">spatial_adjoint</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
+
+<span class="n">out</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">spatial_matrix</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">build</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">numpy</span><span class="p">()[</span><span class="mi">0</span><span class="p">])</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[[ 1.  0.  0.  0.  0.  0.]
+ [ 0.  1.  0.  0.  0.  0.]
+ [ 0.  0.  1.  0.  0.  0.]
+ [ 0. -3.  2.  1.  0.  0.]
+ [ 3.  0. -1.  0.  1.  0.]
+ [-2.  1.  0.  0.  0.  1.]]
+</pre></div>
+</div>
 </dd></dl>
 
 </section>

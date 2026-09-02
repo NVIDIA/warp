@@ -10,4 +10,39 @@
       * Python
       * Differentiable
 
-   Extract the top (first) part of a 6D screw vector.
+   Return the angular velocity or torque stored in ``svec``.
+   
+   See :func:`~warp.spatial_bottom` to access the linear velocity or force stored in components 3
+   through 5.
+   
+   :param svec: Spatial vector to read from.
+   
+   :returns: The angular velocity or torque from components 0 through 2 of ``svec``, as a 3D vector of
+             the same scalar type.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def split(
+           twists: wp.array[wp.spatial_vector],
+           angular: wp.array[wp.vec3],
+           linear: wp.array[wp.vec3],
+       ):
+           i = wp.tid()
+           angular[i] = wp.spatial_top(twists[i])
+           linear[i] = wp.spatial_bottom(twists[i])
+   
+       twists = wp.array([wp.spatial_vector(0.0, 0.0, 2.0, 1.0, 0.0, 0.0)], dtype=wp.spatial_vector)
+       angular = wp.empty(1, dtype=wp.vec3)
+       linear = wp.empty(1, dtype=wp.vec3)
+       wp.launch(split, dim=1, inputs=[twists], outputs=[angular, linear])
+       print(angular.numpy())
+       print(linear.numpy())
+   
+   .. testoutput::
+   
+       [[0. 0. 2.]]
+       [[1. 0. 0.]]
+   

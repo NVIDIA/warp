@@ -582,7 +582,18 @@
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Set the rotational part of a transform <code class="docutils literal notranslate"><span class="pre">xform</span></code>.</p>
+<p>Set the rotational part of the transform <code class="docutils literal notranslate"><span class="pre">xform</span></code> in place, leaving its translation unchanged.</p>
+<p><code class="docutils literal notranslate"><span class="pre">q</span></code> is not normalized. In a kernel, <code class="docutils literal notranslate"><span class="pre">xform.q</span> <span class="pre">=</span> <span class="pre">q</span></code> is equivalent. See
+<a class="reference internal" href="warp.transform_set_translation.html#warp._src.lang.transform_set_translation" title="warp._src.lang.transform_set_translation"><code class="xref py py-func docutils literal notranslate"><span class="pre">transform_set_translation()</span></code></a> for the array-element caveat.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>xform</strong> – Transformation to modify in place.</p></li>
+<li><p><strong>q</strong> – New rotation, expected to be a unit quaternion in <code class="docutils literal notranslate"><span class="pre">(x,</span> <span class="pre">y,</span> <span class="pre">z,</span> <span class="pre">w)</span></code> order.</p></li>
+</ul>
+</dd>
+</dl>
+<p>See <a class="reference internal" href="warp.transform_set_translation.html#warp._src.lang.transform_set_translation" title="warp._src.lang.transform_set_translation"><code class="xref py py-func docutils literal notranslate"><span class="pre">transform_set_translation()</span></code></a> for a usage example.</p>
 </dd></dl>
 
 </section>

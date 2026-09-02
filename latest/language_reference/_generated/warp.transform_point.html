@@ -582,8 +582,46 @@
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Apply a transform to a point.</p>
-<p>Treat the homogeneous coordinate as w=1 (translation and rotation).</p>
+<p>Return <code class="docutils literal notranslate"><span class="pre">point</span></code> transformed by <code class="docutils literal notranslate"><span class="pre">xform</span></code>, with rotation applied before translation.</p>
+<p><code class="docutils literal notranslate"><span class="pre">xform.q</span></code> must have unit length; otherwise the result may distort. Use
+<a class="reference internal" href="warp.transform_vector.html#warp._src.lang.transform_vector" title="warp._src.lang.transform_vector"><code class="xref py py-func docutils literal notranslate"><span class="pre">transform_vector()</span></code></a> to transform directions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>xform</strong> – Transformation to apply.</p></li>
+<li><p><strong>point</strong> – Point to transform.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">quat_rotate(xform.q,</span> <span class="pre">point)</span> <span class="pre">+</span> <span class="pre">xform.p</span></code>, equivalent to using homogeneous coordinate
+<code class="docutils literal notranslate"><span class="pre">w</span> <span class="pre">=</span> <span class="pre">1</span></code>.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span>
+    <span class="n">xform</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">transform</span><span class="p">,</span>
+    <span class="n">points</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span>
+    <span class="n">out_points</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span>
+    <span class="n">out_vectors</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span>
+<span class="p">):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">out_points</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">transform_point</span><span class="p">(</span><span class="n">xform</span><span class="p">,</span> <span class="n">points</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+    <span class="n">out_vectors</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">transform_vector</span><span class="p">(</span><span class="n">xform</span><span class="p">,</span> <span class="n">points</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+<span class="n">xform</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">),</span> <span class="n">wp</span><span class="o">.</span><span class="n">quat_rpy</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">wp</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">))</span>
+<span class="n">points</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">)</span>
+<span class="n">out_points</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">)</span>
+<span class="n">out_vectors</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">apply</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">xform</span><span class="p">,</span> <span class="n">points</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out_points</span><span class="p">,</span> <span class="n">out_vectors</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">out_points</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="mi">3</span><span class="p">))</span>  <span class="c1"># rotated and translated</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">out_vectors</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="mi">3</span><span class="p">))</span>  <span class="c1"># rotated only</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[[-2.  1.  5.]]
+[[-2.  1.  0.]]
+</pre></div>
+</div>
 </dd></dl>
 
 <dl class="py function">
@@ -616,12 +654,50 @@
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Apply a transform to a point.</p>
-<p>Treat the homogeneous coordinate as w=1.</p>
-<p>The transformation is applied treating <code class="docutils literal notranslate"><span class="pre">point</span></code> as a column vector, e.g.: <code class="docutils literal notranslate"><span class="pre">y</span> <span class="pre">=</span> <span class="pre">mat*point</span></code>.</p>
-<p>This is in contrast to some libraries, notably USD, which applies transforms to row vectors, <code class="docutils literal notranslate"><span class="pre">y^T</span> <span class="pre">=</span> <span class="pre">point^T*mat^T</span></code>.
-If the transform is coming from a library that uses row-vectors, then users should transpose the transformation
-matrix before calling this method.</p>
+<p>Return <code class="docutils literal notranslate"><span class="pre">point</span></code> transformed by the 4x4 matrix <code class="docutils literal notranslate"><span class="pre">mat</span></code>, using homogeneous coordinate <code class="docutils literal notranslate"><span class="pre">w</span> <span class="pre">=</span> <span class="pre">1</span></code>.</p>
+<p>The fourth component is discarded without a perspective divide. Matrices that use row-vector
+conventions, such as those from USD, must be transposed. Use <a class="reference internal" href="warp.transform_vector.html#warp._src.lang.transform_vector" title="warp._src.lang.transform_vector"><code class="xref py py-func docutils literal notranslate"><span class="pre">transform_vector()</span></code></a> to
+transform directions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mat</strong> – Transformation matrix, applied to a column vector.</p></li>
+<li><p><strong>point</strong> – Point to transform.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The first three components of <code class="docutils literal notranslate"><span class="pre">mat</span> <span class="pre">*</span> <span class="pre">(point.x,</span> <span class="pre">point.y,</span> <span class="pre">point.z,</span> <span class="pre">1)</span></code>.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span>
+    <span class="n">mat</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">mat44</span><span class="p">,</span>
+    <span class="n">points</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span>
+    <span class="n">out_points</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span>
+    <span class="n">out_vectors</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span>
+<span class="p">):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">out_points</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">transform_point</span><span class="p">(</span><span class="n">mat</span><span class="p">,</span> <span class="n">points</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+    <span class="n">out_vectors</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">transform_vector</span><span class="p">(</span><span class="n">mat</span><span class="p">,</span> <span class="n">points</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+<span class="c1"># scale by 2 along x and translate by 5 along z</span>
+<span class="n">mat</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">mat44</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span>
+               <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span>
+               <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">,</span>
+               <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+<span class="n">points</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">)],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">)</span>
+<span class="n">out_points</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">)</span>
+<span class="n">out_vectors</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">apply</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">mat</span><span class="p">,</span> <span class="n">points</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out_points</span><span class="p">,</span> <span class="n">out_vectors</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">out_points</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>  <span class="c1"># translation included</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">out_vectors</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>  <span class="c1"># translation ignored</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[[2. 2. 8.]]
+[[2. 2. 3.]]
+</pre></div>
+</div>
 </dd></dl>
 
 </section>
