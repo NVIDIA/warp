@@ -15,9 +15,12 @@ import tempfile
 import unittest
 from typing import Any
 
+import numpy as np
+
 import warp as wp
 import warp.tests.unittest_utils
 from warp._src.utils import check_p2p
+from warp.examples.fem.example_elastic_shape_optimization import Example as ElasticShapeOptimizationExample
 from warp.tests.unittest_utils import (
     USD_AVAILABLE,
     add_function_test,
@@ -143,7 +146,16 @@ cuda_devices_with_mempool = get_selected_cuda_test_devices_with_mempool(mode="ba
 
 
 class TestFemExamples(unittest.TestCase):
-    pass
+    def test_elastic_shape_optimization_updates_vertices_cpu(self):
+        with wp.ScopedDevice("cpu"):
+            example = ElasticShapeOptimizationExample(quiet=True, degree=1, resolution=10)
+            positions_before = example._vertex_positions.numpy().copy()
+
+            loss = example.step()
+            positions_after = example._vertex_positions.numpy()
+
+        self.assertTrue(np.isfinite(loss))
+        self.assertGreater(np.max(np.abs(positions_after - positions_before)), 0.0)
 
 
 class TestFemDiffusionExamples(unittest.TestCase):
