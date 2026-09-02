@@ -1994,9 +1994,46 @@ add_builtin(
     dispatch_func=transformation_dispatch_func,
     native_func="transform_t",
     group="Transformations",
-    doc="""Construct a transformation.
+    doc="""Construct a transformation from translation ``p`` and rotation ``q``.
 
-    Use translation ``p`` and rotation ``q``.""",
+    ``q`` is not normalized; transform operations assume it has unit length and may distort
+    otherwise. Autodiff treats the four quaternion components as independent variables and does not
+    enforce unit length. Re-normalize ``q`` after applying gradient updates, or use a unit-length
+    parameterization.
+
+    All arguments must have the same scalar type. For construction in the Python scope, use
+    :class:`warp.transform`, :class:`warp.transformh`, or :class:`warp.transformd`.
+
+    Args:
+        p: Translation vector in ``(x, y, z)`` order, added after applying the rotation.
+        q: Rotation quaternion in ``(x, y, z, w)`` order, applied before the translation. It must
+            have unit length.
+        dtype: Scalar type of the components, inferred from ``p`` and ``q`` when omitted.
+
+    Returns:
+        The transformation, stored as ``(p.x, p.y, p.z, q.x, q.y, q.z, q.w)``, which maps ``x`` to
+        ``quat_rotate(q, x) + p``.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def make_transforms(out: wp.array[wp.transform]):
+                q = wp.quat_from_axis_angle(wp.vec3(0.0, 0.0, 1.0), wp.pi / 2.0)
+                out[0] = wp.transformation(wp.vec3(1.0, 2.0, 3.0), q)
+                out[1] = wp.transformation(wp.vec3(1.0, 2.0, 3.0))  # identity rotation
+                out[2] = wp.transformation(1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 1.0)  # from components
+
+            out = wp.empty(3, dtype=wp.transform)
+            wp.launch(make_transforms, dim=1, outputs=[out])
+            print(np.round(out.numpy(), 3))
+
+        .. testoutput::
+
+            [[1.    2.    3.    0.    0.    0.707 0.707]
+             [1.    2.    3.    0.    0.    0.    1.   ]
+             [1.    2.    3.    0.    0.    0.    1.   ]]""",
     export=False,
 )
 
@@ -2011,9 +2048,20 @@ add_builtin(
     export_func=lambda input_types: {k: v for k, v in input_types.items() if k not in ("dtype")},
     dispatch_func=transformation_dispatch_func,
     native_func="transform_t",
-    doc="""Construct a transformation.
+    doc="""Construct a transformation from component values.
 
-    Build a spatial transform vector from components.""",
+    One scalar fills all seven components. Seven scalars specify ``(px, py, pz, qx, qy, qz, qw)``
+    and must have the same type. With no arguments, all components are zero, including the
+    quaternion; use :func:`~warp.transform_identity` for an identity.
+
+    See the overload that accepts ``p`` and ``q`` for an example.
+
+    Args:
+        args: No arguments, one scalar, or seven scalar components.
+        dtype: Scalar type of the components, inferred from the arguments when omitted.
+
+    Returns:
+        The transformation.""",
     group="Spatial Math",
     export=False,
 )
@@ -2048,7 +2096,34 @@ add_builtin(
     export_func=lambda input_types: {},
     dispatch_func=transform_identity_dispatch_func,
     group="Transformations",
-    doc="Construct an identity transform with zero translation and identity rotation.",
+    doc="""Construct an identity transform with zero translation and identity rotation.
+
+    The result is neutral under composition and leaves points and vectors unchanged. Unlike a
+    zero-argument :func:`~warp.transformation`, it contains a valid rotation quaternion.
+
+    Args:
+        dtype: Scalar type of the components. Defaults to ``float32``.
+
+    Returns:
+        The identity transformation.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def reset(out: wp.array[wp.transform]):
+                i = wp.tid()
+                out[i] = wp.transform_identity()
+
+            out = wp.empty(2, dtype=wp.transform)
+            wp.launch(reset, dim=out.shape, outputs=[out])
+            print(out.numpy())
+
+        .. testoutput::
+
+            [[0. 0. 0. 0. 0. 0. 1.]
+             [0. 0. 0. 0. 0. 0. 1.]]""",
     export=True,
     is_differentiable=False,
 )
@@ -2058,28 +2133,114 @@ add_builtin(
     input_types={"xform": transformation(dtype=Float)},
     value_func=lambda arg_types, arg_values: vector(length=3, dtype=float_infer_type(arg_types)),
     group="Transformations",
-    doc="Extract the translational part of transform ``xform``.",
+    doc="""Return the translation component of ``xform`` (``xform.p``).
+
+    Args:
+        xform: Transformation to read from.
+
+    Returns:
+        The translation from components 0 through 2 of ``xform``, as a 3D vector of the same scalar
+        type as ``xform``.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def split(
+                xforms: wp.array[wp.transform],
+                translations: wp.array[wp.vec3],
+                rotations: wp.array[wp.quat],
+            ):
+                i = wp.tid()
+                translations[i] = wp.transform_get_translation(xforms[i])
+                rotations[i] = wp.transform_get_rotation(xforms[i])
+
+            xform = wp.transform(wp.vec3(1.0, 2.0, 3.0), wp.quat_rpy(0.0, 0.0, wp.pi / 2.0))
+            xforms = wp.array([xform], dtype=wp.transform)
+            translations = wp.empty(1, dtype=wp.vec3)
+            rotations = wp.empty(1, dtype=wp.quat)
+            wp.launch(split, dim=1, inputs=[xforms], outputs=[translations, rotations])
+            print(np.round(translations.numpy(), 3))
+            print(np.round(rotations.numpy(), 3))
+
+        .. testoutput::
+
+            [[1. 2. 3.]]
+            [[0.    0.    0.707 0.707]]""",
 )
 add_builtin(
     "transform_get_rotation",
     input_types={"xform": transformation(dtype=Float)},
     value_func=lambda arg_types, arg_values: quaternion(dtype=float_infer_type(arg_types)),
     group="Transformations",
-    doc="Extract the rotational part of transform ``xform``.",
+    doc="""Return the rotation component of ``xform`` (``xform.q``).
+
+    The quaternion is returned as stored, in ``(x, y, z, w)`` order, without normalization.
+
+    Args:
+        xform: Transformation to read from.
+
+    Returns:
+        The rotation from components 3 through 6 of ``xform``, as a quaternion of the same scalar
+        type as ``xform``.
+
+    See :func:`~warp.transform_get_translation` for a usage example.""",
 )
 add_builtin(
     "transform_set_translation",
     input_types={"xform": transformation(dtype=Float), "p": vector(length=3, dtype=Float)},
     value_type=None,
     group="Transformations",
-    doc="Set the translational part of a transform ``xform``.",
+    doc="""Set the translational part of the transform ``xform`` in place, leaving its rotation unchanged.
+
+    In a kernel, ``xform.p = p`` is equivalent.
+
+    Do not pass an array element directly: ``wp.transform_set_translation(xforms[i], p)`` modifies
+    a discarded copy and contributes no gradients. Use ``xforms[i].p = p``, or load, modify, and
+    store the element.
+
+    Args:
+        xform: Transformation to modify in place.
+        p: New translation.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def offset(xforms: wp.array[wp.transform], out: wp.array[wp.transform]):
+                i = wp.tid()
+                xform = xforms[i]
+                wp.transform_set_translation(xform, wp.vec3(0.0, 0.0, 1.0))
+                wp.transform_set_rotation(xform, wp.quat_identity())
+                out[i] = xform
+
+            xform = wp.transform(wp.vec3(1.0, 2.0, 3.0), wp.quat_rpy(0.0, 0.0, wp.pi / 2.0))
+            xforms = wp.array([xform], dtype=wp.transform)
+            out = wp.empty(1, dtype=wp.transform)
+            wp.launch(offset, dim=1, inputs=[xforms], outputs=[out])
+            print(np.round(out.numpy(), 3))
+
+        .. testoutput::
+
+            [[0. 0. 1. 0. 0. 0. 1.]]""",
 )
 add_builtin(
     "transform_set_rotation",
     input_types={"xform": transformation(dtype=Float), "q": quaternion(dtype=Float)},
     value_type=None,
     group="Transformations",
-    doc="Set the rotational part of a transform ``xform``.",
+    doc="""Set the rotational part of the transform ``xform`` in place, leaving its translation unchanged.
+
+    ``q`` is not normalized. In a kernel, ``xform.q = q`` is equivalent. See
+    :func:`~warp.transform_set_translation` for the array-element caveat.
+
+    Args:
+        xform: Transformation to modify in place.
+        q: New rotation, expected to be a unit quaternion in ``(x, y, z, w)`` order.
+
+    See :func:`~warp.transform_set_translation` for a usage example.""",
 )
 # performs a copy internally if wp.config.enable_vector_component_overwrites is True
 add_builtin(
@@ -2087,7 +2248,23 @@ add_builtin(
     input_types={"xform": transformation(dtype=Float), "p": vector(length=3, dtype=Float)},
     value_type=transformation(dtype=Float),
     group="Transformations",
-    doc="Set the translational part of a transform ``xform``.",
+    doc="""Return a copy of the transform ``xform`` with its translational part set to ``p``.
+
+    Counterpart of :func:`~warp.transform_set_translation` for the copy-on-write lowering selected
+    by ``wp.config.enable_vector_component_overwrites``.
+
+    .. note::
+
+        Currently unusable: the return type is declared generic, so it never resolves to the scalar
+        type of ``xform`` and the result cannot be stored or passed on. No lowering emits this
+        built-in today.
+
+    Args:
+        xform: Transformation to copy.
+        p: New translation of the copy.
+
+    Returns:
+        The modified copy.""",
     hidden=True,
     export=False,
 )
@@ -2097,7 +2274,19 @@ add_builtin(
     input_types={"xform": transformation(dtype=Float), "q": quaternion(dtype=Float)},
     value_type=transformation(dtype=Float),
     group="Transformations",
-    doc="Set the rotational part of a transform ``xform``.",
+    doc="""Return a copy of the transform ``xform`` with its rotational part set to ``q``.
+
+    ``q`` is not normalized. Counterpart of :func:`~warp.transform_set_rotation` for the
+    copy-on-write lowering selected by ``wp.config.enable_vector_component_overwrites``, and subject
+    to the same limitation as :func:`~warp.transform_set_translation_copy`: currently unusable,
+    since its return type never resolves to the scalar type of ``xform``.
+
+    Args:
+        xform: Transformation to copy.
+        q: New rotation of the copy, expected to be a unit quaternion in ``(x, y, z, w)`` order.
+
+    Returns:
+        The modified copy.""",
     hidden=True,
     export=False,
 )
@@ -2106,62 +2295,217 @@ add_builtin(
     input_types={"a": transformation(dtype=Float), "b": transformation(dtype=Float)},
     value_func=lambda arg_types, arg_values: transformation(dtype=float_infer_type(arg_types)),
     group="Transformations",
-    doc="Multiply two rigid body transformations together.",
+    doc="""Return the composition of transformations ``a`` and ``b``, applying ``b`` before ``a``.
+
+    With unit quaternions, the operation is associative but not commutative, and
+    ``transform_point(a * b, x) == transform_point(a, transform_point(b, x))``. Non-unit
+    quaternions may distort and invalidate these identities.
+
+    Args:
+        a: Outer transformation, applied second.
+        b: Inner transformation, applied first.
+
+    Returns:
+        The composed transformation, with translation ``a.p + quat_rotate(a.q, b.p)`` and rotation
+        ``a.q * b.q``.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def compose(
+                a: wp.array[wp.transform], b: wp.array[wp.transform], out: wp.array[wp.transform]
+            ):
+                i = wp.tid()
+                out[i] = wp.transform_multiply(a[i], b[i])
+
+            # a turns a quarter turn about the z axis and shifts along x, b only shifts along x
+            a = wp.array([wp.transform(wp.vec3(1.0, 0.0, 0.0), wp.quat_rpy(0.0, 0.0, wp.pi / 2.0))],
+                         dtype=wp.transform)
+            b = wp.array([wp.transform(wp.vec3(2.0, 0.0, 0.0), wp.quat_identity())], dtype=wp.transform)
+            out = wp.empty(1, dtype=wp.transform)
+            wp.launch(compose, dim=1, inputs=[a, b], outputs=[out])
+            print(np.round(out.numpy(), 3))
+
+        .. testoutput::
+
+            [[1.    2.    0.    0.    0.    0.707 0.707]]""",
 )
 add_builtin(
     "transform_point",
     input_types={"xform": transformation(dtype=Float), "point": vector(length=3, dtype=Float)},
     value_func=lambda arg_types, arg_values: vector(length=3, dtype=float_infer_type(arg_types)),
     group="Transformations",
-    doc="""Apply a transform to a point.
+    doc="""Return ``point`` transformed by ``xform``, with rotation applied before translation.
 
-    Treat the homogeneous coordinate as w=1 (translation and rotation).""",
+    ``xform.q`` must have unit length; otherwise the result may distort. Use
+    :func:`~warp.transform_vector` to transform directions.
+
+    Args:
+        xform: Transformation to apply.
+        point: Point to transform.
+
+    Returns:
+        ``quat_rotate(xform.q, point) + xform.p``, equivalent to using homogeneous coordinate
+        ``w = 1``.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def apply(
+                xform: wp.transform,
+                points: wp.array[wp.vec3],
+                out_points: wp.array[wp.vec3],
+                out_vectors: wp.array[wp.vec3],
+            ):
+                i = wp.tid()
+                out_points[i] = wp.transform_point(xform, points[i])
+                out_vectors[i] = wp.transform_vector(xform, points[i])
+
+            xform = wp.transform(wp.vec3(0.0, 0.0, 5.0), wp.quat_rpy(0.0, 0.0, wp.pi / 2.0))
+            points = wp.array([wp.vec3(1.0, 2.0, 0.0)], dtype=wp.vec3)
+            out_points = wp.empty(1, dtype=wp.vec3)
+            out_vectors = wp.empty(1, dtype=wp.vec3)
+            wp.launch(apply, dim=1, inputs=[xform, points], outputs=[out_points, out_vectors])
+            print(np.round(out_points.numpy(), 3))  # rotated and translated
+            print(np.round(out_vectors.numpy(), 3))  # rotated only
+
+        .. testoutput::
+
+            [[-2.  1.  5.]]
+            [[-2.  1.  0.]]""",
 )
 add_builtin(
     "transform_point",
     input_types={"mat": matrix(shape=(4, 4), dtype=Float), "point": vector(length=3, dtype=Float)},
     value_func=lambda arg_types, arg_values: vector(length=3, dtype=float_infer_type(arg_types)),
     group="Vector Math",
-    doc="""Apply a transform to a point.
+    doc="""Return ``point`` transformed by the 4x4 matrix ``mat``, using homogeneous coordinate ``w = 1``.
 
-    Treat the homogeneous coordinate as w=1.
+    The fourth component is discarded without a perspective divide. Matrices that use row-vector
+    conventions, such as those from USD, must be transposed. Use :func:`~warp.transform_vector` to
+    transform directions.
 
-    The transformation is applied treating ``point`` as a column vector, e.g.: ``y = mat*point``.
+    Args:
+        mat: Transformation matrix, applied to a column vector.
+        point: Point to transform.
 
-    This is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = point^T*mat^T``.
-    If the transform is coming from a library that uses row-vectors, then users should transpose the transformation
-    matrix before calling this method.""",
+    Returns:
+        The first three components of ``mat * (point.x, point.y, point.z, 1)``.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def apply(
+                mat: wp.mat44,
+                points: wp.array[wp.vec3],
+                out_points: wp.array[wp.vec3],
+                out_vectors: wp.array[wp.vec3],
+            ):
+                i = wp.tid()
+                out_points[i] = wp.transform_point(mat, points[i])
+                out_vectors[i] = wp.transform_vector(mat, points[i])
+
+            # scale by 2 along x and translate by 5 along z
+            mat = wp.mat44(2.0, 0.0, 0.0, 0.0,
+                           0.0, 1.0, 0.0, 0.0,
+                           0.0, 0.0, 1.0, 5.0,
+                           0.0, 0.0, 0.0, 1.0)
+            points = wp.array([wp.vec3(1.0, 2.0, 3.0)], dtype=wp.vec3)
+            out_points = wp.empty(1, dtype=wp.vec3)
+            out_vectors = wp.empty(1, dtype=wp.vec3)
+            wp.launch(apply, dim=1, inputs=[mat, points], outputs=[out_points, out_vectors])
+            print(out_points.numpy())  # translation included
+            print(out_vectors.numpy())  # translation ignored
+
+        .. testoutput::
+
+            [[2. 2. 8.]]
+            [[2. 2. 3.]]""",
 )
 add_builtin(
     "transform_vector",
     input_types={"xform": transformation(dtype=Float), "vec": vector(length=3, dtype=Float)},
     value_func=lambda arg_types, arg_values: vector(length=3, dtype=float_infer_type(arg_types)),
     group="Transformations",
-    doc="""Apply a transform to a vector.
+    doc="""Return ``vec`` transformed by the rotation of ``xform``, ignoring its translation.
 
-    Treat the homogeneous coordinate as w=0 (rotation only).""",
+    ``xform.q`` must have unit length; otherwise the result may distort. Use
+    :func:`~warp.transform_point` to transform positions.
+
+    Args:
+        xform: Transformation whose rotation is applied.
+        vec: Direction vector to transform, which need not be normalized.
+
+    Returns:
+        ``quat_rotate(xform.q, vec)``, equivalent to using homogeneous coordinate ``w = 0``.
+
+    See :func:`~warp.transform_point` for a usage example.""",
 )
 add_builtin(
     "transform_vector",
     input_types={"mat": matrix(shape=(4, 4), dtype=Float), "vec": vector(length=3, dtype=Float)},
     value_func=lambda arg_types, arg_values: vector(length=3, dtype=float_infer_type(arg_types)),
     group="Vector Math",
-    doc="""Apply a transform to a vector.
+    doc="""Return ``vec`` transformed by the 4x4 matrix ``mat``, using homogeneous coordinate ``w = 0``.
 
-    Treat the homogeneous coordinate as w=0.
+    Matrices that use row-vector conventions, such as those from USD, must be transposed. When
+    ``mat`` contains non-uniform scale, transform normals using the inverse transpose of its
+    upper-left 3x3 linear component, then normalize the result. Use :func:`~warp.transform_point`
+    to transform positions.
 
-    The transformation is applied treating ``vec`` as a column vector, e.g.: ``y = mat*vec``.
+    Args:
+        mat: Transformation matrix, applied to a column vector.
+        vec: Direction vector to transform, which need not be normalized.
 
-    This is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = vec^T*mat^T``.
-    If the transform is coming from a library that uses row-vectors, then users should transpose the transformation
-    matrix before calling this method.""",
+    Returns:
+        The first three components of ``mat * (vec.x, vec.y, vec.z, 0)``, ignoring translation.
+
+    See :func:`~warp.transform_point` for a usage example.""",
 )
 add_builtin(
     "transform_inverse",
     input_types={"xform": transformation(dtype=Float)},
     value_func=sametypes_create_value_func(transformation(dtype=Float)),
     group="Transformations",
-    doc="Compute the inverse of the transformation ``xform``.",
+    doc="""Return the inverse of ``xform``.
+
+    The inverse maps points transformed by ``xform`` back to their original coordinate frame.
+    Because :func:`~warp.quat_inverse` returns the conjugate, ``xform.q`` must have unit length;
+    normalize it first if needed.
+
+    Args:
+        xform: Transformation to invert. Its rotation quaternion must have unit length.
+
+    Returns:
+        The inverse transformation, with rotation ``quat_inverse(xform.q)`` and translation
+        ``-quat_rotate(quat_inverse(xform.q), xform.p)``.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def to_local(
+                xform: wp.transform, points: wp.array[wp.vec3], out: wp.array[wp.vec3]
+            ):
+                i = wp.tid()
+                out[i] = wp.transform_point(wp.transform_inverse(xform), points[i])
+
+            xform = wp.transform(wp.vec3(0.0, 0.0, 5.0), wp.quat_rpy(0.0, 0.0, wp.pi / 2.0))
+            points = wp.array([wp.vec3(-2.0, 1.0, 8.0)], dtype=wp.vec3)
+            out = wp.empty(1, dtype=wp.vec3)
+            wp.launch(to_local, dim=1, inputs=[xform, points], outputs=[out])
+            print(np.round(out.numpy(), 3))
+
+        .. testoutput::
+
+            [[1. 2. 3.]]""",
 )
 # ---------------------------------
 # Spatial Math
@@ -2224,9 +2568,15 @@ add_builtin(
     dispatch_func=spatial_vector_dispatch_func,
     native_func="vec_t",
     group="Spatial Math",
-    doc="""Construct a 6D screw vector.
+    doc="""Return a zero 6D spatial vector.
 
-    Zero-initialize the vector.""",
+    See the overload that accepts ``w`` and ``v`` for an example.
+
+    Args:
+        dtype: Scalar type of the components. Defaults to ``float32``.
+
+    Returns:
+        The zero spatial vector.""",
     export=False,
 )
 
@@ -2240,9 +2590,38 @@ add_builtin(
     dispatch_func=spatial_vector_dispatch_func,
     native_func="vec_t",
     group="Spatial Math",
-    doc="""Construct a 6D screw vector.
+    doc="""Construct a 6D spatial vector from the two 3D vectors ``w`` and ``v``.
 
-    Use two 3D vectors.""",
+    A spatial vector can represent a twist ``(angular velocity, linear velocity)`` or a wrench
+    ``(torque, force)``. Warp does not distinguish these interpretations at the type level. Both
+    vectors must have the same scalar type.
+
+    Args:
+        w: First 3D part: angular velocity for a twist or torque for a wrench.
+        v: Last 3D part: linear velocity for a twist or force for a wrench.
+        dtype: Scalar type of the components, inferred from ``w`` and ``v`` when omitted.
+
+    Returns:
+        The spatial vector ``(w.x, w.y, w.z, v.x, v.y, v.z)``.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def make_twists(out: wp.array[wp.spatial_vector]):
+                # spinning about the z axis while moving along x
+                out[0] = wp.spatial_vector(wp.vec3(0.0, 0.0, 2.0), wp.vec3(1.0, 0.0, 0.0))
+                out[1] = wp.spatial_vector(0.0, 0.0, 2.0, 1.0, 0.0, 0.0)
+
+            out = wp.empty(2, dtype=wp.spatial_vector)
+            wp.launch(make_twists, dim=1, outputs=[out])
+            print(out.numpy())
+
+        .. testoutput::
+
+            [[0. 0. 2. 1. 0. 0.]
+             [0. 0. 2. 1. 0. 0.]]""",
     export=False,
 )
 
@@ -2256,9 +2635,24 @@ add_builtin(
     dispatch_func=spatial_vector_dispatch_func,
     native_func="vec_t",
     group="Spatial Math",
-    doc="""Construct a 6D screw vector.
+    doc="""Construct a 6D spatial vector from six scalar components.
 
-    Use six scalar values.""",
+    See the overload that accepts ``w`` and ``v`` for the twist and wrench interpretations. All
+    values must have the same scalar type.
+
+    Args:
+        wx: First component of the first 3D part.
+        wy: Second component of the first 3D part.
+        wz: Third component of the first 3D part.
+        vx: First component of the last 3D part.
+        vy: Second component of the last 3D part.
+        vz: Third component of the last 3D part.
+        dtype: Scalar type of the components, inferred from the arguments when omitted.
+
+    Returns:
+        The spatial vector ``(wx, wy, wz, vx, vy, vz)``.
+
+    See the overload that accepts ``w`` and ``v`` for an example.""",
     export=False,
 )
 
@@ -2268,7 +2662,45 @@ add_builtin(
     input_types={"r": matrix(shape=(3, 3), dtype=Float), "s": matrix(shape=(3, 3), dtype=Float)},
     value_func=lambda arg_types, arg_values: matrix(shape=(6, 6), dtype=float_infer_type(arg_types)),
     group="Spatial Math",
-    doc="Construct a 6x6 spatial inertial matrix from two 3x3 diagonal blocks.",
+    doc="""Construct a 6x6 spatial matrix from the two 3x3 blocks ``r`` and ``s``.
+
+    For a rigid transform ``(R, p)``, setting ``r = R`` and ``s = skew(p) * R`` constructs the
+    matrix that maps twist ``(w, v)`` to ``(R * w, cross(p, R * w) + R * v)``. Wrenches transform
+    differently from twists; use :func:`~warp.transform_wrench` to transform them.
+
+    Args:
+        r: Block placed on both diagonals.
+        s: Block placed in the lower-left corner.
+
+    Returns:
+        The 6x6 block matrix ``[[r, 0], [s, r]]``.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def build(out: wp.array[wp.spatial_matrix]):
+                r = wp.mat33(1.0, 0.0, 0.0,
+                             0.0, 1.0, 0.0,
+                             0.0, 0.0, 1.0)
+                s = wp.mat33(0.0, -3.0, 2.0,
+                             3.0, 0.0, -1.0,
+                             -2.0, 1.0, 0.0)
+                out[0] = wp.spatial_adjoint(r, s)
+
+            out = wp.empty(1, dtype=wp.spatial_matrix)
+            wp.launch(build, dim=1, outputs=[out])
+            print(out.numpy()[0])
+
+        .. testoutput::
+
+            [[ 1.  0.  0.  0.  0.  0.]
+             [ 0.  1.  0.  0.  0.  0.]
+             [ 0.  0.  1.  0.  0.  0.]
+             [ 0. -3.  2.  1.  0.  0.]
+             [ 3.  0. -1.  0.  1.  0.]
+             [-2.  1.  0.  0.  0.  1.]]""",
     export=False,
 )
 add_builtin(
@@ -2276,21 +2708,126 @@ add_builtin(
     input_types={"a": vector(length=6, dtype=Float), "b": vector(length=6, dtype=Float)},
     value_func=float_sametypes_value_func,
     group="Spatial Math",
-    doc="Compute the dot product of two 6D screw vectors.",
+    doc="""Return the dot product of two 6D spatial vectors.
+
+    A wrench dotted with a twist gives instantaneous power. Both arguments must have the same
+    scalar type.
+
+    Args:
+        a: First spatial vector.
+        b: Second spatial vector.
+
+    Returns:
+        The dot product, as a scalar of the same type as the arguments.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def compute_power(
+                twists: wp.array[wp.spatial_vector],
+                wrenches: wp.array[wp.spatial_vector],
+                out: wp.array[float],
+            ):
+                i = wp.tid()
+                out[i] = wp.spatial_dot(wrenches[i], twists[i])
+
+            # spinning at 2 rad/s about z under a torque of 3 N.m about z
+            twists = wp.array([wp.spatial_vector(0.0, 0.0, 2.0, 1.0, 0.0, 0.0)], dtype=wp.spatial_vector)
+            wrenches = wp.array([wp.spatial_vector(0.0, 0.0, 3.0, 0.0, 0.0, 0.0)], dtype=wp.spatial_vector)
+            out = wp.empty(1, dtype=float)
+            wp.launch(compute_power, dim=1, inputs=[twists, wrenches], outputs=[out])
+            print(out.numpy())
+
+        .. testoutput::
+
+            [6.]""",
 )
 add_builtin(
     "spatial_cross",
     input_types={"a": vector(length=6, dtype=Float), "b": vector(length=6, dtype=Float)},
     value_func=sametypes_create_value_func(vector(length=6, dtype=Float)),
     group="Spatial Math",
-    doc="Compute the cross product of two 6D screw vectors.",
+    doc="""Return the spatial cross product of ``a`` and ``b``, treating both as twists.
+
+    The operation is antisymmetric: ``spatial_cross(a, b) == -spatial_cross(b, a)``. It computes
+    velocity-product terms used in spatial-acceleration calculations for moving coordinate frames.
+    Use :func:`~warp.spatial_cross_dual` when ``b`` is a wrench. Both arguments must have the same
+    scalar type.
+
+    Args:
+        a: First spatial vector, interpreted as a twist.
+        b: Second spatial vector, interpreted as a twist.
+
+    Returns:
+        The spatial vector ``(w_a x w_b, v_a x w_b + w_a x v_b)``, where
+        ``a = (w_a, v_a)`` and ``b = (w_b, v_b)``.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def compute_spatial_cross(
+                a: wp.array[wp.spatial_vector],
+                b: wp.array[wp.spatial_vector],
+                out: wp.array[wp.spatial_vector],
+            ):
+                i = wp.tid()
+                out[i] = wp.spatial_cross(a[i], b[i])
+
+            a = wp.array([wp.spatial_vector(0.0, 0.0, 1.0, 0.0, 0.0, 0.0)], dtype=wp.spatial_vector)
+            b = wp.array([wp.spatial_vector(0.0, 0.0, 0.0, 1.0, 0.0, 0.0)], dtype=wp.spatial_vector)
+            out = wp.empty(1, dtype=wp.spatial_vector)
+            wp.launch(compute_spatial_cross, dim=1, inputs=[a, b], outputs=[out])
+            print(out.numpy())
+
+        .. testoutput::
+
+            [[0. 0. 0. 0. 1. 0.]]""",
 )
 add_builtin(
     "spatial_cross_dual",
     input_types={"a": vector(length=6, dtype=Float), "b": vector(length=6, dtype=Float)},
     value_func=sametypes_create_value_func(vector(length=6, dtype=Float)),
     group="Spatial Math",
-    doc="Compute the dual cross product of two 6D screw vectors.",
+    doc="""Return the spatial force cross product of twist ``a`` and wrench ``b``.
+
+    This is the wrench counterpart of :func:`~warp.spatial_cross`: the second operand and result are
+    both wrenches. "Dual" refers to the wrench-twist dot product, which computes mechanical power.
+    The operation is not antisymmetric, so its operands are not interchangeable. Both arguments
+    must have the same scalar type.
+
+    Args:
+        a: Twist represented as a spatial vector.
+        b: Wrench represented as a spatial vector.
+
+    Returns:
+        The wrench ``(w x n + v x f, w x f)``, where ``a = (w, v)`` and ``b = (n, f)``.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def compute_spatial_cross_dual(
+                twists: wp.array[wp.spatial_vector],
+                wrenches: wp.array[wp.spatial_vector],
+                out: wp.array[wp.spatial_vector],
+            ):
+                i = wp.tid()
+                out[i] = wp.spatial_cross_dual(twists[i], wrenches[i])
+
+            twists = wp.array([wp.spatial_vector(0.0, 0.0, 1.0, 1.0, 0.0, 0.0)], dtype=wp.spatial_vector)
+            wrenches = wp.array([wp.spatial_vector(0.0, 0.0, 0.0, 0.0, 1.0, 0.0)], dtype=wp.spatial_vector)
+            out = wp.empty(1, dtype=wp.spatial_vector)
+            wp.launch(compute_spatial_cross_dual, dim=1, inputs=[twists, wrenches], outputs=[out])
+            print(out.numpy())
+
+        .. testoutput::
+
+            [[ 0.  0.  1. -1.  0.  0.]]""",
 )
 
 add_builtin(
@@ -2302,7 +2839,43 @@ add_builtin(
         else vector(length=3, dtype=arg_types["svec"]._wp_scalar_type_)
     ),
     group="Spatial Math",
-    doc="Extract the top (first) part of a 6D screw vector.",
+    doc="""Return the angular velocity or torque stored in ``svec``.
+
+    See :func:`~warp.spatial_bottom` to access the linear velocity or force stored in components 3
+    through 5.
+
+    Args:
+        svec: Spatial vector to read from.
+
+    Returns:
+        The angular velocity or torque from components 0 through 2 of ``svec``, as a 3D vector of
+        the same scalar type.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def split(
+                twists: wp.array[wp.spatial_vector],
+                angular: wp.array[wp.vec3],
+                linear: wp.array[wp.vec3],
+            ):
+                i = wp.tid()
+                angular[i] = wp.spatial_top(twists[i])
+                linear[i] = wp.spatial_bottom(twists[i])
+
+            twists = wp.array([wp.spatial_vector(0.0, 0.0, 2.0, 1.0, 0.0, 0.0)], dtype=wp.spatial_vector)
+            angular = wp.empty(1, dtype=wp.vec3)
+            linear = wp.empty(1, dtype=wp.vec3)
+            wp.launch(split, dim=1, inputs=[twists], outputs=[angular, linear])
+            print(angular.numpy())
+            print(linear.numpy())
+
+        .. testoutput::
+
+            [[0. 0. 2.]]
+            [[1. 0. 0.]]""",
 )
 add_builtin(
     "spatial_bottom",
@@ -2313,7 +2886,18 @@ add_builtin(
         else vector(length=3, dtype=arg_types["svec"]._wp_scalar_type_)
     ),
     group="Spatial Math",
-    doc="Extract the bottom (second) part of a 6D screw vector.",
+    doc="""Return the linear velocity or force stored in ``svec``.
+
+    See :func:`~warp.spatial_top` to access the angular velocity or torque stored in components 0
+    through 2.
+
+    Args:
+        svec: Spatial vector to read from.
+
+    Returns:
+        Components 3 through 5 of ``svec``, as a 3D vector of the same scalar type.
+
+    See :func:`~warp.spatial_top` for a usage example.""",
 )
 
 # ------------------
