@@ -631,6 +631,7 @@ def build_dll_for_arch(
 
         nvcc_opts = [
             *gencode_opts,
+            "-DWP_BUILD_DLL",
             "-t0",  # multithreaded compilation
             "--extended-lambda",
             "-diag-suppress=221",  # suppress "floating-point value does not fit" warning from INFINITY macro in CUDA headers
@@ -644,6 +645,7 @@ def build_dll_for_arch(
         clang_opts = [
             *clang_arch_flags,
             "-std=c++17",
+            "-DWP_BUILD_DLL",
             "-xcuda",
             f'--cuda-path="{cuda_home}"',
             "-D_GLIBCXX_USE_CXX11_ABI=0",
@@ -700,7 +702,7 @@ def build_dll_for_arch(
             iter_dbg = "_ITERATOR_DEBUG_LEVEL=2"
             debug = "_DEBUG"
 
-        cpp_flags = f'/nologo /std:c++17 /GR- /EHsc {runtime} /D "{debug}" /D "{cuda_enabled}" /D "{mathdx_enabled}" /D "{cuda_compat_enabled}" /D "{iter_dbg}" /I"{native_dir}" {includes} '
+        cpp_flags = f'/nologo /std:c++17 /GR- /EHsc {runtime} /D "WP_BUILD_DLL" /D "{debug}" /D "{cuda_enabled}" /D "{mathdx_enabled}" /D "{cuda_compat_enabled}" /D "{iter_dbg}" /I"{native_dir}" {includes} '
 
         if args.mode == "debug":
             cpp_flags += "/FS /Zi /Od /D WP_ENABLE_DEBUG=1"
@@ -801,7 +803,8 @@ def build_dll_for_arch(
                 print(f"build took {elapsed:.2f} ms ({args.jobs:d} workers)")
 
         with ScopedTimer("link", active=args.verbose):
-            link_cmd = f'"{host_linker}" {" ".join(linkopts + libs)} /out:"{dll_path}"'
+            implib_path = os.path.splitext(dll_path)[0] + ".lib"
+            link_cmd = f'"{host_linker}" {" ".join(linkopts + libs)} /out:"{dll_path}" /IMPLIB:"{implib_path}"'
             run_cmd(link_cmd)
 
     else:
@@ -826,7 +829,7 @@ def build_dll_for_arch(
             else:
                 version = ""
 
-        cpp_flags = f'-Werror -Wuninitialized {version} --std=c++17 -fno-rtti -D{cuda_enabled} -D{mathdx_enabled} -D{cuda_compat_enabled} -fPIC -fvisibility=hidden -fvisibility-inlines-hidden -D_GLIBCXX_USE_CXX11_ABI=0 -I"{native_dir}" {includes} '
+        cpp_flags = f'-Werror -Wuninitialized {version} --std=c++17 -fno-rtti -DWP_BUILD_DLL -D{cuda_enabled} -D{mathdx_enabled} -D{cuda_compat_enabled} -fPIC -fvisibility=hidden -fvisibility-inlines-hidden -D_GLIBCXX_USE_CXX11_ABI=0 -I"{native_dir}" {includes} '
 
         if mode == "debug":
             cpp_flags += "-Og -g -D_DEBUG -DWP_ENABLE_DEBUG=1"

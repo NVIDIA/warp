@@ -2214,6 +2214,9 @@ declared in `warp/native/apic.h <https://github.com/NVIDIA/warp/blob/main/warp/n
     // Release the loaded graph and its associated allocations.
     void wp_apic_destroy_graph(APICGraph* graph);
 
+For native library headers, build-system setup, platform-specific linking,
+deployment, and version compatibility, see :ref:`native_library_linking`.
+
 Two reference C++ examples ship with Warp under ``warp/examples/cpp/``. Both
 implement the same interactive 2-D wave simulation visualized with GLFW/OpenGL,
 and both take their captured ``.wrp`` file from a Python ``capture_wave.py``

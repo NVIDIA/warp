@@ -45,6 +45,10 @@ This example runs from within the Warp repository.
 - **Build System**: GNU Make (Unix/Linux) or CMake 3.20+ (cross-platform)
 - **Note**: macOS is **not supported** (CUDA not available on macOS)
 
+On Windows, keep `warp.dll` and `warp.lib` from the same Warp build together in
+`warp/bin`. CMake links the import library and copies the DLL beside the example
+executable.
+
 **Setup:**
 
 Clone and build Warp:
@@ -144,6 +148,12 @@ The C++ program loads the saved APIC representation, reconstructs a CUDA graph, 
 #include "aot.h"   // Warp AOT utilities
 #include "warp.h"  // Warp C API
 #include "apic.h"  // APIC graph loading and execution
+#include "version.h"
+
+// Reject a native library from a different Warp release.
+if (wp_init(WP_VERSION_STRING) != 0) {
+    return 1;
+}
 
 // Load the saved APIC representation
 APICGraph* graph = wp_apic_load_graph(context, "generated/wave_sim", 0);  // 0 = CUDA

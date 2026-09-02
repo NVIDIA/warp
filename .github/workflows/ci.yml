@@ -128,13 +128,175 @@ jobs:
         env:
           WARP_CACHE_PATH: ${{ runner.temp }}/warp-cache-${{ matrix.artifact-name }}
         run: uv run build_lib.py ${{ matrix.build-args }}
-      
+
       - name: Upload build artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: ${{ matrix.artifact-name }}
           path: warp/bin/
           retention-days: ${{ github.repository == 'NVIDIA/warp' && 7 || 1 }}
+
+  build-windows-wheels:
+    if: github.event_name != 'schedule' || github.repository == 'NVIDIA/warp'
+    name: build-windows-wheel (${{ matrix.platform }})
+    needs: build-warp
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    env:
+      UV_PYTHON: ${{ matrix.python_request || '3.12' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2022
+            platform: windows-x86_64-cuda12
+            build_artifact_name: build-artifact-windows-cuda12
+            wheel_artifact_name: wheel-artifact-windows-x86_64-cuda12
+            wheel_platform: windows-x86_64
+            wheel_tag: win_amd64
+          - os: windows-2022
+            platform: windows-x86_64-cuda13
+            build_artifact_name: build-artifact-windows-cuda13
+            wheel_artifact_name: wheel-artifact-windows-x86_64-cuda13
+            wheel_platform: windows-x86_64
+            wheel_tag: win_amd64
+          - os: windows-11-arm
+            platform: windows-aarch64-cpu
+            python_request: cpython-3.12-windows-aarch64-none
+            build_artifact_name: build-artifact-windows-aarch64-cpu
+            wheel_artifact_name: wheel-artifact-windows-aarch64-cpu
+            wheel_platform: windows-aarch64
+            wheel_tag: win_arm64
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+          lfs: true
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
+        with:
+          version: "0.12.7"
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Download Warp build artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          name: ${{ matrix.build_artifact_name }}
+          path: warp/bin/
+
+      - name: Build Windows wheel
+        shell: pwsh
+        run: |
+          uv build --wheel --out-dir _build/wheel -C--build-option=-P${{ matrix.wheel_platform }}
+          $wheels = @(Get-ChildItem -Path _build/wheel -Filter *.whl)
+          if ($wheels.Count -ne 1) {
+            throw "Expected one wheel, found $($wheels.Count)"
+          }
+          $expectedSuffix = "-${{ matrix.wheel_tag }}.whl"
+          if (-not $wheels[0].Name.EndsWith($expectedSuffix)) {
+            throw "Expected wheel tag ${{ matrix.wheel_tag }}, found $($wheels[0].Name)"
+          }
+
+      - name: Upload Windows wheel
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: ${{ matrix.wheel_artifact_name }}
+          path: _build/wheel/*.whl
+          if-no-files-found: error
+          retention-days: ${{ github.repository == 'NVIDIA/warp' && 7 || 1 }}
+
+  test-windows-import-libraries:
+    if: github.event_name != 'schedule' || github.repository == 'NVIDIA/warp'
+    name: test-windows-import-libraries (${{ matrix.platform }})
+    needs: build-windows-wheels
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    env:
+      UV_PYTHON: ${{ matrix.python_request || '3.12' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2022
+            platform: windows-x86_64-cuda12
+            wheel_artifact_name: wheel-artifact-windows-x86_64-cuda12
+            python_machine: amd64
+          - os: windows-2022
+            platform: windows-x86_64-cuda13
+            wheel_artifact_name: wheel-artifact-windows-x86_64-cuda13
+            python_machine: amd64
+          - os: windows-11-arm
+            platform: windows-aarch64-cpu
+            python_request: cpython-3.12-windows-aarch64-none
+            wheel_artifact_name: wheel-artifact-windows-aarch64-cpu
+            python_machine: arm64
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
+        with:
+          version: "0.12.7"
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Download Windows wheel
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          name: ${{ matrix.wheel_artifact_name }}
+          path: _build/wheel/
+
+      - name: Install Windows wheel
+        shell: pwsh
+        run: |
+          $wheels = @(Get-ChildItem -Path _build/wheel -Filter *.whl)
+          if ($wheels.Count -ne 1) {
+            throw "Expected one wheel, found $($wheels.Count)"
+          }
+          $wheelPath = $wheels[0].FullName
+          uv pip install --target _build/wheel-install $wheelPath
+
+      - name: Test installed Windows wheel
+        env:
+          WARP_CACHE_PATH: ${{ runner.temp }}/warp-cache-${{ matrix.platform }}-wheel
+        working-directory: _build/wheel-install
+        shell: pwsh
+        run: |
+          @'
+          import platform
+
+          import warp as wp
+
+          wp.init()
+          info = wp.print_diagnostics()
+          assert info["warp_python"] == info["warp_native"], info
+          assert info["warp_clang"].split()[0] == info["warp_python"], info
+          machine = platform.machine().lower()
+          assert machine == "${{ matrix.python_machine }}", machine
+          '@ | uv run --no-project python -
+
+      - name: Test Windows import libraries
+        shell: pwsh
+        run: |
+          cmake `
+            -S tools/ci/windows_import_library_smoke `
+            -B _build/windows-import-library-smoke `
+            -DWARP_PACKAGE_ROOT:PATH="$env:GITHUB_WORKSPACE/_build/wheel-install/warp"
+          cmake --build _build/windows-import-library-smoke --config Release
+          ctest `
+            --test-dir _build/windows-import-library-smoke `
+            --build-config Release `
+            --output-on-failure
       
   build-warp-python-free-threaded:
     if: github.event_name != 'schedule' || github.repository == 'NVIDIA/warp'

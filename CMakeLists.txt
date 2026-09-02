@@ -274,6 +274,7 @@ endif()
 # builds that need the full CUDA compatibility policy.
 set(WARP_ENABLE_CUDA_COMPATIBILITY_VALUE 0)
 
+target_compile_definitions(warp PRIVATE WP_BUILD_DLL)
 target_compile_definitions(
     warp
     PRIVATE
@@ -392,6 +393,7 @@ if(WARP_BUILD_CLANG)
         warp-clang
         PRIVATE "$<$<AND:$<PLATFORM_ID:Linux>,$<COMPILE_LANG_AND_ID:CXX,GNU>>:-fabi-version=13>"
     )
+    target_compile_definitions(warp-clang PRIVATE WP_BUILD_DLL)
     target_compile_definitions(
         warp-clang
         PRIVATE

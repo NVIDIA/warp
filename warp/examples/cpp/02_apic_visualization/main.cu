@@ -44,6 +44,7 @@
 #include "aot.h"  // Warp AOT utilities (includes CUDA)
 #include "warp.h" // Warp C API
 #include "apic.h" // APIC graph loading and execution
+#include "version.h"  // WP_VERSION_STRING
 
 #include <cmath>
 #include <cstdio>
@@ -299,7 +300,10 @@ int main(int argc, char** argv)
 
     // Initialize Warp runtime (wp_init returns 0 on success)
     printf("Initializing Warp runtime...\n");
-    wp_init(nullptr);
+    if (wp_init(WP_VERSION_STRING) != 0) {
+        fprintf(stderr, "Failed to initialize Warp: %s\n", wp_get_error_string());
+        return 1;
+    }
 
     // Load APIC graph
     printf("\nLoading APIC graph from: %s\n", graph_path);

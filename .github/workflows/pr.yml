@@ -68,7 +68,9 @@ jobs:
         run: |
           source "${HOME}/conda/etc/profile.d/conda.sh"
           conda activate
+          # api.h owns WP_API; avoid Cppcheck's invalid WP_API=1 configuration.
           cppcheck \
+            -UWP_API \
             --inline-suppr \
             --cppcheck-build-dir=_build/.cppcheck \
             --enable=warning \
@@ -85,7 +87,9 @@ jobs:
         run: |
           source "${HOME}/conda/etc/profile.d/conda.sh"
           conda activate
+          # Keep this configuration in sync with the gating command above.
           cppcheck \
+            -UWP_API \
             --inline-suppr \
             --cppcheck-build-dir=_build/.cppcheck \
             --enable=warning \
