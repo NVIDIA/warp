@@ -1043,6 +1043,14 @@ def test_block_jacobi_preconditioner_errors(test, device):
         preconditioner(A, "block_jacobi")
 
 
+def test_block_jacobi_preconditioner_unsupported_dtype(test, device):
+    # wp.tile_cholesky only supports float32/float64; block sizes > 1 with any
+    # other scalar type must fail fast with a clear error, not a kernel-compile error.
+    A, _b, _diag_blocks = _make_block_spd_system(num_blocks=4, block_size=3, seed=321, dtype=wp.float16, device=device)
+    with test.assertRaises(ValueError):
+        preconditioner(A, "block_jacobi")
+
+
 class TestLinearSolvers(unittest.TestCase):
     pass
 
@@ -1162,6 +1170,12 @@ add_function_test(
     TestLinearSolvers,
     "test_block_jacobi_preconditioner_errors",
     test_block_jacobi_preconditioner_errors,
+    devices=devices,
+)
+add_function_test(
+    TestLinearSolvers,
+    "test_block_jacobi_preconditioner_unsupported_dtype",
+    test_block_jacobi_preconditioner_unsupported_dtype,
     devices=devices,
 )
 

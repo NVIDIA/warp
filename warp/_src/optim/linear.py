@@ -245,7 +245,9 @@ def preconditioner(A: _Matrix, ptype: str = "diag") -> LinearOperator:
          - ``"block_jacobi"``: Block-Jacobi preconditioner. Requires ``A`` to be a
            :class:`warp.sparse.BsrMatrix` with square blocks; each diagonal block is inverted
            via Cholesky factorization, so blocks must individually be symmetric positive-definite.
-           Falls back to ``"diag"`` for 1x1-block (CSR) matrices.
+           Falls back to ``"diag"`` for 1x1-block (CSR) matrices. The block size must be greater
+           than 1, and ``A``'s scalar type must be ``float32`` or ``float64`` (the types supported
+           by :func:`warp.tile_cholesky`).
          - ``"id"``: Identity (null) preconditioner
     """
 
@@ -273,6 +275,10 @@ def _make_block_jacobi_preconditioner(A: _Matrix) -> LinearOperator:
         return _make_jacobi_preconditioner(A, use_abs=False)
 
     scalar_type = A.scalar_type
+    if scalar_type not in (wp.float32, wp.float64):
+        raise ValueError(
+            f"Block-Jacobi preconditioner requires a float32 or float64 scalar type, got {scalar_type.__name__}"
+        )
     device = A.device
 
     # One matrix block per row, laid out contiguously; reinterpret as a flat
