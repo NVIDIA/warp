@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.rand_init(seed: int32) -> uint32
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Initialize a random number generator (RNG) state from a seed.
    
@@ -40,11 +39,10 @@
 .. function:: warp._src.lang.rand_init(seed: int32, offset: int32) -> uint32
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Initialize a random number generator (RNG) state from a seed and an offset.
    

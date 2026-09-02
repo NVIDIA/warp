@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.mesh_get_index(id: uint64, index: int32) -> int
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Look up the vertex index stored at a face-vertex position in the :class:`warp.Mesh`'s index buffer.
    

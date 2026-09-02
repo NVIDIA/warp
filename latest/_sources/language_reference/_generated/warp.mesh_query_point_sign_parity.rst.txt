@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.mesh_query_point_sign_parity(id: uint64, point: vec3f, max_dist: float32, n_sample: int32 = 1, perturbation_scale: float32 = 0.1) -> MeshQueryPoint
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Compute the closest point on the :class:`warp.Mesh` with identifier ``id`` to the given ``point`` in space.
    

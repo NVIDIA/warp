@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.tile_dot(a: Tile[Any, tuple[int, ...]], b: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[Literal[1]]]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Compute the dot product of two tiles.
    

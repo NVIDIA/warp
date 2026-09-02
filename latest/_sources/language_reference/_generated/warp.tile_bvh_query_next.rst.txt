@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.tile_bvh_query_next(query: BvhQueryTiled) -> Tile[int32, tuple[int]]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Move to the next bound in a thread-block parallel BVH query and return results as a tile.
    

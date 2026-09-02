@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.sample_unit_ring(state: uint32) -> vec2f
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Uniformly sample a point on the unit circle (radius 1) in the xy-plane.
    

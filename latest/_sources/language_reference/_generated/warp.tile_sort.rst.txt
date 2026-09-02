@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.tile_sort(keys: Tile[Any, tuple[int]], values: Tile[Any, tuple[int]]) -> None
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Cooperatively sort the elements of two tiles in ascending order based on the keys, using all threads in the block.
    

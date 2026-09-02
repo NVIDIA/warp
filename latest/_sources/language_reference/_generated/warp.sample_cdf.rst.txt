@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.sample_cdf(state: uint32, cdf: Array[float32]) -> int
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Sample a discrete distribution by inverse-transform sampling of a CDF.
    

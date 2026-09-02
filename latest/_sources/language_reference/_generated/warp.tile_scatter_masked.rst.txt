@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.tile_scatter_masked(a: Tile[Any, tuple[int, ...]], i: int32, value: Any, has_value: bool) -> None
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Write a value into a shared-memory tile from the calling thread.
    
@@ -45,32 +44,29 @@
 .. function:: warp._src.lang.tile_scatter_masked(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, value: Any, has_value: bool) -> None
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    
 
 .. function:: warp._src.lang.tile_scatter_masked(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32, value: Any, has_value: bool) -> None
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    
 
 .. function:: warp._src.lang.tile_scatter_masked(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32, l: int32, value: Any, has_value: bool) -> None
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    

@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.mesh_get_point(id: uint64, index: int32) -> vec3f
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Look up the position of a face's vertex in the :class:`warp.Mesh`.
    

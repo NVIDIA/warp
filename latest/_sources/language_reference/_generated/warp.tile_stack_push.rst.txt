@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.tile_stack_push(s: Any, value: Any, has_value: bool) -> int
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Push a value onto a tile stack (cooperative).
    

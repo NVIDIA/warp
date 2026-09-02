@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.tile_bvh_query_ray(id: uint64, start: vec3f, dir: vec3f) -> BvhQueryTiled
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Construct a ray query against a BVH object for thread-block parallel traversal.
    

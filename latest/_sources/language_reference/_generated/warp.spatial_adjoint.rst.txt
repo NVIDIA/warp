@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.spatial_adjoint(r: Matrix[Float, Literal[3], Literal[3]], s: Matrix[Float, Literal[3], Literal[3]]) -> Matrix[Float, Literal[6], Literal[6]]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Construct a 6x6 spatial matrix from the two 3x3 blocks ``r`` and ``s``.
    

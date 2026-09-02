@@ -1,13 +1,12 @@
 ﻿warp.transform\_decompose
 =========================
 
-.. function:: warp._src.lang.transform_decompose(m: Matrix[float32, Literal[4], Literal[4]]) -> None
+.. function:: warp._src.lang.transform_decompose(m: Matrix[float32, Literal[4], Literal[4]]) -> Any
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Decompose a 4x4 transformation matrix into 3D position, quaternion orientation, and 3D scale.
    

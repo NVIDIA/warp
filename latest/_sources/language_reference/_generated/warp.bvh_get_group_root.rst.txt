@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.bvh_get_group_root(id: uint64, group: int32) -> int
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Get the root of a group in a BVH.
    

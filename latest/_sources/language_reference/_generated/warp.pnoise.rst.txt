@@ -3,12 +3,10 @@
 
 .. function:: warp._src.lang.pnoise(state: uint32, x: float32, px: int32) -> float
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Sample 1D Perlin noise that repeats with an integer period.
    
@@ -51,12 +49,10 @@
 .. function:: warp._src.lang.pnoise(state: uint32, xy: vec2f, px: int32, py: int32) -> float
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Sample 2D Perlin noise that repeats with an integer period.
    
@@ -73,12 +69,10 @@
 .. function:: warp._src.lang.pnoise(state: uint32, xyz: vec3f, px: int32, py: int32, pz: int32) -> float
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Sample 3D Perlin noise that repeats with an integer period.
    
@@ -96,12 +90,10 @@
 .. function:: warp._src.lang.pnoise(state: uint32, xyzt: vec4f, px: int32, py: int32, pz: int32, pt: int32) -> float
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Sample 4D Perlin noise that repeats with an integer period.
    

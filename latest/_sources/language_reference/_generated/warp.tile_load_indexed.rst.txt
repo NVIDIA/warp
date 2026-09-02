@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.tile_load_indexed(a: Array[Any], indices: Tile[int32, tuple[int]], shape: tuple[int, ...], offset: tuple[int, ...] = ..., axis: int32 = 0, storage: str = "register") -> Tile[Any, tuple[int, ...]]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Load a tile from a global memory array, with loads along a specified axis mapped according to a 1D tile of indices.
    

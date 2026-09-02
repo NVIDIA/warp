@@ -3,12 +3,10 @@
 
 .. function:: warp._src.lang.transform_get_translation(xform: Transformation[Float]) -> Vector[Float, Literal[3]]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Return the translation component of ``xform`` (``xform.p``).
    

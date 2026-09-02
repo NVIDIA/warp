@@ -3,12 +3,10 @@
 
 .. function:: warp._src.lang.transform_set_rotation(xform: Transformation[Float], q: Quaternion[Float]) -> None
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Set the rotational part of the transform ``xform`` in place, leaving its translation unchanged.
    

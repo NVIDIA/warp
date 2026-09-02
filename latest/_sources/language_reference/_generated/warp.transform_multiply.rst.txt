@@ -3,12 +3,10 @@
 
 .. function:: warp._src.lang.transform_multiply(a: Transformation[Float], b: Transformation[Float]) -> Transformation[Float]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Return the composition of transformations ``a`` and ``b``, applying ``b`` before ``a``.
    

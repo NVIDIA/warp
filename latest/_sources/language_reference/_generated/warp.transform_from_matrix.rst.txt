@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.transform_from_matrix(mat: Matrix[float32, Literal[4], Literal[4]]) -> Transformation[float32]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Construct a transformation from a 4x4 matrix.
    

@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=2a8757ae" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=e5bdcd64" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
@@ -555,26 +555,7 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="warp._src.lang.atomic_sub">
 <span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">atomic_sub</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Array</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">i</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.Int.html#warp.Int" title="warp.Int"><span class="pre">Int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span><a class="headerlink" href="#warp._src.lang.atomic_sub" title="Link to this definition">#</a></dt>
-<dd><table class="hlist"><tr><td><ul class="simple">
-<li><p>Kernel</p></li>
-</ul>
-</td><td><ul class="simple">
-<li><p>Differentiable</p></li>
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td></tr></table>
-<p>Atomically subtracts <code class="docutils literal notranslate"><span class="pre">value</span></code> onto <code class="docutils literal notranslate"><span class="pre">arr[i]</span></code> and returns the original value of <code class="docutils literal notranslate"><span class="pre">arr[i]</span></code>.</p>
+<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Atomically subtracts <code class="docutils literal notranslate"><span class="pre">value</span></code> onto <code class="docutils literal notranslate"><span class="pre">arr[i]</span></code> and returns the original value of <code class="docutils literal notranslate"><span class="pre">arr[i]</span></code>.</p>
 <p>This function is automatically invoked when using the syntax <code class="docutils literal notranslate"><span class="pre">arr[i]</span> <span class="pre">-=</span> <span class="pre">value</span></code>.</p>
 </dd></dl>
 
@@ -590,26 +571,7 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span></dt>
-<dd><table class="hlist"><tr><td><ul class="simple">
-<li><p>Kernel</p></li>
-</ul>
-</td><td><ul class="simple">
-<li><p>Differentiable</p></li>
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td></tr></table>
-<p>Atomically subtracts <code class="docutils literal notranslate"><span class="pre">value</span></code> onto <code class="docutils literal notranslate"><span class="pre">arr[i,j]</span></code> and returns the original value of <code class="docutils literal notranslate"><span class="pre">arr[i,j]</span></code>.</p>
+<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Atomically subtracts <code class="docutils literal notranslate"><span class="pre">value</span></code> onto <code class="docutils literal notranslate"><span class="pre">arr[i,j]</span></code> and returns the original value of <code class="docutils literal notranslate"><span class="pre">arr[i,j]</span></code>.</p>
 <p>This function is automatically invoked when using the syntax <code class="docutils literal notranslate"><span class="pre">arr[i,j]</span> <span class="pre">-=</span> <span class="pre">value</span></code>.</p>
 </dd></dl>
 
@@ -626,26 +588,7 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span></dt>
-<dd><table class="hlist"><tr><td><ul class="simple">
-<li><p>Kernel</p></li>
-</ul>
-</td><td><ul class="simple">
-<li><p>Differentiable</p></li>
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td></tr></table>
-<p>Atomically subtracts <code class="docutils literal notranslate"><span class="pre">value</span></code> onto <code class="docutils literal notranslate"><span class="pre">arr[i,j,k]</span></code> and returns the original value of <code class="docutils literal notranslate"><span class="pre">arr[i,j,k]</span></code>.</p>
+<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Atomically subtracts <code class="docutils literal notranslate"><span class="pre">value</span></code> onto <code class="docutils literal notranslate"><span class="pre">arr[i,j,k]</span></code> and returns the original value of <code class="docutils literal notranslate"><span class="pre">arr[i,j,k]</span></code>.</p>
 <p>This function is automatically invoked when using the syntax <code class="docutils literal notranslate"><span class="pre">arr[i,j,k]</span> <span class="pre">-=</span> <span class="pre">value</span></code>.</p>
 </dd></dl>
 
@@ -663,26 +606,7 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span></dt>
-<dd><table class="hlist"><tr><td><ul class="simple">
-<li><p>Kernel</p></li>
-</ul>
-</td><td><ul class="simple">
-<li><p>Differentiable</p></li>
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td></tr></table>
-<p>Atomically subtracts <code class="docutils literal notranslate"><span class="pre">value</span></code> onto <code class="docutils literal notranslate"><span class="pre">arr[i,j,k,l]</span></code> and returns the original value of <code class="docutils literal notranslate"><span class="pre">arr[i,j,k,l]</span></code>.</p>
+<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Atomically subtracts <code class="docutils literal notranslate"><span class="pre">value</span></code> onto <code class="docutils literal notranslate"><span class="pre">arr[i,j,k,l]</span></code> and returns the original value of <code class="docutils literal notranslate"><span class="pre">arr[i,j,k,l]</span></code>.</p>
 <p>This function is automatically invoked when using the syntax <code class="docutils literal notranslate"><span class="pre">arr[i,j,k,l]</span> <span class="pre">-=</span> <span class="pre">value</span></code>.</p>
 </dd></dl>
 
@@ -697,26 +621,7 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span></dt>
-<dd><table class="hlist"><tr><td><ul class="simple">
-<li><p>Kernel</p></li>
-</ul>
-</td><td><ul class="simple">
-<li><p>Differentiable</p></li>
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td></tr></table>
-<p>Atomically subtracts <code class="docutils literal notranslate"><span class="pre">value</span></code> onto <code class="docutils literal notranslate"><span class="pre">arr[i]</span></code> and returns the original value of <code class="docutils literal notranslate"><span class="pre">arr[i]</span></code>.</p>
+<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Atomically subtracts <code class="docutils literal notranslate"><span class="pre">value</span></code> onto <code class="docutils literal notranslate"><span class="pre">arr[i]</span></code> and returns the original value of <code class="docutils literal notranslate"><span class="pre">arr[i]</span></code>.</p>
 <p>This function is automatically invoked when using the syntax <code class="docutils literal notranslate"><span class="pre">arr[i]</span> <span class="pre">-=</span> <span class="pre">value</span></code>.</p>
 </dd></dl>
 
@@ -732,26 +637,7 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span></dt>
-<dd><table class="hlist"><tr><td><ul class="simple">
-<li><p>Kernel</p></li>
-</ul>
-</td><td><ul class="simple">
-<li><p>Differentiable</p></li>
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td></tr></table>
-<p>Atomically subtracts <code class="docutils literal notranslate"><span class="pre">value</span></code> onto <code class="docutils literal notranslate"><span class="pre">arr[i,j]</span></code> and returns the original value of <code class="docutils literal notranslate"><span class="pre">arr[i,j]</span></code>.</p>
+<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Atomically subtracts <code class="docutils literal notranslate"><span class="pre">value</span></code> onto <code class="docutils literal notranslate"><span class="pre">arr[i,j]</span></code> and returns the original value of <code class="docutils literal notranslate"><span class="pre">arr[i,j]</span></code>.</p>
 <p>This function is automatically invoked when using the syntax <code class="docutils literal notranslate"><span class="pre">arr[i,j]</span> <span class="pre">-=</span> <span class="pre">value</span></code>.</p>
 </dd></dl>
 
@@ -768,26 +654,7 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span></dt>
-<dd><table class="hlist"><tr><td><ul class="simple">
-<li><p>Kernel</p></li>
-</ul>
-</td><td><ul class="simple">
-<li><p>Differentiable</p></li>
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td></tr></table>
-<p>Atomically subtracts <code class="docutils literal notranslate"><span class="pre">value</span></code> onto <code class="docutils literal notranslate"><span class="pre">arr[i,j,k]</span></code> and returns the original value of <code class="docutils literal notranslate"><span class="pre">arr[i,j,k]</span></code>.</p>
+<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Atomically subtracts <code class="docutils literal notranslate"><span class="pre">value</span></code> onto <code class="docutils literal notranslate"><span class="pre">arr[i,j,k]</span></code> and returns the original value of <code class="docutils literal notranslate"><span class="pre">arr[i,j,k]</span></code>.</p>
 <p>This function is automatically invoked when using the syntax <code class="docutils literal notranslate"><span class="pre">arr[i,j,k]</span> <span class="pre">-=</span> <span class="pre">value</span></code>.</p>
 </dd></dl>
 
@@ -805,26 +672,7 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span></dt>
-<dd><table class="hlist"><tr><td><ul class="simple">
-<li><p>Kernel</p></li>
-</ul>
-</td><td><ul class="simple">
-<li><p>Differentiable</p></li>
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td></tr></table>
-<p>Atomically subtracts <code class="docutils literal notranslate"><span class="pre">value</span></code> onto <code class="docutils literal notranslate"><span class="pre">arr[i,j,k,l]</span></code> and returns the original value of <code class="docutils literal notranslate"><span class="pre">arr[i,j,k,l]</span></code>.</p>
+<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Atomically subtracts <code class="docutils literal notranslate"><span class="pre">value</span></code> onto <code class="docutils literal notranslate"><span class="pre">arr[i,j,k,l]</span></code> and returns the original value of <code class="docutils literal notranslate"><span class="pre">arr[i,j,k,l]</span></code>.</p>
 <p>This function is automatically invoked when using the syntax <code class="docutils literal notranslate"><span class="pre">arr[i,j,k,l]</span> <span class="pre">-=</span> <span class="pre">value</span></code>.</p>
 </dd></dl>
 
@@ -839,26 +687,7 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span></dt>
-<dd><table class="hlist"><tr><td><ul class="simple">
-<li><p>Kernel</p></li>
-</ul>
-</td><td><ul class="simple">
-<li><p>Differentiable</p></li>
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td></tr></table>
-<p>Atomically subtracts <code class="docutils literal notranslate"><span class="pre">value</span></code> onto <code class="docutils literal notranslate"><span class="pre">arr[i]</span></code> and returns the original value of <code class="docutils literal notranslate"><span class="pre">arr[i]</span></code>.</p>
+<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Atomically subtracts <code class="docutils literal notranslate"><span class="pre">value</span></code> onto <code class="docutils literal notranslate"><span class="pre">arr[i]</span></code> and returns the original value of <code class="docutils literal notranslate"><span class="pre">arr[i]</span></code>.</p>
 <p>This function is automatically invoked when using the syntax <code class="docutils literal notranslate"><span class="pre">arr[i]</span> <span class="pre">-=</span> <span class="pre">value</span></code>.</p>
 </dd></dl>
 
@@ -874,26 +703,7 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span></dt>
-<dd><table class="hlist"><tr><td><ul class="simple">
-<li><p>Kernel</p></li>
-</ul>
-</td><td><ul class="simple">
-<li><p>Differentiable</p></li>
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td></tr></table>
-<p>Atomically subtracts <code class="docutils literal notranslate"><span class="pre">value</span></code> onto <code class="docutils literal notranslate"><span class="pre">arr[i,j]</span></code> and returns the original value of <code class="docutils literal notranslate"><span class="pre">arr[i,j]</span></code>.</p>
+<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Atomically subtracts <code class="docutils literal notranslate"><span class="pre">value</span></code> onto <code class="docutils literal notranslate"><span class="pre">arr[i,j]</span></code> and returns the original value of <code class="docutils literal notranslate"><span class="pre">arr[i,j]</span></code>.</p>
 <p>This function is automatically invoked when using the syntax <code class="docutils literal notranslate"><span class="pre">arr[i,j]</span> <span class="pre">-=</span> <span class="pre">value</span></code>.</p>
 </dd></dl>
 
@@ -910,26 +720,7 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span></dt>
-<dd><table class="hlist"><tr><td><ul class="simple">
-<li><p>Kernel</p></li>
-</ul>
-</td><td><ul class="simple">
-<li><p>Differentiable</p></li>
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td></tr></table>
-<p>Atomically subtracts <code class="docutils literal notranslate"><span class="pre">value</span></code> onto <code class="docutils literal notranslate"><span class="pre">arr[i,j,k]</span></code> and returns the original value of <code class="docutils literal notranslate"><span class="pre">arr[i,j,k]</span></code>.</p>
+<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Atomically subtracts <code class="docutils literal notranslate"><span class="pre">value</span></code> onto <code class="docutils literal notranslate"><span class="pre">arr[i,j,k]</span></code> and returns the original value of <code class="docutils literal notranslate"><span class="pre">arr[i,j,k]</span></code>.</p>
 <p>This function is automatically invoked when using the syntax <code class="docutils literal notranslate"><span class="pre">arr[i,j,k]</span> <span class="pre">-=</span> <span class="pre">value</span></code>.</p>
 </dd></dl>
 
@@ -947,26 +738,7 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span></dt>
-<dd><table class="hlist"><tr><td><ul class="simple">
-<li><p>Kernel</p></li>
-</ul>
-</td><td><ul class="simple">
-<li><p>Differentiable</p></li>
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td></tr></table>
-<p>Atomically subtracts <code class="docutils literal notranslate"><span class="pre">value</span></code> onto <code class="docutils literal notranslate"><span class="pre">arr[i,j,k,l]</span></code> and returns the original value of <code class="docutils literal notranslate"><span class="pre">arr[i,j,k,l]</span></code>.</p>
+<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Atomically subtracts <code class="docutils literal notranslate"><span class="pre">value</span></code> onto <code class="docutils literal notranslate"><span class="pre">arr[i,j,k,l]</span></code> and returns the original value of <code class="docutils literal notranslate"><span class="pre">arr[i,j,k,l]</span></code>.</p>
 <p>This function is automatically invoked when using the syntax <code class="docutils literal notranslate"><span class="pre">arr[i,j,k,l]</span> <span class="pre">-=</span> <span class="pre">value</span></code>.</p>
 </dd></dl>
 

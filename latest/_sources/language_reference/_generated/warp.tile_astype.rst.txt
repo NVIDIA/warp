@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.tile_astype(t: Tile[Scalar, tuple[int, ...]], dtype: Scalar) -> Tile[Any, tuple[int, ...]]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Create a new tile with the same data as the input tile, but with a different data type.
    

@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.trunc(x: Float) -> Float
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Compute the nearest integer that is closer to zero than ``x``.
    

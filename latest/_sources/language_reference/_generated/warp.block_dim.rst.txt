@@ -3,10 +3,9 @@
 
 .. function:: warp._src.lang.block_dim() -> int
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Query the number of threads in the current block.

@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=2a8757ae" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=e5bdcd64" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
@@ -563,25 +563,7 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../../api_reference/_generated/warp.HashGridQuery.html#warp.HashGridQuery" title="warp.HashGridQuery"><span class="pre">HashGridQuery</span></a></span></span><a class="headerlink" href="#warp._src.lang.hash_grid_query" title="Link to this definition">#</a></dt>
-<dd><table class="hlist"><tr><td><ul class="simple">
-<li><p>Kernel</p></li>
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td></tr></table>
-<p>Construct a point query against a <a class="reference internal" href="../../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.HashGrid</span></code></a>.</p>
+<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="differentiable" data-wp-value="false"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li></ul><p>Construct a point query against a <a class="reference internal" href="../../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.HashGrid</span></code></a>.</p>
 <p>Returns a query that iterates over candidate neighbors of <code class="docutils literal notranslate"><span class="pre">point</span></code>: every point in the grid
 cells overlapped by the box from <code class="docutils literal notranslate"><span class="pre">point</span> <span class="pre">-</span> <span class="pre">max_dist</span></code> to <code class="docutils literal notranslate"><span class="pre">point</span> <span class="pre">+</span> <span class="pre">max_dist</span></code>. These are
 <em>candidates</em> — the grid does not test distance, so some are farther than <code class="docutils literal notranslate"><span class="pre">max_dist</span></code>; filter
@@ -639,25 +621,7 @@ grid was built from (see <a class="reference internal" href="../../api_reference
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../../api_reference/_generated/warp.HashGridQuery.html#warp.HashGridQuery" title="warp.HashGridQuery"><span class="pre">HashGridQuery</span></a></span></span></dt>
-<dd><table class="hlist"><tr><td><ul class="simple">
-<li><p>Kernel</p></li>
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td></tr></table>
-<p>Construct a point query against a <a class="reference internal" href="../../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.HashGrid</span></code></a>, restricted to one point group.</p>
+<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="differentiable" data-wp-value="false"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li></ul><p>Construct a point query against a <a class="reference internal" href="../../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.HashGrid</span></code></a>, restricted to one point group.</p>
 <p>Returns a query that iterates over candidate neighbors of <code class="docutils literal notranslate"><span class="pre">point</span></code>: every point in the grid
 cells overlapped by the box from <code class="docutils literal notranslate"><span class="pre">point</span> <span class="pre">-</span> <span class="pre">max_dist</span></code> to <code class="docutils literal notranslate"><span class="pre">point</span> <span class="pre">+</span> <span class="pre">max_dist</span></code>. These are
 <em>candidates</em> — the grid does not test distance, so some are farther than <code class="docutils literal notranslate"><span class="pre">max_dist</span></code>; filter
@@ -694,25 +658,7 @@ not require a root lookup; pass the group id directly.</p>
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../../api_reference/_generated/warp.HashGridQuery.html#warp.HashGridQuery" title="warp.HashGridQuery"><span class="pre">HashGridQuery</span></a></span></span></dt>
-<dd><table class="hlist"><tr><td><ul class="simple">
-<li><p>Kernel</p></li>
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td></tr></table>
-<p>Construct a point query against a <a class="reference internal" href="../../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.HashGrid</span></code></a> (float16 precision).</p>
+<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="differentiable" data-wp-value="false"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li></ul><p>Construct a point query against a <a class="reference internal" href="../../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.HashGrid</span></code></a> (float16 precision).</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">float16</span></code> overload of <a class="reference internal" href="#warp._src.lang.hash_grid_query" title="warp._src.lang.hash_grid_query"><code class="xref py py-func docutils literal notranslate"><span class="pre">hash_grid_query()</span></code></a>. Behavior and usage match the default
 <code class="docutils literal notranslate"><span class="pre">float32</span></code> overload; see it for details and a usage example.</p>
 <dl class="field-list simple">
@@ -741,25 +687,7 @@ not require a root lookup; pass the group id directly.</p>
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../../api_reference/_generated/warp.HashGridQuery.html#warp.HashGridQuery" title="warp.HashGridQuery"><span class="pre">HashGridQuery</span></a></span></span></dt>
-<dd><table class="hlist"><tr><td><ul class="simple">
-<li><p>Kernel</p></li>
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td></tr></table>
-<p>Construct a point query against a <a class="reference internal" href="../../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.HashGrid</span></code></a>, restricted to one point group (float16 precision).</p>
+<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="differentiable" data-wp-value="false"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li></ul><p>Construct a point query against a <a class="reference internal" href="../../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.HashGrid</span></code></a>, restricted to one point group (float16 precision).</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">float16</span></code> overload of <a class="reference internal" href="#warp._src.lang.hash_grid_query" title="warp._src.lang.hash_grid_query"><code class="xref py py-func docutils literal notranslate"><span class="pre">hash_grid_query()</span></code></a>. Behavior and usage match the default
 <code class="docutils literal notranslate"><span class="pre">float32</span></code> overload; see it for details and a usage example.</p>
 <p>If the grid was built with groups, only points whose group id equals <code class="docutils literal notranslate"><span class="pre">group</span></code> are returned as
@@ -792,25 +720,7 @@ not require a root lookup; pass the group id directly.</p>
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../../api_reference/_generated/warp.HashGridQuery.html#warp.HashGridQuery" title="warp.HashGridQuery"><span class="pre">HashGridQuery</span></a></span></span></dt>
-<dd><table class="hlist"><tr><td><ul class="simple">
-<li><p>Kernel</p></li>
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td></tr></table>
-<p>Construct a point query against a <a class="reference internal" href="../../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.HashGrid</span></code></a> (float64 precision).</p>
+<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="differentiable" data-wp-value="false"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li></ul><p>Construct a point query against a <a class="reference internal" href="../../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.HashGrid</span></code></a> (float64 precision).</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">float64</span></code> overload of <a class="reference internal" href="#warp._src.lang.hash_grid_query" title="warp._src.lang.hash_grid_query"><code class="xref py py-func docutils literal notranslate"><span class="pre">hash_grid_query()</span></code></a>. Behavior and usage match the default
 <code class="docutils literal notranslate"><span class="pre">float32</span></code> overload; see it for details and a usage example.</p>
 <dl class="field-list simple">
@@ -839,25 +749,7 @@ not require a root lookup; pass the group id directly.</p>
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../../api_reference/_generated/warp.HashGridQuery.html#warp.HashGridQuery" title="warp.HashGridQuery"><span class="pre">HashGridQuery</span></a></span></span></dt>
-<dd><table class="hlist"><tr><td><ul class="simple">
-<li><p>Kernel</p></li>
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td></tr></table>
-<p>Construct a point query against a <a class="reference internal" href="../../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.HashGrid</span></code></a>, restricted to one point group (float64 precision).</p>
+<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="differentiable" data-wp-value="false"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li></ul><p>Construct a point query against a <a class="reference internal" href="../../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.HashGrid</span></code></a>, restricted to one point group (float64 precision).</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">float64</span></code> overload of <a class="reference internal" href="#warp._src.lang.hash_grid_query" title="warp._src.lang.hash_grid_query"><code class="xref py py-func docutils literal notranslate"><span class="pre">hash_grid_query()</span></code></a>. Behavior and usage match the default
 <code class="docutils literal notranslate"><span class="pre">float32</span></code> overload; see it for details and a usage example.</p>
 <p>If the grid was built with groups, only points whose group id equals <code class="docutils literal notranslate"><span class="pre">group</span></code> are returned as

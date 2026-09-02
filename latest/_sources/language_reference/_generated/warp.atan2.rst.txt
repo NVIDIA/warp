@@ -3,11 +3,9 @@
 
 .. function:: warp._src.lang.atan2(y: Float, x: Float) -> Float
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Compute the 2-argument arctangent, atan2, of the point ``(x, y)`` in radians.

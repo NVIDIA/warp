@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.tid() -> int
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Query the current thread index or indices.
    
@@ -28,10 +28,10 @@
 .. function:: warp._src.lang.tid() -> tuple[int, int]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Query the current thread index or indices.
    
@@ -53,10 +53,10 @@
 .. function:: warp._src.lang.tid() -> tuple[int, int, int]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Query the current thread index or indices.
    
@@ -78,10 +78,10 @@
 .. function:: warp._src.lang.tid() -> tuple[int, int, int, int]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Query the current thread index or indices.
    

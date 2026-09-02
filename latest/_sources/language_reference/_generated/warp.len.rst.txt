@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.len(a: Vector[Scalar, Any]) -> int
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Query the length of ``a``.
    
@@ -17,10 +17,10 @@
 .. function:: warp._src.lang.len(a: Quaternion[Float]) -> int
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Query the length of ``a``.
    
@@ -31,10 +31,10 @@
 .. function:: warp._src.lang.len(a: Matrix[Scalar, Any, Any]) -> int
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Query the length of ``a``.
    
@@ -45,10 +45,10 @@
 .. function:: warp._src.lang.len(a: Transformation[Float]) -> int
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Query the length of ``a``.
    
@@ -59,10 +59,10 @@
 .. function:: warp._src.lang.len(a: Array[Any]) -> int
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Query the length of ``a``.
    
@@ -73,10 +73,10 @@
 .. function:: warp._src.lang.len(a: Tile[Any, tuple[int, ...]]) -> int
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Query the length of ``a``.
    
@@ -87,10 +87,10 @@
 .. function:: warp._src.lang.len(a: tuple) -> int
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Query the length of ``a``.
    

@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.transform_twist(t: transformf, x: spatial_vectorf) -> spatial_vectorf
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Transform a spatial twist between coordinate frames.
    

@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.tile_fft(inout: Tile[Vector[Float, Literal[2]], tuple[int, ...]]) -> None
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Compute the forward FFT along the last dimension of an N-D tile of data.
    

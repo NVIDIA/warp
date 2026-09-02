@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.norm_l2(v: Any) -> float
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Compute the L2 norm of a vector v.
    

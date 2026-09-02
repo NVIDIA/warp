@@ -3,11 +3,9 @@
 
 .. function:: warp._src.lang.sqrt(x: Float) -> Float
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Compute the square root of ``x``, where ``x`` is positive.

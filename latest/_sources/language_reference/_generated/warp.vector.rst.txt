@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.vector(*args: Scalar, length: int32 = ..., dtype: Scalar = ...) -> Vector[Scalar, Any]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Construct a vector of given length and dtype.
    

@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.smooth_normalize(v: Any, delta: float = 1.0) -> Any
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Normalize a vector using the pseudo-Huber norm.
    

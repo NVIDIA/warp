@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.tile_max(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Scalar, tuple[Literal[1]]]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Cooperatively compute the maximum of the tile elements using all threads in the block.
    

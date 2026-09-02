@@ -3,11 +3,9 @@
 
 .. function:: warp._src.lang.diag(vec: Vector[Scalar, Any]) -> Matrix[Scalar, Any, Any]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Construct a matrix with the components of vector ``vec`` on the diagonal.

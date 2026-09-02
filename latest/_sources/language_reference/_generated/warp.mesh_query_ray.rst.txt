@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.mesh_query_ray(id: uint64, start: vec3f, dir: vec3f, max_t: float32, root: int32 = -1) -> MeshQueryRay
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Compute the closest ray hit on the :class:`warp.Mesh` with identifier ``id``.
    

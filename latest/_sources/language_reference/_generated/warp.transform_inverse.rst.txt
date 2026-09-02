@@ -3,12 +3,10 @@
 
 .. function:: warp._src.lang.transform_inverse(xform: Transformation[Float]) -> Transformation[Float]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Return the inverse of ``xform``.
    

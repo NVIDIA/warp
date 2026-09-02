@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.randu(state: uint32) -> uint32
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Generate a uniform random unsigned 32-bit integer in the range [0, 2^32).
    
@@ -18,11 +17,10 @@
 .. function:: warp._src.lang.randu(state: uint32, low: uint32, high: uint32) -> uint32
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Generate a uniform random unsigned integer in the range [low, high).
    

@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.tile_stack_pop(s: Any) -> tuple[Any, int]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Pop a value from a tile stack (cooperative).
    

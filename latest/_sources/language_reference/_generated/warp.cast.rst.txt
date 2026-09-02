@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.cast(a: Any, dtype: Any) -> Any
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Reinterpret a value as a different type while preserving its bit pattern.
    

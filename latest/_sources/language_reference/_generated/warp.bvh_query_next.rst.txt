@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.bvh_query_next(query: _BvhQueryAabb, index: int32, max_dist: float32 = float("inf")) -> bool
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Advance a BVH query to the next overlapping item and report whether one was found.
    
@@ -60,39 +60,39 @@
 .. function:: warp._src.lang.bvh_query_next(query: _BvhQueryRay, index: int32, max_dist: float32 = float("inf")) -> bool
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Advance a :func:`bvh_query_ray` query to the next intersected item.
 
 .. function:: warp._src.lang.bvh_query_next(query: _BvhQueryCapsule, index: int32, max_dist: float32 = float("inf")) -> bool
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Advance a :func:`bvh_query_capsule` query to the next intersected item.
 
 .. function:: warp._src.lang.bvh_query_next(query: _BvhQuerySphere, index: int32, max_dist: float32 = float("inf")) -> bool
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Advance a :func:`bvh_query_sphere` query to the next intersected item.
 
 .. function:: warp._src.lang.bvh_query_next(query: BvhQuery, index: int32, max_dist: float32 = float("inf")) -> bool
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Advance a BVH query whose kind is selected at runtime to the next overlapping item.

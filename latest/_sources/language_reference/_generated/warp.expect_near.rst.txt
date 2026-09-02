@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.expect_near(a: Float, b: Float, tolerance: Float = 1e-06) -> None
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Print an error to stdout if ``a`` and ``b`` differ by more than ``tolerance``.
    
@@ -16,11 +15,10 @@
 .. function:: warp._src.lang.expect_near(a: Vector[Float, Any], b: Vector[Float, Any], tolerance: Float = 1e-06) -> None
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Print an error to stdout if ``a`` and ``b`` differ by more than ``tolerance``.
    
@@ -29,11 +27,10 @@
 .. function:: warp._src.lang.expect_near(a: Quaternion[Float], b: Quaternion[Float], tolerance: Float = 1e-06) -> None
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Print an error to stdout if ``a`` and ``b`` differ by more than ``tolerance``.
    
@@ -42,11 +39,10 @@
 .. function:: warp._src.lang.expect_near(a: Matrix[Float, Any, Any], b: Matrix[Float, Any, Any], tolerance: Float = 1e-06) -> None
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Print an error to stdout if ``a`` and ``b`` differ by more than ``tolerance``.
    

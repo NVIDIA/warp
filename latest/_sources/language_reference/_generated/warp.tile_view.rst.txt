@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.tile_view(t: Tile[Any, tuple[int, ...]], offset: tuple, shape: tuple[int, ...] = ...) -> Tile[Any, tuple[int, ...]]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Extract a view of a tile.
    

@@ -3,12 +3,10 @@
 
 .. function:: warp._src.lang.clamp(x: Scalar, low: Scalar, high: Scalar) -> Scalar
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Clamp the value of ``x`` to the range [low, high].
    

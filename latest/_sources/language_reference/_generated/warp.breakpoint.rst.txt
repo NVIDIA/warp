@@ -3,9 +3,9 @@
 
 .. function:: warp._src.lang.breakpoint() -> None
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Trigger a debugger breakpoint.

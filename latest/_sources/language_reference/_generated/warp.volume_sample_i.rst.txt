@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.volume_sample_i(id: uint64, uvw: vec3f) -> int
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Sample the :class:`warp.int32` volume given by ``id`` at the index-space point ``uvw``.
    

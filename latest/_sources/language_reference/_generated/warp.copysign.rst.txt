@@ -3,12 +3,10 @@
 
 .. function:: warp._src.lang.copysign(x: Float, y: Float) -> Float
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Return a value with the magnitude of ``x`` and the sign of ``y``.
    

@@ -3,11 +3,9 @@
 
 .. function:: warp._src.lang.cos(x: Float) -> Float
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Compute the cosine of ``x`` in radians.

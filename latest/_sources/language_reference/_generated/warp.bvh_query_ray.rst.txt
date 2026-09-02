@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.bvh_query_ray(id: uint64, start: vec3f, dir: vec3f, root: int32 = -1) -> _BvhQueryRay
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Construct a ray query against a BVH.
    

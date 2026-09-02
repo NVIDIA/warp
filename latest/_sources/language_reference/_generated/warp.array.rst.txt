@@ -3,9 +3,9 @@
 
 .. function:: warp._src.lang.array(ptr: uint64, shape: tuple[int, ...], dtype: Any) -> Array[Scalar]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Construct an array from a memory pointer, shape, and data type.

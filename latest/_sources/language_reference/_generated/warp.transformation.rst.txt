@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.transformation(p: Vector[Float, Literal[3]], q: Quaternion[Float] = ..., dtype: Float = ...) -> Transformation[Float]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Construct a transformation from translation ``p`` and rotation ``q``.
    
@@ -52,11 +51,10 @@
 .. function:: warp._src.lang.transformation(*args: Float, dtype: Float = ...) -> Transformation[Float]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Construct a transformation from component values.
    

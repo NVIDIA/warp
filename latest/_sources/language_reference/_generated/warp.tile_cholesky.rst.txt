@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.tile_cholesky(A: Tile[Float, tuple[int, int]], fill_mode: str = "lower") -> Tile[Float, tuple[int, int]]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Compute the Cholesky factorization of a symmetric positive-definite matrix ``A``.
    

@@ -3,10 +3,9 @@
 
 .. function:: warp._src.lang.print(value: Any) -> None
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Print a variable to stdout.

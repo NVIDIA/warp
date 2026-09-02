@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.velocity_at_point(qd: spatial_vectorf, r: vec3f) -> vec3f
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Evaluate the linear velocity of an offset point on a rigid body.
    

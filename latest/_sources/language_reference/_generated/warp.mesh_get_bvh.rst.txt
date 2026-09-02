@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.mesh_get_bvh(id: uint64) -> uint64
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Return the identifier of a mesh's internal BVH.
    

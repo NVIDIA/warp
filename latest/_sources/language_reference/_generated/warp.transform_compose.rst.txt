@@ -1,13 +1,12 @@
 ﻿warp.transform\_compose
 =======================
 
-.. function:: warp._src.lang.transform_compose(position: Vector[float32, Literal[3]], rotation: Quaternion[float32], scale: Vector[float32, Literal[3]]) -> None
+.. function:: warp._src.lang.transform_compose(position: Vector[float32, Literal[3]], rotation: Quaternion[float32], scale: Vector[float32, Literal[3]]) -> Any
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Compose a 4x4 transformation matrix from a 3D position, quaternion orientation, and 3D scale.
    

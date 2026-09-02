@@ -3,9 +3,9 @@
 
 .. function:: warp._src.lang.identity(n: int32, dtype: Scalar) -> Matrix[Scalar, Any, Any]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Create an identity matrix with shape=(n,n) with the type given by ``dtype``.

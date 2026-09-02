@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.tile_from_thread(shape: tuple[int, ...], value: Any, thread_idx: int32, storage: str = "register") -> Tile[Any, tuple[int, ...]]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Allocate a tile filled with a value from a specific thread.
    
@@ -73,9 +73,9 @@
 .. function:: warp._src.lang.tile_from_thread(shape: int32, value: Any, thread_idx: int32, storage: str = "register") -> Tile[Any, tuple[int, ...]]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Allocate a tile filled with a value from a specific thread.

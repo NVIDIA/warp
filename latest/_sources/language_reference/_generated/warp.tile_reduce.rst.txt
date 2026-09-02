@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.tile_reduce(op: Callable, a: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[Literal[1]]]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Apply a custom reduction operator across a tile.
    
@@ -39,10 +39,10 @@
 .. function:: warp._src.lang.tile_reduce(op: Callable, a: Tile[Scalar, tuple[int, ...]], axis: int32) -> Tile[Scalar, tuple[int, ...]]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Apply a custom reduction operator across a tile.
    

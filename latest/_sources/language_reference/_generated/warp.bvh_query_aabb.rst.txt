@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.bvh_query_aabb(id: uint64, low: vec3f, high: vec3f, root: int32 = -1) -> _BvhQueryAabb
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Construct an axis-aligned bounding box (AABB) query against a BVH.
    

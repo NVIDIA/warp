@@ -3,12 +3,10 @@
 
 .. function:: warp._src.lang.transform_get_rotation(xform: Transformation[Float]) -> Quaternion[Float]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Return the rotation component of ``xform`` (``xform.q``).
    

@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.tile_map(op: Callable, a: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[int, ...]]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Apply a function to tile elements.
    
@@ -40,11 +39,10 @@
 .. function:: warp._src.lang.tile_map(op: Callable, a: Tile[Any, tuple[int, ...]], b: Any) -> Tile[Any, tuple[int, ...]]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Apply a function to tile elements.
    
@@ -82,11 +80,10 @@
 .. function:: warp._src.lang.tile_map(op: Callable, a: Tile[Any, tuple[int, ...]], *args: Any) -> Tile[Any, tuple[int, ...]]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Apply a function to tile elements.
    

@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.sample_unit_square(state: uint32) -> vec2f
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Uniformly sample a point in the unit square ``[-0.5, 0.5)^2``, centered at the origin.
    

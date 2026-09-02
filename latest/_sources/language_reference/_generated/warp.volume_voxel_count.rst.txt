@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.volume_voxel_count(id: uint64) -> int32
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Return the number of indexable voxels in the volume given by ``id``.
    

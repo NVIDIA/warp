@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.tile_arange(*args: Scalar, dtype: Scalar = ..., storage: str = "register") -> Tile[float32, tuple[int]]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Generate a tile of linearly spaced elements.
    

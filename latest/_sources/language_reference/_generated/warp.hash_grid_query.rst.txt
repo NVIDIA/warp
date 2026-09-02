@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.hash_grid_query(id: uint64, point: vec3f, max_dist: float32) -> HashGridQuery
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Construct a point query against a :class:`warp.HashGrid`.
    
@@ -55,10 +55,10 @@
 .. function:: warp._src.lang.hash_grid_query(id: uint64, point: vec3f, max_dist: float32, group: int32) -> HashGridQuery
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Construct a point query against a :class:`warp.HashGrid`, restricted to one point group.
    
@@ -85,10 +85,10 @@
 .. function:: warp._src.lang.hash_grid_query(id: uint64, point: vec3h, max_dist: float16) -> HashGridQuery
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Construct a point query against a :class:`warp.HashGrid` (float16 precision).
    
@@ -105,10 +105,10 @@
 .. function:: warp._src.lang.hash_grid_query(id: uint64, point: vec3h, max_dist: float16, group: int32) -> HashGridQuery
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Construct a point query against a :class:`warp.HashGrid`, restricted to one point group (float16 precision).
    
@@ -131,10 +131,10 @@
 .. function:: warp._src.lang.hash_grid_query(id: uint64, point: vec3d, max_dist: float64) -> HashGridQuery
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Construct a point query against a :class:`warp.HashGrid` (float64 precision).
    
@@ -151,10 +151,10 @@
 .. function:: warp._src.lang.hash_grid_query(id: uint64, point: vec3d, max_dist: float64, group: int32) -> HashGridQuery
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Construct a point query against a :class:`warp.HashGrid`, restricted to one point group (float64 precision).
    

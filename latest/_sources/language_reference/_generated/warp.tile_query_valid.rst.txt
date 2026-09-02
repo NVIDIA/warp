@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.tile_query_valid(query: BvhQueryTiled) -> bool
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Return whether there are remaining results in a thread-block parallel BVH query.
    
@@ -32,10 +32,10 @@
 .. function:: warp._src.lang.tile_query_valid(query: MeshQueryAABBTiled) -> bool
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Return whether there are remaining results in a thread-block parallel mesh AABB query.
    

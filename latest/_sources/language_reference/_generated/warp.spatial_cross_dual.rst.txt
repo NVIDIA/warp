@@ -3,12 +3,10 @@
 
 .. function:: warp._src.lang.spatial_cross_dual(a: Vector[Float, Literal[6]], b: Vector[Float, Literal[6]]) -> Vector[Float, Literal[6]]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Return the spatial force cross product of twist ``a`` and wrench ``b``.
    

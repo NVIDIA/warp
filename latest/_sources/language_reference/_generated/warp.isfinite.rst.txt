@@ -3,43 +3,39 @@
 
 .. function:: warp._src.lang.isfinite(a: Float) -> bool
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Check if ``a`` is finite.
 
 .. function:: warp._src.lang.isfinite(a: Vector[Float, Any]) -> bool
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Check if all elements of ``a`` are finite.
 
 .. function:: warp._src.lang.isfinite(a: Quaternion[Float]) -> bool
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Check if all elements of ``a`` are finite.
 
 .. function:: warp._src.lang.isfinite(a: Matrix[Float, Any, Any]) -> bool
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Check if all elements of ``a`` are finite.

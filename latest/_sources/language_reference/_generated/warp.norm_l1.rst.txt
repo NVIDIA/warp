@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.norm_l1(v: Any) -> float
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Compute the L1 norm of a vector v.
    

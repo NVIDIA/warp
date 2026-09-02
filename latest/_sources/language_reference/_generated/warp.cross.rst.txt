@@ -3,11 +3,9 @@
 
 .. function:: warp._src.lang.cross(a: Vector[Scalar, Literal[3]], b: Vector[Scalar, Literal[3]]) -> Vector[Scalar, Literal[3]]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Compute the cross product of two 3D vectors.

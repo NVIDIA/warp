@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.volume_store_f(id: uint64, i: int32, j: int32, k: int32, value: float32) -> None
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Store the :class:`warp.float32` ``value`` at the voxel with integer index-space coordinates
    ``i``, ``j``, ``k``.

@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.quat_twist(axis: vec3f, q: quatf) -> quatf
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Extract the twist quaternion of ``q`` around ``axis``.
    

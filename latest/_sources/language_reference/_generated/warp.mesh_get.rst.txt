@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.mesh_get(id: uint64) -> Mesh
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Retrieve the :class:`warp.Mesh` object identified by ``id``.
    

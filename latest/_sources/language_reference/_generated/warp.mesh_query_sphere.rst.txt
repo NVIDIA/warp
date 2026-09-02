@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.mesh_query_sphere(id: uint64, center: vec3f, radius: float32) -> _MeshQuerySphere
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Construct a sphere query against a :class:`warp.Mesh`.
    

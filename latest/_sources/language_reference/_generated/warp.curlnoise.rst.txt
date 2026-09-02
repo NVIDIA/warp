@@ -3,12 +3,10 @@
 
 .. function:: warp._src.lang.curlnoise(state: uint32, xy: vec2f, octaves: uint32 = uint32(1), lacunarity: float32 = 2.0, gain: float32 = 0.5) -> vec2f
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Sample a divergence-free 2D vector field derived from Perlin noise.
    
@@ -51,12 +49,10 @@
 .. function:: warp._src.lang.curlnoise(state: uint32, xyz: vec3f, octaves: uint32 = uint32(1), lacunarity: float32 = 2.0, gain: float32 = 0.5) -> vec3f
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Sample a divergence-free 3D vector field derived from Perlin noise.
    
@@ -75,12 +71,10 @@
 .. function:: warp._src.lang.curlnoise(state: uint32, xyzt: vec4f, octaves: uint32 = uint32(1), lacunarity: float32 = 2.0, gain: float32 = 0.5) -> vec3f
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Sample a divergence-free 3D vector field that also varies along a fourth axis.
    

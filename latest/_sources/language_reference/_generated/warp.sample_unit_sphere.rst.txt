@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.sample_unit_sphere(state: uint32) -> vec3f
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Uniformly sample a point inside the unit ball (radius <= 1).
    

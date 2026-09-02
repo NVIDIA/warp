@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.tile_extract(a: Tile[Any, tuple[int]], i: int32) -> Any
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Extract a single element from the tile.
    
@@ -24,11 +23,10 @@
 .. function:: warp._src.lang.tile_extract(a: Tile[Any, tuple[int, ...]], i: int32, j: int32) -> Any
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Extract a single element from the tile.
    
@@ -46,11 +44,10 @@
 .. function:: warp._src.lang.tile_extract(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32) -> Any
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Extract a single element from the tile.
    
@@ -69,11 +66,10 @@
 .. function:: warp._src.lang.tile_extract(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32, l: int32) -> Any
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Extract a single element from the tile.
    
@@ -93,11 +89,10 @@
 .. function:: warp._src.lang.tile_extract(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32, l: int32, m: int32) -> Any
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Extract a single element from the tile.
    
@@ -118,11 +113,10 @@
 .. function:: warp._src.lang.tile_extract(a: Tile[Any, tuple[int, int, int, int]], i: int32, j: int32, k: int32, l: int32, m: int32, n: int32) -> Any
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Extract a single element from the tile.
    

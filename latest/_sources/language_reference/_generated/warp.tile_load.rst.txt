@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.tile_load(a: Array[Any], shape: tuple[int, ...], offset: tuple[int, ...] = ..., storage: str = "register", bounds_check: bool = True, aligned: bool = False) -> Tile[Any, tuple[int, ...]]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Load a tile from a global memory array.
    
@@ -34,10 +33,9 @@
 .. function:: warp._src.lang.tile_load(a: Array[Any], shape: int32, offset: int32 = ..., storage: str = "register", bounds_check: bool = True, aligned: bool = False) -> Tile[Any, tuple[int, ...]]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Load a tile from a global memory array.

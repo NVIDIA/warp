@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.tile_cholesky_inplace(A: Tile[Float, tuple[int, int]], fill_mode: str = "lower") -> None
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Compute the Cholesky factorization of a symmetric positive-definite matrix ``A`` inplace.
    

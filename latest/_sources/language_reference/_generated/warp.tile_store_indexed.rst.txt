@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.tile_store_indexed(a: Array[Any], indices: Tile[int32, tuple[int]], t: Tile[Any, tuple[int, ...]], offset: tuple[int, ...] = ..., axis: int32 = 0) -> None
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Store a tile to a global memory array, with storage along a specified axis mapped according to a 1D tile of indices.
    

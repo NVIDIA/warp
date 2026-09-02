@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.tile_sum(a: Tile[Any, tuple[int, ...]], axis: int32) -> Tile[Any, tuple[int, ...]]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Cooperatively compute the sum of the tile elements.
    
@@ -40,11 +39,10 @@
 .. function:: warp._src.lang.tile_sum(a: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[Literal[1]]]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Cooperatively compute the sum of the tile elements.
    

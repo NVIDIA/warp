@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.tile_stack_clear(s: Any) -> None
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Clear a tile stack, resetting the count to zero (cooperative).
    

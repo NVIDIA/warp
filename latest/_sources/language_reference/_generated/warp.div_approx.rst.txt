@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.div_approx(a: Float, b: Float) -> Float
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Divide two values using approximate GPU intrinsics.
    
@@ -16,11 +15,10 @@
 .. function:: warp._src.lang.div_approx(a: Vector[Float, Any], b: Float) -> Vector[Float, Any]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Divide two values using approximate GPU intrinsics.
    
@@ -29,11 +27,10 @@
 .. function:: warp._src.lang.div_approx(a: Float, b: Vector[Float, Any]) -> Vector[Float, Any]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Divide two values using approximate GPU intrinsics.
    
@@ -42,11 +39,10 @@
 .. function:: warp._src.lang.div_approx(a: Matrix[Float, Any, Any], b: Float) -> Matrix[Float, Any, Any]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Divide two values using approximate GPU intrinsics.
    
@@ -55,11 +51,10 @@
 .. function:: warp._src.lang.div_approx(a: Float, b: Matrix[Float, Any, Any]) -> Matrix[Float, Any, Any]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Divide two values using approximate GPU intrinsics.
    
@@ -68,11 +63,10 @@
 .. function:: warp._src.lang.div_approx(a: Quaternion[Float], b: Float) -> Quaternion[Float]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Divide two values using approximate GPU intrinsics.
    
@@ -83,11 +77,10 @@
 .. function:: warp._src.lang.div_approx(a: Float, b: Quaternion[Float]) -> Quaternion[Float]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Divide two values using approximate GPU intrinsics.
    

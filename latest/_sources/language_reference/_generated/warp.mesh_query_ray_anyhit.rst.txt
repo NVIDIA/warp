@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.mesh_query_ray_anyhit(id: uint64, start: vec3f, dir: vec3f, max_t: float32, root: int32 = -1) -> bool
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Check whether a ray hits the :class:`warp.Mesh` with identifier ``id``, without computing the closest hit.
    

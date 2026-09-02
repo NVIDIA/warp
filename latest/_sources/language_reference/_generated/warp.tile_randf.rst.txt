@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.tile_randf(shape: tuple[int, ...], rng: uint32, storage: str = "register") -> Tile[Any, tuple[int, ...]]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Generate a tile of random floats.
    
@@ -47,20 +47,20 @@
 .. function:: warp._src.lang.tile_randf(shape: int32, rng: uint32, storage: str = "register") -> Tile[Any, tuple[int, ...]]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Generate a tile of random floats.
 
 .. function:: warp._src.lang.tile_randf(shape: tuple[int, ...], rng: uint32, min: float32, max: float32, storage: str = "register") -> Tile[Any, tuple[int, ...]]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Generate a tile of random floats.
    
@@ -105,10 +105,10 @@
 .. function:: warp._src.lang.tile_randf(shape: int32, rng: uint32, min: float32, max: float32, storage: str = "register") -> Tile[Any, tuple[int, ...]]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Generate a tile of random floats.
    

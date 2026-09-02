@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.randn(state: uint32) -> float
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Sample the standard normal (Gaussian) distribution with mean 0 and variance 1.
    

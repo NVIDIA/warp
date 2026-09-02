@@ -3,12 +3,10 @@
 
 .. function:: warp._src.lang.quat_from_matrix(mat: Matrix[Float, Literal[3], Literal[3]]) -> Quaternion[Float]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Construct a quaternion from a matrix.
    
@@ -17,12 +15,10 @@
 .. function:: warp._src.lang.quat_from_matrix(mat: Matrix[Float, Literal[4], Literal[4]]) -> Quaternion[Float]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Construct a quaternion from a matrix.
    

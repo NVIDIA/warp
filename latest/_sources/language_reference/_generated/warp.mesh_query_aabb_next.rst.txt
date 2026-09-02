@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.mesh_query_aabb_next(query: MeshQueryAABB, index: int32) -> bool
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Advance a mesh AABB query to the next overlapping triangle and report whether one was found.
    
@@ -15,10 +15,10 @@
 .. function:: warp._src.lang.mesh_query_aabb_next(query: _MeshQuerySphere, index: int32) -> bool
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Advance a sphere mesh query to the next matching triangle.
    
@@ -27,10 +27,10 @@
 .. function:: warp._src.lang.mesh_query_aabb_next(query: MeshQuery, index: int32) -> bool
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Advance a mesh query to the next matching triangle.
    

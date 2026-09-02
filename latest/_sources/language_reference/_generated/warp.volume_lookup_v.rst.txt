@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.volume_lookup_v(id: uint64, i: int32, j: int32, k: int32) -> vec3f
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Return the :class:`warp.vec3f` value of the voxel at integer index-space coordinates ``i``,
    ``j``, ``k``, without interpolation.

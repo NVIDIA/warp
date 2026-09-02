@@ -3,12 +3,10 @@
 
 .. function:: warp._src.lang.transform_point(xform: Transformation[Float], point: Vector[Float, Literal[3]]) -> Vector[Float, Literal[3]]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Return ``point`` transformed by ``xform``, with rotation applied before translation.
    
@@ -53,12 +51,10 @@
 .. function:: warp._src.lang.transform_point(mat: Matrix[Float, Literal[4], Literal[4]], point: Vector[Float, Literal[3]]) -> Vector[Float, Literal[3]]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Return ``point`` transformed by the 4x4 matrix ``mat``, using homogeneous coordinate ``w = 1``.
    

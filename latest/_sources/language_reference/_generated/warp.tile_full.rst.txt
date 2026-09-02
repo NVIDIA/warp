@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.tile_full(shape: tuple[int, ...], value: Any, dtype: Any, storage: str = "register") -> Tile[Any, tuple[int, ...]]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Allocate a tile filled with the specified value.
    
@@ -22,9 +22,9 @@
 .. function:: warp._src.lang.tile_full(shape: int32, value: Any, dtype: Any, storage: str = "register") -> Tile[Any, tuple[int, ...]]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Allocate a tile filled with the specified value.

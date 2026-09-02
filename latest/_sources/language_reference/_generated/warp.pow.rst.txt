@@ -3,11 +3,9 @@
 
 .. function:: warp._src.lang.pow(x: Float, y: Float) -> Float
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Compute ``x`` raised to the power of ``y``.

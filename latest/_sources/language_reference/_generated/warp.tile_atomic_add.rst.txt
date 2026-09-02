@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.tile_atomic_add(a: Array[Any], t: Tile[Any, tuple[int, ...]], offset: tuple[int, ...] = ..., bounds_check: bool = True) -> Tile[Any, tuple[int, ...]]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Atomically add a tile onto the array ``a``.
    
@@ -24,10 +23,9 @@
 .. function:: warp._src.lang.tile_atomic_add(a: Array[Any], t: Tile[Any, tuple[int, ...]], offset: int32 = ..., bounds_check: bool = True) -> Tile[Any, tuple[int, ...]]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Atomically add a tile onto the array ``a``.

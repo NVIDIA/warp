@@ -3,11 +3,9 @@
 
 .. function:: warp._src.lang.ddot(a: Matrix[Scalar, Any, Any], b: Matrix[Scalar, Any, Any]) -> Scalar
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Compute the double dot product between two matrices.

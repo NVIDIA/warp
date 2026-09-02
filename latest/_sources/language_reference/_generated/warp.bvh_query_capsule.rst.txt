@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.bvh_query_capsule(id: uint64, start: vec3f, dir: vec3f, radius: float32, root: int32 = -1) -> _BvhQueryCapsule
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Construct a conservative capsule sweep query against a BVH.
    

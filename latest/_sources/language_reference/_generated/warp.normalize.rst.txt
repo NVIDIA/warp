@@ -3,12 +3,10 @@
 
 .. function:: warp._src.lang.normalize(a: Vector[Float, Any]) -> Vector[Float, Any]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Compute the normalized value of ``a``.
    
@@ -17,12 +15,10 @@
 .. function:: warp._src.lang.normalize(a: Quaternion[Float]) -> Quaternion[Float]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Compute the normalized value of ``a``.
    

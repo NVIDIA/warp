@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.tile_matmul(a: Tile[Float, tuple[int, int]], b: Tile[Float, tuple[int, int]], out: Tile[Float, tuple[int, int]], alpha: Float = 1.0, beta: Float = 1.0) -> None
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Compute the matrix product ``a*b``.
    
@@ -31,11 +30,10 @@
 .. function:: warp._src.lang.tile_matmul(a: Tile[Float, tuple[int, int]], b: Tile[Float, tuple[int, int]], alpha: Float = 1.0) -> Tile[Float, tuple[int, int]]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Compute the matrix product ``a*b``.
    

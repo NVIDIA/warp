@@ -3,12 +3,10 @@
 
 .. function:: warp._src.lang.transform_vector(xform: Transformation[Float], vec: Vector[Float, Literal[3]]) -> Vector[Float, Literal[3]]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Return ``vec`` transformed by the rotation of ``xform``, ignoring its translation.
    
@@ -25,12 +23,10 @@
 .. function:: warp._src.lang.transform_vector(mat: Matrix[Float, Literal[4], Literal[4]], vec: Vector[Float, Literal[3]]) -> Vector[Float, Literal[3]]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Return ``vec`` transformed by the 4x4 matrix ``mat``, using homogeneous coordinate ``w = 0``.
    

@@ -3,12 +3,10 @@
 
 .. function:: warp._src.lang.volume_world_to_index(id: uint64, xyz: vec3f) -> vec3f
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Transform the point ``xyz`` from world space to the volume's index space (voxel coordinates)
    using the inverse of the volume's affine index-to-world transform.
@@ -27,12 +25,10 @@
 .. function:: warp._src.lang.volume_world_to_index(id: uint64, xyz: vec3d) -> vec3d
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Transform the point ``xyz`` from world space to the volume's index space (voxel coordinates)
    using the inverse of the volume's affine index-to-world transform (float64 precision).

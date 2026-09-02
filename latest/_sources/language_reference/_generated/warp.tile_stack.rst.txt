@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.tile_stack(capacity: int32, dtype: Any) -> TileStack[Any, Any]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Allocate a cooperative thread-block stack in shared memory.
    

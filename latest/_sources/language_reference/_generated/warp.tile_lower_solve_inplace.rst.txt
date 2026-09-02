@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.tile_lower_solve_inplace(L: Tile[Float, tuple[int, int]], y: Tile[Float, tuple[int]]) -> None
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Solve for ``z`` in ``Lz = y``, where ``L`` is a lower triangular matrix by overwriting ``y`` with ``z``.
    

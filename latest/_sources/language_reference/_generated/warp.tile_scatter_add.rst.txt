@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.tile_scatter_add(a: Tile[Any, tuple[int, ...]], i: int32, value: Any, has_value: bool, atomic: bool = True) -> None
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Scatter-add a per-thread value into a shared-memory tile.
    
@@ -53,32 +52,29 @@
 .. function:: warp._src.lang.tile_scatter_add(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, value: Any, has_value: bool, atomic: bool = True) -> None
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    
 
 .. function:: warp._src.lang.tile_scatter_add(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32, value: Any, has_value: bool, atomic: bool = True) -> None
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    
 
 .. function:: warp._src.lang.tile_scatter_add(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32, l: int32, value: Any, has_value: bool, atomic: bool = True) -> None
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    

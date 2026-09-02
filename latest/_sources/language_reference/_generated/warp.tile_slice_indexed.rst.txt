@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.tile_slice_indexed(t: Tile[Any, tuple[int, ...]], indices: tuple) -> Tile[Any, tuple[int, ...]]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Gather elements of a tile along a single axis using a 1D tile of integer indices.
    

@@ -3,24 +3,20 @@
 
 .. function:: warp._src.lang.div(a: Scalar, b: Scalar) -> Scalar
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Divide two values.
 
 .. function:: warp._src.lang.div(a: Vector[Scalar, Any], b: Scalar) -> Vector[Scalar, Any]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Divide two values.
    
@@ -29,12 +25,10 @@
 .. function:: warp._src.lang.div(a: Scalar, b: Vector[Scalar, Any]) -> Vector[Scalar, Any]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Divide two values.
    
@@ -43,12 +37,10 @@
 .. function:: warp._src.lang.div(a: Matrix[Scalar, Any, Any], b: Scalar) -> Matrix[Scalar, Any, Any]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Divide two values.
    
@@ -57,12 +49,10 @@
 .. function:: warp._src.lang.div(a: Scalar, b: Matrix[Scalar, Any, Any]) -> Matrix[Scalar, Any, Any]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Divide two values.
    
@@ -71,12 +61,10 @@
 .. function:: warp._src.lang.div(a: Quaternion[Float], b: Scalar) -> Quaternion[Float]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Divide two values.
    
@@ -87,12 +75,10 @@
 .. function:: warp._src.lang.div(a: Scalar, b: Quaternion[Float]) -> Quaternion[Float]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Divide two values.
    
@@ -103,22 +89,20 @@
 .. function:: warp._src.lang.div(a: Tile[Any, tuple[int, ...]], b: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[int, ...]]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Element-wise division of tiles.
 
 .. function:: warp._src.lang.div(a: Tile[Any, tuple[int, ...]], b: Any) -> Tile[Any, tuple[int, ...]]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Divide tile elements by a constant.
    
@@ -130,11 +114,10 @@
 .. function:: warp._src.lang.div(a: Any, b: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[int, ...]]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Divide a constant by tile elements.
    

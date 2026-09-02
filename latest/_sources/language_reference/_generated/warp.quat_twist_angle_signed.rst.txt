@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.quat_twist_angle_signed(axis: vec3f, q: quatf) -> float
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Return the signed twist angle of ``q`` around ``axis``.
    

@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.matrix(pos: Vector[Float, Literal[3]], rot: Quaternion[Float], scale: Vector[Float, Literal[3]], dtype: Float = ...) -> Matrix[Float, Literal[4], Literal[4]]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Construct a matrix.
    
@@ -22,11 +21,10 @@
 .. function:: warp._src.lang.matrix(*args: Scalar, shape: tuple[int, int] = ..., dtype: Scalar = ...) -> Matrix[Scalar, Any, Any]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Construct a matrix.
    

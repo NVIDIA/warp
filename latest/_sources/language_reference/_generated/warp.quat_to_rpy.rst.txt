@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.quat_to_rpy(q: quatf) -> vec3f
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Convert a quaternion to roll-pitch-yaw angles (ZYX convention).
    

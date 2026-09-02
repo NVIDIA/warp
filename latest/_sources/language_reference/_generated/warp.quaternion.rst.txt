@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.quaternion(dtype: Float = ...) -> Quaternion[Float]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Construct a quaternion.
    
@@ -17,11 +16,10 @@
 .. function:: warp._src.lang.quaternion(x: Float, y: Float, z: Float, w: Float, dtype: Float = ...) -> Quaternion[Float]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Construct a quaternion.
    
@@ -30,11 +28,10 @@
 .. function:: warp._src.lang.quaternion(ijk: Vector[Float, Literal[3]], real: Float, dtype: Float = ...) -> Quaternion[Float]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Construct a quaternion.
    
@@ -43,11 +40,10 @@
 .. function:: warp._src.lang.quaternion(quat: Quaternion[Float], dtype: Float = ...) -> Quaternion[Float]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Construct a quaternion.
    

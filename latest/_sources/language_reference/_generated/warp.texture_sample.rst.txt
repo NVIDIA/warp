@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.texture_sample(tex: Texture1D, u: float32, dtype: Any, lod: float32 = -1.0) -> Any
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Sample the 1D texture at the given U coordinate.
    
@@ -75,10 +75,10 @@
 .. function:: warp._src.lang.texture_sample(tex: Texture2D, uv: vec2f, dtype: Any, lod: float32 = -1.0) -> Any
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Sample the 2D texture at the given UV coordinates.
    
@@ -119,10 +119,10 @@
 .. function:: warp._src.lang.texture_sample(tex: Texture2D, u: float32, v: float32, dtype: Any, lod: float32 = -1.0) -> Any
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Sample the 2D texture at the given UV coordinates.
    
@@ -165,10 +165,10 @@
 .. function:: warp._src.lang.texture_sample(tex: Texture3D, uvw: vec3f, dtype: Any, lod: float32 = -1.0) -> Any
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Sample the 3D texture at the given UVW coordinates.
    
@@ -209,10 +209,10 @@
 .. function:: warp._src.lang.texture_sample(tex: Texture3D, u: float32, v: float32, w: float32, dtype: Any, lod: float32 = -1.0) -> Any
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Sample the 3D texture at the given UVW coordinates.
    

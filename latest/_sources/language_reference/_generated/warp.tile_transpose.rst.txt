@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.tile_transpose(a: Tile[Any, tuple[int, int]]) -> Tile[Any, tuple[int, int]]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Transpose a tile.
    

@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.tile_randi(shape: tuple[int, ...], rng: uint32, storage: str = "register") -> Tile[Any, tuple[int, ...]]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Generate a tile of random integers.
    
@@ -47,20 +47,20 @@
 .. function:: warp._src.lang.tile_randi(shape: int32, rng: uint32, storage: str = "register") -> Tile[Any, tuple[int, ...]]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Generate a tile of random integers.
 
 .. function:: warp._src.lang.tile_randi(shape: tuple[int, ...], rng: uint32, min: int32, max: int32, storage: str = "register") -> Tile[Any, tuple[int, ...]]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Generate a tile of random integers.
    
@@ -105,10 +105,10 @@
 .. function:: warp._src.lang.tile_randi(shape: int32, rng: uint32, min: int32, max: int32, storage: str = "register") -> Tile[Any, tuple[int, ...]]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Generate a tile of random integers.
    

@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.tile_scan_inclusive(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Scalar, tuple[int, ...]]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Inclusive scan (prefix sum) across the tile.
    

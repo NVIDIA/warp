@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=2a8757ae" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=e5bdcd64" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
@@ -563,25 +563,7 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">_MeshQuerySphere</span></span></span><a class="headerlink" href="#warp._src.lang.mesh_query_sphere" title="Link to this definition">#</a></dt>
-<dd><table class="hlist"><tr><td><ul class="simple">
-<li><p>Kernel</p></li>
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td></tr></table>
-<p>Construct a sphere query against a <a class="reference internal" href="../../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a>.</p>
+<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="differentiable" data-wp-value="false"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li></ul><p>Construct a sphere query against a <a class="reference internal" href="../../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a>.</p>
 <p>Iterates over mesh triangles that intersect a sphere. A broad phase uses an exact sphere-AABB test
 to find candidate triangles; a narrow phase keeps only those whose closest point on the triangle
 is within <code class="docutils literal notranslate"><span class="pre">radius</span></code> of <code class="docutils literal notranslate"><span class="pre">center</span></code>. Tangential contact (closest point exactly on the sphere surface)

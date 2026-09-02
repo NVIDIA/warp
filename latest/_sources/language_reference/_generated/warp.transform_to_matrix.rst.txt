@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.transform_to_matrix(xform: Transformation[float32]) -> Matrix[float32, Literal[4], Literal[4]]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Convert a transformation to a 4x4 matrix.
    

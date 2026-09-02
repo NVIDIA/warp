@@ -3,19 +3,19 @@
 
 .. function:: warp._src.lang.zeros(shape: tuple[int, ...], dtype: Any) -> Array[Scalar]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Create a zero-initialized fixed-size array of the given shape and dtype.
 
 .. function:: warp._src.lang.zeros(shape: int32, dtype: Any) -> Array[Scalar]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Create a zero-initialized fixed-size array of the given length and dtype.

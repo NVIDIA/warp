@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.tile_squeeze(t: Tile[Any, tuple[int, ...]], axis: tuple[int, ...] = ...) -> Tile[Any, tuple[int, ...]]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Create a squeezed view of a tile with the same data.
    

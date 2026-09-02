@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.hash_grid_query_next(query: HashGridQuery, index: int32) -> bool
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Advance a hash grid query to the next candidate neighbor and report whether one was found.
    
@@ -55,10 +55,10 @@
 .. function:: warp._src.lang.hash_grid_query_next(query: HashGridQuery, index: int32) -> bool
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Advance a hash grid query to the next candidate neighbor and report whether one was found (float16 precision).
    
@@ -76,10 +76,10 @@
 .. function:: warp._src.lang.hash_grid_query_next(query: HashGridQuery, index: int32) -> bool
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Advance a hash grid query to the next candidate neighbor and report whether one was found (float64 precision).
    

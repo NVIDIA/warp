@@ -3,24 +3,20 @@
 
 .. function:: warp._src.lang.abs(x: Scalar) -> Scalar
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Compute the absolute value of ``x``.
 
 .. function:: warp._src.lang.abs(x: Vector[Scalar, Any]) -> Vector[Scalar, Any]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Compute the absolute value of ``x``.
    

@@ -3,12 +3,10 @@
 
 .. function:: warp._src.lang.eig3(A: Matrix[Float, Literal[3], Literal[3]]) -> tuple[Matrix[Float, Literal[3], Literal[3]], Vector[Float, Literal[3]]]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Compute the eigendecomposition of a 3x3 matrix ``A``.
    
@@ -17,11 +15,10 @@
 .. function:: warp._src.lang.eig3(A: Matrix[Float, Literal[3], Literal[3]], Q: Matrix[Float, Literal[3], Literal[3]], d: Vector[Float, Literal[3]]) -> None
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Compute the eigendecomposition of a 3x3 matrix ``A``.
    

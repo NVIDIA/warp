@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.tile_axpy(alpha: Any, src: Tile[Any, tuple[int, ...]], dest: Tile[Any, tuple[int, ...]]) -> None
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Scale ``src`` by ``alpha`` and accumulate into ``dest``.
    

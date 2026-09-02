@@ -3,12 +3,10 @@
 
 .. function:: warp._src.lang.spatial_bottom(svec: Vector[Float, Literal[6]]) -> Vector[Float, Literal[3]]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Return the linear velocity or force stored in ``svec``.
    

@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.hash_grid_point_id(id: uint64, index: int32) -> int
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Return the original point index stored at a given position in the :class:`warp.HashGrid`'s spatially-sorted order.
    

@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.tile(x: Any, preserve_type: bool = False) -> Tile[Any, tuple]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Construct a new tile from per-thread kernel values.
    

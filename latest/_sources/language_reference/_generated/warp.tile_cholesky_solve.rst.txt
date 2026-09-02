@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.tile_cholesky_solve(L: Tile[Float, tuple[int, int]], y: Tile[Float, tuple[int]], fill_mode: str = "lower") -> Tile[Float, tuple[int]]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Solve for ``x`` in ``Ax = y`` given the Cholesky factor of ``A``.
    

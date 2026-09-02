@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.atomic_sub(arr: Array[Any], i: Int, value: Any) -> Any
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Atomically subtracts ``value`` onto ``arr[i]`` and returns the original value of ``arr[i]``.
    
@@ -16,11 +15,10 @@
 .. function:: warp._src.lang.atomic_sub(arr: Array[Any], i: Int, j: Int, value: Any) -> Any
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Atomically subtracts ``value`` onto ``arr[i,j]`` and returns the original value of ``arr[i,j]``.
    
@@ -29,11 +27,10 @@
 .. function:: warp._src.lang.atomic_sub(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Atomically subtracts ``value`` onto ``arr[i,j,k]`` and returns the original value of ``arr[i,j,k]``.
    
@@ -42,11 +39,10 @@
 .. function:: warp._src.lang.atomic_sub(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Atomically subtracts ``value`` onto ``arr[i,j,k,l]`` and returns the original value of ``arr[i,j,k,l]``.
    
@@ -55,11 +51,10 @@
 .. function:: warp._src.lang.atomic_sub(arr: FabricArray[Any], i: Int, value: Any) -> Any
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Atomically subtracts ``value`` onto ``arr[i]`` and returns the original value of ``arr[i]``.
    
@@ -68,11 +63,10 @@
 .. function:: warp._src.lang.atomic_sub(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Atomically subtracts ``value`` onto ``arr[i,j]`` and returns the original value of ``arr[i,j]``.
    
@@ -81,11 +75,10 @@
 .. function:: warp._src.lang.atomic_sub(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Atomically subtracts ``value`` onto ``arr[i,j,k]`` and returns the original value of ``arr[i,j,k]``.
    
@@ -94,11 +87,10 @@
 .. function:: warp._src.lang.atomic_sub(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Atomically subtracts ``value`` onto ``arr[i,j,k,l]`` and returns the original value of ``arr[i,j,k,l]``.
    
@@ -107,11 +99,10 @@
 .. function:: warp._src.lang.atomic_sub(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Atomically subtracts ``value`` onto ``arr[i]`` and returns the original value of ``arr[i]``.
    
@@ -120,11 +111,10 @@
 .. function:: warp._src.lang.atomic_sub(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Atomically subtracts ``value`` onto ``arr[i,j]`` and returns the original value of ``arr[i,j]``.
    
@@ -133,11 +123,10 @@
 .. function:: warp._src.lang.atomic_sub(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Atomically subtracts ``value`` onto ``arr[i,j,k]`` and returns the original value of ``arr[i,j,k]``.
    
@@ -146,11 +135,10 @@
 .. function:: warp._src.lang.atomic_sub(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Atomically subtracts ``value`` onto ``arr[i,j,k,l]`` and returns the original value of ``arr[i,j,k,l]``.
    

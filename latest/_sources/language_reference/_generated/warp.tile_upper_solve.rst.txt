@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.tile_upper_solve(U: Tile[Float, tuple[int, int]], z: Tile[Float, tuple[int]]) -> Tile[Float, tuple[int]]
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Solve for ``x`` in ``Ux = z``, where ``U`` is an upper triangular matrix.
    

@@ -3,22 +3,20 @@
 
 .. function:: warp._src.lang.invert(a: Int) -> Int
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Compute the bitwise complement of ``a``.
 
 .. function:: warp._src.lang.invert(a: Vector[Int, Any]) -> Vector[Int, Any]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Compute the bitwise complement of ``a``.
    
@@ -27,10 +25,10 @@
 .. function:: warp._src.lang.invert(a: Matrix[Int, Any, Any]) -> Matrix[Int, Any, Any]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Compute the bitwise complement of ``a``.
    

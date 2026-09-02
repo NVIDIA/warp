@@ -3,22 +3,20 @@
 
 .. function:: warp._src.lang.bit_xor(a: Int, b: Int) -> Int
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Compute the bitwise XOR of ``a`` and ``b``.
 
 .. function:: warp._src.lang.bit_xor(a: Vector[Int, Any], b: Vector[Int, Any]) -> Vector[Int, Any]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Compute the bitwise XOR of ``a`` and ``b``.
    
@@ -27,10 +25,10 @@
 .. function:: warp._src.lang.bit_xor(a: Matrix[Int, Any, Any], b: Matrix[Int, Any, Any]) -> Matrix[Int, Any, Any]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Compute the bitwise XOR of ``a`` and ``b``.
    
@@ -39,10 +37,10 @@
 .. function:: warp._src.lang.bit_xor(a: Tile[Any, tuple[int, ...]], b: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[int, ...]]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Compute the bitwise XOR of ``a`` and ``b``.
    

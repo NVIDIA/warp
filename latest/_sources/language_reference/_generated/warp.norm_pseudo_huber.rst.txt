@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.norm_pseudo_huber(v: Any, delta: float = 1.0) -> float
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Compute the "pseudo" Huber norm of a vector v with a given delta.
    

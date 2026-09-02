@@ -3,11 +3,9 @@
 
 .. function:: warp._src.lang.sinh(x: Float) -> Float
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Compute the sinh of ``x``.

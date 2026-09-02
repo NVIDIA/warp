@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.volume_sample_grad_index(id: uint64, uvw: vec3f, sampling_mode: int32, voxel_data: Array[Any], background: Any, grad: Any) -> Any
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Sample the volume given by ``id`` and its spatial gradient at the index-space point ``uvw``,
    reading voxel values from a separate ``voxel_data`` array.

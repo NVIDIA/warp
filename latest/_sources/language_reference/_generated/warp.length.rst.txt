@@ -3,12 +3,10 @@
 
 .. function:: warp._src.lang.length(a: Vector[Float, Any]) -> Float
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Compute the length of ``a``.
    
@@ -17,12 +15,10 @@
 .. function:: warp._src.lang.length(a: Quaternion[Float]) -> Float
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Compute the length of ``a``.
    

@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=2a8757ae" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=e5bdcd64" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
@@ -555,25 +555,7 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="warp._src.lang.mesh_get_bvh">
 <span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">mesh_get_bvh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.uint64.html#warp.uint64" title="warp.uint64"><span class="pre">uint64</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../../api_reference/_generated/warp.uint64.html#warp.uint64" title="warp.uint64"><span class="pre">uint64</span></a></span></span><a class="headerlink" href="#warp._src.lang.mesh_get_bvh" title="Link to this definition">#</a></dt>
-<dd><table class="hlist"><tr><td><ul class="simple">
-<li><p>Kernel</p></li>
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td></tr></table>
-<p>Return the identifier of a mesh’s internal BVH.</p>
+<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="differentiable" data-wp-value="false"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li></ul><p>Return the identifier of a mesh’s internal BVH.</p>
 <p>The returned id can be passed directly to the <code class="docutils literal notranslate"><span class="pre">bvh_query_*</span></code> builtins (<a class="reference internal" href="warp.bvh_query_aabb.html#warp._src.lang.bvh_query_aabb" title="warp._src.lang.bvh_query_aabb"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_aabb()</span></code></a>,
 <a class="reference internal" href="warp.bvh_query_ray.html#warp._src.lang.bvh_query_ray" title="warp._src.lang.bvh_query_ray"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_ray()</span></code></a>, <a class="reference internal" href="warp.bvh_query_capsule.html#warp._src.lang.bvh_query_capsule" title="warp._src.lang.bvh_query_capsule"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_capsule()</span></code></a>, <a class="reference internal" href="warp.bvh_query_sphere.html#warp._src.lang.bvh_query_sphere" title="warp._src.lang.bvh_query_sphere"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_sphere()</span></code></a>) to run broad-phase
 bounding-volume queries against

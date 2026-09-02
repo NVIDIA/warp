@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.tile_bvh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> BvhQueryTiled
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Construct an axis-aligned bounding box query against a BVH object for thread-block parallel traversal.
    

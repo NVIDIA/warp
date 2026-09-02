@@ -3,10 +3,10 @@
 
 .. function:: warp._src.lang.mesh_query_ray_count_intersections(id: uint64, start: vec3f, dir: vec3f, root: int32 = -1) -> int
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Count the number of intersections between a ray and a :class:`warp.Mesh`.
    

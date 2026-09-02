@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=2a8757ae" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=e5bdcd64" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
@@ -562,27 +562,7 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Vector</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../api_reference/_generated/warp.Float.html#warp.Float" title="warp.Float"><span class="pre">Float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="m"><span class="pre">6</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#warp._src.lang.spatial_cross" title="Link to this definition">#</a></dt>
-<dd><table class="hlist"><tr><td><ul class="simple">
-<li><p>Kernel</p></li>
-</ul>
-</td><td><ul class="simple">
-<li><p>Python</p></li>
-</ul>
-</td><td><ul class="simple">
-<li><p>Differentiable</p></li>
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td></tr></table>
-<p>Return the spatial cross product of <code class="docutils literal notranslate"><span class="pre">a</span></code> and <code class="docutils literal notranslate"><span class="pre">b</span></code>, treating both as twists.</p>
+<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag" data-wp-tag="python" data-wp-value="true"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Return the spatial cross product of <code class="docutils literal notranslate"><span class="pre">a</span></code> and <code class="docutils literal notranslate"><span class="pre">b</span></code>, treating both as twists.</p>
 <p>The operation is antisymmetric: <code class="docutils literal notranslate"><span class="pre">spatial_cross(a,</span> <span class="pre">b)</span> <span class="pre">==</span> <span class="pre">-spatial_cross(b,</span> <span class="pre">a)</span></code>. It computes
 velocity-product terms used in spatial-acceleration calculations for moving coordinate frames.
 Use <a class="reference internal" href="warp.spatial_cross_dual.html#warp._src.lang.spatial_cross_dual" title="warp._src.lang.spatial_cross_dual"><code class="xref py py-func docutils literal notranslate"><span class="pre">spatial_cross_dual()</span></code></a> when <code class="docutils literal notranslate"><span class="pre">b</span></code> is a wrench. Both arguments must have the same

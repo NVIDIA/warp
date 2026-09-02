@@ -3,11 +3,10 @@
 
 .. function:: warp._src.lang.quat_to_euler(q: quatf, i: int, j: int, k: int) -> vec3f
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Convert a quaternion into Euler angles for an axis sequence.
    
