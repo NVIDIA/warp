@@ -33,6 +33,7 @@ HERE = os.path.dirname(__file__)
 WARP_PATH = os.path.realpath(os.path.join(HERE, ".."))
 
 sys.path.insert(0, WARP_PATH)
+sys.path.insert(0, os.path.join(HERE, "_ext"))
 
 try:
     import warp as wp
@@ -74,6 +75,8 @@ extensions = [
     # Third-party extensions.
     "myst_parser",  # Parses markdown files.
     "sphinx_copybutton",  # Adds a copy button to code blocks.
+    # Local extensions, from `docs/_ext`.
+    "wp_builtin_tags",  # Renders the property tags of the built-ins.
 ]
 
 # Generate targets for Markdown headings through level 2 so standard fragment
@@ -402,7 +405,9 @@ def _get_builtin_overloads_info(symbol: str) -> list[dict[str, object]]:
         try:
             return_type = wp._src.context.type_str(func.value_func(None, None))
         except Exception:
-            return_type = "None"
+            # The return type of a built-in whose value function cannot be evaluated
+            # without concrete arguments is unknown here, not absent.
+            return_type = "Any"
 
         is_exported = any(
             wp._src.codegen.func_match_args(func, list(exported.input_types.values()), {})

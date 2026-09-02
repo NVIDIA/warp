@@ -6,7 +6,10 @@
 Built-in types and functions are available within Warp kernels and optionally also
 from the Warp Python runtime API.
 
-Each built-in function is tagged to indicate where it can be used:
+Each built-in function is tagged to indicate where it can be used. Only the tags that apply
+are shown, but every page states all three properties with an explicit ``true`` or ``false``
+value, in text that screen readers and documentation tools can read, so an absent tag never
+has to be guessed at:
 
 - **Kernel** - Can be called from inside a Warp kernel
 - **Python** - Can be called at the Python scope
