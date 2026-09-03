@@ -294,20 +294,25 @@ def _make_block_jacobi_preconditioner(A: _Matrix) -> LinearOperator:
     dim = A_diag.shape[0]
     A_flat = A_diag.view(scalar_type).reshape((dim * block_size, block_size))
     L_flat = wp.empty(shape=A_flat.shape, dtype=scalar_type, device=device)
-    scratch = wp.empty(shape=(dim * block_size,), dtype=scalar_type, device=device)
 
     factorize_kernel, solve_kernel = _create_block_jacobi_kernels(block_size)
     wp.launch_tiled(factorize_kernel, dim=[dim], inputs=[A_flat, L_flat], block_dim=32, device=device)
 
     def block_jacobi_mv(x, y, z, alpha, beta):
         """Compute ``z = alpha * (blockdiag(A)^-1 @ x) + beta * y``, the block-Jacobi matvec."""
-        xf = _as_scalar_array(x)
-        wp.launch_tiled(solve_kernel, dim=[dim], inputs=[L_flat, xf, scratch], block_dim=32, device=device)
-        wp.launch(
-            _affine_combine_kernel,
-            dim=scratch.shape,
+        wp.launch_tiled(
+            solve_kernel,
+            dim=[dim],
+            inputs=[
+                L_flat,
+                _as_scalar_array(x),
+                _as_scalar_array(y),
+                _as_scalar_array(z),
+                scalar_type(alpha),
+                scalar_type(beta),
+            ],
+            block_dim=32,
             device=device,
-            inputs=[scratch, _as_scalar_array(y), _as_scalar_array(z), scalar_type(alpha), scalar_type(beta)],
         )
 
     return LinearOperator(
@@ -325,10 +330,13 @@ def _create_block_jacobi_kernels(block_size: int):
 
     @wp.kernel(module="unique")
     def factorize_kernel(
-        A_flat: wp.array2d(dtype=Any),
-        L_flat: wp.array2d(dtype=Any),
+        A_flat: wp.array2d[Any],
+        L_flat: wp.array2d[Any],
     ):
-        """Cholesky-factorize one ``block_size x block_size`` diagonal block per tile: L L^T = A_flat's block."""
+        """Cholesky-factorize one ``block_size x block_size`` diagonal block per tile.
+
+        Computes ``L L^T = A_flat``'s block.
+        """
         i = wp.tid()
         off = i * block_size
         A_tile = wp.tile_load(A_flat, shape=(block_size, block_size), offset=(off, 0))
@@ -337,39 +345,32 @@ def _create_block_jacobi_kernels(block_size: int):
 
     @wp.kernel(module="unique")
     def solve_kernel(
-        L_flat: wp.array2d(dtype=Any),
-        x: wp.array(dtype=Any),
-        s: wp.array(dtype=Any),
+        L_flat: wp.array2d[Any],
+        x: wp.array[Any],
+        y: wp.array[Any],
+        z: wp.array[Any],
+        alpha: Any,
+        beta: Any,
     ):
-        """Solve ``s = A_diag^-1 x`` one block per tile, via forward/backward substitution on ``L_flat``."""
+        """Apply one block-diagonal inverse per tile and write the result directly into ``z``.
+
+        Computes ``z = alpha * (A_diag^-1 x) + beta * y`` via forward/backward substitution on
+        ``L_flat``, writing straight into the caller-provided ``z`` tile with no shared scratch
+        buffer, so concurrent calls on different streams cannot race on intermediate state.
+        """
         i = wp.tid()
         off = i * block_size
         L_tile = wp.tile_load(L_flat, shape=(block_size, block_size), offset=(off, 0))
         rhs = wp.tile_load(x, shape=(block_size,), offset=(off,))
         wp.tile_cholesky_solve_inplace(L_tile, rhs)
-        wp.tile_store(s, rhs, offset=(off,))
+
+        zero = type(alpha)(0.0)
+        out = rhs * alpha
+        if beta != zero:
+            out += wp.tile_load(y, shape=(block_size,), offset=(off,)) * beta
+        wp.tile_store(z, out, offset=(off,))
 
     return factorize_kernel, solve_kernel
-
-
-@wp.kernel(module="unique")
-def _affine_combine_kernel(
-    s: wp.array(dtype=Any),
-    y: wp.array(dtype=Any),
-    z: wp.array(dtype=Any),
-    alpha: Any,
-    beta: Any,
-):
-    """Compute ``z = alpha * s + beta * y``, matching the generalized matvec contract
-    ``z = alpha * (M @ x) + beta * y`` given a precomputed ``s = M @ x``."""
-    i = wp.tid()
-    zero = type(alpha)(0)
-    out = z.dtype(zero)
-    if alpha != zero:
-        out += alpha * s[i]
-    if beta != zero:
-        out += beta * y[i]
-    z[i] = out
 
 
 def _make_jacobi_preconditioner(A: _Matrix, use_abs: bool) -> LinearOperator:

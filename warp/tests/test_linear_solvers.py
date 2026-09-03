@@ -9,7 +9,7 @@ import numpy as np
 import warp as wp
 from warp._src.optim.linear import TiledDot, _create_segmented_tiled_dot_kernels, _run_solver_loop
 from warp.optim.linear import CG, CR, GMRES, BiCGSTAB, aslinearoperator, bicgstab, cg, cr, gmres, preconditioner
-from warp.sparse import bsr_from_triplets, bsr_mv
+from warp.sparse import bsr_from_triplets, bsr_identity, bsr_mv
 from warp.tests.unittest_utils import *
 
 
@@ -1036,6 +1036,48 @@ def test_block_jacobi_preconditioner_scalar_fallback(test, device):
     assert_np_equal(z_bj.numpy(), z_diag.numpy(), tol=1.0e-6)
 
 
+def test_block_jacobi_preconditioner_concurrent_streams(test, device):
+    """A preconditioner reused across concurrent CUDA streams must not corrupt either output.
+
+    Regression test adapted from the exact repro that caught the data race in the tile
+    solve kernel: two priority streams apply the same preconditioner to different inputs
+    with no host synchronization between the launches. Before the fix, the tile solve wrote
+    into a scratch buffer shared across all `matvec` calls, so one stream's launch could
+    overwrite another's intermediate result before it was read back into `z`.
+    """
+    num_blocks = 50_000
+    block_size = 12
+    num_values = num_blocks * block_size
+
+    mat12f = wp.types.matrix(shape=(block_size, block_size), dtype=wp.float32)
+    A = bsr_identity(num_blocks, block_type=mat12f, device=device)
+    M = preconditioner(A, "block_jacobi")
+
+    x0 = wp.full(num_values, 1.0, dtype=wp.float32, device=device)
+    x1 = wp.full(num_values, 2.0, dtype=wp.float32, device=device)
+    z0 = wp.zeros_like(x0)
+    z1 = wp.zeros_like(x1)
+
+    stream0 = wp.Stream(device, priority=0)
+    stream1 = wp.Stream(device, priority=-1)
+
+    # Warm up JIT compilation and complete setup work.
+    M.matvec(x0, z0, z0, alpha=1.0, beta=0.0)
+    wp.synchronize_device(device)
+
+    for _ in range(20):
+        z0.zero_()
+        z1.zero_()
+        with wp.ScopedStream(stream0, sync_enter=False, sync_exit=False):
+            M.matvec(x0, z0, z0, alpha=1.0, beta=0.0)
+        with wp.ScopedStream(stream1, sync_enter=False, sync_exit=False):
+            M.matvec(x1, z1, z1, alpha=1.0, beta=0.0)
+        wp.synchronize_device(device)
+
+        assert_np_equal(z0.numpy(), x0.numpy())
+        assert_np_equal(z1.numpy(), x1.numpy())
+
+
 def test_block_jacobi_preconditioner_errors(test, device):
     """Non-square blocks are rejected; dense (non-BsrMatrix) input is rejected."""
     A, _b = _make_spd_system(n=16, seed=321, dtype=wp.float32, device=device)
@@ -1165,6 +1207,12 @@ add_function_test(
     "test_block_jacobi_preconditioner_scalar_fallback",
     test_block_jacobi_preconditioner_scalar_fallback,
     devices=devices,
+)
+add_function_test(
+    TestLinearSolvers,
+    "test_block_jacobi_preconditioner_concurrent_streams",
+    test_block_jacobi_preconditioner_concurrent_streams,
+    devices=get_cuda_test_devices(),
 )
 add_function_test(
     TestLinearSolvers,
