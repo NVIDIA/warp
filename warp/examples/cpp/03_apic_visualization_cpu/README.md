@@ -72,6 +72,12 @@ cmake --build build --config Release
 ./build/03_apic_visualization_cpu
 ```
 
+If using the Visual Studio generator on Windows instead of Ninja, run:
+
+```powershell
+.\build\Release\03_apic_visualization_cpu.exe
+```
+
 **Headless smoke mode**:
 
 The example also accepts `--smoke` as a single argv to run a headless

@@ -82,7 +82,13 @@ make              # Build everything (auto-captures graph if needed)
 python capture_wave.py                        # Step 1: Capture the graph
 cmake -B build -DCMAKE_BUILD_TYPE=Release     # Step 2: Configure
 cmake --build build --config Release          # Step 3: Build
-./build/02_apic_visualization                 # Step 4: Run
+./build/02_apic_visualization                 # Step 4: Run (Ninja / Unix Makefiles)
+```
+
+If using the Visual Studio generator on Windows, run:
+
+```powershell
+.\build\Release\02_apic_visualization.exe
 ```
 
 **Headless smoke mode**:

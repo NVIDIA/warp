@@ -2346,7 +2346,11 @@ Both examples ship with a ``Makefile`` (Unix/Linux) and a ``CMakeLists.txt``
     cmake --build build --config Release
 
     # 3. Run
+    # NINJA / UNIX Makefiles
     ./build/02_apic_visualization                  # or 03_apic_visualization_cpu
+
+    # Visual Studio (Windows)
+    .\build\Release\02_apic_visualization.exe      # or 03_apic_visualization_cpu.exe
 
 Each example directory contains a ``README.md`` with full prerequisites, build
 options, controls, and platform-specific notes.
