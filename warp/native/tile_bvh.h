@@ -324,11 +324,11 @@ bvh_query_aabb_thread_block_impl(uint64_t id, const vec3& lower, const vec3& upp
     return bvh_query_aabb(id, lower, upper, -1);
 }
 
-// CPU version: single-threaded, just calls regular bvh_query_next
+// CPU version: single-threaded. bvh_query_thread_block_t is just bvh_query_t and is shared
+// by the AABB and ray tiled entry points, so dispatch on the query's stored kind.
 CUDA_CALLABLE inline bool bvh_query_next_thread_block_impl(bvh_query_thread_block_t& query, int& index)
 {
-    // On CPU, bvh_query_thread_block_t is just bvh_query_t, so call regular bvh_query_next
-    return bvh_query_next(query, index, FLT_MAX);
+    return bvh_query_next_dynamic(query, index, FLT_MAX);
 }
 
 #endif
@@ -378,10 +378,10 @@ CUDA_CALLABLE inline bvh_query_thread_block_t tile_bvh_query_ray(uint64_t id, co
 // CPU implementation: falls back to single-threaded query, returns index only in first element
 template <int Length> inline auto tile_bvh_query_next_impl(bvh_query_thread_block_t& query)
 {
-    // On CPU, bvh_query_thread_block_t is aliased to bvh_query_t
-    // We just call the regular query and put the result in the first element of a tile
+    // On CPU, bvh_query_thread_block_t is aliased to bvh_query_t and is shared by the AABB
+    // and ray tiled entry points, so dispatch on the query's stored kind.
     int index = -1;
-    bvh_query_next(query, index, FLT_MAX);
+    bvh_query_next_dynamic(query, index, FLT_MAX);
     query.last_query_valid = (index >= 0);
 
     // Create a tile with the index in the first element, -1 in all others

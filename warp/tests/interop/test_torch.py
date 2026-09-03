@@ -17,6 +17,12 @@ def op_kernel(x: wp.array[float], y: wp.array[float]):
 
 
 @wp.kernel
+def square_kernel(x: wp.array[wp.float64], y: wp.array[wp.float64]):
+    tid = wp.tid()
+    y[tid] = x[tid] * x[tid]
+
+
+@wp.kernel
 def inc(a: wp.array[float]):
     tid = wp.tid()
     a[tid] = a[tid] + 1.0
@@ -79,6 +85,13 @@ def _import_torch():
     import torch  # noqa: PLC0415
 
     return torch
+
+
+def _active_torch_stream(tensor):
+    if tensor.is_cuda:
+        return wp.ScopedStream(wp.stream_from_torch(tensor.device))
+
+    return wp.ScopedStream(None)
 
 
 def test_dtype_from_torch(test, device):
@@ -687,9 +700,10 @@ def test_torch_retain_grad_from_torch(test, device):
 
 
 def test_torch_autograd(test, device):
-    """Test torch autograd with a custom Warp op"""
+    """Test PyTorch autograd with a custom Warp op."""
 
     torch = _import_torch()
+    torch_device = wp.device_to_torch(device)
 
     # custom autograd op
     class TestFunc(torch.autograd.Function):
@@ -698,40 +712,53 @@ def test_torch_autograd(test, device):
             # allocate output array
             y = torch.empty_like(x)
 
-            ctx.x = x
-            ctx.y = y
+            ctx.save_for_backward(x)
+            ctx.x = x.detach()
+            ctx.y = y.detach()
 
-            wp.launch(kernel=op_kernel, dim=len(x), inputs=[wp.from_torch(x)], outputs=[wp.from_torch(y)])
+            with _active_torch_stream(x):
+                wp.launch(
+                    kernel=op_kernel,
+                    dim=len(x),
+                    inputs=[wp.from_torch(ctx.x, requires_grad=False)],
+                    outputs=[wp.from_torch(ctx.y, requires_grad=False)],
+                    device=device,
+                )
 
             return y
 
         @staticmethod
         def backward(ctx, adj_y):
-            # adjoints should be allocated as zero initialized
-            adj_x = torch.zeros_like(ctx.x).contiguous()
-            adj_y = adj_y.contiguous()
+            _ = ctx.saved_tensors
 
-            wp_x = wp.from_torch(ctx.x, grad=adj_x)
-            wp_y = wp.from_torch(ctx.y, grad=adj_y)
+            # Adjoint buffers should be zero initialized. Keep the incoming
+            # PyTorch gradient as an explicit external adjoint buffer instead of
+            # installing it as ctx.y.grad, because Warp may consume output
+            # adjoints during backward.
+            adj_x = torch.zeros_like(ctx.x)
 
-            wp.launch(
-                kernel=op_kernel,
-                dim=len(ctx.x),
-                # fwd inputs
-                inputs=[wp_x],
-                outputs=[wp_y],
-                # adj inputs (already stored in input/output arrays, passing null pointers)
-                adj_inputs=[None],
-                adj_outputs=[None],
-                adjoint=True,
-            )
+            with _active_torch_stream(adj_y):
+                wp_x = wp.from_torch(ctx.x, requires_grad=False)
+                wp_y = wp.from_torch(ctx.y, requires_grad=False)
+                wp_adj_x = wp.from_torch(adj_x, requires_grad=False)
+                wp_adj_y = wp.from_torch(adj_y, requires_grad=False)
+
+                wp.launch(
+                    kernel=op_kernel,
+                    dim=len(ctx.x),
+                    # fwd inputs
+                    inputs=[wp_x],
+                    outputs=[wp_y],
+                    adj_inputs=[wp_adj_x],
+                    adj_outputs=[wp_adj_y],
+                    device=device,
+                    adjoint=True,
+                )
 
             return adj_x
 
     # run autograd on given device
     with wp.ScopedDevice(device):
-        torch_device = wp.device_to_torch(device)
-
         # input data
         x = torch.ones(16, dtype=torch.float32, device=torch_device, requires_grad=True)
 
@@ -743,7 +770,164 @@ def test_torch_autograd(test, device):
         l.backward()
 
         passed = (x.grad == -2.0).all()
-        assert passed.item()
+        test.assertTrue(passed.item())
+
+        grad_out_base = torch.ones(32, dtype=torch.float32, device=torch_device)
+        grad_out = grad_out_base[::2]
+        expected_grad_out = grad_out.clone()
+        expected = torch.full_like(grad_out, -2.0)
+        test.assertFalse(grad_out.is_contiguous())
+
+        for _ in range(4):
+            x = torch.ones(16, dtype=torch.float32, device=torch_device, requires_grad=True)
+            y = TestFunc.apply(x)
+            (grad,) = torch.autograd.grad(y, (x,), grad_outputs=grad_out, retain_graph=False)
+            torch.testing.assert_close(grad, expected)
+            torch.testing.assert_close(grad_out, expected_grad_out)
+
+
+def _make_tape_square_function(wp_dtype):
+    torch = _import_torch()
+
+    class SquareFunction(torch.autograd.Function):
+        @staticmethod
+        def forward(ctx, x):
+            ctx.save_for_backward(x)
+
+            with _active_torch_stream(x):
+                x_warp = wp.from_torch(x.detach(), dtype=wp_dtype, requires_grad=True)
+                y_warp = wp.zeros(x.shape[0], dtype=wp_dtype, device=x_warp.device, requires_grad=True)
+
+                tape = wp.Tape()
+                with tape:
+                    wp.launch(
+                        square_kernel,
+                        dim=x.shape[0],
+                        inputs=[x_warp],
+                        outputs=[y_warp],
+                        device=x_warp.device,
+                    )
+
+            ctx.tape = tape
+            ctx.x_warp = x_warp
+            ctx.y_warp = y_warp
+
+            return wp.to_torch(y_warp, requires_grad=False)
+
+        @staticmethod
+        def backward(ctx, adj_y):
+            _ = ctx.saved_tensors
+
+            with _active_torch_stream(adj_y):
+                wp_adj_y = wp.from_torch(adj_y, dtype=wp_dtype, requires_grad=False)
+                ctx.tape.backward(grads={ctx.y_warp: wp_adj_y})
+
+                adj_x = wp.to_torch(ctx.x_warp.grad, requires_grad=False).clone()
+                ctx.tape.zero()
+
+            return adj_x
+
+    return SquareFunction
+
+
+def test_torch_tape_autograd_reused_grad_outputs(test, device):
+    """Test Tape-backed PyTorch autograd with a reused grad_outputs tensor."""
+
+    torch = _import_torch()
+    torch_device = wp.device_to_torch(device)
+    Fn = _make_tape_square_function(wp.float64)
+
+    grad_out_base = torch.ones(6, dtype=torch.float64, device=torch_device)
+    grad_out = grad_out_base[::2]
+    expected_grad_out = grad_out.clone()
+    test.assertFalse(grad_out.is_contiguous())
+
+    with wp.ScopedDevice(device):
+        for _ in range(4):
+            x_base = torch.arange(12.0, dtype=torch.float64, device=torch_device).reshape(4, 3)
+            x = x_base[:3, 1].detach().requires_grad_(True)
+            expected = 2.0 * x
+            test.assertFalse(x.is_contiguous())
+
+            y = Fn.apply(x)
+            (grad,) = torch.autograd.grad(y, (x,), grad_outputs=grad_out, retain_graph=False)
+
+            torch.testing.assert_close(grad, expected)
+            torch.testing.assert_close(grad_out, expected_grad_out)
+
+
+def test_torch_tape_autograd_gradcheck_reentrant(test, device):
+    """Test that a Tape-backed PyTorch autograd function is reentrant."""
+
+    torch = _import_torch()
+    torch_device = wp.device_to_torch(device)
+    Fn = _make_tape_square_function(wp.float64)
+
+    with wp.ScopedDevice(device):
+        x = torch.tensor([1.0, 2.0, 3.0], dtype=torch.float64, device=torch_device, requires_grad=True)
+        test.assertTrue(torch.autograd.gradcheck(Fn.apply, (x,), eps=1.0e-6, atol=1.0e-5))
+
+
+def test_torch_tape_autograd_mutation_between_forward_backward(test, device):
+    """Test that PyTorch rejects input mutation before Tape-backed backward."""
+
+    torch = _import_torch()
+    torch_device = wp.device_to_torch(device)
+    Fn = _make_tape_square_function(wp.float64)
+
+    with wp.ScopedDevice(device):
+        x = torch.tensor([1.0, 2.0, 3.0], dtype=torch.float64, device=torch_device, requires_grad=True)
+        y = Fn.apply(x)
+
+        with torch.no_grad():
+            x.add_(10.0)
+
+        with test.assertRaisesRegex(RuntimeError, "modified by an inplace operation"):
+            torch.autograd.grad(y, (x,), grad_outputs=torch.ones_like(y), retain_graph=False)
+
+
+def test_torch_tape_autograd_mutation_between_retained_backward(test, device):
+    """Test retained Tape-backed backward does not use mutated PyTorch inputs."""
+
+    torch = _import_torch()
+    torch_device = wp.device_to_torch(device)
+    Fn = _make_tape_square_function(wp.float64)
+
+    with wp.ScopedDevice(device):
+        x = torch.tensor([1.0, 2.0, 3.0], dtype=torch.float64, device=torch_device, requires_grad=True)
+        y = Fn.apply(x)
+        grad_out = torch.ones_like(y)
+
+        (grad,) = torch.autograd.grad(y, (x,), grad_outputs=grad_out, retain_graph=True)
+        torch.testing.assert_close(grad, 2.0 * x)
+
+        with torch.no_grad():
+            x.add_(10.0)
+
+        with test.assertRaisesRegex(RuntimeError, "modified by an inplace operation"):
+            torch.autograd.grad(y, (x,), grad_outputs=grad_out, retain_graph=True)
+
+
+def test_torch_tape_autograd_torch_stream(test, device):
+    """Test Tape-backed PyTorch autograd on a non-default PyTorch CUDA stream."""
+
+    torch = _import_torch()
+    torch_device = wp.device_to_torch(device)
+    Fn = _make_tape_square_function(wp.float64)
+
+    expected_x = torch.tensor([1.0, 2.0, 3.0], dtype=torch.float64, device=torch_device)
+    torch_stream = torch.cuda.Stream(device=torch_device)
+
+    with wp.ScopedDevice(device):
+        with torch.cuda.stream(torch_stream):
+            x = expected_x.clone().requires_grad_(True)
+            y = Fn.apply(x)
+            (grad,) = torch.autograd.grad(y, (x,), grad_outputs=torch.ones_like(y), retain_graph=False)
+
+        torch_stream.synchronize()
+
+    torch.testing.assert_close(y, expected_x.square())
+    torch.testing.assert_close(grad, 2.0 * expected_x)
 
 
 def test_torch_graph_torch_stream(test, device):
@@ -1192,6 +1376,34 @@ else:
         )
         add_function_test(
             TestTorch,
+            "test_torch_tape_autograd_reused_grad_outputs",
+            test_torch_tape_autograd_reused_grad_outputs,
+            devices=torch_candidate_devices,
+            device_check=_check_torch_device,
+        )
+        add_function_test(
+            TestTorch,
+            "test_torch_tape_autograd_gradcheck_reentrant",
+            test_torch_tape_autograd_gradcheck_reentrant,
+            devices=torch_candidate_devices,
+            device_check=_check_torch_device,
+        )
+        add_function_test(
+            TestTorch,
+            "test_torch_tape_autograd_mutation_between_forward_backward",
+            test_torch_tape_autograd_mutation_between_forward_backward,
+            devices=torch_candidate_devices,
+            device_check=_check_torch_device,
+        )
+        add_function_test(
+            TestTorch,
+            "test_torch_tape_autograd_mutation_between_retained_backward",
+            test_torch_tape_autograd_mutation_between_retained_backward,
+            devices=torch_candidate_devices,
+            device_check=_check_torch_device,
+        )
+        add_function_test(
+            TestTorch,
             "test_torch_retain_grad_from_torch",
             test_torch_retain_grad_from_torch,
             devices=torch_candidate_devices,
@@ -1217,6 +1429,13 @@ else:
             TestTorch,
             "test_torch_graph_torch_stream",
             test_torch_graph_torch_stream,
+            devices=torch_cuda_candidate_devices,
+            device_check=_check_torch_device,
+        )
+        add_function_test(
+            TestTorch,
+            "test_torch_tape_autograd_torch_stream",
+            test_torch_tape_autograd_torch_stream,
             devices=torch_cuda_candidate_devices,
             device_check=_check_torch_device,
         )

@@ -258,6 +258,20 @@ def has_license_field(frontmatter: list[str]) -> bool:
     return False
 
 
+def frontmatter_field(frontmatter: list[str], field: str) -> tuple[str | None, int]:
+    """Return a top-level frontmatter value and its one-based line number."""
+
+    prefix = f"{field}:"
+    for line_number, line in enumerate(frontmatter, start=2):
+        if not line.startswith(prefix):
+            continue
+        value = line.split(":", 1)[1].strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+            value = value[1:-1]
+        return value or None, line_number
+    return None, 1
+
+
 def validate_skill_doc(path: str, content: bytes) -> list[SkillLintIssue]:
     """Validate metadata placement in one ``SKILL.md`` file."""
 
@@ -282,6 +296,18 @@ def validate_skill_doc(path: str, content: bytes) -> list[SkillLintIssue]:
         return issues
 
     frontmatter = lines[1:frontmatter_end]
+    skill_name = PurePosixPath(path).parent.name
+    declared_name, name_line = frontmatter_field(frontmatter, "name")
+    if not skill_name.startswith("warp-"):
+        issues.append(SkillLintIssue(path, 1, f"skill directory '{skill_name}' must start with 'warp-'"))
+    if declared_name != skill_name:
+        issues.append(
+            SkillLintIssue(
+                path,
+                name_line,
+                f"frontmatter name '{declared_name or ''}' must match skill directory '{skill_name}'",
+            )
+        )
     if not has_license_field(frontmatter):
         issues.append(SkillLintIssue(path, 1, "frontmatter must include a non-empty license field"))
 

@@ -234,7 +234,7 @@ The implementation is verified directly with temporary fragments:
 
 After the Towncrier process lands, update the mirrored skills under `.claude`
 and `.codex` so they stop assuming direct edits to `CHANGELOG.md`. At minimum,
-audit `changelog-audit`, `release-audit`, `release-notes`, and
+audit `warp-changelog-audit`, `warp-release-audit`, `warp-release-notes`, and
 `warp-closing-issue` in both skill trees. Keep that work in a separate change so
 the initial rollout stays focused and the skill instructions can be tested
 against the process that actually landed.

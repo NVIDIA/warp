@@ -9,7 +9,7 @@ a constant reference potential (BASELINE) that is part of the certified energy
 bookkeeping and must stay in the total.
 
 Our release checklist requires a finite-difference check of dLoss/dp before we
-ship — and it fails with complete nonsense (see PROBLEM.md).
+ship — and it fails with complete nonsense (run this file to see it).
 """
 
 import numpy as np

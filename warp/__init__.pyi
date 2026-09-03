@@ -73,6 +73,7 @@ from warp._src.types import Volume as Volume
 from warp._src.types import BvhQuery as BvhQuery
 from warp._src.types import BvhQueryTiled as BvhQueryTiled
 from warp._src.types import HashGridQuery as HashGridQuery
+from warp._src.types import MeshQuery as MeshQuery
 from warp._src.types import MeshQueryAABB as MeshQueryAABB
 from warp._src.types import MeshQueryAABBTiled as MeshQueryAABBTiled
 from warp._src.types import MeshQueryPoint as MeshQueryPoint
@@ -114,8 +115,10 @@ from warp._src.context import Kernel as Kernel
 from warp._src.context import Function as Function
 from warp._src.context import Launch as Launch
 from warp._src.context import Module as Module
+from warp._src.context import ModuleBuildOptions as ModuleBuildOptions
 from warp._src.context import launch as launch
 from warp._src.context import launch_tiled as launch_tiled
+from warp._src.context import get_cuda_kernel_properties as get_cuda_kernel_properties
 from warp._src.context import get_suggested_block_size as get_suggested_block_size
 from warp._src.context import synchronize as synchronize
 from warp._src.tape import Tape as Tape
@@ -255,6 +258,7 @@ from warp._src.paddle import stream_from_paddle as stream_from_paddle
 from warp._src.utils import transform_expand as transform_expand
 from warp._src.utils import quat_between_vectors as quat_between_vectors
 from warp._src.constants import *
+from . import build_experimental as build_experimental
 from . import config as config
 from . import types as types
 from . import utils as utils
@@ -266,6 +270,8 @@ Length = TypeVar("Length", bound=int)
 Rows = TypeVar("Rows", bound=int)
 Cols = TypeVar("Cols", bound=int)
 DType = TypeVar("DType")
+DTypeFloat = TypeVar("DTypeFloat", float, float16, bfloat16, float32, float64)
+DTypeScalar = TypeVar("DTypeScalar", int, float, int8, uint8, int16, uint16, int32, uint32, int64, uint64, float16, bfloat16, float32, float64)
 NDim = TypeVar("NDim", bound=int, default=int)
 Shape = TypeVar("Shape")
 Capacity = TypeVar("Capacity", bound=int)
@@ -315,7 +321,7 @@ class vec2h:
         ...
 
     @over
-    def __init__(self, x: float16, y: float16) -> None:
+    def __init__(self, x: float16 | float, y: float16 | float) -> None:
         """Construct a vector from its component values."""
         ...
 
@@ -325,7 +331,7 @@ class vec2h:
         ...
 
     @over
-    def __init__(self, value: float16) -> None:
+    def __init__(self, value: float16 | float) -> None:
         """Construct a vector filled with a value."""
         ...
 
@@ -341,7 +347,7 @@ class vec2f:
         ...
 
     @over
-    def __init__(self, x: float32, y: float32) -> None:
+    def __init__(self, x: float32 | float, y: float32 | float) -> None:
         """Construct a vector from its component values."""
         ...
 
@@ -351,7 +357,7 @@ class vec2f:
         ...
 
     @over
-    def __init__(self, value: float32) -> None:
+    def __init__(self, value: float32 | float) -> None:
         """Construct a vector filled with a value."""
         ...
 
@@ -367,7 +373,7 @@ class vec2d:
         ...
 
     @over
-    def __init__(self, x: float64, y: float64) -> None:
+    def __init__(self, x: float64 | float, y: float64 | float) -> None:
         """Construct a vector from its component values."""
         ...
 
@@ -377,7 +383,7 @@ class vec2d:
         ...
 
     @over
-    def __init__(self, value: float64) -> None:
+    def __init__(self, value: float64 | float) -> None:
         """Construct a vector filled with a value."""
         ...
 
@@ -393,7 +399,7 @@ class vec2b:
         ...
 
     @over
-    def __init__(self, x: int8, y: int8) -> None:
+    def __init__(self, x: int8 | int, y: int8 | int) -> None:
         """Construct a vector from its component values."""
         ...
 
@@ -403,7 +409,7 @@ class vec2b:
         ...
 
     @over
-    def __init__(self, value: int8) -> None:
+    def __init__(self, value: int8 | int) -> None:
         """Construct a vector filled with a value."""
         ...
 
@@ -419,7 +425,7 @@ class vec2ub:
         ...
 
     @over
-    def __init__(self, x: uint8, y: uint8) -> None:
+    def __init__(self, x: uint8 | int, y: uint8 | int) -> None:
         """Construct a vector from its component values."""
         ...
 
@@ -429,7 +435,7 @@ class vec2ub:
         ...
 
     @over
-    def __init__(self, value: uint8) -> None:
+    def __init__(self, value: uint8 | int) -> None:
         """Construct a vector filled with a value."""
         ...
 
@@ -445,7 +451,7 @@ class vec2s:
         ...
 
     @over
-    def __init__(self, x: int16, y: int16) -> None:
+    def __init__(self, x: int16 | int, y: int16 | int) -> None:
         """Construct a vector from its component values."""
         ...
 
@@ -455,7 +461,7 @@ class vec2s:
         ...
 
     @over
-    def __init__(self, value: int16) -> None:
+    def __init__(self, value: int16 | int) -> None:
         """Construct a vector filled with a value."""
         ...
 
@@ -471,7 +477,7 @@ class vec2us:
         ...
 
     @over
-    def __init__(self, x: uint16, y: uint16) -> None:
+    def __init__(self, x: uint16 | int, y: uint16 | int) -> None:
         """Construct a vector from its component values."""
         ...
 
@@ -481,7 +487,7 @@ class vec2us:
         ...
 
     @over
-    def __init__(self, value: uint16) -> None:
+    def __init__(self, value: uint16 | int) -> None:
         """Construct a vector filled with a value."""
         ...
 
@@ -497,7 +503,7 @@ class vec2i:
         ...
 
     @over
-    def __init__(self, x: int32, y: int32) -> None:
+    def __init__(self, x: int32 | int, y: int32 | int) -> None:
         """Construct a vector from its component values."""
         ...
 
@@ -507,7 +513,7 @@ class vec2i:
         ...
 
     @over
-    def __init__(self, value: int32) -> None:
+    def __init__(self, value: int32 | int) -> None:
         """Construct a vector filled with a value."""
         ...
 
@@ -523,7 +529,7 @@ class vec2ui:
         ...
 
     @over
-    def __init__(self, x: uint32, y: uint32) -> None:
+    def __init__(self, x: uint32 | int, y: uint32 | int) -> None:
         """Construct a vector from its component values."""
         ...
 
@@ -533,7 +539,7 @@ class vec2ui:
         ...
 
     @over
-    def __init__(self, value: uint32) -> None:
+    def __init__(self, value: uint32 | int) -> None:
         """Construct a vector filled with a value."""
         ...
 
@@ -549,7 +555,7 @@ class vec2l:
         ...
 
     @over
-    def __init__(self, x: int64, y: int64) -> None:
+    def __init__(self, x: int64 | int, y: int64 | int) -> None:
         """Construct a vector from its component values."""
         ...
 
@@ -559,7 +565,7 @@ class vec2l:
         ...
 
     @over
-    def __init__(self, value: int64) -> None:
+    def __init__(self, value: int64 | int) -> None:
         """Construct a vector filled with a value."""
         ...
 
@@ -575,7 +581,7 @@ class vec2ul:
         ...
 
     @over
-    def __init__(self, x: uint64, y: uint64) -> None:
+    def __init__(self, x: uint64 | int, y: uint64 | int) -> None:
         """Construct a vector from its component values."""
         ...
 
@@ -585,7 +591,7 @@ class vec2ul:
         ...
 
     @over
-    def __init__(self, value: uint64) -> None:
+    def __init__(self, value: uint64 | int) -> None:
         """Construct a vector filled with a value."""
         ...
 
@@ -601,7 +607,7 @@ class vec3h:
         ...
 
     @over
-    def __init__(self, x: float16, y: float16, z: float16) -> None:
+    def __init__(self, x: float16 | float, y: float16 | float, z: float16 | float) -> None:
         """Construct a vector from its component values."""
         ...
 
@@ -611,7 +617,7 @@ class vec3h:
         ...
 
     @over
-    def __init__(self, value: float16) -> None:
+    def __init__(self, value: float16 | float) -> None:
         """Construct a vector filled with a value."""
         ...
 
@@ -627,7 +633,7 @@ class vec3f:
         ...
 
     @over
-    def __init__(self, x: float32, y: float32, z: float32) -> None:
+    def __init__(self, x: float32 | float, y: float32 | float, z: float32 | float) -> None:
         """Construct a vector from its component values."""
         ...
 
@@ -637,7 +643,7 @@ class vec3f:
         ...
 
     @over
-    def __init__(self, value: float32) -> None:
+    def __init__(self, value: float32 | float) -> None:
         """Construct a vector filled with a value."""
         ...
 
@@ -653,7 +659,7 @@ class vec3d:
         ...
 
     @over
-    def __init__(self, x: float64, y: float64, z: float64) -> None:
+    def __init__(self, x: float64 | float, y: float64 | float, z: float64 | float) -> None:
         """Construct a vector from its component values."""
         ...
 
@@ -663,7 +669,7 @@ class vec3d:
         ...
 
     @over
-    def __init__(self, value: float64) -> None:
+    def __init__(self, value: float64 | float) -> None:
         """Construct a vector filled with a value."""
         ...
 
@@ -679,7 +685,7 @@ class vec3b:
         ...
 
     @over
-    def __init__(self, x: int8, y: int8, z: int8) -> None:
+    def __init__(self, x: int8 | int, y: int8 | int, z: int8 | int) -> None:
         """Construct a vector from its component values."""
         ...
 
@@ -689,7 +695,7 @@ class vec3b:
         ...
 
     @over
-    def __init__(self, value: int8) -> None:
+    def __init__(self, value: int8 | int) -> None:
         """Construct a vector filled with a value."""
         ...
 
@@ -705,7 +711,7 @@ class vec3ub:
         ...
 
     @over
-    def __init__(self, x: uint8, y: uint8, z: uint8) -> None:
+    def __init__(self, x: uint8 | int, y: uint8 | int, z: uint8 | int) -> None:
         """Construct a vector from its component values."""
         ...
 
@@ -715,7 +721,7 @@ class vec3ub:
         ...
 
     @over
-    def __init__(self, value: uint8) -> None:
+    def __init__(self, value: uint8 | int) -> None:
         """Construct a vector filled with a value."""
         ...
 
@@ -731,7 +737,7 @@ class vec3s:
         ...
 
     @over
-    def __init__(self, x: int16, y: int16, z: int16) -> None:
+    def __init__(self, x: int16 | int, y: int16 | int, z: int16 | int) -> None:
         """Construct a vector from its component values."""
         ...
 
@@ -741,7 +747,7 @@ class vec3s:
         ...
 
     @over
-    def __init__(self, value: int16) -> None:
+    def __init__(self, value: int16 | int) -> None:
         """Construct a vector filled with a value."""
         ...
 
@@ -757,7 +763,7 @@ class vec3us:
         ...
 
     @over
-    def __init__(self, x: uint16, y: uint16, z: uint16) -> None:
+    def __init__(self, x: uint16 | int, y: uint16 | int, z: uint16 | int) -> None:
         """Construct a vector from its component values."""
         ...
 
@@ -767,7 +773,7 @@ class vec3us:
         ...
 
     @over
-    def __init__(self, value: uint16) -> None:
+    def __init__(self, value: uint16 | int) -> None:
         """Construct a vector filled with a value."""
         ...
 
@@ -783,7 +789,7 @@ class vec3i:
         ...
 
     @over
-    def __init__(self, x: int32, y: int32, z: int32) -> None:
+    def __init__(self, x: int32 | int, y: int32 | int, z: int32 | int) -> None:
         """Construct a vector from its component values."""
         ...
 
@@ -793,7 +799,7 @@ class vec3i:
         ...
 
     @over
-    def __init__(self, value: int32) -> None:
+    def __init__(self, value: int32 | int) -> None:
         """Construct a vector filled with a value."""
         ...
 
@@ -809,7 +815,7 @@ class vec3ui:
         ...
 
     @over
-    def __init__(self, x: uint32, y: uint32, z: uint32) -> None:
+    def __init__(self, x: uint32 | int, y: uint32 | int, z: uint32 | int) -> None:
         """Construct a vector from its component values."""
         ...
 
@@ -819,7 +825,7 @@ class vec3ui:
         ...
 
     @over
-    def __init__(self, value: uint32) -> None:
+    def __init__(self, value: uint32 | int) -> None:
         """Construct a vector filled with a value."""
         ...
 
@@ -835,7 +841,7 @@ class vec3l:
         ...
 
     @over
-    def __init__(self, x: int64, y: int64, z: int64) -> None:
+    def __init__(self, x: int64 | int, y: int64 | int, z: int64 | int) -> None:
         """Construct a vector from its component values."""
         ...
 
@@ -845,7 +851,7 @@ class vec3l:
         ...
 
     @over
-    def __init__(self, value: int64) -> None:
+    def __init__(self, value: int64 | int) -> None:
         """Construct a vector filled with a value."""
         ...
 
@@ -861,7 +867,7 @@ class vec3ul:
         ...
 
     @over
-    def __init__(self, x: uint64, y: uint64, z: uint64) -> None:
+    def __init__(self, x: uint64 | int, y: uint64 | int, z: uint64 | int) -> None:
         """Construct a vector from its component values."""
         ...
 
@@ -871,7 +877,7 @@ class vec3ul:
         ...
 
     @over
-    def __init__(self, value: uint64) -> None:
+    def __init__(self, value: uint64 | int) -> None:
         """Construct a vector filled with a value."""
         ...
 
@@ -887,7 +893,7 @@ class vec4h:
         ...
 
     @over
-    def __init__(self, x: float16, y: float16, z: float16, w: float16) -> None:
+    def __init__(self, x: float16 | float, y: float16 | float, z: float16 | float, w: float16 | float) -> None:
         """Construct a vector from its component values."""
         ...
 
@@ -897,7 +903,7 @@ class vec4h:
         ...
 
     @over
-    def __init__(self, value: float16) -> None:
+    def __init__(self, value: float16 | float) -> None:
         """Construct a vector filled with a value."""
         ...
 
@@ -913,7 +919,7 @@ class vec4f:
         ...
 
     @over
-    def __init__(self, x: float32, y: float32, z: float32, w: float32) -> None:
+    def __init__(self, x: float32 | float, y: float32 | float, z: float32 | float, w: float32 | float) -> None:
         """Construct a vector from its component values."""
         ...
 
@@ -923,7 +929,7 @@ class vec4f:
         ...
 
     @over
-    def __init__(self, value: float32) -> None:
+    def __init__(self, value: float32 | float) -> None:
         """Construct a vector filled with a value."""
         ...
 
@@ -939,7 +945,7 @@ class vec4d:
         ...
 
     @over
-    def __init__(self, x: float64, y: float64, z: float64, w: float64) -> None:
+    def __init__(self, x: float64 | float, y: float64 | float, z: float64 | float, w: float64 | float) -> None:
         """Construct a vector from its component values."""
         ...
 
@@ -949,7 +955,7 @@ class vec4d:
         ...
 
     @over
-    def __init__(self, value: float64) -> None:
+    def __init__(self, value: float64 | float) -> None:
         """Construct a vector filled with a value."""
         ...
 
@@ -965,7 +971,7 @@ class vec4b:
         ...
 
     @over
-    def __init__(self, x: int8, y: int8, z: int8, w: int8) -> None:
+    def __init__(self, x: int8 | int, y: int8 | int, z: int8 | int, w: int8 | int) -> None:
         """Construct a vector from its component values."""
         ...
 
@@ -975,7 +981,7 @@ class vec4b:
         ...
 
     @over
-    def __init__(self, value: int8) -> None:
+    def __init__(self, value: int8 | int) -> None:
         """Construct a vector filled with a value."""
         ...
 
@@ -991,7 +997,7 @@ class vec4ub:
         ...
 
     @over
-    def __init__(self, x: uint8, y: uint8, z: uint8, w: uint8) -> None:
+    def __init__(self, x: uint8 | int, y: uint8 | int, z: uint8 | int, w: uint8 | int) -> None:
         """Construct a vector from its component values."""
         ...
 
@@ -1001,7 +1007,7 @@ class vec4ub:
         ...
 
     @over
-    def __init__(self, value: uint8) -> None:
+    def __init__(self, value: uint8 | int) -> None:
         """Construct a vector filled with a value."""
         ...
 
@@ -1017,7 +1023,7 @@ class vec4s:
         ...
 
     @over
-    def __init__(self, x: int16, y: int16, z: int16, w: int16) -> None:
+    def __init__(self, x: int16 | int, y: int16 | int, z: int16 | int, w: int16 | int) -> None:
         """Construct a vector from its component values."""
         ...
 
@@ -1027,7 +1033,7 @@ class vec4s:
         ...
 
     @over
-    def __init__(self, value: int16) -> None:
+    def __init__(self, value: int16 | int) -> None:
         """Construct a vector filled with a value."""
         ...
 
@@ -1043,7 +1049,7 @@ class vec4us:
         ...
 
     @over
-    def __init__(self, x: uint16, y: uint16, z: uint16, w: uint16) -> None:
+    def __init__(self, x: uint16 | int, y: uint16 | int, z: uint16 | int, w: uint16 | int) -> None:
         """Construct a vector from its component values."""
         ...
 
@@ -1053,7 +1059,7 @@ class vec4us:
         ...
 
     @over
-    def __init__(self, value: uint16) -> None:
+    def __init__(self, value: uint16 | int) -> None:
         """Construct a vector filled with a value."""
         ...
 
@@ -1069,7 +1075,7 @@ class vec4i:
         ...
 
     @over
-    def __init__(self, x: int32, y: int32, z: int32, w: int32) -> None:
+    def __init__(self, x: int32 | int, y: int32 | int, z: int32 | int, w: int32 | int) -> None:
         """Construct a vector from its component values."""
         ...
 
@@ -1079,7 +1085,7 @@ class vec4i:
         ...
 
     @over
-    def __init__(self, value: int32) -> None:
+    def __init__(self, value: int32 | int) -> None:
         """Construct a vector filled with a value."""
         ...
 
@@ -1095,7 +1101,7 @@ class vec4ui:
         ...
 
     @over
-    def __init__(self, x: uint32, y: uint32, z: uint32, w: uint32) -> None:
+    def __init__(self, x: uint32 | int, y: uint32 | int, z: uint32 | int, w: uint32 | int) -> None:
         """Construct a vector from its component values."""
         ...
 
@@ -1105,7 +1111,7 @@ class vec4ui:
         ...
 
     @over
-    def __init__(self, value: uint32) -> None:
+    def __init__(self, value: uint32 | int) -> None:
         """Construct a vector filled with a value."""
         ...
 
@@ -1121,7 +1127,7 @@ class vec4l:
         ...
 
     @over
-    def __init__(self, x: int64, y: int64, z: int64, w: int64) -> None:
+    def __init__(self, x: int64 | int, y: int64 | int, z: int64 | int, w: int64 | int) -> None:
         """Construct a vector from its component values."""
         ...
 
@@ -1131,7 +1137,7 @@ class vec4l:
         ...
 
     @over
-    def __init__(self, value: int64) -> None:
+    def __init__(self, value: int64 | int) -> None:
         """Construct a vector filled with a value."""
         ...
 
@@ -1147,7 +1153,7 @@ class vec4ul:
         ...
 
     @over
-    def __init__(self, x: uint64, y: uint64, z: uint64, w: uint64) -> None:
+    def __init__(self, x: uint64 | int, y: uint64 | int, z: uint64 | int, w: uint64 | int) -> None:
         """Construct a vector from its component values."""
         ...
 
@@ -1157,7 +1163,7 @@ class vec4ul:
         ...
 
     @over
-    def __init__(self, value: uint64) -> None:
+    def __init__(self, value: uint64 | int) -> None:
         """Construct a vector filled with a value."""
         ...
 
@@ -1173,7 +1179,7 @@ class mat22h:
         ...
 
     @over
-    def __init__(self, m00: float16, m01: float16, m10: float16, m11: float16) -> None:
+    def __init__(self, m00: float16 | float, m01: float16 | float, m10: float16 | float, m11: float16 | float) -> None:
         """Construct a matrix from its component values."""
         ...
 
@@ -1188,7 +1194,7 @@ class mat22h:
         ...
 
     @over
-    def __init__(self, value: float16) -> None:
+    def __init__(self, value: float16 | float) -> None:
         """Construct a matrix filled with a value."""
         ...
 
@@ -1204,7 +1210,7 @@ class mat22f:
         ...
 
     @over
-    def __init__(self, m00: float32, m01: float32, m10: float32, m11: float32) -> None:
+    def __init__(self, m00: float32 | float, m01: float32 | float, m10: float32 | float, m11: float32 | float) -> None:
         """Construct a matrix from its component values."""
         ...
 
@@ -1219,7 +1225,7 @@ class mat22f:
         ...
 
     @over
-    def __init__(self, value: float32) -> None:
+    def __init__(self, value: float32 | float) -> None:
         """Construct a matrix filled with a value."""
         ...
 
@@ -1235,7 +1241,7 @@ class mat22d:
         ...
 
     @over
-    def __init__(self, m00: float64, m01: float64, m10: float64, m11: float64) -> None:
+    def __init__(self, m00: float64 | float, m01: float64 | float, m10: float64 | float, m11: float64 | float) -> None:
         """Construct a matrix from its component values."""
         ...
 
@@ -1250,7 +1256,7 @@ class mat22d:
         ...
 
     @over
-    def __init__(self, value: float64) -> None:
+    def __init__(self, value: float64 | float) -> None:
         """Construct a matrix filled with a value."""
         ...
 
@@ -1268,15 +1274,15 @@ class mat33h:
     @over
     def __init__(
         self,
-        m00: float16,
-        m01: float16,
-        m02: float16,
-        m10: float16,
-        m11: float16,
-        m12: float16,
-        m20: float16,
-        m21: float16,
-        m22: float16,
+        m00: float16 | float,
+        m01: float16 | float,
+        m02: float16 | float,
+        m10: float16 | float,
+        m11: float16 | float,
+        m12: float16 | float,
+        m20: float16 | float,
+        m21: float16 | float,
+        m22: float16 | float,
     ) -> None:
         """Construct a matrix from its component values."""
         ...
@@ -1292,7 +1298,7 @@ class mat33h:
         ...
 
     @over
-    def __init__(self, value: float16) -> None:
+    def __init__(self, value: float16 | float) -> None:
         """Construct a matrix filled with a value."""
         ...
 
@@ -1310,15 +1316,15 @@ class mat33f:
     @over
     def __init__(
         self,
-        m00: float32,
-        m01: float32,
-        m02: float32,
-        m10: float32,
-        m11: float32,
-        m12: float32,
-        m20: float32,
-        m21: float32,
-        m22: float32,
+        m00: float32 | float,
+        m01: float32 | float,
+        m02: float32 | float,
+        m10: float32 | float,
+        m11: float32 | float,
+        m12: float32 | float,
+        m20: float32 | float,
+        m21: float32 | float,
+        m22: float32 | float,
     ) -> None:
         """Construct a matrix from its component values."""
         ...
@@ -1334,7 +1340,7 @@ class mat33f:
         ...
 
     @over
-    def __init__(self, value: float32) -> None:
+    def __init__(self, value: float32 | float) -> None:
         """Construct a matrix filled with a value."""
         ...
 
@@ -1352,15 +1358,15 @@ class mat33d:
     @over
     def __init__(
         self,
-        m00: float64,
-        m01: float64,
-        m02: float64,
-        m10: float64,
-        m11: float64,
-        m12: float64,
-        m20: float64,
-        m21: float64,
-        m22: float64,
+        m00: float64 | float,
+        m01: float64 | float,
+        m02: float64 | float,
+        m10: float64 | float,
+        m11: float64 | float,
+        m12: float64 | float,
+        m20: float64 | float,
+        m21: float64 | float,
+        m22: float64 | float,
     ) -> None:
         """Construct a matrix from its component values."""
         ...
@@ -1376,7 +1382,7 @@ class mat33d:
         ...
 
     @over
-    def __init__(self, value: float64) -> None:
+    def __init__(self, value: float64 | float) -> None:
         """Construct a matrix filled with a value."""
         ...
 
@@ -1394,22 +1400,22 @@ class mat44h:
     @over
     def __init__(
         self,
-        m00: float16,
-        m01: float16,
-        m02: float16,
-        m03: float16,
-        m10: float16,
-        m11: float16,
-        m12: float16,
-        m13: float16,
-        m20: float16,
-        m21: float16,
-        m22: float16,
-        m23: float16,
-        m30: float16,
-        m31: float16,
-        m32: float16,
-        m33: float16,
+        m00: float16 | float,
+        m01: float16 | float,
+        m02: float16 | float,
+        m03: float16 | float,
+        m10: float16 | float,
+        m11: float16 | float,
+        m12: float16 | float,
+        m13: float16 | float,
+        m20: float16 | float,
+        m21: float16 | float,
+        m22: float16 | float,
+        m23: float16 | float,
+        m30: float16 | float,
+        m31: float16 | float,
+        m32: float16 | float,
+        m33: float16 | float,
     ) -> None:
         """Construct a matrix from its component values."""
         ...
@@ -1425,7 +1431,7 @@ class mat44h:
         ...
 
     @over
-    def __init__(self, value: float16) -> None:
+    def __init__(self, value: float16 | float) -> None:
         """Construct a matrix filled with a value."""
         ...
 
@@ -1443,22 +1449,22 @@ class mat44f:
     @over
     def __init__(
         self,
-        m00: float32,
-        m01: float32,
-        m02: float32,
-        m03: float32,
-        m10: float32,
-        m11: float32,
-        m12: float32,
-        m13: float32,
-        m20: float32,
-        m21: float32,
-        m22: float32,
-        m23: float32,
-        m30: float32,
-        m31: float32,
-        m32: float32,
-        m33: float32,
+        m00: float32 | float,
+        m01: float32 | float,
+        m02: float32 | float,
+        m03: float32 | float,
+        m10: float32 | float,
+        m11: float32 | float,
+        m12: float32 | float,
+        m13: float32 | float,
+        m20: float32 | float,
+        m21: float32 | float,
+        m22: float32 | float,
+        m23: float32 | float,
+        m30: float32 | float,
+        m31: float32 | float,
+        m32: float32 | float,
+        m33: float32 | float,
     ) -> None:
         """Construct a matrix from its component values."""
         ...
@@ -1474,7 +1480,7 @@ class mat44f:
         ...
 
     @over
-    def __init__(self, value: float32) -> None:
+    def __init__(self, value: float32 | float) -> None:
         """Construct a matrix filled with a value."""
         ...
 
@@ -1492,22 +1498,22 @@ class mat44d:
     @over
     def __init__(
         self,
-        m00: float64,
-        m01: float64,
-        m02: float64,
-        m03: float64,
-        m10: float64,
-        m11: float64,
-        m12: float64,
-        m13: float64,
-        m20: float64,
-        m21: float64,
-        m22: float64,
-        m23: float64,
-        m30: float64,
-        m31: float64,
-        m32: float64,
-        m33: float64,
+        m00: float64 | float,
+        m01: float64 | float,
+        m02: float64 | float,
+        m03: float64 | float,
+        m10: float64 | float,
+        m11: float64 | float,
+        m12: float64 | float,
+        m13: float64 | float,
+        m20: float64 | float,
+        m21: float64 | float,
+        m22: float64 | float,
+        m23: float64 | float,
+        m30: float64 | float,
+        m31: float64 | float,
+        m32: float64 | float,
+        m33: float64 | float,
     ) -> None:
         """Construct a matrix from its component values."""
         ...
@@ -1523,7 +1529,7 @@ class mat44d:
         ...
 
     @over
-    def __init__(self, value: float64) -> None:
+    def __init__(self, value: float64 | float) -> None:
         """Construct a matrix filled with a value."""
         ...
 
@@ -1539,7 +1545,7 @@ class quath:
         ...
 
     @over
-    def __init__(self, x: float16, y: float16, z: float16, w: float16) -> None:
+    def __init__(self, x: float16 | float, y: float16 | float, z: float16 | float, w: float16 | float) -> None:
         """Construct a quaternion from its component values."""
         ...
 
@@ -1549,7 +1555,7 @@ class quath:
         ...
 
     @over
-    def __init__(self, value: float16) -> None:
+    def __init__(self, value: float16 | float) -> None:
         """Construct a quaternion filled with a value."""
         ...
 
@@ -1565,7 +1571,7 @@ class quatf:
         ...
 
     @over
-    def __init__(self, x: float32, y: float32, z: float32, w: float32) -> None:
+    def __init__(self, x: float32 | float, y: float32 | float, z: float32 | float, w: float32 | float) -> None:
         """Construct a quaternion from its component values."""
         ...
 
@@ -1575,7 +1581,7 @@ class quatf:
         ...
 
     @over
-    def __init__(self, value: float32) -> None:
+    def __init__(self, value: float32 | float) -> None:
         """Construct a quaternion filled with a value."""
         ...
 
@@ -1591,7 +1597,7 @@ class quatd:
         ...
 
     @over
-    def __init__(self, x: float64, y: float64, z: float64, w: float64) -> None:
+    def __init__(self, x: float64 | float, y: float64 | float, z: float64 | float, w: float64 | float) -> None:
         """Construct a quaternion from its component values."""
         ...
 
@@ -1601,7 +1607,7 @@ class quatd:
         ...
 
     @over
-    def __init__(self, value: float64) -> None:
+    def __init__(self, value: float64 | float) -> None:
         """Construct a quaternion filled with a value."""
         ...
 
@@ -1624,13 +1630,13 @@ class transformh:
     @over
     def __init__(
         self,
-        px: float16,
-        py: float16,
-        pz: float16,
-        qx: float16,
-        qy: float16,
-        qz: float16,
-        qw: float16,
+        px: float16 | float,
+        py: float16 | float,
+        pz: float16 | float,
+        qx: float16 | float,
+        qy: float16 | float,
+        qz: float16 | float,
+        qw: float16 | float,
     ) -> None:
         """Construct a transformation from its component values."""
         ...
@@ -1641,7 +1647,7 @@ class transformh:
         ...
 
     @over
-    def __init__(self, value: float16) -> None:
+    def __init__(self, value: float16 | float) -> None:
         """Construct a transformation filled with a value."""
         ...
 
@@ -1664,13 +1670,13 @@ class transformf:
     @over
     def __init__(
         self,
-        px: float32,
-        py: float32,
-        pz: float32,
-        qx: float32,
-        qy: float32,
-        qz: float32,
-        qw: float32,
+        px: float32 | float,
+        py: float32 | float,
+        pz: float32 | float,
+        qx: float32 | float,
+        qy: float32 | float,
+        qz: float32 | float,
+        qw: float32 | float,
     ) -> None:
         """Construct a transformation from its component values."""
         ...
@@ -1681,7 +1687,7 @@ class transformf:
         ...
 
     @over
-    def __init__(self, value: float32) -> None:
+    def __init__(self, value: float32 | float) -> None:
         """Construct a transformation filled with a value."""
         ...
 
@@ -1704,13 +1710,13 @@ class transformd:
     @over
     def __init__(
         self,
-        px: float64,
-        py: float64,
-        pz: float64,
-        qx: float64,
-        qy: float64,
-        qz: float64,
-        qw: float64,
+        px: float64 | float,
+        py: float64 | float,
+        pz: float64 | float,
+        qx: float64 | float,
+        qy: float64 | float,
+        qz: float64 | float,
+        qw: float64 | float,
     ) -> None:
         """Construct a transformation from its component values."""
         ...
@@ -1721,7 +1727,7 @@ class transformd:
         ...
 
     @over
-    def __init__(self, value: float64) -> None:
+    def __init__(self, value: float64 | float) -> None:
         """Construct a transformation filled with a value."""
         ...
 
@@ -1749,7 +1755,7 @@ def zeros(shape: tuple[int, ...], dtype: Any) -> Array[Scalar]:
     ...
 
 @over
-def zeros(shape: int32, dtype: Any) -> Array[Scalar]:
+def zeros(shape: int32 | int, dtype: Any) -> Array[Scalar]:
     """Create a zero-initialized fixed-size array of the given length and dtype."""
     ...
 
@@ -2148,7 +2154,15 @@ def cw_div(a: Matrix[Scalar, Any, Any], b: Matrix[Scalar, Any, Any]) -> Matrix[S
     """Compute the component-wise division of ``a`` by ``b``."""
     ...
 
-def vector(*args: Scalar, length: int32, dtype: Scalar) -> Vector[Scalar, Any]:
+@over
+def vector(*args: Scalar, length: int32 | int = ...) -> Vector[Scalar, Any]:
+    """Construct a vector of given length and dtype.
+
+    If no arguments are given, the vector is zero-initialized."""
+    ...
+
+@over
+def vector(*args: Scalar, length: int32 | int = ..., dtype: type[DTypeScalar]) -> Vector[DTypeScalar, Any]:
     """Construct a vector of given length and dtype.
 
     If no arguments are given, the vector is zero-initialized."""
@@ -2159,7 +2173,6 @@ def matrix(
     pos: Vector[Float, Literal[3]],
     rot: Quaternion[Float],
     scale: Vector[Float, Literal[3]],
-    dtype: Float,
 ) -> Matrix[Float, Literal[4], Literal[4]]:
     """Construct a matrix.
 
@@ -2173,7 +2186,25 @@ def matrix(
     ...
 
 @over
-def matrix(*args: Scalar, shape: tuple[int, int], dtype: Scalar) -> Matrix[Scalar, Any, Any]:
+def matrix(
+    pos: Vector[Float, Literal[3]],
+    rot: Quaternion[Float],
+    scale: Vector[Float, Literal[3]],
+    dtype: type[DTypeFloat],
+) -> Matrix[DTypeFloat, Literal[4], Literal[4]]:
+    """Construct a matrix.
+
+    Construct a 4x4 transformation matrix that applies the transformations as
+    ``Translation(pos)*Rotation(rot)*Scaling(scale)`` when applied to column vectors, i.e.: ``y = (TRS)*x``.
+
+    .. versionremoved:: 1.10
+        This function has been removed in favor of :func:`~warp._src.lang.transform_compose`.
+
+    .. deprecated:: 1.8"""
+    ...
+
+@over
+def matrix(*args: Scalar, shape: tuple[int, int] = ...) -> Matrix[Scalar, Any, Any]:
     """Construct a matrix.
 
     Construct a matrix with the given shape and dtype.
@@ -2181,7 +2212,16 @@ def matrix(*args: Scalar, shape: tuple[int, int], dtype: Scalar) -> Matrix[Scala
     If no positional arguments are given, the matrix is zero-initialized."""
     ...
 
-def identity(n: int32, dtype: Scalar) -> Matrix[Scalar, Any, Any]:
+@over
+def matrix(*args: Scalar, shape: tuple[int, int] = ..., dtype: type[DTypeScalar]) -> Matrix[DTypeScalar, Any, Any]:
+    """Construct a matrix.
+
+    Construct a matrix with the given shape and dtype.
+
+    If no positional arguments are given, the matrix is zero-initialized."""
+    ...
+
+def identity(n: int32 | int, dtype: type[DTypeScalar]) -> Matrix[DTypeScalar, Any, Any]:
     """Create an identity matrix with shape=(n,n) with the type given by ``dtype``."""
     ...
 
@@ -2268,7 +2308,7 @@ def eig3(
     ...
 
 @over
-def quaternion(dtype: Float) -> Quaternion[Float]:
+def quaternion() -> Quaternion[Float]:
     """Construct a quaternion.
 
     Zero-initialize the quaternion. Quaternions are laid out as
@@ -2276,27 +2316,62 @@ def quaternion(dtype: Float) -> Quaternion[Float]:
     ...
 
 @over
-def quaternion(quat: Quaternion[Float], dtype: Float) -> Quaternion[Float]:
+def quaternion(dtype: type[DTypeFloat]) -> Quaternion[DTypeFloat]:
+    """Construct a quaternion.
+
+    Zero-initialize the quaternion. Quaternions are laid out as
+    ``[ix, iy, iz, r]``, where ``ix``, ``iy``, ``iz`` are the imaginary part, and ``r`` the real part."""
+    ...
+
+@over
+def quaternion(quat: Quaternion[Float]) -> Quaternion[Float]:
     """Construct a quaternion.
 
     Convert ``quat`` to the specified ``dtype``."""
     ...
 
 @over
-def quaternion(ijk: Vector[Float, Literal[3]], real: Float, dtype: Float) -> Quaternion[Float]:
+def quaternion(quat: Quaternion[Float], dtype: type[DTypeFloat]) -> Quaternion[DTypeFloat]:
+    """Construct a quaternion.
+
+    Convert ``quat`` to the specified ``dtype``."""
+    ...
+
+@over
+def quaternion(ijk: Vector[Float, Literal[3]], real: Float) -> Quaternion[Float]:
     """Construct a quaternion.
 
     Use the supplied vector/scalar (type inferred from scalar type)."""
     ...
 
 @over
-def quaternion(x: Float, y: Float, z: Float, w: Float, dtype: Scalar) -> Quaternion[Float]:
+def quaternion(ijk: Vector[Float, Literal[3]], real: Float, dtype: type[DTypeFloat]) -> Quaternion[DTypeFloat]:
+    """Construct a quaternion.
+
+    Use the supplied vector/scalar (type inferred from scalar type)."""
+    ...
+
+@over
+def quaternion(x: Float, y: Float, z: Float, w: Float) -> Quaternion[Float]:
     """Construct a quaternion.
 
     Use the supplied components (type inferred from component type)."""
     ...
 
-def quat_identity(dtype: Float) -> quatf:
+@over
+def quaternion(x: Float, y: Float, z: Float, w: Float, dtype: type[DTypeFloat]) -> Quaternion[DTypeFloat]:
+    """Construct a quaternion.
+
+    Use the supplied components (type inferred from component type)."""
+    ...
+
+@over
+def quat_identity() -> quatf:
+    """Construct an identity quaternion with zero imaginary part and real part of 1.0."""
+    ...
+
+@over
+def quat_identity(dtype: type[DTypeFloat]) -> Quaternion[DTypeFloat]:
     """Construct an identity quaternion with zero imaginary part and real part of 1.0."""
     ...
 
@@ -2353,20 +2428,56 @@ def quat_to_matrix(quat: Quaternion[Float]) -> Matrix[Float, Literal[3], Literal
     ...
 
 @over
-def transformation(p: Vector[Float, Literal[3]], q: Quaternion[Float], dtype: Float) -> Transformation[Float]:
+def transformation(p: Vector[Float, Literal[3]], q: Quaternion[Float] = ...) -> Transformation[Float]:
     """Construct a transformation.
 
     Use translation ``p`` and rotation ``q``."""
     ...
 
 @over
-def transformation(*args: Float, dtype: Float) -> Transformation[Float]:
+def transformation(
+    p: Vector[Float, Literal[3]],
+    q: Quaternion[Float],
+    dtype: type[DTypeFloat],
+) -> Transformation[DTypeFloat]:
+    """Construct a transformation.
+
+    Use translation ``p`` and rotation ``q``."""
+    ...
+
+@over
+def transformation(
+    p: Vector[Float, Literal[3]],
+    q: Quaternion[Float] = ...,
+    *,
+    dtype: type[DTypeFloat],
+) -> Transformation[DTypeFloat]:
+    """Construct a transformation.
+
+    Use translation ``p`` and rotation ``q``."""
+    ...
+
+@over
+def transformation(*args: Float) -> Transformation[Float]:
     """Construct a transformation.
 
     Build a spatial transform vector from components."""
     ...
 
-def transform_identity(dtype: Float) -> transformf:
+@over
+def transformation(*args: Float, dtype: type[DTypeFloat]) -> Transformation[DTypeFloat]:
+    """Construct a transformation.
+
+    Build a spatial transform vector from components."""
+    ...
+
+@over
+def transform_identity() -> transformf:
+    """Construct an identity transform with zero translation and identity rotation."""
+    ...
+
+@over
+def transform_identity(dtype: type[DTypeFloat]) -> Transformation[DTypeFloat]:
     """Construct an identity transform with zero translation and identity rotation."""
     ...
 
@@ -2441,21 +2552,42 @@ def transform_inverse(xform: Transformation[Float]) -> Transformation[Float]:
     ...
 
 @over
-def spatial_vector(dtype: Float) -> Vector[Float, Literal[6]]:
+def spatial_vector() -> Vector[Float, Literal[6]]:
     """Construct a 6D screw vector.
 
     Zero-initialize the vector."""
     ...
 
 @over
-def spatial_vector(
-    w: Vector[Float, Literal[3]],
-    v: Vector[Float, Literal[3]],
-    dtype: Float,
-) -> Vector[Float, Literal[6]]:
+def spatial_vector(dtype: type[DTypeFloat]) -> Vector[DTypeFloat, Literal[6]]:
+    """Construct a 6D screw vector.
+
+    Zero-initialize the vector."""
+    ...
+
+@over
+def spatial_vector(w: Vector[Float, Literal[3]], v: Vector[Float, Literal[3]]) -> Vector[Float, Literal[6]]:
     """Construct a 6D screw vector.
 
     Use two 3D vectors."""
+    ...
+
+@over
+def spatial_vector(
+    w: Vector[Float, Literal[3]],
+    v: Vector[Float, Literal[3]],
+    dtype: type[DTypeFloat],
+) -> Vector[DTypeFloat, Literal[6]]:
+    """Construct a 6D screw vector.
+
+    Use two 3D vectors."""
+    ...
+
+@over
+def spatial_vector(wx: Float, wy: Float, wz: Float, vx: Float, vy: Float, vz: Float) -> Vector[Float, Literal[6]]:
+    """Construct a 6D screw vector.
+
+    Use six scalar values."""
     ...
 
 @over
@@ -2466,8 +2598,8 @@ def spatial_vector(
     vx: Float,
     vy: Float,
     vz: Float,
-    dtype: Float,
-) -> Vector[Float, Literal[6]]:
+    dtype: type[DTypeFloat],
+) -> Vector[DTypeFloat, Literal[6]]:
     """Construct a 6D screw vector.
 
     Use six scalar values."""
@@ -2500,68 +2632,46 @@ def spatial_bottom(svec: Vector[Float, Literal[6]]) -> Vector[Float, Literal[3]]
     """Extract the bottom (second) part of a 6D screw vector."""
     ...
 
-def spatial_jacobian(
-    S: Array[Vector[Float, Literal[6]]],
-    joint_parents: Array[int32],
-    joint_qd_start: Array[int32],
-    joint_start: int32,
-    joint_count: int32,
-    J_start: int32,
-    J_out: Array[Float],
-) -> None:
-    """Compute the spatial Jacobian matrix for a kinematic chain."""
-    ...
-
-def spatial_mass(
-    I_s: Array[Matrix[Float, Literal[6], Literal[6]]],
-    joint_start: int32,
-    joint_count: int32,
-    M_start: int32,
-    M: Array[Float],
-) -> None:
-    """Compute the composite rigid-body mass matrix for a kinematic chain."""
-    ...
-
 @over
-def tile_zeros(shape: tuple[int, ...], dtype: Any, storage: str) -> Tile[Any, tuple[int, ...]]:
+def tile_zeros(shape: tuple[int, ...], dtype: Any = float, storage: str = "register") -> Tile[Any, tuple[int, ...]]:
     """Allocate a tile of zero-initialized items.
 
     Args:
         shape: Shape of the output tile
-        dtype: Data type of output tile's elements (default float)
-        storage: The storage location for the tile: ``"register"`` for registers
-            (default) or ``"shared"`` for shared memory.
+        dtype: Data type of output tile's elements
+        storage: The storage location for the tile: ``"register"`` for registers or
+            ``"shared"`` for shared memory.
 
     Returns:
         A zero-initialized tile with shape and data type as specified."""
     ...
 
 @over
-def tile_zeros(shape: int32, dtype: Any, storage: str) -> Tile[Any, tuple[int, ...]]:
+def tile_zeros(shape: int32 | int, dtype: Any = float, storage: str = "register") -> Tile[Any, tuple[int, ...]]:
     """Allocate a tile of zero-initialized items."""
     ...
 
 @over
-def tile_ones(shape: tuple[int, ...], dtype: Any, storage: str) -> Tile[Any, tuple[int, ...]]:
+def tile_ones(shape: tuple[int, ...], dtype: Any, storage: str = "register") -> Tile[Any, tuple[int, ...]]:
     """Allocate a tile of one-initialized items.
 
     Args:
         shape: Shape of the output tile
         dtype: Data type of output tile's elements
-        storage: The storage location for the tile: ``"register"`` for registers
-            (default) or ``"shared"`` for shared memory.
+        storage: The storage location for the tile: ``"register"`` for registers or
+            ``"shared"`` for shared memory.
 
     Returns:
         A one-initialized tile with shape and data type as specified."""
     ...
 
 @over
-def tile_ones(shape: int32, dtype: Any, storage: str) -> Tile[Any, tuple[int, ...]]:
+def tile_ones(shape: int32 | int, dtype: Any, storage: str = "register") -> Tile[Any, tuple[int, ...]]:
     """Allocate a tile of one-initialized items."""
     ...
 
 @over
-def tile_empty(shape: tuple[int, ...], dtype: Any, storage: str) -> Tile[Any, tuple[int, ...]]:
+def tile_empty(shape: tuple[int, ...], dtype: Any = float, storage: str = "register") -> Tile[Any, tuple[int, ...]]:
     """Allocate a tile of uninitialized items.
 
     The tile's contents are undefined; the caller is responsible for overwriting
@@ -2578,41 +2688,46 @@ def tile_empty(shape: tuple[int, ...], dtype: Any, storage: str) -> Tile[Any, tu
 
     Args:
         shape: Shape of the output tile
-        dtype: Data type of output tile's elements (default float)
-        storage: The storage location for the tile: ``"register"`` for registers
-            (default) or ``"shared"`` for shared memory.
+        dtype: Data type of output tile's elements
+        storage: The storage location for the tile: ``"register"`` for registers or
+            ``"shared"`` for shared memory.
 
     Returns:
         An uninitialized tile with the requested shape and data type."""
     ...
 
 @over
-def tile_empty(shape: int32, dtype: Any, storage: str) -> Tile[Any, tuple[int, ...]]:
+def tile_empty(shape: int32 | int, dtype: Any = float, storage: str = "register") -> Tile[Any, tuple[int, ...]]:
     """Allocate a tile of uninitialized items."""
     ...
 
 @over
-def tile_full(shape: tuple[int, ...], value: Any, dtype: Any, storage: str) -> Tile[Any, tuple[int, ...]]:
+def tile_full(shape: tuple[int, ...], value: Any, dtype: Any, storage: str = "register") -> Tile[Any, tuple[int, ...]]:
     """Allocate a tile filled with the specified value.
 
     Args:
         shape: Shape of the output tile
         value: Value to fill the tile with
         dtype: Data type of output tile's elements
-        storage: The storage location for the tile: ``"register"`` for registers
-            (default) or ``"shared"`` for shared memory.
+        storage: The storage location for the tile: ``"register"`` for registers or
+            ``"shared"`` for shared memory.
 
     Returns:
         A tile filled with the specified value."""
     ...
 
 @over
-def tile_full(shape: int32, value: Any, dtype: Any, storage: str) -> Tile[Any, tuple[int, ...]]:
+def tile_full(shape: int32 | int, value: Any, dtype: Any, storage: str = "register") -> Tile[Any, tuple[int, ...]]:
     """Allocate a tile filled with the specified value."""
     ...
 
 @over
-def tile_from_thread(shape: tuple[int, ...], value: Any, thread_idx: int32, storage: str) -> Tile[Any, tuple[int, ...]]:
+def tile_from_thread(
+    shape: tuple[int, ...],
+    value: Any,
+    thread_idx: int32 | int,
+    storage: str = "register",
+) -> Tile[Any, tuple[int, ...]]:
     """Allocate a tile filled with a value from a specific thread.
 
     This function broadcasts a value from one thread to all threads in the block,
@@ -2624,8 +2739,8 @@ def tile_from_thread(shape: tuple[int, ...], value: Any, thread_idx: int32, stor
         shape: Shape of the output tile
         value: Per-thread value (only the value from ``thread_idx`` is used)
         thread_idx: Index of the thread whose value should fill the tile
-        storage: The storage location for the tile: ``"register"`` for registers
-            (default) or ``"shared"`` for shared memory.
+        storage: The storage location for the tile: ``"register"`` for registers or
+            ``"shared"`` for shared memory.
 
     Returns:
         A tile filled with the value from the specified thread.
@@ -2678,19 +2793,24 @@ def tile_from_thread(shape: tuple[int, ...], value: Any, thread_idx: int32, stor
     ...
 
 @over
-def tile_from_thread(shape: int32, value: Any, thread_idx: int32, storage: str) -> Tile[Any, tuple[int, ...]]:
+def tile_from_thread(
+    shape: int32 | int,
+    value: Any,
+    thread_idx: int32 | int,
+    storage: str = "register",
+) -> Tile[Any, tuple[int, ...]]:
     """Allocate a tile filled with a value from a specific thread."""
     ...
 
 @over
-def tile_randi(shape: tuple[int, ...], rng: uint32, storage: str) -> Tile[Any, tuple[int, ...]]:
+def tile_randi(shape: tuple[int, ...], rng: uint32, storage: str = "register") -> Tile[Any, tuple[int, ...]]:
     """Generate a tile of random integers.
 
     Args:
         shape: Shape of the output tile
         rng: Random number generator state, typically from :func:`~warp._src.lang.rand_init`
-        storage: The storage location for the tile: ``"register"`` for registers
-            (default) or ``"shared"`` for shared memory.
+        storage: The storage location for the tile: ``"register"`` for registers or
+            ``"shared"`` for shared memory.
 
     Returns:
         A tile of random integers with the specified shape.
@@ -2723,12 +2843,18 @@ def tile_randi(shape: tuple[int, ...], rng: uint32, storage: str) -> Tile[Any, t
     ...
 
 @over
-def tile_randi(shape: int32, rng: uint32, storage: str) -> Tile[Any, tuple[int, ...]]:
+def tile_randi(shape: int32 | int, rng: uint32, storage: str = "register") -> Tile[Any, tuple[int, ...]]:
     """Generate a tile of random integers."""
     ...
 
 @over
-def tile_randi(shape: tuple[int, ...], rng: uint32, min: int32, max: int32, storage: str) -> Tile[Any, tuple[int, ...]]:
+def tile_randi(
+    shape: tuple[int, ...],
+    rng: uint32,
+    min: int32 | int,
+    max: int32 | int,
+    storage: str = "register",
+) -> Tile[Any, tuple[int, ...]]:
     """Generate a tile of random integers.
 
     Sample values in the range [min, max).
@@ -2738,8 +2864,8 @@ def tile_randi(shape: tuple[int, ...], rng: uint32, min: int32, max: int32, stor
         rng: Random number generator state, typically from :func:`~warp._src.lang.rand_init`
         min: Minimum value (inclusive) for random integers
         max: Maximum value (exclusive) for random integers
-        storage: The storage location for the tile: ``"register"`` for registers
-            (default) or ``"shared"`` for shared memory.
+        storage: The storage location for the tile: ``"register"`` for registers or
+            ``"shared"`` for shared memory.
 
     Returns:
         A tile of random integers in the range [min, max) with the specified shape.
@@ -2772,21 +2898,27 @@ def tile_randi(shape: tuple[int, ...], rng: uint32, min: int32, max: int32, stor
     ...
 
 @over
-def tile_randi(shape: int32, rng: uint32, min: int32, max: int32, storage: str) -> Tile[Any, tuple[int, ...]]:
+def tile_randi(
+    shape: int32 | int,
+    rng: uint32,
+    min: int32 | int,
+    max: int32 | int,
+    storage: str = "register",
+) -> Tile[Any, tuple[int, ...]]:
     """Generate a tile of random integers.
 
     Sample values in the range [min, max)."""
     ...
 
 @over
-def tile_randf(shape: tuple[int, ...], rng: uint32, storage: str) -> Tile[Any, tuple[int, ...]]:
+def tile_randf(shape: tuple[int, ...], rng: uint32, storage: str = "register") -> Tile[Any, tuple[int, ...]]:
     """Generate a tile of random floats.
 
     Args:
         shape: Shape of the output tile
         rng: Random number generator state, typically from :func:`~warp._src.lang.rand_init`
-        storage: The storage location for the tile: ``"register"`` for registers
-            (default) or ``"shared"`` for shared memory.
+        storage: The storage location for the tile: ``"register"`` for registers or
+            ``"shared"`` for shared memory.
 
     Returns:
         A tile of random floats in the range [0, 1) with the specified shape.
@@ -2819,7 +2951,7 @@ def tile_randf(shape: tuple[int, ...], rng: uint32, storage: str) -> Tile[Any, t
     ...
 
 @over
-def tile_randf(shape: int32, rng: uint32, storage: str) -> Tile[Any, tuple[int, ...]]:
+def tile_randf(shape: int32 | int, rng: uint32, storage: str = "register") -> Tile[Any, tuple[int, ...]]:
     """Generate a tile of random floats."""
     ...
 
@@ -2827,9 +2959,9 @@ def tile_randf(shape: int32, rng: uint32, storage: str) -> Tile[Any, tuple[int, 
 def tile_randf(
     shape: tuple[int, ...],
     rng: uint32,
-    min: float32,
-    max: float32,
-    storage: str,
+    min: float32 | float,
+    max: float32 | float,
+    storage: str = "register",
 ) -> Tile[Any, tuple[int, ...]]:
     """Generate a tile of random floats.
 
@@ -2840,8 +2972,8 @@ def tile_randf(
         rng: Random number generator state, typically from :func:`~warp._src.lang.rand_init`
         min: Minimum value (inclusive) for random floats
         max: Maximum value (exclusive) for random floats
-        storage: The storage location for the tile: ``"register"`` for registers
-            (default) or ``"shared"`` for shared memory.
+        storage: The storage location for the tile: ``"register"`` for registers or
+            ``"shared"`` for shared memory.
 
     Returns:
         A tile of random floats in the range [min, max) with the specified shape.
@@ -2874,13 +3006,20 @@ def tile_randf(
     ...
 
 @over
-def tile_randf(shape: int32, rng: uint32, min: float32, max: float32, storage: str) -> Tile[Any, tuple[int, ...]]:
+def tile_randf(
+    shape: int32 | int,
+    rng: uint32,
+    min: float32 | float,
+    max: float32 | float,
+    storage: str = "register",
+) -> Tile[Any, tuple[int, ...]]:
     """Generate a tile of random floats.
 
     Sample values in the range [min, max)."""
     ...
 
-def tile_arange(*args: Scalar, dtype: Scalar, storage: str) -> Tile[Scalar, tuple[int]]:
+@over
+def tile_arange(*args: Scalar, storage: str = "register") -> Tile[float32, tuple[int]]:
     """Generate a tile of linearly spaced elements.
 
     - ``(stop,)``: Generates values from ``0`` to ``stop - 1``
@@ -2889,9 +3028,27 @@ def tile_arange(*args: Scalar, dtype: Scalar, storage: str) -> Tile[Scalar, tupl
 
     Args:
         args: Variable-length positional arguments, interpreted as:
-        dtype: Data type of output tile's elements (optional, default: ``float``)
-        storage: The storage location for the tile: ``"register"`` for registers
-            (default) or ``"shared"`` for shared memory.
+        dtype: Data type of output tile's elements (``float`` if not provided)
+        storage: The storage location for the tile: ``"register"`` for registers or
+            ``"shared"`` for shared memory.
+
+    Returns:
+        A tile with ``shape=(n)`` with linearly spaced elements of specified data type."""
+    ...
+
+@over
+def tile_arange(*args: Scalar, dtype: type[DTypeScalar], storage: str = "register") -> Tile[DTypeScalar, tuple[int]]:
+    """Generate a tile of linearly spaced elements.
+
+    - ``(stop,)``: Generates values from ``0`` to ``stop - 1``
+    - ``(start, stop)``: Generates values from ``start`` to ``stop - 1``
+    - ``(start, stop, step)``: Generates values from ``start`` to ``stop - 1`` with a step size
+
+    Args:
+        args: Variable-length positional arguments, interpreted as:
+        dtype: Data type of output tile's elements (``float`` if not provided)
+        storage: The storage location for the tile: ``"register"`` for registers or
+            ``"shared"`` for shared memory.
 
     Returns:
         A tile with ``shape=(n)`` with linearly spaced elements of specified data type."""
@@ -2901,10 +3058,10 @@ def tile_arange(*args: Scalar, dtype: Scalar, storage: str) -> Tile[Scalar, tupl
 def tile_load(
     a: Array[Any],
     shape: tuple[int, ...],
-    offset: tuple[int, ...],
-    storage: str,
-    bounds_check: bool,
-    aligned: bool,
+    offset: tuple[int, ...] = ...,
+    storage: str = "register",
+    bounds_check: bool | _builtins.bool = True,
+    aligned: bool | _builtins.bool = False,
 ) -> Tile[Any, tuple[int, ...]]:
     """Load a tile from a global memory array.
 
@@ -2914,8 +3071,8 @@ def tile_load(
         a: The source array in global memory
         shape: Shape of the tile to load, must have the same number of dimensions as ``a``
         offset: Offset in the source array to begin reading from (optional)
-        storage: The storage location for the tile: ``"register"`` for registers
-            (default) or ``"shared"`` for shared memory.
+        storage: The storage location for the tile: ``"register"`` for registers or
+            ``"shared"`` for shared memory.
         bounds_check: Needed for unaligned tiles, but can disable for memory-aligned tiles for faster load times
         aligned: If True, skip runtime alignment checks for vectorized loads (shared memory,
             2D+ tiles only). Has no effect for 1D tiles or register storage. Use when you
@@ -2933,11 +3090,11 @@ def tile_load(
 @over
 def tile_load(
     a: Array[Any],
-    shape: int32,
-    offset: int32,
-    storage: str,
-    bounds_check: bool,
-    aligned: bool,
+    shape: int32 | int,
+    offset: int32 | int = ...,
+    storage: str = "register",
+    bounds_check: bool | _builtins.bool = True,
+    aligned: bool | _builtins.bool = False,
 ) -> Tile[Any, tuple[int, ...]]:
     """Load a tile from a global memory array."""
     ...
@@ -2946,9 +3103,9 @@ def tile_load_indexed(
     a: Array[Any],
     indices: Tile[int32, tuple[int]],
     shape: tuple[int, ...],
-    offset: tuple[int, ...],
-    axis: int32,
-    storage: str,
+    offset: tuple[int, ...] = ...,
+    axis: int32 | int = 0,
+    storage: str = "register",
 ) -> Tile[Any, tuple[int, ...]]:
     """Load a tile from a global memory array, with loads along a specified axis mapped according to a 1D tile of indices.
 
@@ -2958,7 +3115,7 @@ def tile_load_indexed(
         shape: Shape of the tile to load, must have the same number of dimensions as ``a``, and along ``axis``, it must have the same number of elements as the ``indices`` tile.
         offset: Offset in the source array to begin reading from (optional)
         axis: Axis of ``a`` that indices refer to
-        storage: The storage location for the tile: ``"register"`` for registers (default) or ``"shared"`` for shared memory.
+        storage: The storage location for the tile: ``"register"`` for registers or ``"shared"`` for shared memory.
 
     Returns:
         A tile with shape as specified and data type the same as the source array.
@@ -3011,9 +3168,9 @@ def tile_load_indexed(
 def tile_store(
     a: Array[Any],
     t: Tile[Any, tuple[int, ...]],
-    offset: tuple[int, ...],
-    bounds_check: bool,
-    aligned: bool,
+    offset: tuple[int, ...] = ...,
+    bounds_check: bool | _builtins.bool = True,
+    aligned: bool | _builtins.bool = False,
 ) -> None:
     """Store a tile to a global memory array.
 
@@ -3035,7 +3192,13 @@ def tile_store(
     ...
 
 @over
-def tile_store(a: Array[Any], t: Tile[Any, tuple[int, ...]], offset: int32, bounds_check: bool, aligned: bool) -> None:
+def tile_store(
+    a: Array[Any],
+    t: Tile[Any, tuple[int, ...]],
+    offset: int32 | int = ...,
+    bounds_check: bool | _builtins.bool = True,
+    aligned: bool | _builtins.bool = False,
+) -> None:
     """Store a tile to a global memory array."""
     ...
 
@@ -3043,8 +3206,8 @@ def tile_store_indexed(
     a: Array[Any],
     indices: Tile[int32, tuple[int]],
     t: Tile[Any, tuple[int, ...]],
-    offset: tuple[int, ...],
-    axis: int32,
+    offset: tuple[int, ...] = ...,
+    axis: int32 | int = 0,
 ) -> None:
     """Store a tile to a global memory array, with storage along a specified axis mapped according to a 1D tile of indices.
 
@@ -3110,8 +3273,8 @@ def tile_store_indexed(
 def tile_atomic_add(
     a: Array[Any],
     t: Tile[Any, tuple[int, ...]],
-    offset: tuple[int, ...],
-    bounds_check: bool,
+    offset: tuple[int, ...] = ...,
+    bounds_check: bool | _builtins.bool = True,
 ) -> Tile[Any, tuple[int, ...]]:
     """Atomically add a tile onto the array ``a``.
 
@@ -3131,8 +3294,8 @@ def tile_atomic_add(
 def tile_atomic_add(
     a: Array[Any],
     t: Tile[Any, tuple[int, ...]],
-    offset: int32,
-    bounds_check: bool,
+    offset: int32 | int = ...,
+    bounds_check: bool | _builtins.bool = True,
 ) -> Tile[Any, tuple[int, ...]]:
     """Atomically add a tile onto the array ``a``."""
     ...
@@ -3141,8 +3304,8 @@ def tile_atomic_add_indexed(
     a: Array[Any],
     indices: Tile[int32, tuple[int]],
     t: Tile[Any, tuple[int, ...]],
-    offset: tuple[int, ...],
-    axis: int32,
+    offset: tuple[int, ...] = ...,
+    axis: int32 | int = 0,
 ) -> Tile[Any, tuple[int, ...]]:
     """Atomically add a tile to a global memory array, with storage along a specified axis mapped according to a 1D tile of indices.
 
@@ -3196,7 +3359,7 @@ def tile_atomic_add_indexed(
                 [20. 22. 24. 26.]]"""
     ...
 
-def tile_view(t: Tile[Any, tuple[int, ...]], offset: tuple, shape: tuple[int, ...]) -> Tile[Any, tuple[int, ...]]:
+def tile_view(t: Tile[Any, tuple[int, ...]], offset: tuple, shape: tuple[int, ...] = ...) -> Tile[Any, tuple[int, ...]]:
     """Extract a view of a tile.
 
     ``offset`` may contain integer coordinates, in which case ``shape`` gives the
@@ -3228,7 +3391,7 @@ def tile_slice_indexed(t: Tile[Any, tuple[int, ...]], indices: tuple) -> Tile[An
         A register tile whose extent along the indexed axis equals the number of indices."""
     ...
 
-def tile_squeeze(t: Tile[Any, tuple[int, ...]], axis: tuple[int, ...]) -> Tile[Any, tuple[int, ...]]:
+def tile_squeeze(t: Tile[Any, tuple[int, ...]], axis: tuple[int, ...] = ...) -> Tile[Any, tuple[int, ...]]:
     """Create a squeezed view of a tile with the same data.
 
     Args:
@@ -3250,7 +3413,7 @@ def tile_reshape(t: Tile[Any, tuple[int, ...]], shape: tuple[int, ...]) -> Tile[
         A tile containing the same data as the input tile, but arranged in a new shape."""
     ...
 
-def tile_astype(t: Tile[Scalar, tuple[int, ...]], dtype: Scalar) -> Tile[Any, tuple[int, ...]]:
+def tile_astype(t: Tile[Scalar, tuple[int, ...]], dtype: type[DTypeScalar]) -> Tile[DTypeScalar, tuple[int, ...]]:
     """Create a new tile with the same data as the input tile, but with a different data type.
 
     Args:
@@ -3261,7 +3424,11 @@ def tile_astype(t: Tile[Scalar, tuple[int, ...]], dtype: Scalar) -> Tile[Any, tu
         A tile with the same data as the input tile, but with a different data type."""
     ...
 
-def tile_assign(dst: Tile[Any, tuple[int, ...]], src: Tile[Any, tuple[int, ...]], offset: tuple[int, ...]) -> None:
+def tile_assign(
+    dst: Tile[Any, tuple[int, ...]],
+    src: Tile[Any, tuple[int, ...]],
+    offset: tuple[int, ...] = ...,
+) -> None:
     """Assign a tile to a subrange of a destination tile.
 
     Args:
@@ -3270,7 +3437,7 @@ def tile_assign(dst: Tile[Any, tuple[int, ...]], src: Tile[Any, tuple[int, ...]]
         offset: Offset in the destination tile to write to."""
     ...
 
-def tile(x: Any, preserve_type: bool) -> Tile[Any, tuple]:
+def tile(x: Any, preserve_type: bool | _builtins.bool = False) -> Tile[Any, tuple]:
     """Construct a new tile from per-thread kernel values.
 
     This function converts values computed using scalar kernel code to a tile representation for input into collective operations.
@@ -3352,7 +3519,7 @@ def untile(a: Tile[Any, tuple[int, ...]]) -> Any:
     ...
 
 @over
-def tile_extract(a: Tile[Any, tuple[int]], i: int32) -> Any:
+def tile_extract(a: Tile[Any, tuple[int]], i: int32 | int) -> Any:
     """Extract a single element from the tile.
 
     This function will extract an element from the tile and broadcast its value to all threads in the block.
@@ -3368,7 +3535,7 @@ def tile_extract(a: Tile[Any, tuple[int]], i: int32) -> Any:
     ...
 
 @over
-def tile_extract(a: Tile[Any, tuple[int, ...]], i: int32, j: int32) -> Any:
+def tile_extract(a: Tile[Any, tuple[int, ...]], i: int32 | int, j: int32 | int) -> Any:
     """Extract a single element from the tile.
 
     This function will extract an element from the tile and broadcast its value to all threads in the block.
@@ -3385,7 +3552,7 @@ def tile_extract(a: Tile[Any, tuple[int, ...]], i: int32, j: int32) -> Any:
     ...
 
 @over
-def tile_extract(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32) -> Any:
+def tile_extract(a: Tile[Any, tuple[int, ...]], i: int32 | int, j: int32 | int, k: int32 | int) -> Any:
     """Extract a single element from the tile.
 
     This function will extract an element from the tile and broadcast its value to all threads in the block.
@@ -3403,7 +3570,7 @@ def tile_extract(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32) ->
     ...
 
 @over
-def tile_extract(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32, l: int32) -> Any:
+def tile_extract(a: Tile[Any, tuple[int, ...]], i: int32 | int, j: int32 | int, k: int32 | int, l: int32 | int) -> Any:
     """Extract a single element from the tile.
 
     This function will extract an element from the tile and broadcast its value to all threads in the block.
@@ -3422,7 +3589,14 @@ def tile_extract(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32, l:
     ...
 
 @over
-def tile_extract(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32, l: int32, m: int32) -> Any:
+def tile_extract(
+    a: Tile[Any, tuple[int, ...]],
+    i: int32 | int,
+    j: int32 | int,
+    k: int32 | int,
+    l: int32 | int,
+    m: int32 | int,
+) -> Any:
     """Extract a single element from the tile.
 
     This function will extract an element from the tile and broadcast its value to all threads in the block.
@@ -3444,12 +3618,12 @@ def tile_extract(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32, l:
 @over
 def tile_extract(
     a: Tile[Any, tuple[int, int, int, int]],
-    i: int32,
-    j: int32,
-    k: int32,
-    l: int32,
-    m: int32,
-    n: int32,
+    i: int32 | int,
+    j: int32 | int,
+    k: int32 | int,
+    l: int32 | int,
+    m: int32 | int,
+    n: int32 | int,
 ) -> Any:
     """Extract a single element from the tile.
 
@@ -3471,7 +3645,13 @@ def tile_extract(
     ...
 
 @over
-def tile_scatter_add(a: Tile[Any, tuple[int, ...]], i: int32, value: Any, has_value: bool, atomic: bool) -> None:
+def tile_scatter_add(
+    a: Tile[Any, tuple[int, ...]],
+    i: int32 | int,
+    value: Any,
+    has_value: bool | _builtins.bool,
+    atomic: bool | _builtins.bool = True,
+) -> None:
     """Scatter-add a per-thread value into a shared-memory tile.
 
     Cooperative operation -- all threads in the block must call this function.
@@ -3485,7 +3665,7 @@ def tile_scatter_add(a: Tile[Any, tuple[int, ...]], i: int32, value: Any, has_va
         i: Index of the element to add to.
         value: The value to add (must match the tile's dtype).
         has_value: Whether this thread should perform the add.
-        atomic: If True (default), use atomic add for safe concurrent writes.
+        atomic: If True, use atomic add for safe concurrent writes.
             Set to False when indices are guaranteed unique across threads
             (e.g., lane-parallel writes) for better performance.
 
@@ -3517,11 +3697,11 @@ def tile_scatter_add(a: Tile[Any, tuple[int, ...]], i: int32, value: Any, has_va
 @over
 def tile_scatter_add(
     a: Tile[Any, tuple[int, ...]],
-    i: int32,
-    j: int32,
+    i: int32 | int,
+    j: int32 | int,
     value: Any,
-    has_value: bool,
-    atomic: bool,
+    has_value: bool | _builtins.bool,
+    atomic: bool | _builtins.bool = True,
 ) -> None:
     """"""
     ...
@@ -3529,12 +3709,12 @@ def tile_scatter_add(
 @over
 def tile_scatter_add(
     a: Tile[Any, tuple[int, ...]],
-    i: int32,
-    j: int32,
-    k: int32,
+    i: int32 | int,
+    j: int32 | int,
+    k: int32 | int,
     value: Any,
-    has_value: bool,
-    atomic: bool,
+    has_value: bool | _builtins.bool,
+    atomic: bool | _builtins.bool = True,
 ) -> None:
     """"""
     ...
@@ -3542,19 +3722,24 @@ def tile_scatter_add(
 @over
 def tile_scatter_add(
     a: Tile[Any, tuple[int, ...]],
-    i: int32,
-    j: int32,
-    k: int32,
-    l: int32,
+    i: int32 | int,
+    j: int32 | int,
+    k: int32 | int,
+    l: int32 | int,
     value: Any,
-    has_value: bool,
-    atomic: bool,
+    has_value: bool | _builtins.bool,
+    atomic: bool | _builtins.bool = True,
 ) -> None:
     """"""
     ...
 
 @over
-def tile_scatter_masked(a: Tile[Any, tuple[int, ...]], i: int32, value: Any, has_value: bool) -> None:
+def tile_scatter_masked(
+    a: Tile[Any, tuple[int, ...]],
+    i: int32 | int,
+    value: Any,
+    has_value: bool | _builtins.bool,
+) -> None:
     """Write a value into a shared-memory tile from the calling thread.
 
     All threads in the block must call this function cooperatively.
@@ -3590,18 +3775,12 @@ def tile_scatter_masked(a: Tile[Any, tuple[int, ...]], i: int32, value: Any, has
     ...
 
 @over
-def tile_scatter_masked(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, value: Any, has_value: bool) -> None:
-    """"""
-    ...
-
-@over
 def tile_scatter_masked(
     a: Tile[Any, tuple[int, ...]],
-    i: int32,
-    j: int32,
-    k: int32,
+    i: int32 | int,
+    j: int32 | int,
     value: Any,
-    has_value: bool,
+    has_value: bool | _builtins.bool,
 ) -> None:
     """"""
     ...
@@ -3609,12 +3788,24 @@ def tile_scatter_masked(
 @over
 def tile_scatter_masked(
     a: Tile[Any, tuple[int, ...]],
-    i: int32,
-    j: int32,
-    k: int32,
-    l: int32,
+    i: int32 | int,
+    j: int32 | int,
+    k: int32 | int,
     value: Any,
-    has_value: bool,
+    has_value: bool | _builtins.bool,
+) -> None:
+    """"""
+    ...
+
+@over
+def tile_scatter_masked(
+    a: Tile[Any, tuple[int, ...]],
+    i: int32 | int,
+    j: int32 | int,
+    k: int32 | int,
+    l: int32 | int,
+    value: Any,
+    has_value: bool | _builtins.bool,
 ) -> None:
     """"""
     ...
@@ -3647,7 +3838,7 @@ def tile_broadcast(a: Tile[Any, tuple[int, ...]], shape: tuple[int, ...]) -> Til
     ...
 
 @over
-def tile_sum(a: Tile[Any, tuple[int, ...]], axis: int32) -> Tile[Any, tuple[int, ...]]:
+def tile_sum(a: Tile[Any, tuple[int, ...]], axis: int32 | int) -> Tile[Any, tuple[int, ...]]:
     """Cooperatively compute the sum of the tile elements.
 
     Reduce across a tile axis using all threads in the block.
@@ -3963,7 +4154,7 @@ def tile_reduce(op: Callable, a: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[
     ...
 
 @over
-def tile_reduce(op: Callable, a: Tile[Scalar, tuple[int, ...]], axis: int32) -> Tile[Scalar, tuple[int, ...]]:
+def tile_reduce(op: Callable, a: Tile[Scalar, tuple[int, ...]], axis: int32 | int) -> Tile[Scalar, tuple[int, ...]]:
     """Apply a custom reduction operator across a tile.
 
     Reduce across a tile axis using the provided operator.
@@ -4234,7 +4425,7 @@ def tile_map(op: Callable, a: Tile[Any, tuple[int, ...]], *args: Any) -> Tile[An
             [0.5 0.57 0.64 0.71 0.78 0.85 0.92 0.99 1.06 1.13] = tile(shape=(10), storage=register)"""
     ...
 
-def bvh_query_aabb(id: uint64, low: vec3f, high: vec3f, root: int32) -> BvhQuery:
+def bvh_query_aabb(id: uint64, low: vec3f, high: vec3f, root: int32 | int = -1) -> BvhQuery:
     """Construct an axis-aligned bounding box (AABB) query against a BVH.
 
     Returns a query that iterates over every item in the BVH whose stored bounding box overlaps
@@ -4243,14 +4434,14 @@ def bvh_query_aabb(id: uint64, low: vec3f, high: vec3f, root: int32) -> BvhQuery
     as the ``lowers``/``uppers`` arrays passed to :class:`warp.Bvh`.
 
     To restrict traversal to a subtree, set ``root`` to that node's index (for a grouped BVH the
-    group root is obtained from :func:`bvh_get_group_root`). If ``root`` is -1 (default),
+    group root is obtained from :func:`bvh_get_group_root`). If ``root`` is -1,
     traversal starts at the BVH's global root.
 
     Args:
         id: The BVH identifier
         low: The lower bound of the query box, in BVH space
         high: The upper bound of the query box, in BVH space
-        root: The node to begin the query from, or -1 (default) for the BVH's global root
+        root: The node to begin the query from, or -1 for the BVH's global root
 
     Returns:
         A :class:`warp.BvhQuery`. It is opaque; pass it to :func:`bvh_query_next`,
@@ -4282,7 +4473,7 @@ def bvh_query_aabb(id: uint64, low: vec3f, high: vec3f, root: int32) -> BvhQuery
             [[0.5, 0.5, 0.5], [2.5, 0.5, 0.5], [0.0, 0.0, 0.0]]"""
     ...
 
-def bvh_query_ray(id: uint64, start: vec3f, dir: vec3f, root: int32) -> BvhQuery:
+def bvh_query_ray(id: uint64, start: vec3f, dir: vec3f, root: int32 | int = -1) -> BvhQuery:
     """Construct a ray query against a BVH.
 
     Returns a query that iterates over every item in the BVH whose stored bounding box is
@@ -4290,17 +4481,18 @@ def bvh_query_ray(id: uint64, start: vec3f, dir: vec3f, root: int32) -> BvhQuery
     ``start`` and ``dir`` are given in BVH space, i.e. the same coordinate space as
     the ``lowers``/``uppers`` arrays passed to :class:`warp.Bvh`. ``dir`` need not be normalized,
     but the ``max_dist`` cutoff of :func:`bvh_query_next` is measured in multiples of its length,
-    so normalize it for ``max_dist`` to be a distance in BVH-space units.
+    so normalize it for ``max_dist`` to be a distance in BVH-space units. For capsule sweeps
+    use :func:`bvh_query_capsule` instead.
 
     To restrict traversal to a subtree, set ``root`` to that node's index (for a grouped BVH the
-    group root is obtained from :func:`bvh_get_group_root`). If ``root`` is -1 (default),
+    group root is obtained from :func:`bvh_get_group_root`). If ``root`` is -1,
     traversal starts at the BVH's global root.
 
     Args:
         id: The BVH identifier
         start: The ray origin, in BVH space
         dir: The ray direction, in BVH space (see above on normalization)
-        root: The node to begin the query from, or -1 (default) for the BVH's global root
+        root: The node to begin the query from, or -1 for the BVH's global root
 
     Returns:
         A :class:`warp.BvhQuery`. It is opaque; pass it to :func:`bvh_query_next`, which writes
@@ -4332,31 +4524,128 @@ def bvh_query_ray(id: uint64, start: vec3f, dir: vec3f, root: int32) -> BvhQuery
             [[0.5, 0.5, 0.5], [2.5, 0.5, 0.5], [4.5, 0.5, 0.5]]"""
     ...
 
-def bvh_query_next(query: BvhQuery, index: int32, max_dist: float32) -> bool:
+def bvh_query_capsule(
+    id: uint64,
+    start: vec3f,
+    dir: vec3f,
+    radius: float32 | float,
+    root: int32 | int = -1,
+) -> BvhQuery:
+    """Construct a conservative capsule sweep query against a BVH.
+
+    Iterates over every BVH item whose stored bounding box overlaps the swept capsule. Each node's
+    bounds are inflated by ``radius`` before the ray-slab test (an axis-aligned box inflation, not
+    a true sphere cap), so the query never misses a primitive within ``radius`` of the segment but
+    may return extra candidates near box corners.
+
+    To sweep a closed capsule from ``p0`` to ``p1``, pass ``dir = p1 - p0`` (unnormalized) and
+    ``max_dist = 1.0`` in :func:`bvh_query_next`; contact at both endpoints is included.
+    A zero-length segment (``p0 == p1``) is not supported — use :func:`bvh_query_sphere` instead.
+    A negative ``radius`` is clamped to zero. Advance results with :func:`bvh_query_next`.
+
+    Args:
+        id: The BVH identifier
+        start: The segment start point (``p0``), in BVH space
+        dir: The segment direction (``p1 - p0``), in BVH space
+        radius: The capsule radius; negative values are clamped to zero
+        root: The node to begin the query from, or -1 (default) for the BVH's global root
+
+    Returns:
+        A :class:`warp.BvhQuery`. It is opaque; pass it to :func:`bvh_query_next`.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def capsule_sweep(bvh_id: wp.uint64, p0: wp.vec3, p1: wp.vec3, radius: float,
+                               count: wp.array[wp.int32]):
+                query = wp.bvh_query_capsule(bvh_id, p0, p1 - p0, radius)
+                item = int(0)
+                while wp.bvh_query_next(query, item, 1.0):
+                    wp.atomic_add(count, 0, 1)
+
+            lowers = wp.array([[0.75, -1, -1]], dtype=wp.vec3)
+            uppers = wp.array([[2.0,   1,  1]], dtype=wp.vec3)
+            bvh = wp.Bvh(lowers=lowers, uppers=uppers)
+            count = wp.zeros(1, dtype=wp.int32)
+            wp.launch(capsule_sweep, dim=1,
+                      inputs=[bvh.id, wp.vec3(0.0, 0.0, 0.0), wp.vec3(0.5, 0.0, 0.0), 0.3, count])
+            print(count.numpy()[0])
+
+        .. testoutput::
+
+            1"""
+    ...
+
+def bvh_query_sphere(id: uint64, center: vec3f, radius: float32 | float, root: int32 | int = -1) -> BvhQuery:
+    """Construct a sphere query against a BVH object.
+
+    Iterates over all items whose bounding box overlaps the sphere (exact sphere-AABB squared-distance
+    test). Tangential contact (the nearest point on the AABB surface exactly on the sphere) is included.
+    A negative ``radius`` is clamped to zero. This is a tighter broad-phase than padding a query AABB
+    by the radius, since the sphere is inscribed in the padded box. Advance with :func:`bvh_query_next`.
+
+    Args:
+        id: The BVH identifier
+        center: The center of the sphere in BVH space
+        radius: The radius of the sphere; negative values are clamped to zero
+        root: The node to begin the query from, or -1 (default) for the BVH's global root
+
+    Returns:
+        A :class:`warp.BvhQuery`. It is opaque; pass it to :func:`bvh_query_next`.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def find_items_in_sphere(bvh_id: wp.uint64, center: wp.vec3, radius: float,
+                                     hits: wp.array[wp.int32]):
+                query = wp.bvh_query_sphere(bvh_id, center, radius)
+                item = int(0)
+                while wp.bvh_query_next(query, item):
+                    hits[item] = wp.int32(1)
+
+            lowers = wp.array([[0, 0, 0], [2, 0, 0]], dtype=wp.vec3)
+            uppers = wp.array([[1, 1, 1], [3, 1, 1]], dtype=wp.vec3)
+            bvh = wp.Bvh(lowers=lowers, uppers=uppers)
+            hits = wp.zeros(2, dtype=wp.int32)
+            wp.launch(find_items_in_sphere, dim=1,
+                      inputs=[bvh.id, wp.vec3(0.5, 0.5, 0.5), 0.6, hits])
+            print(hits.numpy().tolist())
+
+        .. testoutput::
+
+            [1, 0]"""
+    ...
+
+def bvh_query_next(query: BvhQuery, index: int32 | int, max_dist: float32 | float = float("inf")) -> bool:
     """Advance a BVH query to the next overlapping item and report whether one was found.
 
-    Writes the index of the current item to ``index`` and returns ``True``; returns ``False`` once
-    the query is exhausted (``index`` is then left unchanged). The reported index is the item's
-    index into the ``lowers``/``uppers`` arrays passed to :class:`warp.Bvh`. Used in a ``while``
-    loop together with :func:`bvh_query_aabb` or :func:`bvh_query_ray`.
+    Call :func:`bvh_query_next` in a ``while`` loop together with :func:`bvh_query_aabb`,
+    :func:`bvh_query_ray`, :func:`bvh_query_capsule`, or :func:`bvh_query_sphere`.
 
-    For ray queries, ``max_dist`` bounds how far along the ray to look for intersections, measured
-    in multiples of the ray direction's length (so it is a distance only if ``dir`` was normalized).
-    It has no effect on AABB queries.
+    For plain ray queries (:func:`bvh_query_ray`), ``max_dist`` bounds how far along the ray to
+    look for intersections, measured in multiples of ``dir``'s length (so it is a distance only if
+    ``dir`` was normalized). For capsule queries (:func:`bvh_query_capsule`), pass
+    ``dir = p1 - p0`` (unnormalized) together with ``max_dist = 1.0`` to sweep from ``p0`` to
+    ``p1``. ``max_dist`` has no effect on AABB or sphere queries.
 
     Note that increasing ``max_dist`` may miss intersections: a subtree already rejected for being
     beyond ``max_dist`` is never revisited, even if a later, larger ``max_dist`` would reach it. It
     is therefore only safe to monotonically *reduce* ``max_dist`` during a query.
 
     Args:
-        query: The query to advance, from :func:`bvh_query_aabb` or :func:`bvh_query_ray`
-        index: Output; receives the index of the current overlapping item
+        query: The query to advance, from :func:`bvh_query_aabb`, :func:`bvh_query_ray`, :func:`bvh_query_capsule`, or :func:`bvh_query_sphere`
+        index: Output; receives the index of the current overlapping item in the
+            ``lowers``/``uppers`` arrays passed to :class:`warp.Bvh`.
         max_dist: For ray queries, the maximum distance along the ray to check for intersections
-            (in multiples of ``dir``'s length). Has no effect on AABB queries.
+            (in multiples of ``dir``'s length). ``max_dist`` has no effect on AABB or sphere queries.
 
     Returns:
         ``True`` if another overlapping item was found (its index written to ``index``), ``False``
-        if the query is exhausted.
+        if the query is exhausted. When the function returns ``False``, ``index`` is unchanged.
 
     Example:
 
@@ -4609,7 +4898,7 @@ def tile_query_valid(query: MeshQueryAABBTiled) -> bool:
         ``True`` if more results are available, ``False`` if exhausted"""
     ...
 
-def tile_stack(capacity: int32, dtype: Any) -> TileStack[Any, Any]:
+def tile_stack(capacity: int32 | int, dtype: Any) -> TileStack[Any, Any]:
     """Allocate a cooperative thread-block stack in shared memory.
 
     Args:
@@ -4655,7 +4944,7 @@ def tile_stack(capacity: int32, dtype: Any) -> TileStack[Any, Any]:
             [6, 7, 8, 9]"""
     ...
 
-def tile_stack_push(s: Any, value: Any, has_value: bool) -> int:
+def tile_stack_push(s: Any, value: Any, has_value: bool | _builtins.bool) -> int:
     """Push a value onto a tile stack (cooperative).
 
     All threads in the block must call this function. Only threads with
@@ -4818,7 +5107,7 @@ def tile_stack_count(s: Any) -> int:
             4"""
     ...
 
-def bvh_get_group_root(id: uint64, group: int32) -> int:
+def bvh_get_group_root(id: uint64, group: int32 | int) -> int:
     """Get the root of a group in a BVH.
 
     Args:
@@ -4856,7 +5145,7 @@ def bvh_get_group_root(id: uint64, group: int32) -> int:
             [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [4.5, 0.5, 0.5]]"""
     ...
 
-def mesh_get_group_root(id: uint64, group: int32) -> int:
+def mesh_get_group_root(id: uint64, group: int32 | int) -> int:
     """Get the root of a group in a :class:`warp.Mesh`.
 
     Args:
@@ -4892,7 +5181,7 @@ def mesh_get_group_root(id: uint64, group: int32) -> int:
             hit face: 1"""
     ...
 
-def mesh_query_point(id: uint64, point: vec3f, max_dist: float32) -> MeshQueryPoint:
+def mesh_query_point(id: uint64, point: vec3f, max_dist: float32 | float) -> MeshQueryPoint:
     """Compute the closest point on the :class:`warp.Mesh` with identifier ``id`` to the given ``point`` in space.
 
     The sign of the distance (inside/outside) is determined by casting three axis-aligned rays from
@@ -4948,9 +5237,9 @@ def mesh_query_point(id: uint64, point: vec3f, max_dist: float32) -> MeshQueryPo
 def mesh_query_point_sign_parity(
     id: uint64,
     point: vec3f,
-    max_dist: float32,
-    n_sample: int32,
-    perturbation_scale: float32,
+    max_dist: float32 | float,
+    n_sample: int32 | int = 1,
+    perturbation_scale: float32 | float = 0.1,
 ) -> MeshQueryPoint:
     """Compute the closest point on the :class:`warp.Mesh` with identifier ``id`` to the given ``point`` in space.
 
@@ -5010,7 +5299,7 @@ def mesh_query_point_sign_parity(
             inside: True"""
     ...
 
-def mesh_query_point_no_sign(id: uint64, point: vec3f, max_dist: float32) -> MeshQueryPoint:
+def mesh_query_point_no_sign(id: uint64, point: vec3f, max_dist: float32 | float) -> MeshQueryPoint:
     """Compute the closest point on the :class:`warp.Mesh` with identifier ``id`` to the given ``point`` in space.
 
     This method does not compute the sign of the point (inside/outside) which makes it faster than other point query methods.
@@ -5054,7 +5343,7 @@ def mesh_query_point_no_sign(id: uint64, point: vec3f, max_dist: float32) -> Mes
             [0.5 0.5 0. ]"""
     ...
 
-def mesh_query_furthest_point_no_sign(id: uint64, point: vec3f, min_dist: float32) -> MeshQueryPoint:
+def mesh_query_furthest_point_no_sign(id: uint64, point: vec3f, min_dist: float32 | float) -> MeshQueryPoint:
     """Compute the furthest point on the :class:`warp.Mesh` with identifier ``id`` to the given point in space.
 
     This method does not compute the sign of the point (inside/outside).
@@ -5099,7 +5388,12 @@ def mesh_query_furthest_point_no_sign(id: uint64, point: vec3f, min_dist: float3
             [1. 1. 1.]"""
     ...
 
-def mesh_query_point_sign_normal(id: uint64, point: vec3f, max_dist: float32, epsilon: float32) -> MeshQueryPoint:
+def mesh_query_point_sign_normal(
+    id: uint64,
+    point: vec3f,
+    max_dist: float32 | float,
+    epsilon: float32 | float = 0.001,
+) -> MeshQueryPoint:
     """Compute the closest point on the :class:`warp.Mesh` with identifier ``id`` to the given ``point`` in space.
 
     Identifies the sign of the distance (inside/outside) using the angle-weighted pseudo normal.
@@ -5115,7 +5409,7 @@ def mesh_query_point_sign_normal(id: uint64, point: vec3f, max_dist: float32, ep
         point: The query point, in the mesh's local space
         max_dist: Maximum allowed distance to the returned closest point. The query returns no result if no face is strictly closer than this distance.
         epsilon: Epsilon treating distance values as equal, when locating the minimum distance vertex/face/edge, as a
-            fraction of the average edge length, also for treating closest point as being on edge/vertex default 1e-3.
+            fraction of the average edge length, also for treating closest point as being on edge/vertex.
 
     Returns:
         A :class:`warp.MeshQueryPoint`. Check ``result`` first (``True`` if a face within
@@ -5151,9 +5445,9 @@ def mesh_query_point_sign_normal(id: uint64, point: vec3f, max_dist: float32, ep
 def mesh_query_point_sign_winding_number(
     id: uint64,
     point: vec3f,
-    max_dist: float32,
-    accuracy: float32,
-    threshold: float32,
+    max_dist: float32 | float,
+    accuracy: float32 | float = 2.0,
+    threshold: float32 | float = 0.5,
 ) -> MeshQueryPoint:
     """Compute the closest point on the :class:`warp.Mesh` with identifier ``id`` to the given point in space.
 
@@ -5178,8 +5472,8 @@ def mesh_query_point_sign_winding_number(
         id: The mesh identifier
         point: The query point, in the mesh's local space
         max_dist: Maximum allowed distance to the returned closest point. The query returns no result if no face is strictly closer than this distance.
-        accuracy: Accuracy for computing the winding number with fast winding number method utilizing second-order dipole approximation, default 2.0
-        threshold: The threshold of the winding number to be considered inside, default 0.5.
+        accuracy: Accuracy for computing the winding number with fast winding number method utilizing second-order dipole approximation
+        threshold: The threshold of the winding number to be considered inside.
 
     Returns:
         A :class:`warp.MeshQueryPoint`. Check ``result`` first (``True`` if a face within
@@ -5212,7 +5506,13 @@ def mesh_query_point_sign_winding_number(
             inside: True"""
     ...
 
-def mesh_query_ray(id: uint64, start: vec3f, dir: vec3f, max_t: float32, root: int32) -> MeshQueryRay:
+def mesh_query_ray(
+    id: uint64,
+    start: vec3f,
+    dir: vec3f,
+    max_t: float32 | float,
+    root: int32 | int = -1,
+) -> MeshQueryRay:
     """Compute the closest ray hit on the :class:`warp.Mesh` with identifier ``id``.
 
     ``start`` and ``dir`` are given in the mesh's local space. ``dir`` need not be normalized, but
@@ -5221,14 +5521,14 @@ def mesh_query_ray(id: uint64, start: vec3f, dir: vec3f, max_t: float32, root: i
 
     The ``root`` parameter can be obtained using the :func:`mesh_get_group_root` function when creating a grouped mesh.
     When ``root`` is a valid (>=0) value, the traversal will be confined to the subtree starting from the root.
-    If ``root`` is -1 (default), traversal starts at the mesh's global root.
+    If ``root`` is -1, traversal starts at the mesh's global root.
 
     Args:
         id: The mesh identifier
         start: The ray origin, in the mesh's local space
         dir: The ray direction, in the mesh's local space (see above on normalization)
         max_t: The maximum distance along the ray to check for intersections (in multiples of ``dir``'s length)
-        root: The root node index for grouped BVH queries, or -1 for global root (optional, default: -1)
+        root: The root node index for grouped BVH queries, or -1 for global root
 
     Returns:
         A :class:`warp.MeshQueryRay`. Check ``result`` first (``True`` if a hit within ``max_t`` was
@@ -5263,7 +5563,7 @@ def mesh_query_ray(id: uint64, start: vec3f, dir: vec3f, max_t: float32, root: i
             t = 2.0 normal = [ 0.  0. -1.]"""
     ...
 
-def mesh_query_ray_anyhit(id: uint64, start: vec3f, dir: vec3f, max_t: float32, root: int32) -> bool:
+def mesh_query_ray_anyhit(id: uint64, start: vec3f, dir: vec3f, max_t: float32 | float, root: int32 | int = -1) -> bool:
     """Check whether a ray hits the :class:`warp.Mesh` with identifier ``id``, without computing the closest hit.
 
     Returns as soon as any intersecting face within ``max_t`` is found, so it is cheaper than
@@ -5273,14 +5573,14 @@ def mesh_query_ray_anyhit(id: uint64, start: vec3f, dir: vec3f, max_t: float32, 
 
     The ``root`` parameter can be obtained using the :func:`mesh_get_group_root` function when creating a grouped mesh.
     When ``root`` is a valid (>=0) value, the traversal will be confined to the subtree starting from the root.
-    If ``root`` is -1 (default), traversal starts at the mesh's global root.
+    If ``root`` is -1, traversal starts at the mesh's global root.
 
     Args:
         id: The mesh identifier
         start: The ray origin, in the mesh's local space
         dir: The ray direction, in the mesh's local space
         max_t: The maximum distance along the ray to check for intersections (in multiples of ``dir``'s length)
-        root: The root node index for grouped BVH queries, or -1 for global root (optional, default: -1)
+        root: The root node index for grouped BVH queries, or -1 for global root
 
     Returns:
         ``True`` if the ray intersects any face within ``max_t``, ``False`` otherwise.
@@ -5307,7 +5607,7 @@ def mesh_query_ray_anyhit(id: uint64, start: vec3f, dir: vec3f, max_t: float32, 
             hit: True"""
     ...
 
-def mesh_query_ray_count_intersections(id: uint64, start: vec3f, dir: vec3f, root: int32) -> int:
+def mesh_query_ray_count_intersections(id: uint64, start: vec3f, dir: vec3f, root: int32 | int = -1) -> int:
     """Count the number of intersections between a ray and a :class:`warp.Mesh`.
 
     This function casts a ray through the mesh and counts all triangle intersections with ``t >= 0``.
@@ -5319,13 +5619,13 @@ def mesh_query_ray_count_intersections(id: uint64, start: vec3f, dir: vec3f, roo
 
     The ``root`` parameter can be obtained using the :func:`mesh_get_group_root` function when creating a grouped mesh.
     When ``root`` is a valid (>=0) value, the traversal will be confined to the subtree starting from the root.
-    If ``root`` is -1 (default), traversal starts at the mesh's global root.
+    If ``root`` is -1, traversal starts at the mesh's global root.
 
     Args:
         id: The mesh identifier
         start: The ray origin, in the mesh's local space
         dir: The ray direction, in the mesh's local space (only its direction matters; the count is independent of its length)
-        root: The root node index for grouped BVH queries, or -1 for global root (optional, default: -1)
+        root: The root node index for grouped BVH queries, or -1 for global root
 
     Returns:
         The number of intersections (with ``t >= 0``) between the ray and the mesh.
@@ -5352,14 +5652,26 @@ def mesh_query_ray_count_intersections(id: uint64, start: vec3f, dir: vec3f, roo
             crossings: 2"""
     ...
 
+def mesh_get_bvh(id: uint64) -> uint64:
+    """Return the identifier of a mesh's internal BVH.
+
+    The returned id can be passed directly to the ``bvh_query_*`` builtins (:func:`bvh_query_aabb`,
+    :func:`bvh_query_ray`, :func:`bvh_query_capsule`, :func:`bvh_query_sphere`) to run broad-phase
+    bounding-volume queries against
+    the mesh's triangle BVH; the bound indices they return are triangle (face) indices. Works for all
+    BVH backends (including ``"cubql"``), since cuBQL meshes are converted to Warp's native BVH layout.
+
+    Args:
+        id: The mesh identifier"""
+    ...
+
 def mesh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> MeshQueryAABB:
     """Construct an axis-aligned bounding box (AABB) query against a :class:`warp.Mesh`.
 
     Returns a query that iterates over every triangle (face) whose own axis-aligned bounding box
-    overlaps the query box ``[low, high]``, given in the mesh's local space. This is a broad-phase
-    test on bounding boxes: a reported face's triangle may not actually intersect the box, so
-    perform an exact test yourself if required. Advance the query and read each result with
-    :func:`mesh_query_aabb_next`.
+    overlaps the query box ``[low, high]``, given in the mesh's local space. This is a
+    broad-phase-only query: a reported face's triangle bounding box overlaps the box, but the
+    triangle itself may not. Advance the query and read each result with :func:`mesh_query_next`.
 
     Args:
         id: The mesh identifier
@@ -5367,7 +5679,7 @@ def mesh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> MeshQueryAABB:
         high: The upper bound of the query box, in the mesh's local space
 
     Returns:
-        A :class:`warp.MeshQueryAABB`. It is opaque; pass it to :func:`mesh_query_aabb_next`, which
+        A :class:`warp.MeshQuery`. It is opaque; pass it to :func:`mesh_query_next`, which
         writes the index of each overlapping face to its ``index`` argument.
 
     Example:
@@ -5378,7 +5690,7 @@ def mesh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> MeshQueryAABB:
             def count_faces(mesh_id: wp.uint64, lo: wp.vec3, hi: wp.vec3, out_count: wp.array[wp.int32]):
                 query = wp.mesh_query_aabb(mesh_id, lo, hi)
                 face = int(0)
-                while wp.mesh_query_aabb_next(query, face):
+                while wp.mesh_query_next(query, face):
                     wp.atomic_add(out_count, 0, 1)
 
             points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
@@ -5395,22 +5707,63 @@ def mesh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> MeshQueryAABB:
             overlapping faces: 12"""
     ...
 
-def mesh_query_aabb_next(query: MeshQueryAABB, index: int32) -> bool:
-    """Advance a mesh AABB query to the next overlapping triangle and report whether one was found.
+def mesh_query_sphere(id: uint64, center: vec3f, radius: float32 | float) -> MeshQuery:
+    """Construct a sphere query against a :class:`warp.Mesh`.
 
-    Writes the index of the current face to ``index`` and returns ``True``; returns ``False`` once
-    no overlapping triangles remain (``index`` is then left unchanged). The reported index is a
-    face index (0-based, into the mesh's triangles), suitable for :func:`mesh_eval_position`,
-    :func:`mesh_eval_face_normal`, and the other face-indexed functions. Used in a ``while`` loop
-    together with :func:`mesh_query_aabb`.
+    Iterates over mesh triangles that intersect a sphere. A broad phase uses an exact sphere-AABB test
+    to find candidate triangles; a narrow phase keeps only those whose closest point on the triangle
+    is within ``radius`` of ``center``. Tangential contact (closest point exactly on the sphere surface)
+    is included. A negative ``radius`` is clamped to zero. Degenerate (zero-area) faces are handled by
+    falling back to a closest-point-on-longest-edge test. Advance the query with :func:`mesh_query_next`.
 
     Args:
-        query: The query to advance, from :func:`mesh_query_aabb`
-        index: Output; receives the index of the current overlapping face
+        id: The mesh identifier
+        center: The center of the sphere in mesh space
+        radius: The radius of the sphere; negative values are clamped to zero
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def find_tris_in_sphere(mesh_id: wp.uint64, center: wp.vec3, radius: float,
+                                    hits: wp.array[wp.int32]):
+                query = wp.mesh_query_sphere(mesh_id, center, radius)
+                face = int(0)
+                while wp.mesh_query_next(query, face):
+                    hits[face] = wp.int32(1)
+
+            points = wp.array([[0,0,0],[1,0,0],[0,1,0]], dtype=wp.vec3)
+            indices = wp.array([0,1,2], dtype=wp.int32)
+            mesh = wp.Mesh(points=points, indices=indices)
+            hits = wp.zeros(1, dtype=wp.int32)
+            wp.launch(find_tris_in_sphere, dim=1,
+                      inputs=[mesh.id, wp.vec3(0.1, 0.1, 0.0), 0.5, hits])
+            print("hit:", hits.numpy()[0])
+
+        .. testoutput::
+
+            hit: 1"""
+    ...
+
+def mesh_query_next(query: MeshQueryAABB | MeshQuery, index: int32 | int) -> bool:
+    """Advance a mesh query to the next matching triangle and report whether one was found.
+
+    What counts as a *match* depends on the query type:
+
+    - :func:`mesh_query_aabb`: triangles whose bounding box overlaps the query box.
+    - :func:`mesh_query_sphere`: triangles whose closest point to the sphere center is within the radius.
+
+    Args:
+        query: The query to advance, from :func:`mesh_query_aabb` or :func:`mesh_query_sphere`
+        index: Output; receives the zero-based face index of the current result. The index is
+            suitable for :func:`mesh_eval_position`, :func:`mesh_eval_face_normal`, and the other
+            face-indexed functions.
 
     Returns:
-        ``True`` if another overlapping triangle was found (its face index written to ``index``),
-        ``False`` if the query is exhausted.
+        ``True`` if another matching triangle was found (its face index written to ``index``),
+        ``False`` if the query is exhausted. When the function returns ``False``, ``index`` is
+        unchanged.
 
     Example:
 
@@ -5420,7 +5773,7 @@ def mesh_query_aabb_next(query: MeshQueryAABB, index: int32) -> bool:
             def count_faces(mesh_id: wp.uint64, lo: wp.vec3, hi: wp.vec3, out_count: wp.array[wp.int32]):
                 query = wp.mesh_query_aabb(mesh_id, lo, hi)
                 face = int(0)
-                while wp.mesh_query_aabb_next(query, face):
+                while wp.mesh_query_next(query, face):
                     wp.atomic_add(out_count, 0, 1)
 
             points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
@@ -5435,6 +5788,12 @@ def mesh_query_aabb_next(query: MeshQueryAABB, index: int32) -> bool:
         .. testoutput::
 
             overlapping faces: 12"""
+    ...
+
+def mesh_query_aabb_next(query: MeshQueryAABB | MeshQuery, index: int32 | int) -> bool:
+    """Advance a mesh AABB query to the next overlapping triangle and report whether one was found.
+
+    .. note:: This is an alias for :func:`mesh_query_next`."""
     ...
 
 def mesh_query_aabb_tiled(id: uint64, low: vec3f, high: vec3f) -> MeshQueryAABBTiled:
@@ -5557,7 +5916,7 @@ def tile_mesh_query_aabb_next(query: MeshQueryAABBTiled) -> Tile[int32, tuple[in
             the result index for that thread (-1 if no result)"""
     ...
 
-def mesh_eval_position(id: uint64, face: int32, bary_u: float32, bary_v: float32) -> vec3f:
+def mesh_eval_position(id: uint64, face: int32 | int, bary_u: float32 | float, bary_v: float32 | float) -> vec3f:
     """Evaluate the interpolated position on a face of the :class:`warp.Mesh` from barycentric coordinates.
 
     Linearly interpolates the face's three vertex positions: with the face's vertices ``v0``,
@@ -5597,7 +5956,7 @@ def mesh_eval_position(id: uint64, face: int32, bary_u: float32, bary_v: float32
             (0.333, 0.667, 0.000)"""
     ...
 
-def mesh_eval_velocity(id: uint64, face: int32, bary_u: float32, bary_v: float32) -> vec3f:
+def mesh_eval_velocity(id: uint64, face: int32 | int, bary_u: float32 | float, bary_v: float32 | float) -> vec3f:
     """Evaluate the interpolated velocity on a face of the :class:`warp.Mesh` from barycentric coordinates.
 
     Linearly interpolates the face's three per-vertex velocities the same way
@@ -5638,7 +5997,7 @@ def mesh_eval_velocity(id: uint64, face: int32, bary_u: float32, bary_v: float32
     ...
 
 @over
-def hash_grid_query(id: uint64, point: vec3f, max_dist: float32) -> HashGridQuery:
+def hash_grid_query(id: uint64, point: vec3f, max_dist: float32 | float) -> HashGridQuery:
     """Construct a point query against a :class:`warp.HashGrid`.
 
     Returns a query that iterates over candidate neighbors of ``point``: every point in the grid
@@ -5686,7 +6045,7 @@ def hash_grid_query(id: uint64, point: vec3f, max_dist: float32) -> HashGridQuer
     ...
 
 @over
-def hash_grid_query(id: uint64, point: vec3f, max_dist: float32, group: int32) -> HashGridQuery:
+def hash_grid_query(id: uint64, point: vec3f, max_dist: float32 | float, group: int32 | int) -> HashGridQuery:
     """Construct a point query against a :class:`warp.HashGrid`, restricted to one point group.
 
     Returns a query that iterates over candidate neighbors of ``point``: every point in the grid
@@ -5728,7 +6087,7 @@ def hash_grid_query(id: uint64, point: vec3h, max_dist: float16) -> HashGridQuer
     ...
 
 @over
-def hash_grid_query(id: uint64, point: vec3h, max_dist: float16, group: int32) -> HashGridQuery:
+def hash_grid_query(id: uint64, point: vec3h, max_dist: float16, group: int32 | int) -> HashGridQuery:
     """Construct a point query against a :class:`warp.HashGrid`, restricted to one point group (float16 precision).
 
     The ``float16`` overload of :func:`hash_grid_query`. Behavior and usage match the default
@@ -5766,7 +6125,7 @@ def hash_grid_query(id: uint64, point: vec3d, max_dist: float64) -> HashGridQuer
     ...
 
 @over
-def hash_grid_query(id: uint64, point: vec3d, max_dist: float64, group: int32) -> HashGridQuery:
+def hash_grid_query(id: uint64, point: vec3d, max_dist: float64, group: int32 | int) -> HashGridQuery:
     """Construct a point query against a :class:`warp.HashGrid`, restricted to one point group (float64 precision).
 
     The ``float64`` overload of :func:`hash_grid_query`. Behavior and usage match the default
@@ -5787,7 +6146,7 @@ def hash_grid_query(id: uint64, point: vec3d, max_dist: float64, group: int32) -
         A hash-grid query object to pass to :func:`hash_grid_query_next`."""
     ...
 
-def hash_grid_query_next(query: HashGridQuery, index: int32) -> bool:
+def hash_grid_query_next(query: HashGridQuery, index: int32 | int) -> bool:
     """Advance a hash grid query to the next candidate neighbor and report whether one was found.
 
     Writes the candidate's index to ``index`` and returns ``True``; returns ``False`` once no
@@ -5834,7 +6193,7 @@ def hash_grid_query_next(query: HashGridQuery, index: int32) -> bool:
             [2 2 1 1]"""
     ...
 
-def hash_grid_point_id(id: uint64, index: int32) -> int:
+def hash_grid_point_id(id: uint64, index: int32 | int) -> int:
     """Return the original point index stored at a given position in the :class:`warp.HashGrid`'s spatially-sorted order.
 
     The grid sorts its points by cell so that points sharing a cell are adjacent. Given a position
@@ -5963,7 +6322,7 @@ def mesh_get(id: uint64) -> Mesh:
             [0. 0. 0.]"""
     ...
 
-def mesh_eval_face_normal(id: uint64, face: int32) -> vec3f:
+def mesh_eval_face_normal(id: uint64, face: int32 | int) -> vec3f:
     """Evaluate the unit normal of a face of the :class:`warp.Mesh`.
 
     Returns the face's geometric normal, ``normalize(cross(v1 - v0, v2 - v0))`` for the face's
@@ -5999,7 +6358,7 @@ def mesh_eval_face_normal(id: uint64, face: int32) -> vec3f:
             [ 0.  0. -1.]"""
     ...
 
-def mesh_get_point(id: uint64, index: int32) -> vec3f:
+def mesh_get_point(id: uint64, index: int32 | int) -> vec3f:
     """Look up the position of a face's vertex in the :class:`warp.Mesh`.
 
     ``index`` is a *face-vertex index*: a position in the mesh's index buffer, in
@@ -6036,7 +6395,7 @@ def mesh_get_point(id: uint64, index: int32) -> vec3f:
             [0. 0. 0.]"""
     ...
 
-def mesh_get_velocity(id: uint64, index: int32) -> vec3f:
+def mesh_get_velocity(id: uint64, index: int32 | int) -> vec3f:
     """Look up the velocity of a face's vertex in the :class:`warp.Mesh`.
 
     Like :func:`mesh_get_point`, ``index`` is a *face-vertex index* in ``[0, 3 * number_of_faces)``;
@@ -6074,7 +6433,7 @@ def mesh_get_velocity(id: uint64, index: int32) -> vec3f:
             [0. 0. 1.]"""
     ...
 
-def mesh_get_index(id: uint64, index: int32) -> int:
+def mesh_get_index(id: uint64, index: int32 | int) -> int:
     """Look up the vertex index stored at a face-vertex position in the :class:`warp.Mesh`'s index buffer.
 
     ``index`` is a *face-vertex index* in ``[0, 3 * number_of_faces)``; returns the vertex index it
@@ -6085,7 +6444,7 @@ def mesh_get_index(id: uint64, index: int32) -> int:
         index: A face-vertex index, in ``[0, 3 * number_of_faces)``
 
     Returns:
-        The vertex index stored at that position, or -1 if the mesh has no index buffer.
+        The vertex index stored at that position.
 
     Example:
 
@@ -6111,7 +6470,7 @@ def mesh_get_index(id: uint64, index: int32) -> int:
             [0 3 2]"""
     ...
 
-def closest_point_edge_edge(p1: vec3f, q1: vec3f, p2: vec3f, q2: vec3f, epsilon: float32) -> vec3f:
+def closest_point_edge_edge(p1: vec3f, q1: vec3f, p2: vec3f, q2: vec3f, epsilon: float32 | float) -> vec3f:
     """Find the closest points between two edges (line segments) ``[p1, q1]`` and ``[p2, q2]``.
 
     All four endpoints must be in the same coordinate space.
@@ -6150,24 +6509,24 @@ def closest_point_edge_edge(p1: vec3f, q1: vec3f, p2: vec3f, q2: vec3f, epsilon:
             s=0.5 t=0.5 d=1.0"""
     ...
 
-def volume_sample(id: uint64, uvw: vec3f, sampling_mode: int32, dtype: Any) -> Any:
+def volume_sample(id: uint64, uvw: vec3f, sampling_mode: int32 | int, dtype: Any) -> Any:
     """Sample the volume of type ``dtype`` given by ``id`` at the index-space point ``uvw``.
 
     ``uvw`` is expressed in index space (voxel coordinates) and may be fractional; convert a
     world-space position first with :func:`~warp.volume_world_to_index`. ``sampling_mode`` must be
     :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`. ``CLOSEST`` rounds each coordinate to
-    the nearest voxel, with halfway cases rounded away from zero. Use ``CLOSEST`` for integer data;
-    ``LINEAR`` performs trilinear interpolation for floating-point scalar and vector data.
+    the nearest voxel. Currently, exact halfway cases are rounded away from zero. Use ``CLOSEST``
+    for integer data; ``LINEAR`` performs trilinear interpolation for floating-point scalar and
+    vector data.
 
-    Sampling follows NanoVDB value resolution: inactive leaf voxels and internal tiles may carry
-    stored inactive values that differ from the grid's root background value. A location with no
-    more specific stored value resolves to the background. The whole sample is ``0`` if the volume
-    does not store values of type ``dtype``.
+    ``dtype`` must match the volume's stored value type.
 
     For floating-point scalar and vector data, ``LINEAR`` sampling is differentiable with respect to
-    ``uvw``; at integer voxel planes, the derivative is taken from the cell on the positive side.
-    The derivative is zero for ``CLOSEST``. Gradients are not propagated to the stored voxel values.
-    To read values held in a separate array, use :func:`~warp.volume_sample_index`. See
+    ``uvw`` away from integer voxel planes. The field is not generally differentiable at those
+    planes. Currently, the derivative comes from the cell on the positive side, but callers should
+    not rely on that behavior. The derivative is zero for ``CLOSEST``. Currently, gradients are not
+    propagated to the stored voxel values. To read values held in a separate array, use
+    :func:`~warp.volume_sample_index`. See
     :class:`warp.Volume` and the :ref:`Volume sampling <volume_sampling>` user-guide examples.
 
     Args:
@@ -6175,12 +6534,13 @@ def volume_sample(id: uint64, uvw: vec3f, sampling_mode: int32, dtype: Any) -> A
         uvw: Sampling location in index space (voxel coordinates); may be fractional.
         sampling_mode: :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`; use ``CLOSEST`` for
             integer data.
-        dtype: Value type stored by the volume and returned by the sample. One of ``int32``,
-            ``int64``, ``uint32``, ``float32``, ``float64``, :class:`warp.vec3f`,
-            :class:`warp.vec3d`, :class:`warp.vec4f`, or :class:`warp.vec4d`.
+        dtype: Value type stored by the volume. ``dtype`` must be one of ``int32``, ``int64``,
+            ``uint32``, ``float32``, ``float64``, :class:`warp.vec3f`, :class:`warp.vec3d`,
+            :class:`warp.vec4f`, or :class:`warp.vec4d`.
 
     Returns:
-        The sampled value of type ``dtype``.
+        The sampled value of type ``dtype``. Locations without a stored value use the volume's
+        background value.
 
     Example:
 
@@ -6203,7 +6563,7 @@ def volume_sample(id: uint64, uvw: vec3f, sampling_mode: int32, dtype: Any) -> A
             0.5"""
     ...
 
-def volume_sample_grad(id: uint64, uvw: vec3f, sampling_mode: int32, grad: Any, dtype: Any) -> Any:
+def volume_sample_grad(id: uint64, uvw: vec3f, sampling_mode: int32 | int, grad: Any, dtype: Any) -> Any:
     """Sample the volume of type ``dtype`` given by ``id`` and its spatial gradient at the
     index-space point ``uvw``.
 
@@ -6214,10 +6574,11 @@ def volume_sample_grad(id: uint64, uvw: vec3f, sampling_mode: int32, grad: Any, 
     Four-component vector data is not supported by this function.
 
     For floating-point scalar and vector data under :attr:`warp.Volume.LINEAR`, this is the gradient
-    of the trilinear interpolant. At integer voxel planes, where that interpolant is generally not
-    differentiable, the gradient comes from the cell on the positive side. Under
-    :attr:`warp.Volume.CLOSEST` the gradient is zero; use ``CLOSEST`` for integer data. The gradient
-    is with respect to index-space coordinates, not world space.
+    of the trilinear interpolant away from integer voxel planes. The interpolant is not generally
+    differentiable at those planes. Currently, the gradient comes from the cell on the positive
+    side, but callers should not rely on that behavior. Under :attr:`warp.Volume.CLOSEST` the
+    gradient is zero; use ``CLOSEST`` for integer data. The gradient is with respect to index-space
+    coordinates, not world space.
 
     Args:
         id: The ``id`` of a :class:`warp.Volume` to sample.
@@ -6252,15 +6613,12 @@ def volume_sample_grad(id: uint64, uvw: vec3f, sampling_mode: int32, grad: Any, 
             0.5 1.0"""
     ...
 
-def volume_lookup(id: uint64, i: int32, j: int32, k: int32, dtype: Any) -> Any:
+def volume_lookup(id: uint64, i: int32 | int, j: int32 | int, k: int32 | int, dtype: Any) -> Any:
     """Return the value of type ``dtype`` stored at the voxel with integer index-space coordinates
     ``i``, ``j``, ``k``, without interpolation.
 
-    The lookup follows NanoVDB value resolution: inactive leaf voxels and internal tiles may carry
-    stored inactive values that differ from the grid's root background value. A location with no
-    more specific stored value resolves to the background. The result is ``0`` if the volume does
-    not store values of type ``dtype``. Not differentiable; use :func:`~warp.volume_sample` for
-    interpolated reads of floating-point scalar and vector data.
+    ``dtype`` must match the volume's stored value type. This function is not differentiable; use
+    :func:`~warp.volume_sample` for interpolated reads of floating-point scalar and vector data.
 
     Args:
         id: The ``id`` of a :class:`warp.Volume`.
@@ -6270,7 +6628,8 @@ def volume_lookup(id: uint64, i: int32, j: int32, k: int32, dtype: Any) -> Any:
         dtype: Value type stored by the volume (see :func:`~warp.volume_sample`).
 
     Returns:
-        The resolved voxel value of type ``dtype``.
+        The resolved voxel value of type ``dtype``: the stored value, or the volume's background
+        value when the location has no stored value.
 
     Example:
 
@@ -6292,14 +6651,12 @@ def volume_lookup(id: uint64, i: int32, j: int32, k: int32, dtype: Any) -> Any:
             1.0"""
     ...
 
-def volume_store(id: uint64, i: int32, j: int32, k: int32, value: Any) -> None:
+def volume_store(id: uint64, i: int32 | int, j: int32 | int, k: int32 | int, value: Any) -> None:
     """Store ``value`` at the voxel with integer index-space coordinates ``i``, ``j``, ``k``.
 
-    A value is written when the coordinate has leaf-level storage, whether or not that voxel is
-    active. The call does not allocate a leaf, activate a voxel, or modify the background value; it
-    is a no-op outside allocated leaves and when the volume's stored type does not match ``value``.
-    Allocate leaf topology with :meth:`warp.Volume.allocate_by_tiles` before storing. Not
-    differentiable.
+    ``value`` must match the volume's stored value type, and the coordinate must have leaf-level
+    storage. Allocate leaf topology with :meth:`warp.Volume.allocate_by_tiles` before storing.
+    The call does not allocate storage or activate voxels. This function is not differentiable.
 
     Args:
         id: The ``id`` of a :class:`warp.Volume` to modify.
@@ -6331,79 +6688,94 @@ def volume_store(id: uint64, i: int32, j: int32, k: int32, value: Any) -> None:
             4.0"""
     ...
 
-def volume_sample_f(id: uint64, uvw: vec3f, sampling_mode: int32) -> float:
+def volume_sample_f(id: uint64, uvw: vec3f, sampling_mode: int32 | int) -> float:
     """Sample the :class:`warp.float32` volume given by ``id`` at the index-space point ``uvw``.
 
     ``uvw`` is in index space (voxel coordinates) and may be fractional; ``sampling_mode`` must be
-    :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`. Sampling uses the resolved NanoVDB
-    value (see :func:`~warp.volume_sample`), and the sample is ``0`` if ``id`` is not a ``float32``
-    volume. In kernels, equivalent to :func:`~warp.volume_sample` with ``dtype=float``, which
+    :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`. Sampling uses the resolved volume
+    value (see :func:`~warp.volume_sample`). ``id`` must identify a ``float32`` volume. In kernels,
+    ``volume_sample_f()`` is equivalent to :func:`~warp.volume_sample` with ``dtype=float``, which
     documents the coordinate-frame, value-resolution, boundary, and differentiability behavior.
+
+    Returns:
+        The sampled :class:`warp.float32` value.
 
     See :func:`~warp.volume_sample` for a usage example."""
     ...
 
-def volume_sample_grad_f(id: uint64, uvw: vec3f, sampling_mode: int32, grad: vec3f) -> float:
+def volume_sample_grad_f(id: uint64, uvw: vec3f, sampling_mode: int32 | int, grad: vec3f) -> float:
     """Sample the :class:`warp.float32` volume given by ``id`` and its gradient at the
     index-space point ``uvw``.
 
     ``grad`` receives the gradient of the sampled value with respect to the index-space coordinates
-    ``uvw`` (a :class:`warp.vec3`, zero for :attr:`warp.Volume.CLOSEST`). In kernels, equivalent to
-    :func:`~warp.volume_sample_grad` with ``dtype=float``.
+    ``uvw`` (a :class:`warp.vec3`, zero for :attr:`warp.Volume.CLOSEST`). In kernels,
+    ``volume_sample_grad_f()`` is equivalent to :func:`~warp.volume_sample_grad` with ``dtype=float``.
+
+    Returns:
+        The sampled :class:`warp.float32` value.
 
     See :func:`~warp.volume_sample_grad` for a usage example."""
     ...
 
-def volume_lookup_f(id: uint64, i: int32, j: int32, k: int32) -> float:
+def volume_lookup_f(id: uint64, i: int32 | int, j: int32 | int, k: int32 | int) -> float:
     """Return the :class:`warp.float32` value of the voxel at integer index-space coordinates
     ``i``, ``j``, ``k``, without interpolation.
 
-    Returns the resolved NanoVDB value (see :func:`~warp.volume_lookup`); the result is ``0`` if
-    ``id`` is not a ``float32`` volume. Not differentiable. In kernels, equivalent to
-    :func:`~warp.volume_lookup` with ``dtype=float``.
+    ``id`` must identify a ``float32`` volume. This function is not differentiable. In kernels,
+    ``volume_lookup_f()`` is equivalent to :func:`~warp.volume_lookup` with ``dtype=float``.
 
-    See :func:`~warp.volume_lookup` for a usage example."""
+    See :func:`~warp.volume_lookup` for shared behavior and a usage example.
+
+    Returns:
+        The resolved :class:`warp.float32` voxel value."""
     ...
 
-def volume_store_f(id: uint64, i: int32, j: int32, k: int32, value: float32) -> None:
+def volume_store_f(id: uint64, i: int32 | int, j: int32 | int, k: int32 | int, value: float32 | float) -> None:
     """Store the :class:`warp.float32` ``value`` at the voxel with integer index-space coordinates
     ``i``, ``j``, ``k``.
 
-    Writes only where leaf-level storage exists (see :func:`~warp.volume_store`); a no-op outside
-    allocated leaves or for non-``float32`` volumes. Does not activate voxels. Not differentiable.
+    ``id`` must identify a ``float32`` volume, and the coordinate must have leaf-level storage.
+    The call does not allocate storage or activate voxels. See :func:`~warp.volume_store`.
+    This function is not differentiable.
 
     See :func:`~warp.volume_store` for a usage example."""
     ...
 
-def volume_sample_v(id: uint64, uvw: vec3f, sampling_mode: int32) -> vec3f:
+def volume_sample_v(id: uint64, uvw: vec3f, sampling_mode: int32 | int) -> vec3f:
     """Sample the vector (:class:`warp.vec3f`) volume given by ``id`` at the index-space point ``uvw``.
 
     ``uvw`` is in index space (voxel coordinates) and may be fractional; ``sampling_mode`` must be
     :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR` and is applied per component. Sampling
-    uses the resolved NanoVDB value (see :func:`~warp.volume_sample`), and the sample is ``0`` if
-    ``id`` is not a ``vec3f`` volume. In kernels, equivalent to :func:`~warp.volume_sample` with
-    ``dtype=warp.vec3f``.
+    uses the resolved volume value (see :func:`~warp.volume_sample`). ``id`` must identify a
+    ``vec3f`` volume. In kernels, ``volume_sample_v()`` is equivalent to
+    :func:`~warp.volume_sample` with ``dtype=warp.vec3f``.
+
+    Returns:
+        The sampled :class:`warp.vec3f` value.
 
     See :func:`~warp.volume_sample` for a usage example."""
     ...
 
-def volume_lookup_v(id: uint64, i: int32, j: int32, k: int32) -> vec3f:
+def volume_lookup_v(id: uint64, i: int32 | int, j: int32 | int, k: int32 | int) -> vec3f:
     """Return the :class:`warp.vec3f` value of the voxel at integer index-space coordinates ``i``,
     ``j``, ``k``, without interpolation.
 
-    Returns the resolved NanoVDB value (see :func:`~warp.volume_lookup`); the result is ``0`` if
-    ``id`` is not a ``vec3f`` volume. Not differentiable. In kernels, equivalent to
-    :func:`~warp.volume_lookup` with ``dtype=warp.vec3f``.
+    ``id`` must identify a ``vec3f`` volume. This function is not differentiable. In kernels,
+    ``volume_lookup_v()`` is equivalent to :func:`~warp.volume_lookup` with ``dtype=warp.vec3f``.
 
-    See :func:`~warp.volume_lookup` for a usage example."""
+    See :func:`~warp.volume_lookup` for shared behavior and a usage example.
+
+    Returns:
+        The resolved :class:`warp.vec3f` voxel value."""
     ...
 
-def volume_store_v(id: uint64, i: int32, j: int32, k: int32, value: vec3f) -> None:
+def volume_store_v(id: uint64, i: int32 | int, j: int32 | int, k: int32 | int, value: vec3f) -> None:
     """Store the :class:`warp.vec3f` ``value`` at the voxel with integer index-space coordinates
     ``i``, ``j``, ``k``.
 
-    Writes only where leaf-level storage exists (see :func:`~warp.volume_store`); a no-op outside
-    allocated leaves or for non-``vec3f`` volumes. Does not activate voxels. Not differentiable.
+    ``id`` must identify a ``vec3f`` volume, and the coordinate must have leaf-level storage.
+    The call does not allocate storage or activate voxels. See :func:`~warp.volume_store`.
+    This function is not differentiable.
 
     See :func:`~warp.volume_store` for a usage example."""
     ...
@@ -6412,45 +6784,54 @@ def volume_sample_i(id: uint64, uvw: vec3f) -> int:
     """Sample the :class:`warp.int32` volume given by ``id`` at the index-space point ``uvw``.
 
     Integer volumes only support nearest-voxel sampling, so there is no ``sampling_mode`` argument
-    (:attr:`warp.Volume.CLOSEST` is always used) and the result is not differentiable. ``uvw`` is in
-    index space (voxel coordinates) and may be fractional; it is rounded to the nearest voxel, with
-    halfway cases rounded away from zero. Sampling uses the resolved NanoVDB value (see
-    :func:`~warp.volume_sample`), and the result is ``0`` if ``id`` is not an ``int32`` volume.
+    (:attr:`warp.Volume.CLOSEST` is always used). This function is not differentiable. ``uvw`` is
+    in index space (voxel coordinates) and may be fractional; it is rounded to the nearest voxel.
+    Currently, exact halfway cases are rounded away from zero. Sampling uses the resolved volume
+    value (see :func:`~warp.volume_sample`). ``id`` must identify an ``int32`` volume.
+
+    Returns:
+        The sampled :class:`warp.int32` value.
 
     See :func:`~warp.volume_sample` for a usage example."""
     ...
 
-def volume_lookup_i(id: uint64, i: int32, j: int32, k: int32) -> int:
+def volume_lookup_i(id: uint64, i: int32 | int, j: int32 | int, k: int32 | int) -> int:
     """Return the :class:`warp.int32` value of the voxel at integer index-space coordinates ``i``,
     ``j``, ``k``, without interpolation.
 
-    Returns the resolved NanoVDB value (see :func:`~warp.volume_lookup`); the result is ``0`` if
-    ``id`` is not an ``int32`` volume. Not differentiable. In kernels, equivalent to
-    :func:`~warp.volume_lookup` with ``dtype=warp.int32``.
+    ``id`` must identify an ``int32`` volume. This function is not differentiable. In kernels,
+    ``volume_lookup_i()`` is equivalent to :func:`~warp.volume_lookup` with ``dtype=warp.int32``.
 
-    See :func:`~warp.volume_lookup` for a usage example."""
+    See :func:`~warp.volume_lookup` for shared behavior and a usage example.
+
+    Returns:
+        The resolved :class:`warp.int32` voxel value."""
     ...
 
-def volume_store_i(id: uint64, i: int32, j: int32, k: int32, value: int32) -> None:
+def volume_store_i(id: uint64, i: int32 | int, j: int32 | int, k: int32 | int, value: int32 | int) -> None:
     """Store the :class:`warp.int32` ``value`` at the voxel with integer index-space coordinates
     ``i``, ``j``, ``k``.
 
-    Writes only where leaf-level storage exists (see :func:`~warp.volume_store`); a no-op outside
-    allocated leaves or for non-``int32`` volumes. Does not activate voxels. Not differentiable.
+    ``id`` must identify an ``int32`` volume, and the coordinate must have leaf-level storage.
+    The call does not allocate storage or activate voxels. See :func:`~warp.volume_store`.
+    This function is not differentiable.
 
     See :func:`~warp.volume_store` for a usage example."""
     ...
 
-def volume_sample_index(id: uint64, uvw: vec3f, sampling_mode: int32, voxel_data: Array[Any], background: Any) -> Any:
+def volume_sample_index(
+    id: uint64,
+    uvw: vec3f,
+    sampling_mode: int32 | int,
+    voxel_data: Array[Any],
+    background: Any,
+) -> Any:
     """Sample the volume given by ``id`` at the index-space point ``uvw``, reading voxel values from
     a separate ``voxel_data`` array.
 
-    On NanoVDB ``OnIndex`` and ``OnIndexMask`` grids, each active voxel maps to a linear index into
-    ``voxel_data`` and ``background`` supplies inactive voxels. On ``Index`` and ``IndexMask`` grids
-    and on classical value grids, every slot in an allocated leaf maps to ``voxel_data`` regardless
-    of its active mask; ``background`` is used outside allocated leaves. This lets several fields
-    share one topology. See :meth:`warp.Volume.allocate_by_voxels` and
-    :func:`~warp.volume_lookup_index`.
+    Each indexable voxel maps to a zero-based element of ``voxel_data``. ``background`` is used when
+    a sampled location has no indexable voxel. This lets several fields share one topology. See
+    :meth:`warp.Volume.allocate_by_voxels` and :func:`~warp.volume_lookup_index`.
 
     ``uvw`` is in index space (voxel coordinates) and may be fractional. Sampling modes and boundary
     conventions match :func:`~warp.volume_sample`; use ``CLOSEST`` for integer data. For
@@ -6463,14 +6844,12 @@ def volume_sample_index(id: uint64, uvw: vec3f, sampling_mode: int32, voxel_data
         uvw: Sampling location in index space (voxel coordinates); may be fractional.
         sampling_mode: :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`; use ``CLOSEST`` for
             integer data.
-        voxel_data: Per-voxel values indexed by each voxel's linear index. For volumes whose
-            indexable count fits in ``int32``, must hold at least :func:`~warp.volume_voxel_count`
-            entries. :meth:`warp.Volume.get_voxel_count` returns a host-side capacity that is safe
-            for allocation but may exceed the live indexable count for rebuildable volumes. The
-            array's dtype must match ``background``.
-        background: Value used for inactive voxels on ``OnIndex`` and ``OnIndexMask`` grids and
-            outside allocated leaves on ``Index`` and ``IndexMask`` grids and classical value grids;
-            its dtype must match ``voxel_data``.
+        voxel_data: Per-voxel values indexed by each voxel's linear index. The array must provide at
+            least :func:`~warp.volume_voxel_count` entries; use
+            :meth:`warp.Volume.get_voxel_count` when allocating it from Python. Its dtype must match
+            ``background``.
+        background: Value used when a sampled location has no indexable voxel; its dtype must match
+            ``voxel_data``.
 
     Returns:
         The sampled value, of the same dtype as ``voxel_data``.
@@ -6506,7 +6885,7 @@ def volume_sample_index(id: uint64, uvw: vec3f, sampling_mode: int32, voxel_data
 def volume_sample_grad_index(
     id: uint64,
     uvw: vec3f,
-    sampling_mode: int32,
+    sampling_mode: int32 | int,
     voxel_data: Array[Any],
     background: Any,
     grad: Any,
@@ -6521,10 +6900,11 @@ def volume_sample_grad_index(
     Four-component vector data is not supported by this function.
 
     For floating-point scalar and vector data under :attr:`warp.Volume.LINEAR`, the function is
-    differentiable with respect to ``uvw``, ``voxel_data``, and ``background``. At integer voxel
-    planes, the gradient and reverse-mode derivative with respect to ``uvw`` come from the cell on
-    the positive side. Under :attr:`warp.Volume.CLOSEST`, ``grad`` and the derivative with respect to
-    ``uvw`` are zero; use ``CLOSEST`` for integer data.
+    differentiable with respect to ``uvw``, ``voxel_data``, and ``background`` away from integer
+    voxel planes. The field is not generally differentiable at those planes. Currently, the
+    gradient and reverse-mode derivative with respect to ``uvw`` come from the cell on the positive
+    side, but callers should not rely on that behavior. Under :attr:`warp.Volume.CLOSEST`, ``grad``
+    and the derivative with respect to ``uvw`` are zero; use ``CLOSEST`` for integer data.
 
     Args:
         id: The ``id`` of a :class:`warp.Volume` providing the topology and voxel indices.
@@ -6533,9 +6913,8 @@ def volume_sample_grad_index(
             integer data.
         voxel_data: Per-voxel values indexed by each voxel's linear index; shares the dtype of
             ``background``. See :func:`~warp.volume_sample_index` for sizing requirements.
-        background: Value used for inactive voxels on ``OnIndex`` and ``OnIndexMask`` grids and
-            outside allocated leaves on ``Index`` and ``IndexMask`` grids and classical value grids;
-            its dtype must match ``voxel_data``.
+        background: Value used when a sampled location has no indexable voxel; its dtype must match
+            ``voxel_data``.
         grad: Output gradient of the sampled value with respect to ``uvw``.
 
     Returns:
@@ -6571,15 +6950,10 @@ def volume_sample_grad_index(
             5.0 10.0"""
     ...
 
-def volume_lookup_index(id: uint64, i: int32, j: int32, k: int32) -> int32:
+def volume_lookup_index(id: uint64, i: int32 | int, j: int32 | int, k: int32 | int) -> int32:
     """Return the linear index associated with integer index-space coordinates ``i``, ``j``, ``k``.
 
-    On NanoVDB ``OnIndex`` and ``OnIndexMask`` grids, active voxels have zero-based indices and
-    inactive voxels return ``-1``. On ``Index`` and ``IndexMask`` grids and on classical value grids,
-    every slot in an allocated leaf has an index regardless of its active mask; coordinates outside
-    allocated leaves return ``-1``. For volumes whose indexable count fits in ``int32``, nonnegative
-    indices lie in ``[0, volume_voxel_count(id))``. Guard against ``-1`` before gathering from a
-    per-voxel array. Not differentiable.
+    This function is not differentiable.
 
     Args:
         id: The ``id`` of a :class:`warp.Volume`.
@@ -6588,7 +6962,8 @@ def volume_lookup_index(id: uint64, i: int32, j: int32, k: int32) -> int32:
         k: Voxel coordinate along the third index-space axis.
 
     Returns:
-        The voxel's linear index, or ``-1`` when the coordinate is not indexable.
+        The voxel's linear index in ``[0, volume_voxel_count(id))``, or ``-1`` when the coordinate
+        is not indexable. Guard against ``-1`` before gathering from a per-voxel array.
 
     Example:
 
@@ -6612,22 +6987,16 @@ def volume_lookup_index(id: uint64, i: int32, j: int32, k: int32) -> int32:
 def volume_voxel_count(id: uint64) -> int32:
     """Return the number of indexable voxels in the volume given by ``id``.
 
-    For NanoVDB ``OnIndex`` and ``OnIndexMask`` grids, this is the active voxel count. For ``Index``
-    and ``IndexMask`` grids and for classical value grids, it is the number of allocated leaf nodes
-    multiplied by 512, because every leaf slot is indexable. When the true count fits in ``int32``,
-    this is the required size of a per-voxel ``voxel_data`` array (as used by
-    :func:`~warp.volume_sample_index`) and the exclusive upper bound of indices returned by
-    :func:`~warp.volume_lookup_index`.
-
-    The result is capped at ``2**31 - 1``. A larger volume cannot be fully represented by these
-    ``int32`` index APIs: lookup indices may overflow, and the capped count is not sufficient to
-    allocate data for every underlying slot. Not differentiable.
+    :func:`~warp.volume_voxel_count` and :func:`~warp.volume_lookup_index` support volumes with at
+    most ``2**31 - 1`` indexable voxels. This function is not differentiable.
 
     Args:
         id: The ``id`` of a :class:`warp.Volume`.
 
     Returns:
-        The number of indexable voxels, capped at ``2**31 - 1``.
+        The number of indexable voxels. This is the required size of a per-voxel ``voxel_data``
+        array (as used by :func:`~warp.volume_sample_index`) and the exclusive upper bound of
+        indices returned by :func:`~warp.volume_lookup_index`.
 
     Example:
 
@@ -6637,14 +7006,15 @@ def volume_voxel_count(id: uint64) -> int32:
             def count(vid: wp.uint64, out: wp.array[wp.int32]):
                 out[0] = wp.volume_voxel_count(vid)
 
-            volume = wp.Volume.load_from_numpy(np.zeros((2, 2, 2), dtype=np.float32), voxel_size=1.0, bg_value=0.0)
+            voxels = wp.array([[0, 0, 0], [1, 0, 0]], dtype=wp.vec3i)
+            volume = wp.Volume.allocate_by_voxels(voxels, voxel_size=1.0)
             out = wp.zeros(1, dtype=wp.int32)
             wp.launch(count, dim=1, inputs=[volume.id], outputs=[out])
             print(int(out.numpy()[0]))
 
         .. testoutput::
 
-            512"""
+            2"""
     ...
 
 @over
@@ -6725,15 +7095,15 @@ def volume_index_to_world_dir(id: uint64, uvw: vec3f) -> vec3f:
     """Transform the direction ``uvw`` from the volume's index space to world space using the linear
     part of the volume's affine transform.
 
-    Translation is not applied and the result is not renormalized, so a scaling transform changes the
-    vector's length. For positions, use :func:`~warp.volume_index_to_world` instead.
+    For positions, use :func:`~warp.volume_index_to_world` instead.
 
     Args:
         id: The ``id`` of a :class:`warp.Volume`.
         uvw: Direction in index space.
 
     Returns:
-        The transformed direction in world space with ``float32`` precision.
+        The transformed direction in world space with ``float32`` precision. Translation is not
+        applied, and the vector is not renormalized, so a scaling transform changes its length.
 
     See :func:`~warp.volume_index_to_world` for a usage example."""
     ...
@@ -6752,15 +7122,15 @@ def volume_world_to_index_dir(id: uint64, xyz: vec3f) -> vec3f:
     """Transform the direction ``xyz`` from world space to the volume's index space using the linear
     part of the volume's affine transform.
 
-    Translation is not applied and the result is not renormalized. For positions, use
-    :func:`~warp.volume_world_to_index` instead.
+    For positions, use :func:`~warp.volume_world_to_index` instead.
 
     Args:
         id: The ``id`` of a :class:`warp.Volume`.
         xyz: Direction in world space.
 
     Returns:
-        The transformed direction in index space with ``float32`` precision.
+        The transformed direction in index space with ``float32`` precision. Translation is not
+        applied, and the vector is not renormalized.
 
     See :func:`~warp.volume_index_to_world` for a usage example."""
     ...
@@ -6775,7 +7145,7 @@ def volume_world_to_index_dir(id: uint64, xyz: vec3d) -> vec3d:
     ...
 
 @over
-def texture_sample(tex: Texture1D, u: float32, dtype: Any, lod: float32) -> Any:
+def texture_sample(tex: Texture1D, u: float32 | float, dtype: Any, lod: float32 | float = -1.0) -> Any:
     """Sample the 1D texture at the given U coordinate.
 
     .. admonition:: Experimental
@@ -6787,32 +7157,31 @@ def texture_sample(tex: Texture1D, u: float32, dtype: Any, lod: float32) -> Any:
         u: U coordinate. With ``normalized_coords=True``, texel ``i`` at a mip level of width
             ``level_width`` is centered at ``(i + 0.5) / level_width``. With
             ``normalized_coords=False``, texel ``i`` of a single-level texture is centered at
-            ``i + 0.5`` on both backends. For a mipmapped texture on the CPU backend, coordinates
-            remain in base-level texel space and the center is
-            ``(i + 0.5) * base_width / level_width``. CUDA mipmapped textures require normalized
-            coordinates. Coordinates and filtering footprints beyond the texture are handled by its
-            address mode.
+            ``i + 0.5``. Mipmapped textures should use normalized coordinates. Unnormalized
+            coordinates for mipmapped textures are currently accepted only on the CPU backend and
+            may be unsupported in a future release. Coordinates and filtering footprints beyond the
+            texture are handled by its address mode.
         dtype: The return type, which selects how many channels are read: ``float`` (1 channel),
             :class:`warp.vec2f` (2), or :class:`warp.vec4f` (4). Use the type matching the texture's
-            :attr:`~warp.Texture.num_channels`. The CPU backend normalizes unsigned integer data to
-            ``[0, 1]`` and signed integer data to ``[-1, 1]``. The CUDA backend does the same for
-            8- and 16-bit integer formats but does not promote 32-bit ones, so an ``int32`` or
-            ``uint32`` texture yields neither a normalized nor a numerically converted value there;
-            use an 8- or 16-bit or a floating-point format instead. Floating-point texture data is
-            returned as ``float32`` channel values without normalization.
-        lod: Mipmap level-of-detail as a float. When omitted or negative, mip level 0 is sampled.
-            Nonnegative values are clamped to the texture's available mip-level range. Fractional
-            values blend between neighbouring mip levels when ``mip_filter_mode`` is
+            :attr:`~warp.Texture.num_channels`.
+        lod: Mipmap level-of-detail as a float. The default selects mip level 0. Currently, any
+            negative value also selects mip level 0. Nonnegative values are clamped to the
+            texture's available mip-level range. Fractional values blend between neighbouring mip
+            levels when ``mip_filter_mode`` is
             :attr:`warp.TextureFilterMode.LINEAR`; the coordinate is evaluated independently at
-            each level used in the blend. Ignored for textures created with a single mip level.
+            each level used in the blend. The ``lod`` argument is ignored for textures created with a single mip level.
 
     Returns:
-        The sampled value of the specified ``dtype``.
+        The sampled value of the specified ``dtype``. The CPU backend normalizes unsigned integer
+        data to ``[0, 1]`` and signed integer data to ``[-1, 1]``. On CUDA devices, normalized
+        integer sampling is supported only for 8- and 16-bit formats; use an 8- or 16-bit integer
+        or floating-point texture. Floating-point texture data is returned as ``float32`` channel
+        values without normalization.
 
     The filtering mode (:class:`warp.TextureFilterMode`) and the addressing of out-of-range
     coordinates (:class:`warp.TextureAddressMode`) are those set when the texture was created; see
-    :class:`warp.Texture`. On CUDA, ``WRAP`` and ``MIRROR`` are treated as ``CLAMP`` when
-    ``normalized_coords=False`` (the CPU sampler honors them).
+    :class:`warp.Texture`. Currently, CUDA textures with unnormalized coordinates support only
+    ``CLAMP`` and ``BORDER`` address modes. Use normalized coordinates with ``WRAP`` or ``MIRROR``.
 
     Example:
 
@@ -6844,7 +7213,7 @@ def texture_sample(tex: Texture1D, u: float32, dtype: Any, lod: float32) -> Any:
     ...
 
 @over
-def texture_sample(tex: Texture2D, uv: vec2f, dtype: Any, lod: float32) -> Any:
+def texture_sample(tex: Texture2D, uv: vec2f, dtype: Any, lod: float32 | float = -1.0) -> Any:
     """Sample the 2D texture at the given UV coordinates.
 
     .. admonition:: Experimental
@@ -6857,36 +7226,41 @@ def texture_sample(tex: Texture2D, uv: vec2f, dtype: Any, lod: float32) -> Any:
             ``(i, j)`` at a mip level of size ``(level_width, level_height)`` is centered at
             ``((i + 0.5) / level_width, (j + 0.5) / level_height)``. With
             ``normalized_coords=False``, texel ``(i, j)`` of a single-level texture is centered at
-            ``(i + 0.5, j + 0.5)`` on both backends. For a mipmapped texture on the CPU backend,
-            coordinates remain in base-level texel space and the center is
-            ``((i + 0.5) * base_width / level_width, (j + 0.5) * base_height / level_height)``. CUDA
-            mipmapped textures require normalized coordinates. Coordinates and filtering footprints
-            beyond the texture are handled by its per-axis address modes.
+            ``(i + 0.5, j + 0.5)``. Mipmapped textures should use normalized coordinates.
+            Unnormalized coordinates for mipmapped textures are currently accepted only on the CPU
+            backend and may be unsupported in a future release. Coordinates and filtering
+            footprints beyond the texture are handled by its per-axis address modes.
         dtype: The return type, which selects how many channels are read: ``float`` (1 channel),
             :class:`warp.vec2f` (2), or :class:`warp.vec4f` (4). Use the type matching the texture's
-            :attr:`~warp.Texture.num_channels`. The CPU backend normalizes unsigned integer data to
-            ``[0, 1]`` and signed integer data to ``[-1, 1]``. The CUDA backend does the same for
-            8- and 16-bit integer formats but does not promote 32-bit ones, so an ``int32`` or
-            ``uint32`` texture yields neither a normalized nor a numerically converted value there;
-            use an 8- or 16-bit or a floating-point format instead. Floating-point texture data is
-            returned as ``float32`` channel values without normalization.
-        lod: Mipmap level-of-detail as a float. When omitted or negative, mip level 0 is sampled.
-            Nonnegative values are clamped to the texture's available mip-level range. Fractional
-            values blend between neighbouring mip levels when ``mip_filter_mode`` is
+            :attr:`~warp.Texture.num_channels`.
+        lod: Mipmap level-of-detail as a float. The default selects mip level 0. Currently, any
+            negative value also selects mip level 0. Nonnegative values are clamped to the
+            texture's available mip-level range. Fractional values blend between neighbouring mip
+            levels when ``mip_filter_mode`` is
             :attr:`warp.TextureFilterMode.LINEAR`; the coordinates are evaluated independently at
-            each level used in the blend. Ignored for textures created with a single mip level.
+            each level used in the blend. The ``lod`` argument is ignored for textures created with a single mip level.
 
     Returns:
-        The sampled value of the specified ``dtype``.
+        The sampled value of the specified ``dtype``. The CPU backend normalizes unsigned integer
+        data to ``[0, 1]`` and signed integer data to ``[-1, 1]``. On CUDA devices, normalized
+        integer sampling is supported only for 8- and 16-bit formats; use an 8- or 16-bit integer
+        or floating-point texture. Floating-point texture data is returned as ``float32`` channel
+        values without normalization.
 
     The filtering mode (:class:`warp.TextureFilterMode`) and the addressing of out-of-range
     coordinates (:class:`warp.TextureAddressMode`) are those set when the texture was created; see
-    :class:`warp.Texture`. On CUDA, ``WRAP`` and ``MIRROR`` are treated as ``CLAMP`` when
-    ``normalized_coords=False`` (the CPU sampler honors them)."""
+    :class:`warp.Texture`. Currently, CUDA textures with unnormalized coordinates support only
+    ``CLAMP`` and ``BORDER`` address modes. Use normalized coordinates with ``WRAP`` or ``MIRROR``."""
     ...
 
 @over
-def texture_sample(tex: Texture2D, u: float32, v: float32, dtype: Any, lod: float32) -> Any:
+def texture_sample(
+    tex: Texture2D,
+    u: float32 | float,
+    v: float32 | float,
+    dtype: Any,
+    lod: float32 | float = -1.0,
+) -> Any:
     """Sample the 2D texture at the given UV coordinates.
 
     .. admonition:: Experimental
@@ -6897,41 +7271,39 @@ def texture_sample(tex: Texture2D, u: float32, v: float32, dtype: Any, lod: floa
         tex: The 2D texture to sample.
         u: U coordinate. At a mip level of width ``level_width``, texel column ``i`` is centered at
             ``(i + 0.5) / level_width`` when ``normalized_coords=True``. With unnormalized
-            coordinates, its center is ``i + 0.5`` in a single-level texture on both backends; for a
-            mipmapped texture on the CPU backend, its center is
-            ``(i + 0.5) * base_width / level_width``.
+            coordinates, its center is ``i + 0.5`` in a single-level texture.
         v: V coordinate. At a mip level of height ``level_height``, texel row ``j`` is centered at
             ``(j + 0.5) / level_height`` when ``normalized_coords=True``. With unnormalized
-            coordinates, its center is ``j + 0.5`` in a single-level texture on both backends; for a
-            mipmapped texture on the CPU backend, its center is
-            ``(j + 0.5) * base_height / level_height``. CUDA mipmapped textures require normalized
-            coordinates. Coordinates and filtering footprints beyond the texture are handled by its
-            per-axis address modes.
+            coordinates, its center is ``j + 0.5`` in a single-level texture. Mipmapped textures
+            should use normalized coordinates. Unnormalized coordinates for mipmapped textures are
+            currently accepted only on the CPU backend and may be unsupported in a future release.
+            Coordinates and filtering footprints beyond the texture are handled by its per-axis
+            address modes.
         dtype: The return type, which selects how many channels are read: ``float`` (1 channel),
             :class:`warp.vec2f` (2), or :class:`warp.vec4f` (4). Use the type matching the texture's
-            :attr:`~warp.Texture.num_channels`. The CPU backend normalizes unsigned integer data to
-            ``[0, 1]`` and signed integer data to ``[-1, 1]``. The CUDA backend does the same for
-            8- and 16-bit integer formats but does not promote 32-bit ones, so an ``int32`` or
-            ``uint32`` texture yields neither a normalized nor a numerically converted value there;
-            use an 8- or 16-bit or a floating-point format instead. Floating-point texture data is
-            returned as ``float32`` channel values without normalization.
-        lod: Mipmap level-of-detail as a float. When omitted or negative, mip level 0 is sampled.
-            Nonnegative values are clamped to the texture's available mip-level range. Fractional
-            values blend between neighbouring mip levels when ``mip_filter_mode`` is
+            :attr:`~warp.Texture.num_channels`.
+        lod: Mipmap level-of-detail as a float. The default selects mip level 0. Currently, any
+            negative value also selects mip level 0. Nonnegative values are clamped to the
+            texture's available mip-level range. Fractional values blend between neighbouring mip
+            levels when ``mip_filter_mode`` is
             :attr:`warp.TextureFilterMode.LINEAR`; the coordinates are evaluated independently at
-            each level used in the blend. Ignored for textures created with a single mip level.
+            each level used in the blend. The ``lod`` argument is ignored for textures created with a single mip level.
 
     Returns:
-        The sampled value of the specified ``dtype``.
+        The sampled value of the specified ``dtype``. The CPU backend normalizes unsigned integer
+        data to ``[0, 1]`` and signed integer data to ``[-1, 1]``. On CUDA devices, normalized
+        integer sampling is supported only for 8- and 16-bit formats; use an 8- or 16-bit integer
+        or floating-point texture. Floating-point texture data is returned as ``float32`` channel
+        values without normalization.
 
     The filtering mode (:class:`warp.TextureFilterMode`) and the addressing of out-of-range
     coordinates (:class:`warp.TextureAddressMode`) are those set when the texture was created; see
-    :class:`warp.Texture`. On CUDA, ``WRAP`` and ``MIRROR`` are treated as ``CLAMP`` when
-    ``normalized_coords=False`` (the CPU sampler honors them)."""
+    :class:`warp.Texture`. Currently, CUDA textures with unnormalized coordinates support only
+    ``CLAMP`` and ``BORDER`` address modes. Use normalized coordinates with ``WRAP`` or ``MIRROR``."""
     ...
 
 @over
-def texture_sample(tex: Texture3D, uvw: vec3f, dtype: Any, lod: float32) -> Any:
+def texture_sample(tex: Texture3D, uvw: vec3f, dtype: Any, lod: float32 | float = -1.0) -> Any:
     """Sample the 3D texture at the given UVW coordinates.
 
     .. admonition:: Experimental
@@ -6944,37 +7316,42 @@ def texture_sample(tex: Texture3D, uvw: vec3f, dtype: Any, lod: float32) -> Any:
             ``(i, j, k)`` at a mip level of size ``(level_width, level_height, level_depth)`` is
             centered at ``((i + 0.5) / level_width, (j + 0.5) / level_height, (k + 0.5) / level_depth)``.
             With ``normalized_coords=False``, texel ``(i, j, k)`` of a single-level texture is
-            centered at ``(i + 0.5, j + 0.5, k + 0.5)`` on both backends. For a mipmapped texture on
-            the CPU backend, coordinates remain in base-level texel space and the center is
-            ``((i + 0.5) * base_width / level_width, (j + 0.5) * base_height / level_height,
-            (k + 0.5) * base_depth / level_depth)``. CUDA mipmapped textures require normalized
-            coordinates. Coordinates and filtering footprints beyond the texture are handled by its
-            per-axis address modes.
+            centered at ``(i + 0.5, j + 0.5, k + 0.5)``. Mipmapped textures should use normalized
+            coordinates. Unnormalized coordinates for mipmapped textures are currently accepted
+            only on the CPU backend and may be unsupported in a future release. Coordinates and
+            filtering footprints beyond the texture are handled by its per-axis address modes.
         dtype: The return type, which selects how many channels are read: ``float`` (1 channel),
             :class:`warp.vec2f` (2), or :class:`warp.vec4f` (4). Use the type matching the texture's
-            :attr:`~warp.Texture.num_channels`. The CPU backend normalizes unsigned integer data to
-            ``[0, 1]`` and signed integer data to ``[-1, 1]``. The CUDA backend does the same for
-            8- and 16-bit integer formats but does not promote 32-bit ones, so an ``int32`` or
-            ``uint32`` texture yields neither a normalized nor a numerically converted value there;
-            use an 8- or 16-bit or a floating-point format instead. Floating-point texture data is
-            returned as ``float32`` channel values without normalization.
-        lod: Mipmap level-of-detail as a float. When omitted or negative, mip level 0 is sampled.
-            Nonnegative values are clamped to the texture's available mip-level range. Fractional
-            values blend between neighbouring mip levels when ``mip_filter_mode`` is
+            :attr:`~warp.Texture.num_channels`.
+        lod: Mipmap level-of-detail as a float. The default selects mip level 0. Currently, any
+            negative value also selects mip level 0. Nonnegative values are clamped to the
+            texture's available mip-level range. Fractional values blend between neighbouring mip
+            levels when ``mip_filter_mode`` is
             :attr:`warp.TextureFilterMode.LINEAR`; the coordinates are evaluated independently at
-            each level used in the blend. Ignored for textures created with a single mip level.
+            each level used in the blend. The ``lod`` argument is ignored for textures created with a single mip level.
 
     Returns:
-        The sampled value of the specified ``dtype``.
+        The sampled value of the specified ``dtype``. The CPU backend normalizes unsigned integer
+        data to ``[0, 1]`` and signed integer data to ``[-1, 1]``. On CUDA devices, normalized
+        integer sampling is supported only for 8- and 16-bit formats; use an 8- or 16-bit integer
+        or floating-point texture. Floating-point texture data is returned as ``float32`` channel
+        values without normalization.
 
     The filtering mode (:class:`warp.TextureFilterMode`) and the addressing of out-of-range
     coordinates (:class:`warp.TextureAddressMode`) are those set when the texture was created; see
-    :class:`warp.Texture`. On CUDA, ``WRAP`` and ``MIRROR`` are treated as ``CLAMP`` when
-    ``normalized_coords=False`` (the CPU sampler honors them)."""
+    :class:`warp.Texture`. Currently, CUDA textures with unnormalized coordinates support only
+    ``CLAMP`` and ``BORDER`` address modes. Use normalized coordinates with ``WRAP`` or ``MIRROR``."""
     ...
 
 @over
-def texture_sample(tex: Texture3D, u: float32, v: float32, w: float32, dtype: Any, lod: float32) -> Any:
+def texture_sample(
+    tex: Texture3D,
+    u: float32 | float,
+    v: float32 | float,
+    w: float32 | float,
+    dtype: Any,
+    lod: float32 | float = -1.0,
+) -> Any:
     """Sample the 3D texture at the given UVW coordinates.
 
     .. admonition:: Experimental
@@ -6985,46 +7362,42 @@ def texture_sample(tex: Texture3D, u: float32, v: float32, w: float32, dtype: An
         tex: The 3D texture to sample.
         u: U coordinate. At a mip level of width ``level_width``, texel column ``i`` is centered at
             ``(i + 0.5) / level_width`` when ``normalized_coords=True``. With unnormalized
-            coordinates, its center is ``i + 0.5`` in a single-level texture on both backends; for a
-            mipmapped texture on the CPU backend, its center is
-            ``(i + 0.5) * base_width / level_width``.
+            coordinates, its center is ``i + 0.5`` in a single-level texture.
         v: V coordinate. At a mip level of height ``level_height``, texel row ``j`` is centered at
             ``(j + 0.5) / level_height`` when ``normalized_coords=True``. With unnormalized
-            coordinates, its center is ``j + 0.5`` in a single-level texture on both backends; for a
-            mipmapped texture on the CPU backend, its center is
-            ``(j + 0.5) * base_height / level_height``.
+            coordinates, its center is ``j + 0.5`` in a single-level texture.
         w: W coordinate. At a mip level of depth ``level_depth``, texel depth index ``k`` is centered
             at ``(k + 0.5) / level_depth`` when ``normalized_coords=True``. With unnormalized
-            coordinates, its center is ``k + 0.5`` in a single-level texture on both backends; for a
-            mipmapped texture on the CPU backend, its center is
-            ``(k + 0.5) * base_depth / level_depth``. CUDA mipmapped textures require normalized
-            coordinates. Coordinates and filtering footprints beyond the texture are handled by its
-            per-axis address modes.
+            coordinates, its center is ``k + 0.5`` in a single-level texture. Mipmapped textures
+            should use normalized coordinates. Unnormalized coordinates for mipmapped textures are
+            currently accepted only on the CPU backend and may be unsupported in a future release.
+            Coordinates and filtering footprints beyond the texture are handled by its per-axis
+            address modes.
         dtype: The return type, which selects how many channels are read: ``float`` (1 channel),
             :class:`warp.vec2f` (2), or :class:`warp.vec4f` (4). Use the type matching the texture's
-            :attr:`~warp.Texture.num_channels`. The CPU backend normalizes unsigned integer data to
-            ``[0, 1]`` and signed integer data to ``[-1, 1]``. The CUDA backend does the same for
-            8- and 16-bit integer formats but does not promote 32-bit ones, so an ``int32`` or
-            ``uint32`` texture yields neither a normalized nor a numerically converted value there;
-            use an 8- or 16-bit or a floating-point format instead. Floating-point texture data is
-            returned as ``float32`` channel values without normalization.
-        lod: Mipmap level-of-detail as a float. When omitted or negative, mip level 0 is sampled.
-            Nonnegative values are clamped to the texture's available mip-level range. Fractional
-            values blend between neighbouring mip levels when ``mip_filter_mode`` is
+            :attr:`~warp.Texture.num_channels`.
+        lod: Mipmap level-of-detail as a float. The default selects mip level 0. Currently, any
+            negative value also selects mip level 0. Nonnegative values are clamped to the
+            texture's available mip-level range. Fractional values blend between neighbouring mip
+            levels when ``mip_filter_mode`` is
             :attr:`warp.TextureFilterMode.LINEAR`; the coordinates are evaluated independently at
-            each level used in the blend. Ignored for textures created with a single mip level.
+            each level used in the blend. The ``lod`` argument is ignored for textures created with a single mip level.
 
     Returns:
-        The sampled value of the specified ``dtype``.
+        The sampled value of the specified ``dtype``. The CPU backend normalizes unsigned integer
+        data to ``[0, 1]`` and signed integer data to ``[-1, 1]``. On CUDA devices, normalized
+        integer sampling is supported only for 8- and 16-bit formats; use an 8- or 16-bit integer
+        or floating-point texture. Floating-point texture data is returned as ``float32`` channel
+        values without normalization.
 
     The filtering mode (:class:`warp.TextureFilterMode`) and the addressing of out-of-range
     coordinates (:class:`warp.TextureAddressMode`) are those set when the texture was created; see
-    :class:`warp.Texture`. On CUDA, ``WRAP`` and ``MIRROR`` are treated as ``CLAMP`` when
-    ``normalized_coords=False`` (the CPU sampler honors them)."""
+    :class:`warp.Texture`. Currently, CUDA textures with unnormalized coordinates support only
+    ``CLAMP`` and ``BORDER`` address modes. Use normalized coordinates with ``WRAP`` or ``MIRROR``."""
     ...
 
 @over
-def rand_init(seed: int32) -> uint32:
+def rand_init(seed: int32 | int) -> uint32:
     """Initialize a random number generator (RNG) state from a seed.
 
     Warp's RNG is a stateless PCG hash (Jarzynski & Olano, 2020): ``rand_init``
@@ -7056,7 +7429,7 @@ def rand_init(seed: int32) -> uint32:
     ...
 
 @over
-def rand_init(seed: int32, offset: int32) -> uint32:
+def rand_init(seed: int32 | int, offset: int32 | int) -> uint32:
     """Initialize a random number generator (RNG) state from a seed and an offset.
 
     Both ``seed`` and ``offset`` are hashed into the returned state. This is the
@@ -7093,7 +7466,7 @@ def randi(state: uint32) -> int:
     ...
 
 @over
-def randi(state: uint32, low: int32, high: int32) -> int:
+def randi(state: uint32, low: int32 | int, high: int32 | int) -> int:
     """Generate a uniform random integer in the range [low, high).
 
     In a kernel, advances ``state`` in place, so successive calls return different
@@ -7149,7 +7522,7 @@ def randf(state: uint32) -> float:
     ...
 
 @over
-def randf(state: uint32, low: float32, high: float32) -> float:
+def randf(state: uint32, low: float32 | float, high: float32 | float) -> float:
     """Generate a uniform random float in the range [low, high).
 
     In a kernel, advances ``state`` in place, so successive calls return different
@@ -7303,7 +7676,7 @@ def sample_unit_cube(state: uint32) -> vec3f:
     calls with the same ``state`` return the same point (see :func:`rand_init`)."""
     ...
 
-def poisson(state: uint32, lam: float32) -> uint32:
+def poisson(state: uint32, lam: float32 | float) -> uint32:
     """Generate a random sample from a Poisson distribution.
 
     In a kernel, advances ``state`` in place when ``lam > 0`` (and returns ``0``
@@ -7329,31 +7702,27 @@ def poisson(state: uint32, lam: float32) -> uint32:
     ...
 
 @over
-def noise(state: uint32, x: float32) -> float:
+def noise(state: uint32, x: float32 | float) -> float:
     """Sample 1D non-periodic Perlin noise.
 
     Samples a smooth, deterministic field on an integer lattice with one cell per input
     unit. ``state`` selects the field and is not advanced. Scale the coordinate to
-    change feature size and the result to change amplitude. Each coordinate
-    dimensionality defines a distinct field.
+    change feature size and the result to change amplitude.
 
-    Values are centered on zero, are exactly zero at integer lattice points, and have a
-    theoretical range of ``±sqrt(N)/2`` for ``N`` dimensions. Differentiable with
-    respect to the coordinate. Results are reproducible per device, but CPU and CUDA
-    values may differ slightly. Use :func:`pnoise` for periodic noise.
+    The field is differentiable with respect to the coordinate. For a given Warp version
+    and device backend, results are deterministic for fixed inputs. Exact values may differ
+    between CPU and CUDA or change between Warp versions. Use :func:`pnoise` for periodic noise.
 
-    Keep each coordinate component below ``2^23`` (about 8.4e6). At that magnitude and
-    above, ``float32`` cannot represent sub-cell coordinates: scalar noise returns zero,
-    while vector noise may remain nonzero if another component is fractional.
-    Coordinates outside the signed 32-bit lattice-index range are unsupported.
+    When a coordinate component's magnitude reaches ``2^23`` (about 8.4e6), ``float32``
+    spacing is at least one input unit, so the field may lose variation. Coordinate
+    components must currently remain within the signed 32-bit lattice-index range.
 
     Args:
-        state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
+        state: RNG state that selects the noise field (see :func:`rand_init`); never advanced.
         x: Coordinate to sample. One noise feature spans one unit.
 
     Returns:
-        The noise value at ``x``. Exactly zero at integer coordinates, with a
-        theoretical range of ``±0.5``.
+        The noise value at ``x``. Values across the field are centered on zero.
 
     Example:
 
@@ -7368,12 +7737,7 @@ def noise(state: uint32, x: float32) -> float:
             coords = wp.array([0.5, 2.25, 4.75], dtype=float)
             values = wp.zeros(len(coords), dtype=float)
 
-            wp.launch(sample_noise, dim=len(coords), inputs=[42, coords], outputs=[values])
-            print([round(v, 3) for v in values.numpy().tolist()])
-
-        .. testoutput::
-
-            [0.243, -0.09, -0.11]"""
+            wp.launch(sample_noise, dim=len(coords), inputs=[42, coords], outputs=[values])"""
     ...
 
 @over
@@ -7383,12 +7747,11 @@ def noise(state: uint32, xy: vec2f) -> float:
     See :func:`noise` for shared behavior, restrictions, and a usage example.
 
     Args:
-        state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
+        state: RNG state that selects the noise field (see :func:`rand_init`); never advanced.
         xy: Coordinate to sample. One noise feature spans one unit.
 
     Returns:
-        The noise value at ``xy``. Exactly zero when every component is an integer,
-        with a theoretical range of ``±sqrt(2)/2``."""
+        The noise value at ``xy``."""
     ...
 
 @over
@@ -7398,12 +7761,11 @@ def noise(state: uint32, xyz: vec3f) -> float:
     See :func:`noise` for shared behavior, restrictions, and a usage example.
 
     Args:
-        state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
+        state: RNG state that selects the noise field (see :func:`rand_init`); never advanced.
         xyz: Coordinate to sample. One noise feature spans one unit.
 
     Returns:
-        The noise value at ``xyz``. Exactly zero when every component is an integer,
-        with a theoretical range of ``±sqrt(3)/2``."""
+        The noise value at ``xyz``."""
     ...
 
 @over
@@ -7414,42 +7776,32 @@ def noise(state: uint32, xyzt: vec4f) -> float:
     :func:`noise` for shared behavior, restrictions, and a usage example.
 
     Args:
-        state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
+        state: RNG state that selects the noise field (see :func:`rand_init`); never advanced.
         xyzt: Coordinate to sample. One noise feature spans one unit.
 
     Returns:
-        The noise value at ``xyzt``. Exactly zero when every component is an integer,
-        with a theoretical range of ``±1``."""
+        The noise value at ``xyzt``."""
     ...
 
 @over
-def pnoise(state: uint32, x: float32, px: int32) -> float:
+def pnoise(state: uint32, x: float32 | float, px: int32 | int) -> float:
     """Sample 1D Perlin noise that repeats with an integer period.
 
     Wraps the :func:`noise` lattice every ``px`` cells, with one cell per input unit.
     ``state`` selects the field and is not advanced. Values have the same scale and
-    device-reproducibility behavior as :func:`noise`.
+    determinism behavior as :func:`noise`.
 
-    Periods must be positive; zero invokes undefined behavior. Samples repeat under
-    whole-period shifts when the original and shifted coordinates remain on the same
-    side of zero. A shift that crosses zero may produce a different value, so use
-    non-negative coordinates when the field must repeat seamlessly.
-
-    With negative coordinates, the field has one non-smooth boundary per period along
-    each axis. In 1D, the value is continuous across these boundaries, but Warp
-    autodiff reports a one-sided coordinate derivative. In vector overloads, crossing
-    a boundary can instead produce a finite value jump when another coordinate is
-    fractional. Away from these boundaries, the field is differentiable with respect
-    to coordinates. Period arguments receive no Warp autodiff gradient.
+    Period arguments must be positive. Negative coordinates are currently unsupported.
+    The field is differentiable with respect to coordinates. Period arguments receive
+    no Warp autodiff gradient.
 
     Args:
-        state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
+        state: RNG state that selects the noise field (see :func:`rand_init`); never advanced.
         x: Coordinate to sample. One noise feature spans one unit.
-        px: Period along x, in units. Must be greater than zero.
+        px: Period along x, in units. ``px`` must be greater than zero.
 
     Returns:
-        The noise value at ``x``. Exactly zero at integer coordinates, with a
-        theoretical range of ``±0.5``.
+        The noise value at ``x``.
 
     Example:
 
@@ -7466,96 +7818,97 @@ def pnoise(state: uint32, x: float32, px: int32) -> float:
             values = wp.zeros(len(coords), dtype=float)
 
             wp.launch(sample_periodic_noise, dim=len(coords), inputs=[42, coords], outputs=[values])
-            print([round(v, 3) for v in values.numpy().tolist()])
+            print(np.allclose(values.numpy(), values.numpy()[0]))
 
         .. testoutput::
 
-            [0.174, 0.174, 0.174]"""
+            True"""
     ...
 
 @over
-def pnoise(state: uint32, xy: vec2f, px: int32, py: int32) -> float:
+def pnoise(state: uint32, xy: vec2f, px: int32 | int, py: int32 | int) -> float:
     """Sample 2D Perlin noise that repeats with an integer period.
 
     See :func:`pnoise` for shared behavior, restrictions, and a usage example.
 
     Args:
-        state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
+        state: RNG state that selects the noise field (see :func:`rand_init`); never advanced.
         xy: Coordinate to sample. One noise feature spans one unit.
-        px: Period along x, in units. Must be greater than zero.
-        py: Period along y, in units. Must be greater than zero.
+        px: Period along x, in units. ``px`` must be greater than zero.
+        py: Period along y, in units. ``py`` must be greater than zero.
 
     Returns:
-        The noise value at ``xy``. Exactly zero when every component is an integer,
-        with a theoretical range of ``±sqrt(2)/2``."""
+        The noise value at ``xy``."""
     ...
 
 @over
-def pnoise(state: uint32, xyz: vec3f, px: int32, py: int32, pz: int32) -> float:
+def pnoise(state: uint32, xyz: vec3f, px: int32 | int, py: int32 | int, pz: int32 | int) -> float:
     """Sample 3D Perlin noise that repeats with an integer period.
 
     See :func:`pnoise` for shared behavior, restrictions, and a usage example.
 
     Args:
-        state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
+        state: RNG state that selects the noise field (see :func:`rand_init`); never advanced.
         xyz: Coordinate to sample. One noise feature spans one unit.
-        px: Period along x, in units. Must be greater than zero.
-        py: Period along y, in units. Must be greater than zero.
-        pz: Period along z, in units. Must be greater than zero.
+        px: Period along x, in units. ``px`` must be greater than zero.
+        py: Period along y, in units. ``py`` must be greater than zero.
+        pz: Period along z, in units. ``pz`` must be greater than zero.
 
     Returns:
-        The noise value at ``xyz``. Exactly zero when every component is an integer,
-        with a theoretical range of ``±sqrt(3)/2``."""
+        The noise value at ``xyz``."""
     ...
 
 @over
-def pnoise(state: uint32, xyzt: vec4f, px: int32, py: int32, pz: int32, pt: int32) -> float:
+def pnoise(state: uint32, xyzt: vec4f, px: int32 | int, py: int32 | int, pz: int32 | int, pt: int32 | int) -> float:
     """Sample 4D Perlin noise that repeats with an integer period.
 
     The fourth coordinate is commonly used as looping time. See :func:`pnoise` for
     shared behavior, restrictions, and a usage example.
 
     Args:
-        state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
+        state: RNG state that selects the noise field (see :func:`rand_init`); never advanced.
         xyzt: Coordinate to sample. One noise feature spans one unit.
-        px: Period along x, in units. Must be greater than zero.
-        py: Period along y, in units. Must be greater than zero.
-        pz: Period along z, in units. Must be greater than zero.
-        pt: Period along the fourth axis, in units. Must be greater than zero.
+        px: Period along x, in units. ``px`` must be greater than zero.
+        py: Period along y, in units. ``py`` must be greater than zero.
+        pz: Period along z, in units. ``pz`` must be greater than zero.
+        pt: Period along the fourth axis, in units. ``pt`` must be greater than zero.
 
     Returns:
-        The noise value at ``xyzt``. Exactly zero when every component is an integer,
-        with a theoretical range of ``±1``."""
+        The noise value at ``xyzt``."""
     ...
 
 @over
-def curlnoise(state: uint32, xy: vec2f, octaves: uint32, lacunarity: float32, gain: float32) -> vec2f:
+def curlnoise(
+    state: uint32,
+    xy: vec2f,
+    octaves: uint32 = uint32(1),
+    lacunarity: float32 | float = 2.0,
+    gain: float32 | float = 0.5,
+) -> vec2f:
     """Sample a divergence-free 2D vector field derived from Perlin noise.
 
-    Returns a rotated Perlin-noise gradient, making the field analytically
-    divergence-free. Its continuous flow preserves area, although numerical advection
-    may not. The 3D and 4D overloads instead return the spatial curl of three noise
-    potentials as a :class:`warp.vec3`.
+    Its continuous flow preserves area, although numerical advection may not.
 
     Octave ``i`` uses frequency ``lacunarity ** i`` and weight ``gain ** i``. With
     ``lacunarity > 1`` and ``0 < gain < 1``, later octaves add finer, weaker detail.
     Contributions may cancel, so magnitude is not monotonic in the octave controls.
-    Zero octaves returns zero. Scale the coordinate for feature size and the result for
-    speed.
+    Scale the coordinate for feature size and the result for speed.
 
-    ``state`` selects the field and is not advanced. Results are reproducible per
-    device, but CPU and CUDA values may differ slightly. Differentiable with respect to
-    the coordinate; ``octaves``, ``lacunarity``, and ``gain`` receive no gradient.
+    ``state`` selects the field and is not advanced. For a given Warp version and device
+    backend, results are deterministic for fixed inputs. Exact values may differ between
+    CPU and CUDA or change between Warp versions. This function is differentiable with respect to
+    the coordinate. Currently, ``lacunarity`` and ``gain`` receive no gradient.
 
     Args:
-        state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
-        xy: Coordinate to sample. One swirl spans about one unit at the base frequency.
+        state: RNG state that selects the noise field (see :func:`rand_init`); never advanced.
+        xy: Coordinate to sample.
         octaves: Number of noise octaves to sum. Zero returns a zero vector.
         lacunarity: Frequency multiplier between successive octaves.
         gain: Amplitude multiplier between successive octaves.
 
     Returns:
-        A divergence-free 2D vector at ``xy``. Not normalized.
+        A rotated Perlin-noise gradient at ``xy``. The resulting vector field is analytically
+        divergence-free. The vector is not normalized.
 
     Example:
 
@@ -7569,51 +7922,57 @@ def curlnoise(state: uint32, xy: vec2f, octaves: uint32, lacunarity: float32, ga
 
             positions = wp.array([[0.5, 0.5], [1.25, 2.0]], dtype=wp.vec2)
 
-            wp.launch(advect, dim=len(positions), inputs=[42, positions, 0.1])
-            print([[round(c, 3) for c in p] for p in positions.numpy().tolist()])
-
-        .. testoutput::
-
-            [[0.628, 0.514], [1.256, 2.003]]"""
+            wp.launch(advect, dim=len(positions), inputs=[42, positions, 0.1])"""
     ...
 
 @over
-def curlnoise(state: uint32, xyz: vec3f, octaves: uint32, lacunarity: float32, gain: float32) -> vec3f:
+def curlnoise(
+    state: uint32,
+    xyz: vec3f,
+    octaves: uint32 = uint32(1),
+    lacunarity: float32 | float = 2.0,
+    gain: float32 | float = 0.5,
+) -> vec3f:
     """Sample a divergence-free 3D vector field derived from Perlin noise.
 
-    Returns the spatial curl of three Perlin-noise potentials. See :func:`curlnoise` for
-    shared behavior, restrictions, and a usage example.
+    See :func:`curlnoise` for shared behavior, restrictions, and a usage example.
 
     Args:
-        state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
-        xyz: Coordinate to sample. One swirl spans about one unit at the base frequency.
+        state: RNG state that selects the noise field (see :func:`rand_init`); never advanced.
+        xyz: Coordinate to sample.
         octaves: Number of noise octaves to sum. Zero returns a zero vector.
         lacunarity: Frequency multiplier between successive octaves.
         gain: Amplitude multiplier between successive octaves.
 
     Returns:
-        A divergence-free 3D vector at ``xyz``. Not normalized."""
+        A :class:`warp.vec3` containing the spatial curl of three Perlin-noise potentials at
+        ``xyz``. The resulting vector field is divergence-free. The vector is not normalized."""
     ...
 
 @over
-def curlnoise(state: uint32, xyzt: vec4f, octaves: uint32, lacunarity: float32, gain: float32) -> vec3f:
+def curlnoise(
+    state: uint32,
+    xyzt: vec4f,
+    octaves: uint32 = uint32(1),
+    lacunarity: float32 | float = 2.0,
+    gain: float32 | float = 0.5,
+) -> vec3f:
     """Sample a divergence-free 3D vector field that also varies along a fourth axis.
 
-    Returns a :class:`warp.vec3` spatial curl; the fourth input axis parametrizes the
-    field and is commonly used as time. The field remains divergence-free in the first
-    three axes. See :func:`curlnoise` for shared behavior, restrictions, and a usage
-    example.
+    The fourth input axis parametrizes the field and is commonly used as time. See
+    :func:`curlnoise` for shared behavior, restrictions, and a usage example.
 
     Args:
-        state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
-        xyzt: Coordinate to sample, with the fourth component usually time. One swirl
-            spans about one unit at the base frequency.
+        state: RNG state that selects the noise field (see :func:`rand_init`); never advanced.
+        xyzt: Coordinate to sample, with the fourth component usually time.
         octaves: Number of noise octaves to sum. Zero returns a zero vector.
         lacunarity: Frequency multiplier between successive octaves.
         gain: Amplitude multiplier between successive octaves.
 
     Returns:
-        A divergence-free 3D vector at ``xyzt``. Not normalized."""
+        A :class:`warp.vec3` containing the spatial curl of three Perlin-noise potentials at
+        ``xyzt``. The vector field is divergence-free in the first three axes. The vector is not
+        normalized."""
     ...
 
 def printf(fmt: str, *args: Any) -> None:
@@ -7653,7 +8012,7 @@ def block_dim() -> int:
 
 @over
 def select(
-    cond: bool | int8 | uint8 | int16 | uint16 | int32 | uint32 | int64 | uint64,
+    cond: bool | int8 | uint8 | int16 | uint16 | int32 | uint32 | int64 | uint64 | _builtins.bool | int,
     value_if_false: Any,
     value_if_true: Any,
 ) -> Any:
@@ -7679,7 +8038,7 @@ def select(arr: Array[Any], value_if_false: Any, value_if_true: Any) -> Any:
 
 @over
 def where(
-    cond: bool | int8 | uint8 | int16 | uint16 | int32 | uint32 | int64 | uint64,
+    cond: bool | int8 | uint8 | int16 | uint16 | int32 | uint32 | int64 | uint64 | _builtins.bool | int,
     value_if_true: Any,
     value_if_false: Any,
 ) -> Any:
@@ -8057,28 +8416,28 @@ def smoothstep(a: Float, b: Float, x: Float) -> Float:
     ...
 
 @over
-def expect_near(a: Vector[Float, Any], b: Vector[Float, Any], tolerance: Float) -> None:
+def expect_near(a: Vector[Float, Any], b: Vector[Float, Any], tolerance: Float | float = 1e-06) -> None:
     """Print an error to stdout if ``a`` and ``b`` differ by more than ``tolerance``.
 
     Compare each vector element."""
     ...
 
 @over
-def expect_near(a: Quaternion[Float], b: Quaternion[Float], tolerance: Float) -> None:
+def expect_near(a: Quaternion[Float], b: Quaternion[Float], tolerance: Float | float = 1e-06) -> None:
     """Print an error to stdout if ``a`` and ``b`` differ by more than ``tolerance``.
 
     Compare each quaternion component."""
     ...
 
 @over
-def expect_near(a: Matrix[Float, Any, Any], b: Matrix[Float, Any, Any], tolerance: Float) -> None:
+def expect_near(a: Matrix[Float, Any, Any], b: Matrix[Float, Any, Any], tolerance: Float | float = 1e-06) -> None:
     """Print an error to stdout if ``a`` and ``b`` differ by more than ``tolerance``.
 
     Compare each matrix element."""
     ...
 
 @over
-def expect_near(a: Float, b: Float, tolerance: Float) -> None:
+def expect_near(a: Float, b: Float, tolerance: Float | float = 1e-06) -> None:
     """Print an error to stdout if ``a`` and ``b`` differ by more than ``tolerance``.
 
     Compare scalar values."""
@@ -8090,7 +8449,7 @@ def lower_bound(arr: Array[Scalar], value: Scalar) -> int:
     ...
 
 @over
-def lower_bound(arr: Array[Scalar], arr_begin: int32, arr_end: int32, value: Scalar) -> int:
+def lower_bound(arr: Array[Scalar], arr_begin: int32 | int, arr_end: int32 | int, value: Scalar) -> int:
     """Search a sorted array ``arr`` for the closest element greater than or equal to ``value``.
 
     Search the range [arr_begin, arr_end)."""
@@ -8606,7 +8965,9 @@ def neg(x: Scalar) -> Scalar:
     """Negate ``x``."""
     ...
 
-def unot(a: bool | int8 | uint8 | int16 | uint16 | int32 | uint32 | int64 | uint64 | Array[Any]) -> bool:
+def unot(
+    a: bool | int8 | uint8 | int16 | uint16 | int32 | uint32 | int64 | uint64 | Array[Any] | _builtins.bool | int,
+) -> bool:
     """Compute logical NOT of ``a``.
 
     Returns:
@@ -8621,7 +8982,7 @@ def tile_diag_add(a: Tile[Any, tuple[int, int]], d: Tile[Any, tuple[int]]) -> Ti
 def tile_matmul(
     a: Tile[Float, tuple[int, int]],
     b: Tile[Float, tuple[int, int]],
-    alpha: Float,
+    alpha: Float | float = 1.0,
 ) -> Tile[Float, tuple[int, int]]:
     """Compute the matrix product ``a*b``.
 
@@ -8638,7 +8999,7 @@ def tile_matmul(
     Args:
         a: A tile with ``shape=(M, K)``
         b: A tile with ``shape=(K, N)``
-        alpha: Scaling factor (default 1.0)
+        alpha: Scaling factor
 
     Returns:
         A tile with ``shape=(M, N)``"""
@@ -8649,8 +9010,8 @@ def tile_matmul(
     a: Tile[Float, tuple[int, int]],
     b: Tile[Float, tuple[int, int]],
     out: Tile[Float, tuple[int, int]],
-    alpha: Float,
-    beta: Float,
+    alpha: Float | float = 1.0,
+    beta: Float | float = 1.0,
 ) -> None:
     """Compute the matrix product ``a*b``.
 
@@ -8668,8 +9029,8 @@ def tile_matmul(
         a: A tile with ``shape=(M, K)``
         b: A tile with ``shape=(K, N)``
         out: A tile with ``shape=(M, N)``
-        alpha: Scaling factor (default 1.0)
-        beta: Accumulator factor (default 1.0)"""
+        alpha: Scaling factor
+        beta: Accumulator factor"""
     ...
 
 def tile_fft(inout: Tile[Vector[Float, Literal[2]], tuple[int, ...]]) -> None:
@@ -8727,10 +9088,10 @@ def tile_ifft(inout: Tile[Vector[Float, Literal[2]], tuple[int, ...]]) -> None:
         same constraints apply to :func:`tile_ifft`."""
     ...
 
-def tile_cholesky(A: Tile[Float, tuple[int, int]], fill_mode: str) -> Tile[Float, tuple[int, int]]:
+def tile_cholesky(A: Tile[Float, tuple[int, int]], fill_mode: str = "lower") -> Tile[Float, tuple[int, int]]:
     """Compute the Cholesky factorization of a symmetric positive-definite matrix ``A``.
 
-    When ``fill_mode="lower"`` (default), returns lower-triangular ``L`` such that ``LL^T = A``.
+    When ``fill_mode="lower"``, returns lower-triangular ``L`` such that ``LL^T = A``.
     When ``fill_mode="upper"``, returns upper-triangular ``U`` such that ``U^T U = A``.
 
     The ``fill_mode`` parameter must be a compile-time constant.
@@ -8745,16 +9106,16 @@ def tile_cholesky(A: Tile[Float, tuple[int, int]], fill_mode: str) -> Tile[Float
 
     Args:
         A: A square, symmetric positive-definite matrix.
-        fill_mode: ``"lower"`` (default) or ``"upper"``. Must be a compile-time constant.
+        fill_mode: ``"lower"`` or ``"upper"``. Must be a compile-time constant.
 
     Returns:
         A triangular matrix ``L`` or ``U``."""
     ...
 
-def tile_cholesky_inplace(A: Tile[Float, tuple[int, int]], fill_mode: str) -> None:
+def tile_cholesky_inplace(A: Tile[Float, tuple[int, int]], fill_mode: str = "lower") -> None:
     """Compute the Cholesky factorization of a symmetric positive-definite matrix ``A`` inplace.
 
-    When ``fill_mode="lower"`` (default), the lower triangle of ``A`` is replaced by ``L``
+    When ``fill_mode="lower"``, the lower triangle of ``A`` is replaced by ``L``
     such that ``LL^T = A``; the upper triangle is set to zero.
     When ``fill_mode="upper"``, the upper triangle of ``A`` is replaced by ``U``
     such that ``U^T U = A``; the lower triangle is set to zero.
@@ -8770,17 +9131,17 @@ def tile_cholesky_inplace(A: Tile[Float, tuple[int, int]], fill_mode: str) -> No
 
     Args:
         A: A square, symmetric positive-definite matrix.
-        fill_mode: ``"lower"`` (default) or ``"upper"``. Must be a compile-time constant."""
+        fill_mode: ``"lower"`` or ``"upper"``. Must be a compile-time constant."""
     ...
 
 def tile_cholesky_solve(
     L: Tile[Float, tuple[int, int]],
     y: Tile[Float, tuple[int]],
-    fill_mode: str,
+    fill_mode: str = "lower",
 ) -> Tile[Float, tuple[int]]:
     """Solve for ``x`` in ``Ax = y`` given the Cholesky factor of ``A``.
 
-    When ``fill_mode="lower"`` (default), ``L`` is lower-triangular such that ``LL^T = A``.
+    When ``fill_mode="lower"``, ``L`` is lower-triangular such that ``LL^T = A``.
     When ``fill_mode="upper"``, ``L`` is upper-triangular ``U`` such that ``U^T U = A``.
 
     The ``fill_mode`` parameter must be a compile-time constant.
@@ -8794,16 +9155,20 @@ def tile_cholesky_solve(
     Args:
         L: A square triangular Cholesky factor of ``A``.
         y: A 1D or 2D tile of length ``M``.
-        fill_mode: ``"lower"`` (default) or ``"upper"``. Must be a compile-time constant.
+        fill_mode: ``"lower"`` or ``"upper"``. Must be a compile-time constant.
 
     Returns:
         A tile of the same shape as ``y`` such that ``Ax = y``."""
     ...
 
-def tile_cholesky_solve_inplace(L: Tile[Float, tuple[int, int]], y: Tile[Float, tuple[int]], fill_mode: str) -> None:
+def tile_cholesky_solve_inplace(
+    L: Tile[Float, tuple[int, int]],
+    y: Tile[Float, tuple[int]],
+    fill_mode: str = "lower",
+) -> None:
     """Solve for ``x`` in ``Ax = y`` by overwriting ``y`` with ``x``.
 
-    When ``fill_mode="lower"`` (default), ``L`` is lower-triangular such that ``LL^T = A``.
+    When ``fill_mode="lower"``, ``L`` is lower-triangular such that ``LL^T = A``.
     When ``fill_mode="upper"``, ``L`` is upper-triangular ``U`` such that ``U^T U = A``.
 
     The ``fill_mode`` parameter must be a compile-time constant.
@@ -8818,7 +9183,7 @@ def tile_cholesky_solve_inplace(L: Tile[Float, tuple[int, int]], y: Tile[Float, 
     Args:
         L: A square triangular Cholesky factor of ``A``.
         y: A 1D or 2D tile of length ``M`` that gets overwritten by ``x`` where ``Ax = y``.
-        fill_mode: ``"lower"`` (default) or ``"upper"``. Must be a compile-time constant."""
+        fill_mode: ``"lower"`` or ``"upper"``. Must be a compile-time constant."""
     ...
 
 def tile_lower_solve(L: Tile[Float, tuple[int, int]], y: Tile[Float, tuple[int]]) -> Tile[Float, tuple[int]]:

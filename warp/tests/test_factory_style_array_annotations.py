@@ -247,7 +247,7 @@ def test_factory_style_func_return_annotation_error(test, device):
     def factory_style_func() -> wp.array(ndim=2, dtype=int):
         return wp.zeros(shape=(2, 3), dtype=int)
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def kernel():
         factory_style_func()
 

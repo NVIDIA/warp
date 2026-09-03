@@ -11,6 +11,8 @@ import numpy as np
 
 import warp as wp
 
+from .benchmarks_utils import setup_once
+
 DETERMINISTIC_BENCHMARK_SIZES = [64 * 1024, 256 * 1024, 1024 * 1024]
 DETERMINISM_SUPPORTED = hasattr(wp.config, "deterministic")
 DETERMINISTIC_BENCHMARK_MODES = ("normal", "deterministic")
@@ -109,6 +111,7 @@ class AtomicAddDeterminismOverhead:
             }
         return vals_np, indices_np
 
+    @setup_once
     def setup(self, cache, mode, num_outputs, num_elements):
         wp.init()
         self.device = wp.get_device("cuda:0")
@@ -180,6 +183,7 @@ class AtomicCounterDeterminismOverhead:
         rng = np.random.default_rng(321)
         return {n: rng.random(n, dtype=np.float32) for n in DETERMINISTIC_BENCHMARK_SIZES}
 
+    @setup_once
     def setup(self, vals_np, mode, num_elements):
         wp.init()
         self.device = wp.get_device("cuda:0")

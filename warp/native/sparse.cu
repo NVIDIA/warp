@@ -1,5 +1,5 @@
-// SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES.
-// All rights reserved. SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 #include "builtin.h"
 #include "warp.h"
@@ -1131,7 +1131,7 @@ __global__ void bsr_compress_inplace_rows_indexed_kernel(
 }
 
 __global__ void bsr_compress_inplace_compact_counts_kernel(
-    const int row_count, const int* bsr_offsets, int* row_counts, int* bsr_columns
+    const int row_count, const int nnz_upper_bound, const int* bsr_offsets, int* row_counts, int* bsr_columns
 )
 {
     const int row = blockIdx.x;
@@ -1151,9 +1151,80 @@ __global__ void bsr_compress_inplace_compact_counts_kernel(
     for (int block = row_end + tid; block < row_capacity_end; block += blockDim.x) {
         bsr_columns[block] = -1;
     }
+
+    // CUB selects across nnz_upper_bound, including capacity past the terminal row offset.
+    // Invalidate that tail on-device to keep compaction graph-capturable.
+    // Use 64-bit grid indexing because row_count * blockDim.x can overflow int.
+    const int tail_beg = bsr_offsets[row_count];
+    const int64_t global_tid = int64_t(row) * blockDim.x + tid;
+    const int64_t global_stride = int64_t(gridDim.x) * blockDim.x;
+    for (int64_t block = tail_beg + global_tid; block < nnz_upper_bound; block += global_stride) {
+        bsr_columns[block] = -1;
+    }
 }
 
 }  // namespace
+
+// Record-and-execute a BSR-from-triplets topology build under CUDA APIC
+// capture. The live call still issues its kernels and CUB operations onto the
+// captured stream; this semantic record lets a loaded graph rebuild the same
+// work with fresh temporary storage. No-op outside a CUDA APIC capture.
+static void apic_capture_bsr_from_triplets_device(
+    int block_size,
+    int scalar_size_in_bytes,
+    int row_count,
+    int col_count,
+    int nnz,
+    const int* tpl_nnz,
+    const int* tpl_rows,
+    const int* tpl_columns,
+    const void* tpl_values,
+    uint64_t scalar_zero_mask,
+    bool masked_topology,
+    int* summed_block_offsets,
+    int* summed_block_indices,
+    int* bsr_offsets,
+    const int* bsr_row_counts,
+    int* bsr_columns
+)
+{
+    APICState* state = wp_apic_get_cuda_recording_state();
+    if (!state || nnz <= 0)
+        return;
+    if (!tpl_rows || !tpl_columns || !summed_block_offsets || !summed_block_indices || !bsr_offsets || !bsr_columns)
+        return;
+
+    uint64_t int_bytes = static_cast<uint64_t>(nnz) * sizeof(int32_t);
+    uint64_t rowp1_bytes = (static_cast<uint64_t>(row_count) + 1) * sizeof(int32_t);
+    uint64_t values_bytes
+        = static_cast<uint64_t>(nnz) * static_cast<uint64_t>(block_size) * static_cast<uint64_t>(scalar_size_in_bytes);
+
+    APICAddress tpl_nnz_addr;
+    if (tpl_nnz)
+        tpl_nnz_addr = apic_resolve_live_ptr(state, reinterpret_cast<uint64_t>(tpl_nnz), sizeof(int32_t));
+    APICAddress tpl_rows_addr = apic_resolve_live_ptr(state, reinterpret_cast<uint64_t>(tpl_rows), int_bytes);
+    APICAddress tpl_columns_addr = apic_resolve_live_ptr(state, reinterpret_cast<uint64_t>(tpl_columns), int_bytes);
+    APICAddress tpl_values_addr;
+    if (tpl_values)
+        tpl_values_addr = apic_resolve_live_ptr(state, reinterpret_cast<uint64_t>(tpl_values), values_bytes);
+    APICAddress sbo_addr = apic_resolve_live_ptr(state, reinterpret_cast<uint64_t>(summed_block_offsets), int_bytes);
+    APICAddress sbi_addr = apic_resolve_live_ptr(state, reinterpret_cast<uint64_t>(summed_block_indices), int_bytes);
+    APICAddress bo_addr = apic_resolve_live_ptr(state, reinterpret_cast<uint64_t>(bsr_offsets), rowp1_bytes);
+    APICAddress brc_addr;
+    if (bsr_row_counts)
+        brc_addr = apic_resolve_live_ptr(
+            state, reinterpret_cast<uint64_t>(bsr_row_counts), static_cast<uint64_t>(row_count) * sizeof(int32_t)
+        );
+    APICAddress bc_addr = apic_resolve_live_ptr(state, reinterpret_cast<uint64_t>(bsr_columns), int_bytes);
+
+    apic_record_bsr_from_triplets(
+        state, block_size, scalar_size_in_bytes, row_count, col_count, nnz, scalar_zero_mask, masked_topology ? 1 : 0,
+        tpl_nnz_addr.region_id, tpl_nnz_addr.offset, tpl_rows_addr.region_id, tpl_rows_addr.offset,
+        tpl_columns_addr.region_id, tpl_columns_addr.offset, tpl_values_addr.region_id, tpl_values_addr.offset,
+        sbo_addr.region_id, sbo_addr.offset, sbi_addr.region_id, sbi_addr.offset, bo_addr.region_id, bo_addr.offset,
+        brc_addr.region_id, brc_addr.offset, bc_addr.region_id, bc_addr.offset, -1, 0
+    );
+}
 
 WP_API void wp_bsr_matrix_from_triplets_device(
     const int block_size,
@@ -1171,13 +1242,17 @@ WP_API void wp_bsr_matrix_from_triplets_device(
     int* tpl_block_indices,
     int* bsr_offsets,
     const int* bsr_row_counts,
-    int* bsr_columns,
-    int* bsr_nnz,
-    void* bsr_nnz_event
+    int* bsr_columns
 )
 {
     void* context = wp_cuda_context_get_current();
     ContextGuard guard(context);
+
+    apic_capture_bsr_from_triplets_device(
+        block_size, scalar_size, row_count, col_count, nnz, tpl_nnz, tpl_rows, tpl_columns, tpl_values,
+        scalar_zero_mask, masked_topology, tpl_block_offsets, tpl_block_indices, bsr_offsets, bsr_row_counts,
+        bsr_columns
+    );
 
     cudaStream_t stream = static_cast<cudaStream_t>(wp_cuda_stream_get_current());
 
@@ -1276,18 +1351,6 @@ WP_API void wp_bsr_matrix_from_triplets_device(
         WP_CURRENT_CONTEXT, bsr_find_row_offsets, row_count + 1,
         (row_count, unique_triplet_count.buffer(), d_values.Alternate(), bsr_offsets)
     );
-
-    if (bsr_nnz) {
-        // Copy nnz to host, and record an event for the completed transfer if
-        // desired
-
-        wp_memcpy_d2h(WP_CURRENT_CONTEXT, bsr_nnz, bsr_offsets + row_count, sizeof(int), stream);
-
-        if (bsr_nnz_event) {
-            const bool external = true;
-            wp_cuda_event_record(bsr_nnz_event, stream, external);
-        }
-    }
 
     // Set column indices
     wp_launch_device(
@@ -1492,9 +1555,7 @@ void wp_bsr_compress_inplace_device_impl(
     int* bsr_row_counts,
     int* bsr_columns,
     void* bsr_values,
-    uint64_t scalar_zero_mask,
-    int* bsr_nnz,
-    void* bsr_nnz_event
+    uint64_t scalar_zero_mask
 )
 {
     T* values_to_compress = nullptr;
@@ -1573,7 +1634,7 @@ void wp_bsr_compress_inplace_device_impl(
     constexpr int threads = 128;
     begin_cuda_range(WP_TIMING_KERNEL_BUILTIN, stream, context, "bsr_compress_inplace_compact_counts_kernel");
     bsr_compress_inplace_compact_counts_kernel<<<row_count, threads, 0, stream>>>(
-        row_count, bsr_offsets, row_counts, bsr_columns
+        row_count, nnz_upper_bound, bsr_offsets, row_counts, bsr_columns
     );
 #if _DEBUG
     check_cuda(wp_cuda_context_check(WP_CURRENT_CONTEXT));
@@ -1633,15 +1694,6 @@ void wp_bsr_compress_inplace_device_impl(
             end_cuda_range(WP_TIMING_KERNEL_BUILTIN, stream);
         }
     }
-
-    if (bsr_nnz) {
-        wp_memcpy_d2h(WP_CURRENT_CONTEXT, bsr_nnz, bsr_offsets + row_count, sizeof(int), stream);
-
-        if (bsr_nnz_event) {
-            const bool external = true;
-            wp_cuda_event_record(bsr_nnz_event, stream, external);
-        }
-    }
 }
 
 WP_API void wp_bsr_compress_inplace_device(
@@ -1657,9 +1709,7 @@ WP_API void wp_bsr_compress_inplace_device(
     int* bsr_row_counts,
     int* bsr_columns,
     void* bsr_values,
-    bool compress_values,
-    int* bsr_nnz,
-    void* bsr_nnz_event
+    bool compress_values
 )
 {
     const bool prune_from_input_values = !compress_values && prune_numerical_zeros && bsr_values != nullptr;
@@ -1667,8 +1717,7 @@ WP_API void wp_bsr_compress_inplace_device(
 
     if (values_to_write == nullptr && !prune_from_input_values) {
         wp_bsr_compress_inplace_device_impl<wp::float32, false>(
-            row_count, 0, nnz_upper_bound, false, make_compact, bsr_offsets, bsr_row_counts, bsr_columns, nullptr, 0,
-            bsr_nnz, bsr_nnz_event
+            row_count, 0, nnz_upper_bound, false, make_compact, bsr_offsets, bsr_row_counts, bsr_columns, nullptr, 0
         );
         return;
     }
@@ -1678,25 +1727,25 @@ WP_API void wp_bsr_compress_inplace_device(
         case sizeof(uint8_t):
             wp_bsr_compress_inplace_device_impl<uint8_t, false>(
                 row_count, block_size, nnz_upper_bound, true, make_compact, bsr_offsets, bsr_row_counts, bsr_columns,
-                bsr_values, scalar_zero_mask, bsr_nnz, bsr_nnz_event
+                bsr_values, scalar_zero_mask
             );
             break;
         case sizeof(uint16_t):
             wp_bsr_compress_inplace_device_impl<uint16_t, false>(
                 row_count, block_size, nnz_upper_bound, true, make_compact, bsr_offsets, bsr_row_counts, bsr_columns,
-                bsr_values, scalar_zero_mask, bsr_nnz, bsr_nnz_event
+                bsr_values, scalar_zero_mask
             );
             break;
         case sizeof(uint32_t):
             wp_bsr_compress_inplace_device_impl<uint32_t, false>(
                 row_count, block_size, nnz_upper_bound, true, make_compact, bsr_offsets, bsr_row_counts, bsr_columns,
-                bsr_values, scalar_zero_mask, bsr_nnz, bsr_nnz_event
+                bsr_values, scalar_zero_mask
             );
             break;
         case sizeof(uint64_t):
             wp_bsr_compress_inplace_device_impl<uint64_t, false>(
                 row_count, block_size, nnz_upper_bound, true, make_compact, bsr_offsets, bsr_row_counts, bsr_columns,
-                bsr_values, scalar_zero_mask, bsr_nnz, bsr_nnz_event
+                bsr_values, scalar_zero_mask
             );
             break;
         }
@@ -1708,14 +1757,14 @@ WP_API void wp_bsr_compress_inplace_device(
         if (scalar_size_in_bytes == sizeof(wp::float32))
             wp_bsr_compress_inplace_device_impl<wp::float32, true>(
                 row_count, block_size, nnz_upper_bound, prune_numerical_zeros, make_compact, bsr_offsets,
-                bsr_row_counts, bsr_columns, values_to_write, 0, bsr_nnz, bsr_nnz_event
+                bsr_row_counts, bsr_columns, values_to_write, 0
             );
         break;
     case BSR_SCALAR_FLOAT64:
         if (scalar_size_in_bytes == sizeof(wp::float64))
             wp_bsr_compress_inplace_device_impl<wp::float64, true>(
                 row_count, block_size, nnz_upper_bound, prune_numerical_zeros, make_compact, bsr_offsets,
-                bsr_row_counts, bsr_columns, values_to_write, 0, bsr_nnz, bsr_nnz_event
+                bsr_row_counts, bsr_columns, values_to_write, 0
             );
         break;
     }

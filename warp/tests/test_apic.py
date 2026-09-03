@@ -20,6 +20,13 @@ import warp._src.context as wp_context
 from warp._src.apic.capture import APICapture
 from warp.sparse import (
     BSR_STATUS_ROW_CAPACITY_EXCEEDED,
+    bsr_assign,
+    bsr_axpy,
+    bsr_axpy_work_arrays,
+    bsr_copy,
+    bsr_from_triplets,
+    bsr_mm,
+    bsr_mm_work_arrays,
     bsr_set_from_triplets,
     bsr_set_transpose,
     bsr_zeros,
@@ -2383,6 +2390,223 @@ def test_capture_with_bsr_from_triplets_topology_only(test, device):
     np.testing.assert_array_equal(A.columns.numpy()[:2], np.array([1, 2], dtype=np.int32))
 
 
+def test_capture_with_empty_bsr_assign(test, device):
+    """An empty compact assignment must clear topology when a CPU APIC graph replays."""
+    rows = wp.array([0], dtype=wp.int32, device=device)
+    columns = wp.array([0], dtype=wp.int32, device=device)
+    values = wp.array([1.0], dtype=wp.float32, device=device)
+    dest = bsr_from_triplets(2, 2, rows, columns, values)
+    empty = bsr_zeros(2, 2, block_type=wp.float32, device=device)
+
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        bsr_assign(dest, empty)
+
+    # CPU capture records without executing, so the original topology remains
+    # until replay. The empty assignment must not disappear from the APIC stream.
+    np.testing.assert_array_equal(dest.offsets.numpy(), np.array([0, 1, 1], dtype=np.int32))
+
+    wp.capture_launch(capture.graph)
+
+    np.testing.assert_array_equal(dest.offsets.numpy(), np.zeros(3, dtype=np.int32))
+
+
+def test_save_load_bsr_from_triplets_cuda(test, device):
+    """A loaded CUDA APIC graph rebuilds the native BSR topology operation."""
+    n = 8
+    rows = wp.zeros(n, dtype=wp.int32, device=device)
+    columns = wp.zeros(n, dtype=wp.int32, device=device)
+    values = wp.zeros(n, dtype=wp.float32, device=device)
+
+    # Compile the sparse value-accumulation kernel before stream capture.
+    bsr_from_triplets(n, n, rows, columns, values)
+    wp.synchronize_device(device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.launch(fill_diag_triplets_kernel, dim=n, inputs=[rows, columns, values], device=device)
+        A = bsr_from_triplets(n, n, rows, columns, values)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "bsr_from_triplets")
+        wp.capture_save(
+            capture.graph,
+            path,
+            outputs={"offsets": A.offsets, "columns": A.columns, "values": A.values},
+        )
+        loaded = wp.capture_load(path, device=device)
+        wp.capture_launch(loaded)
+        wp.synchronize_device(device)
+
+        offsets = wp.zeros_like(A.offsets)
+        columns_out = wp.zeros_like(A.columns)
+        values_out = wp.zeros_like(A.values)
+        loaded.get_param("offsets", offsets)
+        loaded.get_param("columns", columns_out)
+        loaded.get_param("values", values_out)
+
+        np.testing.assert_array_equal(offsets.numpy(), np.arange(n + 1, dtype=np.int32))
+        np.testing.assert_array_equal(columns_out.numpy()[:n], np.arange(n, dtype=np.int32))
+        np.testing.assert_allclose(values_out.numpy()[:n], np.arange(1, n + 1, dtype=np.float32))
+
+
+def test_save_load_bsr_set_from_triplets_padded_cuda(test, device):
+    """CUDA APIC reconstructs a padded triplet build through its compact scratch topology."""
+    n = 8
+    rows = wp.zeros(n, dtype=wp.int32, device=device)
+    columns = wp.zeros(n, dtype=wp.int32, device=device)
+    values = wp.zeros(n, dtype=wp.float32, device=device)
+
+    # Compile the padded scatter and value-accumulation kernels before capture.
+    warm = bsr_zeros(n, n, block_type=wp.float32, device=device, row_capacity=2)
+    bsr_set_from_triplets(warm, rows, columns, values, topology="padded")
+    wp.synchronize_device(device)
+
+    A = bsr_zeros(n, n, block_type=wp.float32, device=device, row_capacity=2)
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.launch(fill_diag_triplets_kernel, dim=n, inputs=[rows, columns, values], device=device)
+        bsr_set_from_triplets(A, rows, columns, values, topology="padded")
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "bsr_set_from_triplets_padded")
+        wp.capture_save(
+            capture.graph,
+            path,
+            outputs={
+                "offsets": A.offsets,
+                "row_counts": A.row_counts,
+                "columns": A.columns,
+                "values": A.values,
+            },
+        )
+        loaded = wp.capture_load(path, device=device)
+        wp.capture_launch(loaded)
+        wp.synchronize_device(device)
+
+        offsets = wp.zeros_like(A.offsets)
+        row_counts = wp.zeros_like(A.row_counts)
+        columns_out = wp.zeros_like(A.columns)
+        values_out = wp.zeros_like(A.values)
+        loaded.get_param("offsets", offsets)
+        loaded.get_param("row_counts", row_counts)
+        loaded.get_param("columns", columns_out)
+        loaded.get_param("values", values_out)
+
+        np.testing.assert_array_equal(offsets.numpy(), 2 * np.arange(n + 1, dtype=np.int32))
+        np.testing.assert_array_equal(row_counts.numpy(), np.ones(n, dtype=np.int32))
+        np.testing.assert_array_equal(columns_out.numpy().reshape(n, 2)[:, 0], np.arange(n, dtype=np.int32))
+        np.testing.assert_allclose(values_out.numpy().reshape(n, 2)[:, 0], np.arange(1, n + 1, dtype=np.float32))
+
+
+def test_save_load_bsr_axpy_mm_cuda(test, device):
+    """CUDA APIC reconstructs compact addition and no-sync multiplication topology."""
+    rows_a = wp.array([0, 0, 1], dtype=wp.int32, device=device)
+    columns_a = wp.array([0, 1, 1], dtype=wp.int32, device=device)
+    values_a = wp.array([1.0, 2.0, 3.0], dtype=wp.float32, device=device)
+    A = bsr_from_triplets(2, 2, rows_a, columns_a, values_a)
+
+    rows_b = wp.array([0, 1, 1], dtype=wp.int32, device=device)
+    columns_b = wp.array([0, 0, 1], dtype=wp.int32, device=device)
+    values_b = wp.array([4.0, 5.0, 6.0], dtype=wp.float32, device=device)
+    B0 = bsr_from_triplets(2, 2, rows_b, columns_b, values_b)
+
+    axpy_work = bsr_axpy_work_arrays()
+    mm_work = bsr_mm_work_arrays()
+
+    # Warm generated kernels and persistent work buffers before stream capture.
+    warm_b = bsr_copy(B0)
+    warm_c = bsr_zeros(2, 2, block_type=wp.float32, device=device)
+    bsr_axpy(A, warm_b, work_arrays=axpy_work)
+    bsr_mm(A, warm_b, warm_c, work_arrays=mm_work, max_new_nnz=4, tile_size=-1)
+    wp.synchronize_device(device)
+
+    B = bsr_copy(B0)
+    C = bsr_zeros(2, 2, block_type=wp.float32, device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        bsr_axpy(A, B, work_arrays=axpy_work)
+        bsr_mm(A, B, C, work_arrays=mm_work, max_new_nnz=4, tile_size=-1)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "bsr_axpy_mm")
+        wp.capture_save(
+            capture.graph,
+            path,
+            outputs={"offsets": C.offsets, "columns": C.columns, "values": C.values},
+        )
+        loaded = wp.capture_load(path, device=device)
+        wp.capture_launch(loaded)
+        wp.synchronize_device(device)
+
+        offsets = wp.zeros_like(C.offsets)
+        columns = wp.zeros_like(C.columns)
+        values = wp.zeros_like(C.values)
+        loaded.get_param("offsets", offsets)
+        loaded.get_param("columns", columns)
+        loaded.get_param("values", values)
+
+        np.testing.assert_array_equal(offsets.numpy(), np.array([0, 2, 4], dtype=np.int32))
+        np.testing.assert_array_equal(columns.numpy()[:4], np.array([0, 1, 0, 1], dtype=np.int32))
+        np.testing.assert_allclose(values.numpy()[:4], np.array([15.0, 20.0, 15.0, 27.0], dtype=np.float32))
+
+    unsized = bsr_zeros(2, 2, block_type=wp.float32, device=device)
+    with test.assertRaisesRegex(RuntimeError, "requires either"):
+        with wp.ScopedCapture(device=device, apic=True, force_module_load=False):
+            bsr_mm(A, B0, unsized)
+
+
+def test_save_load_bsr_mm_reuse_topology_cuda(test, device):
+    """CUDA APIC reconstructs ``bsr_mm(reuse_topology=True)`` without readback."""
+    A = bsr_from_triplets(
+        2,
+        2,
+        wp.array([0, 0, 1], dtype=wp.int32, device=device),
+        wp.array([0, 1, 1], dtype=wp.int32, device=device),
+        wp.array([1.0, 2.0, 3.0], dtype=wp.float32, device=device),
+    )
+    B = bsr_from_triplets(
+        2,
+        2,
+        wp.array([0, 1, 1], dtype=wp.int32, device=device),
+        wp.array([0, 0, 1], dtype=wp.int32, device=device),
+        wp.array([4.0, 5.0, 6.0], dtype=wp.float32, device=device),
+    )
+    C = bsr_zeros(2, 2, block_type=wp.float32, device=device)
+    work = bsr_mm_work_arrays()
+
+    # Populate the reusable topology and compile the values kernel outside capture.
+    bsr_mm(A, B, C, work_arrays=work, tile_size=-1)
+    wp.synchronize_device(device)
+
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        bsr_mm(A, B, C, work_arrays=work, reuse_topology=True, tile_size=-1)
+
+    # Make the semantic topology record load-bearing in the saved graph.
+    C.offsets.zero_()
+    C.columns.fill_(-1)
+    C.values.zero_()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "bsr_mm_reuse_topology")
+        wp.capture_save(
+            capture.graph,
+            path,
+            outputs={"offsets": C.offsets, "columns": C.columns, "values": C.values},
+        )
+        loaded = wp.capture_load(path, device=device)
+        wp.capture_launch(loaded)
+        wp.synchronize_device(device)
+
+        offsets = wp.zeros_like(C.offsets)
+        columns = wp.zeros_like(C.columns)
+        values = wp.zeros_like(C.values)
+        loaded.get_param("offsets", offsets)
+        loaded.get_param("columns", columns)
+        loaded.get_param("values", values)
+
+        np.testing.assert_array_equal(offsets.numpy(), np.array([0, 2, 4], dtype=np.int32))
+        np.testing.assert_array_equal(columns.numpy()[:4], np.array([0, 1, 0, 1], dtype=np.int32))
+        np.testing.assert_allclose(values.numpy()[:4], np.array([14.0, 12.0, 15.0, 18.0], dtype=np.float32))
+
+
 def test_capture_with_bsr_transpose(test, device):
     """Regression: wp.sparse.bsr_transposed on CPU computes the transposed topology
     via a host function (wp_bsr_transpose_host) that was invisible to the APIC byte
@@ -3105,6 +3329,9 @@ devices_with_cuda_graph_module_load = get_test_devices_with_cuda_graph_module_lo
 devices_with_graph_capture_allocation_and_cuda_graph_module_load = (
     get_test_devices_with_graph_capture_allocation_and_cuda_graph_module_load()
 )
+cuda_devices_with_graph_capture_allocation_and_cuda_graph_module_load = [
+    d for d in devices_with_graph_capture_allocation_and_cuda_graph_module_load if d.is_cuda
+]
 
 add_function_test(
     TestApic,
@@ -3376,6 +3603,36 @@ add_function_test(
     "test_capture_with_bsr_from_triplets_topology_only",
     test_capture_with_bsr_from_triplets_topology_only,
     devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_capture_with_empty_bsr_assign",
+    test_capture_with_empty_bsr_assign,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_save_load_bsr_from_triplets_cuda",
+    test_save_load_bsr_from_triplets_cuda,
+    devices=cuda_devices_with_graph_capture_allocation_and_cuda_graph_module_load,
+)
+add_function_test(
+    TestApic,
+    "test_save_load_bsr_set_from_triplets_padded_cuda",
+    test_save_load_bsr_set_from_triplets_padded_cuda,
+    devices=cuda_devices_with_graph_capture_allocation_and_cuda_graph_module_load,
+)
+add_function_test(
+    TestApic,
+    "test_save_load_bsr_axpy_mm_cuda",
+    test_save_load_bsr_axpy_mm_cuda,
+    devices=cuda_devices_with_graph_capture_allocation_and_cuda_graph_module_load,
+)
+add_function_test(
+    TestApic,
+    "test_save_load_bsr_mm_reuse_topology_cuda",
+    test_save_load_bsr_mm_reuse_topology_cuda,
+    devices=cuda_devices_with_graph_capture_allocation_and_cuda_graph_module_load,
 )
 add_function_test(
     TestApic,

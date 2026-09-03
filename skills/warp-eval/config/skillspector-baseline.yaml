@@ -1,0 +1,11 @@
+version: 2
+rules:
+  - id: "E2"
+    path: "scripts/measure.py"
+    message: '*{**os.environ, "WARP_EVAL_CASE": case, **_extra_environment(extra_env)}*'
+    reason: >-
+      Reviewed false positive: run_isolated re-executes a validated
+      workspace-local benchmark driver with the parent runtime environment so
+      GPU and toolchain settings remain identical; the child has no authority
+      beyond code already trusted to execute in the parent context.
+fingerprints: []

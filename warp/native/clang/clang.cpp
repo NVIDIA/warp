@@ -110,10 +110,15 @@ static const char* cuda_target_arch = "sm_75";
 
 static void initialize_llvm()
 {
-    llvm::InitializeAllTargetInfos();
-    llvm::InitializeAllTargets();
-    llvm::InitializeAllTargetMCs();
-    llvm::InitializeAllAsmPrinters();
+    // LLVM target registration mutates a process-global registry and must not
+    // run concurrently when parallel module compilation enters native code.
+    static std::once_flag init_flag;
+    std::call_once(init_flag, []() {
+        llvm::InitializeAllTargetInfos();
+        llvm::InitializeAllTargets();
+        llvm::InitializeAllTargetMCs();
+        llvm::InitializeAllAsmPrinters();
+    });
 }
 
 struct HostCpuInfo {
@@ -175,6 +180,8 @@ static int get_effective_optimization_level(bool debug, int optimization_level)
 static std::unique_ptr<clang::CompilerInstance> create_compiler(
     const std::string& input_file,
     const char* include_dir,
+    int num_extra_include_dirs,
+    const char** extra_include_dirs,
     bool is_cuda,
     bool debug,
     bool verify_fp,
@@ -190,6 +197,10 @@ static std::unique_ptr<clang::CompilerInstance> create_compiler(
 
     args.push_back("-I");
     args.push_back(include_dir);
+    for (int i = 0; i < num_extra_include_dirs; ++i) {
+        args.push_back("-I");
+        args.push_back(extra_include_dirs[i]);
+    }
     args.push_back("-std=c++17");
 
     switch (get_effective_optimization_level(debug, optimization_level)) {
@@ -366,7 +377,8 @@ static bool generate_pch(
     // modules build at -O2 (see build_cpu in build.py), so every module failed
     // the PCH check and paid a full no-PCH recompile.
     auto compiler = create_compiler(
-        input_file, include_dir, false, debug, verify_fp, tiles_in_stack_memory, extra_flags, optimization_level
+        input_file, include_dir, 0, nullptr, false, debug, verify_fp, tiles_in_stack_memory, extra_flags,
+        optimization_level
     );
 
     // Create a source buffer that includes the main header.
@@ -399,6 +411,8 @@ static std::unique_ptr<llvm::Module> source_to_llvm(
     const std::string& input_file,
     const char* cpp_src,
     const char* include_dir,
+    int num_extra_include_dirs,
+    const char** extra_include_dirs,
     bool debug,
     bool verify_fp,
     llvm::LLVMContext& context,
@@ -409,7 +423,8 @@ static std::unique_ptr<llvm::Module> source_to_llvm(
 )
 {
     auto compiler = create_compiler(
-        input_file, include_dir, is_cuda, debug, verify_fp, tiles_in_stack_memory, extra_flags, optimization_level
+        input_file, include_dir, num_extra_include_dirs, extra_include_dirs, is_cuda, debug, verify_fp,
+        tiles_in_stack_memory, extra_flags, optimization_level
     );
 
     // Map code to a MemoryBuffer
@@ -542,8 +557,8 @@ WP_API int wp_compile_cpp(
     // The LLVMContext must outlive the module through codegen.
     auto llvm_context = std::make_unique<llvm::LLVMContext>();
     std::unique_ptr<llvm::Module> module = source_to_llvm(
-        false, input_file, cpp_src, include_dir, debug, verify_fp, *llvm_context, tiles_in_stack_memory, extra_flags,
-        effective_optimization_level, pch_path
+        false, input_file, cpp_src, include_dir, 0, nullptr, debug, verify_fp, *llvm_context, tiles_in_stack_memory,
+        extra_flags, effective_optimization_level, pch_path
     );
 
     // Fallback: if compilation failed with PCH, retry without it
@@ -557,7 +572,7 @@ WP_API int wp_compile_cpp(
         // Need a fresh LLVMContext for the retry
         llvm_context = std::make_unique<llvm::LLVMContext>();
         module = source_to_llvm(
-            false, input_file, cpp_src, include_dir, debug, verify_fp, *llvm_context, tiles_in_stack_memory,
+            false, input_file, cpp_src, include_dir, 0, nullptr, debug, verify_fp, *llvm_context, tiles_in_stack_memory,
             extra_flags, effective_optimization_level, nullptr
         );
     }
@@ -659,14 +674,21 @@ WP_API int wp_compile_cpp(
 }
 
 WP_API int wp_compile_cuda(
-    const char* cpp_src, const char* input_file, const char* include_dir, const char* output_file, bool debug
+    const char* cpp_src,
+    const char* input_file,
+    const char* include_dir,
+    int num_cuda_include_dirs,
+    const char** cuda_include_dirs,
+    const char* output_file,
+    bool debug
 )
 {
     initialize_llvm();
 
     llvm::LLVMContext context;
-    std::unique_ptr<llvm::Module> module
-        = source_to_llvm(true, input_file, cpp_src, include_dir, debug, false, context, false);
+    std::unique_ptr<llvm::Module> module = source_to_llvm(
+        true, input_file, cpp_src, include_dir, num_cuda_include_dirs, cuda_include_dirs, debug, false, context, false
+    );
 
     if (!module) {
         return -1;

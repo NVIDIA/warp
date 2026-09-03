@@ -9,14 +9,15 @@ import inspect
 import operator
 import threading
 import traceback
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from enum import IntEnum
+from typing import Any
 
 import warp as wp
-from warp._src.codegen import get_full_arg_spec, make_full_qualified_name
+from warp._src.codegen import _SCALAR_TID_MAX_EXTENT, get_full_arg_spec, make_full_qualified_name
 from warp._src.context import (
     CudaMemcpyKind,
-    _build_launch_bounds,
+    _build_kernel_launch_bounds,
     _raise_cuda_launch_error,
     _validate_cluster_launch,
     invoke,
@@ -156,6 +157,17 @@ def _load_ffi_module(module, device, block_dim=None):
             f"Failed to load Warp module '{module.name}' on device '{device}' after a previous build failure"
         )
     return module_exec
+
+
+def _validate_ffi_kernel_launch_bounds(dim, kernel, block_dim=None) -> None:
+    """Validate platform-neutral tracing against every possible FFI target."""
+    cuda_block_dim = 256 if block_dim is None else block_dim
+    kernel.module.get_module_hash(cuda_block_dim)
+    _build_kernel_launch_bounds(dim, kernel, cuda_block_dim)
+
+    leading_extent = dim[0] if dim else 1
+    if leading_extent > _SCALAR_TID_MAX_EXTENT and cuda_block_dim != 1:
+        _build_kernel_launch_bounds(dim, kernel, 1)
 
 
 def _preload_ffi_module(module, mode, block_dim=None):
@@ -335,10 +347,9 @@ class FfiKernel:
         if vmap_method is None:
             vmap_method = self.vmap_method
 
-        # output types
-        out_types = []
-
         # process inputs
+        array_input_values = []
+        in_out_type_specs = []
         static_inputs = {}
         for i in range(num_inputs):
             input_arg = self.input_args[i]
@@ -360,6 +371,7 @@ class FfiKernel:
                         raise TypeError(
                             f"Invalid inner dimensions for array argument '{input_arg.name}', expected {input_arg.dtype_shape}, got {input_value.shape[-input_arg.dtype_ndim :]}"
                         )
+                array_input_values.append(input_value)
             else:
                 # make sure scalar is not a traced variable, should be static
                 if isinstance(input_value, jax.core.Tracer):
@@ -367,9 +379,14 @@ class FfiKernel:
                 # stash the value to be retrieved by callback
                 static_inputs[input_arg.name] = input_arg.type(input_value)
 
-            # append in-out arg to output types
+            # Save in-out output types until metadata from every input is known.
             if input_arg.in_out:
-                out_types.append(get_jax_output_type(input_arg, input_value.shape))
+                in_out_type_specs.append((input_arg, input_value.shape))
+
+        output_type_metadata = get_jax_output_type_metadata(array_input_values)
+        out_types = [
+            get_jax_output_type(input_arg, dims, output_type_metadata) for input_arg, dims in in_out_type_specs
+        ]
 
         # launch dimensions
         infer_launch_dims = launch_dims is None
@@ -384,6 +401,11 @@ class FfiKernel:
         else:
             launch_dims = tuple(launch_dims)
 
+        # Tracing is platform-neutral even when lowering later targets a specific
+        # device. Validate oversized launches against both supported target variants
+        # before JAX constructs output buffer types.
+        _validate_ffi_kernel_launch_bounds(launch_dims, self.kernel, self.block_dim)
+
         # output shapes
         if isinstance(output_dims, dict):
             # assume a dictionary of shapes keyed on argument name
@@ -391,7 +413,7 @@ class FfiKernel:
                 dims = output_dims.get(output_arg.name)
                 if dims is None:
                     raise ValueError(f"Missing output dimensions for argument '{output_arg.name}'")
-                out_types.append(get_jax_output_type(output_arg, dims))
+                out_types.append(get_jax_output_type(output_arg, dims, output_type_metadata))
         else:
             if output_dims is None:
                 # use launch dimensions
@@ -400,7 +422,7 @@ class FfiKernel:
                 output_dims = (output_dims,)
             # assume same dimensions for all outputs
             for output_arg in self.output_args:
-                out_types.append(get_jax_output_type(output_arg, output_dims))
+                out_types.append(get_jax_output_type(output_arg, output_dims, output_type_metadata))
 
         call = jax.ffi.ffi_call(
             self.name,
@@ -540,7 +562,8 @@ class FfiKernel:
                         # roll batch size into the first launch dimension
                         launch_dims = (batch_size * launch_dims[0], *launch_dims[1:])
 
-                launch_bounds = _build_launch_bounds(launch_dims, self.kernel.adj.kernel_dim)
+                # Revalidate here because vmap can grow the leading extent at runtime.
+                launch_bounds = _build_kernel_launch_bounds(launch_dims, self.kernel, block_dim)
 
                 if platform == _FFI_PLATFORM_CPU:
                     hooks = module_exec.get_kernel_hooks(self.kernel)
@@ -746,10 +769,9 @@ class FfiCallable:
         if output_dims is None:
             output_dims = self.output_dims
 
-        # output types
-        out_types = []
-
         # process inputs
+        array_input_values = []
+        in_out_type_specs = []
         static_inputs = {}
         for i in range(num_inputs):
             input_arg = self.input_args[i]
@@ -771,6 +793,7 @@ class FfiCallable:
                         raise TypeError(
                             f"Invalid inner dimensions for array argument '{input_arg.name}', expected {input_arg.dtype_shape}, got {input_value.shape[-input_arg.dtype_ndim :]}"
                         )
+                array_input_values.append(input_value)
             else:
                 # make sure scalar is not a traced variable, should be static
                 if isinstance(input_value, jax.core.Tracer):
@@ -778,9 +801,14 @@ class FfiCallable:
                 # stash the value to be retrieved by callback
                 static_inputs[input_arg.name] = input_arg.type(input_value)
 
-            # append in-out arg to output types
+            # Save in-out output types until metadata from every input is known.
             if input_arg.in_out:
-                out_types.append(get_jax_output_type(input_arg, input_value.shape))
+                in_out_type_specs.append((input_arg, input_value.shape))
+
+        output_type_metadata = get_jax_output_type_metadata(array_input_values)
+        out_types = [
+            get_jax_output_type(input_arg, dims, output_type_metadata) for input_arg, dims in in_out_type_specs
+        ]
 
         # output shapes
         if isinstance(output_dims, dict):
@@ -789,7 +817,7 @@ class FfiCallable:
                 dims = output_dims.get(output_arg.name)
                 if dims is None:
                     raise ValueError(f"Missing output dimensions for argument '{output_arg.name}'")
-                out_types.append(get_jax_output_type(output_arg, dims))
+                out_types.append(get_jax_output_type(output_arg, dims, output_type_metadata))
         else:
             if output_dims is None:
                 if self.first_array_arg is None:
@@ -799,7 +827,7 @@ class FfiCallable:
                 output_dims = (output_dims,)
             # assume same dimensions for all outputs
             for output_arg in self.output_args:
-                out_types.append(get_jax_output_type(output_arg, output_dims))
+                out_types.append(get_jax_output_type(output_arg, output_dims, output_type_metadata))
 
         call = jax.ffi.ffi_call(
             self.name,
@@ -1373,6 +1401,9 @@ def jax_kernel(
     else:
         hashable_launch_dims = launch_dims
 
+    # Empty selections normalize to None because the constructors treat them identically.
+    hashable_in_out_argnames = tuple(in_out_argnames) if in_out_argnames else None
+
     if not enable_backward:
         key = (
             kernel.func,
@@ -1381,6 +1412,7 @@ def jax_kernel(
             vmap_method,
             hashable_launch_dims,
             hashable_output_dims,
+            hashable_in_out_argnames,
             module_preload_mode,
             has_side_effect,
             block_dim,
@@ -1395,7 +1427,7 @@ def jax_kernel(
                     launch_dims,
                     block_dim,
                     output_dims,
-                    in_out_argnames,
+                    hashable_in_out_argnames,
                     module_preload_mode,
                     has_side_effect=has_side_effect,
                 )
@@ -1788,6 +1820,14 @@ def jax_callable(
     else:
         hashable_output_dims = output_dims
 
+    # Empty selections normalize to None to mirror the constructors: an empty or missing
+    # in_out selection aliases nothing, and an empty or missing staging selection stages
+    # every argument. Distinguishing them here would only split the cache between two
+    # identically behaving wrappers.
+    hashable_in_out_argnames = tuple(in_out_argnames) if in_out_argnames else None
+    hashable_stage_in_argnames = tuple(stage_in_argnames) if stage_in_argnames else None
+    hashable_stage_out_argnames = tuple(stage_out_argnames) if stage_out_argnames else None
+
     # Note: we don't include graph_cache_max in the key, it is applied below.
     key = (
         func,
@@ -1795,6 +1835,9 @@ def jax_callable(
         graph_mode,
         vmap_method,
         hashable_output_dims,
+        hashable_in_out_argnames,
+        hashable_stage_in_argnames,
+        hashable_stage_out_argnames,
         module_preload_mode,
         has_side_effect,
     )
@@ -1808,9 +1851,9 @@ def jax_callable(
                 graph_mode,
                 vmap_method,
                 output_dims,
-                in_out_argnames,
-                stage_in_argnames,
-                stage_out_argnames,
+                hashable_in_out_argnames,
+                hashable_stage_in_argnames,
+                hashable_stage_out_argnames,
                 graph_cache_max,
                 module_preload_mode,
                 has_side_effect,
@@ -1954,7 +1997,51 @@ def get_warp_shape(arg, dims):
         return dims
 
 
-def get_jax_output_type(arg, dims):
+def get_jax_output_type_metadata(input_values: Iterable[Any]) -> dict[str, Any]:
+    """Build output metadata from the union of array inputs' varying manual axes."""
+    jax = _get_jax()
+    # Older supported JAX releases cannot expose or attach type metadata to output descriptors.
+    if not hasattr(jax, "typeof") or not hasattr(jax.ShapeDtypeStruct, "update"):
+        return {}
+
+    # JAX cannot inspect FFI output dependencies, so conservatively propagate
+    # every array input's varying manual axes to every output.
+    varying_axes: set[Any] = set()
+    uses_manual_axis_type = False
+    fallback_jax_mesh = None
+    for input_value in input_values:
+        input_type = jax.typeof(input_value)
+        manual_axis_type = getattr(input_type, "manual_axis_type", None)
+        if manual_axis_type is not None:
+            uses_manual_axis_type = True
+            input_vma = manual_axis_type.varying
+        else:
+            input_vma = getattr(input_type, "vma", None)
+
+        if input_vma:
+            varying_axes.update(input_vma)
+            fallback_jax_mesh = input_type.sharding.mesh
+
+    if not varying_axes:
+        return {}
+
+    vma = frozenset(varying_axes)
+    if uses_manual_axis_type:
+        metadata = {"manual_axis_type": jax.sharding.ManualAxisType(varying=vma)}
+    else:
+        metadata = {"vma": vma}
+
+    # JAX FFI outputs with VMA metadata also require compatible sharding for
+    # the active JAX manual mesh. See https://github.com/jax-ml/jax/issues/38551.
+    if hasattr(jax.sharding, "get_abstract_mesh"):
+        jax_mesh = jax.sharding.get_abstract_mesh()
+    else:
+        jax_mesh = fallback_jax_mesh
+    metadata["sharding"] = jax.sharding.NamedSharding(jax_mesh, jax.sharding.PartitionSpec())
+    return metadata
+
+
+def get_jax_output_type(arg, dims, metadata: dict[str, Any] | None = None):
     jax = _get_jax()
 
     if isinstance(dims, int):
@@ -1965,18 +2052,21 @@ def get_jax_output_type(arg, dims):
     if arg.dtype_ndim > 0:
         # vector/matrix array
         if ndim == arg.warp_ndim:
-            return jax.ShapeDtypeStruct((*dims, *arg.dtype_shape), arg.jax_scalar_type)
+            dims = (*dims, *arg.dtype_shape)
         elif ndim == arg.jax_ndim:
             # make sure inner dimensions match
             inner_dims = dims[-arg.dtype_ndim :]
             for i in range(arg.dtype_ndim):
                 if inner_dims[i] != arg.dtype_shape[i]:
                     raise ValueError(f"Invalid output dimensions for argument '{arg.name}': {dims}")
-            return jax.ShapeDtypeStruct(dims, arg.jax_scalar_type)
         else:
             raise ValueError(f"Invalid output dimensions for argument '{arg.name}': {dims}")
     else:
         # scalar array
         if ndim != arg.warp_ndim:
             raise ValueError(f"Invalid output dimensions for argument '{arg.name}': {dims}")
-        return jax.ShapeDtypeStruct(dims, arg.jax_scalar_type)
+
+    output_type = jax.ShapeDtypeStruct(dims, arg.jax_scalar_type)
+    if metadata:
+        output_type = output_type.update(**metadata)
+    return output_type

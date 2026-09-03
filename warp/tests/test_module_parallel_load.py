@@ -5,6 +5,7 @@
 wp.force_load() and wp.load_module().
 """
 
+import importlib
 import os
 import subprocess
 import sys
@@ -141,20 +142,33 @@ def _run_parallel_cpu_cold_start():
     modules = [kernel.module for kernel in kernels]
 
     # This is a fresh process, so none of the calls below should find an
-    # existing CPU JIT instance. Hold each worker at the native loading
-    # boundary until all four are ready, maximizing concurrent first entry
-    # into wp_load_obj() without changing production code.
+    # initialized LLVM target registry or an existing CPU JIT instance. Hold
+    # each worker at both native boundaries until all four are ready,
+    # maximizing concurrent first entry without changing production code.
+    compile_barrier = threading.Barrier(len(modules))
     load_barrier = threading.Barrier(len(modules))
+    original_compile_cpp = context.runtime.llvm.wp_compile_cpp
     original_load_obj = context.runtime.llvm.wp_load_obj
+
+    def synchronized_compile_cpp(*args):
+        compile_barrier.wait(timeout=120)
+        return original_compile_cpp(*args)
 
     def synchronized_load_obj(*args):
         load_barrier.wait(timeout=120)
         return original_load_obj(*args)
 
-    with mock.patch.object(
-        context.runtime.llvm,
-        "wp_load_obj",
-        side_effect=synchronized_load_obj,
+    with (
+        mock.patch.object(
+            context.runtime.llvm,
+            "wp_compile_cpp",
+            side_effect=synchronized_compile_cpp,
+        ),
+        mock.patch.object(
+            context.runtime.llvm,
+            "wp_load_obj",
+            side_effect=synchronized_load_obj,
+        ),
     ):
         wp.force_load(device="cpu", modules=modules, block_dim=1, max_workers=len(modules))
 
@@ -188,6 +202,67 @@ class TestModuleParallelLoad(unittest.TestCase):
         modules = _generate_modules(4)
         wp.force_load(device="cpu", modules=modules, max_workers=2)
         _assert_modules_loaded_on_cpu(self, modules)
+
+    def test_force_load_parallel_propagates_load_failure(self):
+        """Verify that parallel loading propagates a module-load failure."""
+        module_name = "warp.tests.aux_test_unresolved_func"
+        # Importing registers the invalid kernel without compiling it; force_load() triggers the real codegen error.
+        unresolved_func_module = importlib.import_module(module_name)
+        failed_module = wp.get_module(unresolved_func_module.__name__)
+
+        # The valid companion selects the parallel path and must finish loading before the error reaches the caller.
+        valid_module = _generate_modules(1)[0]
+
+        try:
+            with self.assertRaisesRegex(AttributeError, "Could not find function wp.missing_func"):
+                wp.force_load(device="cpu", modules=[failed_module, valid_module], max_workers=2)
+
+            _assert_modules_loaded_on_cpu(self, [valid_module])
+        finally:
+            # Keep the invalid fixture out of later force_load() calls.
+            context.user_modules.pop(module_name, None)
+            sys.modules.pop(module_name, None)
+
+    @unittest.skipUnless(wp.is_cuda_available(), "Requires CUDA")
+    def test_force_load_restores_cuda_context_on_failure(self):
+        """Verify that a module-load failure restores the calling thread's CUDA context."""
+        module_name = "warp.tests.aux_test_unresolved_func"
+        unresolved_func_module = importlib.import_module(module_name)
+        failed_module = wp.get_module(unresolved_func_module.__name__)
+        valid_module = _generate_modules(1)[0]
+        device = wp.get_device("cuda:0")
+
+        original_context = context.runtime.core.wp_cuda_context_get_current()
+        context.runtime.core.wp_cuda_context_set_current(None)
+        try:
+            with self.assertRaisesRegex(AttributeError, "Could not find function wp.missing_func"):
+                wp.force_load(device=device, modules=[valid_module, failed_module], max_workers=0)
+
+            self.assertIsNone(context.runtime.core.wp_cuda_context_get_current())
+        finally:
+            context.runtime.core.wp_cuda_context_set_current(original_context)
+            context.user_modules.pop(module_name, None)
+            sys.modules.pop(module_name, None)
+
+    def test_force_load_preserves_error_without_cuda_context_snapshot(self):
+        """Verify that cleanup does not mask a load error when no CUDA context was saved."""
+        module_name = "warp.tests.aux_test_unresolved_func"
+        unresolved_func_module = importlib.import_module(module_name)
+        failed_module = wp.get_module(unresolved_func_module.__name__)
+
+        try:
+            # Model CUDA becoming available after the entry-time snapshot check.
+            # There is no caller context to restore in this case, so cleanup must
+            # preserve the original module-load error.
+            with (
+                mock.patch.object(context, "is_cuda_driver_initialized", return_value=False),
+                mock.patch.object(context, "is_cuda_available", return_value=True),
+                self.assertRaisesRegex(AttributeError, "Could not find function wp.missing_func"),
+            ):
+                wp.force_load(device="cpu", modules=[failed_module], max_workers=0)
+        finally:
+            context.user_modules.pop(module_name, None)
+            sys.modules.pop(module_name, None)
 
     def test_force_load_config_default(self):
         """Verify that wp.config.load_module_max_workers is respected when max_workers is not passed."""
@@ -224,10 +299,11 @@ class TestModuleParallelLoad(unittest.TestCase):
     def test_force_load_parallel_cpu_cold_start_kernel_lookup(self):
         """Verify that modules loaded in parallel remain launchable on the CPU.
 
-        Run in a subprocess because the CPU JIT is process-global and the
-        initialization race can only occur on the first native module loads.
-        Give the subprocess a fresh filesystem cache without clearing Warp's
-        shared test cache, which is unsafe under the parallel test runner.
+        Run in a subprocess because the LLVM target registry and CPU JIT are
+        process-global, and their initialization races only occur on the first
+        native compilation and module loads. Give the subprocess a fresh
+        filesystem cache without clearing Warp's shared test cache, which is
+        unsafe under the parallel test runner.
         """
         with tempfile.TemporaryDirectory() as cache_path:
             env = os.environ.copy()

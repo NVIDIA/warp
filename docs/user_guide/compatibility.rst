@@ -27,7 +27,7 @@ on platforms with NVIDIA CUDA support. The following table summarizes platform s
     +=====================+==============+======================+====================+=====================+
     | **Windows** 10/11   | ``x86-64``   | PC                   | Supported ✅       | CUDA                |
     +---------------------+--------------+----------------------+--------------------+---------------------+
-    | **Windows** 11      | ``arm64``    | PC                   | Planned            | CUDA (Planned)      |
+    | **Windows** 11      | ``arm64``    | PC                   | Source build ✅    | CPU Only            |
     +---------------------+--------------+----------------------+--------------------+---------------------+
     | **Linux**           | ``x86-64``   | PC / Server          | Supported ✅       | CUDA                |
     +---------------------+--------------+----------------------+--------------------+---------------------+
@@ -37,6 +37,8 @@ on platforms with NVIDIA CUDA support. The following table summarizes platform s
     +---------------------+--------------+----------------------+--------------------+---------------------+
     | **macOS**           | ``x86-64``   | Intel-based Mac      | Discontinued       | None                |
     +---------------------+--------------+----------------------+--------------------+---------------------+
+
+Warp supports CPU execution on Windows ARM64 when built from source. We do not currently publish pre-built wheels for this platform.
 
 Runtime requirements
 --------------------

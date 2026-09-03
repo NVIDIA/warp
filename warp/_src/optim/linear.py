@@ -152,7 +152,7 @@ def aslinearoperator(
         batch_offsets: Optional array of shape ``(B+1,)`` partitioning scalar degrees of freedom into
             ``B`` independent subproblems (see :class:`LinearOperator`).
         max_batch_length: Optional upper bound on the number of scalar degrees of freedom in any subproblem.
-            Requires ``batch_offsets`` (see :class:`LinearOperator`).
+            Specifying ``max_batch_length`` requires ``batch_offsets`` (see :class:`LinearOperator`).
     """
 
     if A is None or isinstance(A, LinearOperator):

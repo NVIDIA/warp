@@ -444,12 +444,20 @@ class TestUniqueModule(unittest.TestCase):
         silently reuses the first kernel object and inherits its option value.
         """
 
-        def _make(grid_stride=None, enable_backward=None, launch_bounds=None):
+        def _make(
+            grid_stride=None,
+            enable_backward=None,
+            launch_bounds=None,
+            cuda_max_registers=None,
+            enable_cuda_smem_spilling=None,
+        ):
             @wp.kernel(
                 module="unique",
                 grid_stride=grid_stride,
                 enable_backward=enable_backward,
                 launch_bounds=launch_bounds,
+                cuda_max_registers=cuda_max_registers,
+                enable_cuda_smem_spilling=enable_cuda_smem_spilling,
             )
             def _opt_kernel(x: wp.array[Any]):
                 i = wp.tid()
@@ -475,6 +483,19 @@ class TestUniqueModule(unittest.TestCase):
         k_lb128 = _make(launch_bounds=128)
         self.assertIsNot(k_lb64, k_lb128)
         self.assertNotEqual(k_lb64.module.name, k_lb128.module.name)
+
+        k_mr32 = _make(cuda_max_registers=32)
+        k_mr64 = _make(cuda_max_registers=64)
+        self.assertIsNot(k_mr32, k_mr64)
+        self.assertNotEqual(k_mr32.module.name, k_mr64.module.name)
+
+        k_smem_default = _make()
+        k_smem_disabled = _make(enable_cuda_smem_spilling=False)
+        k_smem_enabled = _make(enable_cuda_smem_spilling=True)
+        self.assertEqual(k_smem_default.module.name, k_smem_disabled.module.name)
+        self.assertEqual(k_smem_default.options, k_smem_disabled.options)
+        self.assertIsNot(k_smem_default, k_smem_enabled)
+        self.assertNotEqual(k_smem_default.module.name, k_smem_enabled.module.name)
 
 
 def test_unique_module_deferred_static_expressions(test, device):

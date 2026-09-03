@@ -2,14 +2,23 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+import struct
 import tempfile
 import unittest
 from typing import Any
+from unittest import mock
 
 import numpy as np
 
 import warp as wp
 from warp.tests.unittest_utils import *
+
+# Byte offsets mirror the corresponding PNanoVDB.h layout macros.
+_PNANOVDB_GRID_OFF_GRID_SIZE = 32
+_PNANOVDB_GRID_OFF_GRID_NAME = 40
+_PNANOVDB_GRID_OFF_BLIND_METADATA_OFFSET = 640
+_PNANOVDB_GRIDBLINDMETADATA_OFF_NAME = 32
+_PNANOVDB_NAME_SIZE = 256
 
 
 # float volume tests
@@ -437,6 +446,16 @@ def _get_volume(value_type, device):
     return volume
 
 
+def _get_index_grid_data():
+    return _get_volume("index", "cpu").array().numpy().copy()
+
+
+def _assert_volume_rejected(test, device, grid_data):
+    data = wp.array(grid_data, dtype=wp.uint8, device=device)
+    with test.assertRaises(RuntimeError):
+        wp.Volume(data)
+
+
 def _get_points(device, jittered=False):
     device = wp.get_device(device)
     cache = _jittered_point_cache if jittered else _point_cache
@@ -753,6 +772,113 @@ def test_volume_feature_array(test, device):
 
     # fVDB convention, data starts with array ndim + shape
     np.testing.assert_equal(array.numpy()[0:4], [3, volume.get_voxel_count(), 2, 3])
+
+
+def test_volume_rejects_unterminated_grid_name(test, device):
+    """Reject grid names without a null terminator."""
+    grid_data = _get_index_grid_data()
+    name_offset = _PNANOVDB_GRID_OFF_GRID_NAME
+    grid_data[name_offset : name_offset + _PNANOVDB_NAME_SIZE] = ord("A")
+
+    _assert_volume_rejected(test, device, grid_data)
+
+
+def test_volume_rejects_unterminated_feature_name(test, device):
+    """Reject feature-array names without a null terminator."""
+    grid_data = _get_index_grid_data()
+    metadata_offset = struct.unpack_from("<q", grid_data, _PNANOVDB_GRID_OFF_BLIND_METADATA_OFFSET)[0]
+    name_offset = metadata_offset + _PNANOVDB_GRIDBLINDMETADATA_OFF_NAME
+    grid_data[name_offset : name_offset + _PNANOVDB_NAME_SIZE] = ord("A")
+
+    _assert_volume_rejected(test, device, grid_data)
+
+
+def test_volume_rejects_invalid_grid_size(test, device):
+    """Reject invalid declared NanoVDB grid sizes."""
+    grid_data = _get_index_grid_data()
+
+    for case, grid_size in (("too_small", 0), ("past_buffer", grid_data.size + 1)):
+        with test.subTest(case=case):
+            malformed_data = grid_data.copy()
+            struct.pack_into("<Q", malformed_data, _PNANOVDB_GRID_OFF_GRID_SIZE, grid_size)
+            _assert_volume_rejected(test, device, malformed_data)
+
+
+def test_volume_rejects_invalid_feature_metadata_range(test, device):
+    """Reject blind metadata tables that extend beyond the grid."""
+    grid_data = _get_index_grid_data()
+    grid_size = struct.unpack_from("<Q", grid_data, _PNANOVDB_GRID_OFF_GRID_SIZE)[0]
+    metadata_offset = struct.unpack_from("<q", grid_data, _PNANOVDB_GRID_OFF_BLIND_METADATA_OFFSET)[0]
+
+    cases = (
+        ("negative_offset", -1, 1),
+        ("table_past_grid", grid_size, 1),
+        ("excessive_count", metadata_offset, 0xFFFFFFFF),
+    )
+    for case, offset, count in cases:
+        with test.subTest(case=case):
+            malformed_data = grid_data.copy()
+            struct.pack_into("<qI", malformed_data, _PNANOVDB_GRID_OFF_BLIND_METADATA_OFFSET, offset, count)
+            _assert_volume_rejected(test, device, malformed_data)
+
+
+def test_volume_rejects_invalid_feature_data_range(test, device):
+    """Reject feature data ranges that do not fit within the current grid.
+
+    Cover signed-offset underflow, grid overflow, cross-grid access, and
+    count-by-size multiplication overflow.
+    """
+    grid_data = _get_index_grid_data()
+    grid_size = struct.unpack_from("<Q", grid_data, _PNANOVDB_GRID_OFF_GRID_SIZE)[0]
+    metadata_offset = struct.unpack_from("<q", grid_data, _PNANOVDB_GRID_OFF_BLIND_METADATA_OFFSET)[0]
+    data_offset = struct.unpack_from("<q", grid_data, metadata_offset)[0]
+    data_start = metadata_offset + data_offset
+
+    cases = (
+        ("minimum_offset", -(1 << 63), 1, 1),
+        ("before_grid", -metadata_offset - 1, 1, 1),
+        ("past_grid", grid_size - metadata_offset + 1, 1, 1),
+        ("range_past_grid", data_offset, grid_size - data_start + 1, 1),
+        ("size_overflow", data_offset, 1 << 63, 3),
+        ("next_grid", grid_size - metadata_offset, 1, 1),
+    )
+    for case, offset, count, value_size in cases:
+        with test.subTest(case=case):
+            malformed_data = grid_data.copy()
+            struct.pack_into("<qQI", malformed_data, metadata_offset, offset, count, value_size)
+            _assert_volume_rejected(test, device, malformed_data)
+
+
+def test_volume_accepts_in_bounds_negative_feature_offset(test, device):
+    """Accept signed feature offsets that resolve within the grid."""
+    grid_data = _get_index_grid_data()
+    metadata_offset = struct.unpack_from("<q", grid_data, _PNANOVDB_GRID_OFF_BLIND_METADATA_OFFSET)[0]
+    struct.pack_into("<qQI", grid_data, metadata_offset, -metadata_offset, 8, 1)
+
+    volume = wp.Volume(wp.array(grid_data, dtype=wp.uint8, device=device))
+    np.testing.assert_array_equal(volume.feature_array(0, dtype=wp.uint8).numpy(), grid_data[:8])
+
+
+def test_volume_snapshots_feature_metadata(test, device):
+    """Verify that feature metadata remains stable after volume creation.
+
+    Mutate the aliased source metadata after construction to confirm that
+    accessors use the validated snapshot rather than the mutable buffer.
+    """
+    grid_data = _get_index_grid_data()
+    metadata_offset = struct.unpack_from("<q", grid_data, _PNANOVDB_GRID_OFF_BLIND_METADATA_OFFSET)[0]
+    data = wp.array(grid_data, dtype=wp.uint8, device=device)
+    volume = wp.Volume(data, copy=False)
+    expected = volume.get_feature_array_info(0)
+
+    mutated_data = grid_data.copy()
+    struct.pack_into("<qQI", mutated_data, metadata_offset, -metadata_offset - 1, 1, 1)
+    name_offset = metadata_offset + _PNANOVDB_GRIDBLINDMETADATA_OFF_NAME
+    mutated_data[name_offset : name_offset + _PNANOVDB_NAME_SIZE] = ord("A")
+    data.assign(mutated_data)
+    wp.synchronize_device(device)
+
+    test.assertEqual(volume.get_feature_array_info(0), expected)
 
 
 @wp.kernel
@@ -1140,6 +1266,26 @@ class TestVolume(unittest.TestCase):
         instance = wp.Volume.__new__(wp.Volume)
         instance.__del__()
 
+    def test_volume_rejects_missing_feature_name(self):
+        """Reject feature metadata without a name pointer."""
+
+        class Core:
+            @staticmethod
+            def wp_volume_get_blind_data_info(_id, _feature_index, buf, *_args):
+                buf._obj.value = 1
+                return None
+
+        volume = wp.Volume.__new__(wp.Volume)
+        volume.id = 1
+        volume.runtime = type("Runtime", (), {"core": Core()})()
+
+        try:
+            with mock.patch.object(wp.Volume, "_decode_nvdb_name", return_value=""):
+                with self.assertRaisesRegex(RuntimeError, "Invalid feature array"):
+                    volume.get_feature_array_info(0)
+        finally:
+            volume.id = None
+
 
 add_function_test(
     TestVolume, "test_volume_sample_linear_f_gradient", test_volume_sample_linear_f_gradient, devices=devices
@@ -1224,6 +1370,48 @@ add_function_test(
 )
 add_function_test(TestVolume, "test_volume_multiple_grids", test_volume_multiple_grids, devices=devices)
 add_function_test(TestVolume, "test_volume_feature_array", test_volume_feature_array, devices=devices)
+add_function_test(
+    TestVolume,
+    "test_volume_rejects_unterminated_grid_name",
+    test_volume_rejects_unterminated_grid_name,
+    devices=devices,
+)
+add_function_test(
+    TestVolume,
+    "test_volume_rejects_unterminated_feature_name",
+    test_volume_rejects_unterminated_feature_name,
+    devices=devices,
+)
+add_function_test(
+    TestVolume,
+    "test_volume_rejects_invalid_grid_size",
+    test_volume_rejects_invalid_grid_size,
+    devices=devices,
+)
+add_function_test(
+    TestVolume,
+    "test_volume_rejects_invalid_feature_metadata_range",
+    test_volume_rejects_invalid_feature_metadata_range,
+    devices=devices,
+)
+add_function_test(
+    TestVolume,
+    "test_volume_rejects_invalid_feature_data_range",
+    test_volume_rejects_invalid_feature_data_range,
+    devices=devices,
+)
+add_function_test(
+    TestVolume,
+    "test_volume_accepts_in_bounds_negative_feature_offset",
+    test_volume_accepts_in_bounds_negative_feature_offset,
+    devices=devices,
+)
+add_function_test(
+    TestVolume,
+    "test_volume_snapshots_feature_metadata",
+    test_volume_snapshots_feature_metadata,
+    devices=devices,
+)
 add_function_test(TestVolume, "test_volume_sample_index", test_volume_sample_index, devices=devices)
 add_function_test(TestVolume, "test_volume_write", test_volume_write, devices=[wp.get_device("cpu")])
 

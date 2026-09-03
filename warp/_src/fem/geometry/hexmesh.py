@@ -16,7 +16,7 @@ from warp._src.fem.types import (
     Coords,
     ElementIndex,
 )
-from warp._src.fem.utils import compress_node_indices, host_read_at_index, masked_indices
+from warp._src.fem.utils import compress_node_indices, host_read_at_index, masked_indices, validate_indices_in_range
 from warp._src.types import type_scalar_type
 from warp._src.utils import array_scan
 
@@ -181,7 +181,7 @@ class Hexmesh(Geometry):
             hex_vertex_indices: warp array of shape (num_hexes, 8) containing vertex indices for each hex
                 following standard ordering (bottom face vertices in counter-clockwise order, then similarly for upper face)
             positions: warp array of shape (num_vertices, 3) containing 3d position for each vertex
-            assume_parallelepiped: If true, assume that all cells are parallelepipeds (cheaper position/gradient evaluations)
+            assume_parallelepiped_cells: If true, assume that all cells are parallelepipeds (cheaper position/gradient evaluations)
             build_bvh: Whether to also build the hex BVH, which is necessary for the global ``fem.lookup`` operator
             temporary_store: shared pool from which to allocate temporary arrays
             cell_env: Optional per-cell environment indices. If provided, ``env_count`` must also be provided.
@@ -225,6 +225,12 @@ class Hexmesh(Geometry):
     @property
     def scalar_type(self):
         return self._scalar_type
+
+    @property
+    def name(self) -> str:
+        """Unique name including the cell evaluation mode."""
+        evaluation_mode = "parallelepiped" if self.parallelepiped_cells else "general"
+        return f"{super().name}_{evaluation_mode}"
 
     def cell_count(self):
         """Number of cells in the mesh."""
@@ -618,6 +624,10 @@ class Hexmesh(Geometry):
 
     def _build_topology(self, temporary_store: TemporaryStore):
         device = self.hex_vertex_indices.device
+
+        validate_indices_in_range(
+            self.vertex_count(), self.hex_vertex_indices, index_name="Vertex", temporary_store=temporary_store
+        )
 
         vertex_hex_offsets, vertex_hex_indices = compress_node_indices(
             self.vertex_count(), self.hex_vertex_indices, temporary_store=temporary_store

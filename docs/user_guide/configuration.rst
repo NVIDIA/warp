@@ -31,6 +31,8 @@ For example, the location of the user kernel cache can be changed with:
     wp.init()
 
 See :doc:`../api_reference/warp_config` for a complete list of global settings.
+See :doc:`execution_and_performance/reducing_compilation_and_startup_time` for
+guidance on settings that affect compilation and startup.
 
 .. _module-settings:
 
@@ -87,12 +89,17 @@ The options for a module can also be queried using :func:`wp.get_module_options(
 |``strip_hash``                        | Boolean | ``False``   | If ``True``, avoids using a content-based hash to identify the module    |
 |                                      |         |             | and its functions.                                                       |
 +--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
+|``extra_build_options``               | Object  | ``None``    | Experimental extra build inputs for CPU and CUDA modules. Set to an      |
+|                                      |         |             | :class:`warp.ModuleBuildOptions` instance.                               |
++--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
 |``enable_mathdx_gemm``                | Boolean | ``None``    | A module-level override of the :attr:`warp.config.enable_mathdx_gemm`    |
 |                                      |         |             | setting. ``None`` defers to the global setting at compile time.          |
 +--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
 |``enable_mathdx_solver``              | Boolean | ``None``    | A module-level override of the :attr:`warp.config.enable_mathdx_solver`  |
 |                                      |         |             | setting. ``None`` defers to the global setting at compile time.          |
 +--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
+
+.. _kernel-settings:
 
 Kernel Settings
 ---------------
@@ -107,6 +114,14 @@ Kernel-level settings can be passed as arguments to the :func:`@wp.kernel <warp.
      - Type
      - Default Value
      - Description
+   * - ``name``
+     - String
+     - ``None``
+     - Sets the kernel key used for registration and native code generation. If
+       ``None``, Warp derives the key from the Python callable passed to
+       ``wp.kernel``. A custom name must be a valid C++ identifier. When
+       ``strip_hash=True``, Warp uses the key without a hash suffix as the base
+       of the generated native entry-point names.
    * - ``enable_backward``
      - Boolean
      - ``None``
@@ -127,6 +142,21 @@ Kernel-level settings can be passed as arguments to the :func:`@wp.kernel <warp.
        ``(maxThreadsPerBlock, minBlocksPerMultiprocessor)``. Only applies to
        CUDA kernels. The ``block_dim`` parameter in :func:`warp.launch` must
        not exceed the ``maxThreadsPerBlock`` value specified here.
+   * - ``cuda_max_registers``
+     - int
+     - ``None``
+     - CUDA ``__maxnreg__`` attribute specifying the maximum number of
+       registers allocated per thread. Must be positive and cannot be combined
+       with ``launch_bounds``. Ignored on CPU and when Warp was built with CUDA
+       Toolkit earlier than 12.4 or when ``wp.config.llvm_cuda`` is ``True``.
+   * - ``enable_cuda_smem_spilling``
+     - Boolean
+     - ``None``
+     - If ``True``, allow the CUDA Toolkit used to build Warp, when version
+       13.0 or later, to spill registers into shared memory. Silently ignored
+       for entry points that use dynamic shared memory, on CPU, with older CUDA
+       Toolkits, in unsupported device-debug compilation, and when
+       ``wp.config.llvm_cuda`` is ``True``.
    * - ``module_options``
      - dict
      - ``None``
@@ -135,6 +165,14 @@ Kernel-level settings can be passed as arguments to the :func:`@wp.kernel <warp.
        Keys are validated against the module's known options (see
        `Module Settings`_ above). For shared modules, use
        :func:`wp.set_module_options() <warp.set_module_options>` instead.
+   * - ``entry_point_abi``
+     - String
+     - ``None``
+     - Selects the experimental entry-point ABI. ``"warp"`` uses the regular
+       launch-compatible CPU and CUDA ABI. ``"external_constant_params"`` is
+       CUDA-only and binds one struct argument from constant memory symbol
+       ``params``; it requires ``enable_backward=False`` and cannot be launched
+       with :func:`warp.launch`.
 
 .. code-block:: python
 
@@ -161,11 +199,34 @@ Kernel-level settings can be passed as arguments to the :func:`@wp.kernel <warp.
         a[tid] = a[tid] * 2.0
 
 
+    @wp.kernel(cuda_max_registers=64)
+    def register_limited_kernel(a: wp.array[float]):
+        # CUDA __maxnreg__(64) will be set when supported
+        tid = wp.tid()
+        a[tid] = a[tid] * 2.0
+
+
+    @wp.kernel(enable_cuda_smem_spilling=True, launch_bounds=256)
+    def smem_spilling_kernel(a: wp.array[float]):
+        tid = wp.tid()
+        a[tid] = a[tid] * 2.0
+
+
     @wp.kernel(module_options={"fast_math": True}, module="unique")
     def fast_kernel(a: wp.array[float], b: wp.array[float]):
         # fast_math is applied to this kernel's unique module
         tid = wp.tid()
         b[tid] = a[tid] + 1.0
+
+CUDA shared-memory register spilling uses otherwise available shared memory to
+reduce local-memory spill traffic. Warp evaluates forward and backward entry
+points independently and enables the optimization only when the corresponding
+entry point requires no dynamic shared memory, including scratch space required
+by tile operations and their callees. Explicit ``launch_bounds`` are recommended
+to keep the compiler's shared-memory estimate aligned with the intended block
+size. See NVIDIA's `shared-memory register spilling guidance
+<https://developer.nvidia.com/blog/how-to-improve-cuda-kernel-performance-with-shared-memory-register-spilling/>`__
+for performance considerations and CUDA limitations.
 
 .. _kernel-cluster-dim:
 
@@ -207,3 +268,57 @@ Declaring ``cluster_dim`` only forms the cluster; *using* it — distributed
 shared memory, cluster barriers, and cluster rank queries — requires native CUDA
 code. See :ref:`thread-block-clusters` in the C++/CUDA workflows guide for a
 worked distributed-shared-memory example.
+
+Function Settings
+-----------------
+
+Function-level settings can be passed as arguments to the :func:`@wp.func <warp.func>` decorator.
+
+.. list-table::
+   :widths: 20 15 15 50
+   :header-rows: 1
+
+   * - Setting
+     - Type
+     - Default Value
+     - Description
+   * - ``name``
+     - String
+     - ``None``
+     - Sets the function key used for registration and native code generation.
+       If ``None``, Warp derives the key from the Python callable.
+   * - ``module``
+     - Module | ``"unique"`` | str
+     - ``None``
+     - Controls which module the function belongs to, following the same rules
+       as the equivalent kernel setting.
+   * - ``inline``
+     - Boolean | ``None``
+     - ``None``
+     - Whether the function is inlined into its call sites. ``None`` leaves the
+       choice to the backend compiler. ``True`` requires inlining (CUDA
+       ``__forceinline__``), overriding the compiler's own heuristic. ``False``
+       keeps the function out of line (CUDA ``__noinline__``).
+
+.. code-block:: python
+
+    @wp.func(inline=False)
+    def expensive_helper(x: wp.vec3) -> wp.vec3:
+        # kept out of line in every kernel that calls it
+        return wp.normalize(x) * wp.length(x)
+
+
+    @wp.func(inline=True)
+    def cheap_helper(x: float) -> float:
+        # inlined even where the backend compiler would not choose to
+        return x * 2.0
+
+By default, the backend compiler decides whether to inline a function at each call site. Set
+``inline=False`` to prevent inlining or ``inline=True`` to require it.
+
+Inlining duplicates the function body at each call site. This can increase register pressure and
+instruction-cache use. Keeping a function out of line avoids that duplication but adds
+function-call overhead. The best choice depends on the workload, so measure both options.
+
+The hint covers the generated adjoint as well as the forward function, and is lowered per
+backend, so the same function remains valid for CPU and CUDA.

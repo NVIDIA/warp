@@ -141,7 +141,9 @@ Introductory Examples
  - ``example_taylor_green.py``: 2D Taylor-Green vortex using mixed Taylor-Hood elements with semi-Lagrangian advection and BDF2 time integration
  - ``example_kelvin_helmholtz.py``: 2D Kelvin-Helmholtz instability using Discontinuous Galerkin for compressible Euler equations with Rusanov flux and positivity limiter
  - ``example_shallow_water.py``: 2D shallow water equations using Discontinuous Galerkin with Rusanov flux and positivity limiter
- - ``example_apic_fluid_multi_env.py``: Colocated multi-environment APIC fluid simulation using environment-aware particle quadrature and batched pressure solves
+ - ``example_apic_fluid_multi_env.py``: Colocated multi-environment Affine
+   Particle-In-Cell (APIC) fluid simulation using environment-aware particle
+   quadrature and batched pressure solves
 
 Advanced Usages
 ---------------

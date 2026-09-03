@@ -94,6 +94,9 @@ nitpick_ignore_regex = [
         r"py:class",
         r"(Vector|Quaternion|Matrix|Array|Transformation|Tile|TileStack|IndexedArray|IndexedFabricArray|FabricArray|Shape|DType|Any)",
     ),
+    # Private codegen query subtypes — visible in Sphinx RST (generated from Python source)
+    # but not in __init__.pyi (rewritten by export_stubs) or the public API.
+    (r"py:class", r"(_BvhQueryAabb|_BvhQueryRay|_BvhQueryCapsule|_BvhQuerySphere|_MeshQuerySphere)"),
     # Array type parameters from warp.array() annotations (e.g., "dtype=warp.float32", "ndim=3")
     # Sphinx splits "warp.array(dtype=float, ndim=3)" and tries to resolve each part as a class.
     (r"py:class", r"(ndim|dtype)=.*"),
@@ -218,7 +221,9 @@ html_context = {
     "doc_path": "docs",
 }
 html_css_files = ["custom.css"]
+html_js_files = ["copy-page-source.js"]
 html_static_path = ["_static"]
+html_copy_source = True
 html_show_sphinx = False
 
 
@@ -318,6 +323,7 @@ autosummary_filename_map = {
 }
 
 AUTOSUMMARY_ANNOTATION_OVERRIDES = {
+    "warp.config.enable_mempools_at_init": ": bool = True",
     "warp.config.launch_array_access_mode": (
         ": warp.config.LaunchArrayAccessMode = warp.config.LaunchArrayAccessMode.RELAXED"
     ),
@@ -348,6 +354,34 @@ def normalize_docstring(doc: str) -> str:
     return re.sub(r"^(:(rtype|type\s+\w+):.*)\bwp\.", r"\1warp.", rst, flags=re.MULTILINE) if "wp." in rst else rst
 
 
+def _with_defaults(func, args: dict[str, str]) -> dict[str, str]:
+    """Append each registered default value to the rendered parameter annotations.
+
+    Uses the same renderer as the type stub so that the documented signature and
+    the IDE hint show either the substituted value or ``...`` for an internally
+    inferred omission sentinel.
+
+    Args:
+        func: The built-in whose ``defaults`` supply the values.
+        args: The rendered annotation per ``input_types`` key.
+
+    Returns:
+        A new mapping with ``= value`` appended wherever a default is registered.
+    """
+    result = {}
+    for key, annotation in args.items():
+        # ``input_types`` keeps the ``*``/``**`` prefix that ``defaults`` omits.
+        name = key.lstrip("*")
+        if key.startswith("*") or name not in func.defaults:
+            result[key] = annotation
+            continue
+
+        value = func.defaults[name]
+        result[key] = f"{annotation} = {wp._src.context.format_default_value(value)}"
+
+    return result
+
+
 def _get_builtin_overloads_info(symbol: str) -> list[dict[str, object]]:
     head = wp._src.context.builtin_functions[symbol]
 
@@ -355,23 +389,25 @@ def _get_builtin_overloads_info(symbol: str) -> list[dict[str, object]]:
     # Note: head.overloads already includes the head itself (see Function.__init__)
     all_funcs = head.overloads if hasattr(head, "overloads") else [head]
     visible_overloads = [f for f in all_funcs if not f.hidden]
+    exported_overloads = [f for f in all_funcs if wp._src.context.resolve_exported_function_sig(f) is not None]
 
     overloads_info = []
     seen_overloads = set()
     for func in visible_overloads:
+        # Warp scalar annotations stay narrow here: unlike the type stub, the
+        # rendered documentation favours readability over checkability.
         args = {k: wp._src.context.type_str(v) for k, v in func.input_types.items()}
-        args_str = ", ".join(f"{k}: {v}" for k, v in args.items())
+        args_str = ", ".join(f"{k}: {v}" for k, v in _with_defaults(func, args).items())
 
         try:
             return_type = wp._src.context.type_str(func.value_func(None, None))
         except Exception:
             return_type = "None"
 
-        if hasattr(func, "overloads"):
-            sig = wp._src.context.resolve_exported_function_sig(func)
-            is_exported = sig is not None
-        else:
-            is_exported = False
+        is_exported = any(
+            wp._src.codegen.func_match_args(func, list(exported.input_types.values()), {})
+            for exported in exported_overloads
+        )
 
         doc = normalize_docstring(func.doc)
         overload_key = (args_str, return_type, is_exported, func.is_differentiable, doc)
@@ -776,6 +812,12 @@ def generate_reference_docs(app):
     docs.generate_reference.run()
 
 
+def hide_generated_api_edit_link(_app, pagename, _templatename, context, _doctree):
+    """Hide edit links for generated API stubs that are not tracked in Git."""
+    if pagename.startswith("api_reference/_generated/"):
+        context["theme_use_edit_page_button"] = False
+
+
 def drop_autosummary_toctrees(app, doctree):
     # autosummary's `:toctree:` wraps its generated toctree in
     # `autosummary_toc`, a `nodes.comment` subclass. HTML writers skip the
@@ -909,6 +951,7 @@ def setup(app):
     # Priority must be lower than autosummary's default (500) so that the
     # reference .rst files exist before autosummary scans for stub directives.
     app.connect("builder-inited", generate_reference_docs, priority=400)
+    app.connect("html-page-context", hide_generated_api_edit_link)
     app.connect("autodoc-process-docstring", filter_builtin_docstrings)
     app.connect("autodoc-process-docstring", rewrite_wp_in_docstrings)
     app.connect("autodoc-process-docstring", populate_reexported_docstrings)

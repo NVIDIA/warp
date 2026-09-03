@@ -14,6 +14,7 @@ import warp._src.context
 from warp._src.codegen import Var, get_arg_value
 from warp._src.logger import log_warning
 from warp._src.types import *
+from warp._src.types import _BvhQueryAabb, _BvhQueryCapsule, _BvhQueryRay, _BvhQuerySphere, _MeshQuerySphere
 
 from .context import add_builtin
 
@@ -1689,7 +1690,7 @@ add_builtin(
 )
 add_builtin(
     "quaternion",
-    input_types={"x": Float, "y": Float, "z": Float, "w": Float, "dtype": Scalar},
+    input_types={"x": Float, "y": Float, "z": Float, "w": Float, "dtype": Float},
     defaults={"dtype": None},
     value_func=quaternion_value_func,
     export_func=lambda input_types: {k: v for k, v in input_types.items() if k != "dtype"},
@@ -1887,18 +1888,30 @@ def transformation_value_func(arg_types: Mapping[str, type], arg_values: Mapping
         if dtype is None:
             dtype = float32
     elif variadic_arg_count == 1:
-        # Initialization by filling a value, e.g.: `wp.transform(123)`,
-        # `wp.transformation(123)`.
         value_type = variadic_arg_types[0]
-        if dtype is None:
-            dtype = value_type
-        elif not warp._src.types.scalars_equal(value_type, dtype):
-            _check_vars_match_dtype(
-                arg_values,
-                variadic_arg_types,
-                dtype,
-                f"the value used to fill this transform is expected to be of the type `{dtype.__name__}`",
-            )
+        if type_is_transformation(value_type):
+            # Copy constructor, e.g.: `wp.transform(other_xform)`,
+            # `wp.transformation(other_xform)`.
+            source_dtype = value_type._wp_scalar_type_
+            if dtype is None:
+                dtype = source_dtype
+            elif not warp._src.types.scalars_equal(source_dtype, dtype):
+                raise RuntimeError(
+                    "copy constructing a transform requires matching source and target dtypes, "
+                    f"got `{source_dtype.__name__}` and `{dtype.__name__}`"
+                )
+        else:
+            # Initialization by filling a value, e.g.: `wp.transform(123)`,
+            # `wp.transformation(123)`.
+            if dtype is None:
+                dtype = value_type
+            elif not warp._src.types.scalars_equal(value_type, dtype):
+                _check_vars_match_dtype(
+                    arg_values,
+                    variadic_arg_types,
+                    dtype,
+                    f"the value used to fill this transform is expected to be of the type `{dtype.__name__}`",
+                )
     elif variadic_arg_count == 7:
         # Initializing by value, e.g.: `wp.transform(1, 2, 3, 4, 5, 6, 7)`.
         if dtype is not None:
@@ -1913,6 +1926,11 @@ def transformation_value_func(arg_types: Mapping[str, type], arg_values: Mapping
                 dtype = scalar_infer_type(variadic_arg_types)
             except RuntimeError:
                 raise RuntimeError("all values given when constructing a transform must have the same type") from None
+    else:
+        raise RuntimeError(
+            f"incompatible number of values given ({variadic_arg_count}) "
+            "when constructing a transform; expected 0, 1, or 7"
+        )
 
     if dtype is None:
         raise RuntimeError("could not infer the `dtype` argument when calling the `wp.transform()` function")
@@ -1949,12 +1967,13 @@ def transformation_dispatch_func(input_types: Mapping[str, type], return_type: A
 
     dtype = return_type._wp_scalar_type_
 
-    variadic_args = args.get("args", ())
-    variadic_arg_count = len(variadic_args)
+    variadic_args = args.get("args")
 
-    if variadic_arg_count == 7:
+    if variadic_args is not None:
+        # Variadic overload, e.g.: `wp.transform(1.5)`, `wp.transform(1, 2, 3, 4, 5, 6, 7)`.
         func_args = tuple(_cast_scalar_constant(a, dtype) for a in variadic_args)
     else:
+        # `p`/`q` overload, e.g.: `wp.transform(wp.vec3(), wp.quat())`.
         func_args = tuple(v for k, v in args.items() if k != "dtype")
         if "p" in args and "q" not in args:
             quat_ident = warp._src.codegen.Var(
@@ -2297,36 +2316,6 @@ add_builtin(
     doc="Extract the bottom (second) part of a 6D screw vector.",
 )
 
-add_builtin(
-    "spatial_jacobian",
-    input_types={
-        "S": array(dtype=vector(length=6, dtype=Float)),
-        "joint_parents": array(dtype=int),
-        "joint_qd_start": array(dtype=int),
-        "joint_start": int,
-        "joint_count": int,
-        "J_start": int,
-        "J_out": array(dtype=Float),
-    },
-    value_type=None,
-    doc="Compute the spatial Jacobian matrix for a kinematic chain.",
-    group="Spatial Math",
-)
-
-add_builtin(
-    "spatial_mass",
-    input_types={
-        "I_s": array(dtype=matrix(shape=(6, 6), dtype=Float)),
-        "joint_start": int,
-        "joint_count": int,
-        "M_start": int,
-        "M": array(dtype=Float),
-    },
-    value_type=None,
-    doc="Compute the composite rigid-body mass matrix for a kinematic chain.",
-    group="Spatial Math",
-)
-
 # ------------------
 # Tile-based primitives
 
@@ -2383,9 +2372,9 @@ add_builtin(
 
     Args:
         shape: Shape of the output tile
-        dtype: Data type of output tile's elements (default float)
-        storage: The storage location for the tile: ``"register"`` for registers
-            (default) or ``"shared"`` for shared memory.
+        dtype: Data type of output tile's elements
+        storage: The storage location for the tile: ``"register"`` for registers or
+            ``"shared"`` for shared memory.
 
     Returns:
         A zero-initialized tile with shape and data type as specified.""",
@@ -2462,8 +2451,8 @@ add_builtin(
     Args:
         shape: Shape of the output tile
         dtype: Data type of output tile's elements
-        storage: The storage location for the tile: ``"register"`` for registers
-            (default) or ``"shared"`` for shared memory.
+        storage: The storage location for the tile: ``"register"`` for registers or
+            ``"shared"`` for shared memory.
 
     Returns:
         A one-initialized tile with shape and data type as specified.""",
@@ -2549,9 +2538,9 @@ add_builtin(
 
     Args:
         shape: Shape of the output tile
-        dtype: Data type of output tile's elements (default float)
-        storage: The storage location for the tile: ``"register"`` for registers
-            (default) or ``"shared"`` for shared memory.
+        dtype: Data type of output tile's elements
+        storage: The storage location for the tile: ``"register"`` for registers or
+            ``"shared"`` for shared memory.
 
     Returns:
         An uninitialized tile with the requested shape and data type.""",
@@ -2639,8 +2628,8 @@ add_builtin(
         shape: Shape of the output tile
         value: Value to fill the tile with
         dtype: Data type of output tile's elements
-        storage: The storage location for the tile: ``"register"`` for registers
-            (default) or ``"shared"`` for shared memory.
+        storage: The storage location for the tile: ``"register"`` for registers or
+            ``"shared"`` for shared memory.
 
     Returns:
         A tile filled with the specified value.""",
@@ -2712,8 +2701,8 @@ add_builtin(
         shape: Shape of the output tile
         value: Per-thread value (only the value from ``thread_idx`` is used)
         thread_idx: Index of the thread whose value should fill the tile
-        storage: The storage location for the tile: ``"register"`` for registers
-            (default) or ``"shared"`` for shared memory.
+        storage: The storage location for the tile: ``"register"`` for registers or
+            ``"shared"`` for shared memory.
 
     Returns:
         A tile filled with the value from the specified thread.
@@ -2850,8 +2839,8 @@ add_builtin(
     Args:
         shape: Shape of the output tile
         rng: Random number generator state, typically from :func:`~warp._src.lang.rand_init`
-        storage: The storage location for the tile: ``"register"`` for registers
-            (default) or ``"shared"`` for shared memory.
+        storage: The storage location for the tile: ``"register"`` for registers or
+            ``"shared"`` for shared memory.
 
     Returns:
         A tile of random integers with the specified shape.
@@ -2915,8 +2904,8 @@ add_builtin(
         rng: Random number generator state, typically from :func:`~warp._src.lang.rand_init`
         min: Minimum value (inclusive) for random integers
         max: Maximum value (exclusive) for random integers
-        storage: The storage location for the tile: ``"register"`` for registers
-            (default) or ``"shared"`` for shared memory.
+        storage: The storage location for the tile: ``"register"`` for registers or
+            ``"shared"`` for shared memory.
 
     Returns:
         A tile of random integers in the range [min, max) with the specified shape.
@@ -3033,8 +3022,8 @@ add_builtin(
     Args:
         shape: Shape of the output tile
         rng: Random number generator state, typically from :func:`~warp._src.lang.rand_init`
-        storage: The storage location for the tile: ``"register"`` for registers
-            (default) or ``"shared"`` for shared memory.
+        storage: The storage location for the tile: ``"register"`` for registers or
+            ``"shared"`` for shared memory.
 
     Returns:
         A tile of random floats in the range [0, 1) with the specified shape.
@@ -3098,8 +3087,8 @@ add_builtin(
         rng: Random number generator state, typically from :func:`~warp._src.lang.rand_init`
         min: Minimum value (inclusive) for random floats
         max: Maximum value (exclusive) for random floats
-        storage: The storage location for the tile: ``"register"`` for registers
-            (default) or ``"shared"`` for shared memory.
+        storage: The storage location for the tile: ``"register"`` for registers or
+            ``"shared"`` for shared memory.
 
     Returns:
         A tile of random floats in the range [min, max) with the specified shape.
@@ -3151,9 +3140,11 @@ add_builtin(
 
 
 def tile_arange_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
-    # return generic type (for doc builds)
+    # Result when the optional `dtype` argument is omitted, as used by doc builds
+    # and the type stubs. `tile_arange()` defaults to `float`, unlike the value
+    # constructors, which infer `dtype` from their arguments.
     if arg_types is None:
-        return tile(dtype=Scalar, shape=tuple[int])
+        return tile(dtype=float32, shape=tuple[int])
 
     if "args" not in arg_values:
         raise TypeError("tile_arange() requires at least one positional argument specifying the range")
@@ -3249,9 +3240,9 @@ add_builtin(
 
     Args:
         args: Variable-length positional arguments, interpreted as:
-        dtype: Data type of output tile's elements (optional, default: ``float``)
-        storage: The storage location for the tile: ``"register"`` for registers
-            (default) or ``"shared"`` for shared memory.
+        dtype: Data type of output tile's elements (``float`` if not provided)
+        storage: The storage location for the tile: ``"register"`` for registers or
+            ``"shared"`` for shared memory.
 
     Returns:
         A tile with ``shape=(n)`` with linearly spaced elements of specified data type.""",
@@ -3349,8 +3340,8 @@ add_builtin(
         a: The source array in global memory
         shape: Shape of the tile to load, must have the same number of dimensions as ``a``
         offset: Offset in the source array to begin reading from (optional)
-        storage: The storage location for the tile: ``"register"`` for registers
-            (default) or ``"shared"`` for shared memory.
+        storage: The storage location for the tile: ``"register"`` for registers or
+            ``"shared"`` for shared memory.
         bounds_check: Needed for unaligned tiles, but can disable for memory-aligned tiles for faster load times
         aligned: If True, skip runtime alignment checks for vectorized loads (shared memory,
             2D+ tiles only). Has no effect for 1D tiles or register storage. Use when you
@@ -3481,7 +3472,7 @@ add_builtin(
         shape: Shape of the tile to load, must have the same number of dimensions as ``a``, and along ``axis``, it must have the same number of elements as the ``indices`` tile.
         offset: Offset in the source array to begin reading from (optional)
         axis: Axis of ``a`` that indices refer to
-        storage: The storage location for the tile: ``"register"`` for registers (default) or ``"shared"`` for shared memory.
+        storage: The storage location for the tile: ``"register"`` for registers or ``"shared"`` for shared memory.
 
     Returns:
         A tile with shape as specified and data type the same as the source array.
@@ -4642,6 +4633,16 @@ def tile_assign_value_func(arg_types, arg_values):
                         f"within destination tile of shape {tuple(dst_type.shape)}"
                     )
 
+    # For matrix-dtype tiles, also accept one extra index for row-assign:
+    # assign(dst, i0, ..., iR, row_idx, src_vec) where src is a vector
+    # matching the matrix row length.
+    if src_type is not None and not is_tile(src_type) and type_is_matrix(dst_type.dtype):
+        # num_indices = total args - dst - src
+        num_indices = len(arg_types) - 2
+        tile_shape = dst_type.shape
+        if num_indices == len(tile_shape) + 1:
+            _check_tile_matrix_row_value(src_type, dst_type.dtype, "tile row-assign")
+
     # force the destination tile to shared memory
     dst_type.storage = "shared"
     return None
@@ -4976,6 +4977,9 @@ def tile_extract_value_func(arg_types, arg_values):
     elif type_is_matrix(tile_dtype):
         if num_indices == len(tile_shape):
             return tile_dtype
+        elif num_indices == len(tile_shape) + 1:
+            # row extract: returns a vector of length = matrix column count
+            return vector(length=tile_dtype._shape_[1], dtype=tile_dtype._wp_scalar_type_)
         elif num_indices == len(tile_shape) + 2:
             return tile_dtype._wp_scalar_type_
         else:
@@ -5213,7 +5217,7 @@ add_builtin(
         i: Index of the element to add to.
         value: The value to add (must match the tile's dtype).
         has_value: Whether this thread should perform the add.
-        atomic: If True (default), use atomic add for safe concurrent writes.
+        atomic: If True, use atomic add for safe concurrent writes.
             Set to False when indices are guaranteed unique across threads
             (e.g., lane-parallel writes) for better performance.
 
@@ -5418,6 +5422,15 @@ def tile_inplace_value_func(arg_types, arg_values):
     arg_types["a"].storage = "shared"
 
     return None
+
+
+def _check_tile_matrix_row_value(value_type, tile_dtype, op_name):
+    row_type = tile_dtype._wp_row_type_
+    if not type_is_vector(value_type) or not types_equal(value_type, row_type):
+        raise TypeError(
+            f"{op_name}: expected a vector source of type {type_repr(row_type)} for matrix-dtype tile row, "
+            f"got {type_repr(value_type)}"
+        )
 
 
 def tile_inplace_tile_value_func(arg_types, arg_values):
@@ -7266,7 +7279,7 @@ add_builtin(
     "bvh_query_aabb",
     input_types={"id": uint64, "low": vec3, "high": vec3, "root": int},
     defaults={"root": -1},
-    value_type=BvhQuery,
+    value_type=_BvhQueryAabb,
     group="Geometry",
     doc="""Construct an axis-aligned bounding box (AABB) query against a BVH.
 
@@ -7276,14 +7289,14 @@ add_builtin(
     as the ``lowers``/``uppers`` arrays passed to :class:`warp.Bvh`.
 
     To restrict traversal to a subtree, set ``root`` to that node's index (for a grouped BVH the
-    group root is obtained from :func:`bvh_get_group_root`). If ``root`` is -1 (default),
+    group root is obtained from :func:`bvh_get_group_root`). If ``root`` is -1,
     traversal starts at the BVH's global root.
 
     Args:
         id: The BVH identifier
         low: The lower bound of the query box, in BVH space
         high: The upper bound of the query box, in BVH space
-        root: The node to begin the query from, or -1 (default) for the BVH's global root
+        root: The node to begin the query from, or -1 for the BVH's global root
 
     Returns:
         A :class:`warp.BvhQuery`. It is opaque; pass it to :func:`bvh_query_next`,
@@ -7321,7 +7334,7 @@ add_builtin(
     "bvh_query_ray",
     input_types={"id": uint64, "start": vec3, "dir": vec3, "root": int},
     defaults={"root": -1},
-    value_type=BvhQuery,
+    value_type=_BvhQueryRay,
     group="Geometry",
     doc="""Construct a ray query against a BVH.
 
@@ -7330,17 +7343,18 @@ add_builtin(
     ``start`` and ``dir`` are given in BVH space, i.e. the same coordinate space as
     the ``lowers``/``uppers`` arrays passed to :class:`warp.Bvh`. ``dir`` need not be normalized,
     but the ``max_dist`` cutoff of :func:`bvh_query_next` is measured in multiples of its length,
-    so normalize it for ``max_dist`` to be a distance in BVH-space units.
+    so normalize it for ``max_dist`` to be a distance in BVH-space units. For capsule sweeps
+    use :func:`bvh_query_capsule` instead.
 
     To restrict traversal to a subtree, set ``root`` to that node's index (for a grouped BVH the
-    group root is obtained from :func:`bvh_get_group_root`). If ``root`` is -1 (default),
+    group root is obtained from :func:`bvh_get_group_root`). If ``root`` is -1,
     traversal starts at the BVH's global root.
 
     Args:
         id: The BVH identifier
         start: The ray origin, in BVH space
         dir: The ray direction, in BVH space (see above on normalization)
-        root: The node to begin the query from, or -1 (default) for the BVH's global root
+        root: The node to begin the query from, or -1 for the BVH's global root
 
     Returns:
         A :class:`warp.BvhQuery`. It is opaque; pass it to :func:`bvh_query_next`, which writes
@@ -7375,35 +7389,140 @@ add_builtin(
 )
 
 add_builtin(
+    "bvh_query_capsule",
+    input_types={"id": uint64, "start": vec3, "dir": vec3, "radius": float, "root": int},
+    defaults={"root": -1},
+    value_type=_BvhQueryCapsule,
+    group="Geometry",
+    doc="""Construct a conservative capsule sweep query against a BVH.
+
+    Iterates over every BVH item whose stored bounding box overlaps the swept capsule. Each node's
+    bounds are inflated by ``radius`` before the ray-slab test (an axis-aligned box inflation, not
+    a true sphere cap), so the query never misses a primitive within ``radius`` of the segment but
+    may return extra candidates near box corners.
+
+    To sweep a closed capsule from ``p0`` to ``p1``, pass ``dir = p1 - p0`` (unnormalized) and
+    ``max_dist = 1.0`` in :func:`bvh_query_next`; contact at both endpoints is included.
+    A zero-length segment (``p0 == p1``) is not supported — use :func:`bvh_query_sphere` instead.
+    A negative ``radius`` is clamped to zero. Advance results with :func:`bvh_query_next`.
+
+    Args:
+        id: The BVH identifier
+        start: The segment start point (``p0``), in BVH space
+        dir: The segment direction (``p1 - p0``), in BVH space
+        radius: The capsule radius; negative values are clamped to zero
+        root: The node to begin the query from, or -1 (default) for the BVH's global root
+
+    Returns:
+        A :class:`warp.BvhQuery`. It is opaque; pass it to :func:`bvh_query_next`.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def capsule_sweep(bvh_id: wp.uint64, p0: wp.vec3, p1: wp.vec3, radius: float,
+                               count: wp.array[wp.int32]):
+                query = wp.bvh_query_capsule(bvh_id, p0, p1 - p0, radius)
+                item = int(0)
+                while wp.bvh_query_next(query, item, 1.0):
+                    wp.atomic_add(count, 0, 1)
+
+            lowers = wp.array([[0.75, -1, -1]], dtype=wp.vec3)
+            uppers = wp.array([[2.0,   1,  1]], dtype=wp.vec3)
+            bvh = wp.Bvh(lowers=lowers, uppers=uppers)
+            count = wp.zeros(1, dtype=wp.int32)
+            wp.launch(capsule_sweep, dim=1,
+                      inputs=[bvh.id, wp.vec3(0.0, 0.0, 0.0), wp.vec3(0.5, 0.0, 0.0), 0.3, count])
+            print(count.numpy()[0])
+
+        .. testoutput::
+
+            1""",
+    export=False,
+    is_differentiable=False,
+)
+
+add_builtin(
+    "bvh_query_sphere",
+    input_types={"id": uint64, "center": vec3, "radius": float, "root": int},
+    defaults={"root": -1},
+    value_type=_BvhQuerySphere,
+    group="Geometry",
+    doc="""Construct a sphere query against a BVH object.
+
+    Iterates over all items whose bounding box overlaps the sphere (exact sphere-AABB squared-distance
+    test). Tangential contact (the nearest point on the AABB surface exactly on the sphere) is included.
+    A negative ``radius`` is clamped to zero. This is a tighter broad-phase than padding a query AABB
+    by the radius, since the sphere is inscribed in the padded box. Advance with :func:`bvh_query_next`.
+
+    Args:
+        id: The BVH identifier
+        center: The center of the sphere in BVH space
+        radius: The radius of the sphere; negative values are clamped to zero
+        root: The node to begin the query from, or -1 (default) for the BVH's global root
+
+    Returns:
+        A :class:`warp.BvhQuery`. It is opaque; pass it to :func:`bvh_query_next`.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def find_items_in_sphere(bvh_id: wp.uint64, center: wp.vec3, radius: float,
+                                     hits: wp.array[wp.int32]):
+                query = wp.bvh_query_sphere(bvh_id, center, radius)
+                item = int(0)
+                while wp.bvh_query_next(query, item):
+                    hits[item] = wp.int32(1)
+
+            lowers = wp.array([[0, 0, 0], [2, 0, 0]], dtype=wp.vec3)
+            uppers = wp.array([[1, 1, 1], [3, 1, 1]], dtype=wp.vec3)
+            bvh = wp.Bvh(lowers=lowers, uppers=uppers)
+            hits = wp.zeros(2, dtype=wp.int32)
+            wp.launch(find_items_in_sphere, dim=1,
+                      inputs=[bvh.id, wp.vec3(0.5, 0.5, 0.5), 0.6, hits])
+            print(hits.numpy().tolist())
+
+        .. testoutput::
+
+            [1, 0]""",
+    export=False,
+    is_differentiable=False,
+)
+
+add_builtin(
     "bvh_query_next",
-    input_types={"query": BvhQuery, "index": int, "max_dist": float},
+    input_types={"query": _BvhQueryAabb, "index": int, "max_dist": float},
     defaults={"max_dist": math.inf},
     value_type=builtins.bool,
     group="Geometry",
     doc="""Advance a BVH query to the next overlapping item and report whether one was found.
 
-    Writes the index of the current item to ``index`` and returns ``True``; returns ``False`` once
-    the query is exhausted (``index`` is then left unchanged). The reported index is the item's
-    index into the ``lowers``/``uppers`` arrays passed to :class:`warp.Bvh`. Used in a ``while``
-    loop together with :func:`bvh_query_aabb` or :func:`bvh_query_ray`.
+    Call :func:`bvh_query_next` in a ``while`` loop together with :func:`bvh_query_aabb`,
+    :func:`bvh_query_ray`, :func:`bvh_query_capsule`, or :func:`bvh_query_sphere`.
 
-    For ray queries, ``max_dist`` bounds how far along the ray to look for intersections, measured
-    in multiples of the ray direction's length (so it is a distance only if ``dir`` was normalized).
-    It has no effect on AABB queries.
+    For plain ray queries (:func:`bvh_query_ray`), ``max_dist`` bounds how far along the ray to
+    look for intersections, measured in multiples of ``dir``'s length (so it is a distance only if
+    ``dir`` was normalized). For capsule queries (:func:`bvh_query_capsule`), pass
+    ``dir = p1 - p0`` (unnormalized) together with ``max_dist = 1.0`` to sweep from ``p0`` to
+    ``p1``. ``max_dist`` has no effect on AABB or sphere queries.
 
     Note that increasing ``max_dist`` may miss intersections: a subtree already rejected for being
     beyond ``max_dist`` is never revisited, even if a later, larger ``max_dist`` would reach it. It
     is therefore only safe to monotonically *reduce* ``max_dist`` during a query.
 
     Args:
-        query: The query to advance, from :func:`bvh_query_aabb` or :func:`bvh_query_ray`
-        index: Output; receives the index of the current overlapping item
+        query: The query to advance, from :func:`bvh_query_aabb`, :func:`bvh_query_ray`, :func:`bvh_query_capsule`, or :func:`bvh_query_sphere`
+        index: Output; receives the index of the current overlapping item in the
+            ``lowers``/``uppers`` arrays passed to :class:`warp.Bvh`.
         max_dist: For ray queries, the maximum distance along the ray to check for intersections
-            (in multiples of ``dir``'s length). Has no effect on AABB queries.
+            (in multiples of ``dir``'s length). ``max_dist`` has no effect on AABB or sphere queries.
 
     Returns:
         ``True`` if another overlapping item was found (its index written to ``index``), ``False``
-        if the query is exhausted.
+        if the query is exhausted. When the function returns ``False``, ``index`` is unchanged.
 
     Example:
 
@@ -7428,6 +7547,59 @@ add_builtin(
         .. testoutput::
 
             [[0.5, 0.5, 0.5], [2.5, 0.5, 0.5], [0.0, 0.0, 0.0]]""",
+    export=False,
+    is_differentiable=False,
+)
+
+add_builtin(
+    "bvh_query_next",
+    input_types={"query": _BvhQueryRay, "index": int, "max_dist": float},
+    defaults={"max_dist": math.inf},
+    value_type=builtins.bool,
+    group="Geometry",
+    native_func="bvh_query_ray_next",
+    doc="""Advance a :func:`bvh_query_ray` query to the next intersected item.""",
+    export=False,
+    is_differentiable=False,
+)
+
+add_builtin(
+    "bvh_query_next",
+    input_types={"query": _BvhQueryCapsule, "index": int, "max_dist": float},
+    defaults={"max_dist": math.inf},
+    value_type=builtins.bool,
+    group="Geometry",
+    native_func="bvh_query_capsule_next",
+    doc="""Advance a :func:`bvh_query_capsule` query to the next intersected item.""",
+    export=False,
+    is_differentiable=False,
+)
+
+add_builtin(
+    "bvh_query_next",
+    input_types={"query": _BvhQuerySphere, "index": int, "max_dist": float},
+    defaults={"max_dist": math.inf},
+    value_type=builtins.bool,
+    group="Geometry",
+    native_func="bvh_query_sphere_next",
+    doc="""Advance a :func:`bvh_query_sphere` query to the next intersected item.""",
+    export=False,
+    is_differentiable=False,
+)
+
+# Erased-parent overload: a query is typed BvhQuery only when its concrete kind is
+# unknown at compile time (a branch merging two kinds, or a function parameter
+# annotated with the parent type), so iteration dispatches on the stored kind.
+# Overload resolution tries the exact kinds above first (see func_match_args), so
+# statically-known queries never pay for this dispatch.
+add_builtin(
+    "bvh_query_next",
+    input_types={"query": BvhQuery, "index": int, "max_dist": float},
+    defaults={"max_dist": math.inf},
+    value_type=builtins.bool,
+    group="Geometry",
+    native_func="bvh_query_next_dynamic",
+    doc="""Advance a BVH query whose kind is selected at runtime to the next overlapping item.""",
     export=False,
     is_differentiable=False,
 )
@@ -8640,7 +8812,7 @@ add_builtin(
         point: The query point, in the mesh's local space
         max_dist: Maximum allowed distance to the returned closest point. The query returns no result if no face is strictly closer than this distance.
         epsilon: Epsilon treating distance values as equal, when locating the minimum distance vertex/face/edge, as a
-            fraction of the average edge length, also for treating closest point as being on edge/vertex default 1e-3.
+            fraction of the average edge length, also for treating closest point as being on edge/vertex.
 
     Returns:
         A :class:`warp.MeshQueryPoint`. Check ``result`` first (``True`` if a face within
@@ -8763,8 +8935,8 @@ add_builtin(
         id: The mesh identifier
         point: The query point, in the mesh's local space
         max_dist: Maximum allowed distance to the returned closest point. The query returns no result if no face is strictly closer than this distance.
-        accuracy: Accuracy for computing the winding number with fast winding number method utilizing second-order dipole approximation, default 2.0
-        threshold: The threshold of the winding number to be considered inside, default 0.5.
+        accuracy: Accuracy for computing the winding number with fast winding number method utilizing second-order dipole approximation
+        threshold: The threshold of the winding number to be considered inside.
 
     Returns:
         A :class:`warp.MeshQueryPoint`. Check ``result`` first (``True`` if a face within
@@ -8825,7 +8997,7 @@ add_builtin(
 
     The ``root`` parameter can be obtained using the :func:`mesh_get_group_root` function when creating a grouped mesh.
     When ``root`` is a valid (>=0) value, the traversal will be confined to the subtree starting from the root.
-    If ``root`` is -1 (default), traversal starts at the mesh's global root.
+    If ``root`` is -1, traversal starts at the mesh's global root.
     The query will only traverse down from that node, limiting traversal to that subtree.
 
     Args:
@@ -8864,14 +9036,14 @@ add_builtin(
 
     The ``root`` parameter can be obtained using the :func:`mesh_get_group_root` function when creating a grouped mesh.
     When ``root`` is a valid (>=0) value, the traversal will be confined to the subtree starting from the root.
-    If ``root`` is -1 (default), traversal starts at the mesh's global root.
+    If ``root`` is -1, traversal starts at the mesh's global root.
 
     Args:
         id: The mesh identifier
         start: The ray origin, in the mesh's local space
         dir: The ray direction, in the mesh's local space (see above on normalization)
         max_t: The maximum distance along the ray to check for intersections (in multiples of ``dir``'s length)
-        root: The root node index for grouped BVH queries, or -1 for global root (optional, default: -1)
+        root: The root node index for grouped BVH queries, or -1 for global root
 
     Returns:
         A :class:`warp.MeshQueryRay`. Check ``result`` first (``True`` if a hit within ``max_t`` was
@@ -8929,14 +9101,14 @@ add_builtin(
 
     The ``root`` parameter can be obtained using the :func:`mesh_get_group_root` function when creating a grouped mesh.
     When ``root`` is a valid (>=0) value, the traversal will be confined to the subtree starting from the root.
-    If ``root`` is -1 (default), traversal starts at the mesh's global root.
+    If ``root`` is -1, traversal starts at the mesh's global root.
 
     Args:
         id: The mesh identifier
         start: The ray origin, in the mesh's local space
         dir: The ray direction, in the mesh's local space
         max_t: The maximum distance along the ray to check for intersections (in multiples of ``dir``'s length)
-        root: The root node index for grouped BVH queries, or -1 for global root (optional, default: -1)
+        root: The root node index for grouped BVH queries, or -1 for global root
 
     Returns:
         ``True`` if the ray intersects any face within ``max_t``, ``False`` otherwise.
@@ -8987,13 +9159,13 @@ add_builtin(
 
     The ``root`` parameter can be obtained using the :func:`mesh_get_group_root` function when creating a grouped mesh.
     When ``root`` is a valid (>=0) value, the traversal will be confined to the subtree starting from the root.
-    If ``root`` is -1 (default), traversal starts at the mesh's global root.
+    If ``root`` is -1, traversal starts at the mesh's global root.
 
     Args:
         id: The mesh identifier
         start: The ray origin, in the mesh's local space
         dir: The ray direction, in the mesh's local space (only its direction matters; the count is independent of its length)
-        root: The root node index for grouped BVH queries, or -1 for global root (optional, default: -1)
+        root: The root node index for grouped BVH queries, or -1 for global root
 
     Returns:
         The number of intersections (with ``t >= 0``) between the ray and the mesh.
@@ -9024,6 +9196,26 @@ add_builtin(
 
 
 add_builtin(
+    "mesh_get_bvh",
+    input_types={"id": uint64},
+    value_type=uint64,
+    group="Geometry",
+    doc="""Return the identifier of a mesh's internal BVH.
+
+    The returned id can be passed directly to the ``bvh_query_*`` builtins (:func:`bvh_query_aabb`,
+    :func:`bvh_query_ray`, :func:`bvh_query_capsule`, :func:`bvh_query_sphere`) to run broad-phase
+    bounding-volume queries against
+    the mesh's triangle BVH; the bound indices they return are triangle (face) indices. Works for all
+    BVH backends (including ``"cubql"``), since cuBQL meshes are converted to Warp's native BVH layout.
+
+    Args:
+        id: The mesh identifier""",
+    export=False,
+    is_differentiable=False,
+)
+
+
+add_builtin(
     "mesh_query_aabb",
     input_types={"id": uint64, "low": vec3, "high": vec3},
     value_type=MeshQueryAABB,
@@ -9031,10 +9223,9 @@ add_builtin(
     doc="""Construct an axis-aligned bounding box (AABB) query against a :class:`warp.Mesh`.
 
     Returns a query that iterates over every triangle (face) whose own axis-aligned bounding box
-    overlaps the query box ``[low, high]``, given in the mesh's local space. This is a broad-phase
-    test on bounding boxes: a reported face's triangle may not actually intersect the box, so
-    perform an exact test yourself if required. Advance the query and read each result with
-    :func:`mesh_query_aabb_next`.
+    overlaps the query box ``[low, high]``, given in the mesh's local space. This is a
+    broad-phase-only query: a reported face's triangle bounding box overlaps the box, but the
+    triangle itself may not. Advance the query and read each result with :func:`mesh_query_next`.
 
     Args:
         id: The mesh identifier
@@ -9042,7 +9233,7 @@ add_builtin(
         high: The upper bound of the query box, in the mesh's local space
 
     Returns:
-        A :class:`warp.MeshQueryAABB`. It is opaque; pass it to :func:`mesh_query_aabb_next`, which
+        A :class:`warp.MeshQuery`. It is opaque; pass it to :func:`mesh_query_next`, which
         writes the index of each overlapping face to its ``index`` argument.
 
     Example:
@@ -9053,7 +9244,7 @@ add_builtin(
             def count_faces(mesh_id: wp.uint64, lo: wp.vec3, hi: wp.vec3, out_count: wp.array[wp.int32]):
                 query = wp.mesh_query_aabb(mesh_id, lo, hi)
                 face = int(0)
-                while wp.mesh_query_aabb_next(query, face):
+                while wp.mesh_query_next(query, face):
                     wp.atomic_add(out_count, 0, 1)
 
             points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
@@ -9073,25 +9264,72 @@ add_builtin(
 )
 
 add_builtin(
-    "mesh_query_aabb_next",
+    "mesh_query_sphere",
+    input_types={"id": uint64, "center": vec3, "radius": float},
+    value_type=_MeshQuerySphere,
+    group="Geometry",
+    doc="""Construct a sphere query against a :class:`warp.Mesh`.
+
+    Iterates over mesh triangles that intersect a sphere. A broad phase uses an exact sphere-AABB test
+    to find candidate triangles; a narrow phase keeps only those whose closest point on the triangle
+    is within ``radius`` of ``center``. Tangential contact (closest point exactly on the sphere surface)
+    is included. A negative ``radius`` is clamped to zero. Degenerate (zero-area) faces are handled by
+    falling back to a closest-point-on-longest-edge test. Advance the query with :func:`mesh_query_next`.
+
+    Args:
+        id: The mesh identifier
+        center: The center of the sphere in mesh space
+        radius: The radius of the sphere; negative values are clamped to zero
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def find_tris_in_sphere(mesh_id: wp.uint64, center: wp.vec3, radius: float,
+                                    hits: wp.array[wp.int32]):
+                query = wp.mesh_query_sphere(mesh_id, center, radius)
+                face = int(0)
+                while wp.mesh_query_next(query, face):
+                    hits[face] = wp.int32(1)
+
+            points = wp.array([[0,0,0],[1,0,0],[0,1,0]], dtype=wp.vec3)
+            indices = wp.array([0,1,2], dtype=wp.int32)
+            mesh = wp.Mesh(points=points, indices=indices)
+            hits = wp.zeros(1, dtype=wp.int32)
+            wp.launch(find_tris_in_sphere, dim=1,
+                      inputs=[mesh.id, wp.vec3(0.1, 0.1, 0.0), 0.5, hits])
+            print("hit:", hits.numpy()[0])
+
+        .. testoutput::
+
+            hit: 1""",
+    export=False,
+    is_differentiable=False,
+)
+
+add_builtin(
+    "mesh_query_next",
     input_types={"query": MeshQueryAABB, "index": int},
     value_type=builtins.bool,
     group="Geometry",
-    doc="""Advance a mesh AABB query to the next overlapping triangle and report whether one was found.
+    doc="""Advance a mesh query to the next matching triangle and report whether one was found.
 
-    Writes the index of the current face to ``index`` and returns ``True``; returns ``False`` once
-    no overlapping triangles remain (``index`` is then left unchanged). The reported index is a
-    face index (0-based, into the mesh's triangles), suitable for :func:`mesh_eval_position`,
-    :func:`mesh_eval_face_normal`, and the other face-indexed functions. Used in a ``while`` loop
-    together with :func:`mesh_query_aabb`.
+    What counts as a *match* depends on the query type:
+
+    - :func:`mesh_query_aabb`: triangles whose bounding box overlaps the query box.
+    - :func:`mesh_query_sphere`: triangles whose closest point to the sphere center is within the radius.
 
     Args:
-        query: The query to advance, from :func:`mesh_query_aabb`
-        index: Output; receives the index of the current overlapping face
+        query: The query to advance, from :func:`mesh_query_aabb` or :func:`mesh_query_sphere`
+        index: Output; receives the zero-based face index of the current result. The index is
+            suitable for :func:`mesh_eval_position`, :func:`mesh_eval_face_normal`, and the other
+            face-indexed functions.
 
     Returns:
-        ``True`` if another overlapping triangle was found (its face index written to ``index``),
-        ``False`` if the query is exhausted.
+        ``True`` if another matching triangle was found (its face index written to ``index``),
+        ``False`` if the query is exhausted. When the function returns ``False``, ``index`` is
+        unchanged.
 
     Example:
 
@@ -9101,7 +9339,7 @@ add_builtin(
             def count_faces(mesh_id: wp.uint64, lo: wp.vec3, hi: wp.vec3, out_count: wp.array[wp.int32]):
                 query = wp.mesh_query_aabb(mesh_id, lo, hi)
                 face = int(0)
-                while wp.mesh_query_aabb_next(query, face):
+                while wp.mesh_query_next(query, face):
                     wp.atomic_add(out_count, 0, 1)
 
             points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
@@ -9116,6 +9354,72 @@ add_builtin(
         .. testoutput::
 
             overlapping faces: 12""",
+    native_func="mesh_query_aabb_next",
+    export=False,
+    is_differentiable=False,
+)
+
+add_builtin(
+    "mesh_query_next",
+    input_types={"query": _MeshQuerySphere, "index": int},
+    value_type=builtins.bool,
+    group="Geometry",
+    doc="""Advance a sphere mesh query created by :func:`mesh_query_sphere` to the next matching triangle.""",
+    native_func="mesh_query_sphere_next",
+    export=False,
+    is_differentiable=False,
+)
+
+# Erased-parent overload: a query is typed MeshQuery only when its concrete kind is
+# unknown at compile time (a branch merging two kinds, or a function parameter
+# annotated with the parent type), so iteration dispatches on the stored kind.
+# Overload resolution tries the exact kinds above first (see func_match_args), so
+# statically-known queries never pay for this dispatch.
+add_builtin(
+    "mesh_query_next",
+    input_types={"query": MeshQuery, "index": int},
+    value_type=builtins.bool,
+    group="Geometry",
+    doc="""Advance a mesh query whose kind is selected at runtime to the next matching triangle.""",
+    native_func="mesh_query_next_dynamic",
+    export=False,
+    is_differentiable=False,
+)
+
+add_builtin(
+    "mesh_query_aabb_next",
+    input_types={"query": MeshQueryAABB, "index": int},
+    value_type=builtins.bool,
+    group="Geometry",
+    doc="""Advance a mesh AABB query to the next overlapping triangle and report whether one was found.
+
+    .. note:: This is an alias for :func:`mesh_query_next`.""",
+    export=False,
+    is_differentiable=False,
+)
+
+add_builtin(
+    "mesh_query_aabb_next",
+    input_types={"query": _MeshQuerySphere, "index": int},
+    value_type=builtins.bool,
+    group="Geometry",
+    doc="""Advance a sphere mesh query to the next matching triangle.
+
+    .. note:: This is an alias for :func:`mesh_query_next`.""",
+    native_func="mesh_query_sphere_next",
+    export=False,
+    is_differentiable=False,
+)
+
+add_builtin(
+    "mesh_query_aabb_next",
+    input_types={"query": MeshQuery, "index": int},
+    value_type=builtins.bool,
+    group="Geometry",
+    doc="""Advance a mesh query to the next matching triangle.
+
+    .. note:: This is an alias for :func:`mesh_query_next`.""",
+    native_func="mesh_query_next_dynamic",
     export=False,
     is_differentiable=False,
 )
@@ -9871,7 +10175,7 @@ add_builtin(
         index: A face-vertex index, in ``[0, 3 * number_of_faces)``
 
     Returns:
-        The vertex index stored at that position, or -1 if the mesh has no index buffer.
+        The vertex index stored at that position.
 
     Example:
 
@@ -10001,9 +10305,12 @@ for query_type in (
         hidden=True,
         is_differentiable=False,
     )
+# All mesh query kinds share the iterator protocol: concrete kind types resolve to
+# this registration via their erased parent (see func_match_args), and the shared
+# native iter_cmp() dispatches on mesh_query_aabb_t::kind at runtime.
 add_builtin(
     "iter_next",
-    input_types={"query": MeshQueryAABB},
+    input_types={"query": MeshQuery},
     value_type=int,
     group="Utility",
     export=False,
@@ -10096,18 +10403,18 @@ add_builtin(
     ``uvw`` is expressed in index space (voxel coordinates) and may be fractional; convert a
     world-space position first with :func:`~warp.volume_world_to_index`. ``sampling_mode`` must be
     :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`. ``CLOSEST`` rounds each coordinate to
-    the nearest voxel, with halfway cases rounded away from zero. Use ``CLOSEST`` for integer data;
-    ``LINEAR`` performs trilinear interpolation for floating-point scalar and vector data.
+    the nearest voxel. Currently, exact halfway cases are rounded away from zero. Use ``CLOSEST``
+    for integer data; ``LINEAR`` performs trilinear interpolation for floating-point scalar and
+    vector data.
 
-    Sampling follows NanoVDB value resolution: inactive leaf voxels and internal tiles may carry
-    stored inactive values that differ from the grid's root background value. A location with no
-    more specific stored value resolves to the background. The whole sample is ``0`` if the volume
-    does not store values of type ``dtype``.
+    ``dtype`` must match the volume's stored value type.
 
     For floating-point scalar and vector data, ``LINEAR`` sampling is differentiable with respect to
-    ``uvw``; at integer voxel planes, the derivative is taken from the cell on the positive side.
-    The derivative is zero for ``CLOSEST``. Gradients are not propagated to the stored voxel values.
-    To read values held in a separate array, use :func:`~warp.volume_sample_index`. See
+    ``uvw`` away from integer voxel planes. The field is not generally differentiable at those
+    planes. Currently, the derivative comes from the cell on the positive side, but callers should
+    not rely on that behavior. The derivative is zero for ``CLOSEST``. Currently, gradients are not
+    propagated to the stored voxel values. To read values held in a separate array, use
+    :func:`~warp.volume_sample_index`. See
     :class:`warp.Volume` and the :ref:`Volume sampling <volume_sampling>` user-guide examples.
 
     Args:
@@ -10115,12 +10422,13 @@ add_builtin(
         uvw: Sampling location in index space (voxel coordinates); may be fractional.
         sampling_mode: :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`; use ``CLOSEST`` for
             integer data.
-        dtype: Value type stored by the volume and returned by the sample. One of ``int32``,
-            ``int64``, ``uint32``, ``float32``, ``float64``, :class:`warp.vec3f`,
-            :class:`warp.vec3d`, :class:`warp.vec4f`, or :class:`warp.vec4d`.
+        dtype: Value type stored by the volume. ``dtype`` must be one of ``int32``, ``int64``,
+            ``uint32``, ``float32``, ``float64``, :class:`warp.vec3f`, :class:`warp.vec3d`,
+            :class:`warp.vec4f`, or :class:`warp.vec4d`.
 
     Returns:
-        The sampled value of type ``dtype``.
+        The sampled value of type ``dtype``. Locations without a stored value use the volume's
+        background value.
 
     Example:
 
@@ -10186,10 +10494,11 @@ add_builtin(
     Four-component vector data is not supported by this function.
 
     For floating-point scalar and vector data under :attr:`warp.Volume.LINEAR`, this is the gradient
-    of the trilinear interpolant. At integer voxel planes, where that interpolant is generally not
-    differentiable, the gradient comes from the cell on the positive side. Under
-    :attr:`warp.Volume.CLOSEST` the gradient is zero; use ``CLOSEST`` for integer data. The gradient
-    is with respect to index-space coordinates, not world space.
+    of the trilinear interpolant away from integer voxel planes. The interpolant is not generally
+    differentiable at those planes. Currently, the gradient comes from the cell on the positive
+    side, but callers should not rely on that behavior. Under :attr:`warp.Volume.CLOSEST` the
+    gradient is zero; use ``CLOSEST`` for integer data. The gradient is with respect to index-space
+    coordinates, not world space.
 
     Args:
         id: The ``id`` of a :class:`warp.Volume` to sample.
@@ -10259,11 +10568,8 @@ add_builtin(
     doc="""Return the value of type ``dtype`` stored at the voxel with integer index-space coordinates
     ``i``, ``j``, ``k``, without interpolation.
 
-    The lookup follows NanoVDB value resolution: inactive leaf voxels and internal tiles may carry
-    stored inactive values that differ from the grid's root background value. A location with no
-    more specific stored value resolves to the background. The result is ``0`` if the volume does
-    not store values of type ``dtype``. Not differentiable; use :func:`~warp.volume_sample` for
-    interpolated reads of floating-point scalar and vector data.
+    ``dtype`` must match the volume's stored value type. This function is not differentiable; use
+    :func:`~warp.volume_sample` for interpolated reads of floating-point scalar and vector data.
 
     Args:
         id: The ``id`` of a :class:`warp.Volume`.
@@ -10273,7 +10579,8 @@ add_builtin(
         dtype: Value type stored by the volume (see :func:`~warp.volume_sample`).
 
     Returns:
-        The resolved voxel value of type ``dtype``.
+        The resolved voxel value of type ``dtype``: the stored value, or the volume's background
+        value when the location has no stored value.
 
     Example:
 
@@ -10315,11 +10622,9 @@ add_builtin(
     group="Volumes",
     doc="""Store ``value`` at the voxel with integer index-space coordinates ``i``, ``j``, ``k``.
 
-    A value is written when the coordinate has leaf-level storage, whether or not that voxel is
-    active. The call does not allocate a leaf, activate a voxel, or modify the background value; it
-    is a no-op outside allocated leaves and when the volume's stored type does not match ``value``.
-    Allocate leaf topology with :meth:`warp.Volume.allocate_by_tiles` before storing. Not
-    differentiable.
+    ``value`` must match the volume's stored value type, and the coordinate must have leaf-level
+    storage. Allocate leaf topology with :meth:`warp.Volume.allocate_by_tiles` before storing.
+    The call does not allocate storage or activate voxels. This function is not differentiable.
 
     Args:
         id: The ``id`` of a :class:`warp.Volume` to modify.
@@ -10360,10 +10665,13 @@ add_builtin(
     doc="""Sample the :class:`warp.float32` volume given by ``id`` at the index-space point ``uvw``.
 
     ``uvw`` is in index space (voxel coordinates) and may be fractional; ``sampling_mode`` must be
-    :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`. Sampling uses the resolved NanoVDB
-    value (see :func:`~warp.volume_sample`), and the sample is ``0`` if ``id`` is not a ``float32``
-    volume. In kernels, equivalent to :func:`~warp.volume_sample` with ``dtype=float``, which
+    :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`. Sampling uses the resolved volume
+    value (see :func:`~warp.volume_sample`). ``id`` must identify a ``float32`` volume. In kernels,
+    ``volume_sample_f()`` is equivalent to :func:`~warp.volume_sample` with ``dtype=float``, which
     documents the coordinate-frame, value-resolution, boundary, and differentiability behavior.
+
+    Returns:
+        The sampled :class:`warp.float32` value.
 
     See :func:`~warp.volume_sample` for a usage example.""",
 )
@@ -10377,8 +10685,11 @@ add_builtin(
     index-space point ``uvw``.
 
     ``grad`` receives the gradient of the sampled value with respect to the index-space coordinates
-    ``uvw`` (a :class:`warp.vec3`, zero for :attr:`warp.Volume.CLOSEST`). In kernels, equivalent to
-    :func:`~warp.volume_sample_grad` with ``dtype=float``.
+    ``uvw`` (a :class:`warp.vec3`, zero for :attr:`warp.Volume.CLOSEST`). In kernels,
+    ``volume_sample_grad_f()`` is equivalent to :func:`~warp.volume_sample_grad` with ``dtype=float``.
+
+    Returns:
+        The sampled :class:`warp.float32` value.
 
     See :func:`~warp.volume_sample_grad` for a usage example.""",
 )
@@ -10391,11 +10702,13 @@ add_builtin(
     doc="""Return the :class:`warp.float32` value of the voxel at integer index-space coordinates
     ``i``, ``j``, ``k``, without interpolation.
 
-    Returns the resolved NanoVDB value (see :func:`~warp.volume_lookup`); the result is ``0`` if
-    ``id`` is not a ``float32`` volume. Not differentiable. In kernels, equivalent to
-    :func:`~warp.volume_lookup` with ``dtype=float``.
+    ``id`` must identify a ``float32`` volume. This function is not differentiable. In kernels,
+    ``volume_lookup_f()`` is equivalent to :func:`~warp.volume_lookup` with ``dtype=float``.
 
-    See :func:`~warp.volume_lookup` for a usage example.""",
+    See :func:`~warp.volume_lookup` for shared behavior and a usage example.
+
+    Returns:
+        The resolved :class:`warp.float32` voxel value.""",
     is_differentiable=False,
 )
 
@@ -10406,8 +10719,9 @@ add_builtin(
     doc="""Store the :class:`warp.float32` ``value`` at the voxel with integer index-space coordinates
     ``i``, ``j``, ``k``.
 
-    Writes only where leaf-level storage exists (see :func:`~warp.volume_store`); a no-op outside
-    allocated leaves or for non-``float32`` volumes. Does not activate voxels. Not differentiable.
+    ``id`` must identify a ``float32`` volume, and the coordinate must have leaf-level storage.
+    The call does not allocate storage or activate voxels. See :func:`~warp.volume_store`.
+    This function is not differentiable.
 
     See :func:`~warp.volume_store` for a usage example.""",
     export=False,
@@ -10423,9 +10737,12 @@ add_builtin(
 
     ``uvw`` is in index space (voxel coordinates) and may be fractional; ``sampling_mode`` must be
     :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR` and is applied per component. Sampling
-    uses the resolved NanoVDB value (see :func:`~warp.volume_sample`), and the sample is ``0`` if
-    ``id`` is not a ``vec3f`` volume. In kernels, equivalent to :func:`~warp.volume_sample` with
-    ``dtype=warp.vec3f``.
+    uses the resolved volume value (see :func:`~warp.volume_sample`). ``id`` must identify a
+    ``vec3f`` volume. In kernels, ``volume_sample_v()`` is equivalent to
+    :func:`~warp.volume_sample` with ``dtype=warp.vec3f``.
+
+    Returns:
+        The sampled :class:`warp.vec3f` value.
 
     See :func:`~warp.volume_sample` for a usage example.""",
 )
@@ -10438,11 +10755,13 @@ add_builtin(
     doc="""Return the :class:`warp.vec3f` value of the voxel at integer index-space coordinates ``i``,
     ``j``, ``k``, without interpolation.
 
-    Returns the resolved NanoVDB value (see :func:`~warp.volume_lookup`); the result is ``0`` if
-    ``id`` is not a ``vec3f`` volume. Not differentiable. In kernels, equivalent to
-    :func:`~warp.volume_lookup` with ``dtype=warp.vec3f``.
+    ``id`` must identify a ``vec3f`` volume. This function is not differentiable. In kernels,
+    ``volume_lookup_v()`` is equivalent to :func:`~warp.volume_lookup` with ``dtype=warp.vec3f``.
 
-    See :func:`~warp.volume_lookup` for a usage example.""",
+    See :func:`~warp.volume_lookup` for shared behavior and a usage example.
+
+    Returns:
+        The resolved :class:`warp.vec3f` voxel value.""",
     is_differentiable=False,
 )
 
@@ -10453,8 +10772,9 @@ add_builtin(
     doc="""Store the :class:`warp.vec3f` ``value`` at the voxel with integer index-space coordinates
     ``i``, ``j``, ``k``.
 
-    Writes only where leaf-level storage exists (see :func:`~warp.volume_store`); a no-op outside
-    allocated leaves or for non-``vec3f`` volumes. Does not activate voxels. Not differentiable.
+    ``id`` must identify a ``vec3f`` volume, and the coordinate must have leaf-level storage.
+    The call does not allocate storage or activate voxels. See :func:`~warp.volume_store`.
+    This function is not differentiable.
 
     See :func:`~warp.volume_store` for a usage example.""",
     export=False,
@@ -10469,10 +10789,13 @@ add_builtin(
     doc="""Sample the :class:`warp.int32` volume given by ``id`` at the index-space point ``uvw``.
 
     Integer volumes only support nearest-voxel sampling, so there is no ``sampling_mode`` argument
-    (:attr:`warp.Volume.CLOSEST` is always used) and the result is not differentiable. ``uvw`` is in
-    index space (voxel coordinates) and may be fractional; it is rounded to the nearest voxel, with
-    halfway cases rounded away from zero. Sampling uses the resolved NanoVDB value (see
-    :func:`~warp.volume_sample`), and the result is ``0`` if ``id`` is not an ``int32`` volume.
+    (:attr:`warp.Volume.CLOSEST` is always used). This function is not differentiable. ``uvw`` is
+    in index space (voxel coordinates) and may be fractional; it is rounded to the nearest voxel.
+    Currently, exact halfway cases are rounded away from zero. Sampling uses the resolved volume
+    value (see :func:`~warp.volume_sample`). ``id`` must identify an ``int32`` volume.
+
+    Returns:
+        The sampled :class:`warp.int32` value.
 
     See :func:`~warp.volume_sample` for a usage example.""",
     is_differentiable=False,
@@ -10486,11 +10809,13 @@ add_builtin(
     doc="""Return the :class:`warp.int32` value of the voxel at integer index-space coordinates ``i``,
     ``j``, ``k``, without interpolation.
 
-    Returns the resolved NanoVDB value (see :func:`~warp.volume_lookup`); the result is ``0`` if
-    ``id`` is not an ``int32`` volume. Not differentiable. In kernels, equivalent to
-    :func:`~warp.volume_lookup` with ``dtype=warp.int32``.
+    ``id`` must identify an ``int32`` volume. This function is not differentiable. In kernels,
+    ``volume_lookup_i()`` is equivalent to :func:`~warp.volume_lookup` with ``dtype=warp.int32``.
 
-    See :func:`~warp.volume_lookup` for a usage example.""",
+    See :func:`~warp.volume_lookup` for shared behavior and a usage example.
+
+    Returns:
+        The resolved :class:`warp.int32` voxel value.""",
     is_differentiable=False,
 )
 
@@ -10501,8 +10826,9 @@ add_builtin(
     doc="""Store the :class:`warp.int32` ``value`` at the voxel with integer index-space coordinates
     ``i``, ``j``, ``k``.
 
-    Writes only where leaf-level storage exists (see :func:`~warp.volume_store`); a no-op outside
-    allocated leaves or for non-``int32`` volumes. Does not activate voxels. Not differentiable.
+    ``id`` must identify an ``int32`` volume, and the coordinate must have leaf-level storage.
+    The call does not allocate storage or activate voxels. See :func:`~warp.volume_store`.
+    This function is not differentiable.
 
     See :func:`~warp.volume_store` for a usage example.""",
     export=False,
@@ -10534,12 +10860,9 @@ add_builtin(
     doc="""Sample the volume given by ``id`` at the index-space point ``uvw``, reading voxel values from
     a separate ``voxel_data`` array.
 
-    On NanoVDB ``OnIndex`` and ``OnIndexMask`` grids, each active voxel maps to a linear index into
-    ``voxel_data`` and ``background`` supplies inactive voxels. On ``Index`` and ``IndexMask`` grids
-    and on classical value grids, every slot in an allocated leaf maps to ``voxel_data`` regardless
-    of its active mask; ``background`` is used outside allocated leaves. This lets several fields
-    share one topology. See :meth:`warp.Volume.allocate_by_voxels` and
-    :func:`~warp.volume_lookup_index`.
+    Each indexable voxel maps to a zero-based element of ``voxel_data``. ``background`` is used when
+    a sampled location has no indexable voxel. This lets several fields share one topology. See
+    :meth:`warp.Volume.allocate_by_voxels` and :func:`~warp.volume_lookup_index`.
 
     ``uvw`` is in index space (voxel coordinates) and may be fractional. Sampling modes and boundary
     conventions match :func:`~warp.volume_sample`; use ``CLOSEST`` for integer data. For
@@ -10552,14 +10875,12 @@ add_builtin(
         uvw: Sampling location in index space (voxel coordinates); may be fractional.
         sampling_mode: :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`; use ``CLOSEST`` for
             integer data.
-        voxel_data: Per-voxel values indexed by each voxel's linear index. For volumes whose
-            indexable count fits in ``int32``, must hold at least :func:`~warp.volume_voxel_count`
-            entries. :meth:`warp.Volume.get_voxel_count` returns a host-side capacity that is safe
-            for allocation but may exceed the live indexable count for rebuildable volumes. The
-            array's dtype must match ``background``.
-        background: Value used for inactive voxels on ``OnIndex`` and ``OnIndexMask`` grids and
-            outside allocated leaves on ``Index`` and ``IndexMask`` grids and classical value grids;
-            its dtype must match ``voxel_data``.
+        voxel_data: Per-voxel values indexed by each voxel's linear index. The array must provide at
+            least :func:`~warp.volume_voxel_count` entries; use
+            :meth:`warp.Volume.get_voxel_count` when allocating it from Python. Its dtype must match
+            ``background``.
+        background: Value used when a sampled location has no indexable voxel; its dtype must match
+            ``voxel_data``.
 
     Returns:
         The sampled value, of the same dtype as ``voxel_data``.
@@ -10633,10 +10954,11 @@ add_builtin(
     Four-component vector data is not supported by this function.
 
     For floating-point scalar and vector data under :attr:`warp.Volume.LINEAR`, the function is
-    differentiable with respect to ``uvw``, ``voxel_data``, and ``background``. At integer voxel
-    planes, the gradient and reverse-mode derivative with respect to ``uvw`` come from the cell on
-    the positive side. Under :attr:`warp.Volume.CLOSEST`, ``grad`` and the derivative with respect to
-    ``uvw`` are zero; use ``CLOSEST`` for integer data.
+    differentiable with respect to ``uvw``, ``voxel_data``, and ``background`` away from integer
+    voxel planes. The field is not generally differentiable at those planes. Currently, the
+    gradient and reverse-mode derivative with respect to ``uvw`` come from the cell on the positive
+    side, but callers should not rely on that behavior. Under :attr:`warp.Volume.CLOSEST`, ``grad``
+    and the derivative with respect to ``uvw`` are zero; use ``CLOSEST`` for integer data.
 
     Args:
         id: The ``id`` of a :class:`warp.Volume` providing the topology and voxel indices.
@@ -10645,9 +10967,8 @@ add_builtin(
             integer data.
         voxel_data: Per-voxel values indexed by each voxel's linear index; shares the dtype of
             ``background``. See :func:`~warp.volume_sample_index` for sizing requirements.
-        background: Value used for inactive voxels on ``OnIndex`` and ``OnIndexMask`` grids and
-            outside allocated leaves on ``Index`` and ``IndexMask`` grids and classical value grids;
-            its dtype must match ``voxel_data``.
+        background: Value used when a sampled location has no indexable voxel; its dtype must match
+            ``voxel_data``.
         grad: Output gradient of the sampled value with respect to ``uvw``.
 
     Returns:
@@ -10690,12 +11011,7 @@ add_builtin(
     group="Volumes",
     doc="""Return the linear index associated with integer index-space coordinates ``i``, ``j``, ``k``.
 
-    On NanoVDB ``OnIndex`` and ``OnIndexMask`` grids, active voxels have zero-based indices and
-    inactive voxels return ``-1``. On ``Index`` and ``IndexMask`` grids and on classical value grids,
-    every slot in an allocated leaf has an index regardless of its active mask; coordinates outside
-    allocated leaves return ``-1``. For volumes whose indexable count fits in ``int32``, nonnegative
-    indices lie in ``[0, volume_voxel_count(id))``. Guard against ``-1`` before gathering from a
-    per-voxel array. Not differentiable.
+    This function is not differentiable.
 
     Args:
         id: The ``id`` of a :class:`warp.Volume`.
@@ -10704,7 +11020,8 @@ add_builtin(
         k: Voxel coordinate along the third index-space axis.
 
     Returns:
-        The voxel's linear index, or ``-1`` when the coordinate is not indexable.
+        The voxel's linear index in ``[0, volume_voxel_count(id))``, or ``-1`` when the coordinate
+        is not indexable. Guard against ``-1`` before gathering from a per-voxel array.
 
     Example:
 
@@ -10733,22 +11050,16 @@ add_builtin(
     group="Volumes",
     doc="""Return the number of indexable voxels in the volume given by ``id``.
 
-    For NanoVDB ``OnIndex`` and ``OnIndexMask`` grids, this is the active voxel count. For ``Index``
-    and ``IndexMask`` grids and for classical value grids, it is the number of allocated leaf nodes
-    multiplied by 512, because every leaf slot is indexable. When the true count fits in ``int32``,
-    this is the required size of a per-voxel ``voxel_data`` array (as used by
-    :func:`~warp.volume_sample_index`) and the exclusive upper bound of indices returned by
-    :func:`~warp.volume_lookup_index`.
-
-    The result is capped at ``2**31 - 1``. A larger volume cannot be fully represented by these
-    ``int32`` index APIs: lookup indices may overflow, and the capped count is not sufficient to
-    allocate data for every underlying slot. Not differentiable.
+    :func:`~warp.volume_voxel_count` and :func:`~warp.volume_lookup_index` support volumes with at
+    most ``2**31 - 1`` indexable voxels. This function is not differentiable.
 
     Args:
         id: The ``id`` of a :class:`warp.Volume`.
 
     Returns:
-        The number of indexable voxels, capped at ``2**31 - 1``.
+        The number of indexable voxels. This is the required size of a per-voxel ``voxel_data``
+        array (as used by :func:`~warp.volume_sample_index`) and the exclusive upper bound of
+        indices returned by :func:`~warp.volume_lookup_index`.
 
     Example:
 
@@ -10758,14 +11069,15 @@ add_builtin(
             def count(vid: wp.uint64, out: wp.array[wp.int32]):
                 out[0] = wp.volume_voxel_count(vid)
 
-            volume = wp.Volume.load_from_numpy(np.zeros((2, 2, 2), dtype=np.float32), voxel_size=1.0, bg_value=0.0)
+            voxels = wp.array([[0, 0, 0], [1, 0, 0]], dtype=wp.vec3i)
+            volume = wp.Volume.allocate_by_voxels(voxels, voxel_size=1.0)
             out = wp.zeros(1, dtype=wp.int32)
             wp.launch(count, dim=1, inputs=[volume.id], outputs=[out])
             print(int(out.numpy()[0]))
 
         .. testoutput::
 
-            512""",
+            2""",
     is_differentiable=False,
 )
 
@@ -10836,15 +11148,15 @@ add_builtin(
     doc="""Transform the direction ``uvw`` from the volume's index space to world space using the linear
     part of the volume's affine transform.
 
-    Translation is not applied and the result is not renormalized, so a scaling transform changes the
-    vector's length. For positions, use :func:`~warp.volume_index_to_world` instead.
+    For positions, use :func:`~warp.volume_index_to_world` instead.
 
     Args:
         id: The ``id`` of a :class:`warp.Volume`.
         uvw: Direction in index space.
 
     Returns:
-        The transformed direction in world space with ``float32`` precision.
+        The transformed direction in world space with ``float32`` precision. Translation is not
+        applied, and the vector is not renormalized, so a scaling transform changes its length.
 
     See :func:`~warp.volume_index_to_world` for a usage example.""",
 )
@@ -10856,15 +11168,15 @@ add_builtin(
     doc="""Transform the direction ``xyz`` from world space to the volume's index space using the linear
     part of the volume's affine transform.
 
-    Translation is not applied and the result is not renormalized. For positions, use
-    :func:`~warp.volume_world_to_index` instead.
+    For positions, use :func:`~warp.volume_world_to_index` instead.
 
     Args:
         id: The ``id`` of a :class:`warp.Volume`.
         xyz: Direction in world space.
 
     Returns:
-        The transformed direction in index space with ``float32`` precision.
+        The transformed direction in index space with ``float32`` precision. Translation is not
+        applied, and the vector is not renormalized.
 
     See :func:`~warp.volume_index_to_world` for a usage example.""",
 )
@@ -10970,32 +11282,31 @@ add_builtin(
         u: U coordinate. With ``normalized_coords=True``, texel ``i`` at a mip level of width
             ``level_width`` is centered at ``(i + 0.5) / level_width``. With
             ``normalized_coords=False``, texel ``i`` of a single-level texture is centered at
-            ``i + 0.5`` on both backends. For a mipmapped texture on the CPU backend, coordinates
-            remain in base-level texel space and the center is
-            ``(i + 0.5) * base_width / level_width``. CUDA mipmapped textures require normalized
-            coordinates. Coordinates and filtering footprints beyond the texture are handled by its
-            address mode.
+            ``i + 0.5``. Mipmapped textures should use normalized coordinates. Unnormalized
+            coordinates for mipmapped textures are currently accepted only on the CPU backend and
+            may be unsupported in a future release. Coordinates and filtering footprints beyond the
+            texture are handled by its address mode.
         dtype: The return type, which selects how many channels are read: ``float`` (1 channel),
             :class:`warp.vec2f` (2), or :class:`warp.vec4f` (4). Use the type matching the texture's
-            :attr:`~warp.Texture.num_channels`. The CPU backend normalizes unsigned integer data to
-            ``[0, 1]`` and signed integer data to ``[-1, 1]``. The CUDA backend does the same for
-            8- and 16-bit integer formats but does not promote 32-bit ones, so an ``int32`` or
-            ``uint32`` texture yields neither a normalized nor a numerically converted value there;
-            use an 8- or 16-bit or a floating-point format instead. Floating-point texture data is
-            returned as ``float32`` channel values without normalization.
-        lod: Mipmap level-of-detail as a float. When omitted or negative, mip level 0 is sampled.
-            Nonnegative values are clamped to the texture's available mip-level range. Fractional
-            values blend between neighbouring mip levels when ``mip_filter_mode`` is
+            :attr:`~warp.Texture.num_channels`.
+        lod: Mipmap level-of-detail as a float. The default selects mip level 0. Currently, any
+            negative value also selects mip level 0. Nonnegative values are clamped to the
+            texture's available mip-level range. Fractional values blend between neighbouring mip
+            levels when ``mip_filter_mode`` is
             :attr:`warp.TextureFilterMode.LINEAR`; the coordinate is evaluated independently at
-            each level used in the blend. Ignored for textures created with a single mip level.
+            each level used in the blend. The ``lod`` argument is ignored for textures created with a single mip level.
 
     Returns:
-        The sampled value of the specified ``dtype``.
+        The sampled value of the specified ``dtype``. The CPU backend normalizes unsigned integer
+        data to ``[0, 1]`` and signed integer data to ``[-1, 1]``. On CUDA devices, normalized
+        integer sampling is supported only for 8- and 16-bit formats; use an 8- or 16-bit integer
+        or floating-point texture. Floating-point texture data is returned as ``float32`` channel
+        values without normalization.
 
     The filtering mode (:class:`warp.TextureFilterMode`) and the addressing of out-of-range
     coordinates (:class:`warp.TextureAddressMode`) are those set when the texture was created; see
-    :class:`warp.Texture`. On CUDA, ``WRAP`` and ``MIRROR`` are treated as ``CLAMP`` when
-    ``normalized_coords=False`` (the CPU sampler honors them).
+    :class:`warp.Texture`. Currently, CUDA textures with unnormalized coordinates support only
+    ``CLAMP`` and ``BORDER`` address modes. Use normalized coordinates with ``WRAP`` or ``MIRROR``.
 
     Example:
 
@@ -11068,32 +11379,31 @@ add_builtin(
             ``(i, j)`` at a mip level of size ``(level_width, level_height)`` is centered at
             ``((i + 0.5) / level_width, (j + 0.5) / level_height)``. With
             ``normalized_coords=False``, texel ``(i, j)`` of a single-level texture is centered at
-            ``(i + 0.5, j + 0.5)`` on both backends. For a mipmapped texture on the CPU backend,
-            coordinates remain in base-level texel space and the center is
-            ``((i + 0.5) * base_width / level_width, (j + 0.5) * base_height / level_height)``. CUDA
-            mipmapped textures require normalized coordinates. Coordinates and filtering footprints
-            beyond the texture are handled by its per-axis address modes.
+            ``(i + 0.5, j + 0.5)``. Mipmapped textures should use normalized coordinates.
+            Unnormalized coordinates for mipmapped textures are currently accepted only on the CPU
+            backend and may be unsupported in a future release. Coordinates and filtering
+            footprints beyond the texture are handled by its per-axis address modes.
         dtype: The return type, which selects how many channels are read: ``float`` (1 channel),
             :class:`warp.vec2f` (2), or :class:`warp.vec4f` (4). Use the type matching the texture's
-            :attr:`~warp.Texture.num_channels`. The CPU backend normalizes unsigned integer data to
-            ``[0, 1]`` and signed integer data to ``[-1, 1]``. The CUDA backend does the same for
-            8- and 16-bit integer formats but does not promote 32-bit ones, so an ``int32`` or
-            ``uint32`` texture yields neither a normalized nor a numerically converted value there;
-            use an 8- or 16-bit or a floating-point format instead. Floating-point texture data is
-            returned as ``float32`` channel values without normalization.
-        lod: Mipmap level-of-detail as a float. When omitted or negative, mip level 0 is sampled.
-            Nonnegative values are clamped to the texture's available mip-level range. Fractional
-            values blend between neighbouring mip levels when ``mip_filter_mode`` is
+            :attr:`~warp.Texture.num_channels`.
+        lod: Mipmap level-of-detail as a float. The default selects mip level 0. Currently, any
+            negative value also selects mip level 0. Nonnegative values are clamped to the
+            texture's available mip-level range. Fractional values blend between neighbouring mip
+            levels when ``mip_filter_mode`` is
             :attr:`warp.TextureFilterMode.LINEAR`; the coordinates are evaluated independently at
-            each level used in the blend. Ignored for textures created with a single mip level.
+            each level used in the blend. The ``lod`` argument is ignored for textures created with a single mip level.
 
     Returns:
-        The sampled value of the specified ``dtype``.
+        The sampled value of the specified ``dtype``. The CPU backend normalizes unsigned integer
+        data to ``[0, 1]`` and signed integer data to ``[-1, 1]``. On CUDA devices, normalized
+        integer sampling is supported only for 8- and 16-bit formats; use an 8- or 16-bit integer
+        or floating-point texture. Floating-point texture data is returned as ``float32`` channel
+        values without normalization.
 
     The filtering mode (:class:`warp.TextureFilterMode`) and the addressing of out-of-range
     coordinates (:class:`warp.TextureAddressMode`) are those set when the texture was created; see
-    :class:`warp.Texture`. On CUDA, ``WRAP`` and ``MIRROR`` are treated as ``CLAMP`` when
-    ``normalized_coords=False`` (the CPU sampler honors them).""",
+    :class:`warp.Texture`. Currently, CUDA textures with unnormalized coordinates support only
+    ``CLAMP`` and ``BORDER`` address modes. Use normalized coordinates with ``WRAP`` or ``MIRROR``.""",
     is_differentiable=False,
 )
 
@@ -11117,37 +11427,35 @@ add_builtin(
         tex: The 2D texture to sample.
         u: U coordinate. At a mip level of width ``level_width``, texel column ``i`` is centered at
             ``(i + 0.5) / level_width`` when ``normalized_coords=True``. With unnormalized
-            coordinates, its center is ``i + 0.5`` in a single-level texture on both backends; for a
-            mipmapped texture on the CPU backend, its center is
-            ``(i + 0.5) * base_width / level_width``.
+            coordinates, its center is ``i + 0.5`` in a single-level texture.
         v: V coordinate. At a mip level of height ``level_height``, texel row ``j`` is centered at
             ``(j + 0.5) / level_height`` when ``normalized_coords=True``. With unnormalized
-            coordinates, its center is ``j + 0.5`` in a single-level texture on both backends; for a
-            mipmapped texture on the CPU backend, its center is
-            ``(j + 0.5) * base_height / level_height``. CUDA mipmapped textures require normalized
-            coordinates. Coordinates and filtering footprints beyond the texture are handled by its
-            per-axis address modes.
+            coordinates, its center is ``j + 0.5`` in a single-level texture. Mipmapped textures
+            should use normalized coordinates. Unnormalized coordinates for mipmapped textures are
+            currently accepted only on the CPU backend and may be unsupported in a future release.
+            Coordinates and filtering footprints beyond the texture are handled by its per-axis
+            address modes.
         dtype: The return type, which selects how many channels are read: ``float`` (1 channel),
             :class:`warp.vec2f` (2), or :class:`warp.vec4f` (4). Use the type matching the texture's
-            :attr:`~warp.Texture.num_channels`. The CPU backend normalizes unsigned integer data to
-            ``[0, 1]`` and signed integer data to ``[-1, 1]``. The CUDA backend does the same for
-            8- and 16-bit integer formats but does not promote 32-bit ones, so an ``int32`` or
-            ``uint32`` texture yields neither a normalized nor a numerically converted value there;
-            use an 8- or 16-bit or a floating-point format instead. Floating-point texture data is
-            returned as ``float32`` channel values without normalization.
-        lod: Mipmap level-of-detail as a float. When omitted or negative, mip level 0 is sampled.
-            Nonnegative values are clamped to the texture's available mip-level range. Fractional
-            values blend between neighbouring mip levels when ``mip_filter_mode`` is
+            :attr:`~warp.Texture.num_channels`.
+        lod: Mipmap level-of-detail as a float. The default selects mip level 0. Currently, any
+            negative value also selects mip level 0. Nonnegative values are clamped to the
+            texture's available mip-level range. Fractional values blend between neighbouring mip
+            levels when ``mip_filter_mode`` is
             :attr:`warp.TextureFilterMode.LINEAR`; the coordinates are evaluated independently at
-            each level used in the blend. Ignored for textures created with a single mip level.
+            each level used in the blend. The ``lod`` argument is ignored for textures created with a single mip level.
 
     Returns:
-        The sampled value of the specified ``dtype``.
+        The sampled value of the specified ``dtype``. The CPU backend normalizes unsigned integer
+        data to ``[0, 1]`` and signed integer data to ``[-1, 1]``. On CUDA devices, normalized
+        integer sampling is supported only for 8- and 16-bit formats; use an 8- or 16-bit integer
+        or floating-point texture. Floating-point texture data is returned as ``float32`` channel
+        values without normalization.
 
     The filtering mode (:class:`warp.TextureFilterMode`) and the addressing of out-of-range
     coordinates (:class:`warp.TextureAddressMode`) are those set when the texture was created; see
-    :class:`warp.Texture`. On CUDA, ``WRAP`` and ``MIRROR`` are treated as ``CLAMP`` when
-    ``normalized_coords=False`` (the CPU sampler honors them).""",
+    :class:`warp.Texture`. Currently, CUDA textures with unnormalized coordinates support only
+    ``CLAMP`` and ``BORDER`` address modes. Use normalized coordinates with ``WRAP`` or ``MIRROR``.""",
     is_differentiable=False,
 )
 
@@ -11192,33 +11500,31 @@ add_builtin(
             ``(i, j, k)`` at a mip level of size ``(level_width, level_height, level_depth)`` is
             centered at ``((i + 0.5) / level_width, (j + 0.5) / level_height, (k + 0.5) / level_depth)``.
             With ``normalized_coords=False``, texel ``(i, j, k)`` of a single-level texture is
-            centered at ``(i + 0.5, j + 0.5, k + 0.5)`` on both backends. For a mipmapped texture on
-            the CPU backend, coordinates remain in base-level texel space and the center is
-            ``((i + 0.5) * base_width / level_width, (j + 0.5) * base_height / level_height,
-            (k + 0.5) * base_depth / level_depth)``. CUDA mipmapped textures require normalized
-            coordinates. Coordinates and filtering footprints beyond the texture are handled by its
-            per-axis address modes.
+            centered at ``(i + 0.5, j + 0.5, k + 0.5)``. Mipmapped textures should use normalized
+            coordinates. Unnormalized coordinates for mipmapped textures are currently accepted
+            only on the CPU backend and may be unsupported in a future release. Coordinates and
+            filtering footprints beyond the texture are handled by its per-axis address modes.
         dtype: The return type, which selects how many channels are read: ``float`` (1 channel),
             :class:`warp.vec2f` (2), or :class:`warp.vec4f` (4). Use the type matching the texture's
-            :attr:`~warp.Texture.num_channels`. The CPU backend normalizes unsigned integer data to
-            ``[0, 1]`` and signed integer data to ``[-1, 1]``. The CUDA backend does the same for
-            8- and 16-bit integer formats but does not promote 32-bit ones, so an ``int32`` or
-            ``uint32`` texture yields neither a normalized nor a numerically converted value there;
-            use an 8- or 16-bit or a floating-point format instead. Floating-point texture data is
-            returned as ``float32`` channel values without normalization.
-        lod: Mipmap level-of-detail as a float. When omitted or negative, mip level 0 is sampled.
-            Nonnegative values are clamped to the texture's available mip-level range. Fractional
-            values blend between neighbouring mip levels when ``mip_filter_mode`` is
+            :attr:`~warp.Texture.num_channels`.
+        lod: Mipmap level-of-detail as a float. The default selects mip level 0. Currently, any
+            negative value also selects mip level 0. Nonnegative values are clamped to the
+            texture's available mip-level range. Fractional values blend between neighbouring mip
+            levels when ``mip_filter_mode`` is
             :attr:`warp.TextureFilterMode.LINEAR`; the coordinates are evaluated independently at
-            each level used in the blend. Ignored for textures created with a single mip level.
+            each level used in the blend. The ``lod`` argument is ignored for textures created with a single mip level.
 
     Returns:
-        The sampled value of the specified ``dtype``.
+        The sampled value of the specified ``dtype``. The CPU backend normalizes unsigned integer
+        data to ``[0, 1]`` and signed integer data to ``[-1, 1]``. On CUDA devices, normalized
+        integer sampling is supported only for 8- and 16-bit formats; use an 8- or 16-bit integer
+        or floating-point texture. Floating-point texture data is returned as ``float32`` channel
+        values without normalization.
 
     The filtering mode (:class:`warp.TextureFilterMode`) and the addressing of out-of-range
     coordinates (:class:`warp.TextureAddressMode`) are those set when the texture was created; see
-    :class:`warp.Texture`. On CUDA, ``WRAP`` and ``MIRROR`` are treated as ``CLAMP`` when
-    ``normalized_coords=False`` (the CPU sampler honors them).""",
+    :class:`warp.Texture`. Currently, CUDA textures with unnormalized coordinates support only
+    ``CLAMP`` and ``BORDER`` address modes. Use normalized coordinates with ``WRAP`` or ``MIRROR``.""",
     is_differentiable=False,
 )
 
@@ -11242,42 +11548,38 @@ add_builtin(
         tex: The 3D texture to sample.
         u: U coordinate. At a mip level of width ``level_width``, texel column ``i`` is centered at
             ``(i + 0.5) / level_width`` when ``normalized_coords=True``. With unnormalized
-            coordinates, its center is ``i + 0.5`` in a single-level texture on both backends; for a
-            mipmapped texture on the CPU backend, its center is
-            ``(i + 0.5) * base_width / level_width``.
+            coordinates, its center is ``i + 0.5`` in a single-level texture.
         v: V coordinate. At a mip level of height ``level_height``, texel row ``j`` is centered at
             ``(j + 0.5) / level_height`` when ``normalized_coords=True``. With unnormalized
-            coordinates, its center is ``j + 0.5`` in a single-level texture on both backends; for a
-            mipmapped texture on the CPU backend, its center is
-            ``(j + 0.5) * base_height / level_height``.
+            coordinates, its center is ``j + 0.5`` in a single-level texture.
         w: W coordinate. At a mip level of depth ``level_depth``, texel depth index ``k`` is centered
             at ``(k + 0.5) / level_depth`` when ``normalized_coords=True``. With unnormalized
-            coordinates, its center is ``k + 0.5`` in a single-level texture on both backends; for a
-            mipmapped texture on the CPU backend, its center is
-            ``(k + 0.5) * base_depth / level_depth``. CUDA mipmapped textures require normalized
-            coordinates. Coordinates and filtering footprints beyond the texture are handled by its
-            per-axis address modes.
+            coordinates, its center is ``k + 0.5`` in a single-level texture. Mipmapped textures
+            should use normalized coordinates. Unnormalized coordinates for mipmapped textures are
+            currently accepted only on the CPU backend and may be unsupported in a future release.
+            Coordinates and filtering footprints beyond the texture are handled by its per-axis
+            address modes.
         dtype: The return type, which selects how many channels are read: ``float`` (1 channel),
             :class:`warp.vec2f` (2), or :class:`warp.vec4f` (4). Use the type matching the texture's
-            :attr:`~warp.Texture.num_channels`. The CPU backend normalizes unsigned integer data to
-            ``[0, 1]`` and signed integer data to ``[-1, 1]``. The CUDA backend does the same for
-            8- and 16-bit integer formats but does not promote 32-bit ones, so an ``int32`` or
-            ``uint32`` texture yields neither a normalized nor a numerically converted value there;
-            use an 8- or 16-bit or a floating-point format instead. Floating-point texture data is
-            returned as ``float32`` channel values without normalization.
-        lod: Mipmap level-of-detail as a float. When omitted or negative, mip level 0 is sampled.
-            Nonnegative values are clamped to the texture's available mip-level range. Fractional
-            values blend between neighbouring mip levels when ``mip_filter_mode`` is
+            :attr:`~warp.Texture.num_channels`.
+        lod: Mipmap level-of-detail as a float. The default selects mip level 0. Currently, any
+            negative value also selects mip level 0. Nonnegative values are clamped to the
+            texture's available mip-level range. Fractional values blend between neighbouring mip
+            levels when ``mip_filter_mode`` is
             :attr:`warp.TextureFilterMode.LINEAR`; the coordinates are evaluated independently at
-            each level used in the blend. Ignored for textures created with a single mip level.
+            each level used in the blend. The ``lod`` argument is ignored for textures created with a single mip level.
 
     Returns:
-        The sampled value of the specified ``dtype``.
+        The sampled value of the specified ``dtype``. The CPU backend normalizes unsigned integer
+        data to ``[0, 1]`` and signed integer data to ``[-1, 1]``. On CUDA devices, normalized
+        integer sampling is supported only for 8- and 16-bit formats; use an 8- or 16-bit integer
+        or floating-point texture. Floating-point texture data is returned as ``float32`` channel
+        values without normalization.
 
     The filtering mode (:class:`warp.TextureFilterMode`) and the addressing of out-of-range
     coordinates (:class:`warp.TextureAddressMode`) are those set when the texture was created; see
-    :class:`warp.Texture`. On CUDA, ``WRAP`` and ``MIRROR`` are treated as ``CLAMP`` when
-    ``normalized_coords=False`` (the CPU sampler honors them).""",
+    :class:`warp.Texture`. Currently, CUDA textures with unnormalized coordinates support only
+    ``CLAMP`` and ``BORDER`` address modes. Use normalized coordinates with ``WRAP`` or ``MIRROR``.""",
     is_differentiable=False,
 )
 
@@ -11676,26 +11978,22 @@ add_builtin(
 
     Samples a smooth, deterministic field on an integer lattice with one cell per input
     unit. ``state`` selects the field and is not advanced. Scale the coordinate to
-    change feature size and the result to change amplitude. Each coordinate
-    dimensionality defines a distinct field.
+    change feature size and the result to change amplitude.
 
-    Values are centered on zero, are exactly zero at integer lattice points, and have a
-    theoretical range of ``±sqrt(N)/2`` for ``N`` dimensions. Differentiable with
-    respect to the coordinate. Results are reproducible per device, but CPU and CUDA
-    values may differ slightly. Use :func:`pnoise` for periodic noise.
+    The field is differentiable with respect to the coordinate. For a given Warp version
+    and device backend, results are deterministic for fixed inputs. Exact values may differ
+    between CPU and CUDA or change between Warp versions. Use :func:`pnoise` for periodic noise.
 
-    Keep each coordinate component below ``2^23`` (about 8.4e6). At that magnitude and
-    above, ``float32`` cannot represent sub-cell coordinates: scalar noise returns zero,
-    while vector noise may remain nonzero if another component is fractional.
-    Coordinates outside the signed 32-bit lattice-index range are unsupported.
+    When a coordinate component's magnitude reaches ``2^23`` (about 8.4e6), ``float32``
+    spacing is at least one input unit, so the field may lose variation. Coordinate
+    components must currently remain within the signed 32-bit lattice-index range.
 
     Args:
-        state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
+        state: RNG state that selects the noise field (see :func:`rand_init`); never advanced.
         x: Coordinate to sample. One noise feature spans one unit.
 
     Returns:
-        The noise value at ``x``. Exactly zero at integer coordinates, with a
-        theoretical range of ``±0.5``.
+        The noise value at ``x``. Values across the field are centered on zero.
 
     Example:
 
@@ -11710,12 +12008,7 @@ add_builtin(
             coords = wp.array([0.5, 2.25, 4.75], dtype=float)
             values = wp.zeros(len(coords), dtype=float)
 
-            wp.launch(sample_noise, dim=len(coords), inputs=[42, coords], outputs=[values])
-            print([round(v, 3) for v in values.numpy().tolist()])
-
-        .. testoutput::
-
-            [0.243, -0.09, -0.11]""",
+            wp.launch(sample_noise, dim=len(coords), inputs=[42, coords], outputs=[values])""",
 )
 add_builtin(
     "noise",
@@ -11727,12 +12020,11 @@ add_builtin(
     See :func:`noise` for shared behavior, restrictions, and a usage example.
 
     Args:
-        state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
+        state: RNG state that selects the noise field (see :func:`rand_init`); never advanced.
         xy: Coordinate to sample. One noise feature spans one unit.
 
     Returns:
-        The noise value at ``xy``. Exactly zero when every component is an integer,
-        with a theoretical range of ``±sqrt(2)/2``.""",
+        The noise value at ``xy``.""",
 )
 add_builtin(
     "noise",
@@ -11744,12 +12036,11 @@ add_builtin(
     See :func:`noise` for shared behavior, restrictions, and a usage example.
 
     Args:
-        state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
+        state: RNG state that selects the noise field (see :func:`rand_init`); never advanced.
         xyz: Coordinate to sample. One noise feature spans one unit.
 
     Returns:
-        The noise value at ``xyz``. Exactly zero when every component is an integer,
-        with a theoretical range of ``±sqrt(3)/2``.""",
+        The noise value at ``xyz``.""",
 )
 add_builtin(
     "noise",
@@ -11762,12 +12053,11 @@ add_builtin(
     :func:`noise` for shared behavior, restrictions, and a usage example.
 
     Args:
-        state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
+        state: RNG state that selects the noise field (see :func:`rand_init`); never advanced.
         xyzt: Coordinate to sample. One noise feature spans one unit.
 
     Returns:
-        The noise value at ``xyzt``. Exactly zero when every component is an integer,
-        with a theoretical range of ``±1``.""",
+        The noise value at ``xyzt``.""",
 )
 
 add_builtin(
@@ -11779,28 +12069,19 @@ add_builtin(
 
     Wraps the :func:`noise` lattice every ``px`` cells, with one cell per input unit.
     ``state`` selects the field and is not advanced. Values have the same scale and
-    device-reproducibility behavior as :func:`noise`.
+    determinism behavior as :func:`noise`.
 
-    Periods must be positive; zero invokes undefined behavior. Samples repeat under
-    whole-period shifts when the original and shifted coordinates remain on the same
-    side of zero. A shift that crosses zero may produce a different value, so use
-    non-negative coordinates when the field must repeat seamlessly.
-
-    With negative coordinates, the field has one non-smooth boundary per period along
-    each axis. In 1D, the value is continuous across these boundaries, but Warp
-    autodiff reports a one-sided coordinate derivative. In vector overloads, crossing
-    a boundary can instead produce a finite value jump when another coordinate is
-    fractional. Away from these boundaries, the field is differentiable with respect
-    to coordinates. Period arguments receive no Warp autodiff gradient.
+    Period arguments must be positive. Negative coordinates are currently unsupported.
+    The field is differentiable with respect to coordinates. Period arguments receive
+    no Warp autodiff gradient.
 
     Args:
-        state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
+        state: RNG state that selects the noise field (see :func:`rand_init`); never advanced.
         x: Coordinate to sample. One noise feature spans one unit.
-        px: Period along x, in units. Must be greater than zero.
+        px: Period along x, in units. ``px`` must be greater than zero.
 
     Returns:
-        The noise value at ``x``. Exactly zero at integer coordinates, with a
-        theoretical range of ``±0.5``.
+        The noise value at ``x``.
 
     Example:
 
@@ -11817,11 +12098,11 @@ add_builtin(
             values = wp.zeros(len(coords), dtype=float)
 
             wp.launch(sample_periodic_noise, dim=len(coords), inputs=[42, coords], outputs=[values])
-            print([round(v, 3) for v in values.numpy().tolist()])
+            print(np.allclose(values.numpy(), values.numpy()[0]))
 
         .. testoutput::
 
-            [0.174, 0.174, 0.174]""",
+            True""",
 )
 add_builtin(
     "pnoise",
@@ -11833,14 +12114,13 @@ add_builtin(
     See :func:`pnoise` for shared behavior, restrictions, and a usage example.
 
     Args:
-        state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
+        state: RNG state that selects the noise field (see :func:`rand_init`); never advanced.
         xy: Coordinate to sample. One noise feature spans one unit.
-        px: Period along x, in units. Must be greater than zero.
-        py: Period along y, in units. Must be greater than zero.
+        px: Period along x, in units. ``px`` must be greater than zero.
+        py: Period along y, in units. ``py`` must be greater than zero.
 
     Returns:
-        The noise value at ``xy``. Exactly zero when every component is an integer,
-        with a theoretical range of ``±sqrt(2)/2``.""",
+        The noise value at ``xy``.""",
 )
 add_builtin(
     "pnoise",
@@ -11852,15 +12132,14 @@ add_builtin(
     See :func:`pnoise` for shared behavior, restrictions, and a usage example.
 
     Args:
-        state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
+        state: RNG state that selects the noise field (see :func:`rand_init`); never advanced.
         xyz: Coordinate to sample. One noise feature spans one unit.
-        px: Period along x, in units. Must be greater than zero.
-        py: Period along y, in units. Must be greater than zero.
-        pz: Period along z, in units. Must be greater than zero.
+        px: Period along x, in units. ``px`` must be greater than zero.
+        py: Period along y, in units. ``py`` must be greater than zero.
+        pz: Period along z, in units. ``pz`` must be greater than zero.
 
     Returns:
-        The noise value at ``xyz``. Exactly zero when every component is an integer,
-        with a theoretical range of ``±sqrt(3)/2``.""",
+        The noise value at ``xyz``.""",
 )
 add_builtin(
     "pnoise",
@@ -11873,16 +12152,15 @@ add_builtin(
     shared behavior, restrictions, and a usage example.
 
     Args:
-        state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
+        state: RNG state that selects the noise field (see :func:`rand_init`); never advanced.
         xyzt: Coordinate to sample. One noise feature spans one unit.
-        px: Period along x, in units. Must be greater than zero.
-        py: Period along y, in units. Must be greater than zero.
-        pz: Period along z, in units. Must be greater than zero.
-        pt: Period along the fourth axis, in units. Must be greater than zero.
+        px: Period along x, in units. ``px`` must be greater than zero.
+        py: Period along y, in units. ``py`` must be greater than zero.
+        pz: Period along z, in units. ``pz`` must be greater than zero.
+        pt: Period along the fourth axis, in units. ``pt`` must be greater than zero.
 
     Returns:
-        The noise value at ``xyzt``. Exactly zero when every component is an integer,
-        with a theoretical range of ``±1``.""",
+        The noise value at ``xyzt``.""",
 )
 
 add_builtin(
@@ -11893,30 +12171,28 @@ add_builtin(
     group="Random",
     doc="""Sample a divergence-free 2D vector field derived from Perlin noise.
 
-    Returns a rotated Perlin-noise gradient, making the field analytically
-    divergence-free. Its continuous flow preserves area, although numerical advection
-    may not. The 3D and 4D overloads instead return the spatial curl of three noise
-    potentials as a :class:`warp.vec3`.
+    Its continuous flow preserves area, although numerical advection may not.
 
     Octave ``i`` uses frequency ``lacunarity ** i`` and weight ``gain ** i``. With
     ``lacunarity > 1`` and ``0 < gain < 1``, later octaves add finer, weaker detail.
     Contributions may cancel, so magnitude is not monotonic in the octave controls.
-    Zero octaves returns zero. Scale the coordinate for feature size and the result for
-    speed.
+    Scale the coordinate for feature size and the result for speed.
 
-    ``state`` selects the field and is not advanced. Results are reproducible per
-    device, but CPU and CUDA values may differ slightly. Differentiable with respect to
-    the coordinate; ``octaves``, ``lacunarity``, and ``gain`` receive no gradient.
+    ``state`` selects the field and is not advanced. For a given Warp version and device
+    backend, results are deterministic for fixed inputs. Exact values may differ between
+    CPU and CUDA or change between Warp versions. This function is differentiable with respect to
+    the coordinate. Currently, ``lacunarity`` and ``gain`` receive no gradient.
 
     Args:
-        state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
-        xy: Coordinate to sample. One swirl spans about one unit at the base frequency.
+        state: RNG state that selects the noise field (see :func:`rand_init`); never advanced.
+        xy: Coordinate to sample.
         octaves: Number of noise octaves to sum. Zero returns a zero vector.
         lacunarity: Frequency multiplier between successive octaves.
         gain: Amplitude multiplier between successive octaves.
 
     Returns:
-        A divergence-free 2D vector at ``xy``. Not normalized.
+        A rotated Perlin-noise gradient at ``xy``. The resulting vector field is analytically
+        divergence-free. The vector is not normalized.
 
     Example:
 
@@ -11930,12 +12206,7 @@ add_builtin(
 
             positions = wp.array([[0.5, 0.5], [1.25, 2.0]], dtype=wp.vec2)
 
-            wp.launch(advect, dim=len(positions), inputs=[42, positions, 0.1])
-            print([[round(c, 3) for c in p] for p in positions.numpy().tolist()])
-
-        .. testoutput::
-
-            [[0.628, 0.514], [1.256, 2.003]]""",
+            wp.launch(advect, dim=len(positions), inputs=[42, positions, 0.1])""",
 )
 add_builtin(
     "curlnoise",
@@ -11945,18 +12216,18 @@ add_builtin(
     group="Random",
     doc="""Sample a divergence-free 3D vector field derived from Perlin noise.
 
-    Returns the spatial curl of three Perlin-noise potentials. See :func:`curlnoise` for
-    shared behavior, restrictions, and a usage example.
+    See :func:`curlnoise` for shared behavior, restrictions, and a usage example.
 
     Args:
-        state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
-        xyz: Coordinate to sample. One swirl spans about one unit at the base frequency.
+        state: RNG state that selects the noise field (see :func:`rand_init`); never advanced.
+        xyz: Coordinate to sample.
         octaves: Number of noise octaves to sum. Zero returns a zero vector.
         lacunarity: Frequency multiplier between successive octaves.
         gain: Amplitude multiplier between successive octaves.
 
     Returns:
-        A divergence-free 3D vector at ``xyz``. Not normalized.""",
+        A :class:`warp.vec3` containing the spatial curl of three Perlin-noise potentials at
+        ``xyz``. The resulting vector field is divergence-free. The vector is not normalized.""",
 )
 add_builtin(
     "curlnoise",
@@ -11966,21 +12237,20 @@ add_builtin(
     group="Random",
     doc="""Sample a divergence-free 3D vector field that also varies along a fourth axis.
 
-    Returns a :class:`warp.vec3` spatial curl; the fourth input axis parametrizes the
-    field and is commonly used as time. The field remains divergence-free in the first
-    three axes. See :func:`curlnoise` for shared behavior, restrictions, and a usage
-    example.
+    The fourth input axis parametrizes the field and is commonly used as time. See
+    :func:`curlnoise` for shared behavior, restrictions, and a usage example.
 
     Args:
-        state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
-        xyzt: Coordinate to sample, with the fourth component usually time. One swirl
-            spans about one unit at the base frequency.
+        state: RNG state that selects the noise field (see :func:`rand_init`); never advanced.
+        xyzt: Coordinate to sample, with the fourth component usually time.
         octaves: Number of noise octaves to sum. Zero returns a zero vector.
         lacunarity: Frequency multiplier between successive octaves.
         gain: Amplitude multiplier between successive octaves.
 
     Returns:
-        A divergence-free 3D vector at ``xyzt``. Not normalized.""",
+        A :class:`warp.vec3` containing the spatial curl of three Perlin-noise potentials at
+        ``xyzt``. The vector field is divergence-free in the first three axes. The vector is not
+        normalized.""",
 )
 
 
@@ -12248,6 +12518,12 @@ def where_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any
     v_false = arg_types["value_if_false"]
 
     if not types_equal(v_true, v_false):
+        # Sibling query-kind types (or a concrete kind and its erased parent) merge
+        # to the parent: the merged value's kind is only known at runtime, so
+        # iteration dispatches on the kind stored in the query object.
+        joined = type_erasure_join(v_true, v_false)
+        if joined is not None:
+            return joined
         raise RuntimeError(f"where() true value type ({v_true}) must be of the same type as the false type ({v_false})")
 
     if is_tile(v_false):
@@ -13466,6 +13742,15 @@ add_builtin(
     skip_replay=True,
     is_differentiable=False,
 )
+
+
+def matrix_index_row_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+    mat_type = arg_types["a"]
+    row_type = mat_type._wp_row_type_
+
+    return Reference(row_type)
+
+
 # implements &(*matrix)[i, j]
 add_builtin(
     "indexref",
@@ -13761,13 +14046,6 @@ add_builtin(
     group="Utility",
     is_differentiable=False,
 )
-
-
-def matrix_index_row_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
-    mat_type = arg_types["a"]
-    row_type = mat_type._wp_row_type_
-
-    return Reference(row_type)
 
 
 # implements &matrix[i] = row
@@ -15930,8 +16208,8 @@ add_builtin(
         a: A tile with ``shape=(M, K)``
         b: A tile with ``shape=(K, N)``
         out: A tile with ``shape=(M, N)``
-        alpha: Scaling factor (default 1.0)
-        beta: Accumulator factor (default 1.0)
+        alpha: Scaling factor
+        beta: Accumulator factor
 """,
     group="Tile Primitives",
     export=False,
@@ -15963,7 +16241,7 @@ add_builtin(
     Args:
         a: A tile with ``shape=(M, K)``
         b: A tile with ``shape=(K, N)``
-        alpha: Scaling factor (default 1.0)
+        alpha: Scaling factor
 
     Returns:
         A tile with ``shape=(M, N)``
@@ -16501,7 +16779,7 @@ add_builtin(
     variadic=True,
     doc="""Compute the Cholesky factorization of a symmetric positive-definite matrix ``A``.
 
-    When ``fill_mode="lower"`` (default), returns lower-triangular ``L`` such that ``LL^T = A``.
+    When ``fill_mode="lower"``, returns lower-triangular ``L`` such that ``LL^T = A``.
     When ``fill_mode="upper"``, returns upper-triangular ``U`` such that ``U^T U = A``.
 
     The ``fill_mode`` parameter must be a compile-time constant.
@@ -16516,7 +16794,7 @@ add_builtin(
 
     Args:
         A: A square, symmetric positive-definite matrix.
-        fill_mode: ``"lower"`` (default) or ``"upper"``. Must be a compile-time constant.
+        fill_mode: ``"lower"`` or ``"upper"``. Must be a compile-time constant.
 
     Returns:
         A triangular matrix ``L`` or ``U``.""",
@@ -16535,7 +16813,7 @@ add_builtin(
     variadic=True,
     doc="""Compute the Cholesky factorization of a symmetric positive-definite matrix ``A`` inplace.
 
-    When ``fill_mode="lower"`` (default), the lower triangle of ``A`` is replaced by ``L``
+    When ``fill_mode="lower"``, the lower triangle of ``A`` is replaced by ``L``
     such that ``LL^T = A``; the upper triangle is set to zero.
     When ``fill_mode="upper"``, the upper triangle of ``A`` is replaced by ``U``
     such that ``U^T U = A``; the lower triangle is set to zero.
@@ -16551,7 +16829,7 @@ add_builtin(
 
     Args:
         A: A square, symmetric positive-definite matrix.
-        fill_mode: ``"lower"`` (default) or ``"upper"``. Must be a compile-time constant.""",
+        fill_mode: ``"lower"`` or ``"upper"``. Must be a compile-time constant.""",
     group="Tile Primitives",
     export=False,
     is_differentiable=False,
@@ -16717,7 +16995,7 @@ add_builtin(
     variadic=True,
     doc="""Solve for ``x`` in ``Ax = y`` given the Cholesky factor of ``A``.
 
-    When ``fill_mode="lower"`` (default), ``L`` is lower-triangular such that ``LL^T = A``.
+    When ``fill_mode="lower"``, ``L`` is lower-triangular such that ``LL^T = A``.
     When ``fill_mode="upper"``, ``L`` is upper-triangular ``U`` such that ``U^T U = A``.
 
     The ``fill_mode`` parameter must be a compile-time constant.
@@ -16731,7 +17009,7 @@ add_builtin(
     Args:
         L: A square triangular Cholesky factor of ``A``.
         y: A 1D or 2D tile of length ``M``.
-        fill_mode: ``"lower"`` (default) or ``"upper"``. Must be a compile-time constant.
+        fill_mode: ``"lower"`` or ``"upper"``. Must be a compile-time constant.
 
     Returns:
         A tile of the same shape as ``y`` such that ``Ax = y``.""",
@@ -16754,7 +17032,7 @@ add_builtin(
     variadic=True,
     doc="""Solve for ``x`` in ``Ax = y`` by overwriting ``y`` with ``x``.
 
-    When ``fill_mode="lower"`` (default), ``L`` is lower-triangular such that ``LL^T = A``.
+    When ``fill_mode="lower"``, ``L`` is lower-triangular such that ``LL^T = A``.
     When ``fill_mode="upper"``, ``L`` is upper-triangular ``U`` such that ``U^T U = A``.
 
     The ``fill_mode`` parameter must be a compile-time constant.
@@ -16769,7 +17047,7 @@ add_builtin(
     Args:
         L: A square triangular Cholesky factor of ``A``.
         y: A 1D or 2D tile of length ``M`` that gets overwritten by ``x`` where ``Ax = y``.
-        fill_mode: ``"lower"`` (default) or ``"upper"``. Must be a compile-time constant.""",
+        fill_mode: ``"lower"`` or ``"upper"``. Must be a compile-time constant.""",
     group="Tile Primitives",
     export=False,
     is_differentiable=False,

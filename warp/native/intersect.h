@@ -191,6 +191,18 @@ intersect_aabb_aabb(const vec3& a_lower, const vec3& a_upper, const vec3& b_lowe
     }
 }
 
+// Sphere-AABB overlap: squared distance from the sphere center to the AABB <= radius_sq.
+// Takes pre-computed radius_sq to avoid recomputing it per node during traversal.
+CUDA_CALLABLE inline bool
+intersect_sphere_aabb(const vec3& center, float radius_sq, const vec3& lower, const vec3& upper)
+{
+    // squared distance from center to the AABB, accumulated per axis (Ericson, RTCD):
+    // branchless, and avoids materializing the closest point
+    float dx = max(max(lower[0] - center[0], center[0] - upper[0]), 0.0f);
+    float dy = max(max(lower[1] - center[1], center[1] - upper[1]), 0.0f);
+    float dz = max(max(lower[2] - center[2], center[2] - upper[2]), 0.0f);
+    return dx * dx + dy * dy + dz * dz <= radius_sq;
+}
 
 // Moller and Trumbore's method
 CUDA_CALLABLE inline bool intersect_ray_tri_moller(

@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import math
 import unittest
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 
@@ -239,6 +239,98 @@ def fa_kernel_indexed(a: wp.indexedfabricarray[float], expected: wp.indexedarray
     wp.expect_eq(a[i], 2.0 * expected[i] + 1.0)
 
 
+@wp.struct
+class FabricArrayStruct:
+    values: wp.fabricarray[float]
+    indexed_values: wp.indexedfabricarray[float]
+
+
+@wp.struct
+class NestedFabricArrayStruct:
+    inner: FabricArrayStruct
+
+
+@wp.struct
+class FabricArrayTilePayload:
+    values: wp.fabricarray[float]
+    indexed_values: wp.indexedfabricarray[float]
+    tag: int
+
+
+@wp.kernel
+def fa_struct_kernel(arg: FabricArrayStruct):
+    i = wp.tid()
+
+    arg.values[i] = arg.values[i] + 1.0
+    arg.indexed_values[i] = arg.indexed_values[i] + 2.0
+
+
+@wp.kernel
+def fa_nested_struct_kernel(arg: NestedFabricArrayStruct):
+    i = wp.tid()
+
+    arg.inner.values[i] = arg.inner.values[i] + 1.0
+    arg.inner.indexed_values[i] = arg.inner.indexed_values[i] + 2.0
+
+
+@wp.kernel
+def fa_struct_array_kernel(args: wp.array[FabricArrayStruct]):
+    i = wp.tid()
+    arg = args[0]
+
+    arg.values[i] = arg.values[i] + 1.0
+    arg.indexed_values[i] = arg.indexed_values[i] + 2.0
+
+
+@wp.kernel(enable_backward=False)
+def fa_struct_tile_sort_kernel(
+    input: wp.array[FabricArrayTilePayload],
+    sort_keys: wp.array[int],
+    sorted_payloads: wp.array[FabricArrayTilePayload],
+):
+    keys = wp.tile_load(sort_keys, shape=8, storage="shared")
+    values = wp.tile_load(input, shape=8, storage="shared")
+    wp.tile_sort(keys, values)
+    wp.tile_store(sorted_payloads, values)
+
+
+@wp.kernel(enable_backward=False)
+def fa_struct_tile_read_kernel(
+    payloads: wp.array[FabricArrayTilePayload],
+    values_out: wp.array[float],
+    indexed_values_out: wp.array[float],
+    tags_out: wp.array[int],
+):
+    i = wp.tid()
+    payload = payloads[i]
+    values_out[i] = payload.values[0]
+    indexed_values_out[i] = payload.indexed_values[0]
+    tags_out[i] = payload.tag
+
+
+def _create_fabricarray_struct(device):
+    """Create a struct and backing arrays for Fabric field tests."""
+    values = np.arange(10, dtype=np.float32)
+    values_array = wp.array(values, device=device)
+    values_iface = _create_fabric_array_interface(values_array, "values", copy=True)
+    fa = wp.fabricarray(data=values_iface, attrib="values")
+
+    indexed_values = np.arange(10, 20, dtype=np.float32)
+    indexed_values_array = wp.array(indexed_values, device=device)
+    indexed_values_iface = _create_fabric_array_interface(indexed_values_array, "indexed_values", copy=True)
+    indexed_fa = wp.fabricarray(data=indexed_values_iface, attrib="indexed_values")
+    indices = wp.array([1, 3, 5, 7, 9], dtype=wp.int32, device=device)
+    indexed_view = indexed_fa[indices]
+
+    value = FabricArrayStruct()
+    value.values = fa
+    value.indexed_values = indexed_view
+
+    # The interface dictionaries own the cloned backing arrays.
+    keepalive = (values_iface, indexed_values_iface)
+    return value, fa, indexed_fa, indices, values, indexed_values, keepalive
+
+
 def test_fabricarray_kernel(test, device):
     data = wp.array(data=np.arange(100, dtype=np.float32), device=device)
     iface = _create_fabric_array_interface(data, "foo", copy=True)
@@ -267,6 +359,153 @@ def test_fabricarray_kernel(test, device):
     wp.launch(fa_kernel_indexed, dim=ifa.size, inputs=[ifa, idata], device=device)
 
     wp.synchronize_device(device)
+
+
+def test_fabricarray_in_struct(test, device):
+    """Verify Fabric array fields can be accessed and mutated in kernels."""
+    arg, fa, indexed_fa, indices, values, indexed_values, _keepalive = _create_fabricarray_struct(device)
+
+    wp.launch(fa_struct_kernel, dim=arg.indexed_values.size, inputs=[arg], device=device)
+
+    expected_values = values.copy()
+    expected_values[: arg.indexed_values.size] += 1.0
+    expected_indexed_values = indexed_values.copy()
+    expected_indexed_values[indices.numpy()] += 2.0
+
+    assert_np_equal(fa.numpy(), expected_values)
+    assert_np_equal(indexed_fa.numpy(), expected_indexed_values)
+
+
+def test_fabricarray_in_nested_struct(test, device):
+    """Verify kernels access Fabric array fields through a nested struct."""
+    inner, fa, indexed_fa, indices, values, indexed_values, _keepalive = _create_fabricarray_struct(device)
+    arg = NestedFabricArrayStruct()
+    arg.inner = inner
+
+    wp.launch(fa_nested_struct_kernel, dim=inner.indexed_values.size, inputs=[arg], device=device)
+
+    expected_values = values.copy()
+    expected_values[: inner.indexed_values.size] += 1.0
+    expected_indexed_values = indexed_values.copy()
+    expected_indexed_values[indices.numpy()] += 2.0
+
+    assert_np_equal(fa.numpy(), expected_values)
+    assert_np_equal(indexed_fa.numpy(), expected_indexed_values)
+
+
+def test_fabricarray_in_struct_array(test, device):
+    """Verify kernels access Fabric array fields stored in a struct array."""
+    value, fa, indexed_fa, indices, values, indexed_values, _keepalive = _create_fabricarray_struct(device)
+    args = wp.array([value], dtype=FabricArrayStruct, device=device)
+
+    wp.launch(fa_struct_array_kernel, dim=value.indexed_values.size, inputs=[args], device=device)
+
+    expected_values = values.copy()
+    expected_values[: value.indexed_values.size] += 1.0
+    expected_indexed_values = indexed_values.copy()
+    expected_indexed_values[indices.numpy()] += 2.0
+
+    assert_np_equal(fa.numpy(), expected_values)
+    assert_np_equal(indexed_fa.numpy(), expected_indexed_values)
+
+
+def test_fabricarray_struct_tile_sort(test, device):
+    """Verify tile sorting keeps Fabric descriptors associated with their struct payloads."""
+    # Give each lane distinct values so stale descriptors remain visible after sorting.
+    payloads = []
+    # Fabric descriptors do not own their storage, so keep every backing object alive.
+    keepalive = []
+    for i in range(8):
+        values_array = wp.array([100.0 + float(i)], dtype=float, device=device)
+        values_iface = _create_fabric_array_interface(values_array, "values", bucket_sizes=[1])
+        values = wp.fabricarray(data=values_iface, attrib="values")
+
+        indexed_values_array = wp.array([200.0 + float(i), 300.0 + float(i)], dtype=float, device=device)
+        indexed_values_iface = _create_fabric_array_interface(indexed_values_array, "indexed_values", bucket_sizes=[2])
+        indexed_values = wp.fabricarray(data=indexed_values_iface, attrib="indexed_values")
+        # Alternate indices to catch partial indexed-descriptor shuffles.
+        indices = wp.array([i % 2], dtype=wp.int32, device=device)
+        indexed_view = indexed_values[indices]
+
+        payload = FabricArrayTilePayload()
+        payload.values = values
+        payload.indexed_values = indexed_view
+        payload.tag = i
+        payloads.append(payload)
+        keepalive.append((values_iface, indexed_values_iface, values, indexed_values, indices, indexed_view))
+
+    # Descending keys force tile_sort to reverse every payload lane.
+    input_wp = wp.array(payloads, dtype=FabricArrayTilePayload, device=device)
+    sort_keys = wp.array([7, 6, 5, 4, 3, 2, 1, 0], dtype=int, device=device)
+    sorted_payloads = wp.empty(8, dtype=FabricArrayTilePayload, device=device)
+    values_out = wp.empty(8, dtype=float, device=device)
+    indexed_values_out = wp.empty(8, dtype=float, device=device)
+    tags_out = wp.empty(8, dtype=int, device=device)
+
+    wp.launch_tiled(
+        fa_struct_tile_sort_kernel,
+        dim=[1],
+        inputs=[input_wp, sort_keys],
+        outputs=[sorted_payloads],
+        block_dim=32,
+        device=device,
+    )
+    # Dereference the sorted descriptors in a separate kernel.
+    wp.launch(
+        fa_struct_tile_read_kernel,
+        dim=8,
+        inputs=[sorted_payloads],
+        outputs=[values_out, indexed_values_out, tags_out],
+        block_dim=32,
+        device=device,
+    )
+
+    # Both descriptor values must remain paired with the shuffled tag.
+    assert_np_equal(
+        values_out.numpy(), np.array([107.0, 106.0, 105.0, 104.0, 103.0, 102.0, 101.0, 100.0], dtype=np.float32)
+    )
+    assert_np_equal(
+        indexed_values_out.numpy(),
+        np.array([307.0, 206.0, 305.0, 204.0, 303.0, 202.0, 301.0, 200.0], dtype=np.float32),
+    )
+    assert_np_equal(tags_out.numpy(), np.array([7, 6, 5, 4, 3, 2, 1, 0], dtype=np.int32))
+
+
+def test_fabricarray_in_struct_to(test, device):
+    """Verify struct transfers preserve same-device Fabric array fields and reject cross-device transfers."""
+    values_array = wp.array(np.arange(4, dtype=np.float32), device=device)
+    values_iface = _create_fabric_array_interface(values_array, "values")
+    fa = wp.fabricarray(data=values_iface, attrib="values")
+    indices = wp.array([1, 3], dtype=wp.int32, device=device)
+    indexed_fa = fa[indices]
+
+    value = FabricArrayStruct()
+    value.values = fa
+    value.indexed_values = indexed_fa
+
+    same_device_value = value.to(device)
+    test.assertIs(same_device_value.values, fa)
+    test.assertIs(same_device_value.indexed_values, indexed_fa)
+
+    current_device = wp.get_device(device)
+    if current_device.is_cpu:
+        if not wp.is_cuda_available():
+            return
+        other_device = wp.get_cuda_device(0)
+    else:
+        other_device = wp.get_device("cpu")
+
+    # Clear the other descriptor so each transfer reaches the intended field check.
+    value.indexed_values = None
+    with test.assertRaisesRegex(ValueError, r"Cannot move struct field 'values' containing a Warp Fabric array"):
+        value.to(other_device)
+
+    value.values = None
+    value.indexed_values = indexed_fa
+    with test.assertRaisesRegex(
+        ValueError, r"Cannot move struct field 'indexed_values' containing a Warp indexed Fabric array"
+    ):
+        value.to(other_device)
 
 
 @wp.kernel
@@ -958,6 +1197,7 @@ for T in _fabric_types:
 
 
 devices = get_test_devices()
+cuda_devices = get_cuda_test_devices()
 
 
 class TestFabricArray(unittest.TestCase):
@@ -966,9 +1206,181 @@ class TestFabricArray(unittest.TestCase):
         instance = wp.fabricarray.__new__(wp.fabricarray)
         instance.__del__()
 
+    def test_fabricarray_struct_field_declaration(self):
+        """Verify structs accept subscript and factory-style Fabric array fields."""
+
+        @wp.struct
+        class SubscriptFabricArrayStruct:
+            values: wp.fabricarray[wp.float32]
+
+        @wp.struct
+        class SubscriptIndexedFabricArrayStruct:
+            values: wp.indexedfabricarray[wp.float32]
+
+        @wp.struct
+        class FactoryStyleFabricArrayStruct:
+            values: wp.fabricarray(dtype=wp.float32)
+
+        @wp.struct
+        class FactoryStyleIndexedFabricArrayStruct:
+            values: wp.indexedfabricarray(dtype=wp.float32)
+
+        struct_types = (
+            SubscriptFabricArrayStruct,
+            SubscriptIndexedFabricArrayStruct,
+            FactoryStyleFabricArrayStruct,
+            FactoryStyleIndexedFabricArrayStruct,
+        )
+        for struct_type in struct_types:
+            with self.subTest(struct_type=struct_type.key):
+                self.assertIsNone(struct_type().values)
+
+    def test_fabricarray_struct_array_roundtrip(self):
+        """Verify ``list()`` reconstructs Fabric field metadata that ``to()`` preserves."""
+        values_array = wp.array(np.arange(4, dtype=np.float32), device="cpu")
+        values_iface = _create_fabric_array_interface(values_array, "values", bucket_sizes=[2, 2])
+        fa = wp.fabricarray(data=values_iface, attrib="values")
+        indices = wp.array([1, 3], dtype=wp.int32, device="cpu")
+
+        value = FabricArrayStruct()
+        value.values = fa
+        value.indexed_values = fa[indices]
+
+        # list() reconstructs annotation stubs, so validate type metadata rather than backing storage.
+        values = wp.array([value], dtype=FabricArrayStruct, device="cpu").list()
+
+        self.assertEqual(len(values), 1)
+        self.assertIsInstance(values[0].values, wp.fabricarray)
+        self.assertEqual(values[0].values.dtype, wp.float32)
+        self.assertEqual(values[0].values.ndim, 1)
+        self.assertIsInstance(values[0].indexed_values, wp.indexedfabricarray)
+        self.assertEqual(values[0].indexed_values.dtype, wp.float32)
+        self.assertEqual(values[0].indexed_values.ndim, 1)
+
+        copied = values[0].to("cpu")
+        self.assertIs(copied.values, values[0].values)
+        self.assertIs(copied.indexed_values, values[0].indexed_values)
+
+    def test_fabricarray_struct_field_assignment_validation(self):
+        """Verify Fabric array struct fields reject incompatible assignments."""
+
+        # Check value type and dtype validation for both descriptor types.
+        @wp.struct
+        class IntFabricArrayStruct:
+            values: wp.fabricarray[wp.int32]
+
+        @wp.struct
+        class IntIndexedFabricArrayStruct:
+            values: wp.indexedfabricarray[wp.int32]
+
+        wrong_dtype_array = wp.array([1.0], dtype=wp.float32, device="cpu")
+        wrong_dtype_iface = _create_fabric_array_interface(wrong_dtype_array, "values", bucket_sizes=[1])
+        wrong_dtype_fa = wp.fabricarray(data=wrong_dtype_iface, attrib="values")
+        indices = wp.array([0], dtype=wp.int32, device="cpu")
+
+        cases = (
+            (
+                IntFabricArrayStruct,
+                wrong_dtype_fa,
+                r"expects a Warp Fabric array, got list",
+            ),
+            (
+                IntIndexedFabricArrayStruct,
+                wrong_dtype_fa[indices],
+                r"expects a Warp indexed Fabric array, got list",
+            ),
+        )
+
+        for struct_type, wrong_dtype, non_array_error in cases:
+            with self.subTest(struct_type=struct_type.key, error="non_array"):
+                value = struct_type()
+                with self.assertRaisesRegex(TypeError, non_array_error):
+                    value.values = [1, 2, 3]
+
+            with self.subTest(struct_type=struct_type.key, error="wrong_dtype"):
+                value = struct_type()
+                with self.assertRaisesRegex(TypeError, r"Struct field 'values' expects dtype int32, got float32"):
+                    value.values = wrong_dtype
+
+        # Check fixed and arbitrary dimensionality for both descriptor types.
+        @wp.struct
+        class FabricArray1DStruct:
+            values: wp.fabricarray[wp.float32]
+
+        @wp.struct
+        class FabricArray2DStruct:
+            values: wp.fabricarray[wp.float32, Literal[2]]
+
+        @wp.struct
+        class IndexedFabricArray1DStruct:
+            values: wp.indexedfabricarray[wp.float32]
+
+        @wp.struct
+        class IndexedFabricArray2DStruct:
+            values: wp.indexedfabricarray[wp.float32, Literal[2]]
+
+        @wp.struct
+        class AnyDimFabricArrayStruct:
+            values: wp.fabricarray[wp.float32, Any]
+
+        @wp.struct
+        class AnyDimIndexedFabricArrayStruct:
+            values: wp.indexedfabricarray[wp.float32, Any]
+
+        # Use a 2D Fabric array to exercise mismatches in both directions.
+        array_of_arrays = [
+            wp.array([1.0, 2.0], dtype=wp.float32, device="cpu"),
+            wp.array([3.0], dtype=wp.float32, device="cpu"),
+        ]
+        array_of_arrays_iface = _create_fabric_array_array_interface(array_of_arrays, "values", bucket_sizes=[2])
+        fa_2d = wp.fabricarrayarray(data=array_of_arrays_iface, attrib="values")
+
+        # Fixed-dimensional fields reject descriptors with the wrong rank.
+        dimension_cases = (
+            (FabricArray1DStruct, fa_2d, 1, 2),
+            (FabricArray2DStruct, wrong_dtype_fa, 2, 1),
+            (IndexedFabricArray1DStruct, fa_2d[indices], 1, 2),
+            (IndexedFabricArray2DStruct, wrong_dtype_fa[indices], 2, 1),
+        )
+
+        for struct_type, array, expected_ndim, actual_ndim in dimension_cases:
+            with self.subTest(struct_type=struct_type.key, error="wrong_ndim"):
+                value = struct_type()
+                with self.assertRaisesRegex(
+                    TypeError,
+                    rf"Struct field 'values' expects an array with {expected_ndim} dimension\(s\), "
+                    rf"got {actual_ndim} dimension\(s\)",
+                ):
+                    value.values = array
+
+        # Arbitrary-dimensional fields accept both 1D and 2D descriptors.
+        any_dimension_cases = (
+            (AnyDimFabricArrayStruct, wrong_dtype_fa),
+            (AnyDimFabricArrayStruct, fa_2d),
+            (AnyDimIndexedFabricArrayStruct, wrong_dtype_fa[indices]),
+            (AnyDimIndexedFabricArrayStruct, fa_2d[indices]),
+        )
+
+        for struct_type, array in any_dimension_cases:
+            with self.subTest(struct_type=struct_type.key, ndim=array.ndim):
+                value = struct_type()
+                value.values = array
+                self.assertIs(value.values, array)
+
 
 # fabric arrays
 add_function_test(TestFabricArray, "test_fabricarray_kernel", test_fabricarray_kernel, devices=devices)
+add_function_test(TestFabricArray, "test_fabricarray_in_struct", test_fabricarray_in_struct, devices=devices)
+add_function_test(
+    TestFabricArray, "test_fabricarray_in_nested_struct", test_fabricarray_in_nested_struct, devices=devices
+)
+add_function_test(
+    TestFabricArray, "test_fabricarray_in_struct_array", test_fabricarray_in_struct_array, devices=devices
+)
+add_function_test(
+    TestFabricArray, "test_fabricarray_struct_tile_sort", test_fabricarray_struct_tile_sort, devices=cuda_devices
+)
+add_function_test(TestFabricArray, "test_fabricarray_in_struct_to", test_fabricarray_in_struct_to, devices=devices)
 add_function_test(TestFabricArray, "test_fabricarray_empty", test_fabricarray_empty, devices=devices)
 add_function_test(TestFabricArray, "test_fabricarray_generic_dtype", test_fabricarray_generic_dtype, devices=devices)
 add_function_test(TestFabricArray, "test_fabricarray_generic_array", test_fabricarray_generic_array, devices=devices)

@@ -28,6 +28,9 @@ os.environ["XLA_PYTHON_CLIENT_ALLOCATOR"] = "platform"
 ARRAY_SIZE = 1024 * 1024
 TILE_STORE_SIZE = 64
 JAX_TILE_BLOCK_DIM = 64
+JAX_SCALAR_TID_DISABLED = False
+JAX_SHARD_MAP_LOCAL_DIM = 8
+JAX_SHARD_MAP_MIN_VERSION = (0, 6, 1)
 
 
 # Keep test kernels at module scope. Function-local @wp.kernel definitions mark
@@ -69,6 +72,12 @@ def noop_kernel(a: wp.array1d[wp.float32], b: wp.array1d[wp.float32]):
 
 
 @wp.kernel
+def flatten_2d_kernel(a: wp.array2d[wp.float32], b: wp.array1d[wp.float32]):
+    i = wp.tid()
+    b[i] = a[i // JAX_SHARD_MAP_LOCAL_DIM, i % JAX_SHARD_MAP_LOCAL_DIM]
+
+
+@wp.kernel
 def inc_1d_kernel(x: wp.array[float], y: wp.array[float]):
     tid = wp.tid()
     y[tid] = x[tid] + 1.0
@@ -78,6 +87,13 @@ def inc_1d_kernel(x: wp.array[float], y: wp.array[float]):
 def inc_2d_kernel(x: wp.array2d[float], y: wp.array2d[float]):
     i, j = wp.tid()
     y[i, j] = x[i, j] + 1.0
+
+
+@wp.kernel
+def compile_time_dead_scalar_tid_kernel(x: wp.array[float], y: wp.array[float]):
+    if JAX_SCALAR_TID_DISABLED:
+        i = wp.tid()
+        y[i] = x[i]
 
 
 @wp.kernel
@@ -522,6 +538,123 @@ def test_jax_kernel_launch_dims(test, device, use_ffi=False):
     assert_np_equal(result_2d, expected_2d)
 
 
+def test_jax_kernel_rejects_oversized_scalar_tid_launch_dims(test, device, use_ffi=False):
+    """Reject oversized scalar ``wp.tid()`` dimensions during legacy lowering."""
+    jax = _import_jax()
+    jp = _import_jax_numpy()
+    jax_kernel = _get_experimental_custom_call_jax_kernel()
+    jax_inc = jax_kernel(inc_1d_kernel, launch_dims=(2**31 + 1,), quiet=True)
+
+    @jax.jit
+    def run():
+        return jax_inc(jp.ones(1, dtype=jp.float32))
+
+    with jax.default_device(wp.device_to_jax(device)):
+        with test.assertRaisesRegex(
+            ValueError, r"Warp cannot launch a kernel using scalar wp\.tid\(\) with extent 2147483649"
+        ):
+            run.lower()
+
+
+def test_ffi_jax_kernel_rejects_oversized_explicit_scalar_tid_launch_dims(test, device):
+    """Reject explicit oversized scalar ``wp.tid()`` dimensions during tracing."""
+    jp = _import_jax_numpy()
+    # Keep output allocation small so it cannot mask the launch-dimension error.
+    jax_inc = wp.jax_kernel(
+        inc_1d_kernel,
+        launch_dims=(2**31 + 1,),
+        output_dims=1,
+    )
+
+    @jax.jit
+    def run():
+        return jax_inc(jp.ones(1, dtype=jp.float32))
+
+    with jax.default_device(wp.device_to_jax(device)):
+        with test.assertRaisesRegex(
+            ValueError, r"Warp cannot launch a kernel using scalar wp\.tid\(\) with extent 2147483649"
+        ):
+            run.lower()
+
+
+def test_ffi_jax_kernel_rejects_oversized_inferred_scalar_tid_launch_dims(test, device):
+    """Reject inferred oversized scalar ``wp.tid()`` dimensions during tracing."""
+    jp = _import_jax_numpy()
+    # Keep output allocation small so it cannot mask the launch-dimension error.
+    jax_inc = wp.jax_kernel(inc_1d_kernel, output_dims=1)
+
+    @jax.jit
+    def run(x):
+        return jax_inc(x)
+
+    # Trace the oversized input shape without allocating its storage.
+    abstract_input = jax.ShapeDtypeStruct((2**31 + 1,), jp.float32)
+    with jax.default_device(wp.device_to_jax(device)):
+        with test.assertRaisesRegex(
+            ValueError, r"Warp cannot launch a kernel using scalar wp\.tid\(\) with extent 2147483649"
+        ):
+            run.lower(abstract_input)
+
+
+def test_jax_kernel_accepts_oversized_compile_time_dead_scalar_tid_launch_dims(test, device, use_ffi=False):
+    """Accept oversized launches when codegen removes scalar ``wp.tid()``."""
+    jp = _import_jax_numpy()
+    if use_ffi:
+        jax_noop = wp.jax_kernel(
+            compile_time_dead_scalar_tid_kernel,
+            launch_dims=(2**31 + 1,),
+            output_dims=1,
+            module_preload_mode=wp.JaxModulePreloadMode.NONE,
+        )
+    else:
+        jax_kernel = _get_experimental_custom_call_jax_kernel()
+        jax_noop = jax_kernel(
+            compile_time_dead_scalar_tid_kernel,
+            launch_dims=(2**31 + 1,),
+            quiet=True,
+        )
+
+    @jax.jit
+    def run():
+        return jax_noop(jp.ones(1, dtype=jp.float32))
+
+    with jax.default_device(wp.device_to_jax(device)):
+        test.assertIsNotNone(run.lower())
+
+
+def test_ffi_jax_kernel_validates_all_target_block_dims_during_tracing(test, device):
+    """Validate platform-neutral tracing against CPU and CUDA block sizes."""
+    from warp._src.jax import ffi as ffi_module  # noqa: PLC0415
+
+    jp = _import_jax_numpy()
+    configured_block_dim = 64
+    jax_noop = wp.jax_kernel(
+        compile_time_dead_scalar_tid_kernel,
+        launch_dims=(2**31 + 1,),
+        output_dims=1,
+        block_dim=configured_block_dim,
+        module_preload_mode=wp.JaxModulePreloadMode.NONE,
+    )
+
+    def run():
+        return jax_noop(jp.ones(1, dtype=jp.float32))
+
+    with (
+        warnings.catch_warnings(),
+        mock.patch.object(
+            ffi_module,
+            "_build_kernel_launch_bounds",
+            wraps=ffi_module._build_kernel_launch_bounds,
+        ) as build_bounds,
+    ):
+        warnings.simplefilter("ignore", DeprecationWarning)
+        lowered = jax.jit(run, device=wp.device_to_jax(device)).lower()
+
+    test.assertIsNotNone(lowered)
+    observed_block_dims = {call.args[2] for call in build_bounds.call_args_list}
+    test.assertEqual(observed_block_dims, {1, configured_block_dim})
+
+
 # =========================================================================================================
 # JAX FFI
 # =========================================================================================================
@@ -682,6 +815,42 @@ def in_out_func(
     wp.launch(accum_kernel, dim=a.size, inputs=[a, b])  # modifies `b`
 
 
+def cache_key_output_first_func(
+    inp: wp.array[float],
+    output: wp.array[float],
+):
+    """Write three times ``inp`` to ``output`` for cache-key tests."""
+    wp.launch(triple_kernel, dim=inp.shape, inputs=[inp], outputs=[output])
+
+
+def cache_key_in_out_first_func(
+    a: wp.array1d[wp.float32],
+    b: wp.array1d[wp.float32],
+):
+    """Copy ``a`` to ``b`` for input-output-first cache-key tests."""
+    wp.launch(noop_kernel, dim=a.shape, inputs=[a], outputs=[b])
+
+
+def cache_key_staging_func(
+    a: wp.array[float],
+    b: wp.array[float],
+    c: wp.array[float],
+    d: wp.array[float],
+):
+    """Copy two inputs into separate outputs for staging cache-key tests."""
+    wp.copy(c, a)
+    wp.copy(d, b)
+
+
+def cache_key_two_in_out_func(
+    a: wp.array[float],
+    b: wp.array[float],
+    c: wp.array[float],
+):
+    """Copy ``a`` to ``c`` while exposing ``a`` and ``b`` as cache-key candidates."""
+    wp.copy(c, a)
+
+
 def double_func(
     # inputs
     a: wp.array[float],
@@ -801,6 +970,69 @@ def test_ffi_jax_kernel_in_out(test, device):
 
     assert_np_equal(b, np.arange(1, ARRAY_SIZE + 1, dtype=np.float32))
     assert_np_equal(c, np.full(ARRAY_SIZE, 2, dtype=np.float32))
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
+def test_ffi_jax_kernel_cache_argnames(test, device):
+    """Verify kernel cache identity includes input-output argument names."""
+    jax = _import_jax()
+    jp = _import_jax_numpy()
+    size = 8
+
+    # Use distinct existing kernels to isolate both registry construction orders
+    # without adding kernels to the shared module's cold compilation.
+    cases = (
+        (triple_kernel, "output", 3.0, False),
+        (noop_kernel, "b", 1.0, True),
+    )
+
+    with jax.default_device(wp.device_to_jax(device)):
+        for kernel, in_out_argname, expected_scale, in_out_first in cases:
+            with test.subTest(kernel=kernel.key, in_out_first=in_out_first):
+                if in_out_first:
+                    in_out = wp.jax_kernel(kernel, num_outputs=1, in_out_argnames=[in_out_argname])
+                    output_only = wp.jax_kernel(kernel, num_outputs=1)
+                else:
+                    output_only = wp.jax_kernel(kernel, num_outputs=1)
+                    in_out = wp.jax_kernel(kernel, num_outputs=1, in_out_argnames=[in_out_argname])
+
+                # Different ABI selections need distinct wrappers, while repeated
+                # and empty/default configurations must reuse existing wrappers.
+                test.assertIsNot(output_only, in_out)
+                test.assertIs(output_only, wp.jax_kernel(kernel, num_outputs=1))
+                test.assertIs(output_only, wp.jax_kernel(kernel, num_outputs=1, in_out_argnames=[]))
+                test.assertIs(
+                    in_out,
+                    wp.jax_kernel(kernel, num_outputs=1, in_out_argnames=[in_out_argname]),
+                )
+
+                # Execute both ABIs because object identity alone cannot expose a
+                # stale input count retained from the first cached wrapper.
+                a = jp.arange(size, dtype=jp.float32)
+                output_buffer = jp.full(size, -1.0, dtype=jp.float32)
+                (output_result,) = jax.jit(output_only)(a)
+                (in_out_result,) = jax.jit(in_out)(a, output_buffer)
+                jax.block_until_ready((output_result, in_out_result))
+
+                expected = np.arange(size, dtype=np.float32) * expected_scale
+                np.testing.assert_allclose(np.asarray(output_result), expected)
+                np.testing.assert_allclose(np.asarray(in_out_result), expected)
+
+        # A valid cached wrapper must not hide validation errors in later
+        # configurations.
+        with test.assertRaisesRegex(AssertionError, "must not contain duplicate names"):
+            wp.jax_kernel(
+                triple_kernel,
+                num_outputs=1,
+                in_out_argnames=["output", "output"],
+            )
+
+        with test.assertRaisesRegex(ValueError, "did not match any function argument names"):
+            wp.jax_kernel(
+                triple_kernel,
+                num_outputs=1,
+                in_out_argnames=["missing"],
+            )
 
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
@@ -1047,6 +1279,137 @@ def test_ffi_jax_callable_in_out(test, device):
 
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
+def test_ffi_jax_callable_cache_argnames(test, device):
+    """Verify callable cache identity includes input-output argument names."""
+    jax = _import_jax()
+    jp = _import_jax_numpy()
+    size = 8
+
+    # Use distinct callables to isolate both registry construction orders. Each
+    # launches an existing kernel to avoid extra shared-module cold compilation.
+    cases = (
+        (cache_key_output_first_func, "output", 3.0, False),
+        (cache_key_in_out_first_func, "b", 1.0, True),
+    )
+
+    with jax.default_device(wp.device_to_jax(device)):
+        for func, in_out_argname, expected_scale, in_out_first in cases:
+            with test.subTest(func=func.__name__, in_out_first=in_out_first):
+                if in_out_first:
+                    in_out = wp.jax_callable(func, num_outputs=1, in_out_argnames=[in_out_argname])
+                    output_only = wp.jax_callable(func, num_outputs=1)
+                else:
+                    output_only = wp.jax_callable(func, num_outputs=1)
+                    in_out = wp.jax_callable(func, num_outputs=1, in_out_argnames=[in_out_argname])
+
+                # Different ABI selections need distinct wrappers, while repeated
+                # and empty/default configurations must reuse existing wrappers.
+                test.assertIsNot(output_only, in_out)
+                test.assertIs(output_only, wp.jax_callable(func, num_outputs=1))
+                test.assertIs(output_only, wp.jax_callable(func, num_outputs=1, in_out_argnames=[]))
+                test.assertIs(
+                    in_out,
+                    wp.jax_callable(func, num_outputs=1, in_out_argnames=[in_out_argname]),
+                )
+
+                # Execute both ABIs because object identity alone cannot expose a
+                # stale input count retained from the first cached wrapper.
+                a = jp.arange(size, dtype=jp.float32)
+                output_buffer = jp.full(size, -1.0, dtype=jp.float32)
+                (output_result,) = jax.jit(output_only)(a)
+                (in_out_result,) = jax.jit(in_out)(a, output_buffer)
+                jax.block_until_ready((output_result, in_out_result))
+
+                expected = np.arange(size, dtype=np.float32) * expected_scale
+                np.testing.assert_allclose(np.asarray(output_result), expected)
+                np.testing.assert_allclose(np.asarray(in_out_result), expected)
+
+        # A valid cached wrapper must not hide validation errors in later
+        # configurations.
+        with test.assertRaisesRegex(AssertionError, "must not contain duplicate names"):
+            wp.jax_callable(
+                cache_key_output_first_func,
+                num_outputs=1,
+                in_out_argnames=["output", "output"],
+            )
+
+        with test.assertRaisesRegex(ValueError, "did not match any function argument names"):
+            wp.jax_callable(
+                cache_key_output_first_func,
+                num_outputs=1,
+                in_out_argnames=["missing"],
+            )
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
+def test_ffi_jax_callable_cache_stage_argnames(test, device):
+    """Verify callable cache identity includes staging and ordered input-output names."""
+    jax = _import_jax()
+
+    with jax.default_device(wp.device_to_jax(device)):
+        # Staging selections are wrapper state, so only identical selections may
+        # reuse a cache entry.
+        first = wp.jax_callable(
+            cache_key_staging_func,
+            num_outputs=2,
+            graph_mode=wp.JaxCallableGraphMode.WARP_STAGED,
+            stage_in_argnames=["a"],
+            stage_out_argnames=["c"],
+        )
+        repeated = wp.jax_callable(
+            cache_key_staging_func,
+            num_outputs=2,
+            graph_mode=wp.JaxCallableGraphMode.WARP_STAGED,
+            stage_in_argnames=["a"],
+            stage_out_argnames=["c"],
+        )
+        second = wp.jax_callable(
+            cache_key_staging_func,
+            num_outputs=2,
+            graph_mode=wp.JaxCallableGraphMode.WARP_STAGED,
+            stage_in_argnames=["b"],
+            stage_out_argnames=["d"],
+        )
+
+        test.assertIs(first, repeated)
+        test.assertIsNot(first, second)
+        test.assertEqual(first.stage_in_argnames, {"a"})
+        test.assertEqual(first.stage_out_argnames, {"c"})
+        test.assertEqual(second.stage_in_argnames, {"b"})
+        test.assertEqual(second.stage_out_argnames, {"d"})
+
+        # Empty staging selections intentionally normalize to the absent/default
+        # selection.
+        absent = wp.jax_callable(
+            cache_key_staging_func,
+            num_outputs=2,
+            graph_mode=wp.JaxCallableGraphMode.WARP_STAGED,
+        )
+        empty = wp.jax_callable(
+            cache_key_staging_func,
+            num_outputs=2,
+            graph_mode=wp.JaxCallableGraphMode.WARP_STAGED,
+            stage_in_argnames=[],
+            stage_out_argnames=[],
+        )
+        test.assertIs(absent, empty)
+
+        # Preserve caller order in the cache key even though current wrapper
+        # behavior uses set membership for these names.
+        ordered = wp.jax_callable(
+            cache_key_two_in_out_func,
+            num_outputs=3,
+            in_out_argnames=["a", "b"],
+        )
+        permuted = wp.jax_callable(
+            cache_key_two_in_out_func,
+            num_outputs=3,
+            in_out_argnames=["b", "a"],
+        )
+        test.assertIsNot(ordered, permuted)
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_callable_graph_cache(test, device):
     # test graph caching limits
     jax = _import_jax()
@@ -1266,8 +1629,21 @@ def test_ffi_jax_cuda_requires_cuda_support(test, device):
 
 
 def _run_ffi_jax_cpu_subprocess(test):
-    """Run the auxiliary CPU FFI script in a CPU-only subprocess and assert that it succeeds."""
-    script = os.path.join(os.path.dirname(__file__), "aux_test_jax_cpu_ffi.py")
+    """Run CPU FFI checks with two host platform devices and assert that they succeed."""
+    test_dir = os.path.dirname(__file__)
+    commands = (
+        ("FFI smoke checks", [sys.executable, os.path.join(test_dir, "aux_test_jax_cpu_ffi.py")]),
+        (
+            "shard-map VMA checks",
+            [
+                sys.executable,
+                os.path.abspath(__file__),
+                "TestJax.test_ffi_shard_map_preserves_vma",
+                "TestJax.test_ffi_shard_map_aggregates_input_vma",
+                "TestJax.test_ffi_shard_map_vma_rank_change",
+            ],
+        ),
+    )
     env = os.environ.copy()
     env["CUDA_VISIBLE_DEVICES"] = ""
     env["JAX_PLATFORMS"] = "cpu"
@@ -1275,16 +1651,154 @@ def _run_ffi_jax_cpu_subprocess(test):
 
     with tempfile.TemporaryDirectory(prefix="warp-jax-cpu-ffi-") as cache_dir:
         env["WARP_CACHE_PATH"] = cache_dir
-        result = subprocess.run(
-            [sys.executable, script],
-            check=False,
-            capture_output=True,
-            env=env,
-            text=True,
-            timeout=300,
-        )
+        for description, command in commands:
+            with test.subTest(subprocess=description):
+                result = subprocess.run(
+                    command,
+                    check=False,
+                    capture_output=True,
+                    env=env,
+                    text=True,
+                    timeout=300,
+                )
+                test.assertEqual(result.returncode, 0, msg=f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}")
 
-    test.assertEqual(result.returncode, 0, msg=f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}")
+
+def _get_two_device_jax_cpu_mesh(test):
+    jax = _import_jax()
+    try:
+        devices = jax.local_devices(backend="cpu")
+    except RuntimeError as error:
+        test.skipTest(f"JAX CPU devices are unavailable: {error}")
+    if len(devices) < 2:
+        test.skipTest("At least two JAX CPU devices are required")
+    return jax.sharding.Mesh(np.array(devices[:2]), ("replicas",))
+
+
+@unittest.skipUnless(_jax_version() >= JAX_SHARD_MAP_MIN_VERSION, "JAX version too old")
+def test_ffi_shard_map_preserves_vma(test, _device):
+    """Verify that JAX FFI outputs preserve VMA metadata through ``lax.scan``."""
+    jax = _import_jax()
+    jp = _import_jax_numpy()
+    jax_mesh = _get_two_device_jax_cpu_mesh(test)
+    source = jp.arange(128, dtype=jp.float32)
+    expected = np.arange(128, dtype=np.float32)
+
+    ffi_copies = (
+        ("jax_kernel", wp.jax_kernel(noop_kernel, num_outputs=1)),
+        ("jax_callable", wp.jax_callable(cache_key_in_out_first_func, num_outputs=1)),
+    )
+
+    def make_scan_copy(ffi_copy):
+        @jax.shard_map(
+            mesh=jax_mesh,
+            in_specs=jax.sharding.PartitionSpec("replicas"),
+            out_specs=jax.sharding.PartitionSpec("replicas"),
+            check_vma=True,
+        )
+        def scan_copy(x):
+            def body(carry, _):
+                return ffi_copy(carry)[0], None
+
+            return jax.lax.scan(body, x, None, length=2)[0]
+
+        return scan_copy
+
+    for name, ffi_copy in ffi_copies:
+        with test.subTest(wrapper=name):
+            scan_copy = make_scan_copy(ffi_copy)
+            result = scan_copy(source)
+            np.testing.assert_array_equal(np.asarray(result), expected)
+
+
+@unittest.skipUnless(_jax_version() >= JAX_SHARD_MAP_MIN_VERSION, "JAX version too old")
+def test_ffi_shard_map_aggregates_input_vma(test, _device):
+    """Verify that JAX FFI outputs aggregate VMA metadata from all array inputs.
+
+    Exercise kernel and callable wrappers with pure outputs and input-output
+    aliases when only a later input varies across a manual JAX mesh axis.
+    """
+    jax = _import_jax()
+    jp = _import_jax_numpy()
+    jax_mesh = _get_two_device_jax_cpu_mesh(test)
+    invariant = jp.ones(64, dtype=jp.float32)
+    varying = jp.arange(128, dtype=jp.float32)
+
+    ffi_kernel = wp.jax_kernel(multiarg_kernel, num_outputs=2)
+    ffi_callable = wp.jax_callable(cache_key_staging_func, num_outputs=2)
+    ffi_kernel_in_out = wp.jax_kernel(multiarg_kernel, num_outputs=3, in_out_argnames=["b"])
+    ffi_callable_in_out = wp.jax_callable(cache_key_two_in_out_func, num_outputs=2, in_out_argnames=["b"])
+
+    def kernel_copy(invariant, carry):
+        return ffi_kernel(invariant, carry, invariant)[1]
+
+    def callable_copy(invariant, carry):
+        return ffi_callable(invariant, carry)[1]
+
+    def kernel_in_out_copy(invariant, carry):
+        return ffi_kernel_in_out(invariant, carry, carry)[0]
+
+    def callable_in_out_copy(invariant, carry):
+        return ffi_callable_in_out(invariant, carry)[0]
+
+    ffi_copies = (
+        ("jax_kernel", kernel_copy, np.arange(128, dtype=np.float32) + 2.0),
+        ("jax_callable", callable_copy, np.arange(128, dtype=np.float32)),
+        ("jax_kernel_in_out", kernel_in_out_copy, np.arange(128, dtype=np.float32)),
+        ("jax_callable_in_out", callable_in_out_copy, np.arange(128, dtype=np.float32)),
+    )
+
+    def make_scan_copy(ffi_copy):
+        @jax.shard_map(
+            mesh=jax_mesh,
+            in_specs=(jax.sharding.PartitionSpec(), jax.sharding.PartitionSpec("replicas")),
+            out_specs=jax.sharding.PartitionSpec("replicas"),
+            check_vma=True,
+        )
+        def scan_copy(invariant, varying):
+            def body(carry, _):
+                return ffi_copy(invariant, carry), None
+
+            return jax.lax.scan(body, varying, None, length=2)[0]
+
+        return scan_copy
+
+    for name, ffi_copy, expected in ffi_copies:
+        with test.subTest(wrapper=name):
+            scan_copy = make_scan_copy(ffi_copy)
+            result = scan_copy(invariant, varying)
+            np.testing.assert_array_equal(np.asarray(result), expected)
+
+
+@unittest.skipUnless(_jax_version() >= JAX_SHARD_MAP_MIN_VERSION, "JAX version too old")
+def test_ffi_shard_map_vma_rank_change(test, _device):
+    """Verify that JAX FFI preserves VMA metadata for rank-changing outputs.
+
+    Reshape the scan carry to two dimensions before the FFI call and return a
+    one-dimensional output as the next carry.
+    """
+    jax = _import_jax()
+    jp = _import_jax_numpy()
+    jax_mesh = _get_two_device_jax_cpu_mesh(test)
+    local_size = JAX_SHARD_MAP_LOCAL_DIM * JAX_SHARD_MAP_LOCAL_DIM
+    source = jp.arange(2 * local_size, dtype=jp.float32).reshape((2 * JAX_SHARD_MAP_LOCAL_DIM, -1))
+    ffi_flatten = wp.jax_kernel(flatten_2d_kernel, launch_dims=local_size, output_dims=local_size)
+
+    @jax.shard_map(
+        mesh=jax_mesh,
+        in_specs=jax.sharding.PartitionSpec("replicas", None),
+        out_specs=jax.sharding.PartitionSpec("replicas"),
+        check_vma=True,
+    )
+    def scan_flatten(x):
+        def body(carry, _):
+            matrix = carry.reshape((JAX_SHARD_MAP_LOCAL_DIM, JAX_SHARD_MAP_LOCAL_DIM))
+            return ffi_flatten(matrix)[0], None
+
+        return jax.lax.scan(body, x.reshape((local_size,)), None, length=2)[0]
+
+    result = scan_flatten(source)
+    np.testing.assert_array_equal(np.asarray(result), np.arange(2 * local_size, dtype=np.float32))
 
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
@@ -2710,10 +3224,10 @@ class TestJax(unittest.TestCase):
 
     @unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
     def test_ffi_jax_cpu_subprocess(self):
-        """Test FFI wrappers on a CPU-only JAX runtime configured with two host platform devices.
+        """Test FFI wrappers and shard-map VMA propagation on two JAX CPU devices.
 
-        JAX_PLATFORMS and XLA_FLAGS must be set before JAX initializes, so the checks run in a
-        separate process via ``aux_test_jax_cpu_ffi.py``.
+        JAX_PLATFORMS and XLA_FLAGS must be set before JAX initializes, so the checks run in
+        separate processes.
         """
         _run_ffi_jax_cpu_subprocess(self)
 
@@ -2741,25 +3255,32 @@ else:
 
     @cache
     def _jax_device_error(device_alias):
-        device = wp.get_device(device_alias)
         try:
-            with jax.default_device(wp.device_to_jax(device)):
-                array = jax.numpy.arange(10, dtype=jax.numpy.float32)
-                array += 1
-            jax.block_until_ready(array)
-        except Exception as error:
-            return f"{type(error).__name__}: {error}"
-        return None
+            result = subprocess.run(
+                [sys.executable, os.path.join(os.path.dirname(__file__), "aux_test_jax_device.py"), device_alias],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+        except subprocess.TimeoutExpired:
+            return "JAX device probe timed out"
+
+        if result.returncode == 0:
+            return None
+
+        output = "\n".join(part.strip() for part in (result.stdout, result.stderr) if part.strip())
+        message = f"JAX device probe exited with code {result.returncode}"
+        if output:
+            message = f"{message}:\n{output}"
+
+        return message
 
     def _check_jax_device(test, device):
         device = wp.get_device(device)
         error = _jax_device_error(device.alias)
         if error is not None:
             test.skipTest(f"JAX is unavailable on Warp device '{device}': {error}")
-
-    def _check_all_jax_cuda_devices(test, _device):
-        for device in jax_cuda_candidate_devices:
-            _check_jax_device(test, device)
 
     def _check_pmap_devices(test, _device):
         for device in pmap_warp_devices:
@@ -2803,6 +3324,7 @@ else:
                 test_jax_kernel_vecmat,
                 test_jax_kernel_multiarg,
                 test_jax_kernel_launch_dims,
+                test_jax_kernel_accepts_oversized_compile_time_dead_scalar_tid_launch_dims,
             )
             backend_neutral_ffi_tests = (
                 *jax_kernel_ffi_tests,
@@ -2811,14 +3333,20 @@ else:
                 test_ffi_jax_kernel_sincos,
                 test_ffi_jax_kernel_diagonal,
                 test_ffi_jax_kernel_in_out,
+                test_ffi_jax_kernel_cache_argnames,
                 test_ffi_jax_kernel_scale_vec_constant,
                 test_ffi_jax_kernel_scale_vec_static,
                 test_ffi_jax_kernel_launch_dims_default,
                 test_ffi_jax_kernel_launch_dims_custom,
+                test_ffi_jax_kernel_validates_all_target_block_dims_during_tracing,
+                test_ffi_jax_kernel_rejects_oversized_explicit_scalar_tid_launch_dims,
+                test_ffi_jax_kernel_rejects_oversized_inferred_scalar_tid_launch_dims,
                 # callables
                 test_ffi_jax_callable_scale_constant,
                 test_ffi_jax_callable_scale_static,
                 test_ffi_jax_callable_in_out,
+                test_ffi_jax_callable_cache_argnames,
+                test_ffi_jax_callable_cache_stage_argnames,
                 # autodiff and subscript annotations
                 test_ffi_jax_kernel_autodiff_simple,
                 test_ffi_jax_kernel_block_dim_autodiff,
@@ -2891,6 +3419,19 @@ else:
                     TestJax, test_func.__name__, test_func, devices=None, device_check=_check_pmap_devices
                 )
 
+        try:
+            jax_local_cpu_devices = jax.local_devices(backend="cpu")
+        except RuntimeError:
+            jax_local_cpu_devices = []
+        if len(jax_local_cpu_devices) >= 2:
+            shard_map_tests = (
+                test_ffi_shard_map_preserves_vma,
+                test_ffi_shard_map_aggregates_input_vma,
+                test_ffi_shard_map_vma_rank_change,
+            )
+            for test_func in shard_map_tests:
+                add_function_test(TestJax, test_func.__name__, test_func, devices=None)
+
     if jax_cuda_candidate_devices:
         if (0, 4, 25) <= jax.__version_info__ < (0, 8, 0):
             # legacy custom_call path is CUDA-only
@@ -2900,6 +3441,8 @@ else:
                 test_jax_kernel_vecmat,
                 test_jax_kernel_multiarg,
                 test_jax_kernel_launch_dims,
+                test_jax_kernel_rejects_oversized_scalar_tid_launch_dims,
+                test_jax_kernel_accepts_oversized_compile_time_dead_scalar_tid_launch_dims,
             )
             for test_func in legacy_custom_call_tests:
                 add_function_test(

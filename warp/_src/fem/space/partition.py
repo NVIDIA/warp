@@ -175,6 +175,8 @@ class EnvironmentSpacePartition(SpacePartition):
         If the partition layout changes between rebuilds, arrays returned by
         :meth:`space_node_indices` or :attr:`env_offsets` should be reacquired.
         """
+        self.partition_arg_value.invalidate(self)
+
         geometry = self.space_topology.geometry
         env_count = geometry.environment_count()
         space_node_count = self.space_topology.node_count()
@@ -487,6 +489,7 @@ class NodePartition(SpacePartition):
         device: Optional = None,
         temporary_store: cache.TemporaryStore | None = None,
     ):
+        self.partition_arg_value.invalidate(self)
         self._compute_node_indices_from_sides(device, self._with_halo, self._max_node_count, temporary_store)
 
     def node_count(self) -> int:

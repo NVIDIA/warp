@@ -32,6 +32,7 @@ import numpy as np
 num_particles = 1_000_000
 dt = 0.01
 
+
 @wp.kernel
 def gravity_step(pos: wp.array[wp.vec3], vel: wp.array[wp.vec3]):
     i = wp.tid()
@@ -40,6 +41,7 @@ def gravity_step(pos: wp.array[wp.vec3], vel: wp.array[wp.vec3]):
     acc = -1000.0 / dist_sq * wp.normalize(position)  # gravitational pull toward origin
     vel[i] = vel[i] + acc * dt
     pos[i] = pos[i] + vel[i] * dt
+
 
 rng = np.random.default_rng(42)
 positions = wp.array(rng.normal(size=(num_particles, 3)), dtype=wp.vec3)
@@ -53,8 +55,7 @@ print(positions.numpy())
 
 ## Installing
 
-Python version 3.10 or newer is required. Warp can run on x86-64 and ARMv8 CPUs on Windows and Linux, and on Apple Silicon (ARMv8) on macOS.
-GPU support requires a CUDA-capable NVIDIA GPU and driver (minimum GeForce GTX 9xx).
+Warp requires Python 3.10 or newer. We publish `warp-lang` wheels on PyPI for Windows (x86-64), Linux (x86-64 and AArch64), and macOS (Apple Silicon). The Windows x86-64 and Linux wheels support CPU execution and CUDA acceleration. CUDA acceleration requires a supported NVIDIA GPU and driver. The macOS wheels support CPU execution but not Metal acceleration.
 
 The easiest way to install Warp is from [PyPI](https://pypi.org/project/warp-lang/):
 
@@ -149,9 +150,11 @@ python -m warp.examples.browse
         </tr>
         <tr>
             <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_fft_poisson_navier_stokes_2d.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/core_fft_poisson_navier_stokes_2d.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_fdtd_3d.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/core_fdtd_3d.png"></a></td>
         </tr>
         <tr>
             <td align="center">2-D incompressible turbulence in a periodic box</td>
+            <td align="center">3-D FDTD Luneburg lens</td>
         </tr>
     </tbody>
 </table>

@@ -421,7 +421,7 @@ def test_return_struct_unsupported(test, device):
     @wp.func_native(snippet)
     def make_pair(a: wp.float32) -> Pair: ...
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def kernel(input: wp.array[wp.float32], output: wp.array[wp.float32]):
         tid = wp.tid()
         p = make_pair(input[tid])

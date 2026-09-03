@@ -629,6 +629,316 @@ def tile_mesh_query_aabb_valid_kernel(
             wp.atomic_add(faces_intersected, result_idx, 1)
 
 
+@wp.kernel
+def mesh_query_sphere_hits(mesh_id: wp.uint64, center: wp.vec3, radius: float, hits: wp.array[int]):
+    query = wp.mesh_query_sphere(mesh_id, center, radius)
+    face = int(0)
+    while wp.mesh_query_next(query, face):
+        hits[face] = 1
+
+
+@wp.kernel
+def mesh_query_sphere_hits_for_loop(mesh_id: wp.uint64, center: wp.vec3, radius: float, hits: wp.array[int]):
+    query = wp.mesh_query_sphere(mesh_id, center, radius)
+    for face in query:
+        hits[face] = 1
+
+
+@wp.kernel
+def mesh_query_sphere_hits_alias(mesh_id: wp.uint64, center: wp.vec3, radius: float, hits: wp.array[int]):
+    query = wp.mesh_query_sphere(mesh_id, center, radius)
+    face = int(0)
+    while wp.mesh_query_aabb_next(query, face):
+        hits[face] = 1
+
+
+@wp.kernel
+def mesh_query_aabb_hits(mesh_id: wp.uint64, lower: wp.vec3, upper: wp.vec3, hits: wp.array[int]):
+    query = wp.mesh_query_aabb(mesh_id, lower, upper)
+    face = int(0)
+    while wp.mesh_query_next(query, face):
+        hits[face] = 1
+
+
+@wp.kernel
+def mesh_query_runtime_kind_hits(
+    mesh_id: wp.uint64,
+    use_sphere: bool,
+    lower: wp.vec3,
+    upper: wp.vec3,
+    center: wp.vec3,
+    radius: float,
+    hits: wp.array[int],
+):
+    # The kind is selected by a runtime branch, so the merged query decays to the
+    # erased parent MeshQuery and iterates via the kind stored at construction.
+    if use_sphere:
+        query = wp.mesh_query_sphere(mesh_id, center, radius)
+    else:
+        query = wp.mesh_query_aabb(mesh_id, lower, upper)
+    face = int(0)
+    while wp.mesh_query_next(query, face):
+        hits[face] = 1
+
+
+@wp.func
+def collect_mesh_hits(query: wp.MeshQuery, hits: wp.array[int]):
+    # Parameter annotated with the erased parent type: any concrete query kind is
+    # accepted, and iteration dispatches on the kind stored at construction.
+    face = int(0)
+    while wp.mesh_query_next(query, face):
+        hits[face] = 1
+
+
+@wp.func
+def collect_mesh_aabb_hits(query: wp.MeshQueryAABB, hits: wp.array[int]):
+    # Parameter annotated with the concrete AABB kind (pre-rename convention):
+    # keeps the statically-typed AABB iterator.
+    face = int(0)
+    while wp.mesh_query_next(query, face):
+        hits[face] = 1
+
+
+@wp.kernel
+def mesh_query_sphere_via_erased_func(mesh_id: wp.uint64, center: wp.vec3, radius: float, hits: wp.array[int]):
+    query = wp.mesh_query_sphere(mesh_id, center, radius)
+    collect_mesh_hits(query, hits)
+
+
+@wp.kernel
+def mesh_query_aabb_via_typed_func(mesh_id: wp.uint64, lower: wp.vec3, upper: wp.vec3, hits: wp.array[int]):
+    query = wp.mesh_query_aabb(mesh_id, lower, upper)
+    collect_mesh_aabb_hits(query, hits)
+
+
+def test_mesh_query_sphere_alias_next(test, device):
+    # mesh_query_aabb_next is documented as an alias for mesh_query_next, so it must
+    # also advance sphere queries with the sphere narrow phase.
+    rng = np.random.default_rng(123)
+    m, tris, _lowers, _uppers = _random_triangle_mesh(device, rng)
+    num_tris = tris.shape[0]
+    hits_canonical = wp.zeros(num_tris, dtype=int, device=device)
+    hits_alias = wp.zeros(num_tris, dtype=int, device=device)
+    center = wp.vec3(4.0, 4.0, 4.0)
+    wp.launch(mesh_query_sphere_hits, dim=1, inputs=[m.id, center, 1.5, hits_canonical], device=device)
+    wp.launch(mesh_query_sphere_hits_alias, dim=1, inputs=[m.id, center, 1.5, hits_alias], device=device)
+    expected = hits_canonical.numpy()
+    test.assertGreater(expected.sum(), 0)
+    np.testing.assert_array_equal(hits_alias.numpy(), expected)
+
+
+def test_mesh_query_sphere_for_loop(test, device):
+    # The for-loop protocol dispatches through a shared iter_cmp() that must select the
+    # sphere iterator even when radius == 0 (radius_sq alone cannot distinguish a
+    # zero-radius sphere from an AABB query). A zero-radius sphere keeps only triangles
+    # that pass exactly through the center, not every triangle whose AABB contains it.
+    points = wp.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], dtype=wp.vec3, device=device)
+    indices = wp.array([0, 1, 2], dtype=int, device=device)
+    m = wp.Mesh(points=points, indices=indices)
+
+    hits = wp.zeros(1, dtype=int, device=device)
+
+    # (0.25, 0.25, 0) lies on the triangle: expect a hit
+    wp.launch(mesh_query_sphere_hits_for_loop, dim=1, inputs=[m.id, wp.vec3(0.25, 0.25, 0.0), 0.0, hits], device=device)
+    test.assertEqual(hits.numpy()[0], 1)
+
+    # (0.9, 0.9, 0) is inside the triangle's AABB but not on the triangle: expect no hit
+    hits.zero_()
+    wp.launch(mesh_query_sphere_hits_for_loop, dim=1, inputs=[m.id, wp.vec3(0.9, 0.9, 0.0), 0.0, hits], device=device)
+    test.assertEqual(hits.numpy()[0], 0)
+
+    # nonzero radius through the for-loop must match the while-loop form
+    rng = np.random.default_rng(123)
+    m2, _tris, _lowers, _uppers = _random_triangle_mesh(device, rng)
+    num_tris = _tris.shape[0]
+    hits_while = wp.zeros(num_tris, dtype=int, device=device)
+    hits_for = wp.zeros(num_tris, dtype=int, device=device)
+    center = wp.vec3(4.0, 4.0, 4.0)
+    wp.launch(mesh_query_sphere_hits, dim=1, inputs=[m2.id, center, 1.5, hits_while], device=device)
+    wp.launch(mesh_query_sphere_hits_for_loop, dim=1, inputs=[m2.id, center, 1.5, hits_for], device=device)
+    expected = hits_while.numpy()
+    test.assertGreater(expected.sum(), 0)
+    np.testing.assert_array_equal(hits_for.numpy(), expected)
+
+
+def test_mesh_query_runtime_kind(test, device):
+    # A query whose kind is chosen by a runtime branch decays to the erased parent
+    # MeshQuery type and must match the statically-typed kernels for both kinds.
+    rng = np.random.default_rng(123)
+    m, tris, _lowers, _uppers = _random_triangle_mesh(device, rng)
+    num_tris = tris.shape[0]
+    expected = wp.zeros(num_tris, dtype=int, device=device)
+    actual = wp.zeros(num_tris, dtype=int, device=device)
+    lower = wp.vec3(2.0, 2.0, 2.0)
+    upper = wp.vec3(6.0, 6.0, 6.0)
+    center = wp.vec3(4.0, 4.0, 4.0)
+
+    wp.launch(mesh_query_sphere_hits, dim=1, inputs=[m.id, center, 1.5, expected], device=device)
+    wp.launch(
+        mesh_query_runtime_kind_hits, dim=1, inputs=[m.id, True, lower, upper, center, 1.5, actual], device=device
+    )
+    reference = expected.numpy()
+    test.assertGreater(reference.sum(), 0)
+    np.testing.assert_array_equal(actual.numpy(), reference)
+
+    expected.zero_()
+    actual.zero_()
+    wp.launch(mesh_query_aabb_hits, dim=1, inputs=[m.id, lower, upper, expected], device=device)
+    wp.launch(
+        mesh_query_runtime_kind_hits, dim=1, inputs=[m.id, False, lower, upper, center, 1.5, actual], device=device
+    )
+    reference = expected.numpy()
+    test.assertGreater(reference.sum(), 0)
+    np.testing.assert_array_equal(actual.numpy(), reference)
+
+    # A zero-radius sphere through the erased path must keep the sphere narrow phase:
+    # an on-triangle point hits, a point merely inside the triangle's AABB does not.
+    points = wp.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], dtype=wp.vec3, device=device)
+    indices = wp.array([0, 1, 2], dtype=int, device=device)
+    m1 = wp.Mesh(points=points, indices=indices)
+    hits = wp.zeros(1, dtype=int, device=device)
+    wp.launch(
+        mesh_query_runtime_kind_hits,
+        dim=1,
+        inputs=[m1.id, True, lower, upper, wp.vec3(0.25, 0.25, 0.0), 0.0, hits],
+        device=device,
+    )
+    test.assertEqual(hits.numpy()[0], 1)
+    hits.zero_()
+    wp.launch(
+        mesh_query_runtime_kind_hits,
+        dim=1,
+        inputs=[m1.id, True, lower, upper, wp.vec3(0.9, 0.9, 0.0), 0.0, hits],
+        device=device,
+    )
+    test.assertEqual(hits.numpy()[0], 0)
+
+
+def test_mesh_query_erased_func_param(test, device):
+    # A sphere query passed to a wp.func annotated with the parent MeshQuery type
+    # keeps sphere semantics, and an AABB query passed to a wp.func annotated with
+    # the concrete MeshQueryAABB type (pre-rename convention) still resolves.
+    rng = np.random.default_rng(123)
+    m, tris, _lowers, _uppers = _random_triangle_mesh(device, rng)
+    num_tris = tris.shape[0]
+    expected = wp.zeros(num_tris, dtype=int, device=device)
+    actual = wp.zeros(num_tris, dtype=int, device=device)
+    center = wp.vec3(4.0, 4.0, 4.0)
+
+    wp.launch(mesh_query_sphere_hits, dim=1, inputs=[m.id, center, 1.5, expected], device=device)
+    wp.launch(mesh_query_sphere_via_erased_func, dim=1, inputs=[m.id, center, 1.5, actual], device=device)
+    reference = expected.numpy()
+    test.assertGreater(reference.sum(), 0)
+    np.testing.assert_array_equal(actual.numpy(), reference)
+
+    expected.zero_()
+    actual.zero_()
+    lower = wp.vec3(2.0, 2.0, 2.0)
+    upper = wp.vec3(6.0, 6.0, 6.0)
+    wp.launch(mesh_query_aabb_hits, dim=1, inputs=[m.id, lower, upper, expected], device=device)
+    wp.launch(mesh_query_aabb_via_typed_func, dim=1, inputs=[m.id, lower, upper, actual], device=device)
+    reference = expected.numpy()
+    test.assertGreater(reference.sum(), 0)
+    np.testing.assert_array_equal(actual.numpy(), reference)
+
+
+@wp.kernel
+def mesh_bvh_sphere_hits(mesh_id: wp.uint64, center: wp.vec3, radius: float, hits: wp.array[int]):
+    bvh = wp.mesh_get_bvh(mesh_id)
+    query = wp.bvh_query_sphere(bvh, center, radius)
+    bound = int(0)
+    while wp.bvh_query_next(query, bound):
+        hits[bound] = 1
+
+
+def _random_triangle_mesh(device, rng, num_tris=2000):
+    """A mesh of small, randomly placed triangles (one independent triangle per face)."""
+    centers = rng.random((num_tris, 3)).astype(np.float32) * 8.0
+    verts = (centers[:, None, :] + (rng.random((num_tris, 3, 3)) - 0.5).astype(np.float32) * 0.4).reshape(-1, 3)
+    indices = np.arange(3 * num_tris, dtype=np.int32)
+    m = wp.Mesh(
+        points=wp.array(verts, dtype=wp.vec3, device=device),
+        indices=wp.array(indices, dtype=int, device=device),
+    )
+    tris = verts.reshape(num_tris, 3, 3)
+    lowers = tris.min(axis=1)  # per-triangle AABB == mesh BVH leaf bounds
+    uppers = tris.max(axis=1)
+    return m, tris, lowers, uppers
+
+
+def _point_tri_dist2(p, A, B, C):
+    """Squared distance from point ``p`` to each triangle (A,B,C), vectorized (Ericson regions)."""
+    ab, ac, ap = B - A, C - A, p - A
+    d1 = (ab * ap).sum(-1)
+    d2 = (ac * ap).sum(-1)
+    bp = p - B
+    d3 = (ab * bp).sum(-1)
+    d4 = (ac * bp).sum(-1)
+    cp_ = p - C
+    d5 = (ab * cp_).sum(-1)
+    d6 = (ac * cp_).sum(-1)
+    va = d3 * d6 - d5 * d4
+    vb = d5 * d2 - d1 * d6
+    vc = d1 * d4 - d3 * d2
+    denom = va + vb + vc
+    inv = np.divide(1.0, denom, out=np.zeros_like(denom), where=denom != 0)
+    Q = A + (vb * inv)[:, None] * ab + (vc * inv)[:, None] * ac  # interior (face) region
+    Q = np.where(((d1 <= 0) & (d2 <= 0))[:, None], A, Q)  # vertex A
+    Q = np.where(((d3 >= 0) & (d4 <= d3))[:, None], B, Q)  # vertex B
+    Q = np.where(((d6 >= 0) & (d5 <= d6))[:, None], C, Q)  # vertex C
+    tAB = np.divide(d1, d1 - d3, out=np.zeros_like(d1), where=(d1 - d3) != 0)
+    Q = np.where(((vc <= 0) & (d1 >= 0) & (d3 <= 0))[:, None], A + tAB[:, None] * ab, Q)  # edge AB
+    tAC = np.divide(d2, d2 - d6, out=np.zeros_like(d2), where=(d2 - d6) != 0)
+    Q = np.where(((vb <= 0) & (d2 >= 0) & (d6 <= 0))[:, None], A + tAC[:, None] * ac, Q)  # edge AC
+    dBC = (d4 - d3) + (d5 - d6)
+    tBC = np.divide(d4 - d3, dBC, out=np.zeros_like(d4), where=dBC != 0)
+    Q = np.where(((va <= 0) & ((d4 - d3) >= 0) & ((d5 - d6) >= 0))[:, None], B + tBC[:, None] * (C - B), Q)  # edge BC
+    d = p - Q
+    return (d * d).sum(-1)
+
+
+def test_mesh_query_sphere(test, device):
+    # Narrow phase: returned faces are exactly the triangles the sphere actually intersects (closest point
+    # on the triangle within radius), not merely AABB overlaps. Use dilate/erode bands to stay robust to
+    # float32-vs-float64 rounding right at the boundary.
+    rng = np.random.default_rng(123)
+    m, tris, _lowers, _uppers = _random_triangle_mesh(device, rng)
+    A, B, C = tris[:, 0].astype(np.float64), tris[:, 1].astype(np.float64), tris[:, 2].astype(np.float64)
+    num_tris = tris.shape[0]
+    hits = wp.zeros(num_tris, dtype=int, device=device)
+    eps = 1e-4
+    for _ in range(20):
+        center = (rng.random(3) * 8.0).astype(np.float32)
+        radius = float(rng.random() * 0.8 + 0.1)
+        hits.zero_()
+        wp.launch(mesh_query_sphere_hits, dim=1, inputs=[m.id, wp.vec3(*center), radius, hits], device=device)
+        got = hits.numpy().astype(bool)
+        dist = np.sqrt(_point_tri_dist2(center.astype(np.float64), A, B, C))
+        np.testing.assert_array_equal(
+            got & ~(dist <= radius + eps), False, err_msg="sphere reported a triangle farther than radius"
+        )
+        np.testing.assert_array_equal(
+            (dist <= radius - eps) & ~got, False, err_msg="sphere missed a triangle within radius"
+        )
+
+
+def test_mesh_get_bvh(test, device):
+    # mesh_get_bvh exposes the mesh BVH; bvh_query_sphere on it returns the broad (per-triangle AABB) set.
+    rng = np.random.default_rng(99)
+    m, tris, lowers, uppers = _random_triangle_mesh(device, rng)
+    num_tris = tris.shape[0]
+    hits = wp.zeros(num_tris, dtype=int, device=device)
+    for _ in range(10):
+        center = (rng.random(3) * 8.0).astype(np.float32)
+        radius = float(rng.random() * 0.8 + 0.1)
+        hits.zero_()
+        wp.launch(mesh_bvh_sphere_hits, dim=1, inputs=[m.id, wp.vec3(*center), radius, hits], device=device)
+        got = hits.numpy().astype(bool)
+        cp = np.clip(center, lowers, uppers)
+        expected = ((center - cp) ** 2).sum(axis=1) <= radius * radius
+        assert_np_equal(got, expected)
+
+
 devices = get_test_devices()
 
 
@@ -681,6 +991,23 @@ add_function_test(
     test_mesh_query_aabb_tiled,
     devices=devices,
 )
+add_function_test(TestMeshQueryAABBMethods, "test_mesh_query_sphere", test_mesh_query_sphere, devices=devices)
+add_function_test(
+    TestMeshQueryAABBMethods,
+    "test_mesh_query_sphere_alias_next",
+    test_mesh_query_sphere_alias_next,
+    devices=devices,
+)
+add_function_test(
+    TestMeshQueryAABBMethods, "test_mesh_query_sphere_for_loop", test_mesh_query_sphere_for_loop, devices=devices
+)
+add_function_test(
+    TestMeshQueryAABBMethods, "test_mesh_query_runtime_kind", test_mesh_query_runtime_kind, devices=devices
+)
+add_function_test(
+    TestMeshQueryAABBMethods, "test_mesh_query_erased_func_param", test_mesh_query_erased_func_param, devices=devices
+)
+add_function_test(TestMeshQueryAABBMethods, "test_mesh_get_bvh", test_mesh_get_bvh, devices=devices)
 
 
 if __name__ == "__main__":

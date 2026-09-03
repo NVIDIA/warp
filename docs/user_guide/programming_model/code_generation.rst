@@ -112,6 +112,8 @@ compute cache that stores JIT-compiled GPU binaries (e.g., native code produced
 from PTX). This driver-level cache is not managed by Warp and is not affected by
 :func:`warp.clear_kernel_cache`. See :ref:`benchmarking-cold-start-compilation`
 for details on how to account for it when measuring compilation times.
+For a practical guide to reducing startup latency and cold compile time, see
+:doc:`../execution_and_performance/reducing_compilation_and_startup_time`.
 
 Consider the following example:
 

@@ -217,4 +217,11 @@ template <typename T> CUDA_CALLABLE inline array_t<T> view(indexedfabricarray_t<
     return array_t<T>((T*)ptr, int(length));
 }
 
+
+// Stubs for Fabric array descriptors nested in structs. Struct adjoints copy
+// array descriptors rather than accumulating their members.
+template <typename T> CUDA_CALLABLE inline void atomic_add(fabricarray_t<T>*, fabricarray_t<T>) { }
+
+template <typename T> CUDA_CALLABLE inline void atomic_add(indexedfabricarray_t<T>*, indexedfabricarray_t<T>) { }
+
 }  // namespace wp

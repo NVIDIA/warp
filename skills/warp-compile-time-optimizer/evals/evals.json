@@ -2,16 +2,12 @@
   "skill_name": "warp-compile-time-optimizer",
   "evals": [
     {
+      "expected_script": "scripts/warp_compile_probe.py",
       "id": "cpu-particle-pipeline-cold-start",
       "prompt": "Each CI job pays a large one-time cost when our Warp particle preprocessing package starts. Cut that cost without changing its results or optional plugin transforms.\n\nTask folder: the provided `c01_particle_preprocessing/` project directory (SkillEvaluator stages it at `/workspace/input/c01_particle_preprocessing/`).\nIn the starter workspace, modify `src/`, run `python -m particle_prep`, and report changed files and supporting measurements.",
       "expected_output": "The agent finds the rebuilt Warp modules and cause (hash churn, block-dimension variants, granular boundaries, late options, or lost cache reuse), reduces compiled module identities, preserves launches, results, gradients, and steady-state behavior, then remeasures with isolated caches.",
-      "assertions": [
-        "Measures cold compilation before editing with a fresh isolated Warp cache per sample.",
-        "Reports sample count and before/after cold module time; changes within noise are inconclusive.",
-        "Preserves every required kernel launch and its configuration.",
-        "Preserves numeric results.",
-        "Discloses runtime or numerical tradeoffs."
-      ],
+      "expected_skill": "warp-compile-time-optimizer",
+      "should_trigger": true,
       "files": [
         "evals/files/c01_particle_preprocessing/src/particle_prep/__init__.py",
         "evals/files/c01_particle_preprocessing/src/particle_prep/__main__.py",
@@ -19,21 +15,21 @@
         "evals/files/c01_particle_preprocessing/src/particle_prep/plugins.py",
         "evals/files/c01_particle_preprocessing/src/particle_prep/stages.py"
       ],
-      "expected_skill": "warp-compile-time-optimizer",
-      "expected_script": "scripts/warp_compile_probe.py",
-      "should_trigger": true
+      "assertions": [
+        "Measures cold compilation before editing with a fresh isolated Warp cache per sample.",
+        "Reports sample count and before/after cold module time; changes within noise are inconclusive.",
+        "Preserves every required kernel launch and its configuration.",
+        "Preserves numeric results.",
+        "Discloses runtime or numerical tradeoffs."
+      ]
     },
     {
+      "expected_script": "scripts/warp_compile_probe.py",
       "id": "cpu-batch-signals-cache-reuse",
       "prompt": "We run this Warp signal-conditioning package thousands of times a day, and each invocation takes about two seconds before trivial arithmetic begins. Find and reduce that delay.\n\nTask folder: the provided `c04_batch_signals/` project directory (SkillEvaluator stages it at `/workspace/input/c04_batch_signals/`).\nIn the starter workspace, modify `src/`, run `python -m batch_signals`, and report changed files and supporting measurements.",
       "expected_output": "The application recompiles Warp modules because it destroys its cache through clear_kernel_cache(), disabled cache_kernels, a temporary kernel_cache_dir removed at exit, and CUDA_CACHE_DISABLE. The agent removes these incidental causes while preserving the documented --rebuild path.",
-      "assertions": [
-        "Attributes repeated compilation to discarded caches, not module structure.",
-        "A repeat run against the populated cache reports no compiled modules and takes a small fraction of the first run's module time.",
-        "Preserves and explains the deliberate maintenance cache clear.",
-        "Preserves numeric output.",
-        "Discloses runtime or numerical tradeoffs."
-      ],
+      "expected_skill": "warp-compile-time-optimizer",
+      "should_trigger": true,
       "files": [
         "evals/files/c04_batch_signals/src/batch_signals/__init__.py",
         "evals/files/c04_batch_signals/src/batch_signals/__main__.py",
@@ -41,189 +37,203 @@
         "evals/files/c04_batch_signals/src/batch_signals/maintenance.py",
         "evals/files/c04_batch_signals/src/batch_signals/runtime.py"
       ],
-      "expected_skill": "warp-compile-time-optimizer",
-      "expected_script": "scripts/warp_compile_probe.py",
-      "should_trigger": true
+      "assertions": [
+        "Attributes repeated compilation to discarded caches, not module structure.",
+        "A repeat run against the populated cache reports no compiled modules and takes a small fraction of the first run's module time.",
+        "Preserves and explains the deliberate maintenance cache clear.",
+        "Preserves numeric output.",
+        "Discloses runtime or numerical tradeoffs."
+      ]
     },
     {
+      "expected_script": null,
       "id": "negative-cuda-warp-divergence",
       "prompt": "I've got a raytracing kernel where the warps are badly divergent - the if/else on material type means half the warp idles in each branch. Nsight shows ~45% warp execution efficiency. What's the usual way to restructure this? Sorting rays by material first, or predication?",
       "expected_output": "Answer CUDA warp divergence with branch restructuring, ray sorting, predication, or stream compaction. Here 'warp' means the 32-thread execution unit, not NVIDIA Warp or compilation.",
+      "expected_skill": "warp-compile-time-optimizer",
+      "should_trigger": false,
+      "files": [],
       "assertions": [
         "Treats 'warp' as the 32-thread SIMT execution unit.",
         "Does not mention Warp module compilation, caches, or options."
-      ],
-      "expected_skill": "warp-compile-time-optimizer",
-      "expected_script": null,
-      "should_trigger": false
+      ]
     },
     {
+      "expected_script": null,
       "id": "negative-warp-shuffle-primitives",
       "prompt": "Trying to replace a shared-memory reduction with __shfl_down_sync. Do I need __syncwarp() between the shuffle steps on Volta and later, or is the mask argument enough? Worried about independent thread scheduling biting me.",
       "expected_output": "Explain CUDA warp-level primitives and independent thread scheduling: __shfl_down_sync mask semantics, post-Volta __syncwarp() requirements, and reconvergence. This is unrelated to NVIDIA Warp.",
+      "expected_skill": "warp-compile-time-optimizer",
+      "should_trigger": false,
+      "files": [],
       "assertions": [
         "Explains warp-level primitive semantics and synchronization.",
         "Does not reference NVIDIA Warp or its compilation model."
-      ],
-      "expected_skill": "warp-compile-time-optimizer",
-      "expected_script": null,
-      "should_trigger": false
+      ]
     },
     {
+      "expected_script": null,
       "id": "negative-warp-occupancy-registers",
       "prompt": "My kernel only gets 4 resident warps per SM because each thread wants 96 registers. I'm on an L40S. Is it worth capping with __launch_bounds__ and eating the spills, or should I split the kernel in two?",
       "expected_output": "Address CUDA occupancy and register pressure: launch bounds, spill tradeoffs, kernel splitting, and resident warps per SM.",
+      "expected_skill": "warp-compile-time-optimizer",
+      "should_trigger": false,
+      "files": [],
       "assertions": [
         "Addresses CUDA register pressure and occupancy.",
         "Does not treat it as a compilation or caching problem."
-      ],
-      "expected_skill": "warp-compile-time-optimizer",
-      "expected_script": null,
-      "should_trigger": false
+      ]
     },
     {
+      "expected_script": null,
       "id": "negative-warp-specialization-producer-consumer",
       "prompt": "On Hopper I want warp specialization in my GEMM - a producer warpgroup issuing TMA loads and consumer warpgroups doing the MMA. How do I get the named barriers right so the consumers don't run ahead of the loads?",
       "expected_output": "Address Hopper warp specialization: producer/consumer warpgroups, TMA, named barriers, and pipelining. This is CUDA kernel architecture, not library compilation.",
+      "expected_skill": "warp-compile-time-optimizer",
+      "should_trigger": false,
+      "files": [],
       "assertions": [
         "Addresses warpgroup specialization and barrier synchronization.",
         "Does not reference Warp module identity, options, or caches."
-      ],
-      "expected_skill": "warp-compile-time-optimizer",
-      "expected_script": null,
-      "should_trigger": false
+      ]
     },
     {
+      "expected_script": null,
       "id": "negative-warp-aggregated-atomics",
       "prompt": "We do a global atomicAdd per thread to append to a buffer and it's serializing. I've read about warp-aggregated atomics where you ballot, have lane 0 do one atomic for the whole warp, then shuffle the base offset back. Is that still worth doing by hand or does the compiler do it now?",
       "expected_output": "Explain warp-aggregated atomics: __ballot_sync, leader election, shuffle offset broadcast, and NVCC's automatic optimization.",
+      "expected_skill": "warp-compile-time-optimizer",
+      "should_trigger": false,
+      "files": [],
       "assertions": [
         "Explains warp aggregation as a runtime throughput technique.",
         "Does not mention compilation time, module structure, or caches."
-      ],
-      "expected_skill": "warp-compile-time-optimizer",
-      "expected_script": null,
-      "should_trigger": false
+      ]
     },
     {
+      "expected_script": null,
       "id": "negative-warp-intrinsics-nvcc-compile-time",
       "prompt": "Our warp-primitive header is templated over reduction op and width, and every translation unit that includes it adds ~40s to the nvcc build. Clean build is now 35 minutes. Can we cut the instantiation explosion without giving up the generic interface?",
       "expected_output": "Address nvcc template-instantiation cost through explicit instantiation, extern templates, translation-unit splitting, or reduced header inclusion. 'Warp' means CUDA warp primitives, not Python JIT.",
+      "expected_skill": "warp-compile-time-optimizer",
+      "should_trigger": false,
+      "files": [],
       "assertions": [
         "Addresses nvcc and C++ template-instantiation cost.",
         "Does not apply Warp module identity, options, or cache concepts."
-      ],
-      "expected_skill": "warp-compile-time-optimizer",
-      "expected_script": null,
-      "should_trigger": false
+      ]
     },
     {
+      "expected_script": null,
       "id": "negative-warp-library-wrong-results",
       "prompt": "My wp.kernel that accumulates into a wp.array with wp.atomic_add gives slightly different totals every run. Same input, float32, 200k elements. Is this expected or have I got a race?",
       "expected_output": "Explain floating-point nondeterminism from atomic ordering in NVIDIA Warp and options for deterministic results. This is a correctness question, not compilation.",
+      "expected_skill": "warp-compile-time-optimizer",
+      "should_trigger": false,
+      "files": [],
       "assertions": [
         "Addresses atomic ordering and floating-point determinism.",
         "Does not treat it as a compile-time or caching problem."
-      ],
-      "expected_skill": "warp-compile-time-optimizer",
-      "expected_script": null,
-      "should_trigger": false
+      ]
     },
     {
+      "expected_script": null,
       "id": "negative-warp-library-how-to-mesh-query",
       "prompt": "How do I do closest-point queries against a triangle mesh in Warp? I've got the mesh as numpy verts/indices and need the nearest surface point per particle inside a kernel. Is wp.Mesh the right thing and what does wp.mesh_query_point return exactly?",
       "expected_output": "Explain how to construct wp.Mesh, call wp.mesh_query_point in a kernel, and interpret its result. This is API usage, not compilation.",
+      "expected_skill": "warp-compile-time-optimizer",
+      "should_trigger": false,
+      "files": [],
       "assertions": [
         "Explains the Warp mesh-query API inside a kernel.",
         "Does not discuss compilation, caches, or startup cost."
-      ],
-      "expected_skill": "warp-compile-time-optimizer",
-      "expected_script": null,
-      "should_trigger": false
+      ]
     },
     {
+      "expected_script": null,
       "id": "negative-warp-build-from-source",
       "prompt": "Building Warp from source with build_lib.py takes about 12 minutes on our CI box, mostly nvcc and the LLVM bits. Is there a way to build only the CUDA arch we deploy to, or cache the native artifacts between CI runs?",
       "expected_output": "Address Warp's source build through build_lib.py target architectures, native-output caching, and CI configuration. This is a C++/CUDA build, not user-module JIT.",
+      "expected_skill": "warp-compile-time-optimizer",
+      "should_trigger": false,
+      "files": [],
       "assertions": [
         "Addresses Warp's source build and native toolchain cost.",
         "Does not treat it as user-application JIT."
-      ],
-      "expected_skill": "warp-compile-time-optimizer",
-      "expected_script": null,
-      "should_trigger": false
+      ]
     },
     {
+      "expected_script": null,
       "id": "negative-warp-library-oom",
       "prompt": "wp.zeros for a 4096^3 float32 grid throws an out-of-memory on a 24GB card, which tracks. What's the idiomatic way to tile this in Warp - allocate per-slab and launch per-slab, or is there a streaming allocator I should use?",
       "expected_output": "Address NVIDIA Warp memory capacity through per-slab allocation, launch decomposition, or memory pools. This is unrelated to compilation.",
+      "expected_skill": "warp-compile-time-optimizer",
+      "should_trigger": false,
+      "files": [],
       "assertions": [
         "Addresses device-memory capacity and tiling.",
         "Does not discuss compilation time, module structure, or caches."
-      ],
-      "expected_skill": "warp-compile-time-optimizer",
-      "expected_script": null,
-      "should_trigger": false
+      ]
     },
     {
+      "expected_script": null,
       "id": "negative-image-warping",
       "prompt": "I need to warp a batch of 2048x2048 images by a per-pixel displacement field with bilinear sampling, then warp them back with the inverse field to check round-trip error. What's the cleanest way to do this on GPU?",
       "expected_output": "Address image resampling by a displacement field, bilinear interpolation, and inverse round-trip. Here 'warp' is a geometric transform, not hardware or a library.",
+      "expected_skill": "warp-compile-time-optimizer",
+      "should_trigger": false,
+      "files": [],
       "assertions": [
         "Addresses image resampling by a displacement field.",
         "Does not interpret 'warp' as a library or compilation topic."
-      ],
-      "expected_skill": "warp-compile-time-optimizer",
-      "expected_script": null,
-      "should_trigger": false
+      ]
     },
     {
+      "expected_script": null,
       "id": "negative-warp-kernel-runtime-tuning",
       "prompt": "My Warp fluid sim kernel is only hitting about 40% of peak bandwidth on an A100. The launch itself takes 8ms per step and I need it closer to 3ms. How should I restructure the memory access pattern?",
       "expected_output": "Address GPU runtime performance through memory coalescing, occupancy, and block sizing. Do not treat execution time as module compilation.",
+      "expected_skill": "warp-compile-time-optimizer",
+      "should_trigger": false,
+      "files": [],
       "assertions": [
         "Addresses kernel throughput, not module compilation.",
         "Does not recommend module partitioning or definition-order changes."
-      ],
-      "expected_skill": "warp-compile-time-optimizer",
-      "expected_script": null,
-      "should_trigger": false
+      ]
     },
     {
+      "expected_script": null,
       "id": "negative-plain-cuda-nvcc-build-time",
       "prompt": "Our CMake project builds 200 .cu files and a clean nvcc build takes 25 minutes. What can we do about compile times? We're not using any Python in the build.",
       "expected_output": "Address the C++/CUDA build with ccache, parallel jobs, fewer template instantiations, translation-unit splitting, or architecture flags. Do not apply Warp module concepts.",
+      "expected_skill": "warp-compile-time-optimizer",
+      "should_trigger": false,
+      "files": [],
       "assertions": [
         "Addresses nvcc and build-system compile time.",
         "Does not reference Warp module options, block dimensions, or caches."
-      ],
-      "expected_skill": "warp-compile-time-optimizer",
-      "expected_script": null,
-      "should_trigger": false
+      ]
     },
     {
+      "expected_script": null,
       "id": "negative-python-import-startup",
       "prompt": "Our CLI takes 4 seconds before it prints anything. Profiling shows almost all of it is import time from pandas, scipy and a few plugin entry points. How do I make the CLI feel snappy?",
       "expected_output": "Address Python startup with lazy imports, deferred plugin loading, and fewer heavy top-level imports. Do not attribute it to GPU or kernel compilation.",
+      "expected_skill": "warp-compile-time-optimizer",
+      "should_trigger": false,
+      "files": [],
       "assertions": [
         "Addresses Python import and startup cost.",
         "Does not attribute the delay to kernel or module compilation."
-      ],
-      "expected_skill": "warp-compile-time-optimizer",
-      "expected_script": null,
-      "should_trigger": false
+      ]
     },
     {
+      "expected_script": "scripts/warp_compile_probe.py",
       "id": "cpu-batch-signals-optimize-compile-times",
       "prompt": "Can you optimize the compile times for this project? We run it thousands of times a day and each invocation sits for about two seconds before any real arithmetic starts.\n\nTask folder: the provided `c04_batch_signals/` project directory (SkillEvaluator stages it at `/workspace/input/c04_batch_signals/`).\nIn the starter workspace, modify `src/`, run `python -m batch_signals`, and report changed files and supporting measurements.",
       "expected_output": "The application recompiles Warp modules because it destroys its cache through clear_kernel_cache(), disabled cache_kernels, a temporary kernel_cache_dir removed at exit, and CUDA_CACHE_DISABLE. The agent removes these incidental causes while preserving the documented --rebuild path.",
-      "assertions": [
-        "Attributes repeated compilation to discarded caches, not module structure.",
-        "A repeat run against the populated cache reports no compiled modules and takes a small fraction of the first run's module time.",
-        "Preserves and explains the deliberate maintenance cache clear.",
-        "Preserves numeric output.",
-        "Discloses runtime or numerical tradeoffs."
-      ],
+      "expected_skill": "warp-compile-time-optimizer",
+      "should_trigger": true,
       "files": [
         "evals/files/c04_batch_signals/src/batch_signals/__init__.py",
         "evals/files/c04_batch_signals/src/batch_signals/__main__.py",
@@ -231,25 +241,29 @@
         "evals/files/c04_batch_signals/src/batch_signals/maintenance.py",
         "evals/files/c04_batch_signals/src/batch_signals/runtime.py"
       ],
-      "expected_skill": "warp-compile-time-optimizer",
-      "expected_script": "scripts/warp_compile_probe.py",
-      "should_trigger": true
+      "assertions": [
+        "Attributes repeated compilation to discarded caches, not module structure.",
+        "A repeat run against the populated cache reports no compiled modules and takes a small fraction of the first run's module time.",
+        "Preserves and explains the deliberate maintenance cache clear.",
+        "Preserves numeric output.",
+        "Discloses runtime or numerical tradeoffs."
+      ]
     },
     {
+      "expected_script": null,
       "id": "negative-triton-jit-compile-times",
       "prompt": "Our Python inference service `triton_service.py` compiles its Triton kernels on the first request after a deploy, so the first call takes about thirty seconds. Can you optimize the compile times? We set a cache directory under /tmp but it does not survive pod restarts.",
       "expected_output": "The agent addressed Triton's JIT compilation cache by persisting TRITON_CACHE_DIR on a volume that outlives the pod, warming the kernels at startup, or compiling ahead of time. The agent did not apply NVIDIA Warp module-compilation guidance, because the service contains no Warp kernels.",
+      "expected_skill": "warp-compile-time-optimizer",
+      "should_trigger": false,
+      "files": [
+        "evals/files/triton_service.py"
+      ],
       "assertions": [
         "Treats the delay as Triton JIT compilation and cache persistence.",
         "Does not apply NVIDIA Warp module-compilation guidance.",
         "Does not mention Warp modules, module hashes, block dimensions, or wp.launch."
-      ],
-      "files": [
-        "evals/files/triton_service.py"
-      ],
-      "expected_skill": "warp-compile-time-optimizer",
-      "expected_script": null,
-      "should_trigger": false
+      ]
     }
   ]
 }

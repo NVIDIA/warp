@@ -1,21 +1,11 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 import numpy as np
 
 import warp as wp
+
+_STATE_CACHE = {}
 
 
 @wp.kernel
@@ -94,14 +84,17 @@ def integrate_particles(
     f[tid] = wp.vec3()
 
 
-class Cloth:
-    number = 400
-    params = [32, 128]
-    param_names = ["res"]
+class _ClothState:
+    """Device-side cloth state for a single resolution.
 
-    def setup(self, res):
-        wp.init()
-        self.device = wp.get_device("cuda:0")
+    asv re-runs setup() before every timed call, so building the mesh there would
+    dominate wall time: the res=128 build is ~345 ms of Python list and NumPy work
+    against a 0.2 ms timed call. Building once per process and restoring a snapshot
+    instead keeps every timed call starting from the same simulation state.
+    """
+
+    def __init__(self, res, device):
+        self.device = device
         wp.load_module(device=self.device)
 
         lower = (0.0, 0.0, 0.0)
@@ -239,6 +232,46 @@ class Cloth:
             wp.capture_launch(self.graph)
 
         wp.synchronize_device(self.device)
+
+        # Snapshot after the warmup launches, since that is the state a timed call
+        # starts from.
+        self.positions_snapshot = wp.clone(self.positions_wp)
+        self.velocities_snapshot = wp.clone(self.velocities_wp)
+        self.forces_snapshot = wp.clone(self.forces_wp)
+
+    def reset(self):
+        """Restore the post-warmup simulation state.
+
+        The buffers must be overwritten in place rather than reallocated: the captured
+        graph holds device pointers to them, and swapping in new allocations would leave
+        it writing into freed memory.
+        """
+
+        wp.copy(self.positions_wp, self.positions_snapshot)
+        wp.copy(self.velocities_wp, self.velocities_snapshot)
+        wp.copy(self.forces_wp, self.forces_snapshot)
+        wp.synchronize_device(self.device)
+
+
+class Cloth:
+    number = 400
+    params = [32, 128]
+    param_names = ["res"]
+
+    def setup(self, res):
+        wp.init()
+        self.device = wp.get_device("cuda:0")
+
+        key = (res, self.device.alias)
+
+        state = _STATE_CACHE.get(key)
+        if state is None:
+            state = _STATE_CACHE[key] = _ClothState(res, self.device)
+
+        state.reset()
+
+        self.state = state
+        self.graph = state.graph
 
     def time_simulate(self, res):
         wp.capture_launch(self.graph)

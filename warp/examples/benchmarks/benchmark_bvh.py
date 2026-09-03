@@ -58,6 +58,25 @@ def bvh_query_ray_kernel(
     hit_counts[i] = count
 
 
+# Single-threaded sphere query kernel
+@wp.kernel
+def bvh_query_sphere_kernel(
+    bvh_id: wp.uint64,
+    query_centers: wp.array[wp.vec3],
+    radius: float,
+    hit_counts: wp.array[int],
+):
+    i = wp.tid()
+    query = wp.bvh_query_sphere(bvh_id, query_centers[i], radius)
+    bounds_nr = int(0)
+    count = int(0)
+
+    while wp.bvh_query_next(query, bounds_nr):
+        count += 1
+
+    hit_counts[i] = count
+
+
 # Tiled AABB query kernel
 @wp.kernel
 def tile_bvh_query_aabb_kernel(
@@ -156,6 +175,34 @@ def benchmark_bvh_ray(bvh, query_starts, query_dirs, hit_counts, warm_up, iterat
     return mean(timing_results), stdev(timing_results)
 
 
+def benchmark_bvh_sphere(bvh, query_centers, radius, hit_counts, warm_up, iterations):
+    """Benchmark single-threaded sphere queries."""
+    # Zero the hit counts
+    hit_counts.zero_()
+
+    # Warm-up
+    for _ in range(warm_up):
+        wp.launch(
+            kernel=bvh_query_sphere_kernel,
+            dim=NUM_QUERIES,
+            inputs=[bvh.id, query_centers, radius, hit_counts],
+            device="cuda",
+        )
+
+    # Benchmark
+    with wp.ScopedTimer("bvh_sphere", print=False, synchronize=True, cuda_filter=wp.TIMING_KERNEL) as timer:
+        for _ in range(iterations):
+            wp.launch(
+                kernel=bvh_query_sphere_kernel,
+                dim=NUM_QUERIES,
+                inputs=[bvh.id, query_centers, radius, hit_counts],
+                device="cuda",
+            )
+
+    timing_results = [result.elapsed for result in timer.timing_results]
+    return mean(timing_results), stdev(timing_results)
+
+
 def benchmark_tile_bvh_aabb(bvh, query_lowers, query_uppers, hit_counts, warm_up, iterations, block_dim):
     """Benchmark tiled AABB queries."""
     # Zero the hit counts
@@ -246,6 +293,11 @@ if __name__ == "__main__":
     query_starts = wp.array(query_starts_np, dtype=wp.vec3, device="cuda")
     query_dirs = wp.array(query_dirs_np, dtype=wp.vec3, device="cuda")
 
+    # Sphere queries: random centers with a fixed radius
+    query_centers_np = rng.random(size=(NUM_QUERIES, 3)) * 80.0
+    query_centers = wp.array(query_centers_np, dtype=wp.vec3, device="cuda")
+    sphere_radius = 10.0
+
     # Output arrays
     hit_counts_single = wp.zeros(NUM_QUERIES, dtype=int, device="cuda")
     hit_counts_tiled = wp.zeros(NUM_QUERIES, dtype=int, device="cuda")
@@ -268,6 +320,11 @@ if __name__ == "__main__":
     print("Benchmarking single-threaded ray queries...")
     time_ray_mean, time_ray_std = benchmark_bvh_ray(
         bvh, query_starts, query_dirs, hit_counts_single, WARM_UP, ITERATIONS
+    )
+
+    print("Benchmarking single-threaded sphere queries...")
+    time_sphere_mean, time_sphere_std = benchmark_bvh_sphere(
+        bvh, query_centers, sphere_radius, hit_counts_single, WARM_UP, ITERATIONS
     )
 
     # Store results for each block dimension
@@ -384,5 +441,13 @@ if __name__ == "__main__":
             f"{'Ray':<15s} {f'Tiled (BD={block_dim})':<20s} {f'{time_mean:.6g}±{time_std:.2g}':<20s} "
             f"{f'{speedup:.2f}x':<15s} {total_threads:<15d}"
         )
+
+    print()
+
+    # Sphere results (single-threaded only)
+    print(
+        f"{'Sphere':<15s} {'Single':<20s} {f'{time_sphere_mean:.6g}±{time_sphere_std:.2g}':<20s} "
+        f"{'1.00x':<15s} {NUM_QUERIES:<15d}"
+    )
 
     print("=" * 100)

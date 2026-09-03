@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 # ruff: noqa: PLC0415
 
@@ -24,7 +12,7 @@ from numpy.random import default_rng
 
 import warp as wp
 
-from .benchmarks_utils import get_asset_directory
+from .benchmarks_utils import get_asset_directory, setup_once
 
 pxr = importlib.util.find_spec("pxr")
 USD_AVAILABLE = pxr is not None
@@ -77,6 +65,7 @@ class MeshQuery:
     number = 20
     timeout = 60
 
+    @setup_once
     def setup(self, leaf_size, asset, bvh_constructor):
         from pxr import Usd, UsdGeom
 
@@ -368,6 +357,7 @@ class BvhAABBQuery:
     number = 5
     timeout = 120
 
+    @setup_once
     def setup(self, query_radius, leaf_size, device, bvh_constructor):
         with wp.ScopedDevice(device):
             from pxr import Usd, UsdGeom
@@ -492,6 +482,111 @@ class BvhAABBQuery:
         wp.synchronize_device(self.device)
 
 
+CPU_NUM_QUERY_POINTS = 32768
+
+
+class BvhAABBQueryCPU:
+    """Broad-phase AABB query timing on CPU for both ``wp.Bvh`` and ``wp.Mesh``.
+
+    Uses a bunny mesh (~12k triangle bounds) with 32k query AABBs at two radii
+    (sparse: 0.002, dense: 0.03) and three leaf sizes (default/1/8).
+    The timings query AABBs that traverse the tree.
+    """
+
+    params = [[0.002, 0.03], [0, 1, 8], ["sah"]]
+    param_names = ["query_radius", "leaf_size", "constructor"]
+
+    number = 5
+    repeat = 10
+    timeout = 300
+
+    def setup_cache(self):
+        """Load the mesh and generate query points once; device arrays are built per param in setup().
+
+        Returns NumPy data only: asv pickles the cache to disk, and Warp arrays are not picklable.
+        """
+        from pxr import Usd, UsdGeom
+
+        asset_stage = Usd.Stage.Open(os.path.join(get_asset_directory(), "bunny.usd"))
+        mesh_geom = UsdGeom.Mesh(asset_stage.GetPrimAtPath("/root/bunny"))
+
+        points_np = np.array(mesh_geom.GetPointsAttr().Get())
+        indices_np = np.array(mesh_geom.GetFaceVertexIndicesAttr().Get())
+        bb_min = points_np.min(axis=0)
+        bb_max = points_np.max(axis=0)
+
+        rng = default_rng(42)
+        query_points_np = (bb_min + (bb_max - bb_min) * rng.random((CPU_NUM_QUERY_POINTS, 3))).astype(np.float32)
+
+        return {
+            "points_np": points_np,
+            "indices_np": indices_np,
+            "query_points_np": query_points_np,
+        }
+
+    @setup_once
+    def setup(self, cache, query_radius, leaf_size, bvh_constructor):
+        wp.init()
+        self.device = wp.get_device("cpu")
+
+        with wp.ScopedDevice(self.device):
+            wp.load_module(device=self.device)
+
+            points = wp.array(cache["points_np"], dtype=wp.vec3)
+            indices = wp.array(cache["indices_np"], dtype=int)
+            query_points = wp.array(cache["query_points_np"], dtype=wp.vec3)
+
+            num_faces = int(cache["indices_np"].shape[0] / 3)
+            lowers = wp.zeros(num_faces, dtype=wp.vec3)
+            uppers = wp.zeros(num_faces, dtype=wp.vec3)
+            wp.launch(dim=num_faces, kernel=compute_tri_aabbs, inputs=[points, indices], outputs=[lowers, uppers])
+
+            if leaf_size == 0:
+                self.bvh = wp.Bvh(lowers, uppers, constructor=bvh_constructor)
+                self.mesh = wp.Mesh(points, indices, bvh_constructor=bvh_constructor)
+            else:
+                self.bvh = wp.Bvh(lowers, uppers, leaf_size=leaf_size, constructor=bvh_constructor)
+                self.mesh = wp.Mesh(points, indices, bvh_leaf_size=leaf_size, bvh_constructor=bvh_constructor)
+
+            buffer_size_per_vertex = 32
+            self.vertex_colliding_triangles_offsets = wp.array(
+                np.arange(0, buffer_size_per_vertex * (CPU_NUM_QUERY_POINTS + 1), buffer_size_per_vertex, dtype=int),
+                dtype=wp.int32,
+            )
+            self.vertex_colliding_triangles = wp.zeros(
+                2 * buffer_size_per_vertex * CPU_NUM_QUERY_POINTS, dtype=wp.int32
+            )
+            self.vertex_colliding_triangles_count = wp.zeros(CPU_NUM_QUERY_POINTS, dtype=wp.int32)
+
+            bvh_kernel = get_v_t_collision_kernel(True)
+            mesh_kernel = get_v_t_collision_kernel(False)
+
+            self.launches = {}
+            for name, geom_id, kernel, points_arr in (
+                ("bvh", self.bvh.id, bvh_kernel, query_points),
+                ("mesh", self.mesh.id, mesh_kernel, query_points),
+            ):
+                self.launches[name] = wp.launch(
+                    dim=CPU_NUM_QUERY_POINTS,
+                    kernel=kernel,
+                    inputs=[query_radius, geom_id, points_arr, self.vertex_colliding_triangles_offsets],
+                    outputs=[self.vertex_colliding_triangles, self.vertex_colliding_triangles_count],
+                    record_cmd=True,
+                )
+
+            # warm up
+            for launch in self.launches.values():
+                launch.launch()
+
+    @skip_benchmark_if(USD_AVAILABLE is False)
+    def time_bvh_aabb_vs_aabb_query(self, cache, query_radius, leaf_size, bvh_constructor):
+        self.launches["bvh"].launch()
+
+    @skip_benchmark_if(USD_AVAILABLE is False)
+    def time_mesh_aabb_vs_aabb_query(self, cache, query_radius, leaf_size, bvh_constructor):
+        self.launches["mesh"].launch()
+
+
 class BvhRayQuery:
     params = [[480, 1080], [0, 8], ["cuda"], ["lbvh", "cubql"]]
     param_names = ["resolution", "leaf_size", "device", "constructor"]
@@ -499,6 +594,7 @@ class BvhRayQuery:
     number = 5
     timeout = 120
 
+    @setup_once
     def setup(self, resolution, leaf_size, device, bvh_constructor):
         cam_pos = wp.vec3(0.0, 0.75, 7.0)
         cam_rot = wp.quat(0.0, 0.0, 0.0, 1.0)

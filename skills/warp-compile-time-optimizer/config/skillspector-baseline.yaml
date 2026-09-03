@@ -1,0 +1,17 @@
+version: 2
+rules:
+  # Scoped by rule id plus the exact code pattern rather than by path: this
+  # finding arrives with an empty `file`, so any `path:` glob silently fails to
+  # match and the suppression stops working. Verified against skillspector
+  # 2.9.3 -- adding a `path:` here would re-break it.
+  - id: "E2"
+    message: "*dict(os.environ)*"
+    reason: >-
+      Reviewed false positive in scripts/warp_compile_probe.py: the probe
+      measures cold-start compilation of the user's own command, so the child
+      process must inherit the parent runtime or the measurement describes a
+      different environment than the one being optimized. The probe overrides
+      only the three cache paths, its own PYTHONPATH injection, and a record
+      file; the child gains no authority beyond code already trusted to run in
+      the parent context, and nothing leaves the machine.
+fingerprints: []

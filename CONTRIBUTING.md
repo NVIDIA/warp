@@ -263,7 +263,7 @@ integration (e.g., VS Code format-on-save), install the version specified in `.p
 # Ubuntu/Debian - Install from apt.llvm.org
 # See https://apt.llvm.org/ for repository setup instructions
 # Check .pre-commit-config.yaml for the current version
-sudo apt-get install clang-format-21
+sudo apt-get install clang-format-23
 ```
 
 For other platforms, consult the LLVM documentation for installation instructions. We recommend using pre-commit
@@ -382,6 +382,17 @@ using [test discovery](https://docs.python.org/3/library/unittest.html#test-disc
 `uv run --extra dev -m warp.tests -s autodetect`, which will discover tests in modules matching the path
 `warp/tests/test*.py`.
 
+> The runner uses up to eight test processes, capped further by the detected CPU count and the 
+> number of selected test classes. On systems with sufficient CPU and GPU resources, the limit can be raised
+> with ``--maxjobs N``. Performance gains depend on the workload and hardware and generally diminish at higher
+> process counts. Additional workers running CUDA tests can also increase peak GPU memory usage.
+
+> The native libraries in ``warp/bin`` are not rebuilt automatically. After merging or rebasing
+> on ``main``, or otherwise pulling changes to ``warp/native/``, rebuild with
+> ``uv run build_lib.py`` (or ``uv run build_lib.py --quick`` when the installed CUDA driver is at
+> least as new as the CUDA Toolkit). Running against stale binaries can crash or corrupt
+> JIT-compiled kernels in confusing ways, such as when a merge changed a native struct layout.
+
 #### Running a Subset of Tests
 
 Instead of running the full test suite, there are two main ways to select a subset of tests to run.
@@ -429,11 +440,13 @@ from warp.tests.unittest_utils import *
 def test_amazing_code_test_one(test, device):
     pass
 
+
 devices = get_test_devices()
 
 
 class TestAmazingCode(unittest.TestCase):
     pass
+
 
 add_function_test(TestAmazingCode, "test_amazing_code_test_one", test_amazing_code_test_one, devices=devices)
 

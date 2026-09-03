@@ -77,11 +77,12 @@ warp/examples/core
       - wave
     * - .. image:: ./img/examples/core_fft_poisson_navier_stokes_2d.png
            :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_fft_poisson_navier_stokes_2d.py
-      -
+      - .. image:: ./img/examples/core_fdtd_3d.png
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_fdtd_3d.py
       -
       -
     * - 2-D incompressible turbulence in a periodic box
-      -
+      - 3-D FDTD Luneburg lens
       -
       -
 
@@ -198,6 +199,7 @@ warp/examples/tile
 
     api_reference/warp
     api_reference/warp_autograd
+    api_reference/warp_build_experimental
     api_reference/warp_config
     api_reference/warp_fem
     api_reference/warp_optim

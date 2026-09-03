@@ -1,5 +1,5 @@
 ## Description: <br>
-Use to diagnose and fix incorrect gradients in differentiable Warp programs. <br>
+Diagnoses and fixes incorrect gradients in differentiable NVIDIA Warp programs by measuring autodiff against finite differences, localizing the failure, and applying minimal verified corrections. <br>
 
 This skill is ready for commercial/non-commercial use. <br>
 
@@ -9,7 +9,7 @@ NVIDIA <br>
 ### License/Terms of Use: <br>
 Apache 2.0 <br>
 ## Use Case: <br>
-Developers and engineers who train, optimize, calibrate, or fit parameters through NVIDIA Warp kernels use this skill to diagnose and fix incorrect gradients in differentiable simulation pipelines. <br>
+Developers and engineers debugging gradient correctness in differentiable simulation, optimization, calibration, or training workflows built on NVIDIA Warp kernels and wp.Tape. <br>
 
 ### Deployment Geography for Use: <br>
 Global <br>
@@ -30,13 +30,14 @@ Mitigation: Review and scan skill before deployment. <br>
 - [Custom Gradients](references/custom-gradients.md) <br>
 - [Case Studies](references/case-studies.md) <br>
 - [NVIDIA Warp Documentation](https://nvidia.github.io/warp/stable/) <br>
+- [NVIDIA Warp GitHub](https://github.com/NVIDIA/warp) <br>
 
 
 ## Skill Output: <br>
-**Output Type(s):** [Analysis, Code, Shell commands] <br>
-**Output Format:** [Markdown with inline code blocks and before/after FD comparison numbers] <br>
+**Output Type(s):** [Analysis, Code] <br>
+**Output Format:** [Markdown with inline code blocks and diagnostic scripts] <br>
 **Output Parameters:** [1D] <br>
-**Other Properties Related to Output:** [Diagnostic scripts (FD harness, shrunk repro) are preserved in the workspace as reproducible evidence] <br>
+**Other Properties Related to Output:** [None] <br>
 
 ## Evaluation Agents Used: <br>
 - Claude Code (`aws/anthropic/bedrock-claude-opus-4-8`) <br>
@@ -45,21 +46,21 @@ Mitigation: Review and scan skill before deployment. <br>
 
 
 ## Evaluation Tasks: <br>
-Evaluated against 6 positive tasks in isolated sandbox pods (dataset digest sha256:7070e4d08b7ec63b7dffb43f3bce5b7a935166f997b55e0af147dd00c96beabd). <br>
+Evaluated against 6 gradient-debugging tasks (6 positive) in isolated sandbox pods. <br>
 
 ## Evaluation Metrics Used: <br>
 Reported benchmark dimensions: <br>
-- Security: Whether the skill avoids unsafe operations, secret leakage, and unauthorized access. <br>
-- Correctness: Whether the final answer is correct against the reference answer. <br>
-- Discoverability: Whether the expected skill was found and executed when needed. <br>
-- Effectiveness: Whether the skill helped complete the user's goal and followed the expected workflow (equal-weight mean of goal completion and behavior check). <br>
-- Efficiency: Whether the skill avoided wasted tool or skill usage through good routing and productive tool use. <br>
+- Security: Checks for unsafe operations, secret leakage, and unauthorized access. <br>
+- Correctness: Checks final-answer correctness against the reference answer. <br>
+- Discoverability: Checks whether the expected skill was found and executed when needed. <br>
+- Effectiveness: Checks whether the skill helped complete the user's goal and followed expected workflow behavior. <br>
+- Efficiency: Checks routing quality, workspace-aware skill reads, and productive tool use. <br>
 
 Underlying evaluation signals used in this run: <br>
-- `security`: Checks for unsafe operations, secret leakage, and unauthorized access. <br>
-- `accuracy`: Verifies final-answer correctness against the reference answer. <br>
+- `security`: Unsafe operations, secret leakage, and unauthorized access. <br>
 - `skill_execution`: Whether the expected skill was found and executed. <br>
 - `skill_efficiency`: Routing quality, workspace-aware skill reads, and productive tool use. <br>
+- `accuracy`: Final-answer correctness against the reference answer. <br>
 - `goal_accuracy`: Whether the user's goal was achieved. <br>
 - `behavior_check`: Whether the expected workflow behavior was followed. <br>
 
@@ -68,12 +69,12 @@ Underlying evaluation signals used in this run: <br>
 ## Evaluation Results: <br>
 | Measure | Claude Code (Baseline → Skill Uplift) | Codex (Baseline → Skill Uplift) |
 |---|---:|---:|
-| Overall | 75% → 61% (-14 points) | 69% → 64% (-4 points) |
-| Security | 100% → 67% (-33 points) | 100% → 50% (-50 points) |
-| Correctness | 83% → 33% (-50 points) | 67% → 50% (-17 points) |
-| Discoverability | 65% → 90% (+25 points) | 57% → 79% (+22 points) |
-| Effectiveness | 73% → 33% (-40 points) | 53% → 56% (+3 points) |
-| Efficiency | 52% → 83% (+31 points) | 66% → 86% (+20 points) |
+| Overall | 79% → 93% (+14 points) | 80% → 90% (+11 points) |
+| Security | 100% → 100% (±0 points) | 100% → 83% (-17 points) |
+| Correctness | 100% → 100% (±0 points) | 100% → 100% (±0 points) |
+| Discoverability | 58% → 84% (+26 points) | 60% → 84% (+24 points) |
+| Effectiveness | 80% → 94% (+15 points) | 78% → 90% (+13 points) |
+| Efficiency | 55% → 86% (+31 points) | 61% → 93% (+33 points) |
 
 ## Skill Version(s): <br>
 0.1.0 (source: frontmatter) <br>

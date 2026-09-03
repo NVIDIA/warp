@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import contextlib
+import io
 import unittest
 import warnings
 from typing import Any
@@ -80,6 +82,20 @@ def kernel_mixed(
 
 
 @wp.kernel
+def kernel_f32_to_f64(a: wp.array[wp.float32], out: wp.array[wp.float64]):
+    tid = wp.tid()
+    ai = wp.float64(a[tid])
+    out[tid] = ai * ai
+
+
+@wp.kernel
+def kernel_f64_to_f32(a: wp.array[wp.float64], out: wp.array[wp.float32]):
+    tid = wp.tid()
+    ai = wp.float32(a[tid])
+    out[tid] = ai * ai
+
+
+@wp.kernel
 def vec_length_kernel(a: wp.array[wp.vec3], out: wp.array[float]):
     tid = wp.tid()
     v = a[tid]
@@ -120,6 +136,50 @@ def jacobian_plot_scale_kernel(a: wp.array[float], out: wp.array[float]):
     out[tid] = 2.0 * a[tid]
 
 
+_MODULE_BACKWARD_DISABLED = "test_grad_debug_module_backward_disabled"
+_KERNEL_BACKWARD_DISABLED = "test_grad_debug_kernel_backward_disabled"
+
+# Group fixtures by configuration while keeping them isolated from the test module.
+wp.get_module(_MODULE_BACKWARD_DISABLED).options["enable_backward"] = False
+
+
+@wp.kernel(module=_MODULE_BACKWARD_DISABLED)
+def module_backward_disabled_scale_kernel(a: wp.array[float], out: wp.array[float]):
+    tid = wp.tid()
+    out[tid] = 2.0 * a[tid]
+
+
+@wp.kernel(module=_KERNEL_BACKWARD_DISABLED, enable_backward=False)
+def kernel_backward_disabled_scale_kernel(a: wp.array[float], out: wp.array[float]):
+    tid = wp.tid()
+    out[tid] = 2.0 * a[tid]
+
+
+@wp.kernel(module=_KERNEL_BACKWARD_DISABLED, enable_backward=False)
+def kernel_backward_disabled_wrong_grad_kernel(a: wp.array[float], out: wp.array[float]):
+    tid = wp.tid()
+    out[tid] = wrong_grad_func(a[tid])
+
+
+@wp.kernel(module=_MODULE_BACKWARD_DISABLED)
+def module_backward_disabled_wrong_grad_kernel(a: wp.array[float], out: wp.array[float]):
+    tid = wp.tid()
+    out[tid] = wrong_grad_func(a[tid])
+
+
+@wp.kernel(module=_MODULE_BACKWARD_DISABLED, enable_backward=True)
+def kernel_backward_enabled_scale_kernel(a: wp.array[float], out: wp.array[float]):
+    tid = wp.tid()
+    out[tid] = 2.0 * a[tid]
+
+
+def _make_scale_args(device):
+    """Create differentiable inputs and outputs for the scale kernels."""
+    a = wp.array([1.0, 2.0], dtype=wp.float32, requires_grad=True, device=device)
+    out = wp.zeros(2, dtype=wp.float32, requires_grad=True, device=device)
+    return a, out
+
+
 def function_pipeline(a):
     out = wp.zeros_like(a, requires_grad=True)
     wp.launch(
@@ -130,6 +190,23 @@ def function_pipeline(a):
         device=a.device,
     )
     return out
+
+
+def _make_function_pipeline(kernel):
+    """Create a supported ``jacobian()`` callable that launches ``kernel``."""
+
+    def function_pipeline(a):
+        out = wp.zeros_like(a, requires_grad=True)
+        wp.launch(
+            kernel,
+            dim=len(a),
+            inputs=[a],
+            outputs=[out],
+            device=a.device,
+        )
+        return out
+
+    return function_pipeline
 
 
 def test_jacobian_function_pipeline(test, device):
@@ -147,6 +224,115 @@ def test_jacobian_function_pipeline(test, device):
             rtol=1.0e-3,
             err_msg=f"{jacobian_function.__name__} returned an incorrect Jacobian for function_pipeline",
         )
+
+
+def test_jacobian_function_respects_module_backward_setting(test, device):
+    """Honor module backward settings in callable pipelines."""
+    a = wp.array([1.0, 2.0], dtype=wp.float32, requires_grad=True, device=device)
+    function = _make_function_pipeline(module_backward_disabled_scale_kernel)
+    with test.assertRaisesRegex(
+        ValueError,
+        "Kernel must have backward pass enabled to compute Jacobians",
+    ):
+        jacobian(function, inputs=[a])
+
+    # An explicit kernel setting takes precedence over its module setting.
+    a = wp.array([1.0, 2.0], dtype=wp.float32, requires_grad=True, device=device)
+    function = _make_function_pipeline(kernel_backward_enabled_scale_kernel)
+    jacobians = jacobian(function, inputs=[a])
+    np.testing.assert_allclose(
+        jacobians[(0, 0)].numpy(),
+        np.array([[2.0, 0.0], [0.0, 2.0]], dtype=np.float32),
+        atol=1.0e-3,
+        rtol=1.0e-3,
+    )
+
+
+def test_jacobian_function_respects_kernel_backward_setting(test, device):
+    """Honor kernel backward settings in callable pipelines."""
+    a = wp.array([1.0, 2.0], dtype=wp.float32, requires_grad=True, device=device)
+    function = _make_function_pipeline(kernel_backward_disabled_scale_kernel)
+    with test.assertRaisesRegex(
+        ValueError,
+        "Kernel must have backward pass enabled to compute Jacobians",
+    ):
+        jacobian(function, inputs=[a])
+
+
+def test_jacobian_respects_effective_enable_backward(test, device):
+    """Honor module and kernel backward settings when computing Jacobians.
+
+    Reject both forms of effective disablement, then verify that an explicit
+    kernel-level ``True`` overrides a module-level ``False``.
+    """
+    disabled_kernels = (
+        module_backward_disabled_scale_kernel,
+        kernel_backward_disabled_scale_kernel,
+    )
+    for kernel in disabled_kernels:
+        with test.subTest(kernel=kernel.key):
+            a, out = _make_scale_args(device)
+            with test.assertRaisesRegex(
+                ValueError,
+                "Kernel must have backward pass enabled to compute Jacobians",
+            ):
+                jacobian(kernel, dim=len(a), inputs=[a], outputs=[out])
+
+    # The explicit kernel setting is more specific than the disabled module.
+    a, out = _make_scale_args(device)
+    jacobians = jacobian(
+        kernel_backward_enabled_scale_kernel,
+        dim=len(a),
+        inputs=[a],
+        outputs=[out],
+    )
+    np.testing.assert_allclose(
+        jacobians[(0, 0)].numpy(),
+        np.eye(2, dtype=np.float32) * 2.0,
+        atol=1.0e-3,
+        rtol=1.0e-3,
+    )
+
+
+def test_gradcheck_tape_skips_effectively_disabled_kernels(test, device):
+    """Skip tape launches disabled at either module or kernel scope.
+
+    Record disabled kernels with known incorrect adjoints. A successful result
+    proves neither launch was checked and accepted by coincidence.
+    """
+    with wp.Tape() as tape:
+        for kernel in (
+            module_backward_disabled_wrong_grad_kernel,
+            kernel_backward_disabled_wrong_grad_kernel,
+        ):
+            a, out = _make_scale_args(device)
+            wp.launch(kernel, dim=len(a), inputs=[a], outputs=[out], device=device)
+
+    # Either known-wrong gradient would make this False if its launch were checked.
+    test.assertTrue(gradcheck_tape(tape, raise_exception=False, show_summary=False))
+
+
+def test_jacobian_fd_allows_backward_disabled_kernels(test, device):
+    """Compute finite-difference Jacobians for backward-disabled kernels.
+
+    Exercise module-level and kernel-level disablement. Finite differences use
+    only forward launches, so neither setting should prevent the calculation.
+    """
+    for kernel in (
+        module_backward_disabled_scale_kernel,
+        kernel_backward_disabled_scale_kernel,
+    ):
+        with test.subTest(kernel=kernel.key):
+            a, out = _make_scale_args(device)
+
+            # This path perturbs inputs and launches forward kernels; it needs no adjoint.
+            jacobians = jacobian_fd(kernel, dim=len(a), inputs=[a], outputs=[out])
+            np.testing.assert_allclose(
+                jacobians[(0, 0)].numpy(),
+                np.eye(2, dtype=np.float32) * 2.0,
+                atol=1.0e-3,
+                rtol=1.0e-3,
+            )
 
 
 def test_gradcheck_3d(test, device, dtype):
@@ -240,6 +426,26 @@ def test_gradcheck_mixed(test, device):
     test.assertTrue(passed, "gradcheck failed for kernel_mixed")
 
 
+def test_gradcheck_mixed_precision(test, device):
+    """Verify gradcheck() supports kernels whose input and output dtypes differ."""
+    # the finite-difference Jacobian follows the input dtype while the
+    # difference quotient is computed in the output dtype, so inputs and
+    # outputs of different precision must not break the FD kernel
+    a32 = wp.array([1.5, 2.0], dtype=wp.float32, requires_grad=True, device=device)
+    out64 = wp.zeros(2, dtype=wp.float64, requires_grad=True, device=device)
+    passed = gradcheck(
+        kernel_f32_to_f64, dim=2, inputs=[a32], outputs=[out64], raise_exception=False, show_summary=False
+    )
+    test.assertTrue(passed, "gradcheck failed for kernel_f32_to_f64")
+
+    a64 = wp.array([1.5, 2.0], dtype=wp.float64, requires_grad=True, device=device)
+    out32 = wp.zeros(2, dtype=wp.float32, requires_grad=True, device=device)
+    passed = gradcheck(
+        kernel_f64_to_f32, dim=2, inputs=[a64], outputs=[out32], raise_exception=False, show_summary=False
+    )
+    test.assertTrue(passed, "gradcheck failed for kernel_f64_to_f32")
+
+
 def test_gradcheck_nan(test, device):
     a = wp.array([wp.vec3(1.0, 2.0, 3.0), wp.vec3(0.0, 0.0, 0.0)], dtype=wp.vec3, requires_grad=True, device=device)
     out = wp.array([0.0, 0.0], dtype=float, requires_grad=True, device=device)
@@ -254,6 +460,186 @@ def test_gradcheck_incorrect(test, device):
 
     with test.assertRaises(ValueError):
         gradcheck(wrong_grad_kernel, dim=a.shape, inputs=[a], outputs=[out], raise_exception=True, show_summary=False)
+
+
+@wp.kernel
+def inplace_increment_kernel(x: wp.array[float]):
+    tid = wp.tid()
+    x[tid] = x[tid] + 1.0
+
+
+@wp.kernel
+def square_readout_kernel(x: wp.array[float], y: wp.array[float]):
+    tid = wp.tid()
+    y[tid] = x[tid] * x[tid]
+
+
+def test_gradcheck_restore_inputs(test, device):
+    """Verify gradcheck() succeeds for input-mutating functions and leaves inputs unchanged."""
+    n = 4
+
+    def make_input():
+        return wp.array(np.arange(1, n + 1, dtype=np.float32), requires_grad=True, device=device)
+
+    def forward_mutating(x):
+        # mutates x in place before the readout kernel reads it; the backward pass
+        # stays consistent only because the increment's derivative is independent
+        # of the overwritten value, while the FD probes are sensitive to the drift
+        wp.launch(inplace_increment_kernel, dim=n, inputs=[x], device=device)
+        y = wp.zeros_like(x)
+        wp.launch(square_readout_kernel, dim=n, inputs=[x], outputs=[y], device=device)
+        return y
+
+    x = make_input()
+    x0 = x.numpy().copy()
+    saved_verify = wp.config.verify_autograd_array_access
+    try:
+        # the restoration must not leave stale read flags behind: no overwrite
+        # warning may fire across the autodiff and finite-difference passes
+        wp.config.verify_autograd_array_access = True
+        with contextlib.redirect_stderr(io.StringIO()) as f:
+            passed = gradcheck(forward_mutating, inputs=[x], raise_exception=False, show_summary=False)
+        test.assertNotIn("has already been read from", f.getvalue())
+    finally:
+        wp.config.verify_autograd_array_access = saved_verify
+    test.assertTrue(passed, "gradcheck failed for an input-mutating function despite input restoration")
+    assert_np_equal(x.numpy(), x0)
+
+    # without restoration, finite-difference probes start from drifted input values
+    x = make_input()
+    passed = gradcheck(forward_mutating, inputs=[x], restore_inputs=False, raise_exception=False, show_summary=False)
+    test.assertFalse(passed, "gradcheck should fail for an input-mutating function without input restoration")
+
+
+@wp.kernel
+def scaled_square_readout_kernel(x: wp.array[float], aux: wp.array[float], scale: float, y: wp.array[float]):
+    tid = wp.tid()
+    y[tid] = scale * x[tid] * x[tid] * aux[tid]
+
+
+def test_restore_inputs_direct_jacobian(test, device):
+    """Verify jacobian() and jacobian_fd() restore mutated array inputs when called directly."""
+    # exercises the restore_inputs contract on jacobian() and jacobian_fd()
+    # directly, with a mutated non-differentiated array input and a non-array
+    # input alongside the differentiated array
+    n = 3
+    scale = 0.5
+
+    def make_inputs():
+        x = wp.array(np.arange(1, n + 1, dtype=np.float32), requires_grad=True, device=device)
+        aux = wp.full(n, 2.0, dtype=float, device=device)
+        return x, aux
+
+    def forward(x, aux, scale):
+        wp.launch(inplace_increment_kernel, dim=n, inputs=[aux], device=device)
+        y = wp.zeros_like(x)
+        wp.launch(scaled_square_readout_kernel, dim=n, inputs=[x, aux, scale], outputs=[y], device=device)
+        return y
+
+    # y = scale * x^2 * (aux + 1) when every evaluation starts from the
+    # original aux, so dy/dx = 2 * scale * x * (aux + 1) elementwise
+    x, aux = make_inputs()
+    x0, aux0 = x.numpy().copy(), aux.numpy().copy()
+    expected = np.diag(2.0 * scale * x0 * (aux0 + 1.0))
+
+    jac_ad = jacobian(forward, inputs=[x, aux, scale])[0, 0]
+    np.testing.assert_allclose(jac_ad.numpy(), expected, rtol=1e-5)
+    assert_np_equal(x.numpy(), x0)
+    assert_np_equal(aux.numpy(), aux0)
+
+    jac_fd = jacobian_fd(forward, inputs=[x, aux, scale])[0, 0]
+    np.testing.assert_allclose(jac_fd.numpy(), expected, atol=5e-2)
+    assert_np_equal(x.numpy(), x0)
+    assert_np_equal(aux.numpy(), aux0)
+
+
+def test_restore_inputs_preserves_read_state(test, device):
+    """Verify gradient checks preserve read flags owned by a caller's pending tape."""
+    n = 4
+    saved_verify = wp.config.verify_autograd_array_access
+    try:
+        wp.config.verify_autograd_array_access = True
+
+        # local kernels so their module is built with access verification enabled,
+        # independent of the earlier tests in this file
+        @wp.kernel
+        def preread_readout_kernel(x: wp.array[float], y: wp.array[float]):
+            tid = wp.tid()
+            y[tid] = x[tid] * x[tid]
+
+        @wp.kernel
+        def preread_overwrite_kernel(x: wp.array[float]):
+            tid = wp.tid()
+            x[tid] = x[tid] + 1.0
+
+        def forward(x):
+            y = wp.zeros_like(x)
+            wp.launch(preread_readout_kernel, dim=x.size, inputs=[x], outputs=[y], device=x.device)
+            return y
+
+        for jacobian_function in (jacobian, jacobian_fd):
+            x = wp.array(np.arange(1, n + 1, dtype=np.float32), requires_grad=True, device=device)
+            y = wp.zeros_like(x)
+            tape = wp.Tape()
+            with tape:
+                wp.launch(preread_readout_kernel, dim=n, inputs=[x], outputs=[y], device=device)
+            test.assertTrue(x._is_read)
+
+            # the check's internal tape must not erase the pending tape's read flag
+            jacobian_function(forward, inputs=[x])
+            test.assertTrue(x._is_read)
+
+            # a recorded overwrite of x must still warn against the pending tape
+            with contextlib.redirect_stderr(io.StringIO()) as f:
+                with tape:
+                    wp.launch(preread_overwrite_kernel, dim=n, inputs=[x], device=device)
+            test.assertIn("has already been read from", f.getvalue())
+
+        # conversely, with no pending reads, a mutating function must not
+        # trigger false overwrite warnings across the two passes
+        def forward_mutating(x):
+            wp.launch(preread_overwrite_kernel, dim=x.size, inputs=[x], device=x.device)
+            y = wp.zeros_like(x)
+            wp.launch(preread_readout_kernel, dim=x.size, inputs=[x], outputs=[y], device=x.device)
+            return y
+
+        x = wp.array(np.arange(1, n + 1, dtype=np.float32), requires_grad=True, device=device)
+        with contextlib.redirect_stderr(io.StringIO()) as f:
+            passed = gradcheck(forward_mutating, inputs=[x], raise_exception=False, show_summary=False)
+        test.assertTrue(passed)
+        test.assertNotIn("has already been read from", f.getvalue())
+    finally:
+        wp.config.verify_autograd_array_access = saved_verify
+
+
+def test_restore_inputs_on_exception(test, device):
+    """Verify inputs are restored when the function or the check machinery raises."""
+    # inputs must be restored even when the function raises after mutating them
+    n = 4
+    x = wp.array(np.arange(1, n + 1, dtype=np.float32), requires_grad=True, device=device)
+    x0 = x.numpy().copy()
+
+    def forward_raises(x):
+        wp.launch(inplace_increment_kernel, dim=n, inputs=[x], device=device)
+        raise RuntimeError("boom")
+
+    for jacobian_function in (jacobian, jacobian_fd):
+        with test.assertRaisesRegex(RuntimeError, "boom"):
+            jacobian_function(forward_raises, inputs=[x])
+        assert_np_equal(x.numpy(), x0)
+
+    # a raise after a successful (mutating) evaluation exercises the
+    # restoration on the non-function error paths
+    def forward_mutates(x):
+        wp.launch(inplace_increment_kernel, dim=n, inputs=[x], device=device)
+        y = wp.zeros_like(x)
+        wp.launch(square_readout_kernel, dim=n, inputs=[x], outputs=[y], device=device)
+        return y
+
+    for jacobian_function in (jacobian, jacobian_fd):
+        with test.assertRaises(ValueError):
+            jacobian_function(forward_mutates, inputs=[x], input_output_mask=[("bogus", 0)])
+        assert_np_equal(x.numpy(), x0)
 
 
 def test_gradcheck_tape_basic(test, device, dtype):
@@ -554,10 +940,52 @@ for dtype in [wp.float32, wp.float64]:
         dtype=dtype,
     )
 add_function_test(TestGradDebug, "test_jacobian_function_pipeline", test_jacobian_function_pipeline, devices=devices)
+add_function_test(
+    TestGradDebug,
+    "test_jacobian_function_respects_module_backward_setting",
+    test_jacobian_function_respects_module_backward_setting,
+    devices=devices,
+)
+add_function_test(
+    TestGradDebug,
+    "test_jacobian_function_respects_kernel_backward_setting",
+    test_jacobian_function_respects_kernel_backward_setting,
+    devices=devices,
+)
 add_function_test(TestGradDebug, "test_gradcheck_mixed", test_gradcheck_mixed, devices=devices)
+add_function_test(TestGradDebug, "test_gradcheck_mixed_precision", test_gradcheck_mixed_precision, devices=devices)
 add_function_test(TestGradDebug, "test_gradcheck_nan", test_gradcheck_nan, devices=devices)
 add_function_test(TestGradDebug, "test_gradcheck_incorrect", test_gradcheck_incorrect, devices=devices)
+add_function_test(TestGradDebug, "test_gradcheck_restore_inputs", test_gradcheck_restore_inputs, devices=devices)
+add_function_test(
+    TestGradDebug, "test_restore_inputs_direct_jacobian", test_restore_inputs_direct_jacobian, devices=devices
+)
+add_function_test(TestGradDebug, "test_restore_inputs_on_exception", test_restore_inputs_on_exception, devices=devices)
+add_function_test(
+    TestGradDebug,
+    "test_restore_inputs_preserves_read_state",
+    test_restore_inputs_preserves_read_state,
+    devices=devices,
+)
 add_function_test(TestGradDebug, "test_gradcheck_tape_mixed", test_gradcheck_tape_mixed, devices=devices)
+add_function_test(
+    TestGradDebug,
+    "test_jacobian_respects_effective_enable_backward",
+    test_jacobian_respects_effective_enable_backward,
+    devices=devices,
+)
+add_function_test(
+    TestGradDebug,
+    "test_gradcheck_tape_skips_effectively_disabled_kernels",
+    test_gradcheck_tape_skips_effectively_disabled_kernels,
+    devices=devices,
+)
+add_function_test(
+    TestGradDebug,
+    "test_jacobian_fd_allows_backward_disabled_kernels",
+    test_jacobian_fd_allows_backward_disabled_kernels,
+    devices=devices,
+)
 
 
 if __name__ == "__main__":

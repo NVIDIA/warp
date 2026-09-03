@@ -7,16 +7,16 @@ This skill is ready for commercial/non-commercial use. <br>
 NVIDIA <br>
 
 ### License/Terms of Use: <br>
-Apache 2.0 <br>
+Apache-2.0 <br>
 ## Use Case: <br>
-Developers and engineers evaluating whether performance-critical code paths (irregular or spatial queries, particle or geometry simulation, branch-heavy loops, many small launches, host fallbacks, or large intermediates) are credible candidates for GPU acceleration via NVIDIA Warp. <br>
+Developers and engineers evaluating whether an existing computational hot path — irregular spatial queries, particle simulation, branch-heavy loops, or large intermediates — is suitable for GPU acceleration with NVIDIA Warp. <br>
 
 ### Deployment Geography for Use: <br>
 Global <br>
 
 ## Requirements / Dependencies: <br>
-**Requires API Key or External Credential:** [Not Specified] <br>
-**Credential Type(s):** [None identified] <br>
+**Requires API Key or External Credential:** [No] <br>
+**Credential Type(s):** [None] <br>
 
 Do not include secrets in prompts/logs/output; use least-privilege credentials; rotate keys as appropriate. <br>
 
@@ -36,9 +36,9 @@ Mitigation: Review and scan skill before deployment. <br>
 
 ## Skill Output: <br>
 **Output Type(s):** [Analysis, Files] <br>
-**Output Format:** [Markdown evaluation report with structured evidence sections, measurement tables, and independently applicable diffs] <br>
+**Output Format:** [Markdown evaluation report with structured evidence directory] <br>
 **Output Parameters:** [1D] <br>
-**Other Properties Related to Output:** [Report validated by scripts/validate_report_schema.py; artifacts in solutions/, benchmarks/, and results/ subdirectories] <br>
+**Other Properties Related to Output:** [Report directory (warp-evaluation-report/) containing the report, independent diffs, benchmark drivers, and raw results] <br>
 
 ## Evaluation Agents Used: <br>
 - Claude Code (`aws/anthropic/bedrock-claude-opus-4-8`) <br>
@@ -47,35 +47,35 @@ Mitigation: Review and scan skill before deployment. <br>
 
 
 ## Evaluation Tasks: <br>
-22 evaluation tasks (14 positive, 8 negative) covering security, correctness, discoverability, effectiveness, and efficiency. <br>
+22 evaluation tasks (14 positive, 8 negative) from isolated sandbox pods, evaluator version 1.2.0. <br>
 
 ## Evaluation Metrics Used: <br>
 Reported benchmark dimensions: <br>
 - Security: Checks for unsafe operations, secret leakage, and unauthorized access. <br>
 - Correctness: Verifies final-answer correctness against the reference answer. <br>
-- Discoverability: Checks whether the expected skill was found and executed when needed. <br>
-- Effectiveness: Equal-weight mean of goal completion (goal_accuracy) and expected workflow adherence (behavior_check). <br>
-- Efficiency: Checks routing quality, workspace-aware skill reads, and productive tool use. <br>
+- Discoverability: Whether the expected skill was found and executed when needed. <br>
+- Effectiveness: Equal-weight mean of goal completion and expected workflow adherence. <br>
+- Efficiency: Routing quality, workspace-aware skill reads, and productive tool use. <br>
 
 Underlying evaluation signals used in this run: <br>
 - `security`: Unsafe operations, secret leakage, and unauthorized access. <br>
-- `skill_execution`: Whether the expected skill was found and executed. <br>
-- `skill_efficiency`: Routing quality, workspace-aware skill reads, and productive tool use. <br>
 - `accuracy`: Final-answer correctness against the reference answer. <br>
+- `skill_execution`: Whether the expected skill was found and executed. <br>
 - `goal_accuracy`: Whether the user's goal was achieved. <br>
 - `behavior_check`: Whether the expected workflow behavior was followed. <br>
+- `skill_efficiency`: Routing quality, workspace-aware skill reads, and productive tool use. <br>
 
 
 
 ## Evaluation Results: <br>
 | Measure | Claude Code (Baseline → Skill Uplift) | Codex (Baseline → Skill Uplift) |
 |---|---:|---:|
-| Overall | 76% → 93% (+17 points) | 71% → 96% (+25 points) |
-| Security | 100% → 100% (±0 points) | 100% → 100% (±0 points) |
-| Correctness | 86% → 93% (+6 points) | 74% → 100% (+26 points) |
-| Discoverability | 67% → 100% (+33 points) | 62% → 91% (+29 points) |
-| Effectiveness | 64% → 81% (+17 points) | 59% → 92% (+33 points) |
-| Efficiency | 64% → 94% (+29 points) | 61% → 97% (+36 points) |
+| Overall | 75% → 96% (+21 points) | 69% → 94% (+25 points) |
+| Security | 100% → 100% (±0 points) | 91% → 100% (+9 points) |
+| Correctness | 82% → 96% (+15 points) | 74% → 94% (+20 points) |
+| Discoverability | 68% → 100% (+32 points) | 61% → 91% (+31 points) |
+| Effectiveness | 60% → 86% (+25 points) | 58% → 86% (+28 points) |
+| Efficiency | 64% → 96% (+32 points) | 62% → 98% (+36 points) |
 
 ## Skill Version(s): <br>
 1.16.0 (source: changelog, released 2026-08-03) <br>

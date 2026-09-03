@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 import inspect
 
@@ -20,6 +8,8 @@ import warp._src.fem.integrate as fem_integrate_mod
 import warp.fem as fem
 import warp.sparse as wps
 from warp.examples.fem.utils import gen_tetmesh
+
+from ..benchmarks_utils import setup_once
 
 # ruff: noqa: RUF059
 
@@ -310,7 +300,13 @@ class FemCorotatedElasticitySparseAssembly:
 
     repeat = 5
     number = 10
-    pool_size = 64
+    warmup_time = 0
+    pool_size = repeat * number
+
+    def _refill_sparse_source_pool(self):
+        self._src_pool = [_make_raw_bsr_copy(self._capture) for _ in range(self.pool_size)]
+        self._src_index = 0
+        wp.synchronize_device(self.device)
 
     def make_sparse_assembly_func(self, space: fem.FunctionSpace, fn: str, assembly: str):
         integrate_hessian = _make_corotated_hessian_integrator(space, assembly)
@@ -327,7 +323,13 @@ class FemCorotatedElasticitySparseAssembly:
         self._src_index = 0
         self._src_pool = []
         if self._capture.kind == "compress":
-            self._src_pool = [_make_raw_bsr_copy(self._capture) for _ in range(self.pool_size)]
+            self._refill_sparse_source_pool()
+
+    def _prepare_sparse_source(self):
+        if self._capture.kind != "compress" or self._src_index < len(self._src_pool):
+            return
+
+        self._refill_sparse_source_pool()
 
     def _run_impl(self):
         capture = self._capture
@@ -336,8 +338,8 @@ class FemCorotatedElasticitySparseAssembly:
             if _bsr_status_failed(capture.dest):
                 raise RuntimeError("FEM sparse assembly exceeded row capacity")
         else:
-            if self._src_index == len(self._src_pool):
-                self._src_pool.append(_make_raw_bsr_copy(capture))
+            if self._src_index >= len(self._src_pool):
+                raise RuntimeError("FEM sparse assembly source pool exhausted before setup")
 
             src = self._src_pool[self._src_index]
             self._src_index += 1
@@ -357,6 +359,7 @@ class FemCorotatedElasticityQuadraticTetmesh(FemCorotatedElasticity):
     params = (["energy", "forces", "hessian", "hessian_compressed"], ["dispatch"])
     param_names = ["fn", "assembly"]
 
+    @setup_once
     def setup(self, fn: str, assembly: str):
         wp.init()
         self.device = wp.get_device("cuda:0")
@@ -381,6 +384,7 @@ class FemCorotatedElasticityLinearGrid(FemCorotatedElasticity):
     params = (["energy", "forces", "hessian", "hessian_compressed"], ["generic", "dispatch"])
     param_names = ["fn", "assembly"]
 
+    @setup_once
     def setup(self, fn: str, assembly: str):
         wp.init()
         self.device = wp.get_device("cuda:0")
@@ -404,6 +408,7 @@ class FemCorotatedElasticityVeryHighOrder(FemCorotatedElasticity):
     params = (["energy", "forces", "hessian", "hessian_compressed"], ["dispatch"])
     param_names = ["fn", "assembly"]
 
+    @setup_once
     def setup(self, fn: str, assembly: str):
         wp.init()
         self.device = wp.get_device("cuda:0")
@@ -425,6 +430,11 @@ class FemCorotatedElasticitySparseAssemblyQuadraticTetmesh(FemCorotatedElasticit
     param_names = ["fn", "assembly"]
 
     def setup(self, fn: str, assembly: str):
+        self._initialize(fn, assembly)
+        self._prepare_sparse_source()
+
+    @setup_once
+    def _initialize(self, fn: str, assembly: str):
         wp.init()
         self.device = wp.get_device("cuda:0")
 
@@ -446,6 +456,11 @@ class FemCorotatedElasticitySparseAssemblyLinearGrid(FemCorotatedElasticitySpars
     param_names = ["fn", "assembly"]
 
     def setup(self, fn: str, assembly: str):
+        self._initialize(fn, assembly)
+        self._prepare_sparse_source()
+
+    @setup_once
+    def _initialize(self, fn: str, assembly: str):
         wp.init()
         self.device = wp.get_device("cuda:0")
 
@@ -466,6 +481,11 @@ class FemCorotatedElasticitySparseAssemblyVeryHighOrder(FemCorotatedElasticitySp
     param_names = ["fn", "assembly"]
 
     def setup(self, fn: str, assembly: str):
+        self._initialize(fn, assembly)
+        self._prepare_sparse_source()
+
+    @setup_once
+    def _initialize(self, fn: str, assembly: str):
         wp.init()
         self.device = wp.get_device("cuda:0")
 

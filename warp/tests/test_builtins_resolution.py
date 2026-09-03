@@ -5,7 +5,29 @@ import unittest
 
 import numpy as np
 
+from warp._src.context import Function, get_builtin_call_desc
 from warp.tests.unittest_utils import *
+
+
+def make_mul_builtin(input_types, value_type, defaults=None, export_func=None):
+    """Create an isolated built-in for testing Python-scope overload resolution.
+
+    The real ``wp.mul`` overloads all use the same ``(a, b)`` calling form
+    without defaults, so they cannot exercise overload-specific parameter
+    names, default values, or compile-time-only arguments. This helper
+    constructs synthetic Python signatures backed by the existing native
+    multiply exports without modifying the global ``wp.mul`` overload group.
+    """
+    return Function(
+        func=None,
+        key="mul",
+        namespace="wp::",
+        input_types=input_types,
+        value_func=lambda arg_types, arg_values: value_type,
+        export_func=export_func,
+        export=True,
+        defaults=defaults,
+    )
 
 
 def nps(dtype, value):
@@ -81,6 +103,161 @@ def test_int_int_args_support(test, device, dtype):
 
 
 class TestBuiltinsResolution(unittest.TestCase):
+    def test_builtin_fallback_does_not_retry_primary_shape(self):
+        """Evaluate primary-shape overloads only once before falling back."""
+        overload_group = make_mul_builtin({"a": wp.float32, "b": wp.float32}, wp.float32)
+        overload_group.add_overload(make_mul_builtin({"a": wp.int32, "b": wp.int32}, wp.int32))
+
+        get_builtin_call_desc.cache_clear()
+        self.addCleanup(get_builtin_call_desc.cache_clear)
+
+        with self.assertRaisesRegex(
+            RuntimeError,
+            r"Couldn't find a function 'mul' compatible with the arguments 'mat22f, mat22f'$",
+        ):
+            overload_group.get_builtin(wp.mat22f(), wp.mat22f())
+
+        cache_info = get_builtin_call_desc.cache_info()
+        self.assertEqual(cache_info.hits, 0)
+        self.assertEqual(cache_info.misses, 2)
+
+    def test_unavailable_builtin_overloads_are_rejected(self):
+        """Reject unavailable overloads before looking up native symbols."""
+        cases = (
+            ("missing native export", wp.mat22f(), "mat22f"),
+            ("incompatible argument", wp.mat22f, "PyCArrayType"),
+        )
+
+        for name, value, type_name in cases:
+            with self.subTest(name=name):
+                with self.assertRaisesRegex(
+                    RuntimeError,
+                    rf"^Couldn't find a function 'index' compatible with the arguments '{type_name}, int, int'$",
+                ):
+                    wp.index(value, 0, 1)
+
+    def test_builtin_with_compile_time_only_default(self):
+        """Call Python-scope built-ins with compile-time-only default parameters."""
+        cases = (
+            ("quat_identity()", wp.quat_identity, {}, (0.0, 0.0, 0.0, 1.0)),
+            ("quat_identity(dtype=None)", wp.quat_identity, {"dtype": None}, (0.0, 0.0, 0.0, 1.0)),
+            (
+                "transform_identity()",
+                wp.transform_identity,
+                {},
+                (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0),
+            ),
+            (
+                "transform_identity(dtype=None)",
+                wp.transform_identity,
+                {"dtype": None},
+                (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0),
+            ),
+        )
+
+        for name, builtin, kwargs, expected in cases:
+            with self.subTest(name=name):
+                result = builtin(**kwargs)
+                np.testing.assert_allclose(result, expected)
+
+        multiply = make_mul_builtin(
+            {"value": wp.vec3f, "factor": wp.float32, "dtype": wp.float32},
+            wp.vec3f,
+            export_func=lambda input_types: {k: v for k, v in input_types.items() if k != "dtype"},
+            defaults={"dtype": None},
+        )
+
+        for dtype_kwargs in ({}, {"dtype": None}):
+            with self.subTest(name="runtime arguments", dtype_kwargs=dtype_kwargs):
+                result = multiply(wp.vec3f(1.0, 1.0, 1.0), 4.0, **dtype_kwargs)
+                np.testing.assert_allclose(result, (4.0, 4.0, 4.0))
+
+    def test_builtin_overloads_with_different_default_values(self):
+        """Apply default values from the selected Python-scope built-in overload."""
+        overload_group = make_mul_builtin(
+            {"value": wp.vec2f, "factor": wp.float32},
+            wp.vec2f,
+            defaults={"factor": 2.0},
+        )
+        overload_group.add_overload(
+            make_mul_builtin(
+                {"vector": wp.vec3f, "scale": wp.float32},
+                wp.vec3f,
+                defaults={"scale": 3.0},
+            )
+        )
+
+        cases = (
+            ("primary default", {"value": wp.vec2f(1.0, 1.0)}, (2.0, 2.0)),
+            ("primary alias", {"value": wp.vec3f(1.0, 1.0, 1.0)}, (3.0, 3.0, 3.0)),
+            ("overload alias", {"vector": wp.vec3f(1.0, 1.0, 1.0)}, (3.0, 3.0, 3.0)),
+            ("explicit override", {"vector": wp.vec3f(1.0, 1.0, 1.0), "scale": 4.0}, (4.0, 4.0, 4.0)),
+        )
+
+        for name, kwargs, expected in cases:
+            with self.subTest(name=name):
+                result = overload_group(**kwargs)
+                np.testing.assert_allclose(result, expected)
+
+    def test_builtin_overload_required_parameter(self):
+        """Reject calls missing a parameter required by the selected Python-scope overload."""
+        overload_group = make_mul_builtin(
+            {"value": wp.vec2f, "factor": wp.float32},
+            wp.vec2f,
+            defaults={"factor": 2.0},
+        )
+        overload_group.add_overload(make_mul_builtin({"vector": wp.vec3f, "scale": wp.float32}, wp.vec3f))
+
+        result = overload_group(vector=wp.vec3f(1.0, 1.0, 1.0), scale=3.0)
+        np.testing.assert_allclose(result, (3.0, 3.0, 3.0))
+
+        with self.assertRaisesRegex(
+            RuntimeError,
+            r"Couldn't find a function 'mul' compatible with the arguments 'vec3f'$",
+        ):
+            overload_group(value=wp.vec3f(1.0, 1.0, 1.0))
+
+    def test_builtin_unary_and_binary_overloads(self):
+        """Resolve Python-scope built-ins with unary and binary overloads."""
+        value = wp.vec3f(3.0, 1.0, 2.0)
+
+        self.assertEqual(wp.min(value), 1.0)
+        self.assertEqual(wp.max(a=value), 3.0)
+
+        with self.assertRaisesRegex(
+            RuntimeError,
+            r"Couldn't find a function 'min' compatible with the arguments 'vec3f, vec3d'$",
+        ):
+            wp.min(value, wp.vec3d(3.0, 1.0, 2.0))
+
+    def test_builtin_overload_with_different_parameter_names(self):
+        """Verify Python-scope built-in overloads accept shared and distinct parameter names."""
+        # fmt: off
+        transform = wp.mat44f(
+            1.0, 0.0, 0.0, 0.0,
+            0.0, 1.0, 0.0, 0.0,
+            0.0, 0.0, 1.0, 0.0,
+            0.0, 0.0, 0.0, 1.0,
+        )
+        # fmt: on
+        point = wp.vec3f(1.0, 2.0, 3.0)
+
+        shared_name_result = wp.transform_point(point=point, xform=transform)
+        distinct_name_result = wp.transform_point(point=point, mat=transform)
+
+        np.testing.assert_allclose(shared_name_result, point)
+        np.testing.assert_allclose(distinct_name_result, point)
+
+    def test_builtin_overload_with_defaults(self):
+        """Verify Python-scope built-in overloads apply their own default values."""
+        state = wp.rand_init(42)
+        position = wp.vec3f(0.25, 0.5, 0.75)
+
+        result = wp.curlnoise(xyz=position, state=state)
+        expected = wp.curlnoise(state, position, wp.uint32(1), 2.0, 0.5)
+
+        np.testing.assert_allclose(result, expected)
+
     def test_int_arg_overflow(self):
         value = -1234567890123456789
 

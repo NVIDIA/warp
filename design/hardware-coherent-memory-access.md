@@ -414,15 +414,11 @@ Add the properties to `Device.__init__` for CUDA devices:
 
 ```python
 # Unified CPU/GPU memory access capability properties
-self.is_cpu_memory_access_from_gpu_supported = (
-    runtime.core.wp_cuda_device_get_pageable_memory_access(ordinal) > 0
-)
+self.is_cpu_memory_access_from_gpu_supported = runtime.core.wp_cuda_device_get_pageable_memory_access(ordinal) > 0
 self.is_gpu_memory_access_from_cpu_supported = (
     runtime.core.wp_cuda_device_get_direct_managed_mem_access_from_host(ordinal) > 0
 )
-self.is_cpu_gpu_atomic_supported = (
-    runtime.core.wp_cuda_device_get_host_native_atomic_supported(ordinal) > 0
-)
+self.is_cpu_gpu_atomic_supported = runtime.core.wp_cuda_device_get_host_native_atomic_supported(ordinal) > 0
 ```
 
 For the CPU device branch, set all three Python properties to `False`.
@@ -936,9 +932,7 @@ if value.device != device and warp.config.auto_prefetch:
         try:
             stream_handle = device.stream.cuda_stream if device.is_cuda else 0
             device_ordinal = device.ordinal if device.is_cuda else -1
-            runtime.core.wp_cuda_mem_prefetch_async(
-                value.ptr, value.capacity, device_ordinal, stream_handle
-            )
+            runtime.core.wp_cuda_mem_prefetch_async(value.ptr, value.capacity, device_ordinal, stream_handle)
         except Exception:
             pass  # Prefetch is best-effort
 ```
@@ -1196,9 +1190,9 @@ This phase should add public built-in allocator accessors with names based on
 memory behavior, not on historical defaults:
 
 ```python
-wp.get_cuda_device_allocator(device)      # cudaMalloc / cudaFree device memory
-wp.get_cuda_mempool_allocator(device)     # cudaMallocAsync / cudaFreeAsync pool memory
-wp.get_cuda_managed_allocator()           # cudaMallocManaged managed memory
+wp.get_cuda_device_allocator(device)  # cudaMalloc / cudaFree device memory
+wp.get_cuda_mempool_allocator(device)  # cudaMallocAsync / cudaFreeAsync pool memory
+wp.get_cuda_managed_allocator()  # cudaMallocManaged managed memory
 ```
 
 With those accessors, users can write:

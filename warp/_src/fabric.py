@@ -36,6 +36,22 @@ class fabricarray_t(ctypes.Structure):
         self.nbuckets = nbuckets
         self.size = size
 
+    @classmethod
+    def numpy_dtype(cls):
+        return cls._numpy_dtype_
+
+    def numpy_value(self):
+        return (0 if self.buckets is None else self.buckets, self.nbuckets, self.size)
+
+
+# NOTE: Keep the field names, formats, and order in sync with fabricarray_t._fields_.
+fabricarray_t._numpy_dtype_ = {
+    "names": ["buckets", "nbuckets", "size"],
+    "formats": ["u8", "u8", "u8"],
+    "offsets": [fabricarray_t.buckets.offset, fabricarray_t.nbuckets.offset, fabricarray_t.size.offset],
+    "itemsize": ctypes.sizeof(fabricarray_t),
+}
+
 
 class indexedfabricarray_t(ctypes.Structure):
     _fields_ = (
@@ -56,6 +72,22 @@ class indexedfabricarray_t(ctypes.Structure):
         else:
             self.indices = ctypes.c_void_p(indices.ptr)
             self.size = indices.size
+
+    @classmethod
+    def numpy_dtype(cls):
+        return cls._numpy_dtype_
+
+    def numpy_value(self):
+        return (self.fa.numpy_value(), 0 if self.indices is None else self.indices, self.size)
+
+
+# NOTE: Keep the field names, formats, and order in sync with indexedfabricarray_t._fields_.
+indexedfabricarray_t._numpy_dtype_ = {
+    "names": ["fa", "indices", "size"],
+    "formats": [fabricarray_t.numpy_dtype(), "u8", "u8"],
+    "offsets": [indexedfabricarray_t.fa.offset, indexedfabricarray_t.indices.offset, indexedfabricarray_t.size.offset],
+    "itemsize": ctypes.sizeof(indexedfabricarray_t),
+}
 
 
 def fabric_to_warp_dtype(type_info, attrib_name):
@@ -116,6 +148,10 @@ class fabricarray(noncontiguous_array_base[DType, NDim]):
         attrib: Name of the Fabric attribute to access.
         dtype: Data type of the array elements.
         ndim: Number of dimensions (1 for regular arrays, 2 for arrays of arrays).
+
+    Note:
+        Warp does not own the underlying Fabric storage. Keep that storage alive while using this array, an
+        indexed view derived from it, or a struct that contains either.
 
     See Also:
         :class:`indexedfabricarray`, :func:`fabricarrayarray`

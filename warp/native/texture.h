@@ -861,6 +861,33 @@ template <> struct texture_sample_helper<vec4f> {
     static CUDA_CALLABLE vec4f zero() { return vec4f(0.0f, 0.0f, 0.0f, 0.0f); }
 };
 
+#if defined(WP_WORKAROUND_CUDA_TEXTURE_CUBIN)
+// CUDA 12 can miscompile optimized CUBIN texture sampling on sm_101 and the
+// sm_120 family. When active lanes use different handles, a lane may sample
+// another lane's texture. The uniform case is unaffected, so keep it inline and
+// route only divergent handles through a no-inline call boundary that prevents
+// the miscompile.
+CUDA_CALLABLE_DEVICE inline bool texture_handle_is_uniform(uint64 handle)
+{
+    int uniform;
+    (void)__match_all_sync(__activemask(), handle, &uniform);
+    return uniform != 0;
+}
+
+template <typename T>
+CUDA_CALLABLE_DEVICE __noinline__ T texture_sample_divergent(const texture2d_t& tex, float u, float v, float lod)
+{
+    return texture_sample_helper<T>::sample_2d(tex, u, v, lod);
+}
+
+template <typename T>
+CUDA_CALLABLE_DEVICE __noinline__ T
+texture_sample_divergent(const texture3d_t& tex, float u, float v, float w, float lod)
+{
+    return texture_sample_helper<T>::sample_3d(tex, u, v, w, lod);
+}
+#endif
+
 // 1D texture sampling with scalar coordinate
 template <typename T> CUDA_CALLABLE T texture_sample(const texture1d_t& tex, float u, float lod)
 {
@@ -870,24 +897,40 @@ template <typename T> CUDA_CALLABLE T texture_sample(const texture1d_t& tex, flo
 // 2D texture sampling with vec2 coordinates
 template <typename T> CUDA_CALLABLE T texture_sample(const texture2d_t& tex, const vec2f& uv, float lod)
 {
+#if defined(WP_WORKAROUND_CUDA_TEXTURE_CUBIN)
+    if (!texture_handle_is_uniform(tex.tex))
+        return texture_sample_divergent<T>(tex, uv[0], uv[1], lod);
+#endif
     return texture_sample_helper<T>::sample_2d(tex, uv[0], uv[1], lod);
 }
 
 // 2D texture sampling with separate u, v coordinates
 template <typename T> CUDA_CALLABLE T texture_sample(const texture2d_t& tex, float u, float v, float lod)
 {
+#if defined(WP_WORKAROUND_CUDA_TEXTURE_CUBIN)
+    if (!texture_handle_is_uniform(tex.tex))
+        return texture_sample_divergent<T>(tex, u, v, lod);
+#endif
     return texture_sample_helper<T>::sample_2d(tex, u, v, lod);
 }
 
 // 3D texture sampling with vec3 coordinates
 template <typename T> CUDA_CALLABLE T texture_sample(const texture3d_t& tex, const vec3f& uvw, float lod)
 {
+#if defined(WP_WORKAROUND_CUDA_TEXTURE_CUBIN)
+    if (!texture_handle_is_uniform(tex.tex))
+        return texture_sample_divergent<T>(tex, uvw[0], uvw[1], uvw[2], lod);
+#endif
     return texture_sample_helper<T>::sample_3d(tex, uvw[0], uvw[1], uvw[2], lod);
 }
 
 // 3D texture sampling with separate u, v, w coordinates
 template <typename T> CUDA_CALLABLE T texture_sample(const texture3d_t& tex, float u, float v, float w, float lod)
 {
+#if defined(WP_WORKAROUND_CUDA_TEXTURE_CUBIN)
+    if (!texture_handle_is_uniform(tex.tex))
+        return texture_sample_divergent<T>(tex, u, v, w, lod);
+#endif
     return texture_sample_helper<T>::sample_3d(tex, u, v, w, lod);
 }
 

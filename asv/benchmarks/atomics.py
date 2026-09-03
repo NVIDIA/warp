@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 """Benchmarks for atomic operations under high thread contention.
 
@@ -19,6 +7,7 @@ All threads write to a single output location (index 0) to maximize contention
 and measure worst-case atomic operation performance.
 """
 
+import math
 from typing import Any
 
 import numpy as np
@@ -31,7 +20,19 @@ DTYPE_MAP = {
     "int32": wp.int32,
 }
 
+# Identity element of each reduction. out[0] must start here so that a thread holding a
+# more extreme value actually takes the update path: seeding the minimum with zero
+# against non-negative inputs leaves out[0] at zero and the contended update never fires.
+MAX_INIT = {"float32": -math.inf, "int32": -(2**31)}
+MIN_INIT = {"float32": math.inf, "int32": 2**31 - 1}
+
 NUM_ELEMENTS = 32 * 1024 * 1024
+
+# asv re-runs setup() before every timed call, so uploading the input array there would
+# dominate wall time (repeat * number uploads per process) without being measured. The
+# device-side state is immutable across iterations apart from the output, which
+# time_cuda() resets itself, so it is safe to build it once per process and reuse it.
+_LAUNCH_CACHE = {}
 
 
 @wp.kernel
@@ -52,6 +53,38 @@ def min_kernel(
     tid = wp.tid()
     val = vals[tid]
     wp.atomic_min(out, 0, val)  # All threads contend on out[0]
+
+
+def _get_launch(kernel, vals_np, dtype, device, init_value):
+    """Return the cached ``(vals, out, cmd)`` triple for a kernel and input array.
+
+    The launch is recorded and compiled on the first call for a given key and reused
+    afterwards, keeping setup() out of the benchmark's wall-clock budget.
+    """
+
+    key = (kernel.key, dtype, len(vals_np), device.alias)
+
+    entry = _LAUNCH_CACHE.get(key)
+    if entry is None:
+        vals = wp.array(vals_np, dtype=dtype, device=device)
+        out = wp.full(shape=(1,), value=init_value, dtype=dtype, device=device)
+
+        cmd = wp.launch(
+            kernel,
+            (len(vals_np),),
+            inputs=[vals],
+            outputs=[out],
+            device=device,
+            record_cmd=True,
+        )
+
+        # Launch once to compile
+        cmd.launch()
+        wp.synchronize_device(device)
+
+        entry = _LAUNCH_CACHE[key] = (vals, out, cmd)
+
+    return entry
 
 
 class AtomicMax:
@@ -91,24 +124,13 @@ class AtomicMax:
 
         dtype = DTYPE_MAP[dtype_str]
 
-        self.vals = wp.array(vals_np_dict[dtype_str], dtype=dtype, device=self.device)
-        self.out = wp.zeros(shape=(1,), dtype=dtype, device=self.device)
-
-        self.cmd = wp.launch(
-            max_kernel,
-            (self.num_elements,),
-            inputs=[self.vals],
-            outputs=[self.out],
-            device=self.device,
-            record_cmd=True,
+        self.init_value = MAX_INIT[dtype_str]
+        self.vals, self.out, self.cmd = _get_launch(
+            max_kernel, vals_np_dict[dtype_str], dtype, self.device, self.init_value
         )
 
-        # Launch once to compile
-        self.cmd.launch()
-        wp.synchronize_device(self.device)
-
     def time_cuda(self, vals_np_dict, dtype_str):
-        self.out.zero_()
+        self.out.fill_(self.init_value)
         self.cmd.launch()
         wp.synchronize_device(self.device)
 
@@ -146,23 +168,12 @@ class AtomicMin:
 
         dtype = DTYPE_MAP[dtype_str]
 
-        self.vals = wp.array(vals_np_dict[dtype_str], dtype=dtype, device=self.device)
-        self.out = wp.zeros(shape=(1,), dtype=dtype, device=self.device)
-
-        self.cmd = wp.launch(
-            min_kernel,
-            (NUM_ELEMENTS,),
-            inputs=[self.vals],
-            outputs=[self.out],
-            device=self.device,
-            record_cmd=True,
+        self.init_value = MIN_INIT[dtype_str]
+        self.vals, self.out, self.cmd = _get_launch(
+            min_kernel, vals_np_dict[dtype_str], dtype, self.device, self.init_value
         )
 
-        # Launch once to compile
-        self.cmd.launch()
-        wp.synchronize_device(self.device)
-
     def time_cuda(self, vals_np_dict, dtype_str):
-        self.out.zero_()
+        self.out.fill_(self.init_value)
         self.cmd.launch()
         wp.synchronize_device(self.device)

@@ -576,9 +576,7 @@ WP_API void wp_bsr_matrix_from_triplets_host(
     int* summed_block_indices,
     int* bsr_offsets,
     const int* bsr_row_counts,
-    int* bsr_columns,
-    int* bsr_nnz,
-    void* bsr_nnz_event
+    int* bsr_columns
 );
 WP_API void wp_bsr_matrix_from_triplets_device(
     int block_size,
@@ -596,9 +594,7 @@ WP_API void wp_bsr_matrix_from_triplets_device(
     int* summed_block_indices,
     int* bsr_offsets,
     const int* bsr_row_counts,
-    int* bsr_columns,
-    int* bsr_nnz,
-    void* bsr_nnz_event
+    int* bsr_columns
 );
 
 WP_API void wp_bsr_transpose_host(
@@ -641,9 +637,7 @@ WP_API void wp_bsr_compress_inplace_host(
     int* bsr_row_counts,
     int* bsr_columns,
     void* bsr_values,
-    bool compress_values,
-    int* bsr_nnz,
-    void* bsr_nnz_event
+    bool compress_values
 );
 WP_API void wp_bsr_compress_inplace_device(
     int row_count,
@@ -658,9 +652,7 @@ WP_API void wp_bsr_compress_inplace_device(
     int* bsr_row_counts,
     int* bsr_columns,
     void* bsr_values,
-    bool compress_values,
-    int* bsr_nnz,
-    void* bsr_nnz_event
+    bool compress_values
 );
 
 
@@ -904,6 +896,10 @@ WP_API bool wp_cuda_configure_kernel_shared_memory(void* kernel, int size);
 // Returns -1 if the kernel handle is null or the driver query fails. The dynamic shared
 // memory a kernel can be configured for is wp_cuda_get_max_shared_memory() minus this value.
 WP_API int wp_cuda_get_kernel_static_shared_memory(void* context, void* kernel);
+// Query all public properties for a loaded CUDA function in one batch.
+// Returns false if arguments are invalid or any driver query fails. The properties
+// buffer is updated only after every query succeeds.
+WP_API bool wp_cuda_get_kernel_properties(void* context, void* kernel, int* properties, int property_count);
 // Set CUDA Thread Block Cluster attributes on a loaded kernel function.
 // For total cluster size > 8 (non-portable range), enables
 // CU_FUNC_NON_PORTABLE_CLUSTER_SIZE_ALLOWED. Sizes <= 8 are no-ops at this

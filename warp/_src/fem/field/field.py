@@ -345,6 +345,11 @@ class ImplicitField(GeometryField):
         self._func_arg = self.EvalArg()
         self.values = values
 
+        func_key = self._func.native_func
+        grad_key = self._grad_func.native_func if self._grad_func is not None else "None"
+        div_key = self._div_func.native_func if self._div_func is not None else "None"
+        self._name = f"Implicit_{self.domain.name}_{self.degree}_{self.EvalArg.key}_{func_key}_{grad_key}_{div_key}"
+
         cache.setup_dynamic_attributes(self)
 
     @property
@@ -384,8 +389,8 @@ class ImplicitField(GeometryField):
 
     @property
     def name(self) -> str:
-        """Unique name encoding the domain and argument structure."""
-        return f"Implicit_{self.domain.name}_{self.degree}_{self.EvalArg.key}"
+        """Unique name encoding the domain, argument structure, and evaluation functions."""
+        return self._name
 
     def gradient_valid(self) -> bool:
         """Whether gradient evaluation is available."""

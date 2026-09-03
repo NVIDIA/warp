@@ -13,7 +13,7 @@ from warp_layer import N, warp_smooth_response
 
 def main():
     torch.manual_seed(0)
-    device = torch.device("cuda")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     target = torch.rand(N, device=device) * 0.3
 
     x = torch.zeros(N, device=device, requires_grad=True)

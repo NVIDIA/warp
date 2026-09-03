@@ -20,6 +20,15 @@ import torch
 import warp as wp
 
 
+def _active_torch_stream(tensor):
+    """Return a Warp stream context that follows the active PyTorch stream."""
+    if tensor.is_cuda:
+        return wp.ScopedStream(wp.stream_from_torch(tensor.device))
+
+    # CPU tensors do not have CUDA streams, and ScopedStream(None) is a no-op.
+    return wp.ScopedStream(None)
+
+
 # Define the Rosenbrock function
 @wp.func
 def rosenbrock(x: float, y: float):
@@ -36,33 +45,47 @@ def eval_rosenbrock(xs: wp.array[wp.vec2], z: wp.array[float]):
 class Rosenbrock(torch.autograd.Function):
     @staticmethod
     def forward(ctx, xy, num_particles):
-        ctx.xy = wp.from_torch(xy, dtype=wp.vec2, requires_grad=True)
+        # Save the PyTorch input so autograd can detect in-place mutations before
+        # backward. Warp wraps a detached view because gradients are returned manually.
+        ctx.save_for_backward(xy)
         ctx.num_particles = num_particles
 
-        # allocate output
-        ctx.z = wp.zeros(num_particles, requires_grad=True)
+        with _active_torch_stream(xy):
+            ctx.xy = wp.from_torch(xy.detach(), dtype=wp.vec2, requires_grad=False)
 
-        wp.launch(kernel=eval_rosenbrock, dim=ctx.num_particles, inputs=[ctx.xy], outputs=[ctx.z])
+            # allocate output
+            ctx.z = wp.zeros(num_particles, dtype=wp.float32, device=ctx.xy.device, requires_grad=False)
+
+            wp.launch(
+                kernel=eval_rosenbrock, dim=ctx.num_particles, inputs=[ctx.xy], outputs=[ctx.z], device=ctx.xy.device
+            )
 
         return wp.to_torch(ctx.z)
 
     @staticmethod
     def backward(ctx, adj_z):
-        # map incoming Torch grads to our output variables
-        ctx.z.grad = wp.from_torch(adj_z)
+        # Accessing saved_tensors performs PyTorch's version check for the input.
+        (xy,) = ctx.saved_tensors
 
-        wp.launch(
-            kernel=eval_rosenbrock,
-            dim=ctx.num_particles,
-            inputs=[ctx.xy],
-            outputs=[ctx.z],
-            adj_inputs=[ctx.xy.grad],
-            adj_outputs=[ctx.z.grad],
-            adjoint=True,
-        )
+        adj_xy = torch.zeros_like(xy)
+
+        with _active_torch_stream(adj_z):
+            wp_adj_xy = wp.from_torch(adj_xy, dtype=wp.vec2, requires_grad=False)
+            wp_adj_z = wp.from_torch(adj_z, requires_grad=False)
+
+            wp.launch(
+                kernel=eval_rosenbrock,
+                dim=ctx.num_particles,
+                inputs=[ctx.xy],
+                outputs=[ctx.z],
+                adj_inputs=[wp_adj_xy],
+                adj_outputs=[wp_adj_z],
+                device=ctx.xy.device,
+                adjoint=True,
+            )
 
         # return adjoint w.r.t. inputs
-        return (wp.to_torch(ctx.xy.grad), None)
+        return (adj_xy, None)
 
 
 class Example:

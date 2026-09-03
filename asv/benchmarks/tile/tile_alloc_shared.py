@@ -11,6 +11,8 @@ and ``tile_empty`` skips, so the measured delta attributes that cost.
 
 import warp as wp
 
+from ..benchmarks_utils import setup_once
+
 # Output edge size in float32 elements. Each kernel launches a (EDGE / tile_dim)^2
 # grid of blocks so the total store volume is constant across tile sizes (16 MiB).
 _OUTPUT_EDGE = 2048
@@ -52,6 +54,7 @@ class TileZerosSharedStore:
     params = [64, 128]
     param_names = ["tile_dim"]
 
+    @setup_once
     def setup(self, tile_dim):
         wp.init()
         wp.set_module_options({"fast_math": True, "enable_backward": False})
@@ -91,6 +94,7 @@ class TileEmptySharedStore:
     params = [64, 128]
     param_names = ["tile_dim"]
 
+    @setup_once
     def setup(self, tile_dim):
         wp.init()
         # Skip on commits where wp.tile_empty isn't registered yet (e.g.,

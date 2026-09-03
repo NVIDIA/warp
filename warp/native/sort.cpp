@@ -12,10 +12,19 @@
 
 #include <cassert>
 #include <cstdint>
+#include <vector>
 
 template <int Size> struct SortPayload {
     uint8_t data[Size];
 };
+
+// Keep only the vector metadata in TLS; its histogram storage is allocated
+// lazily for threads that sort and reused by later sorts.
+static std::vector<int>& radix_sort_histogram()
+{
+    static thread_local std::vector<int> histogram;
+    return histogram;
+}
 
 // Record a host segmented sort into the active APIC byte stream; returns true
 // if the sort was recorded (and therefore should NOT execute now), false
@@ -102,60 +111,52 @@ void radix_sort_pairs_host(
         return;
     }
 
+    if (n <= 0) {
+        return;
+    }
+
     const int requestedPasses = (end_bit - begin_bit + 15) / 16;
     const int numPasses = requestedPasses < maxPasses ? requestedPasses : maxPasses;
 
-    static thread_local int tables[maxPasses][1 << 16];
-    memset(tables, 0, sizeof(tables));
+    std::vector<int>& histogram = radix_sort_histogram();
 
-    // build histograms
+    // Build and consume one radix pass at a time so the same histogram can be
+    // reused instead of keeping a table for every possible pass.
     for (int p = 0; p < numPasses; ++p) {
-        const int shift = begin_bit + p * 16;
-        const int passBits = (end_bit - shift) < 16 ? (end_bit - shift) : 16;
-        const RadixKeyType mask = (RadixKeyType(1) << passBits) - 1;
-
-        for (int i = 0; i < n; ++i) {
-            const int b = (key_to_radix(keys[i]) >> shift) & mask;
-
-            ++tables[p][b];
-        }
-    }
-
-    // convert histograms to offset tables in-place
-    for (int p = 0; p < numPasses; ++p) {
-        const int shift = begin_bit + p * 16;
-        const int passBits = (end_bit - shift) < 16 ? (end_bit - shift) : 16;
-        const int bucketCount = 1 << passBits;
-        int off = 0;
-        for (int i = 0; i < bucketCount; ++i) {
-            const int newoff = off + tables[p][i];
-
-            tables[p][i] = off;
-
-            off = newoff;
-        }
-    }
-
-    for (int p = 0; p < numPasses; ++p) {
-        int flipFlop = p % 2;
+        const int flipFlop = p % 2;
         KeyType* readKeys = keys + offset_to_scratch_memory * flipFlop;
         ValueType* readValues = values + offset_to_scratch_memory * flipFlop;
         KeyType* writeKeys = keys + offset_to_scratch_memory * (1 - flipFlop);
         ValueType* writeValues = values + offset_to_scratch_memory * (1 - flipFlop);
 
-        // pass 1 - sort by low 16 bits
+        const int shift = begin_bit + p * 16;
+        const int passBits = (end_bit - shift) < 16 ? (end_bit - shift) : 16;
+        const int bucketCount = 1 << passBits;
+        const RadixKeyType mask = (RadixKeyType(1) << passBits) - 1;
+
+        histogram.assign(bucketCount, 0);
+
         for (int i = 0; i < n; ++i) {
-            // lookup offset of input
+            const int b = (key_to_radix(readKeys[i]) >> shift) & mask;
+
+            ++histogram[b];
+        }
+
+        int off = 0;
+        for (int i = 0; i < bucketCount; ++i) {
+            const int newoff = off + histogram[i];
+
+            histogram[i] = off;
+
+            off = newoff;
+        }
+
+        for (int i = 0; i < n; ++i) {
             const KeyType k = readKeys[i];
             const ValueType v = readValues[i];
-
-            const int shift = begin_bit + p * 16;
-            const int passBits = (end_bit - shift) < 16 ? (end_bit - shift) : 16;
-            const RadixKeyType mask = (RadixKeyType(1) << passBits) - 1;
             const int b = (key_to_radix(k) >> shift) & mask;
 
-            // find offset and increment
-            const int offset = tables[p][b]++;
+            const int offset = histogram[b]++;
 
             writeKeys[offset] = k;
             writeValues[offset] = v;

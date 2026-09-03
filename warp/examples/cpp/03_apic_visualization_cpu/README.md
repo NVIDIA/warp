@@ -1,9 +1,6 @@
 # APIC Wave Simulation Example (CPU)
 
-This example demonstrates Warp's APIC mode for capturing and executing graphs
-with **CPU-only graph replay**. The Python side captures a simulation loop on
-the CPU device and saves it as a `.wrp` file; the C++ side loads that file and
-replays it on the host.
+This example demonstrates Warp's CPU graph capture and API Capture (APIC) save/load workflow with **CPU-only graph replay**. The Python side captures a simulation loop on the CPU device and saves it as a `.wrp` file; the C++ side loads that file and replays its operation stream on the host.
 
 CPU `.wrp` graph loading uses the pure-C++ APIC loader in the Warp native
 library and does not require a CUDA-enabled build. Replay also runs entirely on
@@ -31,14 +28,14 @@ the CPU, but it still needs the `warp-clang` library and the companion
 - `main.cpp` — C++ program (pure C++, no CUDA) with OpenGL visualization
 - `Makefile` / `CMakeLists.txt` — Build systems (Make for Unix, CMake for cross-platform; both fetch glad v2 and link `warp.so` directly)
 - `generated/` — Directory containing generated files:
-  - `wave_sim.wrp` — Serialized graph (Warp Recorded Program)
+  - `wave_sim.wrp` — Serialized APIC graph representation
   - `wave_sim_modules/` — Compiled CPU modules (.o files)
 
 ## Quick Start
 
 ### Prerequisites
 
-- **Python 3.8+** with Warp installed
+- **Python 3.10+** with Warp installed
 - **CMake 3.20+**
 - **OpenGL 3.3** support
 - **Warp native library** (`warp.dll` on Windows, `warp.so` on Linux,

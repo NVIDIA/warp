@@ -734,6 +734,60 @@ static bool apic_replay_ops_into_cuda_capture(
             break;
         }
 
+        case APIC_OP_BSR_FROM_TRIPLETS: {
+            const APICBsrFromTripletsRecord* rec = reinterpret_cast<const APICBsrFromTripletsRecord*>(ptr);
+            size_t nnz = static_cast<size_t>(rec->nnz_upper_bound);
+            size_t int_bytes = nnz * sizeof(int32_t);
+            size_t rowp1_bytes = (static_cast<size_t>(rec->row_count) + 1) * sizeof(int32_t);
+            size_t values_bytes
+                = nnz * static_cast<size_t>(rec->block_size) * static_cast<size_t>(rec->scalar_size_in_bytes);
+
+            void* tpl_nnz = rec->tpl_nnz_region_id >= 0
+                ? apic_resolve_region_ptr(graph, rec->tpl_nnz_region_id, rec->tpl_nnz_offset, sizeof(int32_t))
+                : nullptr;
+            void* tpl_rows = apic_resolve_region_ptr(graph, rec->tpl_rows_region_id, rec->tpl_rows_offset, int_bytes);
+            void* tpl_columns
+                = apic_resolve_region_ptr(graph, rec->tpl_columns_region_id, rec->tpl_columns_offset, int_bytes);
+            void* tpl_values = rec->tpl_values_region_id >= 0
+                ? apic_resolve_region_ptr(graph, rec->tpl_values_region_id, rec->tpl_values_offset, values_bytes)
+                : nullptr;
+            void* summed_block_offsets = apic_resolve_region_ptr(
+                graph, rec->summed_block_offsets_region_id, rec->summed_block_offsets_offset, int_bytes
+            );
+            void* summed_block_indices = apic_resolve_region_ptr(
+                graph, rec->summed_block_indices_region_id, rec->summed_block_indices_offset, int_bytes
+            );
+            void* bsr_offsets
+                = apic_resolve_region_ptr(graph, rec->bsr_offsets_region_id, rec->bsr_offsets_offset, rowp1_bytes);
+            void* bsr_row_counts = rec->bsr_row_counts_region_id >= 0
+                ? apic_resolve_region_ptr(
+                      graph, rec->bsr_row_counts_region_id, rec->bsr_row_counts_offset,
+                      static_cast<size_t>(rec->row_count) * sizeof(int32_t)
+                  )
+                : nullptr;
+            void* bsr_columns
+                = apic_resolve_region_ptr(graph, rec->bsr_columns_region_id, rec->bsr_columns_offset, int_bytes);
+            if (!tpl_rows || !tpl_columns || !summed_block_offsets || !summed_block_indices || !bsr_offsets
+                || !bsr_columns || (rec->tpl_nnz_region_id >= 0 && !tpl_nnz)
+                || (rec->tpl_values_region_id >= 0 && !tpl_values)
+                || (rec->bsr_row_counts_region_id >= 0 && !bsr_row_counts)) {
+                wp::set_error_string("APIC bsr-from-triplets: failed to resolve region (op %u)", i);
+                success = false;
+                break;
+            }
+            // Reissue the native topology builder while reconstruction capture
+            // is active. Its CUB scratch allocations become graph-memory nodes.
+            wp_bsr_matrix_from_triplets_device(
+                rec->block_size, rec->scalar_size_in_bytes, rec->row_count, rec->col_count, rec->nnz_upper_bound,
+                reinterpret_cast<const int*>(tpl_nnz), reinterpret_cast<const int*>(tpl_rows),
+                reinterpret_cast<const int*>(tpl_columns), tpl_values, rec->scalar_zero_mask, rec->masked_topology != 0,
+                reinterpret_cast<int*>(summed_block_offsets), reinterpret_cast<int*>(summed_block_indices),
+                reinterpret_cast<int*>(bsr_offsets), reinterpret_cast<const int*>(bsr_row_counts),
+                reinterpret_cast<int*>(bsr_columns)
+            );
+            break;
+        }
+
         case APIC_OP_BSR_TRANSPOSE: {
             const APICBsrTransposeRecord* rec = reinterpret_cast<const APICBsrTransposeRecord*>(ptr);
             size_t nnz = static_cast<size_t>(rec->nnz_upper_bound);

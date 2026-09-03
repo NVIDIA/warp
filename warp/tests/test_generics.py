@@ -386,6 +386,34 @@ def test_nested_overload_stub(test, device):
     test.assertEqual(len(nested_overload_stub_kernel.overloads), 1)
 
 
+def test_custom_named_overload_stub(test, device):
+    @wp.kernel(name="custom_named_overload_stub")
+    def custom_named_overload_stub_kernel(x: Any):
+        return
+
+    @wp.overload
+    def custom_named_overload_stub_kernel(x: float): ...
+
+    test.assertEqual(custom_named_overload_stub_kernel.key, "custom_named_overload_stub")
+    test.assertEqual(len(custom_named_overload_stub_kernel.overloads), 1)
+
+
+def test_ambiguous_custom_named_overload_stub(test, device):
+    # A kernel factory that registers one function under several custom keys leaves the
+    # decorator form of @wp.overload with no way to tell the resulting kernels apart, since
+    # they all share the Python-qualified name it looks up.
+    def ambiguous_factory_kernel(x: Any):
+        return
+
+    wp.kernel(name="ambiguous_factory_kernel_a")(ambiguous_factory_kernel)
+    wp.kernel(name="ambiguous_factory_kernel_b")(ambiguous_factory_kernel)
+
+    with test.assertRaisesRegex(RuntimeError, "Ambiguous kernel lookup"):
+
+        @wp.overload
+        def ambiguous_factory_kernel(x: float): ...
+
+
 @wp.kernel
 def overload_stub_return_annotation_kernel(x: Any):
     return
@@ -690,6 +718,13 @@ add_function_test(TestGenerics, "test_generic_fill_overloads", test_generic_fill
 add_function_test(TestGenerics, "test_generic_conditional_setter", test_generic_conditional_setter, devices=devices)
 add_function_test(TestGenerics, "test_generic_transform_kernel", test_generic_transform_kernel, devices=devices)
 add_function_test(TestGenerics, "test_nested_overload_stub", test_nested_overload_stub, devices=devices)
+add_function_test(TestGenerics, "test_custom_named_overload_stub", test_custom_named_overload_stub, devices="cpu")
+add_function_test(
+    TestGenerics,
+    "test_ambiguous_custom_named_overload_stub",
+    test_ambiguous_custom_named_overload_stub,
+    devices="cpu",
+)
 add_function_test(
     TestGenerics, "test_overload_stub_return_annotation", test_overload_stub_return_annotation, devices=devices
 )

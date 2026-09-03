@@ -136,7 +136,12 @@ template <typename Type> struct transform_t {
         , q(q)
     {
     }
-    CUDA_CALLABLE inline transform_t(Type) { }  // helps uniform initialization
+    // fill constructor, e.g.: `wp.transform(123)`
+    CUDA_CALLABLE inline transform_t(Type s)
+        : p(s)
+        , q(s, s, s, s)
+    {
+    }
 
     template <typename OtherType> inline explicit CUDA_CALLABLE transform_t(const transform_t<OtherType>& other)
     {
@@ -973,6 +978,30 @@ CUDA_CALLABLE inline void adj_transform_t(
     adj_q += adj_ret.q;
 }
 
+// adjoint for the fill constructor
+template <typename Type>
+CUDA_CALLABLE inline void adj_transform_t(Type s, Type& adj_s, const transform_t<Type>& adj_ret)
+{
+    // `transform_t::operator[]` indexes into `p` alone, so the components are
+    // summed explicitly rather than through a seven-element loop.
+    adj_s += adj_ret.p[0];
+    adj_s += adj_ret.p[1];
+    adj_s += adj_ret.p[2];
+    adj_s += adj_ret.q[0];
+    adj_s += adj_ret.q[1];
+    adj_s += adj_ret.q[2];
+    adj_s += adj_ret.q[3];
+}
+
+// adjoint for the copy constructor
+template <typename Type>
+CUDA_CALLABLE inline void
+adj_transform_t(const transform_t<Type>& other, transform_t<Type>& adj_other, const transform_t<Type>& adj_ret)
+{
+    adj_other.p += adj_ret.p;
+    adj_other.q += adj_ret.q;
+}
+
 template <typename Type>
 CUDA_CALLABLE inline void adj_transform_t(
     const initializer_array<7, Type>& l, const initializer_array<7, Type*>& adj_l, const transform_t<Type>& adj_ret
@@ -1115,157 +1144,6 @@ inline CUDA_CALLABLE void adj_spatial_adjoint(
     }
 }
 
-
-CUDA_CALLABLE inline int row_index(int stride, int i, int j) { return i * stride + j; }
-
-// builds spatial Jacobian J which is an (joint_count*6)x(dof_count) matrix
-template <typename Type>
-CUDA_CALLABLE inline void spatial_jacobian(
-    const spatial_vector_t<Type>* S,
-    const int* joint_parents,
-    const int* joint_qd_start,
-    int joint_start,  // offset of the first joint for the articulation
-    int joint_count,
-    int J_start,
-    Type* J
-)
-{
-    const int articulation_dof_start = joint_qd_start[joint_start];
-    const int articulation_dof_end = joint_qd_start[joint_start + joint_count];
-    const int articulation_dof_count = articulation_dof_end - articulation_dof_start;
-
-    // shift output pointers
-    const int S_start = articulation_dof_start;
-
-    S += S_start;
-    J += J_start;
-
-    for (int i = 0; i < joint_count; ++i) {
-        const int row_start = i * 6;
-
-        int j = joint_start + i;
-        while (j != -1) {
-            const int joint_dof_start = joint_qd_start[j];
-            const int joint_dof_end = joint_qd_start[j + 1];
-            const int joint_dof_count = joint_dof_end - joint_dof_start;
-
-            // fill out each row of the Jacobian walking up the tree
-            // for (int col=dof_start; col < dof_end; ++col)
-            for (int dof = 0; dof < joint_dof_count; ++dof) {
-                const int col = (joint_dof_start - articulation_dof_start) + dof;
-
-                J[row_index(articulation_dof_count, row_start + 0, col)] = S[col].w[0];
-                J[row_index(articulation_dof_count, row_start + 1, col)] = S[col].w[1];
-                J[row_index(articulation_dof_count, row_start + 2, col)] = S[col].w[2];
-                J[row_index(articulation_dof_count, row_start + 3, col)] = S[col].v[0];
-                J[row_index(articulation_dof_count, row_start + 4, col)] = S[col].v[1];
-                J[row_index(articulation_dof_count, row_start + 5, col)] = S[col].v[2];
-            }
-
-            j = joint_parents[j];
-        }
-    }
-}
-
-template <typename Type>
-CUDA_CALLABLE inline void adj_spatial_jacobian(
-    const spatial_vector_t<Type>* S,
-    const int* joint_parents,
-    const int* joint_qd_start,
-    const int joint_start,
-    const int joint_count,
-    const int J_start,
-    const Type* J,
-    // adjs
-    spatial_vector_t<Type>* adj_S,
-    int* adj_joint_parents,
-    int* adj_joint_qd_start,
-    int& adj_joint_start,
-    int& adj_joint_count,
-    int& adj_J_start,
-    const Type* adj_J
-)
-{
-    const int articulation_dof_start = joint_qd_start[joint_start];
-    const int articulation_dof_end = joint_qd_start[joint_start + joint_count];
-    const int articulation_dof_count = articulation_dof_end - articulation_dof_start;
-
-    // shift output pointers
-    const int S_start = articulation_dof_start;
-
-    S += S_start;
-    J += J_start;
-
-    adj_S += S_start;
-    adj_J += J_start;
-
-    for (int i = 0; i < joint_count; ++i) {
-        const int row_start = i * 6;
-
-        int j = joint_start + i;
-        while (j != -1) {
-            const int joint_dof_start = joint_qd_start[j];
-            const int joint_dof_end = joint_qd_start[j + 1];
-            const int joint_dof_count = joint_dof_end - joint_dof_start;
-
-            // fill out each row of the Jacobian walking up the tree
-            // for (int col=dof_start; col < dof_end; ++col)
-            for (int dof = 0; dof < joint_dof_count; ++dof) {
-                const int col = (joint_dof_start - articulation_dof_start) + dof;
-
-                adj_S[col].w[0] += adj_J[row_index(articulation_dof_count, row_start + 0, col)];
-                adj_S[col].w[1] += adj_J[row_index(articulation_dof_count, row_start + 1, col)];
-                adj_S[col].w[2] += adj_J[row_index(articulation_dof_count, row_start + 2, col)];
-                adj_S[col].v[0] += adj_J[row_index(articulation_dof_count, row_start + 3, col)];
-                adj_S[col].v[1] += adj_J[row_index(articulation_dof_count, row_start + 4, col)];
-                adj_S[col].v[2] += adj_J[row_index(articulation_dof_count, row_start + 5, col)];
-            }
-
-            j = joint_parents[j];
-        }
-    }
-}
-
-
-template <typename Type>
-CUDA_CALLABLE inline void
-spatial_mass(const spatial_matrix_t<Type>* I_s, int joint_start, int joint_count, int M_start, Type* M)
-{
-    const int stride = joint_count * 6;
-
-    for (int l = 0; l < joint_count; ++l) {
-        for (int i = 0; i < 6; ++i) {
-            for (int j = 0; j < 6; ++j) {
-                M[M_start + row_index(stride, l * 6 + i, l * 6 + j)] = I_s[joint_start + l].data[i][j];
-            }
-        }
-    }
-}
-
-template <typename Type>
-CUDA_CALLABLE inline void adj_spatial_mass(
-    const spatial_matrix_t<Type>* I_s,
-    const int joint_start,
-    const int joint_count,
-    const int M_start,
-    const Type* M,
-    spatial_matrix_t<Type>* adj_I_s,
-    int& adj_joint_start,
-    int& adj_joint_count,
-    int& adj_M_start,
-    const Type* adj_M
-)
-{
-    const int stride = joint_count * 6;
-
-    for (int l = 0; l < joint_count; ++l) {
-        for (int i = 0; i < 6; ++i) {
-            for (int j = 0; j < 6; ++j) {
-                adj_I_s[joint_start + l].data[i][j] += adj_M[M_start + row_index(stride, l * 6 + i, l * 6 + j)];
-            }
-        }
-    }
-}
 
 using transform = transform_t<float>;
 using transformh = transform_t<half>;

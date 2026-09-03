@@ -7,16 +7,23 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 
 ## 2026
 
+- **DarcyWarp: A graphics processing unit (GPU)-accelerated multigrid solver for repeated 2D fixed-transmissivity groundwater solves validated against reference solvers**. *P. Durney, J. Fourie*. September 2026. [DOI:10.1016/j.envsoft.2026.107081](https://doi.org/10.1016/j.envsoft.2026.107081)
+- **SAFE-CHEM: Uncertainty-Aware Policy Switching for Robust Robotic Chemistry**. *L. Jones, S. Shahzad, A. Sana, G. Pizzuto*. August 2026. [arXiv:2608.09303](https://arxiv.org/abs/2608.09303)
+- **Differentiate the Solver, Not the Equation: Reverse-Sweep Adjoints for Block Implicit Simulation**. *L. Shu, Y. Jiang, K. Wu, Y. Yang, L. Guibas, C. Jiang*. August 2026. [arXiv:2608.08559](https://arxiv.org/abs/2608.08559)
+- **PD-SRL: Parallel and Differentiable Surgical Simulation For Accelerated Reinforcement Learning**. *M. Naskret, D. DallAlba, A. Pore, R. Muradore, P. Korzeniowski*. August 2026. [DOI:10.1109/lra.2026.3726778](https://doi.org/10.1109/lra.2026.3726778)
 - **Differentiable Design for Morphogenesis Ⅰ: Simulation and Simulacra**. *O. Beker, B. Dumitrascu*. July 2026. [DOI:10.64898/2026.07.02.736195](https://doi.org/10.64898/2026.07.02.736195)
 - **Mixed Material Point Methods for Stiff Elastoplasticity**. *G. Daviet*. July 2026. [DOI:10.1145/3811345](https://doi.org/10.1145/3811345)
+- **Mosaic: A Benchmark Suite for Differentiable Physics Solvers**. *A. Rehmann, H. Zimmermann, D. Häfner*. June 2026. [arXiv:2606.27895](https://arxiv.org/abs/2606.27895)
 - **Learning to Throw: Agile and Accurate Cable-Suspended Payload Delivery with a Quadrotor**. *Y. Zhai, E. Raimondi, Y. Ren, I. Geles, Y. Armati, J. Xing, D. Scaramuzza*. June 2026. [arXiv:2606.27603](https://arxiv.org/abs/2606.27603)
 - **Embodiment-conditioned Generalist Control for Multirotor Aerial Robots**. *O. Konstantaropoulos, W. Rehberg, M. Kulkarni, K. Alexis*. June 2026. [arXiv:2606.10857](https://arxiv.org/abs/2606.10857)
 - **PhysAgent: Automating Physics-Based 4D Synthesis via Trajectory-Grounded Multi-Agent Feedback**. *C. Lv, J. Ye, Y. Jiang, R. Lin, C. Li*. June 2026. [arXiv:2606.08688](https://arxiv.org/abs/2606.08688)
 - **Digital twin–ready acceleration of production–scale wire laser additive manufacturing using NVIDIA omniverse**. *T. Jochman, A. Mehdi, V. Voltr, O. Svec, P. Burget, V. Hlavac*. June 2026. [DOI:10.1016/j.rineng.2026.111005](https://doi.org/10.1016/j.rineng.2026.111005)
 - **SSR: Scaling Surefooted and Symmetric Humanoid Traversal to the Open World**. *R. Yu, Y. Wang, Y. Hao, J. Wu, Q. Zhu*. May 2026. [arXiv:2605.30770](https://arxiv.org/abs/2605.30770)
 - **EndoGSim: Physics-Aware 4D Dynamic Endoscopic Scene Simulations via MLLM-Guided Gaussian Splatting**. *C. Liu, Y. Huang, L. Bai, B. Cui, H. Ren*. May 2026. [arXiv:2605.16022](https://arxiv.org/abs/2605.16022)
+- **DeformMaster: An Interactive Physics-Neural World Model for Deformable Objects from Videos**. *C. Li, Z. Li, R. Li, J. Gu, L. Lei, J. Chen, L. Sun*. May 2026. [arXiv:2605.09586](https://arxiv.org/abs/2605.09586)
 - **Learning-augmented robotic automation for real-world manufacturing**. *Y. Kim, Q. Nguyen, T. Kim, Y. Heo, J. Lee*. April 2026. [arXiv:2604.22235](https://arxiv.org/abs/2604.22235)
 - **Novel Algorithms for Smoothly Differentiable and Efficiently Vectorizable Contact Manifold Construction**. *O. Beker, A. R. Geist, A. Paulus, G. Martius*. April 2026. [arXiv:2604.17538](https://arxiv.org/abs/2604.17538)
+- **SIM1: Physics-Aligned Simulator as Zero-Shot Data Scaler in Deformable Worlds**. *Y. Zhou, H. Liu, X. Jiang, X. Shen, Y. Zhou, H. Wang, B. Fang, Y. Tian, M. Yu, Q. Yu, L. Ma, H. Li, H. Wang, J. Zeng, J. Pang*. April 2026. [arXiv:2604.08544](https://arxiv.org/abs/2604.08544)
 - **FIT: A Large-Scale Dataset for Fit-Aware Virtual Try-On**. *J. Karras, Y. Wang, Y. Li, I. Kemelmacher-Shlizerman*. April 2026. [arXiv:2604.08526](https://arxiv.org/abs/2604.08526)
 - **Wave-appropriate reconstruction of compressible flows: physics-constrained acoustic dissipation and rank-1 entropy wave correction**. *A. S. Chamarthi*. April 2026. [arXiv:2604.02757](https://arxiv.org/abs/2604.02757)
 - **Discovering neural cohesive zone laws from displacement fields**. *G. Barkoulis Gavris, W. Sun*. April 2026. [DOI:10.1016/j.cma.2026.118733](https://doi.org/10.1016/j.cma.2026.118733)

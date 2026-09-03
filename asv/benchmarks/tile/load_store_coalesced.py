@@ -12,6 +12,8 @@ import numpy as np
 
 import warp as wp
 
+from ..benchmarks_utils import setup_once
+
 _DTYPE_MAP = {
     "float32": wp.float32,
     "mat33": wp.mat33,
@@ -41,6 +43,7 @@ class LoadStoreCoalesced:
     params = ([8, 16, 32], ["float32", "mat33", "mat44", "mat66"])
     param_names = ["tile_size", "dtype"]
 
+    @setup_once
     def setup(self, tile_size, dtype_name):
         wp.init()
         wp.set_module_options({"fast_math": True, "enable_backward": False})
