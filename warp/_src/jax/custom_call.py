@@ -337,8 +337,8 @@ def _create_jax_warp_primitive():
             dims = launch_dims
             warp_dims = launch_dims
 
-        # JAX 0.4.25-0.7.x uses this legacy custom-call path, so reject
-        # oversized scalar coordinates during lowering before XLA allocates outputs.
+        # JAX 0.4.25-0.7.x uses this legacy custom-call path, so validate launch
+        # extents visible through wp.tid() during lowering before XLA allocates outputs.
         _build_kernel_launch_bounds(warp_dims, wp_kernel)
 
         # Figure out the types and shapes of the input arrays.

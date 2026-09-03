@@ -48,6 +48,12 @@ def scale_kernel(input: wp.array[float], output: wp.array[float], s: float):
 
 
 @wp.kernel
+def scale_2d_kernel(input: wp.array2d[float], output: wp.array2d[float], s: float):
+    i, j = wp.tid()
+    output[i, j] = input[i, j] * s
+
+
+@wp.kernel
 def add_kernel(a: wp.array[float], b: wp.array[float], output: wp.array[float]):
     i = wp.tid()
     output[i] = a[i] + b[i]
@@ -58,6 +64,11 @@ def fill_reduction_inputs_kernel(a: wp.array[wp.float32], b: wp.array[wp.float32
     i = wp.tid()
     a[i] = float(i + 1)
     b[i] = float(2 * i + 1)
+
+
+@wp.kernel
+def no_tid_kernel():
+    pass
 
 
 @wp.kernel
@@ -76,6 +87,7 @@ class TestApic(unittest.TestCase):
 # Must match APICSectionType in warp/native/apic_types.h.
 _APIC_SECTION_MEMORY = 2
 _APIC_SECTION_OPERATIONS = 3
+_APIC_FORMAT_VERSION = 16
 
 # These layouts mirror the packed structs in warp/native/apic_types.h. "<"
 # selects little-endian standard sizes without implicit alignment; "4s", "i",
@@ -89,11 +101,14 @@ _APIC_SECTION_ENTRY = struct.Struct("<IIQQQ")
 
 # APICMemoryRegionRecord: ID, element size, byte size, initial-data flag, padding.
 _APIC_MEMORY_REGION_RECORD = struct.Struct("<IIQB7x")
+_APIC_OP_HEADER = struct.Struct("<II")
 
 # APICCondRecord: operation type/size, condition region/padding/offset, then each
 # branch's byte size and operation count.
 _APIC_COND_RECORD = struct.Struct("<IIiIQIIII")
 _APIC_UINT32 = struct.Struct("<I")  # One serialized uint32_t.
+_APIC_OP_KERNEL_LAUNCH = 1
+_APIC_LAUNCH_SHAPE_OFFSET = _APIC_OP_HEADER.size
 
 
 def _find_apic_section(wrp_data, requested_section_type):
@@ -160,6 +175,35 @@ def _replace_apic_section(path, requested_section_type, replacement):
         wrp_file.seek(0)
         wrp_file.write(wrp_data)
         wrp_file.truncate()
+
+
+def _set_apic_file_version(path, version):
+    """Replace the WRP header version while preserving the other prefix fields."""
+    with open(path, "r+b") as wrp_file:
+        prefix = list(_APIC_FILE_HEADER_PREFIX.unpack(wrp_file.read(_APIC_FILE_HEADER_PREFIX.size)))
+        prefix[1] = version
+        wrp_file.seek(0)
+        wrp_file.write(_APIC_FILE_HEADER_PREFIX.pack(*prefix))
+
+
+def _replace_first_apic_kernel_shape(path, extent, axis=0):
+    """Replace one extent in the first kernel launch record."""
+    operations = _read_apic_section(path, _APIC_SECTION_OPERATIONS)
+    operation_count = _APIC_UINT32.unpack_from(operations)[0]
+    offset = _APIC_UINT32.size
+    for _ in range(operation_count):
+        operation_type, operation_size = _APIC_OP_HEADER.unpack_from(operations, offset)
+        if operation_type == _APIC_OP_KERNEL_LAUNCH:
+            _APIC_UINT32.pack_into(
+                operations,
+                offset + _APIC_LAUNCH_SHAPE_OFFSET + axis * _APIC_UINT32.size,
+                extent,
+            )
+            _replace_apic_section(path, _APIC_SECTION_OPERATIONS, operations)
+            return
+        offset += operation_size
+
+    raise ValueError("Expected at least one APIC kernel launch")
 
 
 def _append_apic_memory_record(path, record_and_payload):
@@ -385,7 +429,7 @@ def test_live_hashgrid_capture_does_not_snapshot_inputs(test, device):
 
 
 def test_save_single_kernel(test, device):
-    """Capture, save to .wrp, verify file exists."""
+    """Save a kernel graph and verify its WRP file uses the current format version."""
     n = 256
     a = wp.array(np.arange(n, dtype=np.float32), device=device)
     b = wp.zeros(n, dtype=float, device=device)
@@ -401,6 +445,71 @@ def test_save_single_kernel(test, device):
         wrp_path = path + ".wrp"
         test.assertTrue(os.path.exists(wrp_path), f"WRP file not found: {wrp_path}")
         test.assertGreater(os.path.getsize(wrp_path), 0, "WRP file is empty")
+        with open(wrp_path, "rb") as wrp_file:
+            _, version, _, _, _ = _APIC_FILE_HEADER_PREFIX.unpack_from(wrp_file.read())
+        test.assertEqual(version, _APIC_FORMAT_VERSION)
+
+
+def test_load_rejects_legacy_overflowed_launch_shape(test, device):
+    """Reject ambiguous signed launch extents on every active axis in older WRP versions."""
+    a = wp.ones((1, 1), dtype=float, device=device)
+    b = wp.zeros((1, 1), dtype=float, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.launch(scale_2d_kernel, dim=(1, 1), inputs=[a, b, 1.0], device=device)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        for axis in range(2):
+            path = os.path.join(tmpdir, f"legacy_overflowed_shape_axis_{axis}")
+            wp.capture_save(capture.graph, path, inputs={"a": a}, outputs={"b": b})
+            wrp_path = path + ".wrp"
+            _replace_first_apic_kernel_shape(wrp_path, 2**31, axis)
+
+            for version in range(13, _APIC_FORMAT_VERSION):
+                with test.subTest(axis=axis, version=version):
+                    _set_apic_file_version(wrp_path, version)
+                    _assert_apic_load_rejected(
+                        test,
+                        wrp_path,
+                        device,
+                        r"APIC operation stream failed validation",
+                    )
+
+
+def test_load_accepts_supported_legacy_launch_shapes(test, device):
+    """Verify ordinary launch shapes remain loadable from every supported legacy WRP version."""
+    a = wp.ones(1, dtype=float, device=device)
+    b = wp.zeros(1, dtype=float, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.launch(scale_kernel, dim=1, inputs=[a, b, 1.0], device=device)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "legacy_launch_shape")
+        wp.capture_save(capture.graph, path, inputs={"a": a}, outputs={"b": b})
+        wrp_path = path + ".wrp"
+
+        for version in range(13, _APIC_FORMAT_VERSION):
+            with test.subTest(version=version):
+                _set_apic_file_version(wrp_path, version)
+                loaded = wp.capture_load(wrp_path, device=device)
+                test.assertTrue(loaded.is_loaded)
+
+
+def test_load_accepts_current_oversized_no_tid_launch_shape(test, device):
+    """Accept version 16 oversized extents when the kernel does not use ``wp.tid()``."""
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.launch(no_tid_kernel, dim=2**31 + 1, device=device)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "current_oversized_no_tid_shape")
+        wp.capture_save(capture.graph, path)
+
+        loaded = wp.capture_load(path, device=device)
+        test.assertTrue(loaded.is_loaded)
 
 
 def test_save_load_round_trip(test, device):
@@ -3420,6 +3529,24 @@ add_function_test(
     "test_save_single_kernel",
     test_save_single_kernel,
     devices=devices_with_cuda_graph_module_load,
+)
+add_function_test(
+    TestApic,
+    "test_load_rejects_legacy_overflowed_launch_shape",
+    test_load_rejects_legacy_overflowed_launch_shape,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_load_accepts_supported_legacy_launch_shapes",
+    test_load_accepts_supported_legacy_launch_shapes,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_load_accepts_current_oversized_no_tid_launch_shape",
+    test_load_accepts_current_oversized_no_tid_launch_shape,
+    devices=[d for d in devices if d.is_cpu],
 )
 add_function_test(
     TestApic,

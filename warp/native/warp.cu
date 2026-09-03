@@ -5697,10 +5697,10 @@ size_t wp_cuda_launch_kernel(
             if (ndim > APIC_LAUNCH_MAX_DIMS)
                 ndim = APIC_LAUNCH_MAX_DIMS;
 
-            int shape[APIC_LAUNCH_MAX_DIMS] = {};
+            uint32_t shape[APIC_LAUNCH_MAX_DIMS] = {};
             uint64_t launch_size = dim;
             if (args && args[0]) {
-                const int* bounds_shape = static_cast<const int*>(args[0]);
+                const uint32_t* bounds_shape = static_cast<const uint32_t*>(args[0]);
                 for (int d = 0; d < ndim; d++)
                     shape[d] = bounds_shape[d];
 
@@ -5708,7 +5708,7 @@ size_t wp_cuda_launch_kernel(
                 const uint8_t* bounds_bytes = static_cast<const uint8_t*>(args[0]);
                 launch_size = *reinterpret_cast<const size_t*>(bounds_bytes + size_offset);
             } else {
-                shape[0] = (int)dim;
+                shape[0] = static_cast<uint32_t>(dim);
             }
 
             apic_record_kernel_launch(
