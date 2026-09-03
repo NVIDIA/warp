@@ -242,12 +242,30 @@ def preconditioner(A: _Matrix, ptype: str = "diag") -> LinearOperator:
 
          - ``"diag"``: Diagonal (a.k.a. Jacobi) preconditioner
          - ``"diag_abs"``: Similar to Jacobi, but using the absolute value of diagonal coefficients
-         - ``"block_jacobi"``: Block-Jacobi preconditioner. Requires ``A`` to be a
-           :class:`warp.sparse.BsrMatrix` with square blocks; each diagonal block is inverted
-           via Cholesky factorization, so blocks must individually be symmetric positive-definite.
-           Falls back to ``"diag"`` for 1x1-block (CSR) matrices. The block size must be greater
-           than 1, and ``A``'s scalar type must be ``float32`` or ``float64`` (the types supported
-           by :func:`warp.tile_cholesky`).
+         - ``"block_jacobi_direct"``: Block-Jacobi preconditioner that inverts each diagonal block
+           via a dense Householder-QR-based inverse. Cheapest setup for small blocks (roughly
+           2-6). Zero-safe: a numerically singular block falls back to the identity for that
+           block instead of producing NaNs, mirroring the zero-safe convention of ``"diag"``.
+           Supports any Warp floating scalar type, including ``float16``.
+         - ``"block_jacobi_sequential"``: Block-Jacobi preconditioner that factorizes each
+           diagonal block via a scalar LDL^T factorization. Cheapest setup for medium blocks
+           (roughly 7-11). Requires the block to be symmetric positive-definite, but is
+           zero-safe like ``"block_jacobi_direct"``: a non-SPD block falls back to the identity
+           rather than producing NaNs. Supports any Warp floating scalar type, including
+           ``float16``.
+         - ``"block_jacobi_tile"``: Block-Jacobi preconditioner that factorizes each diagonal
+           block via GPU-tile-parallel Cholesky. Best for large blocks (roughly 12 and up).
+           Unlike ``"block_jacobi_direct"``/``"block_jacobi_sequential"``, blocks must genuinely
+           be symmetric positive-definite (no identity fallback), and ``A``'s scalar type must be
+           ``float32`` or ``float64`` (the types supported by :func:`warp.tile_cholesky`).
+         - ``"block_jacobi_auto"``: Dispatches to ``"block_jacobi_direct"``,
+           ``"block_jacobi_sequential"``, or ``"block_jacobi_tile"`` based on block size (2-6,
+           7-11, and 12 and up, respectively).
+         - ``"block_jacobi"``: Alias for ``"block_jacobi_auto"``, kept for backward
+           compatibility.
+
+           All ``"block_jacobi*"`` variants require ``A`` to be a :class:`warp.sparse.BsrMatrix`
+           with square blocks, and fall back to ``"diag"`` for 1x1-block (CSR) matrices.
          - ``"id"``: Identity (null) preconditioner
     """
 
@@ -255,17 +273,33 @@ def preconditioner(A: _Matrix, ptype: str = "diag") -> LinearOperator:
         return None
     if ptype in ("diag", "diag_abs"):
         return _make_jacobi_preconditioner(A, use_abs=ptype == "diag_abs")
-    if ptype == "block_jacobi":
-        return _make_block_jacobi_preconditioner(A)
+    if ptype in _BLOCK_JACOBI_STRATEGIES:
+        return _make_block_jacobi_preconditioner(A, _BLOCK_JACOBI_STRATEGIES[ptype])
 
     raise ValueError(f"Unsupported preconditioner type '{ptype}'")
 
 
-def _make_block_jacobi_preconditioner(A: _Matrix) -> LinearOperator:
+_BLOCK_JACOBI_STRATEGIES = {
+    "block_jacobi": "auto",
+    "block_jacobi_auto": "auto",
+    "block_jacobi_direct": "direct",
+    "block_jacobi_sequential": "sequential",
+    "block_jacobi_tile": "tile",
+}
+
+# Block-size thresholds used by the "auto" block-Jacobi strategy: blocks of size
+# [2, _BLOCK_JACOBI_AUTO_DIRECT_MAX] use "direct", (..., _BLOCK_JACOBI_AUTO_SEQUENTIAL_MAX] use
+# "sequential", and anything larger uses "tile". Matches the ranges suggested in review, adjusted
+# to be non-overlapping.
+_BLOCK_JACOBI_AUTO_DIRECT_MAX = 6
+_BLOCK_JACOBI_AUTO_SEQUENTIAL_MAX = 11
+
+
+def _make_block_jacobi_preconditioner(A: _Matrix, strategy: str) -> LinearOperator:
     """Build a block-Jacobi preconditioner from the diagonal blocks of a BsrMatrix.
 
-    Factorizes each diagonal block of ``A`` via Cholesky and returns a :class:`LinearOperator`
-    whose ``matvec`` applies the corresponding block-diagonal inverse. Falls back to scalar
+    Validates ``A`` once, then dispatches to the ``"direct"``, ``"sequential"``, or ``"tile"``
+    builder for ``strategy`` (resolving ``"auto"`` by block size first). Falls back to scalar
     Jacobi for 1x1-block (CSR) matrices; see :func:`preconditioner` for the full contract.
     """
     if not isinstance(A, sparse.BsrMatrix):
@@ -280,10 +314,101 @@ def _make_block_jacobi_preconditioner(A: _Matrix) -> LinearOperator:
         # A CSR matrix; block-Jacobi degenerates to standard (scalar) Jacobi.
         return _make_jacobi_preconditioner(A, use_abs=False)
 
+    if strategy == "auto":
+        if block_size <= _BLOCK_JACOBI_AUTO_DIRECT_MAX:
+            strategy = "direct"
+        elif block_size <= _BLOCK_JACOBI_AUTO_SEQUENTIAL_MAX:
+            strategy = "sequential"
+        else:
+            strategy = "tile"
+
+    if strategy == "direct":
+        return _make_block_jacobi_direct(A, block_size)
+    if strategy == "sequential":
+        return _make_block_jacobi_sequential(A, block_size)
+    return _make_block_jacobi_tile(A, block_size)
+
+
+def _make_block_jacobi_direct(A: _Matrix, block_size: int) -> LinearOperator:
+    """Build a block-Jacobi preconditioner via a dense Householder-QR block inverse.
+
+    Cheapest setup among the block-Jacobi strategies; best suited to small blocks. Zero-safe (see
+    :func:`_block_inverse_qr`) and supports any Warp floating scalar type, since it performs
+    plain scalar arithmetic rather than using tile hardware.
+    """
+    device = A.device
+    scalar_type = A.scalar_type
+
+    A_diag = sparse.bsr_get_diag(A)
+    dim = A_diag.shape[0]
+    inv_diag = wp.empty_like(A_diag)
+    wp.launch(_invert_diagonal_blocks_qr, dim=dim, device=device, inputs=[A_diag, inv_diag])
+
+    def block_jacobi_direct_mv(x, y, z, alpha, beta):
+        """Compute ``z = alpha * (blockdiag(A)^-1 @ x) + beta * y`` via the QR block inverse."""
+        wp.launch(
+            _block_diag_mv_inverse,
+            dim=dim,
+            device=device,
+            inputs=[
+                inv_diag,
+                _as_vector_array(_as_scalar_array(x), block_size),
+                _as_vector_array(_as_scalar_array(y), block_size),
+                _as_vector_array(_as_scalar_array(z), block_size),
+                scalar_type(alpha),
+                scalar_type(beta),
+            ],
+        )
+
+    return LinearOperator((dim * block_size, dim * block_size), A.dtype, device, matvec=block_jacobi_direct_mv)
+
+
+def _make_block_jacobi_sequential(A: _Matrix, block_size: int) -> LinearOperator:
+    """Build a block-Jacobi preconditioner via a scalar LDL^T block factorization.
+
+    Cheaper setup than ``"block_jacobi_tile"``; best suited to medium blocks. Requires blocks to
+    be symmetric positive-definite, but is zero-safe on non-SPD input (see :func:`_block_ldlt`),
+    and supports any Warp floating scalar type, since it performs plain scalar arithmetic rather
+    than using tile hardware.
+    """
+    device = A.device
+    scalar_type = A.scalar_type
+
+    A_diag = sparse.bsr_get_diag(A)
+    dim = A_diag.shape[0]
+    ldlt_diag = wp.empty_like(A_diag)
+    wp.launch(_ldlt_diagonal_blocks, dim=dim, device=device, inputs=[A_diag, ldlt_diag])
+
+    def block_jacobi_sequential_mv(x, y, z, alpha, beta):
+        """Compute ``z = alpha * (blockdiag(A)^-1 @ x) + beta * y`` via the packed LDL^T solve."""
+        wp.launch(
+            _block_diag_mv_ldlt,
+            dim=dim,
+            device=device,
+            inputs=[
+                ldlt_diag,
+                _as_vector_array(_as_scalar_array(x), block_size),
+                _as_vector_array(_as_scalar_array(y), block_size),
+                _as_vector_array(_as_scalar_array(z), block_size),
+                scalar_type(alpha),
+                scalar_type(beta),
+            ],
+        )
+
+    return LinearOperator((dim * block_size, dim * block_size), A.dtype, device, matvec=block_jacobi_sequential_mv)
+
+
+def _make_block_jacobi_tile(A: _Matrix, block_size: int) -> LinearOperator:
+    """Build a block-Jacobi preconditioner via GPU-tile-parallel Cholesky factorization.
+
+    Best suited to large blocks. Requires blocks to be genuinely symmetric positive-definite (no
+    identity fallback, unlike the ``"direct"``/``"sequential"`` strategies), and ``A``'s scalar
+    type to be ``float32`` or ``float64`` (the types supported by :func:`warp.tile_cholesky`).
+    """
     scalar_type = A.scalar_type
     if scalar_type not in (wp.float32, wp.float64):
         raise ValueError(
-            f"Block-Jacobi preconditioner requires a float32 or float64 scalar type, got {scalar_type.__name__}"
+            f"'block_jacobi_tile' preconditioner requires a float32 or float64 scalar type, got {scalar_type.__name__}"
         )
     device = A.device
 
@@ -295,10 +420,10 @@ def _make_block_jacobi_preconditioner(A: _Matrix) -> LinearOperator:
     A_flat = A_diag.view(scalar_type).reshape((dim * block_size, block_size))
     L_flat = wp.empty(shape=A_flat.shape, dtype=scalar_type, device=device)
 
-    factorize_kernel, solve_kernel = _create_block_jacobi_kernels(block_size)
+    factorize_kernel, solve_kernel = _create_block_jacobi_tile_kernels(block_size)
     wp.launch_tiled(factorize_kernel, dim=[dim], inputs=[A_flat, L_flat], block_dim=32, device=device)
 
-    def block_jacobi_mv(x, y, z, alpha, beta):
+    def block_jacobi_tile_mv(x, y, z, alpha, beta):
         """Compute ``z = alpha * (blockdiag(A)^-1 @ x) + beta * y``, the block-Jacobi matvec."""
         wp.launch_tiled(
             solve_kernel,
@@ -319,14 +444,14 @@ def _make_block_jacobi_preconditioner(A: _Matrix) -> LinearOperator:
         (dim * block_size, dim * block_size),
         A.dtype,
         device,
-        matvec=block_jacobi_mv,
+        matvec=block_jacobi_tile_mv,
     )
 
 
 @functools.cache
-def _create_block_jacobi_kernels(block_size: int):
+def _create_block_jacobi_tile_kernels(block_size: int):
     """Build (and cache, per block size) the tile-Cholesky factorize/solve kernel pair
-    used by the block-Jacobi preconditioner."""
+    used by the ``block_jacobi_tile`` preconditioner strategy."""
 
     @wp.kernel(module="unique")
     def factorize_kernel(
@@ -373,6 +498,198 @@ def _create_block_jacobi_kernels(block_size: int):
     return factorize_kernel, solve_kernel
 
 
+# --- Direct (QR) and sequential (LDL^T) block-Jacobi helpers -----------------
+#
+# Local re-implementations of QR-based dense inversion and LDL^T factorization for small,
+# fixed-size blocks, adapted from a prototype by a Warp maintainer (gdaviet). Kept as plain
+# wp.funcs operating on fixed-size wp.matrix/wp.vector types (no wp.tile_* involved), so they
+# work for any Warp floating scalar type and don't require tile hardware.
+
+
+@wp.func
+def _qr_decomposition(A: Any):
+    """Compute a Householder QR factorization of a square fixed-size matrix.
+
+    Returns ``(Q, R)`` such that ``A = Q R``, with ``Q`` orthonormal and ``R`` upper triangular.
+    """
+    x = type(A[0])()
+    Q = wp.identity(n=x.length, dtype=A.dtype)
+
+    zero = x.dtype(0.0)
+    two = x.dtype(2.0)
+
+    for i in range(x.length):
+        for k in range(x.length):
+            x[k] = wp.where(k < i, zero, A[k, i])
+
+        alpha = wp.length(x) * wp.sign(x[i])
+        x[i] += alpha
+        two_over_x_sq = wp.where(alpha == zero, zero, two / wp.length_sq(x))
+
+        A -= wp.outer(two_over_x_sq * x, x * A)
+        Q -= wp.outer(Q * x, two_over_x_sq * x)
+
+    return Q, A
+
+
+@wp.func
+def _solve_upper(R: Any, b: Any):
+    """Solve ``R x = b`` for an upper-triangular ``R``, zero-safe on a zero diagonal entry."""
+    zero = b.dtype(0)
+    x = type(b)(zero)
+    for i in range(b.length, 0, -1):
+        j = i - 1
+        r = b[j] - wp.dot(R[j], x)
+        x[j] = wp.where(R[j, j] == zero, zero, r / R[j, j])
+    return x
+
+
+@wp.func
+def _block_inverse_qr(A: Any):
+    """Invert a square fixed-size matrix via Householder QR.
+
+    Falls back to the identity when the block is numerically singular (any zero on the ``R``
+    diagonal), mirroring the zero-safe convention of the scalar Jacobi preconditioner, so the
+    result stays well-defined for non-invertible blocks.
+    """
+    Q, R = _qr_decomposition(A)
+    row = type(A[0])()
+    zero = A.dtype(0)
+    one = A.dtype(1)
+    singular = wp.bool(False)
+    for j in range(row.length):
+        singular = singular or (R[j, j] == zero)
+
+    A_inv = type(A)()
+    for i in range(row.length):
+        A_inv[i] = _solve_upper(R, Q[i])  # i-th column of Q^T
+    inv = wp.transpose(A_inv)
+
+    for i in range(row.length):
+        for j in range(row.length):
+            inv[i, j] = wp.where(singular, wp.where(i == j, one, zero), inv[i, j])
+    return inv
+
+
+@wp.func
+def _block_ldlt(A: Any):
+    """Factorize a symmetric fixed-size matrix as ``A = L D L^T``.
+
+    ``L`` is unit lower triangular and ``D`` is diagonal; both are packed into a single returned
+    matrix ``M`` with ``M[i, i] = D[i]`` and ``M[i, j] = L[i, j]`` for ``i > j`` (``L``'s implicit
+    unit diagonal is not stored). Falls back to the identity on non-SPD input, so
+    :func:`_apply_ldlt` becomes a pass-through on that block and the preconditioner stays
+    well-defined.
+    """
+    row = type(A[0])()
+    zero = A.dtype(0.0)
+    M = type(A)(zero)
+    spd = wp.bool(True)
+    for j in range(row.length):
+        d = A[j, j]
+        for k in range(j):
+            d -= M[j, k] * M[j, k] * M[k, k]
+
+        if d <= zero:
+            spd = False
+            break
+
+        M[j, j] = d
+        for i in range(j + 1, row.length):
+            t = A[i, j]
+            for k in range(j):
+                t -= M[i, k] * M[j, k] * M[k, k]
+            M[i, j] = t / d
+
+    if spd:
+        return M
+    return wp.identity(n=row.length, dtype=A.dtype)
+
+
+@wp.func
+def _apply_ldlt(M: Any, x: Any):
+    """Solve ``(L D L^T) z = x`` given the packed LDL^T form returned by :func:`_block_ldlt`."""
+    zero = x.dtype(0)
+
+    # Forward: L y = x (unit lower).
+    y = type(x)(zero)
+    for i in range(x.length):
+        r = x[i]
+        for j in range(i):
+            r -= M[i, j] * y[j]
+        y[i] = r
+
+    # Backward with D^{-1} folded in: solve L^T z = D^{-1} y (unit upper).
+    z = type(x)(zero)
+    for i in range(x.length, 0, -1):
+        idx = i - 1
+        r = y[idx] / M[idx, idx]
+        for j in range(idx + 1, x.length):
+            r -= M[j, idx] * z[j]
+        z[idx] = r
+    return z
+
+
+@wp.kernel(module="unique")
+def _invert_diagonal_blocks_qr(
+    diag: wp.array[Any],
+    inv_diag: wp.array[Any],
+):
+    """Invert one diagonal block per thread via Householder QR."""
+    i = wp.tid()
+    inv_diag[i] = _block_inverse_qr(diag[i])
+
+
+@wp.kernel(module="unique")
+def _ldlt_diagonal_blocks(
+    diag: wp.array[Any],
+    ldlt_diag: wp.array[Any],
+):
+    """Factorize one diagonal block per thread into packed LDL^T form."""
+    i = wp.tid()
+    ldlt_diag[i] = _block_ldlt(diag[i])
+
+
+@wp.kernel(module="unique")
+def _block_diag_mv_inverse(
+    inv: wp.array[Any],
+    x: wp.array[Any],
+    y: wp.array[Any],
+    z: wp.array[Any],
+    alpha: Any,
+    beta: Any,
+):
+    """Apply one precomputed block inverse per thread and write ``z = alpha * (inv x) + beta * y``."""
+    i = wp.tid()
+    zero = type(alpha)(0)
+    s = z.dtype(zero)
+    if alpha != zero:
+        s = alpha * (inv[i] * x[i])
+    if beta != zero:
+        s += beta * y[i]
+    z[i] = s
+
+
+@wp.kernel(module="unique")
+def _block_diag_mv_ldlt(
+    ldlt: wp.array[Any],
+    x: wp.array[Any],
+    y: wp.array[Any],
+    z: wp.array[Any],
+    alpha: Any,
+    beta: Any,
+):
+    """Apply one packed LDL^T solve per thread and write ``z = alpha * (M^-1 x) + beta * y``."""
+    i = wp.tid()
+    zero = type(alpha)(0)
+    s = z.dtype(zero)
+    if alpha != zero:
+        s = alpha * _apply_ldlt(ldlt[i], x[i])
+    if beta != zero:
+        s += beta * y[i]
+    z[i] = s
+
+
 def _make_jacobi_preconditioner(A: _Matrix, use_abs: bool) -> LinearOperator:
     use_abs_int = 1 if use_abs else 0
     if isinstance(A, sparse.BsrMatrix):
@@ -413,6 +730,30 @@ def _as_scalar_array(x: wp.array):
         dtype=scalar_type,
         device=x.device,
         grad=None if x.grad is None else _as_scalar_array(x.grad),
+    )
+    arr._ref = x
+    return arr
+
+
+def _as_vector_array(x: wp.array, length: int):
+    """View a 1-D scalar array as a 1-D array of fixed-length vectors.
+
+    The underlying storage is shared (no copy); ``x`` must be contiguous along its last
+    dimension, and that dimension's length must be divisible by ``length``.
+    """
+    if length == 1:
+        return x
+    if x.shape[-1] % length != 0:
+        raise ValueError(f"Array length {x.shape[-1]} is not divisible by block size {length}")
+
+    vec_type = wp.types.vector(length=length, dtype=x.dtype)
+    arr = wp.array(
+        ptr=x.ptr,
+        shape=(*x.shape[:-1], x.shape[-1] // length),
+        strides=(*x.strides[:-1], x.strides[-1] * length),
+        dtype=vec_type,
+        device=x.device,
+        grad=None if x.grad is None else _as_vector_array(x.grad, length),
     )
     arr._ref = x
     return arr
