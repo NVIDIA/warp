@@ -99,8 +99,22 @@ graph 10 times without opening a GLFW window. CTest registers this mode
 as `apic_visualization_smoke` so the example runs in CI on hosts without
 a display server.
 
+**Using Make (Unix/Linux)**:
+
 ```bash
 ./02_apic_visualization --smoke    # exits 0 with "smoke OK (10 graph launches)"
+```
+
+**Using CMake (Ninja / Unix Makefiles)**:
+
+```bash
+./build/02_apic_visualization --smoke
+```
+
+**Using CMake (Visual Studio on Windows)**:
+
+```powershell
+.\build\Release\02_apic_visualization.exe --smoke
 ```
 
 ## How It Works

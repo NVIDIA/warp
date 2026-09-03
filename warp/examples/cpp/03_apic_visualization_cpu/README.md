@@ -86,8 +86,22 @@ on the CPU 10 times without opening a GLFW window. CTest registers this
 mode as `apic_visualization_cpu_smoke` so the example runs in CI on
 hosts without a display server.
 
+**Using Make (Unix/Linux)**:
+
 ```bash
 ./03_apic_visualization_cpu --smoke    # exits 0 with "smoke OK (10 replay iterations)"
+```
+
+**Using CMake (Ninja / Unix Makefiles)**:
+
+```bash
+./build/03_apic_visualization_cpu --smoke
+```
+
+**Using CMake (Visual Studio on Windows)**:
+
+```powershell
+.\build\Release\03_apic_visualization_cpu.exe --smoke
 ```
 
 ## Controls
