@@ -127,21 +127,6 @@ def test_tile_static_shared_memory_query(test, device):
     test.assertEqual(warp_context.runtime.core.wp_cuda_get_kernel_static_shared_memory(device.context, None), -1)
 
 
-@contextlib.contextmanager
-def quiet_native_errors():
-    """Silence the native library's stderr echo of an expected CUDA error.
-
-    The echo comes from C, so ``contextlib.redirect_stderr`` cannot intercept it. The error
-    string itself is still recorded, so callers of ``get_error_string()`` are unaffected.
-    """
-    saved = warp_context.runtime.core.wp_is_error_output_enabled()
-    warp_context.runtime.core.wp_set_error_output_enabled(False)
-    try:
-        yield
-    finally:
-        warp_context.runtime.core.wp_set_error_output_enabled(saved)
-
-
 def test_tile_shared_mem_overflow_message(test, device):
     """Check that the over-budget warning names a maximum the kernel can actually reach."""
     BLOCK_DIM = 64
@@ -190,7 +175,7 @@ def test_tile_shared_mem_overflow_message(test, device):
     # every launch reports the shortfall, not just the first: the warning above fires once
     # because get_kernel_hooks caches, so the error is the only diagnostic from launch two on
     for attempt in range(2):
-        with quiet_native_errors(), test.assertRaises(RuntimeError) as raised:
+        with suppress_native_error_output(), test.assertRaises(RuntimeError) as raised:
             wp.launch_tiled(compute, dim=[1], inputs=[out], block_dim=BLOCK_DIM, device=device)
 
         message = str(raised.exception)
@@ -244,7 +229,7 @@ def test_tile_shared_mem_backward_overflow_message(test, device):
         wp.launch_tiled(compute, dim=[1], inputs=[inp], outputs=[out], block_dim=BLOCK_DIM, device=device)
 
     out.grad = wp.ones(TILE_N, dtype=float, device=device)
-    with quiet_native_errors(), test.assertRaises(RuntimeError) as raised:
+    with suppress_native_error_output(), test.assertRaises(RuntimeError) as raised:
         tape.backward()
 
     message = str(raised.exception)
@@ -334,7 +319,7 @@ def test_tile_shared_mem_launch_error_without_shortfall(test, device):
     test.assertIsNone(hooks.forward_smem_shortfall)
 
     # the launch fails, and the driver's own error is reported unembellished
-    with quiet_native_errors(), test.assertRaises(RuntimeError) as raised:
+    with suppress_native_error_output(), test.assertRaises(RuntimeError) as raised:
         wp.launch_tiled(compute, dim=[1], inputs=[out], block_dim=BLOCK_DIM, device=device)
 
     message = str(raised.exception)
@@ -409,7 +394,7 @@ def test_tile_shared_mem_deterministic_launch_message(test, device):
     test.assertIsNotNone(hooks.det_launch_meta)
     test.assertTrue(hooks.det_launch_meta.needs_deterministic)
 
-    with quiet_native_errors(), test.assertRaises(RuntimeError) as raised:
+    with suppress_native_error_output(), test.assertRaises(RuntimeError) as raised:
         wp.launch_tiled(compute, dim=[1], inputs=[out, dest, acc], block_dim=BLOCK_DIM, device=device)
 
     message = str(raised.exception)

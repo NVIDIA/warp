@@ -85,7 +85,7 @@ def graph_coloring_assign(
     )
 
     if color_count < 0:
-        raise RuntimeError("Graph coloring failed")
+        raise RuntimeError(f"Graph coloring failed: {runtime.get_error_string()}")
 
     return color_count
 
@@ -162,7 +162,7 @@ def graph_coloring_balance(
     )
 
     if max_min_ratio < 0.0:
-        raise RuntimeError("Graph coloring balance failed")
+        raise RuntimeError(f"Graph coloring balance failed: {runtime.get_error_string()}")
 
     return max_min_ratio
 

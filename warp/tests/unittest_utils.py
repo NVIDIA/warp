@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import contextlib
 import ctypes
 import ctypes.util
 import functools
@@ -43,6 +44,23 @@ import warp as wp  # noqa: E402
 
 pxr = importlib.util.find_spec("pxr")
 USD_AVAILABLE = pxr is not None
+
+
+@contextlib.contextmanager
+def suppress_native_error_output():
+    """Suppress native ``stderr`` output while preserving the recorded diagnostic.
+
+    Native output originates in C, so :func:`contextlib.redirect_stderr` cannot
+    intercept it. The diagnostic remains available through
+    :meth:`warp._src.context.Runtime.get_error_string`.
+    """
+    core = wp._src.context.runtime.core
+    saved_error_output_enabled = core.wp_is_error_output_enabled()
+    try:
+        core.wp_set_error_output_enabled(False)
+        yield
+    finally:
+        core.wp_set_error_output_enabled(saved_error_output_enabled)
 
 
 def make_isolated_kernel(func, **kwargs):
