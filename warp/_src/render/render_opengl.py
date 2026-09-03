@@ -3256,7 +3256,24 @@ Instances: {len(self._instances)}"""
         points = np.array(points, dtype=np.float32)
         point_count = len(points)
 
-        indices = np.array(indices, dtype=np.int32).reshape((-1, 3))
+        if not update_topology and name in self._instances:
+            shape = self._instances[name][2]
+            self.update_shape_instance(name, pos, rot, color1=colors, color2=colors, scale=scale, visible=visible)
+            self.update_shape_vertices(shape, points)
+            return shape
+
+        source_indices = np.array(indices, copy=True)
+        index_limit = min(point_count, np.iinfo(np.int32).max + 1)
+        if source_indices.size:
+            min_index = source_indices.min()
+            max_index = source_indices.max()
+            if not (min_index >= 0 and max_index < index_limit):
+                raise ValueError(
+                    f"Mesh indices must be in the range [0, {index_limit}), "
+                    f"but found an index range of [{min_index}, {max_index}]"
+                )
+
+        indices = np.array(source_indices, dtype=np.int32).reshape((-1, 3))
         idx_count = len(indices)
 
         geo_hash = hash((points.tobytes(), indices.tobytes()))
@@ -3273,21 +3290,16 @@ Instances: {len(self._instances)}"""
 
         # Check if we already have that shape registered and can perform
         # minimal updates since the topology is not changing, before exiting.
-        if not update_topology:
-            if name in self._instances:
-                # Update the instance's transform.
-                self.update_shape_instance(name, pos, rot, color1=colors, color2=colors, scale=scale, visible=visible)
+        if not update_topology and shape is not None:
+            # Update the shape's point positions.
+            self.update_shape_vertices(shape, points)
 
-            if shape is not None:
-                # Update the shape's point positions.
-                self.update_shape_vertices(shape, points)
+            if not is_template:
+                # Create a new instance.
+                body = self._resolve_body_id(parent_body)
+                self.add_shape_instance(name, shape, body, pos, rot, color1=colors, scale=scale)
 
-                if not is_template and name not in self._instances:
-                    # Create a new instance.
-                    body = self._resolve_body_id(parent_body)
-                    self.add_shape_instance(name, shape, body, pos, rot, color1=colors, scale=scale)
-
-                return shape
+            return shape
 
         # No existing shape for the given mesh was found, or its topology may have changed,
         # so we need to define a new one either way.
