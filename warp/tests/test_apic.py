@@ -1877,6 +1877,28 @@ def test_capture_with_array_reductions(test, device):
     np.testing.assert_allclose(inner_out.numpy(), np.array([expected_a @ expected_b], dtype=np.float32))
 
 
+def test_capture_with_negative_axis_array_reductions(test, device):
+    """Verify captured array reductions replay correctly with negative axes."""
+    values_np = np.arange(1.0, 7.0, dtype=np.float32).reshape(2, 3)
+    other_np = np.arange(7.0, 13.0, dtype=np.float32).reshape(2, 3)
+    values = wp.array(values_np, device=device)
+    other = wp.array(other_np, device=device)
+    sum_out = wp.full((2, 1), -1.0, dtype=wp.float32, device=device)
+    inner_out = wp.full((2, 1), -1.0, dtype=wp.float32, device=device)
+
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.utils.array_sum(values, out=sum_out, axis=-1)
+        wp.utils.array_inner(values, other, out=inner_out, axis=-1)
+
+    np.testing.assert_allclose(sum_out.numpy(), np.full((2, 1), -1.0, dtype=np.float32))
+    np.testing.assert_allclose(inner_out.numpy(), np.full((2, 1), -1.0, dtype=np.float32))
+
+    wp.capture_launch(capture.graph)
+
+    np.testing.assert_allclose(sum_out.numpy(), values_np.sum(axis=-1, keepdims=True))
+    np.testing.assert_allclose(inner_out.numpy(), (values_np * other_np).sum(axis=-1, keepdims=True))
+
+
 def test_array_reduction_capture_errors(test, device):
     """Reject unsupported array reductions during capture."""
     values = wp.array([1.0, 2.0, 3.0], dtype=wp.float32, device=device)
@@ -3543,6 +3565,12 @@ add_function_test(
     "test_capture_with_array_reductions",
     test_capture_with_array_reductions,
     devices=devices_with_graph_capture_allocation_and_cuda_graph_module_load,
+)
+add_function_test(
+    TestApic,
+    "test_capture_with_negative_axis_array_reductions",
+    test_capture_with_negative_axis_array_reductions,
+    devices=devices_with_graph_capture_allocation,
 )
 add_function_test(
     TestApic,

@@ -6,6 +6,7 @@ from __future__ import annotations
 import cProfile
 import gc
 import hashlib
+import operator
 import os
 import sys
 import threading
@@ -493,6 +494,15 @@ def _array_reduce_host_zero(dtype):
 _APIC_REDUCTION_INT_MAX = (1 << 31) - 1
 
 
+def _normalize_array_reduction_axis(operation, axis, ndim):
+    """Normalize an array reduction axis and reject out-of-range values."""
+    axis = operator.index(axis)
+    if axis < -ndim or axis >= ndim:
+        raise IndexError(f"{operation}() axis {axis} is out of bounds for an array with {ndim} dimensions")
+
+    return axis % ndim
+
+
 def _validate_apic_array_reduction_layout(operation, inputs, out, axis, output_shape, scalar_size):
     """Validate reduction metadata that crosses the native signed-int ABI."""
     if axis is None:
@@ -541,19 +551,24 @@ def array_sum(
         values: Input array to sum. Its scalar type must be ``float32`` or ``float64``.
         out: Output array to store results. If ``None``, a new array is created.
         value_count: Number of elements to process. If ``None``, processes entire array.
-        axis: Axis along which to compute sum. If ``None``, computes sum of all elements.
+        axis: Axis along which to compute sum. Negative values count from the last dimension. If ``None``, computes
+            sum of all elements.
 
     Returns:
         The sum result. Returns a float if ``axis`` is ``None`` and ``out`` is ``None``,
         otherwise returns the ``out`` array.
 
     Raises:
+        IndexError: If ``axis`` is outside the valid range for ``values``.
         RuntimeError: If output array storage device or data type is incompatible with input array, or if an
             APIC-recorded call uses an unsupported count or memory layout.
         NotImplementedError: If a non-empty call during APIC recording omits
             ``out``. Also raised if any input or output array has a negative
             stride during APIC recording, including for a zero-count call.
     """
+    if axis is not None:
+        axis = _normalize_array_reduction_axis("array_sum", axis, values.ndim)
+
     if value_count is None:
         if axis is None:
             value_count = values.size
@@ -563,11 +578,9 @@ def array_sum(
     if axis is None:
         output_shape = (1,)
     else:
-
-        def output_dim(ax, dim):
-            return 1 if ax == axis else dim
-
-        output_shape = tuple(output_dim(ax, dim) for ax, dim in enumerate(values.shape))
+        output_shape = list(values.shape)
+        output_shape[axis] = 1
+        output_shape = tuple(output_shape)
 
     has_reduction_work = value_count > 0 and all(dim > 0 for dim in output_shape)
     type_size = wp._src.types.type_size(values.dtype)
@@ -678,13 +691,15 @@ def array_inner(
         b: Second input array. Must match shape and type of a.
         out: Output array to store results. If ``None``, a new array is created.
         count: Number of elements to process. If ``None``, processes entire arrays.
-        axis: Axis along which to compute inner product. If ``None``, computes on flattened arrays.
+        axis: Axis along which to compute inner product. Negative values count from the last dimension. If ``None``,
+            computes on flattened arrays.
 
     Returns:
         The inner product result. Returns a float if ``axis`` is ``None`` and ``out`` is ``None``,
         otherwise returns the ``out`` array.
 
     Raises:
+        IndexError: If ``axis`` is outside the valid range for ``a``.
         RuntimeError: If array storage devices, sizes, or data types are incompatible, or if an APIC-recorded call
             uses an unsupported count or memory layout.
         NotImplementedError: If a non-empty call during APIC recording omits
@@ -700,6 +715,9 @@ def array_inner(
     if not types_equal(a.dtype, b.dtype):
         raise RuntimeError(f"A and b array data types do not match ({type_repr(a.dtype)} vs {type_repr(b.dtype)})")
 
+    if axis is not None:
+        axis = _normalize_array_reduction_axis("array_inner", axis, a.ndim)
+
     if count is None:
         if axis is None:
             count = a.size
@@ -709,11 +727,9 @@ def array_inner(
     if axis is None:
         output_shape = (1,)
     else:
-
-        def output_dim(ax, dim):
-            return 1 if ax == axis else dim
-
-        output_shape = tuple(output_dim(ax, dim) for ax, dim in enumerate(a.shape))
+        output_shape = list(a.shape)
+        output_shape[axis] = 1
+        output_shape = tuple(output_shape)
 
     has_reduction_work = count > 0 and all(dim > 0 for dim in output_shape)
     type_size = wp._src.types.type_size(a.dtype)

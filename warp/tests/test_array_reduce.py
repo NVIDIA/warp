@@ -120,6 +120,72 @@ def test_array_inner_empty(test, device):
     assert_np_equal(array_inner(values, values, axis=0).numpy(), np.zeros((1, 3)))
 
 
+def test_array_reductions_negative_axis(test, device):
+    """Verify array reductions accept negative axes across count modes."""
+    values_np = np.arange(1.0, 25.0, dtype=np.float32).reshape(2, 3, 4)
+    other_np = np.arange(25.0, 49.0, dtype=np.float32).reshape(2, 3, 4)
+    values = wp.array(values_np, device=device)
+    other = wp.array(other_np, device=device)
+
+    for axis in range(-values.ndim, 0):
+        with test.subTest(axis=axis, count="implicit"):
+            expected_sum = values_np.sum(axis=axis, keepdims=True)
+            expected_inner = (values_np * other_np).sum(axis=axis, keepdims=True)
+
+            np.testing.assert_allclose(array_sum(values, axis=axis).numpy(), expected_sum)
+            np.testing.assert_allclose(array_inner(values, other, axis=axis).numpy(), expected_inner)
+
+        count = values.shape[axis] - 1
+        slices = [slice(None)] * values.ndim
+        slices[axis] = slice(count)
+        expected_sum = values_np[tuple(slices)].sum(axis=axis, keepdims=True)
+        expected_inner = (values_np[tuple(slices)] * other_np[tuple(slices)]).sum(axis=axis, keepdims=True)
+        sum_out = wp.full(expected_sum.shape, -1.0, dtype=wp.float32, device=device)
+        inner_out = wp.full(expected_inner.shape, -1.0, dtype=wp.float32, device=device)
+
+        with test.subTest(axis=axis, count=count):
+            test.assertIs(array_sum(values, out=sum_out, value_count=count, axis=axis), sum_out)
+            test.assertIs(array_inner(values, other, out=inner_out, count=count, axis=axis), inner_out)
+            np.testing.assert_allclose(sum_out.numpy(), expected_sum)
+            np.testing.assert_allclose(inner_out.numpy(), expected_inner)
+
+
+def test_array_reductions_negative_axis_zero_count(test, device):
+    """Verify array reductions return zeros for empty negative-axis reductions."""
+    values = wp.ones((2, 3), dtype=wp.float32, device=device)
+    expected = np.zeros((2, 1), dtype=np.float32)
+
+    np.testing.assert_allclose(array_sum(values, value_count=0, axis=-1).numpy(), expected)
+    np.testing.assert_allclose(array_inner(values, values, count=0, axis=-1).numpy(), expected)
+
+    empty = wp.empty((2, 0, 3), dtype=wp.float32, device=device)
+    expected_empty = np.zeros((2, 1, 3), dtype=np.float32)
+
+    np.testing.assert_allclose(array_sum(empty, axis=-2).numpy(), expected_empty)
+    np.testing.assert_allclose(array_inner(empty, empty, axis=-2).numpy(), expected_empty)
+
+
+def test_array_reductions_invalid_axis(test, device):
+    """Verify array reductions reject axes outside the valid range."""
+    values = wp.ones((2, 3), dtype=wp.float32, device=device)
+
+    for axis in (-values.ndim - 1, values.ndim):
+        for count in (None, 0):
+            sum_kwargs = {"axis": axis}
+            inner_kwargs = {"axis": axis}
+            if count is not None:
+                sum_kwargs["value_count"] = count
+                inner_kwargs["count"] = count
+
+            with test.subTest(operation="array_sum", axis=axis, count=count):
+                with test.assertRaisesRegex(IndexError, rf"array_sum\(\) axis {axis} is out of bounds"):
+                    array_sum(values, **sum_kwargs)
+
+            with test.subTest(operation="array_inner", axis=axis, count=count):
+                with test.assertRaisesRegex(IndexError, rf"array_inner\(\) axis {axis} is out of bounds"):
+                    array_inner(values, values, **inner_kwargs)
+
+
 devices = get_test_devices()
 
 
@@ -137,6 +203,18 @@ add_function_test(
     TestArrayReduce, "test_array_inner_axis_float", make_test_array_inner_axis(wp.float32), devices=devices
 )
 add_function_test(TestArrayReduce, "test_array_inner_empty", test_array_inner_empty, devices=devices)
+add_function_test(
+    TestArrayReduce, "test_array_reductions_negative_axis", test_array_reductions_negative_axis, devices=devices
+)
+add_function_test(
+    TestArrayReduce,
+    "test_array_reductions_negative_axis_zero_count",
+    test_array_reductions_negative_axis_zero_count,
+    devices=devices,
+)
+add_function_test(
+    TestArrayReduce, "test_array_reductions_invalid_axis", test_array_reductions_invalid_axis, devices=devices
+)
 
 
 if __name__ == "__main__":
