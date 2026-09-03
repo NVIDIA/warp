@@ -450,8 +450,10 @@ def _make_block_jacobi_tile(A: _Matrix, block_size: int) -> LinearOperator:
 
 @functools.cache
 def _create_block_jacobi_tile_kernels(block_size: int):
-    """Build (and cache, per block size) the tile-Cholesky factorize/solve kernel pair
-    used by the ``block_jacobi_tile`` preconditioner strategy."""
+    """Build and cache the tile-Cholesky factorize/solve kernel pair for one block size.
+
+    Used by the ``block_jacobi_tile`` preconditioner strategy.
+    """
 
     @wp.kernel(module="unique")
     def factorize_kernel(
