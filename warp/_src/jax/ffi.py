@@ -14,7 +14,7 @@ from enum import IntEnum
 from typing import Any
 
 import warp as wp
-from warp._src.codegen import _SCALAR_TID_MAX_EXTENT, get_full_arg_spec, make_full_qualified_name
+from warp._src.codegen import _TID_MAX_EXTENT, get_full_arg_spec, make_full_qualified_name
 from warp._src.context import (
     CudaMemcpyKind,
     _build_kernel_launch_bounds,
@@ -165,8 +165,8 @@ def _validate_ffi_kernel_launch_bounds(dim, kernel, block_dim=None) -> None:
     kernel.module.get_module_hash(cuda_block_dim)
     _build_kernel_launch_bounds(dim, kernel, cuda_block_dim)
 
-    leading_extent = dim[0] if dim else 1
-    if leading_extent > _SCALAR_TID_MAX_EXTENT and cuda_block_dim != 1:
+    tid_extents = dim[: kernel.adj.kernel_dim]
+    if any(extent > _TID_MAX_EXTENT for extent in tid_extents) and cuda_block_dim != 1:
         _build_kernel_launch_bounds(dim, kernel, 1)
 
 
@@ -562,7 +562,7 @@ class FfiKernel:
                         # roll batch size into the first launch dimension
                         launch_dims = (batch_size * launch_dims[0], *launch_dims[1:])
 
-                # Revalidate here because vmap can grow the leading extent at runtime.
+                # Revalidate here because vmap can grow an extent visible through wp.tid() at runtime.
                 launch_bounds = _build_kernel_launch_bounds(launch_dims, self.kernel, block_dim)
 
                 if platform == _FFI_PLATFORM_CPU:

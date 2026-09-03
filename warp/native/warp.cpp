@@ -257,7 +257,7 @@ void wp_cpu_launch_kernel(void* func, void* bounds, void* args, void* adj_args, 
     if (recording_state && apic_info) {
         // Extract shape from launch_bounds_t<N>. kernel_dim gives the exact
         // dimensionality expected by the generated kernel.
-        int shape[APIC_LAUNCH_MAX_DIMS] = {};
+        uint32_t shape[APIC_LAUNCH_MAX_DIMS] = {};
         int ndim = apic_info->kernel_dim;
         if (ndim < 1)
             ndim = 1;
@@ -266,7 +266,7 @@ void wp_cpu_launch_kernel(void* func, void* bounds, void* args, void* adj_args, 
 
         uint64_t launch_size = 0;
         if (bounds && ndim > 0) {
-            const int* bounds_shape = static_cast<const int*>(bounds);
+            const uint32_t* bounds_shape = static_cast<const uint32_t*>(bounds);
             for (int d = 0; d < ndim; d++)
                 shape[d] = bounds_shape[d];
 

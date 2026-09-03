@@ -2216,6 +2216,22 @@ class TestCodeGen(unittest.TestCase):
         self.assertTrue(_is_tid_call(warp_alias_tid, fake_adj))
         self.assertFalse(_is_tid_call(other_tid, fake_adj))
 
+    def test_direct_tid_reference_scan_avoids_fallback_scans(self):
+        def direct_tid_kernel(values: wp.array2d[wp.int32]):
+            i, j = wp.tid()
+            values[i, j] = i + j
+
+        adj = codegen.Adjoint(direct_tid_kernel)
+        fallback_error = AssertionError("direct TID calls must not use fallback scans")
+
+        with (
+            mock.patch.object(codegen, "resolve_reference_tid_aliases", side_effect=fallback_error),
+            mock.patch.object(codegen, "_is_tid_call", side_effect=fallback_error),
+        ):
+            adj.get_references()
+
+        self.assertEqual(adj.kernel_dim, 2)
+
     def test_namespaced_tid_call_sets_kernel_dim(self):
         namespace = types.SimpleNamespace(warp=wp)
 

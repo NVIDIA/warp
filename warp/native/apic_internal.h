@@ -102,7 +102,7 @@ constexpr size_t launch_bounds_align8(size_t offset) { return (offset + 7) & ~si
 
 constexpr size_t launch_bounds_size_offset(int ndim)
 {
-    return launch_bounds_align8(static_cast<size_t>(ndim) * sizeof(int));
+    return launch_bounds_align8(static_cast<size_t>(ndim) * sizeof(uint32_t));
 }
 
 constexpr size_t launch_bounds_coord_mult_offset(int ndim) { return launch_bounds_size_offset(ndim) + sizeof(size_t); }
@@ -293,7 +293,7 @@ void apic_record_kernel_launch(
     const char* kernel_key,
     const char* module_hash,
     int is_forward,
-    const int* shape,
+    const uint32_t* shape,
     int ndim,
     uint64_t size,
     int max_blocks,
@@ -559,7 +559,13 @@ struct APICGraph {
 // Walk the operation byte stream once and verify that every record header,
 // variable-length payload, and op_type is within bounds. Prints a diagnostic
 // and returns false on first inconsistency. Defined in apic.cpp.
-bool apic_validate_operation_stream(const uint8_t* data, size_t size, uint32_t operation_count, uint32_t depth = 0);
+bool apic_validate_operation_stream(
+    const uint8_t* data,
+    size_t size,
+    uint32_t operation_count,
+    uint32_t depth = 0,
+    uint32_t format_version = APIC_FORMAT_VERSION
+);
 
 // ============================================================================
 // .wrp file reading helpers (pure C++, defined in apic.cpp)

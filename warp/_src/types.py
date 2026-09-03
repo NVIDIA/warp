@@ -2335,7 +2335,7 @@ def _make_launch_bounds_class(ndim: int):
         (ctypes.Structure,),
         {
             "_fields_": (
-                ("shape", ctypes.c_int32 * ndim),
+                ("shape", ctypes.c_uint32 * ndim),
                 ("size", ctypes.c_size_t),
                 ("coord_mult", ctypes.c_size_t),
             ),
