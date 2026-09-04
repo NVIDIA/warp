@@ -1,13 +1,21 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import contextlib
+import io
 import itertools
 import unittest
+import warnings
 
 import numpy as np
 
 import warp as wp
-from warp._src.optim.linear import TiledDot, _create_segmented_tiled_dot_kernels, _run_solver_loop
+from warp._src.optim.linear import (
+    _BLOCK_JACOBI_DIRECT_MAX_BLOCK_SIZE,
+    TiledDot,
+    _create_segmented_tiled_dot_kernels,
+    _run_solver_loop,
+)
 from warp.optim.linear import CG, CR, GMRES, BiCGSTAB, aslinearoperator, bicgstab, cg, cr, gmres, preconditioner
 from warp.sparse import bsr_from_triplets, bsr_identity, bsr_mv, bsr_set_from_triplets, bsr_zeros
 from warp.tests.unittest_utils import *
@@ -1207,6 +1215,41 @@ def test_block_jacobi_preconditioner_errors(test, device):
         preconditioner(A_dense, "block_jacobi_bogus_strategy")
 
 
+def test_block_jacobi_direct_size_cap_falls_back_to_tile(test, device):
+    """Verify "block_jacobi_direct" above the size cap warns and falls back to "block_jacobi_tile".
+
+    "block_jacobi_direct"'s QR kernel has a compile-time cost that grows sharply with block
+    size, so requesting it above ``_BLOCK_JACOBI_DIRECT_MAX_BLOCK_SIZE`` must fall back to
+    "block_jacobi_tile" (with a warning) instead of compiling the expensive kernel.
+    """
+    block_size = _BLOCK_JACOBI_DIRECT_MAX_BLOCK_SIZE + 4
+    A, b, _diag_blocks = _make_block_spd_system(
+        num_blocks=4, block_size=block_size, seed=99, device=device, dtype=wp.float32
+    )
+
+    # Warp's default logger routes warnings through its own `warnings.showwarning` override
+    # (see LoggerBasic.warning), which bypasses `assertWarns`' recorder; capture stderr instead,
+    # matching the pattern used elsewhere in this repo for warp-logger-emitted warnings.
+    original_log_level = wp.config.log_level
+    wp.config.log_level = wp.LOG_WARNING
+    try:
+        with warnings.catch_warnings(), contextlib.redirect_stderr(io.StringIO()) as stderr:
+            warnings.simplefilter("always", UserWarning)
+            M_fallback = preconditioner(A, "block_jacobi_direct")
+    finally:
+        wp.config.log_level = original_log_level
+    test.assertRegex(stderr.getvalue(), r"block_jacobi_direct.*falling back to 'block_jacobi_tile'")
+    M_tile = preconditioner(A, "block_jacobi_tile")
+
+    x_fallback = wp.zeros_like(b)
+    x_tile = wp.zeros_like(b)
+    M_fallback.matvec(b, x_fallback, x_fallback, alpha=1.0, beta=0.0)
+    M_tile.matvec(b, x_tile, x_tile, alpha=1.0, beta=0.0)
+
+    # Falling back to "tile" must produce "tile"'s actual output, not merely avoid an error.
+    assert_np_equal(x_fallback.numpy(), x_tile.numpy(), tol=1.0e-5)
+
+
 def test_block_jacobi_preconditioner_unsupported_dtype(test, device):
     """Verify "block_jacobi_tile"/"auto"-into-tile fail fast on an unsupported scalar type.
 
@@ -1370,6 +1413,12 @@ add_function_test(
     TestLinearSolvers,
     "test_block_jacobi_preconditioner_unsupported_dtype",
     test_block_jacobi_preconditioner_unsupported_dtype,
+    devices=devices,
+)
+add_function_test(
+    TestLinearSolvers,
+    "test_block_jacobi_direct_size_cap_falls_back_to_tile",
+    test_block_jacobi_direct_size_cap_falls_back_to_tile,
     devices=devices,
 )
 

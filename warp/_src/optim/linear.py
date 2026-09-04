@@ -9,6 +9,7 @@ from typing import Any
 
 import warp as wp
 import warp.sparse as sparse
+from warp._src.logger import log_warning
 from warp._src.types import type_is_matrix, type_is_vector, type_length, type_scalar_type
 
 __all__ = [
@@ -243,24 +244,37 @@ def preconditioner(A: _Matrix, ptype: str = "diag") -> LinearOperator:
          - ``"diag"``: Diagonal (a.k.a. Jacobi) preconditioner
          - ``"diag_abs"``: Similar to Jacobi, but using the absolute value of diagonal coefficients
          - ``"block_jacobi_direct"``: Block-Jacobi preconditioner that inverts each diagonal block
-           via a dense Householder-QR-based inverse. Cheapest setup for small blocks (roughly
-           2-6). Zero-safe: a numerically singular block falls back to the identity for that
-           block instead of producing NaNs, mirroring the zero-safe convention of ``"diag"``.
-           Supports any Warp floating scalar type, including ``float16``.
+           via a dense Householder-QR-based inverse. Zero-safe: a numerically singular block
+           falls back to the identity for that block instead of producing NaNs, mirroring the
+           zero-safe convention of ``"diag"``. Supports any Warp floating scalar type, including
+           ``float16``. **Not a performance-optimized choice**: benchmarking showed
+           ``"block_jacobi_tile"`` applies faster at every block size measured (2 through 16),
+           so pick this strategy for its ``float16`` support or zero-safe fallback behavior, not
+           for speed. Its QR-based kernel also has a steep one-time (per-process) compile-time
+           cost that grows sharply with block size (empirically, roughly 9 seconds at block size
+           8 and roughly 7 minutes at block size 16 on first use in a fresh process; cached
+           reruns are fast). To avoid that cliff, requesting this strategy for a block size
+           larger than 8 automatically falls back to ``"block_jacobi_tile"`` instead, with a
+           warning.
          - ``"block_jacobi_sequential"``: Block-Jacobi preconditioner that factorizes each
-           diagonal block via a scalar LDL^T factorization. Cheapest setup for medium blocks
-           (roughly 7-11). Requires the block to be symmetric positive-definite, but is
-           zero-safe like ``"block_jacobi_direct"``: a non-SPD block falls back to the identity
-           rather than producing NaNs. Supports any Warp floating scalar type, including
-           ``float16``.
+           diagonal block via a scalar LDL^T factorization. Requires the block to be symmetric
+           positive-definite, but is zero-safe like ``"block_jacobi_direct"``: a non-SPD block
+           falls back to the identity rather than producing NaNs. Supports any Warp floating
+           scalar type, including ``float16``. As with ``"block_jacobi_direct"``, benchmarking
+           showed ``"block_jacobi_tile"`` applies faster at every block size measured, so prefer
+           this strategy for ``float16``/zero-safe-fallback support rather than for speed.
          - ``"block_jacobi_tile"``: Block-Jacobi preconditioner that factorizes each diagonal
-           block via GPU-tile-parallel Cholesky. Best for large blocks (roughly 12 and up).
+           block via GPU-tile-parallel Cholesky. Applied fastest of the three strategies at every
+           block size benchmarked (2 through 16) and is the default target of
+           ``"block_jacobi_auto"`` for blocks above the ``"block_jacobi_direct"`` size cap.
            Unlike ``"block_jacobi_direct"``/``"block_jacobi_sequential"``, blocks must genuinely
            be symmetric positive-definite (no identity fallback), and ``A``'s scalar type must be
            ``float32`` or ``float64`` (the types supported by :func:`warp.tile_cholesky`).
-         - ``"block_jacobi_auto"``: Dispatches to ``"block_jacobi_direct"``,
-           ``"block_jacobi_sequential"``, or ``"block_jacobi_tile"`` based on block size (2-6,
-           7-11, and 12 and up, respectively).
+         - ``"block_jacobi_auto"``: Dispatches to ``"block_jacobi_direct"`` for block sizes 2-6,
+           ``"block_jacobi_sequential"`` for 7-11, or ``"block_jacobi_tile"`` for 12 and up.
+           These thresholds pick a strategy that supports the input scalar type and stays
+           zero-safe by default; they are not a performance recommendation (see
+           ``"block_jacobi_tile"`` above) and may change in the future.
          - ``"block_jacobi"``: Alias for ``"block_jacobi_auto"``, kept for backward
            compatibility.
 
@@ -290,9 +304,16 @@ _BLOCK_JACOBI_STRATEGIES = {
 # Block-size thresholds used by the "auto" block-Jacobi strategy: blocks of size
 # [2, _BLOCK_JACOBI_AUTO_DIRECT_MAX] use "direct", (..., _BLOCK_JACOBI_AUTO_SEQUENTIAL_MAX] use
 # "sequential", and anything larger uses "tile". Matches the ranges suggested in review, adjusted
-# to be non-overlapping.
+# to be non-overlapping. These are chosen for dtype/robustness coverage, not measured performance:
+# benchmarking found "tile" fastest to apply at every block size tested (2 through 16).
 _BLOCK_JACOBI_AUTO_DIRECT_MAX = 6
 _BLOCK_JACOBI_AUTO_SEQUENTIAL_MAX = 11
+
+# "block_jacobi_direct"'s QR-based kernel has a one-time (per-process) compile cost that grows
+# sharply with block size: empirically roughly 9 seconds at block size 8 and roughly 7 minutes at
+# block size 16 on first use in a fresh process (cached reruns are fast). Requesting "direct"
+# above this size instead falls back to "tile", with a warning.
+_BLOCK_JACOBI_DIRECT_MAX_BLOCK_SIZE = 8
 
 
 def _make_block_jacobi_preconditioner(A: _Matrix, strategy: str) -> LinearOperator:
@@ -322,6 +343,18 @@ def _make_block_jacobi_preconditioner(A: _Matrix, strategy: str) -> LinearOperat
         else:
             strategy = "tile"
 
+    if strategy == "direct" and block_size > _BLOCK_JACOBI_DIRECT_MAX_BLOCK_SIZE:
+        log_warning(
+            f"'block_jacobi_direct' preconditioner requested for block size {block_size}, which "
+            f"is larger than {_BLOCK_JACOBI_DIRECT_MAX_BLOCK_SIZE}. Its QR-based kernel has a "
+            f"steep one-time compile-time cost at larger block sizes (empirically, on the order "
+            f"of minutes by block size 16); falling back to 'block_jacobi_tile' instead, which "
+            f"was also faster to apply at every block size benchmarked.",
+            category=UserWarning,
+            stacklevel=3,
+        )
+        strategy = "tile"
+
     if strategy == "direct":
         return _make_block_jacobi_direct(A, block_size)
     if strategy == "sequential":
@@ -332,9 +365,11 @@ def _make_block_jacobi_preconditioner(A: _Matrix, strategy: str) -> LinearOperat
 def _make_block_jacobi_direct(A: _Matrix, block_size: int) -> LinearOperator:
     """Build a block-Jacobi preconditioner via a dense Householder-QR block inverse.
 
-    Cheapest setup among the block-Jacobi strategies; best suited to small blocks. Zero-safe (see
-    :func:`_block_inverse_qr`) and supports any Warp floating scalar type, since it performs
-    plain scalar arithmetic rather than using tile hardware.
+    Not the fastest strategy to apply (benchmarking found ``"tile"`` faster at every block size
+    tested); its value is ``float16`` support and zero-safe behavior (see
+    :func:`_block_inverse_qr`) via plain scalar arithmetic rather than tile hardware. Callers
+    should use :func:`_make_block_jacobi_preconditioner`, which caps ``block_size`` for this
+    strategy and falls back to ``"tile"`` above the cap.
     """
     device = A.device
     scalar_type = A.scalar_type
@@ -366,10 +401,11 @@ def _make_block_jacobi_direct(A: _Matrix, block_size: int) -> LinearOperator:
 def _make_block_jacobi_sequential(A: _Matrix, block_size: int) -> LinearOperator:
     """Build a block-Jacobi preconditioner via a scalar LDL^T block factorization.
 
-    Cheaper setup than ``"block_jacobi_tile"``; best suited to medium blocks. Requires blocks to
-    be symmetric positive-definite, but is zero-safe on non-SPD input (see :func:`_block_ldlt`),
-    and supports any Warp floating scalar type, since it performs plain scalar arithmetic rather
-    than using tile hardware.
+    Not the fastest strategy to apply (benchmarking found ``"tile"`` faster at every block size
+    tested); its value is ``float16`` support and zero-safe behavior on non-SPD input (see
+    :func:`_block_ldlt`) via plain scalar arithmetic rather than tile hardware. Requires blocks
+    to be symmetric positive-definite (falls back to identity on failure, see
+    :func:`_block_ldlt`).
     """
     device = A.device
     scalar_type = A.scalar_type
