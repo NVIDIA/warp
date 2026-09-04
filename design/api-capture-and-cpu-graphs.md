@@ -330,7 +330,7 @@ Deferred compilation is not part of the stream. Missing or incompatible module b
 
 #### ``.wrp`` format
 
-The feature is experimental. The current constants in ``warp/native/apic_types.h`` define writer version 15 and a readable range of versions 13 through 15. These numbers describe the operation and metadata wire format, not the Python package version.
+The feature is experimental. The current constants in ``warp/native/apic_types.h`` define writer version 16 and a readable range of versions 13 through 16. Version 16 changes kernel launch shapes from signed to unsigned 32-bit extents; readers reject high-bit launch shapes from older formats because their intended values are ambiguous. These numbers describe the operation and metadata wire format, not the Python package version.
 
 Contributors must follow these rules:
 

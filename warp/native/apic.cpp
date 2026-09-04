@@ -346,7 +346,7 @@ void apic_record_kernel_launch(
     const char* kernel_key,
     const char* module_hash,
     int is_forward,
-    const int* shape,
+    const uint32_t* shape,
     int ndim,
     uint64_t size,
     int max_blocks,
@@ -1432,7 +1432,9 @@ static bool apic_add_check(uint64_t a, uint64_t b, uint64_t* out)
 // op_type is recognized. Called once at stream-close time (end of recording
 // for live capture; after .wrp load for deserialized graphs). Replay paths
 // skip per-op bounds checks once this returns true.
-bool apic_validate_operation_stream(const uint8_t* data, size_t size, uint32_t operation_count, uint32_t depth)
+bool apic_validate_operation_stream(
+    const uint8_t* data, size_t size, uint32_t operation_count, uint32_t depth, uint32_t format_version
+)
 {
     // Cap conditional nesting before recursion can stack-overflow on a
     // malformed .wrp. 1024 levels is far past anything a real program will
@@ -1473,6 +1475,24 @@ bool apic_validate_operation_stream(const uint8_t* data, size_t size, uint32_t o
                 return false;
             }
             const APICLaunchRecord* rec = reinterpret_cast<const APICLaunchRecord*>(ptr);
+            if (format_version < APIC_UNSIGNED_LAUNCH_BOUNDS_VERSION) {
+                int ndim = rec->ndim;
+                if (ndim < 1)
+                    ndim = 1;
+                if (ndim > APIC_LAUNCH_MAX_DIMS)
+                    ndim = APIC_LAUNCH_MAX_DIMS;
+                for (int d = 0; d < ndim; d++) {
+                    if (rec->shape[d] > INT32_MAX) {
+                        fprintf(
+                            stderr,
+                            "APIC: Error - legacy kernel launch shape overflows signed 32-bit extent at operation "
+                            "%u dimension %d\n",
+                            i, d
+                        );
+                        return false;
+                    }
+                }
+            }
             const uint8_t* var_data = ptr + sizeof(APICLaunchRecord);
             if (var_data + rec->kernel_key_len + rec->module_hash_len > op_end) {
                 fprintf(stderr, "APIC: Error - kernel launch strings overflow at operation %u\n", i);
@@ -1871,7 +1891,9 @@ bool apic_validate_operation_stream(const uint8_t* data, size_t size, uint32_t o
             const uint8_t* branch_b = branch_a + rec->branch_a_size;
             // Recurse into the inner sub-streams.
             if (rec->branch_a_size > 0
-                && !apic_validate_operation_stream(branch_a, rec->branch_a_size, rec->branch_a_op_count, depth + 1)) {
+                && !apic_validate_operation_stream(
+                    branch_a, rec->branch_a_size, rec->branch_a_op_count, depth + 1, format_version
+                )) {
                 fprintf(stderr, "APIC: Error - branch_a invalid at operation %u\n", i);
                 return false;
             }
@@ -1880,7 +1902,9 @@ bool apic_validate_operation_stream(const uint8_t* data, size_t size, uint32_t o
                 return false;
             }
             if (rec->branch_b_size > 0
-                && !apic_validate_operation_stream(branch_b, rec->branch_b_size, rec->branch_b_op_count, depth + 1)) {
+                && !apic_validate_operation_stream(
+                    branch_b, rec->branch_b_size, rec->branch_b_op_count, depth + 1, format_version
+                )) {
                 fprintf(stderr, "APIC: Error - branch_b invalid at operation %u\n", i);
                 return false;
             }
@@ -2158,7 +2182,7 @@ static bool apic_cpu_replay_stream(
             memset(bounds_buf, 0, bounds_size);
             uint64_t shape_size = 1;
             for (int d = 0; d < ndim; d++)
-                reinterpret_cast<int*>(bounds_buf)[d] = rec->shape[d];
+                reinterpret_cast<uint32_t*>(bounds_buf)[d] = rec->shape[d];
             for (int d = 0; d < ndim; d++)
                 shape_size *= static_cast<uint64_t>(rec->shape[d]);
             *reinterpret_cast<size_t*>(bounds_buf + size_offset) = rec->size;
@@ -3273,7 +3297,9 @@ APICGraph* wp_apic_load_graph(void* context, const char* path, int device_type)
         memcpy(&operation_count, operations_ptr, sizeof(operation_count));
         operation_stream = operations_ptr + sizeof(operation_count);
         operation_stream_size = operations_size - sizeof(operation_count);
-        if (!apic_validate_operation_stream(operation_stream, operation_stream_size, operation_count)) {
+        if (!apic_validate_operation_stream(
+                operation_stream, operation_stream_size, operation_count, 0, header->version
+            )) {
             wp::set_error_string("APIC operation stream failed validation");
             return nullptr;
         }

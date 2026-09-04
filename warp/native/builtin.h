@@ -1897,7 +1897,7 @@ static constexpr int LAUNCH_MAX_DIMS = 4;  // should match types.py
 template <int N> struct launch_bounds_t {
     static_assert(N > 0 && N <= LAUNCH_MAX_DIMS, "launch_bounds_t<N> only supports 1-4 dimensions");
 
-    int shape[N];
+    uint32_t shape[N];
     size_t size;
     size_t coord_mult;  // threads sharing each coord tuple; launch_coord divides linear by this before unraveling
 };

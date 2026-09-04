@@ -365,7 +365,7 @@ static bool apic_replay_ops_into_cuda_capture(
                 memset(bounds_buf, 0, bounds_alloc_size);
 
                 uint64_t shape_size = 1;
-                int* shape_ptr = reinterpret_cast<int*>(bounds_buf);
+                uint32_t* shape_ptr = reinterpret_cast<uint32_t*>(bounds_buf);
                 for (int d = 0; d < ndim; d++) {
                     shape_ptr[d] = rec->shape[d];
                     shape_size *= static_cast<uint64_t>(rec->shape[d]);
