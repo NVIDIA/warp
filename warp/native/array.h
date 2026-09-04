@@ -828,7 +828,8 @@ CUDA_CALLABLE inline bool view_arg_is_slice(const slice_t&) { return true; }
 
 
 template <typename T, size_t... Idxs>
-size_t byte_offset_helper(array_t<T>& src, const slice_t (&slices)[sizeof...(Idxs)], index_sequence<Idxs...>)
+inline CUDA_CALLABLE size_t
+byte_offset_helper(array_t<T>& src, const slice_t (&slices)[sizeof...(Idxs)], index_sequence<Idxs...>)
 {
     return byte_offset(src, slices[Idxs].start...);
 }

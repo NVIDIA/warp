@@ -13,6 +13,20 @@
 
 #define WP_TILE_WARP_SIZE 32
 
+// Companions to WP_TILE_WARP_SIZE: one bit per lane of a tile warp, and the
+// intrinsics that operate on such a mask. Defined together so a change to the
+// warp width has a single place to touch.
+#define WP_TILE_FULL_WARP_MASK 0xffffffffu
+#define WP_TILE_POPC(mask) __popc(mask)
+#define WP_TILE_FFS(mask) __ffs(mask)
+
+// Type wide enough to hold one bit per lane.
+using wp_tile_warp_mask_t = decltype(WP_TILE_FULL_WARP_MASK);
+
+// Mask of every lane strictly below `lane`. The shift is performed in the mask
+// type so it cannot overflow.
+#define WP_TILE_LANES_BELOW(lane)     ((((wp_tile_warp_mask_t)1) << (lane)) - ((wp_tile_warp_mask_t)1))
+
 namespace wp {
 
 
@@ -217,7 +231,7 @@ template <typename T, typename Op> inline CUDA_CALLABLE T warp_reduce(T val, Op 
 {
     T sum = val;
 
-    if (mask == 0xFFFFFFFF) {
+    if (mask == WP_TILE_FULL_WARP_MASK) {
         // handle case where entire warp is active
         for (int offset = WP_TILE_WARP_SIZE / 2; offset > 0; offset /= 2) {
             sum = f(sum, warp_shuffle_down(sum, offset, mask));
@@ -245,7 +259,7 @@ inline CUDA_CALLABLE ValueAndIndex<T> warp_reduce_tracked(T val, int idx, Op f, 
     T sum = val;
     int index = idx;
 
-    if (mask == 0xFFFFFFFF) {
+    if (mask == WP_TILE_FULL_WARP_MASK) {
         // handle case where entire warp is active
         for (int offset = WP_TILE_WARP_SIZE / 2; offset > 0; offset /= 2) {
             auto shfl_val = warp_shuffle_down(sum, offset, mask);
@@ -283,7 +297,7 @@ block_combine_thread_results(T thread_sum, bool thread_has_data, Op f, T* partia
     const int lane_index = threadIdx.x % WP_TILE_WARP_SIZE;
 
     // determine which threads have data
-    unsigned int mask = __ballot_sync(0xFFFFFFFF, thread_has_data);
+    unsigned int mask = __ballot_sync(WP_TILE_FULL_WARP_MASK, thread_has_data);
     bool warp_is_active = mask != 0;
 
     // warp reduction
@@ -343,7 +357,7 @@ template <typename Tile, typename Op> CUDA_CALLABLE_DEVICE auto tile_reduce_impl
     T block_sum;
     if constexpr (warp_count == 1) {
         // fast path: single warp, just do warp reduction
-        unsigned int mask = __ballot_sync(0xFFFFFFFF, thread_has_data);
+        unsigned int mask = __ballot_sync(WP_TILE_FULL_WARP_MASK, thread_has_data);
         if (thread_has_data)
             block_sum = warp_reduce(thread_sum, f, mask);
 
@@ -440,7 +454,7 @@ template <int Axis, typename Op, typename Tile> CUDA_CALLABLE_DEVICE auto tile_r
 
                 // warp reduce this chunk (only valid lanes may call warp_reduce,
                 // because __shfl_down_sync requires all executing threads to be in the mask)
-                unsigned int mask = __ballot_sync(0xFFFFFFFF, valid);
+                unsigned int mask = __ballot_sync(WP_TILE_FULL_WARP_MASK, valid);
                 T chunk_result;
                 if (valid)
                     chunk_result = warp_reduce(val, f, mask);
@@ -494,7 +508,7 @@ template <int Axis, typename Op, typename Tile> CUDA_CALLABLE_DEVICE auto tile_r
             T block_sum;
             if constexpr (warp_count == 1) {
                 // fast path: single warp, just do warp reduction
-                unsigned int mask = __ballot_sync(0xFFFFFFFF, thread_has_data);
+                unsigned int mask = __ballot_sync(WP_TILE_FULL_WARP_MASK, thread_has_data);
                 if (thread_has_data)
                     block_sum = warp_reduce(thread_sum, f, mask);
 
@@ -565,7 +579,7 @@ CUDA_CALLABLE_DEVICE auto tile_arg_reduce_impl(Op f, OpTrack track, Tile& t)
     }
 
     // determine which threads have valid data
-    unsigned int mask = __ballot_sync(0xFFFFFFFF, thread_has_data);
+    unsigned int mask = __ballot_sync(WP_TILE_FULL_WARP_MASK, thread_has_data);
     bool warp_is_active = mask != 0;
 
     // warp reduction (only threads with valid data may participate,
@@ -813,7 +827,7 @@ template <typename TileA, typename TileB> CUDA_CALLABLE auto tile_dot(TileA& a, 
 
     ScalarT result {};
     if constexpr (warp_count == 1) {
-        unsigned int mask = __ballot_sync(0xFFFFFFFF, has_data);
+        unsigned int mask = __ballot_sync(WP_TILE_FULL_WARP_MASK, has_data);
         if (has_data)
             result = warp_reduce(thread_sum, add_op, mask);
 
