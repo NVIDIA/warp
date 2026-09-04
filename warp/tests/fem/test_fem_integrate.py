@@ -78,6 +78,11 @@ def scaled_bilinear_form(s: Sample, u: Field, v: Field, scale: wp.array[float]):
     return u(s) * v(s) * scale[0]
 
 
+@integrand
+def vector_component_form(s: Sample, v: Field):
+    return v(s)[0]
+
+
 # -- Test functions --
 
 
@@ -756,6 +761,48 @@ cuda_devices = get_selected_cuda_test_devices()
 cuda_devices_with_mempool = get_selected_cuda_test_devices_with_mempool()
 
 
+def test_integrate_scalar_output_layouts(test, device):
+    with wp.ScopedDevice(device):
+        geo = fem.Grid2D(res=wp.vec2i(2, 2))
+        space = fem.make_polynomial_space(geo, degree=1, dtype=wp.vec2)
+        test_field = fem.make_test(space)
+        node_count = space.node_count()
+        dof_count = test_field.node_dof_count
+
+        ref = fem.integrate(vector_component_form, fields={"v": test_field}).numpy()
+        ref_flat = ref.reshape(node_count * dof_count)
+
+        # flat scalar output, reinterpreted as (node_count, dof_count)
+        out_flat = wp.zeros(node_count * dof_count, dtype=wp.float32)
+        fem.integrate(vector_component_form, fields={"v": test_field}, output=out_flat)
+        assert_np_equal(out_flat.numpy(), ref_flat, tol=1.0e-6)
+
+        # 2d scalar output with matching last dimension
+        out_2d = wp.zeros((node_count, dof_count), dtype=wp.float32)
+        fem.integrate(vector_component_form, fields={"v": test_field}, output=out_2d)
+        assert_np_equal(out_2d.numpy(), ref, tol=1.0e-6)
+
+        # 2d scalar output with the wrong last dimension must be rejected, not written out of bounds
+        out_narrow = wp.zeros((node_count, dof_count - 1), dtype=wp.float32)
+        with test.assertRaisesRegex(RuntimeError, "last dimension must be of size 2"):
+            fem.integrate(vector_component_form, fields={"v": test_field}, output=out_narrow)
+
+        # flat scalar output that is too small must be rejected
+        out_short = wp.zeros(node_count * dof_count - 1, dtype=wp.float32)
+        with test.assertRaisesRegex(RuntimeError, f"at least {node_count * dof_count} entries"):
+            fem.integrate(vector_component_form, fields={"v": test_field}, output=out_short)
+
+        # flat scalar output must be contiguous, since it is reinterpreted through its pointer
+        out_strided = wp.zeros(2 * node_count * dof_count, dtype=wp.float32)[::2]
+        with test.assertRaisesRegex(RuntimeError, "must be contiguous"):
+            fem.integrate(vector_component_form, fields={"v": test_field}, output=out_strided)
+
+        # higher-dimensional scalar outputs are not reinterpreted
+        out_3d = wp.zeros((node_count, dof_count, 1), dtype=wp.float32)
+        with test.assertRaisesRegex(RuntimeError, "one- or two-dimensional"):
+            fem.integrate(vector_component_form, fields={"v": test_field}, output=out_3d)
+
+
 class TestFemIntegrate(unittest.TestCase):
     def test_make_space_partition_requires_space_topology(self):
         with self.assertRaisesRegex(TypeError, "missing 1 required positional argument: 'space_topology'"):
@@ -801,6 +848,9 @@ add_function_test(TestFemIntegrate, "test_vector_divergence_theorem", test_vecto
 add_function_test(TestFemIntegrate, "test_tensor_divergence_theorem", test_tensor_divergence_theorem, devices=devices)
 add_function_test(TestFemIntegrate, "test_grad_decomposition", test_grad_decomposition, devices=devices)
 add_function_test(TestFemIntegrate, "test_integrate_high_order", test_integrate_high_order, devices=cuda_devices)
+add_function_test(
+    TestFemIntegrate, "test_integrate_scalar_output_layouts", test_integrate_scalar_output_layouts, devices=devices
+)
 add_function_test(TestFemIntegrate, "test_padded_sparse_assembly", test_padded_sparse_assembly, devices=cuda_devices)
 add_function_test(TestFemIntegrate, "test_interpolate_reduction", test_interpolate_reduction, devices=devices)
 add_function_test(TestFemIntegrate, "test_capturability", test_capturability, devices=cuda_devices_with_mempool)
