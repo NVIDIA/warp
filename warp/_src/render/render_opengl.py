@@ -7,6 +7,7 @@ import ctypes
 import sys
 import time
 from collections import defaultdict
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -3222,33 +3223,57 @@ Instances: {len(self._instances)}"""
     def render_mesh(
         self,
         name: str,
-        points,
-        indices,
-        colors=None,
-        pos=(0.0, 0.0, 0.0),
-        rot=(0.0, 0.0, 0.0, 1.0),
-        scale=(1.0, 1.0, 1.0),
-        update_topology=False,
+        points: Sequence[Sequence[float]] | np.ndarray,
+        indices: Sequence[int] | Sequence[Sequence[int]] | np.ndarray,
+        colors: Sequence[float] | np.ndarray | None = None,
+        pos: Sequence[float] = (0.0, 0.0, 0.0),
+        rot: Sequence[float] = (0.0, 0.0, 0.0, 1.0),
+        scale: Sequence[float] = (1.0, 1.0, 1.0),
+        update_topology: bool = False,
         parent_body: str | None = None,
         is_template: bool = False,
         smooth_shading: bool = True,
         visible: bool = True,
-    ):
-        """Add a mesh for visualization
+    ) -> int:
+        """Create or update a triangular mesh for visualization.
+
+        When ``update_topology`` is ``False`` and ``name`` identifies an existing mesh instance, the renderer reuses
+        its registered topology and ignores ``indices``.
 
         Args:
-            name: The name of the mesh
-            points: The points of the mesh
-            indices: The indices of the mesh
-            colors: The colors of the mesh
-            pos: The position of the mesh
-            rot: The rotation of the mesh
-            scale: The scale of the mesh
-            update_topology: Whether to update the topology of an existing mesh
-            parent_body: The name of the parent body (optional)
-            is_template: Whether the mesh is a template
-            smooth_shading: Whether to average face normals at each vertex or introduce additional vertices for each face
-            visible: Whether the mesh is visible
+            name: Name used to identify the mesh or template.
+            points: Array-like vertex positions with shape ``(num_points, 3)``. Values are converted to ``float32``.
+            indices: Triangle vertex indices supplied as a flat array or with shape ``(num_triangles, 3)``. Values are
+                converted to ``int32`` when creating or updating topology.
+            colors: Optional RGB color for the mesh instance.
+            pos: Translation in ``(x, y, z)`` order.
+            rot: Orientation quaternion in ``(x, y, z, w)`` order.
+            scale: Per-axis scale in ``(x, y, z)`` order.
+            update_topology: Whether to replace the topology of an existing named mesh.
+            parent_body: Optional parent body name.
+            is_template: Whether to register reusable geometry without creating an instance.
+            smooth_shading: Whether to average face normals at each vertex. If ``False``, each triangle receives its own
+                vertices and face normal.
+            visible: Whether the mesh instance should be visible.
+
+        Returns:
+            The integer ID of the registered shape.
+
+        Raises:
+            ValueError: If consumed indices cannot be grouped into triangles or contain a value outside
+                ``[0, min(len(points), 2**31))``.
+
+        Example:
+            Render a single triangle using an initialized renderer:
+
+            .. code-block:: python
+
+                shape = renderer.render_mesh(
+                    name="triangle",
+                    points=((0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0)),
+                    indices=(0, 1, 2),
+                    colors=(0.2, 0.4, 0.8),
+                )
         """
         if colors is not None:
             colors = np.array(colors, dtype=np.float32)
@@ -3256,13 +3281,16 @@ Instances: {len(self._instances)}"""
         points = np.array(points, dtype=np.float32)
         point_count = len(points)
 
+        # Existing instances reuse their registered topology, so skip copying and validating ignored indices.
         if not update_topology and name in self._instances:
             shape = self._instances[name][2]
             self.update_shape_instance(name, pos, rot, color1=colors, color2=colors, scale=scale, visible=visible)
             self.update_shape_vertices(shape, points)
             return shape
 
+        # Snapshot caller-owned input so validation and rendering use the same index values.
         source_indices = np.array(indices, copy=True)
+        # Indices must address an existing point and fit Warp's int32 index type.
         index_limit = min(point_count, np.iinfo(np.int32).max + 1)
         if source_indices.size:
             min_index = source_indices.min()
@@ -3273,6 +3301,7 @@ Instances: {len(self._instances)}"""
                     f"but found an index range of [{min_index}, {max_index}]"
                 )
 
+        # Reuse an int32 snapshot directly; converting other dtypes allocates as needed.
         indices = np.asarray(source_indices, dtype=np.int32).reshape((-1, 3))
         idx_count = len(indices)
 
@@ -3304,6 +3333,7 @@ Instances: {len(self._instances)}"""
         # No existing shape for the given mesh was found, or its topology may have changed,
         # so we need to define a new one either way.
         with wp.ScopedDevice(self._device):
+            # Smooth shading preserves shared vertices; flat shading expands each face corner into a distinct vertex.
             if smooth_shading:
                 normals = wp.zeros(point_count, dtype=wp.vec3)
                 vertices = wp.array(points, dtype=wp.vec3)
