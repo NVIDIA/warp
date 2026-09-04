@@ -16,8 +16,12 @@ fi
 # 2. Install the pinned CPython interpreter (uv reads .python-version).
 uv python install
 
-# 3. Sync the project environment with dev + examples dependencies.
-uv sync --extra dev
+# 3. Build the native libraries (CPU-only) BEFORE syncing the project.
+#    setup.py aborts if warp/bin is empty ("run build_lib.py first"), so the
+#    editable install in step 4 requires the binaries to already exist. Use
+#    --no-project so this step does not try to build the warp-lang package
+#    itself (which would hit the same empty-warp/bin failure).
+uv run --no-project --with numpy build_lib.py --no-cuda
 
-# 4. Build the native libraries (CPU-only). Rebuilds are cheap and idempotent.
-uv run build_lib.py --no-cuda
+# 4. Sync the project environment with dev + examples dependencies.
+uv sync --extra dev
