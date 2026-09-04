@@ -3273,7 +3273,7 @@ Instances: {len(self._instances)}"""
                     f"but found an index range of [{min_index}, {max_index}]"
                 )
 
-        indices = np.array(source_indices, dtype=np.int32).reshape((-1, 3))
+        indices = np.asarray(source_indices, dtype=np.int32).reshape((-1, 3))
         idx_count = len(indices)
 
         geo_hash = hash((points.tobytes(), indices.tobytes()))
