@@ -35,6 +35,7 @@ from warp._src.module_registry import register_module_source as _register_module
 # stubs. ``# fmt: off`` stops the formatter from wrapping the longer lines.
 # fmt: off
 _register_module_source("warp.autograd", "warp._src.autograd")
+_register_module_source("warp.geometry", "warp._src.geometry")
 _register_module_source("warp.marching_cubes", "warp._src.marching_cubes")
 _register_module_source("warp.math", "warp._src.math")
 _register_module_source("warp.sparse", "warp._src.sparse")

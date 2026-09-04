@@ -31,6 +31,7 @@ import numpy as np
 import warp as wp
 import warp.examples.fem.utils as fem_example_utils
 import warp.fem as fem
+import warp.geometry
 from warp.optim import Adam
 
 
@@ -144,103 +145,6 @@ def symmetrize_field(s: fem.Sample, domain: fem.Domain, field: fem.Field):
 @wp.kernel
 def add_volume_loss(loss: wp.array[wp.float32], vol: wp.array[wp.float32], target_vol: wp.float32, weight: wp.float32):
     loss[0] += weight * (vol[0] - target_vol) * (vol[0] - target_vol)
-
-
-def delaunay_edge_flip(positions_np, tri_indices_np, ref_positions_np=None):
-    """Flip interior edges to restore the Delaunay property.
-
-    Args:
-        positions_np: (N, 2) array of vertex positions.
-        tri_indices_np: (M, 3) array of triangle vertex indices (modified in-place).
-        ref_positions_np: Optional (N, 2) array of reference vertex positions.
-            When provided, flips that would create degenerate triangles on the
-            reference configuration are rejected.
-
-    Returns:
-        Tuple of (tri_indices_np, total_num_flips).
-    """
-
-    def _in_circumcircle(ax, ay, bx, by, cx, cy, dx, dy):
-        """Return True if point d lies strictly inside the circumcircle of CCW triangle (a, b, c)."""
-        adx, ady = ax - dx, ay - dy
-        bdx, bdy = bx - dx, by - dy
-        cdx, cdy = cx - dx, cy - dy
-        det = adx * (bdy * (cdx * cdx + cdy * cdy) - cdy * (bdx * bdx + bdy * bdy))
-        det -= ady * (bdx * (cdx * cdx + cdy * cdy) - cdx * (bdx * bdx + bdy * bdy))
-        det += (adx * adx + ady * ady) * (bdx * cdy - bdy * cdx)
-        return det > 0.0
-
-    def _signed_area(ax, ay, bx, by, cx, cy):
-        return 0.5 * ((bx - ax) * (cy - ay) - (by - ay) * (cx - ax))
-
-    total_flips = 0
-
-    while True:
-        # Build edge adjacency: edge -> list of triangle indices
-        edge_to_tris = {}
-        for ti in range(len(tri_indices_np)):
-            v = tri_indices_np[ti]
-            for j in range(3):
-                a, b = int(v[j]), int(v[(j + 1) % 3])
-                edge = (min(a, b), max(a, b))
-                if edge not in edge_to_tris:
-                    edge_to_tris[edge] = []
-                edge_to_tris[edge].append(ti)
-
-        pass_flips = 0
-        for (a, b), tris in edge_to_tris.items():
-            if len(tris) != 2:
-                continue
-            t0, t1 = tris
-
-            # Find opposite vertices
-            v0 = tri_indices_np[t0]
-            v1 = tri_indices_np[t1]
-            c = int(next(x for x in v0 if x != a and x != b))
-            d = int(next(x for x in v1 if x != a and x != b))
-
-            ax, ay = positions_np[a]
-            bx, by = positions_np[b]
-            cx, cy = positions_np[c]
-            dx, dy = positions_np[d]
-
-            # Check convexity: both new triangles must have positive area
-            if _signed_area(ax, ay, dx, dy, cx, cy) <= 0.0:
-                continue
-            if _signed_area(bx, by, cx, cy, dx, dy) <= 0.0:
-                continue
-
-            # Circumcircle test: flip if d is inside circumcircle of (a, b, c)
-            # Swap coordinates (not vertex indices) to ensure CCW for the test
-            test_ax, test_ay, test_bx, test_by = ax, ay, bx, by
-            if _signed_area(ax, ay, bx, by, cx, cy) < 0.0:
-                test_ax, test_ay, test_bx, test_by = bx, by, ax, ay
-
-            if not _in_circumcircle(test_ax, test_ay, test_bx, test_by, cx, cy, dx, dy):
-                continue
-
-            # Reject flips that would create degenerate triangles on the reference mesh
-            if ref_positions_np is not None:
-                rax, ray = ref_positions_np[a]
-                rbx, rby = ref_positions_np[b]
-                rcx, rcy = ref_positions_np[c]
-                rdx, rdy = ref_positions_np[d]
-                if abs(_signed_area(rax, ray, rdx, rdy, rcx, rcy)) <= 1.0e-10:
-                    continue
-                if abs(_signed_area(rbx, rby, rcx, rcy, rdx, rdy)) <= 1.0e-10:
-                    continue
-
-            # Flip: replace edge (a,b) with edge (c,d)
-            # Use original a,b — convexity check verified (a,d,c) and (b,c,d) are CCW
-            tri_indices_np[t0] = [a, d, c]
-            tri_indices_np[t1] = [b, c, d]
-            pass_flips += 1
-
-        total_flips += pass_flips
-        if pass_flips == 0:
-            break
-
-    return tri_indices_np, total_flips
 
 
 class Example:
@@ -425,18 +329,21 @@ class Example:
         if self._tri_vertex_indices is None:
             return
 
-        positions_np = self._vertex_positions.numpy()
-        ref_positions_np = self._initial_positions.numpy()
-        tri_np = self._tri_vertex_indices.numpy()
-        tri_np, num_flips = delaunay_edge_flip(positions_np, tri_np, ref_positions_np=ref_positions_np)
+        # Flip non-Delaunay interior edges directly on the device, updating the
+        # triangle connectivity in place. Reference positions guard against flips
+        # that would degenerate the reference configuration.
+        num_flips = int(
+            warp.geometry.delaunay_edge_flip(
+                self._vertex_positions,
+                self._tri_vertex_indices,
+                ref_positions=self._initial_positions,
+            ).numpy()[0]
+        )
         if num_flips == 0:
             return
 
         if not self._quiet:
             print(f"Remesh: {num_flips} edge flip(s)")
-
-        # Write back updated connectivity in-place
-        wp.copy(src=wp.array(tri_np, dtype=int), dest=self._tri_vertex_indices)
 
         # Rebuild spaces and fields on the existing geometry.
         # We intentionally avoid recreating the Trimesh2D objects: edge flips
@@ -608,8 +515,12 @@ if __name__ == "__main__":
     )
     parser.add_argument("--lr", type=float, default=1.0e-3, help="Learning rate.")
     parser.add_argument("--num-iters", type=int, default=750, help="Number of iterations.")
+    # Improving the remesher revealed that poor/inactive remeshing was acting as
+    # an ad-hoc regularizer for the shape optimization. Remeshing drives to a
+    # lower loss, but less aesthetic solution, so disabled by default until the
+    # loss definition can be revisited.
     parser.add_argument(
-        "--remesh-interval", type=int, default=10, help="Edge-flip remeshing every N iters (0 to disable)."
+        "--remesh-interval", type=int, default=0, help="Edge-flip remeshing every N iters (0 to disable)."
     )
 
     args = parser.parse_known_args()[0]
