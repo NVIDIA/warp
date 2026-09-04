@@ -675,8 +675,8 @@ def array_inner(
 ) -> wp.array | float:
     """Compute the inner product of two arrays.
 
-    This function computes the dot product between two arrays, optionally along a specified axis.
-    The operation can be performed on the entire arrays or along a specific dimension.
+    This function computes the dot product between two arrays with the same shape, optionally along a specified axis.
+    When ``axis`` is ``None``, it computes a single inner product over the flattened arrays.
 
     During CPU graph capture, or CUDA graph capture with ``apic=True``,
     non-empty calls require an explicit ``out`` array so replay can store the
@@ -688,26 +688,27 @@ def array_inner(
 
     Args:
         a: First input array.
-        b: Second input array. Must match shape and type of a.
+        b: Second input array. Must have the same shape and data type as ``a``.
         out: Output array to store results. If ``None``, a new array is created.
         count: Number of elements to process. If ``None``, processes entire arrays.
         axis: Axis along which to compute inner product. Negative values count from the last dimension. If ``None``,
-            computes on flattened arrays.
+            computes a single inner product over the flattened arrays.
 
     Returns:
         The inner product result. Returns a float if ``axis`` is ``None`` and ``out`` is ``None``,
         otherwise returns the ``out`` array.
 
     Raises:
+        ValueError: If ``a`` and ``b`` have different shapes.
         IndexError: If ``axis`` is outside the valid range for ``a``.
-        RuntimeError: If array storage devices, sizes, or data types are incompatible, or if an APIC-recorded call
-            uses an unsupported count or memory layout.
+        RuntimeError: If array storage devices or data types are incompatible, or if an APIC-recorded call uses an
+            unsupported count or memory layout.
         NotImplementedError: If a non-empty call during APIC recording omits
             ``out``. Also raised if any input or output array has a negative
             stride during APIC recording, including for a zero-count call.
     """
-    if a.size != b.size:
-        raise RuntimeError(f"A and b array storage sizes do not match ({a.size} vs {b.size})")
+    if a.shape != b.shape:
+        raise ValueError(f"array_inner() arguments must have the same shape, got {a.shape} and {b.shape}")
 
     if a.device != b.device:
         raise RuntimeError(f"A and b array storage devices do not match ({a.device} vs {b.device})")

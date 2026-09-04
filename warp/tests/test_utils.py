@@ -815,14 +815,28 @@ def test_array_inner(test, device):
     test.assertEqual(wp.utils.array_inner(a, b), 14.0)
 
 
-def test_array_inner_error_sizes_mismatch(test, device):
-    a = wp.array((1.0, 2.0), dtype=wp.float32, device=device)
-    b = wp.array((1.0, 2.0, 3.0), dtype=wp.float32, device=device)
-    with test.assertRaisesRegex(
-        RuntimeError,
-        r"A and b array storage sizes do not match \(2 vs 3\)$",
-    ):
-        wp.utils.array_inner(a, b)
+def test_array_inner_error_shapes_mismatch(test, device):
+    """Verify that ``array_inner()`` rejects mismatched input shapes."""
+    cases = (
+        ((2,), (3,), {}),
+        ((2, 3), (6,), {}),
+        ((2, 3), (6,), {"axis": 1}),
+        ((2, 3), (6,), {"count": 0}),
+        ((0, 3), (3, 0), {}),
+    )
+
+    for a_shape, b_shape, kwargs in cases:
+        with test.subTest(a_shape=a_shape, b_shape=b_shape, kwargs=kwargs):
+            a = wp.empty(a_shape, dtype=wp.float32, device=device)
+            b = wp.empty(b_shape, dtype=wp.float32, device=device)
+
+            with test.assertRaises(ValueError) as raises:
+                wp.utils.array_inner(a, b, **kwargs)
+
+            test.assertEqual(
+                str(raises.exception),
+                f"array_inner() arguments must have the same shape, got {a_shape} and {b_shape}",
+            )
 
 
 def test_array_inner_error_dtypes_mismatch(test, device):
@@ -1252,7 +1266,7 @@ add_function_test(
 )
 add_function_test(TestUtils, "test_array_inner", test_array_inner, devices=devices)
 add_function_test(
-    TestUtils, "test_array_inner_error_sizes_mismatch", test_array_inner_error_sizes_mismatch, devices=devices
+    TestUtils, "test_array_inner_error_shapes_mismatch", test_array_inner_error_shapes_mismatch, devices=devices
 )
 add_function_test(
     TestUtils, "test_array_inner_error_dtypes_mismatch", test_array_inner_error_dtypes_mismatch, devices=devices
