@@ -564,21 +564,66 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tile</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#warp._src.lang.tile_atomic_add" title="Link to this definition">#</a></dt>
-<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Atomically add a tile onto the array <code class="docutils literal notranslate"><span class="pre">a</span></code>.</p>
-<p>Each element is updated atomically.</p>
+<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Atomically add a tile onto the array <code class="docutils literal notranslate"><span class="pre">a</span></code> and return the values it replaced.</p>
+<p>This is a cooperative operation: the threads of the block divide the work between
+them, so every thread must reach the call. Element <code class="docutils literal notranslate"><span class="pre">(i,</span> <span class="pre">j,</span> <span class="pre">...)</span></code> of <code class="docutils literal notranslate"><span class="pre">t</span></code> is added
+atomically to <code class="docutils literal notranslate"><span class="pre">a[offset[0]</span> <span class="pre">+</span> <span class="pre">i,</span> <span class="pre">offset[1]</span> <span class="pre">+</span> <span class="pre">j,</span> <span class="pre">...]</span></code> and the destination’s previous
+value is placed in the returned tile. No barrier is issued by the call itself.</p>
+<p>Only the individual element updates are atomic. Concurrent updates from other threads
+or blocks are interleaved in an unspecified order, so the returned values — and, for
+floating-point types, the rounding of the accumulated result — are not reproducible.
+For Warp struct elements, only fields whose underlying scalar type supports atomic
+addition are updated. Boolean, narrow-integer, array, and other non-atomic fields
+remain unchanged, although their previous values are still present in the returned
+tile.</p>
+<p>In a backward pass the gradients of the updated region of <code class="docutils literal notranslate"><span class="pre">a</span></code> are accumulated into
+the adjoint of <code class="docutils literal notranslate"><span class="pre">t</span></code> and left in place in <code class="docutils literal notranslate"><span class="pre">a.grad</span></code>; the adjoint of the returned tile
+is not propagated.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>a</strong> – Array in global memory, should have the same <code class="docutils literal notranslate"><span class="pre">dtype</span></code> as the input tile</p></li>
+<li><p><strong>a</strong> – Array in global memory, must have the same <code class="docutils literal notranslate"><span class="pre">dtype</span></code> as the input tile. Its
+underlying scalar type must be one that supports atomic addition: <code class="docutils literal notranslate"><span class="pre">int32</span></code>,
+<code class="docutils literal notranslate"><span class="pre">uint32</span></code>, <code class="docutils literal notranslate"><span class="pre">int64</span></code>, <code class="docutils literal notranslate"><span class="pre">uint64</span></code>, <code class="docutils literal notranslate"><span class="pre">float16</span></code>, <code class="docutils literal notranslate"><span class="pre">bfloat16</span></code>, <code class="docutils literal notranslate"><span class="pre">float32</span></code>, or
+<code class="docutils literal notranslate"><span class="pre">float64</span></code>.</p></li>
 <li><p><strong>t</strong> – Source tile to add to the destination array</p></li>
-<li><p><strong>offset</strong> – Offset in the destination array (optional)</p></li>
-<li><p><strong>bounds_check</strong> – Needed for unaligned tiles, but can disable for memory-aligned tiles for faster write times</p></li>
+<li><p><strong>offset</strong> – Offset in the destination array, one value per dimension of <code class="docutils literal notranslate"><span class="pre">a</span></code>; may be
+a runtime value.</p></li>
+<li><p><strong>bounds_check</strong> – Whether to treat a destination coordinate at or past the array’s
+upper extent on any axis as out of bounds; such updates are skipped. Must be
+a compile-time constant.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>A tile with the same dimensions and data type as the source tile, holding the original value of the destination elements.</p>
+<dd class="field-even"><p>A tile with the same shape, data type and storage as <code class="docutils literal notranslate"><span class="pre">t</span></code>, holding the value each
+destination element had before the addition. Passing a shared <code class="docutils literal notranslate"><span class="pre">t</span></code> therefore
+allocates a second shared-memory tile for the result.</p>
 </dd>
 </dl>
+<p class="rubric">Example</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">TILE_THREADS</span> <span class="o">=</span> <span class="mi">2</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">accumulate</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array2d</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">totals</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array2d</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">previous</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array2d</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+    <span class="c1"># `p` holds what `totals` contained before the addition</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_atomic_add</span><span class="p">(</span><span class="n">totals</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">previous</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+<span class="n">totals</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+<span class="n">previous</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch_tiled</span><span class="p">(</span><span class="n">accumulate</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">x</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">totals</span><span class="p">,</span> <span class="n">previous</span><span class="p">],</span> <span class="n">block_dim</span><span class="o">=</span><span class="n">TILE_THREADS</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">totals</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">previous</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[[1. 3.]
+ [5. 7.]]
+[[0. 1.]
+ [2. 3.]]
+</pre></div>
+</div>
 </dd></dl>
 
 <dl class="py function">
@@ -593,7 +638,10 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tile</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span></dt>
-<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Atomically add a tile onto the array <code class="docutils literal notranslate"><span class="pre">a</span></code>.</p>
+<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Atomically add a 1D tile onto the 1D array <code class="docutils literal notranslate"><span class="pre">a</span></code> and return the values it replaced.</p>
+<p>Overload for a scalar <code class="docutils literal notranslate"><span class="pre">offset</span></code>, equivalent to passing a one-element tuple. For
+the full contract and a usage example, see the overload that takes a tuple-valued
+<code class="docutils literal notranslate"><span class="pre">offset</span></code> argument.</p>
 </dd></dl>
 
 </section>

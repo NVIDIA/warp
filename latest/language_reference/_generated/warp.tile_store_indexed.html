@@ -565,62 +565,56 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#warp._src.lang.tile_store_indexed" title="Link to this definition">#</a></dt>
-<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Store a tile to a global memory array, with storage along a specified axis mapped according to a 1D tile of indices.</p>
+<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Store a tile to a global memory array, scattering along one axis through a 1D tile of indices.</p>
+<p>Cooperative operation: every thread of the block must reach the call. Element <code class="docutils literal notranslate"><span class="pre">c</span></code>
+of <code class="docutils literal notranslate"><span class="pre">t</span></code> is written to <code class="docutils literal notranslate"><span class="pre">a</span></code> at <code class="docutils literal notranslate"><span class="pre">offset[d]</span> <span class="pre">+</span> <span class="pre">c[d]</span></code> along every dimension <code class="docutils literal notranslate"><span class="pre">d</span></code>
+other than <code class="docutils literal notranslate"><span class="pre">axis</span></code>, and at
+<code class="docutils literal notranslate"><span class="pre">offset[axis]</span> <span class="pre">+</span> <span class="pre">indices[c[axis]]</span></code> along <code class="docutils literal notranslate"><span class="pre">axis</span></code>. Every coordinate is checked
+against both the lower and upper array bounds: an element whose destination index is
+negative or past the end of <code class="docutils literal notranslate"><span class="pre">a</span></code> is skipped, so <code class="docutils literal notranslate"><span class="pre">-1</span></code> can be used to discard a
+slice.</p>
+<p>The selected elements of <code class="docutils literal notranslate"><span class="pre">a</span></code> are overwritten. Each destination must be selected by
+at most one element — duplicate indices race. <code class="docutils literal notranslate"><span class="pre">axis</span></code> must be a compile-time
+constant. The backward pass accumulates gradients at the written destinations into
+the adjoint of <code class="docutils literal notranslate"><span class="pre">t</span></code>, then clears those entries from <code class="docutils literal notranslate"><span class="pre">a.grad</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>a</strong> – The destination array in global memory</p></li>
-<li><p><strong>indices</strong> – A 1D tile of integer indices mapping to elements in <code class="docutils literal notranslate"><span class="pre">a</span></code>.</p></li>
-<li><p><strong>t</strong> – The source tile to store data from, must have the same data type and number of dimensions as the destination array, and along <code class="docutils literal notranslate"><span class="pre">axis</span></code>, it must have the same number of elements as the <code class="docutils literal notranslate"><span class="pre">indices</span></code> tile.</p></li>
-<li><p><strong>offset</strong> – Offset in the destination array (optional)</p></li>
-<li><p><strong>axis</strong> – Axis of <code class="docutils literal notranslate"><span class="pre">a</span></code> that indices refer to.</p></li>
+<li><p><strong>indices</strong> – A 1D tile of <code class="docutils literal notranslate"><span class="pre">int32</span></code> indices into <code class="docutils literal notranslate"><span class="pre">a</span></code> along <code class="docutils literal notranslate"><span class="pre">axis</span></code>. It must hold
+exactly <code class="docutils literal notranslate"><span class="pre">t.shape[axis]</span></code> values and is always placed in shared memory (a
+register tile passed here is promoted).</p></li>
+<li><p><strong>t</strong> – The source tile to store data from, must have the same data type and number of
+dimensions as the destination array, and along <code class="docutils literal notranslate"><span class="pre">axis</span></code> the same number of
+elements as the <code class="docutils literal notranslate"><span class="pre">indices</span></code> tile</p></li>
+<li><p><strong>offset</strong> – Offset in the destination array, one value per dimension of <code class="docutils literal notranslate"><span class="pre">a</span></code>. The
+entry for <code class="docutils literal notranslate"><span class="pre">axis</span></code> is added to each index; may be a runtime value.</p></li>
+<li><p><strong>axis</strong> – Axis of <code class="docutils literal notranslate"><span class="pre">a</span></code> that the indices refer to</p></li>
 </ul>
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<p>This example shows how to map tile rows to the even rows of a 2D array.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">TILE_M</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
-<span class="n">TILE_N</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
-<span class="n">TWO_M</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="n">TILE_M</span> <span class="o">*</span> <span class="mi">2</span><span class="p">)</span>
-<span class="n">TWO_N</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="n">TILE_N</span> <span class="o">*</span> <span class="mi">2</span><span class="p">)</span>
+<p>This example writes the rows of a tile to the even-numbered rows of a 2D array.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">TILE_M</span><span class="p">,</span> <span class="n">TILE_N</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">4</span>
+<span class="n">TILE_THREADS</span> <span class="o">=</span> <span class="mi">4</span>
 
 <span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">compute</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array2d</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">y</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array2d</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
-    <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">scatter_even_rows</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array2d</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">y</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array2d</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">TILE_M</span><span class="p">,</span> <span class="n">TILE_N</span><span class="p">))</span>
+    <span class="c1"># tile row k is written to row 2*k of `y`</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_arange</span><span class="p">(</span><span class="n">TILE_M</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span> <span class="o">*</span> <span class="mi">2</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_store_indexed</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">indices</span><span class="o">=</span><span class="n">rows</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="n">t</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
 
-    <span class="n">t</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">TILE_M</span><span class="p">,</span> <span class="n">TILE_N</span><span class="p">),</span> <span class="n">offset</span><span class="o">=</span><span class="p">(</span><span class="n">i</span><span class="o">*</span><span class="n">TILE_M</span><span class="p">,</span> <span class="n">j</span><span class="o">*</span><span class="n">TILE_N</span><span class="p">),</span> <span class="n">storage</span><span class="o">=</span><span class="s2">&quot;register&quot;</span><span class="p">)</span>
-
-    <span class="n">evens_M</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_arange</span><span class="p">(</span><span class="n">TILE_M</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">storage</span><span class="o">=</span><span class="s2">&quot;shared&quot;</span><span class="p">)</span> <span class="o">*</span> <span class="mi">2</span>
-
-    <span class="n">wp</span><span class="o">.</span><span class="n">tile_store_indexed</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">indices</span><span class="o">=</span><span class="n">evens_M</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="n">t</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="p">(</span><span class="n">i</span><span class="o">*</span><span class="n">TWO_M</span><span class="p">,</span> <span class="n">j</span><span class="o">*</span><span class="n">TILE_N</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-
-<span class="n">M</span> <span class="o">=</span> <span class="n">TILE_M</span> <span class="o">*</span> <span class="mi">2</span>
-<span class="n">N</span> <span class="o">=</span> <span class="n">TILE_N</span> <span class="o">*</span> <span class="mi">2</span>
-
-<span class="n">arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">M</span> <span class="o">*</span> <span class="n">N</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">M</span><span class="p">,</span> <span class="n">N</span><span class="p">)</span>
-
-<span class="n">x</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
-<span class="n">y</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">M</span> <span class="o">*</span> <span class="mi">2</span><span class="p">,</span> <span class="n">N</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
-
-<span class="n">wp</span><span class="o">.</span><span class="n">launch_tiled</span><span class="p">(</span><span class="n">compute</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">],</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">x</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">y</span><span class="p">],</span> <span class="n">block_dim</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch_tiled</span><span class="p">(</span><span class="n">scatter_even_rows</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">x</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">y</span><span class="p">],</span> <span class="n">block_dim</span><span class="o">=</span><span class="n">TILE_THREADS</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">y</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
 </pre></div>
 </div>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>[[ 0.  1.  2.  3.]
-    [ 4.  5.  6.  7.]
-    [ 8.  9. 10. 11.]
-    [12. 13. 14. 15.]]
-
-[[ 0.  1.  2.  3.]
-    [ 0.  0.  0.  0.]
-    [ 4.  5.  6.  7.]
-    [ 0.  0.  0.  0.]
-    [ 8.  9. 10. 11.]
-    [ 0.  0.  0.  0.]
-    [12. 13. 14. 15.]
-    [ 0.  0.  0.  0.]]
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[[1. 2. 3. 4.]
+ [0. 0. 0. 0.]
+ [5. 6. 7. 8.]
+ [0. 0. 0. 0.]]
 </pre></div>
 </div>
 </dd></dl>

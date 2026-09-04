@@ -567,30 +567,58 @@
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tile</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#warp._src.lang.tile_load" title="Link to this definition">#</a></dt>
 <dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Load a tile from a global memory array.</p>
-<p>This method will cooperatively load a tile from global memory using all threads in the block.</p>
+<p>This is a cooperative operation: the threads of the block divide the copy between
+them, so every thread must reach the call. Tile element <code class="docutils literal notranslate"><span class="pre">(i,</span> <span class="pre">j,</span> <span class="pre">...)</span></code> is read from
+<code class="docutils literal notranslate"><span class="pre">a[offset[0]</span> <span class="pre">+</span> <span class="pre">i,</span> <span class="pre">offset[1]</span> <span class="pre">+</span> <span class="pre">j,</span> <span class="pre">...]</span></code>.</p>
+<p>With <code class="docutils literal notranslate"><span class="pre">&quot;shared&quot;</span></code> storage, every thread in the block can access every tile element.
+With <code class="docutils literal notranslate"><span class="pre">&quot;register&quot;</span></code> storage, the tile elements are distributed across the block’s
+threads. <code class="docutils literal notranslate"><span class="pre">shape</span></code>, <code class="docutils literal notranslate"><span class="pre">storage</span></code>, <code class="docutils literal notranslate"><span class="pre">bounds_check</span></code>, and <code class="docutils literal notranslate"><span class="pre">aligned</span></code> must be compile-time
+constants.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>a</strong> – The source array in global memory</p></li>
 <li><p><strong>shape</strong> – Shape of the tile to load, must have the same number of dimensions as <code class="docutils literal notranslate"><span class="pre">a</span></code></p></li>
-<li><p><strong>offset</strong> – Offset in the source array to begin reading from (optional)</p></li>
-<li><p><strong>storage</strong> – The storage location for the tile: <code class="docutils literal notranslate"><span class="pre">&quot;register&quot;</span></code> for registers or
-<code class="docutils literal notranslate"><span class="pre">&quot;shared&quot;</span></code> for shared memory.</p></li>
-<li><p><strong>bounds_check</strong> – Needed for unaligned tiles, but can disable for memory-aligned tiles for faster load times</p></li>
-<li><p><strong>aligned</strong> – If True, skip runtime alignment checks for vectorized loads (shared memory,
-2D+ tiles only). Has no effect for 1D tiles or register storage. Use when you
-guarantee that: (1) the base address at the tile offset is 16-byte aligned,
-(2) the array is contiguous (dense row-major strides), (3) all outer-dimension
-strides are multiples of 16 bytes, and (4) the tile fits entirely within array
-bounds. Address-alignment violations trap unconditionally (even in release
-builds). Bounds and contiguity violations trigger debug-only asserts; in
-release builds they cause silent data corruption.</p></li>
+<li><p><strong>offset</strong> – Offset in the source array to begin reading from, one value per dimension
+of <code class="docutils literal notranslate"><span class="pre">a</span></code>; may be a runtime value.</p></li>
+<li><p><strong>storage</strong> – The storage location for the tile: <code class="docutils literal notranslate"><span class="pre">&quot;register&quot;</span></code> for registers
+or <code class="docutils literal notranslate"><span class="pre">&quot;shared&quot;</span></code> for shared memory.</p></li>
+<li><p><strong>bounds_check</strong> – Whether to treat a source coordinate at or past the array’s upper
+extent on any axis as out of bounds; such elements read as zero. When False,
+all source coordinates must be in bounds.</p></li>
+<li><p><strong>aligned</strong> – If True, the caller guarantees that the source address at <code class="docutils literal notranslate"><span class="pre">offset</span></code> is
+16-byte aligned and that the load meets the contiguity, shape, stride, and
+bounds requirements in <a class="reference internal" href="../../user_guide/programming_model/tiles.html#vectorized-tile-loads"><span class="std std-ref">Vectorized Tile Loads</span></a>. This optimization
+applies only to 2D or higher shared-memory tiles.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>A tile with shape as specified and data type the same as the source array.</p>
 </dd>
 </dl>
+<p class="rubric">Example</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">TILE_M</span><span class="p">,</span> <span class="n">TILE_N</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">4</span>
+<span class="n">TILE_THREADS</span> <span class="o">=</span> <span class="mi">8</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">copy_tiles</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array2d</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">b</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array2d</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+    <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="c1"># The rightmost tiles extend past the array bounds; those elements read as zero</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">TILE_M</span><span class="p">,</span> <span class="n">TILE_N</span><span class="p">),</span> <span class="n">offset</span><span class="o">=</span><span class="p">(</span><span class="n">i</span> <span class="o">*</span> <span class="n">TILE_M</span><span class="p">,</span> <span class="n">j</span> <span class="o">*</span> <span class="n">TILE_N</span><span class="p">))</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="p">(</span><span class="n">i</span> <span class="o">*</span> <span class="n">TILE_M</span><span class="p">,</span> <span class="n">j</span> <span class="o">*</span> <span class="n">TILE_N</span><span class="p">))</span>
+
+<span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">21</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+<span class="n">b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">4</span><span class="p">,</span> <span class="mi">8</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch_tiled</span><span class="p">(</span><span class="n">copy_tiles</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">b</span><span class="p">],</span> <span class="n">block_dim</span><span class="o">=</span><span class="n">TILE_THREADS</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">b</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[[ 1.  2.  3.  4.  5.  0.  0.  0.]
+ [ 6.  7.  8.  9. 10.  0.  0.  0.]
+ [11. 12. 13. 14. 15.  0.  0.  0.]
+ [16. 17. 18. 19. 20.  0.  0.  0.]]
+</pre></div>
+</div>
 </dd></dl>
 
 <dl class="py function">
@@ -607,7 +635,10 @@ release builds they cause silent data corruption.</p></li>
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tile</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span></dt>
-<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Load a tile from a global memory array.</p>
+<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Load a 1D tile from a 1D global memory array.</p>
+<p>Overload for a scalar <code class="docutils literal notranslate"><span class="pre">shape</span></code> and <code class="docutils literal notranslate"><span class="pre">offset</span></code>, equivalent to passing one-element
+tuples. For the full contract and a usage example, see the overload that takes
+tuple-valued <code class="docutils literal notranslate"><span class="pre">shape</span></code> and <code class="docutils literal notranslate"><span class="pre">offset</span></code> arguments.</p>
 </dd></dl>
 
 </section>

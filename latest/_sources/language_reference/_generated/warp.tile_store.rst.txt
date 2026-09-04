@@ -10,20 +10,53 @@
 
    Store a tile to a global memory array.
    
-   This method will cooperatively store a tile to global memory using all threads in the block.
+   This is a cooperative operation: the threads of the block divide the copy between
+   them, so every thread must reach the call. Element ``(i, j, ...)`` of ``t`` is written
+   to ``a[offset[0] + i, offset[1] + j, ...]``. No barrier is issued by the store itself.
+   
+   The elements of ``a`` covered by the tile are overwritten. ``bounds_check`` and
+   ``aligned`` must be compile-time constants. The backward pass accumulates gradients
+   from the written region into the adjoint of ``t``, then clears those entries from
+   ``a.grad``.
    
    :param a: The destination array in global memory
-   :param t: The source tile to store data from, must have the same data type and number of dimensions as the destination array
-   :param offset: Offset in the destination array (optional)
-   :param bounds_check: Needed for unaligned tiles, but can disable for memory-aligned tiles for faster write times.
-   :param aligned: If True, skip runtime alignment checks for vectorized stores (shared memory,
-                   2D+ tiles only). Has no effect for 1D tiles or register storage. Use when you
-                   guarantee that: (1) the base address at the tile offset is 16-byte aligned,
-                   (2) the array is contiguous (dense row-major strides), (3) all outer-dimension
-                   strides are multiples of 16 bytes, and (4) the tile fits entirely within array
-                   bounds. Address-alignment violations trap unconditionally (even in release
-                   builds). Bounds and contiguity violations trigger debug-only asserts; in
-                   release builds they cause silent data corruption.
+   :param t: The source tile to store data from, must have the same data type and number of
+             dimensions as the destination array
+   :param offset: Offset in the destination array, one value per dimension of ``a``; may be
+                  a runtime value.
+   :param bounds_check: Whether to treat a destination coordinate at or past the array's
+                        upper extent on any axis as out of bounds; such writes are skipped. When
+                        False, all destination coordinates must be in bounds.
+   :param aligned: If True, the caller guarantees that the destination address at ``offset``
+                   is 16-byte aligned and that the store meets the contiguity, shape, stride, and
+                   bounds requirements in
+                   :ref:`vectorized tile loads and stores <vectorized_tile_loads>`. This
+                   optimization applies only to 2D or higher shared-memory tiles.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       TILE_M, TILE_N = 2, 2
+       TILE_THREADS = 2
+   
+       @wp.kernel
+       def scale_tiles(a: wp.array2d[float], b: wp.array2d[float]):
+           i, j = wp.tid()
+           t = wp.tile_load(a, shape=(TILE_M, TILE_N), offset=(i * TILE_M, j * TILE_N))
+           # `b` is smaller than `a`, so elements that fall outside it are dropped
+           wp.tile_store(b, t * 2.0, offset=(i * TILE_M, j * TILE_N))
+   
+       a = wp.array(np.arange(1, 17, dtype=np.float32).reshape(4, 4), dtype=float)
+       b = wp.zeros((3, 3), dtype=float)
+       wp.launch_tiled(scale_tiles, dim=(2, 2), inputs=[a], outputs=[b], block_dim=TILE_THREADS)
+       print(b.numpy())
+   
+   .. testoutput::
+   
+       [[ 2.  4.  6.]
+        [10. 12. 14.]
+        [18. 20. 22.]]
    
 
 .. function:: warp._src.lang.tile_store(a: Array[Any], t: Tile[Any, tuple[int, ...]], offset: int32 = ..., bounds_check: bool = True, aligned: bool = False) -> None
@@ -34,4 +67,8 @@
       :python: false
       :differentiable: true
 
-   Store a tile to a global memory array.
+   Store a 1D tile to a 1D global memory array.
+   
+   Overload for a scalar ``offset``, equivalent to passing a one-element tuple. For
+   the full contract and a usage example, see the overload that takes a tuple-valued
+   ``offset`` argument.

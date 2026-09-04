@@ -8,53 +8,79 @@
       :python: false
       :differentiable: true
 
-   Atomically add a tile to a global memory array, with storage along a specified axis mapped according to a 1D tile of indices.
+   Atomically add a tile onto a global memory array, scattering along one axis through a 1D tile of indices.
    
-   :param a: The destination array in global memory
-   :param indices: A 1D tile of integer indices mapping to elements in ``a``.
-   :param t: The source tile to extract data from, must have the same data type and number of dimensions as the destination array, and along ``axis``, it must have the same number of elements as the ``indices`` tile.
-   :param offset: Offset in the destination array (optional)
-   :param axis: Axis of ``a`` that indices refer to.
+   Cooperative operation: every thread of the block must reach the call. Element ``c``
+   of ``t`` is added atomically to ``a`` at ``offset[d] + c[d]`` along every dimension
+   ``d`` other than ``axis``, and at
+   ``offset[axis] + indices[c[axis]]`` along ``axis``, and the destination's previous
+   value is placed in the returned tile. Every coordinate is checked against both the
+   lower and upper array bounds: an element whose destination index is negative or past
+   the end of ``a`` is skipped.
+   
+   Repeated indices are allowed and accumulate, which is what makes this useful for
+   segmented or row-wise reductions. Only the individual element updates are atomic.
+   When repeated indices or concurrent updates target the same destination, their order
+   is unspecified. In those cases, the returned values — and, for floating-point types,
+   the rounding of the accumulated result — are not reproducible.
+   
+   For Warp struct elements, only fields whose underlying scalar type supports atomic
+   addition are updated. Boolean, narrow-integer, array, and other non-atomic fields
+   remain unchanged, although their previous values are still present in the returned
+   tile.
+   
+   In a backward pass the gradients of the updated elements of ``a`` are accumulated
+   into the adjoint of ``t`` and left in place in ``a.grad``; the adjoint of the returned
+   tile is not propagated.
+   
+   :param a: The destination array in global memory, must have the same ``dtype`` as the
+             input tile. Its underlying scalar type must be one that supports atomic
+             addition: ``int32``, ``uint32``, ``int64``, ``uint64``, ``float16``,
+             ``bfloat16``, ``float32``, or ``float64``.
+   :param indices: A 1D tile of ``int32`` indices into ``a`` along ``axis``. It must hold
+                   exactly ``t.shape[axis]`` values and is always placed in shared memory (a
+                   register tile passed here is promoted).
+   :param t: The source tile to add to the destination array, must have the same data type
+             and number of dimensions as the destination array, and along ``axis`` the same
+             number of elements as the ``indices`` tile
+   :param offset: Offset in the destination array, one value per dimension of ``a``. The
+                  entry for ``axis`` is added to each index; may be a runtime value.
+   :param axis: Axis of ``a`` that the indices refer to. Must be a compile-time constant.
+   
+   :returns: A tile with the same shape, data type and storage as ``t``, holding the value each
+             updated destination element had before the addition. Passing a shared ``t``
+             therefore allocates a second shared-memory tile for the result.
    
    .. rubric:: Example
    
-   This example shows how to compute a blocked, row-wise reduction.
+   This example accumulates the rows of a tile into the even-numbered rows of a 2D array.
    
-   .. code-block:: python
+   .. testcode::
    
-       TILE_M = wp.constant(2)
-       TILE_N = wp.constant(2)
+       TILE_M, TILE_N = 2, 4
+       TILE_THREADS = 4
    
        @wp.kernel
-       def tile_atomic_add_indexed(x: wp.array2d[float], y: wp.array2d[float]):
-           i, j = wp.tid()
+       def accumulate_even_rows(x: wp.array2d[float], y: wp.array2d[float], previous: wp.array2d[float]):
+           t = wp.tile_load(x, shape=(TILE_M, TILE_N))
+           # tile row k accumulates into row 2*k of `y`
+           rows = wp.tile_arange(TILE_M, dtype=int) * 2
+           p = wp.tile_atomic_add_indexed(y, indices=rows, t=t, axis=0)
+           wp.tile_store(previous, p)
    
-           t = wp.tile_load(x, shape=(TILE_M, TILE_N), offset=(i*TILE_M, j*TILE_N), storage="register")
-   
-           zeros = wp.tile_zeros(TILE_M, dtype=int, storage="shared")
-   
-           wp.tile_atomic_add_indexed(y, indices=zeros, t=t, offset=(i, j*TILE_N), axis=0)
-   
-       M = TILE_M * 2
-       N = TILE_N * 2
-   
-       arr = np.arange(M * N, dtype=float).reshape(M, N)
-   
-       x = wp.array(arr, dtype=float, requires_grad=True, device=device)
-       y = wp.zeros((2, N), dtype=float, requires_grad=True, device=device)
-   
-       wp.launch_tiled(tile_atomic_add_indexed, dim=[2,2], inputs=[x], outputs=[y], block_dim=32, device=device)
-   
-       print(x.numpy())
+       x = wp.array(np.arange(1, 9, dtype=np.float32).reshape(2, 4), dtype=float)
+       y = wp.array(np.arange(16, dtype=np.float32).reshape(4, 4), dtype=float)
+       previous = wp.zeros((2, 4), dtype=float)
+       wp.launch_tiled(accumulate_even_rows, dim=1, inputs=[x], outputs=[y, previous], block_dim=TILE_THREADS)
        print(y.numpy())
+       print(previous.numpy())
    
-   .. code-block:: text
+   .. testoutput::
    
+       [[ 1.  3.  5.  7.]
+        [ 4.  5.  6.  7.]
+        [13. 15. 17. 19.]
+        [12. 13. 14. 15.]]
        [[ 0.  1.  2.  3.]
-           [ 4.  5.  6.  7.]
-           [ 8.  9. 10. 11.]
-           [12. 13. 14. 15.]]
-   
-       [[ 4.  6.  8. 10.]
-           [20. 22. 24. 26.]]
+        [ 8.  9. 10. 11.]]
    

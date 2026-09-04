@@ -10,43 +10,54 @@
 
    Scatter-add a per-thread value into a shared-memory tile.
    
-   Cooperative operation -- all threads in the block must call this function.
-   Each thread whose ``has_value`` is ``True`` adds ``value`` at index ``i``.
+   This is a cooperative operation, so every thread in the block must call it. Threads
+   with ``has_value=True`` add ``value`` at index ``i``; threads with nothing to add pass
+   ``has_value=False``. Threads that collide on an index are applied in an unspecified
+   order, so for floating-point values the rounding of the accumulated result is not
+   reproducible. The updates are available to subsequent tile operations when the call
+   returns.
    
-   A synchronization barrier is included so the updated values are visible to
-   all threads after the call returns.
+   Because the values come from individual threads, the result depends on
+   ``block_dim`` and differs on CPU, which runs a single lane per block (see
+   :ref:`cpu_tile_semantics`). In a backward pass the adjoint of ``value`` picks up the
+   tile's gradient at ``i``.
    
-   :param a: A shared-memory tile to scatter-add into.
-   :param i: Index of the element to add to.
+   For Warp struct elements, only fields whose underlying scalar type supports addition
+   are accumulated. Boolean, narrow-integer, array, and other non-accumulating fields
+   remain unchanged.
+   
+   :param a: Tile to scatter-add into. It is always placed in shared memory; a register tile
+             passed here is promoted.
+   :param i: Index of the element to add to. Must be valid when ``has_value`` is ``True``.
    :param value: The value to add (must match the tile's dtype).
    :param has_value: Whether this thread should perform the add.
-   :param atomic: If True, use atomic add for safe concurrent writes.
-                  Set to False when indices are guaranteed unique across threads
-                  (e.g., lane-parallel writes) for better performance.
+   :param atomic: If True, accumulate with an atomic add. Pass False — a compile-time
+                  constant — only when you can guarantee that no two threads of the block target
+                  the same index in this call: a plain read-modify-write is then used and
+                  conflicting updates are lost.
    
    .. rubric:: Example
    
-   .. code-block:: python
+   .. testcode::
+       :skipif: wp.get_cuda_device_count() == 0
    
        @wp.kernel
-       def histogram(data: wp.array[float], out: wp.array[float]):
-   
-           bins = wp.tile_zeros(dtype=float, shape=4, storage="shared")
-           _tile, i = wp.tid()
-           # Bin values in [0, 8) into 4 bins of width 2
+       def histogram(data: wp.array[float], bins_out: wp.array[float]):
+           _block, i = wp.tid()
+           bins = wp.tile_zeros(shape=4, dtype=float, storage="shared")
+           # bin values in [0, 8) into four bins of width 2
            b = int(data[i] / 2.0)
            wp.tile_scatter_add(bins, b, 1.0, True)
-           wp.tile_store(out, bins, offset=0)
+           wp.tile_store(bins_out, bins)
    
-       data = wp.array([0.5, 1.0, 2.5, 3.0, 4.5, 5.0, 6.5, 7.0], dtype=float)
-       output = wp.zeros(4, dtype=float)
-       wp.launch_tiled(histogram, dim=[1], inputs=[data, output], block_dim=8)
+       data = wp.array([0.5, 2.0, 3.0, 4.0, 4.5, 5.5, 6.0, 7.0], dtype=float)
+       bins_out = wp.zeros(4, dtype=float)
+       wp.launch_tiled(histogram, dim=1, inputs=[data], outputs=[bins_out], block_dim=8)
+       print(bins_out.numpy())
    
-       print(output.numpy())
+   .. testoutput::
    
-   .. code-block:: text
-   
-       [2. 2. 2. 2.]
+       [1. 2. 3. 2.]
    
 
 .. function:: warp._src.lang.tile_scatter_add(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, value: Any, has_value: bool, atomic: bool = True) -> None
@@ -57,7 +68,10 @@
       :python: false
       :differentiable: true
 
+   Scatter-add a per-thread value into a 2D shared-memory tile.
    
+   Overload taking one index per tile dimension. For the full contract and a usage
+   example, see the 1D overload that takes only ``i`` as its index.
 
 .. function:: warp._src.lang.tile_scatter_add(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32, value: Any, has_value: bool, atomic: bool = True) -> None
    :noindex:
@@ -67,7 +81,10 @@
       :python: false
       :differentiable: true
 
+   Scatter-add a per-thread value into a 3D shared-memory tile.
    
+   Overload taking one index per tile dimension. For the full contract and a usage
+   example, see the 1D overload that takes only ``i`` as its index.
 
 .. function:: warp._src.lang.tile_scatter_add(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32, l: int32, value: Any, has_value: bool, atomic: bool = True) -> None
    :noindex:
@@ -77,4 +94,7 @@
       :python: false
       :differentiable: true
 
+   Scatter-add a per-thread value into a 4D shared-memory tile.
    
+   Overload taking one index per tile dimension. For the full contract and a usage
+   example, see the 1D overload that takes only ``i`` as its index.

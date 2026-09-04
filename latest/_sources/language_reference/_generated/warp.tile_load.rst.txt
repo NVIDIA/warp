@@ -10,24 +10,56 @@
 
    Load a tile from a global memory array.
    
-   This method will cooperatively load a tile from global memory using all threads in the block.
+   This is a cooperative operation: the threads of the block divide the copy between
+   them, so every thread must reach the call. Tile element ``(i, j, ...)`` is read from
+   ``a[offset[0] + i, offset[1] + j, ...]``.
+   
+   With ``"shared"`` storage, every thread in the block can access every tile element.
+   With ``"register"`` storage, the tile elements are distributed across the block's
+   threads. ``shape``, ``storage``, ``bounds_check``, and ``aligned`` must be compile-time
+   constants.
    
    :param a: The source array in global memory
    :param shape: Shape of the tile to load, must have the same number of dimensions as ``a``
-   :param offset: Offset in the source array to begin reading from (optional)
-   :param storage: The storage location for the tile: ``"register"`` for registers or
-                   ``"shared"`` for shared memory.
-   :param bounds_check: Needed for unaligned tiles, but can disable for memory-aligned tiles for faster load times
-   :param aligned: If True, skip runtime alignment checks for vectorized loads (shared memory,
-                   2D+ tiles only). Has no effect for 1D tiles or register storage. Use when you
-                   guarantee that: (1) the base address at the tile offset is 16-byte aligned,
-                   (2) the array is contiguous (dense row-major strides), (3) all outer-dimension
-                   strides are multiples of 16 bytes, and (4) the tile fits entirely within array
-                   bounds. Address-alignment violations trap unconditionally (even in release
-                   builds). Bounds and contiguity violations trigger debug-only asserts; in
-                   release builds they cause silent data corruption.
+   :param offset: Offset in the source array to begin reading from, one value per dimension
+                  of ``a``; may be a runtime value.
+   :param storage: The storage location for the tile: ``"register"`` for registers
+                   or ``"shared"`` for shared memory.
+   :param bounds_check: Whether to treat a source coordinate at or past the array's upper
+                        extent on any axis as out of bounds; such elements read as zero. When False,
+                        all source coordinates must be in bounds.
+   :param aligned: If True, the caller guarantees that the source address at ``offset`` is
+                   16-byte aligned and that the load meets the contiguity, shape, stride, and
+                   bounds requirements in :ref:`vectorized_tile_loads`. This optimization
+                   applies only to 2D or higher shared-memory tiles.
    
    :returns: A tile with shape as specified and data type the same as the source array.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       TILE_M, TILE_N = 4, 4
+       TILE_THREADS = 8
+   
+       @wp.kernel
+       def copy_tiles(a: wp.array2d[float], b: wp.array2d[float]):
+           i, j = wp.tid()
+           # The rightmost tiles extend past the array bounds; those elements read as zero
+           t = wp.tile_load(a, shape=(TILE_M, TILE_N), offset=(i * TILE_M, j * TILE_N))
+           wp.tile_store(b, t, offset=(i * TILE_M, j * TILE_N))
+   
+       a = wp.array(np.arange(1, 21, dtype=np.float32).reshape(4, 5), dtype=float)
+       b = wp.zeros((4, 8), dtype=float)
+       wp.launch_tiled(copy_tiles, dim=(1, 2), inputs=[a], outputs=[b], block_dim=TILE_THREADS)
+       print(b.numpy())
+   
+   .. testoutput::
+   
+       [[ 1.  2.  3.  4.  5.  0.  0.  0.]
+        [ 6.  7.  8.  9. 10.  0.  0.  0.]
+        [11. 12. 13. 14. 15.  0.  0.  0.]
+        [16. 17. 18. 19. 20.  0.  0.  0.]]
    
 
 .. function:: warp._src.lang.tile_load(a: Array[Any], shape: int32, offset: int32 = ..., storage: str = "register", bounds_check: bool = True, aligned: bool = False) -> Tile[Any, tuple[int, ...]]
@@ -38,4 +70,8 @@
       :python: false
       :differentiable: true
 
-   Load a tile from a global memory array.
+   Load a 1D tile from a 1D global memory array.
+   
+   Overload for a scalar ``shape`` and ``offset``, equivalent to passing one-element
+   tuples. For the full contract and a usage example, see the overload that takes
+   tuple-valued ``shape`` and ``offset`` arguments.

@@ -967,10 +967,10 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <td><p>Create a new tile with the same data as the input tile, but with a different data type.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_atomic_add.html#warp._src.lang.tile_atomic_add" title="warp._src.lang.tile_atomic_add"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_atomic_add</span></code></a></p></td>
-<td><p>Atomically add a tile onto the array <code class="docutils literal notranslate"><span class="pre">a</span></code>.</p></td>
+<td><p>Atomically add a tile onto the array <code class="docutils literal notranslate"><span class="pre">a</span></code> and return the values it replaced.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_atomic_add_indexed.html#warp._src.lang.tile_atomic_add_indexed" title="warp._src.lang.tile_atomic_add_indexed"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_atomic_add_indexed</span></code></a></p></td>
-<td><p>Atomically add a tile to a global memory array, with storage along a specified axis mapped according to a 1D tile of indices.</p></td>
+<td><p>Atomically add a tile onto a global memory array, scattering along one axis through a 1D tile of indices.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_axpy.html#warp._src.lang.tile_axpy" title="warp._src.lang.tile_axpy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_axpy</span></code></a></p></td>
 <td><p>Scale <code class="docutils literal notranslate"><span class="pre">src</span></code> by <code class="docutils literal notranslate"><span class="pre">alpha</span></code> and accumulate into <code class="docutils literal notranslate"><span class="pre">dest</span></code>.</p></td>
@@ -1027,7 +1027,7 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <td><p>Load a tile from a global memory array.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_load_indexed.html#warp._src.lang.tile_load_indexed" title="warp._src.lang.tile_load_indexed"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_load_indexed</span></code></a></p></td>
-<td><p>Load a tile from a global memory array, with loads along a specified axis mapped according to a 1D tile of indices.</p></td>
+<td><p>Load a tile from a global memory array, gathering along one axis through a 1D tile of indices.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_lower_solve.html#warp._src.lang.tile_lower_solve" title="warp._src.lang.tile_lower_solve"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_lower_solve</span></code></a></p></td>
 <td><p>Solve for <code class="docutils literal notranslate"><span class="pre">z</span></code> in <code class="docutils literal notranslate"><span class="pre">Lz</span> <span class="pre">=</span> <span class="pre">y</span></code>, where <code class="docutils literal notranslate"><span class="pre">L</span></code> is a lower triangular matrix.</p></td>
@@ -1087,7 +1087,7 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <td><p>Scatter-add a per-thread value into a shared-memory tile.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_scatter_masked.html#warp._src.lang.tile_scatter_masked" title="warp._src.lang.tile_scatter_masked"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_scatter_masked</span></code></a></p></td>
-<td><p>Write a value into a shared-memory tile from the calling thread.</p></td>
+<td><p>Write a per-thread value into a shared-memory tile.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_slice_indexed.html#warp._src.lang.tile_slice_indexed" title="warp._src.lang.tile_slice_indexed"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_slice_indexed</span></code></a></p></td>
 <td><p>Gather elements of a tile along a single axis using a 1D tile of integer indices.</p></td>
@@ -1117,7 +1117,7 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <td><p>Store a tile to a global memory array.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_store_indexed.html#warp._src.lang.tile_store_indexed" title="warp._src.lang.tile_store_indexed"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_store_indexed</span></code></a></p></td>
-<td><p>Store a tile to a global memory array, with storage along a specified axis mapped according to a 1D tile of indices.</p></td>
+<td><p>Store a tile to a global memory array, scattering along one axis through a 1D tile of indices.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_sum.html#warp._src.lang.tile_sum" title="warp._src.lang.tile_sum"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_sum</span></code></a></p></td>
 <td><p>Cooperatively compute the sum of the tile elements.</p></td>

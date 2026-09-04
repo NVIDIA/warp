@@ -8,37 +8,48 @@
       :python: false
       :differentiable: true
 
-   Write a value into a shared-memory tile from the calling thread.
+   Write a per-thread value into a shared-memory tile.
    
-   All threads in the block must call this function cooperatively.
-   Each thread whose ``has_value`` is ``True`` writes ``value`` at the
-   specified index.  A synchronization barrier is included so the written
-   values are visible to all threads after the call returns.
+   This is a cooperative operation, so every thread in the block must call it. Threads
+   with ``has_value=True`` write ``value`` at index ``i``; threads with nothing to write
+   pass ``has_value=False``. The writes are available to subsequent tile operations when
+   the call returns.
    
-   Each index should be written by at most one thread per call.  If multiple
-   threads write to the same index, the result is undefined (data race in the
-   forward pass, incorrect gradients in the backward pass).
+   Each index must be written by at most one thread per call; conflicting writes are
+   undefined. Use :func:`~warp.tile_scatter_add` when several threads may target the same
+   index.
+   
+   Because the values come from individual threads, the result depends on ``block_dim``
+   and differs on CPU, which runs a single lane per block (see
+   :ref:`cpu_tile_semantics`). In a backward pass the adjoint of ``value`` takes the
+   tile's gradient at ``i``, which is then cleared.
+   
+   :param a: Tile to write into; a register tile is promoted to shared memory.
+   :param i: Index of the element to write. Must be valid when ``has_value`` is ``True``.
+   :param value: The value to write (must match the tile's dtype).
+   :param has_value: Whether this thread should perform the write.
    
    .. rubric:: Example
    
-   .. code-block:: python
+   .. testcode::
+       :skipif: wp.get_cuda_device_count() == 0
    
        @wp.kernel
-       def write_kernel(out: wp.array[int]):
-           tile_idx, thread_idx = wp.tid()
+       def reverse_lanes(src: wp.array[int], dst: wp.array[int]):
+           _block, i = wp.tid()
+           t = wp.tile_zeros(shape=8, dtype=int, storage="shared")
+           # a permutation: every slot is written by exactly one thread
+           wp.tile_scatter_masked(t, 7 - i, src[i], True)
+           wp.tile_store(dst, t)
    
-           # Allocate a shared-memory tile
-           t = wp.tile_zeros(shape=64, dtype=int, storage="shared")
+       src = wp.array(np.arange(1, 9), dtype=int)
+       dst = wp.zeros(8, dtype=int)
+       wp.launch_tiled(reverse_lanes, dim=1, inputs=[src], outputs=[dst], block_dim=8)
+       print(dst.numpy())
    
-           # Each thread writes its own slot
-           wp.tile_scatter_masked(t, thread_idx, thread_idx + 1, True)
+   .. testoutput::
    
-           wp.tile_store(out, t)
-   
-   :param a: The tile to write into (will use shared memory).
-   :param i: Index of the element to write.
-   :param value: The value to write (must match the tile's dtype).
-   :param has_value: Whether this thread should perform the write.
+       [8 7 6 5 4 3 2 1]
    
 
 .. function:: warp._src.lang.tile_scatter_masked(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, value: Any, has_value: bool) -> None
@@ -49,7 +60,10 @@
       :python: false
       :differentiable: true
 
+   Write a per-thread value into a 2D shared-memory tile.
    
+   Overload taking one index per tile dimension. For the full contract and a usage
+   example, see the 1D overload that takes only ``i`` as its index.
 
 .. function:: warp._src.lang.tile_scatter_masked(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32, value: Any, has_value: bool) -> None
    :noindex:
@@ -59,7 +73,10 @@
       :python: false
       :differentiable: true
 
+   Write a per-thread value into a 3D shared-memory tile.
    
+   Overload taking one index per tile dimension. For the full contract and a usage
+   example, see the 1D overload that takes only ``i`` as its index.
 
 .. function:: warp._src.lang.tile_scatter_masked(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32, l: int32, value: Any, has_value: bool) -> None
    :noindex:
@@ -69,4 +86,7 @@
       :python: false
       :differentiable: true
 
+   Write a per-thread value into a 4D shared-memory tile.
    
+   Overload taking one index per tile dimension. For the full contract and a usage
+   example, see the 1D overload that takes only ``i`` as its index.

@@ -8,57 +8,56 @@
       :python: false
       :differentiable: true
 
-   Load a tile from a global memory array, with loads along a specified axis mapped according to a 1D tile of indices.
+   Load a tile from a global memory array, gathering along one axis through a 1D tile of indices.
+   
+   Cooperative operation: every thread of the block must reach the call. Tile element
+   ``c`` is read from ``a`` at ``offset[d] + c[d]`` along every dimension ``d`` other
+   than ``axis``, and at ``offset[axis] + indices[c[axis]]`` along ``axis``. Every
+   coordinate is checked against both the lower and upper array bounds: an element whose
+   source index is negative or past the end of ``a`` reads as zero, so ``-1`` can be used
+   as a padding sentinel without a physical zero row.
+   
+   ``shape``, ``axis``, and ``storage`` must be compile-time constants. In a backward
+   pass the adjoint of the returned tile is atomically accumulated into ``a.grad`` at
+   the same gathered locations.
    
    :param a: The source array in global memory
-   :param indices: A 1D tile of integer indices mapping to elements in ``a``.
-   :param shape: Shape of the tile to load, must have the same number of dimensions as ``a``, and along ``axis``, it must have the same number of elements as the ``indices`` tile.
-   :param offset: Offset in the source array to begin reading from (optional)
-   :param axis: Axis of ``a`` that indices refer to
-   :param storage: The storage location for the tile: ``"register"`` for registers or ``"shared"`` for shared memory.
+   :param indices: A 1D tile of ``int32`` indices into ``a`` along ``axis``. It must hold
+                   exactly ``shape[axis]`` values and is always placed in shared memory (a
+                   register tile passed here is promoted).
+   :param shape: Shape of the tile to load, must have the same number of dimensions as ``a``,
+                 and along ``axis`` the same number of elements as the ``indices`` tile
+   :param offset: Offset in the source array to begin reading from, one value per dimension
+                  of ``a``; the entry for ``axis`` is added to each index; may be a runtime value.
+   :param axis: Axis of ``a`` that the indices refer to
+   :param storage: The storage location for the tile: ``"register"`` for registers
+                   or ``"shared"`` for shared memory.
    
    :returns: A tile with shape as specified and data type the same as the source array.
    
    .. rubric:: Example
    
-   This example shows how to select and store the even indexed rows from a 2D array.
+   This example gathers the even-numbered rows of a 2D array.
    
-   .. code-block:: python
+   .. testcode::
    
-       TILE_M = wp.constant(2)
-       TILE_N = wp.constant(2)
-       HALF_M = wp.constant(TILE_M // 2)
-       HALF_N = wp.constant(TILE_N // 2)
+       TILE_M, TILE_N = 2, 4
+       TILE_THREADS = 4
    
        @wp.kernel
-       def compute(x: wp.array2d[float], y: wp.array2d[float]):
-           i, j = wp.tid()
+       def gather_even_rows(x: wp.array2d[float], y: wp.array2d[float]):
+           # gather rows 0, 2, 4, ... of `x`
+           rows = wp.tile_arange(TILE_M, dtype=int) * 2
+           t = wp.tile_load_indexed(x, indices=rows, shape=(TILE_M, TILE_N), axis=0)
+           wp.tile_store(y, t)
    
-           evens = wp.tile_arange(HALF_M, dtype=int, storage="shared") * 2
-   
-           t0 = wp.tile_load_indexed(x, indices=evens, shape=(HALF_M, TILE_N), offset=(i*TILE_M, j*TILE_N), axis=0, storage="register")
-           wp.tile_store(y, t0, offset=(i*HALF_M, j*TILE_N))
-   
-       M = TILE_M * 2
-       N = TILE_N * 2
-   
-       arr = np.arange(M * N).reshape(M, N)
-   
-       x = wp.array(arr, dtype=float)
-       y = wp.zeros((M // 2, N), dtype=float)
-   
-       wp.launch_tiled(compute, dim=[2,2], inputs=[x], outputs=[y], block_dim=32, device=device)
-   
-       print(x.numpy())
+       x = wp.array(np.arange(1, 17, dtype=np.float32).reshape(4, 4), dtype=float)
+       y = wp.zeros((2, 4), dtype=float)
+       wp.launch_tiled(gather_even_rows, dim=1, inputs=[x], outputs=[y], block_dim=TILE_THREADS)
        print(y.numpy())
    
-   .. code-block:: text
+   .. testoutput::
    
-       [[ 0.  1.  2.  3.]
-        [ 4.  5.  6.  7.]
-        [ 8.  9. 10. 11.]
-        12. 13. 14. 15.]]
-   
-       [[ 0.  1.  2.  3.]
-        [ 8.  9. 10. 11.]]
+       [[ 1.  2.  3.  4.]
+        [ 9. 10. 11. 12.]]
    
