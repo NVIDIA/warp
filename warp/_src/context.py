@@ -10396,10 +10396,18 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
             # check for array type
             # - in forward passes, array types have to match
             # - in backward passes, indexed array gradients are regular arrays
+            concrete_type = warp._src.types.concrete_array_type(arg_type)
             if adjoint:
-                array_matches = isinstance(value, warp.array)
+                # gradients are passed with the same array class as the forward argument;
+                # array and indexedarray parameters also accept a plain array (for an
+                # indexedarray this is the gradient of the base storage). Fabric arrays
+                # have no plain-array gradient representation, so they require an exact
+                # class match.
+                array_matches = type(value) is concrete_type or (
+                    isinstance(value, warp.array) and concrete_type in (warp.array, warp.indexedarray)
+                )
             else:
-                array_matches = type(value) is warp._src.types.concrete_array_type(arg_type)
+                array_matches = type(value) is concrete_type
 
             if not array_matches:
                 # if a regular Warp array is required, try converting from __cuda_array_interface__ or __array_interface__
@@ -10457,6 +10465,23 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
             # through and the hardware access rules determine whether the launch is valid.
             if warp.config.launch_array_access_mode != warp.config.LaunchArrayAccessMode.RELAXED:
                 _validate_launch_array_access(kernel, arg_name, value, device)
+
+            # the packed ctype class must match the kernel's declared parameter type:
+            # the CPU launch builds the adjoint argument struct from the packed value
+            # types, and the CUDA launch copies sizeof(declared type) bytes per parameter.
+            # A plain array passed as the gradient of an indexed array is therefore
+            # wrapped in an indexedarray_t with no indices; the adjoint kernel
+            # accumulates at indices already remapped through the forward argument.
+            if adjoint and warp._src.types.matches_array_class(arg_type, warp.indexedarray):
+                # match indexedarray.grad: without dedicated multi-dimensional adjoints
+                # the adjoint kernel would match the no-op generic adj_address and
+                # silently produce zero gradients
+                if arg_type.ndim > 1:
+                    raise NotImplementedError(
+                        "Gradient propagation through indexed arrays is only supported for 1-D indexed arrays"
+                    )
+                if isinstance(value, warp.array):
+                    return warp._src.types.indexedarray_t(value, [None] * value.ndim, value.shape)
 
             return value.__ctype__()
 

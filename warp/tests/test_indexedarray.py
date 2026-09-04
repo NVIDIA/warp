@@ -1246,6 +1246,183 @@ def test_indexedarray_fill_struct(test, device):
     assert_np_equal(a4.numpy(), np.zeros(a4.shape, dtype=nptype))
 
 
+@wp.kernel
+def kernel_indexedarray_grad_1d(
+    samples: wp.indexedarray(dtype=float),
+    weights: wp.array(dtype=float),
+    total: wp.array(dtype=float),
+):
+    i = wp.tid()
+    wp.atomic_add(total, 0, samples[i] * weights[i])
+
+
+def test_indexedarray_grad_1d(test, device):
+    # gradients must flow back through a differentiable indexedarray input (GH-1479):
+    # the adjoint follows the gather indirection and accumulates into the base array's grad
+    base = wp.array(np.linspace(1.0, 6.0, 6, dtype=np.float32), dtype=float, device=device, requires_grad=True)
+    weights_np = np.array([0.25, 0.5, 1.0], dtype=np.float32)
+    weights = wp.array(weights_np, dtype=float, device=device)
+    indices = wp.array([1, 3, 5], dtype=int, device=device)
+    samples = wp.indexedarray1d(base, [indices])
+    total = wp.zeros(1, dtype=float, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(
+            kernel_indexedarray_grad_1d, dim=samples.size, inputs=[samples, weights], outputs=[total], device=device
+        )
+
+    # forward: sum of base[i] * weight over the gathered indices
+    assert_np_equal(total.numpy(), np.array([8.5], dtype=np.float32), tol=1e-6)
+
+    tape.backward(loss=total)
+
+    # d(total)/d(base[j]) is the matching weight at each gathered index, zero elsewhere
+    expected = np.zeros(6, dtype=np.float32)
+    expected[[1, 3, 5]] = weights_np
+    assert_np_equal(base.grad.numpy(), expected, tol=1e-6)
+
+
+def test_indexedarray_grad_1d_manual_adjoint(test, device):
+    # a manual adjoint launch accepts either the base array's gradient (a plain array,
+    # the original GH-1479 repro that segfaulted on CPU) or the indexed gradient view
+    for adj_samples_kind in ("base", "indexed"):
+        base = wp.array(np.linspace(1.0, 6.0, 6, dtype=np.float32), dtype=float, device=device, requires_grad=True)
+        weights_np = np.array([0.25, 0.5, 1.0], dtype=np.float32)
+        weights = wp.array(weights_np, dtype=float, device=device)
+        indices = wp.array([1, 3, 5], dtype=int, device=device)
+        samples = wp.indexedarray1d(base, [indices])
+        total = wp.zeros(1, dtype=float, device=device, requires_grad=True)
+
+        wp.launch(
+            kernel_indexedarray_grad_1d, dim=samples.size, inputs=[samples, weights], outputs=[total], device=device
+        )
+
+        total.grad.fill_(1.0)
+        adj_samples = base.grad if adj_samples_kind == "base" else samples.grad
+        wp.launch(
+            kernel_indexedarray_grad_1d,
+            dim=samples.size,
+            inputs=[samples, weights],
+            outputs=[total],
+            adj_inputs=[adj_samples, None],
+            adj_outputs=[total.grad],
+            adjoint=True,
+            device=device,
+        )
+
+        expected = np.zeros(6, dtype=np.float32)
+        expected[[1, 3, 5]] = weights_np
+        assert_np_equal(base.grad.numpy(), expected, tol=1e-6)
+
+
+def test_indexedarray_grad_1d_tape_zero(test, device):
+    # tape.zero() must clear the gradient reached through the indexed view so that
+    # a second backward pass does not accumulate on top of stale gradients
+    base = wp.array(np.linspace(1.0, 6.0, 6, dtype=np.float32), dtype=float, device=device, requires_grad=True)
+    weights_np = np.array([0.25, 0.5, 1.0], dtype=np.float32)
+    weights = wp.array(weights_np, dtype=float, device=device)
+    indices = wp.array([1, 3, 5], dtype=int, device=device)
+    samples = wp.indexedarray1d(base, [indices])
+    total = wp.zeros(1, dtype=float, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(
+            kernel_indexedarray_grad_1d, dim=samples.size, inputs=[samples, weights], outputs=[total], device=device
+        )
+
+    expected = np.zeros(6, dtype=np.float32)
+    expected[[1, 3, 5]] = weights_np
+
+    tape.backward(loss=total)
+    assert_np_equal(base.grad.numpy(), expected, tol=1e-6)
+
+    tape.zero()
+    assert_np_equal(base.grad.numpy(), np.zeros(6, dtype=np.float32))
+
+    tape.backward(loss=total)
+    assert_np_equal(base.grad.numpy(), expected, tol=1e-6)
+
+
+@wp.kernel
+def kernel_indexedarray_grad_1d_negative(
+    samples: wp.indexedarray(dtype=float),
+    weights: wp.array(dtype=float),
+    total: wp.array(dtype=float),
+):
+    i = wp.tid()
+    # negative view coordinates wrap around before the gather remap
+    wp.atomic_add(total, 0, samples[i - 3] * weights[i])
+
+
+def test_indexedarray_grad_1d_negative_indices(test, device):
+    # the adjoint must apply the same negative-coordinate wrap-around as the forward
+    # read before remapping through the index array
+    base = wp.array(np.linspace(1.0, 6.0, 6, dtype=np.float32), dtype=float, device=device, requires_grad=True)
+    weights_np = np.array([0.25, 0.5, 1.0], dtype=np.float32)
+    weights = wp.array(weights_np, dtype=float, device=device)
+    indices = wp.array([1, 3, 5], dtype=int, device=device)
+    samples = wp.indexedarray1d(base, [indices])
+    total = wp.zeros(1, dtype=float, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(
+            kernel_indexedarray_grad_1d_negative,
+            dim=samples.size,
+            inputs=[samples, weights],
+            outputs=[total],
+            device=device,
+        )
+
+    # samples[i - 3] wraps to samples[i], so the result matches the non-negative kernel
+    assert_np_equal(total.numpy(), np.array([8.5], dtype=np.float32), tol=1e-6)
+
+    tape.backward(loss=total)
+
+    expected = np.zeros(6, dtype=np.float32)
+    expected[[1, 3, 5]] = weights_np
+    assert_np_equal(base.grad.numpy(), expected, tol=1e-6)
+
+
+@wp.kernel
+def kernel_indexedarray_grad_2d(samples: wp.indexedarray2d(dtype=float), total: wp.array(dtype=float)):
+    i, j = wp.tid()
+    wp.atomic_add(total, 0, samples[i, j])
+
+
+def test_indexedarray_grad_2d_not_implemented(test, device):
+    # gradients of multi-dimensional indexed arrays are not implemented: without
+    # dedicated adjoints the backward kernel would match the no-op generic
+    # adj_address and silently produce zero gradients, so both the tape and the
+    # manual adjoint launch must raise instead
+    base = wp.array(np.arange(16, dtype=np.float32).reshape(4, 4), dtype=float, device=device, requires_grad=True)
+    rows = wp.array([1, 3], dtype=int, device=device)
+    samples = wp.indexedarray2d(base, [rows, None])
+    total = wp.zeros(1, dtype=float, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(kernel_indexedarray_grad_2d, dim=samples.shape, inputs=[samples], outputs=[total], device=device)
+
+    with test.assertRaisesRegex(NotImplementedError, "only supported for 1-D indexed arrays"):
+        tape.backward(loss=total)
+
+    total.grad.fill_(1.0)
+    with test.assertRaisesRegex(NotImplementedError, "only supported for 1-D indexed arrays"):
+        wp.launch(
+            kernel_indexedarray_grad_2d,
+            dim=samples.shape,
+            inputs=[samples],
+            outputs=[total],
+            adj_inputs=[base.grad],
+            adj_outputs=[total.grad],
+            adjoint=True,
+            device=device,
+        )
+
+
 devices = get_test_devices()
 
 
@@ -1254,6 +1431,28 @@ class TestIndexedArray(unittest.TestCase):
 
 
 add_function_test(TestIndexedArray, "test_indexedarray_1d", test_indexedarray_1d, devices=devices)
+add_function_test(TestIndexedArray, "test_indexedarray_grad_1d", test_indexedarray_grad_1d, devices=devices)
+add_function_test(
+    TestIndexedArray,
+    "test_indexedarray_grad_1d_manual_adjoint",
+    test_indexedarray_grad_1d_manual_adjoint,
+    devices=devices,
+)
+add_function_test(
+    TestIndexedArray, "test_indexedarray_grad_1d_tape_zero", test_indexedarray_grad_1d_tape_zero, devices=devices
+)
+add_function_test(
+    TestIndexedArray,
+    "test_indexedarray_grad_1d_negative_indices",
+    test_indexedarray_grad_1d_negative_indices,
+    devices=devices,
+)
+add_function_test(
+    TestIndexedArray,
+    "test_indexedarray_grad_2d_not_implemented",
+    test_indexedarray_grad_2d_not_implemented,
+    devices=devices,
+)
 add_function_test(TestIndexedArray, "test_indexedarray_2d", test_indexedarray_2d, devices=devices)
 add_function_test(TestIndexedArray, "test_indexedarray_3d", test_indexedarray_3d, devices=devices)
 add_function_test(TestIndexedArray, "test_indexedarray_4d", test_indexedarray_4d, devices=devices)
