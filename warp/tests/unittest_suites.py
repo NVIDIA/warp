@@ -103,6 +103,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.cuda.test_cuda_arch_suffix import TestCudaArchSuffix
     from warp.tests.cuda.test_cuda_max_registers import TestCudaMaxRegisters
     from warp.tests.cuda.test_cuda_smem_spilling import TestCudaSmemSpilling
+    from warp.tests.cuda.test_graph_alloc_cross_capture_free import TestGraphAllocCrossCaptureFree
     from warp.tests.cuda.test_kernel_attributes import TestKernelAttributes
     from warp.tests.cuda.test_mempool import TestMempool
     from warp.tests.cuda.test_multigpu import TestMultiGPU
@@ -370,6 +371,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestGradCustoms,
         TestGradDebug,
         TestGraph,
+        TestGraphAllocCrossCaptureFree,
         TestHashGrid,
         TestImport,
         TestIndexedArray,
