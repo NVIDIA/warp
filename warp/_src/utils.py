@@ -997,7 +997,7 @@ def broadcast_shapes(shapes: list[tuple[int]]) -> tuple[int]:
 def map(
     func: Callable | wp.Function,
     *inputs: Array[DType] | Any,
-    out: Array[DType] | list[Array[DType]] | None = None,
+    out: Array[DType] | list[Array[DType]] | tuple[Array[DType], ...] | None = None,
     return_kernel: bool = False,
     block_dim: int = 256,
     device: DeviceLike = None,
@@ -1247,7 +1247,17 @@ def map(
         for dtype in out_dtypes:
             rg = requires_grad and Adjoint.is_differentiable_value_type(dtype)
             outputs.append(wp.empty(out_shape, dtype=dtype, requires_grad=rg, device=device))
-    elif len(out_dtypes) == 1 and is_array(out):
+    elif len(out_dtypes) == 1:
+        if isinstance(out, (tuple, list)):
+            if len(out) != 1:
+                raise TypeError(
+                    f"Number of provided output arrays ({len(out)}) does not match expected number of function outputs (1)"
+                )
+            out = out[0]
+        if not is_array(out):
+            raise TypeError(
+                f"Invalid output provided, expected a Warp array with shape {out_shape} and dtype {type_repr(out_dtypes[0])}"
+            )
         if not types_equal(out.dtype, out_dtypes[0]):
             raise TypeError(
                 f"Output array dtype {type_repr(out.dtype)} does not match expected dtype {type_repr(out_dtypes[0])}"
@@ -1255,7 +1265,7 @@ def map(
         if out.shape != out_shape:
             raise TypeError(f"Output array shape {out.shape} does not match expected shape {out_shape}")
         outputs = [out]
-    elif len(out_dtypes) > 1:
+    else:
         if isinstance(out, tuple) or isinstance(out, list):
             if len(out) != len(out_dtypes):
                 raise TypeError(

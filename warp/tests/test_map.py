@@ -447,6 +447,28 @@ def test_output_validity(test, device):
     ):
         wp.map(lambda x, y: (x, y), xs, ys, out=[out1, out2])
 
+    # a single output may also be passed as a one-element list or tuple
+    out = wp.empty(3, dtype=wp.float32)
+    wp.map(wp.sub, xs, ys, out=[out])
+    assert_np_equal(out.numpy(), np.full(3, -1.0, dtype=np.float32))
+    out.zero_()
+    wp.map(wp.sub, xs, ys, out=(out,))
+    assert_np_equal(out.numpy(), np.full(3, -1.0, dtype=np.float32))
+
+    out1 = wp.empty(3, dtype=wp.float32)
+    out2 = wp.empty(3, dtype=wp.float32)
+    with test.assertRaisesRegex(
+        TypeError,
+        r"Number of provided output arrays \(2\) does not match expected number of function outputs \(1\)$",
+    ):
+        wp.map(wp.sub, xs, ys, out=[out1, out2])
+
+    with test.assertRaisesRegex(
+        TypeError,
+        r"Invalid output provided, expected a Warp array with shape \(3,\) and dtype float32$",
+    ):
+        wp.map(wp.sub, xs, ys, out=5)
+
 
 def test_kernel_creation(test, device):
     a = wp.array(np.arange(10, dtype=np.float32), device=device)
