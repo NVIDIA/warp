@@ -3281,10 +3281,10 @@ class array(Array[DType, NDim]):
         dtype (DType): The data type of the array.
         ndim (int): The number of array dimensions.
         size (int): The number of items in the array.
-        capacity (int): The amount of memory in bytes allocated for this array.
+        capacity (int): Maximum number of bytes addressable from ``ptr`` for this array.
         shape (tuple[int]): Dimensions of the array.
         strides (tuple[int]): Number of bytes in each dimension between successive elements of the array.
-        ptr (int): Pointer to underlying memory allocation backing the array.
+        ptr (int): Pointer to the array's first element. For a view, this may point inside a larger backing allocation.
         device (Device): The device where the array's memory allocation resides.
         pinned (bool): Indicates whether the array was allocated in pinned host memory.
         is_contiguous (bool): Indicates whether this array has a contiguous memory layout.
@@ -3353,8 +3353,9 @@ class array(Array[DType, NDim]):
             dtype: One of the available `data types <#data-types>`_, such as :class:`warp.float32`, :class:`warp.mat33`, or a custom `struct <#structs>`_. If dtype is ``Any`` and data is an ndarray, then it will be inferred from the array data type
             shape: Dimensions of the array
             strides: Number of bytes in each dimension between successive elements of the array
-            ptr: Address of an external memory address to alias (``data`` should be ``None``)
-            capacity: Maximum size in bytes of the ``ptr`` allocation (``data`` should be ``None``)
+            ptr: Address of the first element to alias (``data`` should be ``None``). This may point inside a larger
+                external allocation.
+            capacity: Maximum number of bytes addressable from ``ptr`` (``data`` should be ``None``).
             device: Device the array lives on
             copy: Whether the incoming ``data`` will be copied or aliased. Aliasing requires that
                 the incoming ``data`` already lives on the ``device`` specified and the data types match.
@@ -3381,6 +3382,12 @@ class array(Array[DType, NDim]):
 
         # reference to other array
         self._ref = None
+
+        self._storage_base_ptr: int | None = None
+        """Start of the complete backing storage; unlike ``ptr``, this may precede the array's first element."""
+
+        self._storage_nbytes: int | None = None
+        """Total backing-storage size; unlike ``capacity``, this includes bytes preceding ``ptr``."""
 
         # canonicalize dtype
         if dtype is int:

@@ -13783,7 +13783,7 @@ def capture_save(graph: Graph, path: str, inputs: dict | None = None, outputs: d
             runtime.core.wp_apic_register_binding(state, name.encode("utf-8"), region_id)
 
     # Snapshot memory: copy device data to host and register with C++
-    for _base_id, (region_id, base_ptr, capacity, _base) in apic_capture._regions.items():
+    for _region_key, (region_id, base_ptr, capacity, _base) in apic_capture._regions.items():
         if graph.device.is_cuda:
             if region_id in apic_capture._transient_regions:
                 # Allocated during capture (graph-scoped): its backing is gone now
