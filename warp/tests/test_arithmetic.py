@@ -1094,6 +1094,37 @@ for dtype in np_float_types:
         TestArithmetic, f"test_float_to_int_{dtype.__name__}", test_float_to_int, devices=devices, dtype=dtype
     )
 
+
+def test_floordiv_negative(test, device, dtype, register_kernels=False):
+    # Warp's `//` maps to the floordiv builtin, which is documented as floor
+    # division and must round toward negative infinity for signed operands,
+    # matching Python/NumPy and the floating-point overloads.
+    wptype = wp.dtype_from_numpy(np.dtype(dtype))
+
+    def check_floordiv(
+        a: wp.array[wptype],
+        b: wp.array[wptype],
+        outputs: wp.array[wptype],
+    ):
+        for i in range(12):
+            outputs[i] = a[i] // b[i]
+
+    kernel = getkernel(check_floordiv, suffix=dtype.__name__, enable_backward=False)
+
+    if register_kernels:
+        return
+
+    a_np = np.array([-7, 7, -7, 7, -1, -8, 5, -5, 0, 6, 9, -9], dtype=dtype)
+    b_np = np.array([2, -2, -2, 2, 2, 4, 3, -3, -3, -3, -1, 1], dtype=dtype)
+
+    a = wp.array(a_np, dtype=wptype, device=device)
+    b = wp.array(b_np, dtype=wptype, device=device)
+    outputs = wp.zeros(len(a_np), dtype=wptype, device=device)
+
+    wp.launch(kernel, dim=1, inputs=[a, b], outputs=[outputs], device=device)
+    assert_np_equal(outputs.numpy(), np.floor_divide(a_np, b_np))
+
+
 for dtype in np_scalar_types:
     add_function_test_register_kernel(
         TestArithmetic, f"test_clamp_{dtype.__name__}", test_clamp, devices=devices, dtype=dtype
@@ -1104,6 +1135,16 @@ for dtype in np_scalar_types:
     add_function_test(TestArithmetic, f"test_arrays_{dtype.__name__}", test_arrays, devices=devices, dtype=dtype)
     add_function_test_register_kernel(
         TestArithmetic, f"test_binary_ops_{dtype.__name__}", test_binary_ops, devices=devices, dtype=dtype
+    )
+
+
+for dtype in np_signed_int_types:
+    add_function_test_register_kernel(
+        TestArithmetic,
+        f"test_floordiv_negative_{dtype.__name__}",
+        test_floordiv_negative,
+        devices=devices,
+        dtype=dtype,
     )
 
 
