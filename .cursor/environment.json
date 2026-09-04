@@ -1,0 +1,4 @@
+{
+  "name": "Warp (CPU-only)",
+  "install": "bash ./.cursor/install.sh"
+}
