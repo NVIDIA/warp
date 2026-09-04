@@ -3783,26 +3783,58 @@ def tile_load(
 ) -> Tile[Any, tuple[int, ...]]:
     """Load a tile from a global memory array.
 
-    This method will cooperatively load a tile from global memory using all threads in the block.
+    This is a cooperative operation: the threads of the block divide the copy between
+    them, so every thread must reach the call. Tile element ``(i, j, ...)`` is read from
+    ``a[offset[0] + i, offset[1] + j, ...]``.
+
+    With ``"shared"`` storage, every thread in the block can access every tile element.
+    With ``"register"`` storage, the tile elements are distributed across the block's
+    threads. ``shape``, ``storage``, ``bounds_check``, and ``aligned`` must be compile-time
+    constants.
 
     Args:
         a: The source array in global memory
         shape: Shape of the tile to load, must have the same number of dimensions as ``a``
-        offset: Offset in the source array to begin reading from (optional)
-        storage: The storage location for the tile: ``"register"`` for registers or
-            ``"shared"`` for shared memory.
-        bounds_check: Needed for unaligned tiles, but can disable for memory-aligned tiles for faster load times
-        aligned: If True, skip runtime alignment checks for vectorized loads (shared memory,
-            2D+ tiles only). Has no effect for 1D tiles or register storage. Use when you
-            guarantee that: (1) the base address at the tile offset is 16-byte aligned,
-            (2) the array is contiguous (dense row-major strides), (3) all outer-dimension
-            strides are multiples of 16 bytes, and (4) the tile fits entirely within array
-            bounds. Address-alignment violations trap unconditionally (even in release
-            builds). Bounds and contiguity violations trigger debug-only asserts; in
-            release builds they cause silent data corruption.
+        offset: Offset in the source array to begin reading from, one value per dimension
+            of ``a``; may be a runtime value.
+        storage: The storage location for the tile: ``"register"`` for registers
+            or ``"shared"`` for shared memory.
+        bounds_check: Whether to treat a source coordinate at or past the array's upper
+            extent on any axis as out of bounds; such elements read as zero. When False,
+            all source coordinates must be in bounds.
+        aligned: If True, the caller guarantees that the source address at ``offset`` is
+            16-byte aligned and that the load meets the contiguity, shape, stride, and
+            bounds requirements in :ref:`vectorized_tile_loads`. This optimization
+            applies only to 2D or higher shared-memory tiles.
 
     Returns:
-        A tile with shape as specified and data type the same as the source array."""
+        A tile with shape as specified and data type the same as the source array.
+
+    Example:
+
+        .. testcode::
+
+            TILE_M, TILE_N = 4, 4
+            TILE_THREADS = 8
+
+            @wp.kernel
+            def copy_tiles(a: wp.array2d[float], b: wp.array2d[float]):
+                i, j = wp.tid()
+                # The rightmost tiles extend past the array bounds; those elements read as zero
+                t = wp.tile_load(a, shape=(TILE_M, TILE_N), offset=(i * TILE_M, j * TILE_N))
+                wp.tile_store(b, t, offset=(i * TILE_M, j * TILE_N))
+
+            a = wp.array(np.arange(1, 21, dtype=np.float32).reshape(4, 5), dtype=float)
+            b = wp.zeros((4, 8), dtype=float)
+            wp.launch_tiled(copy_tiles, dim=(1, 2), inputs=[a], outputs=[b], block_dim=TILE_THREADS)
+            print(b.numpy())
+
+        .. testoutput::
+
+            [[ 1.  2.  3.  4.  5.  0.  0.  0.]
+             [ 6.  7.  8.  9. 10.  0.  0.  0.]
+             [11. 12. 13. 14. 15.  0.  0.  0.]
+             [16. 17. 18. 19. 20.  0.  0.  0.]]"""
     ...
 
 @over
@@ -3814,7 +3846,11 @@ def tile_load(
     bounds_check: bool | _builtins.bool = True,
     aligned: bool | _builtins.bool = False,
 ) -> Tile[Any, tuple[int, ...]]:
-    """Load a tile from a global memory array."""
+    """Load a 1D tile from a 1D global memory array.
+
+    Overload for a scalar ``shape`` and ``offset``, equivalent to passing one-element
+    tuples. For the full contract and a usage example, see the overload that takes
+    tuple-valued ``shape`` and ``offset`` arguments."""
     ...
 
 def tile_load_indexed(
@@ -3825,61 +3861,60 @@ def tile_load_indexed(
     axis: int32 | int = 0,
     storage: str = "register",
 ) -> Tile[Any, tuple[int, ...]]:
-    """Load a tile from a global memory array, with loads along a specified axis mapped according to a 1D tile of indices.
+    """Load a tile from a global memory array, gathering along one axis through a 1D tile of indices.
+
+    Cooperative operation: every thread of the block must reach the call. Tile element
+    ``c`` is read from ``a`` at ``offset[d] + c[d]`` along every dimension ``d`` other
+    than ``axis``, and at ``offset[axis] + indices[c[axis]]`` along ``axis``. Every
+    coordinate is checked against both the lower and upper array bounds: an element whose
+    source index is negative or past the end of ``a`` reads as zero, so ``-1`` can be used
+    as a padding sentinel without a physical zero row.
+
+    ``shape``, ``axis``, and ``storage`` must be compile-time constants. In a backward
+    pass the adjoint of the returned tile is atomically accumulated into ``a.grad`` at
+    the same gathered locations.
 
     Args:
         a: The source array in global memory
-        indices: A 1D tile of integer indices mapping to elements in ``a``.
-        shape: Shape of the tile to load, must have the same number of dimensions as ``a``, and along ``axis``, it must have the same number of elements as the ``indices`` tile.
-        offset: Offset in the source array to begin reading from (optional)
-        axis: Axis of ``a`` that indices refer to
-        storage: The storage location for the tile: ``"register"`` for registers or ``"shared"`` for shared memory.
+        indices: A 1D tile of ``int32`` indices into ``a`` along ``axis``. It must hold
+            exactly ``shape[axis]`` values and is always placed in shared memory (a
+            register tile passed here is promoted).
+        shape: Shape of the tile to load, must have the same number of dimensions as ``a``,
+            and along ``axis`` the same number of elements as the ``indices`` tile
+        offset: Offset in the source array to begin reading from, one value per dimension
+            of ``a``; the entry for ``axis`` is added to each index; may be a runtime value.
+        axis: Axis of ``a`` that the indices refer to
+        storage: The storage location for the tile: ``"register"`` for registers
+            or ``"shared"`` for shared memory.
 
     Returns:
         A tile with shape as specified and data type the same as the source array.
 
     Example:
 
-        This example shows how to select and store the even indexed rows from a 2D array.
+        This example gathers the even-numbered rows of a 2D array.
 
-        .. code-block:: python
+        .. testcode::
 
-            TILE_M = wp.constant(2)
-            TILE_N = wp.constant(2)
-            HALF_M = wp.constant(TILE_M // 2)
-            HALF_N = wp.constant(TILE_N // 2)
+            TILE_M, TILE_N = 2, 4
+            TILE_THREADS = 4
 
             @wp.kernel
-            def compute(x: wp.array2d[float], y: wp.array2d[float]):
-                i, j = wp.tid()
+            def gather_even_rows(x: wp.array2d[float], y: wp.array2d[float]):
+                # gather rows 0, 2, 4, ... of `x`
+                rows = wp.tile_arange(TILE_M, dtype=int) * 2
+                t = wp.tile_load_indexed(x, indices=rows, shape=(TILE_M, TILE_N), axis=0)
+                wp.tile_store(y, t)
 
-                evens = wp.tile_arange(HALF_M, dtype=int, storage="shared") * 2
-
-                t0 = wp.tile_load_indexed(x, indices=evens, shape=(HALF_M, TILE_N), offset=(i*TILE_M, j*TILE_N), axis=0, storage="register")
-                wp.tile_store(y, t0, offset=(i*HALF_M, j*TILE_N))
-
-            M = TILE_M * 2
-            N = TILE_N * 2
-
-            arr = np.arange(M * N).reshape(M, N)
-
-            x = wp.array(arr, dtype=float)
-            y = wp.zeros((M // 2, N), dtype=float)
-
-            wp.launch_tiled(compute, dim=[2,2], inputs=[x], outputs=[y], block_dim=32, device=device)
-
-            print(x.numpy())
+            x = wp.array(np.arange(1, 17, dtype=np.float32).reshape(4, 4), dtype=float)
+            y = wp.zeros((2, 4), dtype=float)
+            wp.launch_tiled(gather_even_rows, dim=1, inputs=[x], outputs=[y], block_dim=TILE_THREADS)
             print(y.numpy())
 
-        .. code-block:: text
+        .. testoutput::
 
-            [[ 0.  1.  2.  3.]
-             [ 4.  5.  6.  7.]
-             [ 8.  9. 10. 11.]
-             12. 13. 14. 15.]]
-
-            [[ 0.  1.  2.  3.]
-             [ 8.  9. 10. 11.]]"""
+            [[ 1.  2.  3.  4.]
+             [ 9. 10. 11. 12.]]"""
     ...
 
 @over
@@ -3892,21 +3927,54 @@ def tile_store(
 ) -> None:
     """Store a tile to a global memory array.
 
-    This method will cooperatively store a tile to global memory using all threads in the block.
+    This is a cooperative operation: the threads of the block divide the copy between
+    them, so every thread must reach the call. Element ``(i, j, ...)`` of ``t`` is written
+    to ``a[offset[0] + i, offset[1] + j, ...]``. No barrier is issued by the store itself.
+
+    The elements of ``a`` covered by the tile are overwritten. ``bounds_check`` and
+    ``aligned`` must be compile-time constants. The backward pass accumulates gradients
+    from the written region into the adjoint of ``t``, then clears those entries from
+    ``a.grad``.
 
     Args:
         a: The destination array in global memory
-        t: The source tile to store data from, must have the same data type and number of dimensions as the destination array
-        offset: Offset in the destination array (optional)
-        bounds_check: Needed for unaligned tiles, but can disable for memory-aligned tiles for faster write times.
-        aligned: If True, skip runtime alignment checks for vectorized stores (shared memory,
-            2D+ tiles only). Has no effect for 1D tiles or register storage. Use when you
-            guarantee that: (1) the base address at the tile offset is 16-byte aligned,
-            (2) the array is contiguous (dense row-major strides), (3) all outer-dimension
-            strides are multiples of 16 bytes, and (4) the tile fits entirely within array
-            bounds. Address-alignment violations trap unconditionally (even in release
-            builds). Bounds and contiguity violations trigger debug-only asserts; in
-            release builds they cause silent data corruption."""
+        t: The source tile to store data from, must have the same data type and number of
+            dimensions as the destination array
+        offset: Offset in the destination array, one value per dimension of ``a``; may be
+            a runtime value.
+        bounds_check: Whether to treat a destination coordinate at or past the array's
+            upper extent on any axis as out of bounds; such writes are skipped. When
+            False, all destination coordinates must be in bounds.
+        aligned: If True, the caller guarantees that the destination address at ``offset``
+            is 16-byte aligned and that the store meets the contiguity, shape, stride, and
+            bounds requirements in
+            :ref:`vectorized tile loads and stores <vectorized_tile_loads>`. This
+            optimization applies only to 2D or higher shared-memory tiles.
+
+    Example:
+
+        .. testcode::
+
+            TILE_M, TILE_N = 2, 2
+            TILE_THREADS = 2
+
+            @wp.kernel
+            def scale_tiles(a: wp.array2d[float], b: wp.array2d[float]):
+                i, j = wp.tid()
+                t = wp.tile_load(a, shape=(TILE_M, TILE_N), offset=(i * TILE_M, j * TILE_N))
+                # `b` is smaller than `a`, so elements that fall outside it are dropped
+                wp.tile_store(b, t * 2.0, offset=(i * TILE_M, j * TILE_N))
+
+            a = wp.array(np.arange(1, 17, dtype=np.float32).reshape(4, 4), dtype=float)
+            b = wp.zeros((3, 3), dtype=float)
+            wp.launch_tiled(scale_tiles, dim=(2, 2), inputs=[a], outputs=[b], block_dim=TILE_THREADS)
+            print(b.numpy())
+
+        .. testoutput::
+
+            [[ 2.  4.  6.]
+             [10. 12. 14.]
+             [18. 20. 22.]]"""
     ...
 
 @over
@@ -3917,7 +3985,11 @@ def tile_store(
     bounds_check: bool | _builtins.bool = True,
     aligned: bool | _builtins.bool = False,
 ) -> None:
-    """Store a tile to a global memory array."""
+    """Store a 1D tile to a 1D global memory array.
+
+    Overload for a scalar ``offset``, equivalent to passing a one-element tuple. For
+    the full contract and a usage example, see the overload that takes a tuple-valued
+    ``offset`` argument."""
     ...
 
 def tile_store_indexed(
@@ -3927,64 +3999,60 @@ def tile_store_indexed(
     offset: tuple[int, ...] = ...,
     axis: int32 | int = 0,
 ) -> None:
-    """Store a tile to a global memory array, with storage along a specified axis mapped according to a 1D tile of indices.
+    """Store a tile to a global memory array, scattering along one axis through a 1D tile of indices.
+
+    Cooperative operation: every thread of the block must reach the call. Element ``c``
+    of ``t`` is written to ``a`` at ``offset[d] + c[d]`` along every dimension ``d``
+    other than ``axis``, and at
+    ``offset[axis] + indices[c[axis]]`` along ``axis``. Every coordinate is checked
+    against both the lower and upper array bounds: an element whose destination index is
+    negative or past the end of ``a`` is skipped, so ``-1`` can be used to discard a
+    slice.
+
+    The selected elements of ``a`` are overwritten. Each destination must be selected by
+    at most one element — duplicate indices race. ``axis`` must be a compile-time
+    constant. The backward pass accumulates gradients at the written destinations into
+    the adjoint of ``t``, then clears those entries from ``a.grad``.
 
     Args:
         a: The destination array in global memory
-        indices: A 1D tile of integer indices mapping to elements in ``a``.
-        t: The source tile to store data from, must have the same data type and number of dimensions as the destination array, and along ``axis``, it must have the same number of elements as the ``indices`` tile.
-        offset: Offset in the destination array (optional)
-        axis: Axis of ``a`` that indices refer to.
+        indices: A 1D tile of ``int32`` indices into ``a`` along ``axis``. It must hold
+            exactly ``t.shape[axis]`` values and is always placed in shared memory (a
+            register tile passed here is promoted).
+        t: The source tile to store data from, must have the same data type and number of
+            dimensions as the destination array, and along ``axis`` the same number of
+            elements as the ``indices`` tile
+        offset: Offset in the destination array, one value per dimension of ``a``. The
+            entry for ``axis`` is added to each index; may be a runtime value.
+        axis: Axis of ``a`` that the indices refer to
 
     Example:
 
-        This example shows how to map tile rows to the even rows of a 2D array.
+        This example writes the rows of a tile to the even-numbered rows of a 2D array.
 
-        .. code-block:: python
+        .. testcode::
 
-            TILE_M = wp.constant(2)
-            TILE_N = wp.constant(2)
-            TWO_M = wp.constant(TILE_M * 2)
-            TWO_N = wp.constant(TILE_N * 2)
+            TILE_M, TILE_N = 2, 4
+            TILE_THREADS = 4
 
             @wp.kernel
-            def compute(x: wp.array2d[float], y: wp.array2d[float]):
-                i, j = wp.tid()
+            def scatter_even_rows(x: wp.array2d[float], y: wp.array2d[float]):
+                t = wp.tile_load(x, shape=(TILE_M, TILE_N))
+                # tile row k is written to row 2*k of `y`
+                rows = wp.tile_arange(TILE_M, dtype=int) * 2
+                wp.tile_store_indexed(y, indices=rows, t=t, axis=0)
 
-                t = wp.tile_load(x, shape=(TILE_M, TILE_N), offset=(i*TILE_M, j*TILE_N), storage="register")
-
-                evens_M = wp.tile_arange(TILE_M, dtype=int, storage="shared") * 2
-
-                wp.tile_store_indexed(y, indices=evens_M, t=t, offset=(i*TWO_M, j*TILE_N), axis=0)
-
-            M = TILE_M * 2
-            N = TILE_N * 2
-
-            arr = np.arange(M * N, dtype=float).reshape(M, N)
-
-            x = wp.array(arr, dtype=float, requires_grad=True, device=device)
-            y = wp.zeros((M * 2, N), dtype=float, requires_grad=True, device=device)
-
-            wp.launch_tiled(compute, dim=[2,2], inputs=[x], outputs=[y], block_dim=32, device=device)
-
-            print(x.numpy())
+            x = wp.array(np.arange(1, 9, dtype=np.float32).reshape(2, 4), dtype=float)
+            y = wp.zeros((4, 4), dtype=float)
+            wp.launch_tiled(scatter_even_rows, dim=1, inputs=[x], outputs=[y], block_dim=TILE_THREADS)
             print(y.numpy())
 
-        .. code-block:: text
+        .. testoutput::
 
-            [[ 0.  1.  2.  3.]
-                [ 4.  5.  6.  7.]
-                [ 8.  9. 10. 11.]
-                [12. 13. 14. 15.]]
-
-            [[ 0.  1.  2.  3.]
-                [ 0.  0.  0.  0.]
-                [ 4.  5.  6.  7.]
-                [ 0.  0.  0.  0.]
-                [ 8.  9. 10. 11.]
-                [ 0.  0.  0.  0.]
-                [12. 13. 14. 15.]
-                [ 0.  0.  0.  0.]]"""
+            [[1. 2. 3. 4.]
+             [0. 0. 0. 0.]
+             [5. 6. 7. 8.]
+             [0. 0. 0. 0.]]"""
     ...
 
 @over
@@ -3994,18 +4062,68 @@ def tile_atomic_add(
     offset: tuple[int, ...] = ...,
     bounds_check: bool | _builtins.bool = True,
 ) -> Tile[Any, tuple[int, ...]]:
-    """Atomically add a tile onto the array ``a``.
+    """Atomically add a tile onto the array ``a`` and return the values it replaced.
 
-    Each element is updated atomically.
+    This is a cooperative operation: the threads of the block divide the work between
+    them, so every thread must reach the call. Element ``(i, j, ...)`` of ``t`` is added
+    atomically to ``a[offset[0] + i, offset[1] + j, ...]`` and the destination's previous
+    value is placed in the returned tile. No barrier is issued by the call itself.
+
+    Only the individual element updates are atomic. Concurrent updates from other threads
+    or blocks are interleaved in an unspecified order, so the returned values — and, for
+    floating-point types, the rounding of the accumulated result — are not reproducible.
+    For Warp struct elements, only fields whose underlying scalar type supports atomic
+    addition are updated. Boolean, narrow-integer, array, and other non-atomic fields
+    remain unchanged, although their previous values are still present in the returned
+    tile.
+
+    In a backward pass the gradients of the updated region of ``a`` are accumulated into
+    the adjoint of ``t`` and left in place in ``a.grad``; the adjoint of the returned tile
+    is not propagated.
 
     Args:
-        a: Array in global memory, should have the same ``dtype`` as the input tile
+        a: Array in global memory, must have the same ``dtype`` as the input tile. Its
+            underlying scalar type must be one that supports atomic addition: ``int32``,
+            ``uint32``, ``int64``, ``uint64``, ``float16``, ``bfloat16``, ``float32``, or
+            ``float64``.
         t: Source tile to add to the destination array
-        offset: Offset in the destination array (optional)
-        bounds_check: Needed for unaligned tiles, but can disable for memory-aligned tiles for faster write times
+        offset: Offset in the destination array, one value per dimension of ``a``; may be
+            a runtime value.
+        bounds_check: Whether to treat a destination coordinate at or past the array's
+            upper extent on any axis as out of bounds; such updates are skipped. Must be
+            a compile-time constant.
 
     Returns:
-        A tile with the same dimensions and data type as the source tile, holding the original value of the destination elements."""
+        A tile with the same shape, data type and storage as ``t``, holding the value each
+        destination element had before the addition. Passing a shared ``t`` therefore
+        allocates a second shared-memory tile for the result.
+
+    Example:
+
+        .. testcode::
+
+            TILE_THREADS = 2
+
+            @wp.kernel
+            def accumulate(x: wp.array2d[float], totals: wp.array2d[float], previous: wp.array2d[float]):
+                t = wp.tile_load(x, shape=(2, 2))
+                # `p` holds what `totals` contained before the addition
+                p = wp.tile_atomic_add(totals, t)
+                wp.tile_store(previous, p)
+
+            x = wp.array(np.arange(1, 5, dtype=np.float32).reshape(2, 2), dtype=float)
+            totals = wp.array(np.arange(4, dtype=np.float32).reshape(2, 2), dtype=float)
+            previous = wp.zeros((2, 2), dtype=float)
+            wp.launch_tiled(accumulate, dim=1, inputs=[x], outputs=[totals, previous], block_dim=TILE_THREADS)
+            print(totals.numpy())
+            print(previous.numpy())
+
+        .. testoutput::
+
+            [[1. 3.]
+             [5. 7.]]
+            [[0. 1.]
+             [2. 3.]]"""
     ...
 
 @over
@@ -4015,7 +4133,11 @@ def tile_atomic_add(
     offset: int32 | int = ...,
     bounds_check: bool | _builtins.bool = True,
 ) -> Tile[Any, tuple[int, ...]]:
-    """Atomically add a tile onto the array ``a``."""
+    """Atomically add a 1D tile onto the 1D array ``a`` and return the values it replaced.
+
+    Overload for a scalar ``offset``, equivalent to passing a one-element tuple. For
+    the full contract and a usage example, see the overload that takes a tuple-valued
+    ``offset`` argument."""
     ...
 
 def tile_atomic_add_indexed(
@@ -4025,56 +4147,83 @@ def tile_atomic_add_indexed(
     offset: tuple[int, ...] = ...,
     axis: int32 | int = 0,
 ) -> Tile[Any, tuple[int, ...]]:
-    """Atomically add a tile to a global memory array, with storage along a specified axis mapped according to a 1D tile of indices.
+    """Atomically add a tile onto a global memory array, scattering along one axis through a 1D tile of indices.
+
+    Cooperative operation: every thread of the block must reach the call. Element ``c``
+    of ``t`` is added atomically to ``a`` at ``offset[d] + c[d]`` along every dimension
+    ``d`` other than ``axis``, and at
+    ``offset[axis] + indices[c[axis]]`` along ``axis``, and the destination's previous
+    value is placed in the returned tile. Every coordinate is checked against both the
+    lower and upper array bounds: an element whose destination index is negative or past
+    the end of ``a`` is skipped.
+
+    Repeated indices are allowed and accumulate, which is what makes this useful for
+    segmented or row-wise reductions. Only the individual element updates are atomic.
+    When repeated indices or concurrent updates target the same destination, their order
+    is unspecified. In those cases, the returned values — and, for floating-point types,
+    the rounding of the accumulated result — are not reproducible.
+
+    For Warp struct elements, only fields whose underlying scalar type supports atomic
+    addition are updated. Boolean, narrow-integer, array, and other non-atomic fields
+    remain unchanged, although their previous values are still present in the returned
+    tile.
+
+    In a backward pass the gradients of the updated elements of ``a`` are accumulated
+    into the adjoint of ``t`` and left in place in ``a.grad``; the adjoint of the returned
+    tile is not propagated.
 
     Args:
-        a: The destination array in global memory
-        indices: A 1D tile of integer indices mapping to elements in ``a``.
-        t: The source tile to extract data from, must have the same data type and number of dimensions as the destination array, and along ``axis``, it must have the same number of elements as the ``indices`` tile.
-        offset: Offset in the destination array (optional)
-        axis: Axis of ``a`` that indices refer to.
+        a: The destination array in global memory, must have the same ``dtype`` as the
+            input tile. Its underlying scalar type must be one that supports atomic
+            addition: ``int32``, ``uint32``, ``int64``, ``uint64``, ``float16``,
+            ``bfloat16``, ``float32``, or ``float64``.
+        indices: A 1D tile of ``int32`` indices into ``a`` along ``axis``. It must hold
+            exactly ``t.shape[axis]`` values and is always placed in shared memory (a
+            register tile passed here is promoted).
+        t: The source tile to add to the destination array, must have the same data type
+            and number of dimensions as the destination array, and along ``axis`` the same
+            number of elements as the ``indices`` tile
+        offset: Offset in the destination array, one value per dimension of ``a``. The
+            entry for ``axis`` is added to each index; may be a runtime value.
+        axis: Axis of ``a`` that the indices refer to. Must be a compile-time constant.
+
+    Returns:
+        A tile with the same shape, data type and storage as ``t``, holding the value each
+        updated destination element had before the addition. Passing a shared ``t``
+        therefore allocates a second shared-memory tile for the result.
 
     Example:
 
-        This example shows how to compute a blocked, row-wise reduction.
+        This example accumulates the rows of a tile into the even-numbered rows of a 2D array.
 
-        .. code-block:: python
+        .. testcode::
 
-            TILE_M = wp.constant(2)
-            TILE_N = wp.constant(2)
+            TILE_M, TILE_N = 2, 4
+            TILE_THREADS = 4
 
             @wp.kernel
-            def tile_atomic_add_indexed(x: wp.array2d[float], y: wp.array2d[float]):
-                i, j = wp.tid()
+            def accumulate_even_rows(x: wp.array2d[float], y: wp.array2d[float], previous: wp.array2d[float]):
+                t = wp.tile_load(x, shape=(TILE_M, TILE_N))
+                # tile row k accumulates into row 2*k of `y`
+                rows = wp.tile_arange(TILE_M, dtype=int) * 2
+                p = wp.tile_atomic_add_indexed(y, indices=rows, t=t, axis=0)
+                wp.tile_store(previous, p)
 
-                t = wp.tile_load(x, shape=(TILE_M, TILE_N), offset=(i*TILE_M, j*TILE_N), storage="register")
-
-                zeros = wp.tile_zeros(TILE_M, dtype=int, storage="shared")
-
-                wp.tile_atomic_add_indexed(y, indices=zeros, t=t, offset=(i, j*TILE_N), axis=0)
-
-            M = TILE_M * 2
-            N = TILE_N * 2
-
-            arr = np.arange(M * N, dtype=float).reshape(M, N)
-
-            x = wp.array(arr, dtype=float, requires_grad=True, device=device)
-            y = wp.zeros((2, N), dtype=float, requires_grad=True, device=device)
-
-            wp.launch_tiled(tile_atomic_add_indexed, dim=[2,2], inputs=[x], outputs=[y], block_dim=32, device=device)
-
-            print(x.numpy())
+            x = wp.array(np.arange(1, 9, dtype=np.float32).reshape(2, 4), dtype=float)
+            y = wp.array(np.arange(16, dtype=np.float32).reshape(4, 4), dtype=float)
+            previous = wp.zeros((2, 4), dtype=float)
+            wp.launch_tiled(accumulate_even_rows, dim=1, inputs=[x], outputs=[y, previous], block_dim=TILE_THREADS)
             print(y.numpy())
+            print(previous.numpy())
 
-        .. code-block:: text
+        .. testoutput::
 
+            [[ 1.  3.  5.  7.]
+             [ 4.  5.  6.  7.]
+             [13. 15. 17. 19.]
+             [12. 13. 14. 15.]]
             [[ 0.  1.  2.  3.]
-                [ 4.  5.  6.  7.]
-                [ 8.  9. 10. 11.]
-                [12. 13. 14. 15.]]
-
-            [[ 4.  6.  8. 10.]
-                [20. 22. 24. 26.]]"""
+             [ 8.  9. 10. 11.]]"""
     ...
 
 def tile_view(t: Tile[Any, tuple[int, ...]], offset: tuple, shape: tuple[int, ...] = ...) -> Tile[Any, tuple[int, ...]]:
@@ -4372,44 +4521,55 @@ def tile_scatter_add(
 ) -> None:
     """Scatter-add a per-thread value into a shared-memory tile.
 
-    Cooperative operation -- all threads in the block must call this function.
-    Each thread whose ``has_value`` is ``True`` adds ``value`` at index ``i``.
+    This is a cooperative operation, so every thread in the block must call it. Threads
+    with ``has_value=True`` add ``value`` at index ``i``; threads with nothing to add pass
+    ``has_value=False``. Threads that collide on an index are applied in an unspecified
+    order, so for floating-point values the rounding of the accumulated result is not
+    reproducible. The updates are available to subsequent tile operations when the call
+    returns.
 
-    A synchronization barrier is included so the updated values are visible to
-    all threads after the call returns.
+    Because the values come from individual threads, the result depends on
+    ``block_dim`` and differs on CPU, which runs a single lane per block (see
+    :ref:`cpu_tile_semantics`). In a backward pass the adjoint of ``value`` picks up the
+    tile's gradient at ``i``.
+
+    For Warp struct elements, only fields whose underlying scalar type supports addition
+    are accumulated. Boolean, narrow-integer, array, and other non-accumulating fields
+    remain unchanged.
 
     Args:
-        a: A shared-memory tile to scatter-add into.
-        i: Index of the element to add to.
+        a: Tile to scatter-add into. It is always placed in shared memory; a register tile
+            passed here is promoted.
+        i: Index of the element to add to. Must be valid when ``has_value`` is ``True``.
         value: The value to add (must match the tile's dtype).
         has_value: Whether this thread should perform the add.
-        atomic: If True, use atomic add for safe concurrent writes.
-            Set to False when indices are guaranteed unique across threads
-            (e.g., lane-parallel writes) for better performance.
+        atomic: If True, accumulate with an atomic add. Pass False — a compile-time
+            constant — only when you can guarantee that no two threads of the block target
+            the same index in this call: a plain read-modify-write is then used and
+            conflicting updates are lost.
 
     Example:
 
-        .. code-block:: python
+        .. testcode::
+            :skipif: wp.get_cuda_device_count() == 0
 
             @wp.kernel
-            def histogram(data: wp.array[float], out: wp.array[float]):
-
-                bins = wp.tile_zeros(dtype=float, shape=4, storage="shared")
-                _tile, i = wp.tid()
-                # Bin values in [0, 8) into 4 bins of width 2
+            def histogram(data: wp.array[float], bins_out: wp.array[float]):
+                _block, i = wp.tid()
+                bins = wp.tile_zeros(shape=4, dtype=float, storage="shared")
+                # bin values in [0, 8) into four bins of width 2
                 b = int(data[i] / 2.0)
                 wp.tile_scatter_add(bins, b, 1.0, True)
-                wp.tile_store(out, bins, offset=0)
+                wp.tile_store(bins_out, bins)
 
-            data = wp.array([0.5, 1.0, 2.5, 3.0, 4.5, 5.0, 6.5, 7.0], dtype=float)
-            output = wp.zeros(4, dtype=float)
-            wp.launch_tiled(histogram, dim=[1], inputs=[data, output], block_dim=8)
+            data = wp.array([0.5, 2.0, 3.0, 4.0, 4.5, 5.5, 6.0, 7.0], dtype=float)
+            bins_out = wp.zeros(4, dtype=float)
+            wp.launch_tiled(histogram, dim=1, inputs=[data], outputs=[bins_out], block_dim=8)
+            print(bins_out.numpy())
 
-            print(output.numpy())
+        .. testoutput::
 
-        .. code-block:: text
-
-            [2. 2. 2. 2.]"""
+            [1. 2. 3. 2.]"""
     ...
 
 @over
@@ -4421,7 +4581,10 @@ def tile_scatter_add(
     has_value: bool | _builtins.bool,
     atomic: bool | _builtins.bool = True,
 ) -> None:
-    """"""
+    """Scatter-add a per-thread value into a 2D shared-memory tile.
+
+    Overload taking one index per tile dimension. For the full contract and a usage
+    example, see the 1D overload that takes only ``i`` as its index."""
     ...
 
 @over
@@ -4434,7 +4597,10 @@ def tile_scatter_add(
     has_value: bool | _builtins.bool,
     atomic: bool | _builtins.bool = True,
 ) -> None:
-    """"""
+    """Scatter-add a per-thread value into a 3D shared-memory tile.
+
+    Overload taking one index per tile dimension. For the full contract and a usage
+    example, see the 1D overload that takes only ``i`` as its index."""
     ...
 
 @over
@@ -4448,7 +4614,10 @@ def tile_scatter_add(
     has_value: bool | _builtins.bool,
     atomic: bool | _builtins.bool = True,
 ) -> None:
-    """"""
+    """Scatter-add a per-thread value into a 4D shared-memory tile.
+
+    Overload taking one index per tile dimension. For the full contract and a usage
+    example, see the 1D overload that takes only ``i`` as its index."""
     ...
 
 @over
@@ -4458,38 +4627,49 @@ def tile_scatter_masked(
     value: Any,
     has_value: bool | _builtins.bool,
 ) -> None:
-    """Write a value into a shared-memory tile from the calling thread.
+    """Write a per-thread value into a shared-memory tile.
 
-    All threads in the block must call this function cooperatively.
-    Each thread whose ``has_value`` is ``True`` writes ``value`` at the
-    specified index.  A synchronization barrier is included so the written
-    values are visible to all threads after the call returns.
+    This is a cooperative operation, so every thread in the block must call it. Threads
+    with ``has_value=True`` write ``value`` at index ``i``; threads with nothing to write
+    pass ``has_value=False``. The writes are available to subsequent tile operations when
+    the call returns.
 
-    Each index should be written by at most one thread per call.  If multiple
-    threads write to the same index, the result is undefined (data race in the
-    forward pass, incorrect gradients in the backward pass).
+    Each index must be written by at most one thread per call; conflicting writes are
+    undefined. Use :func:`~warp.tile_scatter_add` when several threads may target the same
+    index.
+
+    Because the values come from individual threads, the result depends on ``block_dim``
+    and differs on CPU, which runs a single lane per block (see
+    :ref:`cpu_tile_semantics`). In a backward pass the adjoint of ``value`` takes the
+    tile's gradient at ``i``, which is then cleared.
+
+    Args:
+        a: Tile to write into; a register tile is promoted to shared memory.
+        i: Index of the element to write. Must be valid when ``has_value`` is ``True``.
+        value: The value to write (must match the tile's dtype).
+        has_value: Whether this thread should perform the write.
 
     Example:
 
-        .. code-block:: python
+        .. testcode::
+            :skipif: wp.get_cuda_device_count() == 0
 
             @wp.kernel
-            def write_kernel(out: wp.array[int]):
-                tile_idx, thread_idx = wp.tid()
+            def reverse_lanes(src: wp.array[int], dst: wp.array[int]):
+                _block, i = wp.tid()
+                t = wp.tile_zeros(shape=8, dtype=int, storage="shared")
+                # a permutation: every slot is written by exactly one thread
+                wp.tile_scatter_masked(t, 7 - i, src[i], True)
+                wp.tile_store(dst, t)
 
-                # Allocate a shared-memory tile
-                t = wp.tile_zeros(shape=64, dtype=int, storage="shared")
+            src = wp.array(np.arange(1, 9), dtype=int)
+            dst = wp.zeros(8, dtype=int)
+            wp.launch_tiled(reverse_lanes, dim=1, inputs=[src], outputs=[dst], block_dim=8)
+            print(dst.numpy())
 
-                # Each thread writes its own slot
-                wp.tile_scatter_masked(t, thread_idx, thread_idx + 1, True)
+        .. testoutput::
 
-                wp.tile_store(out, t)
-
-    Args:
-        a: The tile to write into (will use shared memory).
-        i: Index of the element to write.
-        value: The value to write (must match the tile's dtype).
-        has_value: Whether this thread should perform the write."""
+            [8 7 6 5 4 3 2 1]"""
     ...
 
 @over
@@ -4500,7 +4680,10 @@ def tile_scatter_masked(
     value: Any,
     has_value: bool | _builtins.bool,
 ) -> None:
-    """"""
+    """Write a per-thread value into a 2D shared-memory tile.
+
+    Overload taking one index per tile dimension. For the full contract and a usage
+    example, see the 1D overload that takes only ``i`` as its index."""
     ...
 
 @over
@@ -4512,7 +4695,10 @@ def tile_scatter_masked(
     value: Any,
     has_value: bool | _builtins.bool,
 ) -> None:
-    """"""
+    """Write a per-thread value into a 3D shared-memory tile.
+
+    Overload taking one index per tile dimension. For the full contract and a usage
+    example, see the 1D overload that takes only ``i`` as its index."""
     ...
 
 @over
@@ -4525,7 +4711,10 @@ def tile_scatter_masked(
     value: Any,
     has_value: bool | _builtins.bool,
 ) -> None:
-    """"""
+    """Write a per-thread value into a 4D shared-memory tile.
+
+    Overload taking one index per tile dimension. For the full contract and a usage
+    example, see the 1D overload that takes only ``i`` as its index."""
     ...
 
 def tile_transpose(a: Tile[Any, tuple[int, int]]) -> Tile[Any, tuple[int, int]]:
