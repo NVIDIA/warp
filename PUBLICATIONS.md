@@ -8,6 +8,7 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 ## 2026
 
 - **DarcyWarp: A graphics processing unit (GPU)-accelerated multigrid solver for repeated 2D fixed-transmissivity groundwater solves validated against reference solvers**. *P. Durney, J. Fourie*. September 2026. [DOI:10.1016/j.envsoft.2026.107081](https://doi.org/10.1016/j.envsoft.2026.107081)
+- **Learning Agile Perceptive Traversal of Sparse 3D Structures for Humanoids**. *E. Ongan, C. Zhang, B. Sun, A. Cramariuc, C. Cadena, M. Hutter*. August 2026. [arXiv:2608.29769](https://arxiv.org/abs/2608.29769)
 - **VersaGauss: A Versatile Framework for Generating Multiphase Dynamics with 3D Gaussians**. *R. Su, L. Yang, X. Xie, J. Lai*. August 2026. [arXiv:2608.28069](https://arxiv.org/abs/2608.28069)
 - **THA-Flow Generative Model: Prosthesis Geometry Prediction from Preoperative CT**. *Y. Wang, J. Li, J. Shen, L. Wang*. August 2026. [arXiv:2608.25845](https://arxiv.org/abs/2608.25845)
 - **SAFE-CHEM: Uncertainty-Aware Policy Switching for Robust Robotic Chemistry**. *L. Jones, S. Shahzad, A. Sana, G. Pizzuto*. August 2026. [arXiv:2608.09303](https://arxiv.org/abs/2608.09303)
