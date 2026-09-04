@@ -9,6 +9,7 @@ import numpy as np
 import warp as wp
 from warp._src.optim.linear import TiledDot, _create_segmented_tiled_dot_kernels, _run_solver_loop
 from warp.optim.linear import CG, CR, GMRES, BiCGSTAB, aslinearoperator, bicgstab, cg, cr, gmres, preconditioner
+from warp.sparse import bsr_from_triplets, bsr_mv
 from warp.tests.unittest_utils import *
 
 
@@ -941,6 +942,115 @@ def test_functor_compat_errors(test, device):
             bic_state(M=M2)
 
 
+def _make_block_spd_system(num_blocks, block_size, seed, dtype, device, coupling=0.05):
+    """Block-tridiagonal SPD BSR system. Diagonal blocks are individually SPD; off-diagonal
+    coupling to neighboring blocks is small relative to the diagonal, so block-Jacobi is both
+    a valid (SPD diagonal blocks) and effective (block-diagonally dominant) preconditioner."""
+    rng = np.random.default_rng(seed)
+
+    diag_blocks = []
+    for _ in range(num_blocks):
+        C = rng.uniform(low=-1.0, high=1.0, size=(block_size, block_size))
+        diag_blocks.append(C @ C.T + block_size * np.eye(block_size))
+
+    rows, cols, vals = [], [], []
+    for i in range(num_blocks):
+        rows.append(i)
+        cols.append(i)
+        vals.append(diag_blocks[i])
+        if i + 1 < num_blocks:
+            off = coupling * rng.uniform(low=-1.0, high=1.0, size=(block_size, block_size))
+            rows.append(i)
+            cols.append(i + 1)
+            vals.append(off)
+            rows.append(i + 1)
+            cols.append(i)
+            vals.append(off.T)
+
+    rows_wp = wp.array(rows, dtype=int, device=device)
+    cols_wp = wp.array(cols, dtype=int, device=device)
+    vals_wp = wp.array(np.stack(vals), dtype=dtype, device=device)
+
+    A = bsr_from_triplets(num_blocks, num_blocks, rows_wp, cols_wp, vals_wp)
+
+    b_np = rng.uniform(low=-1.0, high=1.0, size=(num_blocks * block_size,))
+    b = wp.array(b_np, dtype=dtype, device=device)
+
+    return A, b, diag_blocks
+
+
+def test_block_jacobi_preconditioner_correctness(test, device):
+    """Verify the block-Jacobi preconditioner's matvec matches a direct inverse
+    of the diagonal blocks, for a couple of different block sizes."""
+    for block_size in (3, 12):
+        A, _b, diag_blocks = _make_block_spd_system(
+            num_blocks=6, block_size=block_size, seed=100 + block_size, dtype=wp.float32, device=device
+        )
+        M = preconditioner(A, "block_jacobi")
+
+        x_np = np.random.default_rng(7).uniform(low=-1.0, high=1.0, size=(A.shape[0],)).astype(np.float32)
+        x = wp.array(x_np, dtype=wp.float32, device=device)
+        z = wp.zeros_like(x)
+
+        M.matvec(x, z, z, alpha=1.0, beta=0.0)
+
+        expected = np.concatenate(
+            [np.linalg.solve(diag_blocks[i], x_np[i * block_size : (i + 1) * block_size]) for i in range(6)]
+        )
+        assert_np_equal(z.numpy(), expected, tol=1.0e-4)
+
+
+def test_block_jacobi_preconditioner_convergence(test, device):
+    """On a block-diagonally-dominant system, block-Jacobi should converge in no more
+    iterations than scalar (diagonal) Jacobi, and strictly fewer on a system with
+    meaningful intra-block coupling."""
+    A, b, _diag_blocks = _make_block_spd_system(
+        num_blocks=8, block_size=12, seed=99, dtype=wp.float64, device=device, coupling=0.2
+    )
+
+    x_diag = wp.zeros_like(b)
+    niter_diag, _err, _atol = cg(A, b, x_diag, M=preconditioner(A, "diag"), maxiter=1000, use_cuda_graph=False)
+
+    x_bj = wp.zeros_like(b)
+    niter_bj, _err, _atol = cg(A, b, x_bj, M=preconditioner(A, "block_jacobi"), maxiter=1000, use_cuda_graph=False)
+
+    test.assertLessEqual(niter_bj, niter_diag)
+
+    residual = wp.clone(b)
+    bsr_mv(A, x_bj, residual, alpha=1.0, beta=-1.0)
+    test.assertLessEqual(np.linalg.norm(residual.numpy()), 1.0e-6 * np.linalg.norm(b.numpy()))
+
+
+def test_block_jacobi_preconditioner_scalar_fallback(test, device):
+    """1x1-block (CSR) matrices should fall back to standard scalar Jacobi rather than error."""
+    A, _b, _diag_blocks = _make_block_spd_system(num_blocks=16, block_size=1, seed=321, dtype=wp.float32, device=device)
+    M_diag = preconditioner(A, "diag")
+    M_bj = preconditioner(A, "block_jacobi")
+
+    x = wp.array(np.ones(16, dtype=np.float32), device=device)
+    z_diag = wp.zeros_like(x)
+    z_bj = wp.zeros_like(x)
+    M_diag.matvec(x, z_diag, z_diag, alpha=1.0, beta=0.0)
+    M_bj.matvec(x, z_bj, z_bj, alpha=1.0, beta=0.0)
+
+    assert_np_equal(z_bj.numpy(), z_diag.numpy(), tol=1.0e-6)
+
+
+def test_block_jacobi_preconditioner_errors(test, device):
+    """Non-square blocks are rejected; dense (non-BsrMatrix) input is rejected."""
+    A, _b = _make_spd_system(n=16, seed=321, dtype=wp.float32, device=device)
+    with test.assertRaises(ValueError):
+        preconditioner(A, "block_jacobi")
+
+
+def test_block_jacobi_preconditioner_unsupported_dtype(test, device):
+    """wp.tile_cholesky only supports float32/float64; block sizes > 1 with any
+    other scalar type must fail fast with a clear error, not a kernel-compile error."""
+    A, _b, _diag_blocks = _make_block_spd_system(num_blocks=4, block_size=3, seed=321, dtype=wp.float16, device=device)
+    with test.assertRaises(ValueError):
+        preconditioner(A, "block_jacobi")
+
+
 class TestLinearSolvers(unittest.TestCase):
     pass
 
@@ -1038,6 +1148,36 @@ add_function_test(
 )
 add_function_test(TestLinearSolvers, "test_functor_preconditioner", test_functor_preconditioner, devices=devices)
 add_function_test(TestLinearSolvers, "test_functor_compat_errors", test_functor_compat_errors, devices=devices)
+add_function_test(
+    TestLinearSolvers,
+    "test_block_jacobi_preconditioner_correctness",
+    test_block_jacobi_preconditioner_correctness,
+    devices=devices,
+)
+add_function_test(
+    TestLinearSolvers,
+    "test_block_jacobi_preconditioner_convergence",
+    test_block_jacobi_preconditioner_convergence,
+    devices=devices,
+)
+add_function_test(
+    TestLinearSolvers,
+    "test_block_jacobi_preconditioner_scalar_fallback",
+    test_block_jacobi_preconditioner_scalar_fallback,
+    devices=devices,
+)
+add_function_test(
+    TestLinearSolvers,
+    "test_block_jacobi_preconditioner_errors",
+    test_block_jacobi_preconditioner_errors,
+    devices=devices,
+)
+add_function_test(
+    TestLinearSolvers,
+    "test_block_jacobi_preconditioner_unsupported_dtype",
+    test_block_jacobi_preconditioner_unsupported_dtype,
+    devices=devices,
+)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
