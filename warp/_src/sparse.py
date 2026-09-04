@@ -1749,13 +1749,13 @@ class _BsrScalingExpression(_BsrExpression):
 
     # Overloaded math operators
     def __add__(self, y):
-        return bsr_axpy(y, bsr_copy(self.mat), alpha=self.scale)
+        return bsr_axpy(y, bsr_copy(self.mat), beta=self.scale)
 
     def __radd__(self, x):
         return bsr_axpy(x, bsr_copy(self.mat), beta=self.scale)
 
     def __sub__(self, y):
-        return bsr_axpy(y, bsr_copy(self.mat), alpha=-self.scale)
+        return bsr_axpy(y, bsr_copy(self.mat), alpha=-1.0, beta=self.scale)
 
     def __rsub__(self, x):
         return bsr_axpy(x, bsr_copy(self.mat), beta=-self.scale)
