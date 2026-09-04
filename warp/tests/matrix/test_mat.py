@@ -933,6 +933,19 @@ def test_svd_2D(test, device, dtype, register_kernels=False):
                 np.array([[1.0, 1.0], [-1.0, -1.0]]),
                 np.array([[3.0, 0.0], [4.0, 5.0]]),
                 np.eye(2) + tol * np.array([[1.0, 1.0], [-1.0, -1.0]]),
+                # scaled orthogonal inputs hit the repeated-singular-value path (GH-1734)
+                np.array([[0.0, -1.0], [1.0, 0.0]]),  # rotation by 90 degrees
+                np.array([[np.cos(0.5), -np.sin(0.5)], [np.sin(0.5), np.cos(0.5)]]),  # rotation by 0.5 rad
+                2.0 * np.array([[np.cos(0.5), -np.sin(0.5)], [np.sin(0.5), np.cos(0.5)]]),  # scaled rotation
+                -np.eye(2),  # negative scaled identity
+                np.array([[1.0, 0.0], [0.0, -1.0]]),  # reflection
+                # low-magnitude rank-1 input: the squared terms of the
+                # discriminant underflow in float16 unless the input is
+                # rescaled first
+                np.array([[0.005, 0.002], [0.0, 0.0]]),
+                # tiny input: 1 / amax overflows to infinity in float16 for
+                # amax below ~1.5e-5, so the rescaling must divide directly
+                np.array([[1.0e-5, 0.0], [0.0, 5.0e-6]]),
             ],
         ),
         axis=0,
@@ -1007,6 +1020,145 @@ def test_svd_2D(test, device, dtype, register_kernels=False):
                 minusval = out.numpy()[0]
 
                 assert_np_equal((plusval - minusval) / (2 * dx), m2grads[ii, jj], tol=fdtol)
+
+
+def test_svd_2D_repeated_grad(test, device, dtype, register_kernels=False):
+    """Check gauge-invariant gradients at repeated singular values.
+
+    Individual ``U`` and ``V`` are not differentiable there, so this test
+    covers the singular value sum and the reconstruction
+    ``U diag(sigma) V^T``, whose gradient for a weighted sum is exactly the
+    weights.
+    """
+    wptype = wp.dtype_from_numpy(np.dtype(dtype))
+    vec2 = wp.types.vector(length=2, dtype=wptype)
+    mat22 = wp.types.matrix(shape=(2, 2), dtype=wptype)
+
+    def check_svd2_repeated_grad(
+        m2: wp.array[mat22],
+        w: wp.array[mat22],
+        outcomponents: wp.array[wptype],
+    ):
+        tid = wp.tid()
+
+        U = mat22()
+        sigma = vec2()
+        V = mat22()
+
+        wp.svd2(m2[tid], U, sigma, V)
+
+        sig_mat = mat22(sigma[0], wptype(0), wptype(0), sigma[1])
+        R = U * sig_mat * wp.transpose(V)
+
+        outcomponents[tid * 3 + 0] = sigma[0] + sigma[1]
+        acc = wptype(0)
+        for i in range(2):
+            for j in range(2):
+                acc = acc + w[tid][i, j] * R[i, j]
+        outcomponents[tid * 3 + 1] = acc
+
+        # rounding may route an input through the general path on one device
+        # and the duplicate-eigenvalue branch on another; V = Id with equal
+        # sigmas identifies the branch, so branch-exact assertions below apply
+        # only where the branch actually ran
+        on_branch = wptype(0)
+        if (
+            sigma[0] == sigma[1]
+            and V[0, 0] == wptype(1)
+            and V[0, 1] == wptype(0)
+            and V[1, 0] == wptype(0)
+            and V[1, 1] == wptype(1)
+        ):
+            on_branch = wptype(1)
+        outcomponents[tid * 3 + 2] = on_branch
+
+    kernel = getkernel(kernel_cache, check_svd2_repeated_grad, suffix=dtype.__name__)
+    output_select_kernel = get_select_kernel(kernel_cache, wptype)
+
+    if register_kernels:
+        return
+
+    if dtype == np.float16:
+        # Consistent with test_svd_2D: float16 rounding is too coarse for
+        # finite-difference gradient checks.
+        return
+
+    rng = np.random.default_rng(42)
+    c, s = np.cos(0.5), np.sin(0.5)
+    mats = np.array(
+        [
+            [[0.0, -1.0], [1.0, 0.0]],  # rotation by 90 degrees
+            [[2.0 * c, -2.0 * s], [2.0 * s, 2.0 * c]],  # scaled rotation
+            [[-1.0, 0.0], [0.0, -1.0]],  # negative identity
+            [[1.0, 0.0], [0.0, -1.0]],  # reflection
+            [[1.0, 0.0], [0.0, 1.0]],  # identity
+        ]
+    )
+    M = len(mats)
+    weights = rng.standard_normal((M, 2, 2))
+    # off-diagonal reconstruction regression at the identity: the gradient of
+    # R[0, 1] must be exactly [[0, 1], [0, 0]] since R = A on this branch
+    weights[M - 1] = np.array([[0.0, 1.0], [0.0, 0.0]])
+
+    m2 = wp.array(mats, dtype=mat22, requires_grad=True, device=device)
+    w = wp.array(weights, dtype=mat22, device=device)
+    outcomponents = wp.zeros(3 * M, dtype=wptype, requires_grad=True, device=device)
+    out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
+
+    analytic_tol = 1.0e-12 if dtype == np.float64 else 1.0e-6
+    fdtol = 1.0e-6 if dtype == np.float64 else 1.0e-3
+    dx = 0.001
+
+    wp.launch(kernel, dim=M, inputs=[m2, w], outputs=[outcomponents], device=device)
+    on_branch = outcomponents.numpy()[2::3] != 0
+
+    for k in range(M):
+        A = mats[k]
+        sig = np.sqrt(np.trace(A.T @ A) / 2.0)
+        Q = A / sig
+        expected = {0: Q, 1: weights[k]}
+
+        for which, expected_grad in expected.items():
+            idx = k * 3 + which
+            if not on_branch[k] and which == 1:
+                # the generic path's epsilon-clamped adjoint is not exact for
+                # near-repeated singular values; only the branch guarantees
+                # the reconstruction VJP
+                continue
+
+            tape = wp.Tape()
+            with tape:
+                wp.launch(kernel, dim=M, inputs=[m2, w], outputs=[outcomponents], device=device)
+                wp.launch(output_select_kernel, dim=1, inputs=[outcomponents, idx], outputs=[out], device=device)
+            tape.backward(out)
+            grads = 1.0 * tape.gradients[m2].numpy()[k]
+            tape.zero()
+
+            if on_branch[k]:
+                assert_np_equal(grads, expected_grad, tol=analytic_tol)
+
+            # central differences of the forward must agree (the sigma split is
+            # antisymmetric in the perturbation, so it cancels in the central
+            # difference even though each sigma alone is only one-sided
+            # differentiable)
+            for ii in range(2):
+                for jj in range(2):
+                    fd = np.zeros(2)
+                    for step, slot in ((dx, 0), (-dx, 1)):
+                        m2test = 1.0 * mats
+                        m2test[k, ii, jj] += step
+                        wp.launch(
+                            kernel,
+                            dim=M,
+                            inputs=[wp.array(m2test, dtype=mat22, device=device), w],
+                            outputs=[outcomponents],
+                            device=device,
+                        )
+                        wp.launch(
+                            output_select_kernel, dim=1, inputs=[outcomponents, idx], outputs=[out], device=device
+                        )
+                        fd[slot] = out.numpy()[0]
+                    assert_np_equal((fd[0] - fd[1]) / (2 * dx), grads[ii, jj], tol=fdtol)
 
 
 def test_qr(test, device, dtype, register_kernels=False):
@@ -3460,6 +3612,13 @@ for dtype in np_float_types:
     add_function_test_register_kernel(TestMat, f"test_svd_{dtype.__name__}", test_svd, devices=devices, dtype=dtype)
     add_function_test_register_kernel(
         TestMat, f"test_svd_2D{dtype.__name__}", test_svd_2D, devices=devices, dtype=dtype
+    )
+    add_function_test_register_kernel(
+        TestMat,
+        f"test_svd_2D_repeated_grad_{dtype.__name__}",
+        test_svd_2D_repeated_grad,
+        devices=devices,
+        dtype=dtype,
     )
     add_function_test_register_kernel(TestMat, f"test_qr_{dtype.__name__}", test_qr, devices=devices, dtype=dtype)
     add_function_test_register_kernel(TestMat, f"test_eig_{dtype.__name__}", test_eig, devices=devices, dtype=dtype)
