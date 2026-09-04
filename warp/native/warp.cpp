@@ -251,7 +251,7 @@ void wp_cpu_launch_kernel(void* func, void* bounds, void* args, void* adj_args, 
 
     // Record to byte stream (for APIC serialization) if capturing
     if (recording_state && !apic_info) {
-        fprintf(stderr, "APIC: Error - kernel launch during capture without APICLaunchInfo\n");
+        fprintf(stderr, "Warp APIC error: kernel launch during capture without APICLaunchInfo\n");
         return;
     }
     if (recording_state && apic_info) {

@@ -35,7 +35,7 @@ static bool apic_register_region_from_device(
     cudaError_t err = cudaMemcpy(host_buf.data(), device_ptr, size, cudaMemcpyDeviceToHost);
     if (err != cudaSuccess) {
         wp::set_error_string(
-            "APIC: device-to-host copy failed for region %u (CUDA error %d); the saved graph "
+            "Warp APIC error: device-to-host copy failed for region %u (CUDA error %d); the saved graph "
             "would be missing this region's initial data",
             region_id, err
         );
@@ -75,7 +75,7 @@ bool apic_snapshot_device_regions(APICState* state, void* context)
         );
         if (err != cudaSuccess) {
             wp::set_error_string(
-                "APIC: device-region D2H snapshot failed for region %u (CUDA error %d); the saved "
+                "Warp APIC error: device-region D2H snapshot failed for region %u (CUDA error %d); the saved "
                 "graph would be missing this region's initial data",
                 region_id, err
             );
@@ -190,7 +190,8 @@ static bool apic_init_memory(const uint8_t* data, size_t size, APICGraph* graph)
         if (!data || region.initial_data_offset > size
             || region.size > static_cast<uint64_t>(size - region.initial_data_offset)) {
             wp::set_error_string(
-                "Invalid APIC memory section: region %u initial data is out of bounds", region.region_id
+                "Warp APIC error: Invalid APIC memory section: region %u initial data is out of bounds",
+                region.region_id
             );
             return false;
         }
@@ -199,7 +200,7 @@ static bool apic_init_memory(const uint8_t* data, size_t size, APICGraph* graph)
             region.ptr, data + region.initial_data_offset, static_cast<size_t>(region.size), cudaMemcpyHostToDevice
         );
         if (err != cudaSuccess) {
-            wp::set_error_string("Failed to initialize memory region %u", region.region_id);
+            wp::set_error_string("Warp APIC error: Failed to initialize memory region %u", region.region_id);
             return false;
         }
     }
@@ -214,7 +215,7 @@ bool apic_fixup_handle_cuda(APICGraph* graph, uint8_t* base, uint64_t offset)
     uint64_t old_val;
     cudaError_t err = cudaMemcpy(&old_val, base + offset, sizeof(uint64_t), cudaMemcpyDeviceToHost);
     if (err != cudaSuccess) {
-        fprintf(stderr, "APIC: Error - handle fixup D2H cudaMemcpy failed: %s\n", cudaGetErrorString(err));
+        fprintf(stderr, "Warp APIC error: handle fixup D2H cudaMemcpy failed: %s\n", cudaGetErrorString(err));
         return false;
     }
     auto remap_it = graph->handle_ptr_remap.find(old_val);
@@ -222,7 +223,7 @@ bool apic_fixup_handle_cuda(APICGraph* graph, uint8_t* base, uint64_t offset)
         uint64_t new_val = remap_it->second;
         err = cudaMemcpy(base + offset, &new_val, sizeof(uint64_t), cudaMemcpyHostToDevice);
         if (err != cudaSuccess) {
-            fprintf(stderr, "APIC: Error - handle fixup H2D cudaMemcpy failed: %s\n", cudaGetErrorString(err));
+            fprintf(stderr, "Warp APIC error: handle fixup H2D cudaMemcpy failed: %s\n", cudaGetErrorString(err));
             return false;
         }
     }
@@ -242,13 +243,13 @@ static CUfunction apic_get_kernel_function(
 
     auto mod_it = graph->modules.find(hash_str);
     if (mod_it == graph->modules.end() || !mod_it->second.cuda_module) {
-        wp::set_error_string("Module not loaded: %s", hash_str.c_str());
+        wp::set_error_string("Warp APIC error: Module not loaded: %s", hash_str.c_str());
         return nullptr;
     }
 
     auto kern_it = graph->kernels.find(apic_kernel_map_key(hash_str, key_str));
     if (kern_it == graph->kernels.end()) {
-        wp::set_error_string("Kernel not found: %s", key_str.c_str());
+        wp::set_error_string("Warp APIC error: Kernel not found: %s", key_str.c_str());
         return nullptr;
     }
 
@@ -256,7 +257,7 @@ static CUfunction apic_get_kernel_function(
     CUfunction kernel;
     CUresult err = cuModuleGetFunction_f(&kernel, mod_it->second.cuda_module, kernel_name.c_str());
     if (err != CUDA_SUCCESS) {
-        wp::set_error_string("Failed to get kernel function %s: %d", kernel_name.c_str(), err);
+        wp::set_error_string("Warp APIC error: Failed to get kernel function %s: %d", kernel_name.c_str(), err);
         return nullptr;
     }
     return kernel;
@@ -290,7 +291,7 @@ static bool apic_configure_kernel_cluster_attrs(APICGraph* graph)
                     return false;
 
                 if (!wp_cuda_set_kernel_cluster_attrs(kernel, cluster_dim, 1, 1)) {
-                    wp::set_error_string("Failed to set cluster attributes for APIC kernel launch");
+                    wp::set_error_string("Warp APIC error: Failed to set cluster attributes for APIC kernel launch");
                     return false;
                 }
             }
@@ -407,8 +408,8 @@ static bool apic_replay_ops_into_cuda_capture(
                             if (!resolved) {
                                 delete[] buf;
                                 wp::set_error_string(
-                                    "APIC: unresolved DATA_PTR relocation (region_id=%d offset=%llu)", reloc->region_id,
-                                    (unsigned long long)reloc->region_offset
+                                    "Warp APIC error: unresolved DATA_PTR relocation (region_id=%d offset=%llu)",
+                                    reloc->region_id, (unsigned long long)reloc->region_offset
                                 );
                                 return false;
                             }
@@ -465,7 +466,7 @@ static bool apic_replay_ops_into_cuda_capture(
             void* dst_ptr = apic_resolve_region_ptr(graph, rec->dst_region_id, rec->dst_offset, rec->size);
             if (!dst_ptr) {
                 wp::set_error_string(
-                    "H2D memcpy: failed to resolve dst region_id=%d offset=%llu", rec->dst_region_id,
+                    "Warp APIC error: H2D memcpy: failed to resolve dst region_id=%d offset=%llu", rec->dst_region_id,
                     (unsigned long long)rec->dst_offset
                 );
                 success = false;
@@ -482,7 +483,8 @@ static bool apic_replay_ops_into_cuda_capture(
             void* src = apic_resolve_region_ptr(graph, rec->src_region_id, rec->src_offset, rec->size);
             if (!dst || !src) {
                 wp::set_error_string(
-                    "D2D memcpy: failed to resolve dst region_id=%d offset=%llu / src region_id=%d offset=%llu",
+                    "Warp APIC error: D2D memcpy: failed to resolve dst region_id=%d offset=%llu / src region_id=%d "
+                    "offset=%llu",
                     rec->dst_region_id, (unsigned long long)rec->dst_offset, rec->src_region_id,
                     (unsigned long long)rec->src_offset
                 );
@@ -499,7 +501,7 @@ static bool apic_replay_ops_into_cuda_capture(
             void* dst = apic_resolve_region_ptr(graph, rec->region_id, rec->offset, rec->size);
             if (!dst) {
                 wp::set_error_string(
-                    "memset: failed to resolve region_id=%d offset=%llu", rec->region_id,
+                    "Warp APIC error: memset: failed to resolve region_id=%d offset=%llu", rec->region_id,
                     (unsigned long long)rec->offset
                 );
                 success = false;
@@ -519,7 +521,7 @@ static bool apic_replay_ops_into_cuda_capture(
             uint64_t total_bytes = rec->count * rec->srcsize;
             void* dst = apic_resolve_region_ptr(graph, rec->region_id, rec->offset, total_bytes);
             if (!dst) {
-                wp::set_error_string("APIC memtile: failed to resolve region (op %u)", i);
+                wp::set_error_string("Warp APIC error: memtile failed to resolve region (op %u)", i);
                 success = false;
                 break;
             }
@@ -537,7 +539,7 @@ static bool apic_replay_ops_into_cuda_capture(
             void* dst = apic_resolve_region_ptr(graph, rec->dst_region_id, rec->dst_offset, dst_bytes);
             void* src = apic_resolve_region_ptr(graph, rec->src_region_id, rec->src_offset, src_bytes);
             if (!dst || !src) {
-                wp::set_error_string("APIC scan: failed to resolve region (op %u)", i);
+                wp::set_error_string("Warp APIC error: scan failed to resolve region (op %u)", i);
                 success = false;
                 break;
             }
@@ -589,7 +591,7 @@ static bool apic_replay_ops_into_cuda_capture(
                 : nullptr;
             void* output = apic_resolve_region_ptr(graph, rec->output_region_id, rec->output_offset, output_bytes);
             if (!input_a || !output || (rec->kind == APIC_REDUCTION_INNER && !input_b)) {
-                wp::set_error_string("APIC reduction: failed to resolve region (op %u)", i);
+                wp::set_error_string("Warp APIC error: reduction failed to resolve region (op %u)", i);
                 success = false;
                 break;
             }
@@ -644,7 +646,7 @@ static bool apic_replay_ops_into_cuda_capture(
                 = apic_resolve_region_ptr(graph, rec->segstart_region_id, rec->segstart_offset, segstart_bytes);
             void* segend = apic_resolve_region_ptr(graph, rec->segend_region_id, rec->segend_offset, segend_bytes);
             if (!keys || !values || !segstart || !segend) {
-                wp::set_error_string("APIC segmented-sort: failed to resolve region (op %u)", i);
+                wp::set_error_string("Warp APIC error: segmented-sort failed to resolve region (op %u)", i);
                 success = false;
                 break;
             }
@@ -673,7 +675,7 @@ static bool apic_replay_ops_into_cuda_capture(
             void* keys = apic_resolve_region_ptr(graph, rec->keys_region_id, rec->keys_offset, keys_bytes);
             void* values = apic_resolve_region_ptr(graph, rec->values_region_id, rec->values_offset, values_bytes);
             if (!keys || !values) {
-                wp::set_error_string("APIC radix-sort: failed to resolve region (op %u)", i);
+                wp::set_error_string("Warp APIC error: radix-sort failed to resolve region (op %u)", i);
                 success = false;
                 break;
             }
@@ -725,7 +727,7 @@ static bool apic_replay_ops_into_cuda_capture(
             void* run_count
                 = apic_resolve_region_ptr(graph, rec->run_count_region_id, rec->run_count_offset, sizeof(int32_t));
             if (!values || !run_values || !run_lengths || !run_count) {
-                wp::set_error_string("APIC runlength-encode: failed to resolve region (op %u)", i);
+                wp::set_error_string("Warp APIC error: runlength-encode failed to resolve region (op %u)", i);
                 success = false;
                 break;
             }
@@ -776,7 +778,7 @@ static bool apic_replay_ops_into_cuda_capture(
                 || !bsr_columns || (rec->tpl_nnz_region_id >= 0 && !tpl_nnz)
                 || (rec->tpl_values_region_id >= 0 && !tpl_values)
                 || (rec->bsr_row_counts_region_id >= 0 && !bsr_row_counts)) {
-                wp::set_error_string("APIC bsr-from-triplets: failed to resolve region (op %u)", i);
+                wp::set_error_string("Warp APIC error: bsr-from-triplets failed to resolve region (op %u)", i);
                 success = false;
                 break;
             }
@@ -839,7 +841,7 @@ static bool apic_replay_ops_into_cuda_capture(
                 || (rec->bsr_row_counts_region_id >= 0 && !bsr_row_counts)
                 || (rec->transposed_row_counts_region_id >= 0 && !t_row_counts)
                 || (rec->status_region_id >= 0 && !status)) {
-                wp::set_error_string("APIC bsr-transpose: failed to resolve region (op %u)", i);
+                wp::set_error_string("Warp APIC error: bsr-transpose failed to resolve region (op %u)", i);
                 success = false;
                 break;
             }
@@ -861,7 +863,7 @@ static bool apic_replay_ops_into_cuda_capture(
 
             void* cond_ptr = apic_resolve_region_ptr(graph, rec->cond_region_id, rec->cond_offset, sizeof(int32_t));
             if (!cond_ptr) {
-                wp::set_error_string("APIC if: failed to resolve condition region (op %u)", i);
+                wp::set_error_string("Warp APIC error: if failed to resolve condition region (op %u)", i);
                 success = false;
                 break;
             }
@@ -923,7 +925,7 @@ static bool apic_replay_ops_into_cuda_capture(
 
             void* cond_ptr = apic_resolve_region_ptr(graph, rec->cond_region_id, rec->cond_offset, sizeof(int32_t));
             if (!cond_ptr) {
-                wp::set_error_string("APIC while: failed to resolve condition region (op %u)", i);
+                wp::set_error_string("Warp APIC error: while failed to resolve condition region (op %u)", i);
                 success = false;
                 break;
             }
@@ -968,7 +970,7 @@ static bool apic_replay_ops_into_cuda_capture(
         }
 
         default:
-            wp::set_error_string("Unknown operation type: %d", header->op_type);
+            wp::set_error_string("Warp APIC error: Unknown operation type: %d", header->op_type);
             success = false;
             break;
         }
@@ -1051,7 +1053,7 @@ bool apic_load_graph_cuda_setup(
 #endif
         CUmodule cuda_module = (CUmodule)wp_cuda_load_module(context, cubin_path.c_str());
         if (!cuda_module) {
-            wp::set_error_string("Failed to load module %s", cubin_path.c_str());
+            wp::set_error_string("Warp APIC error: Failed to load module %s", cubin_path.c_str());
             return false;
         }
         pair.second.cuda_module = cuda_module;
@@ -1063,7 +1065,9 @@ bool apic_load_graph_cuda_setup(
         void* device_ptr = nullptr;
         cudaError_t err = cudaMalloc(&device_ptr, pair.second.size);
         if (err != cudaSuccess) {
-            wp::set_error_string("Failed to allocate %llu bytes: %d", (unsigned long long)pair.second.size, err);
+            wp::set_error_string(
+                "Warp APIC error: Failed to allocate %llu bytes: %d", (unsigned long long)pair.second.size, err
+            );
             return false;
         }
         pair.second.ptr = device_ptr;
@@ -1086,7 +1090,7 @@ bool apic_set_param_cuda(APICGraph* graph, void* dst, const void* src, size_t si
     ContextGuard guard(graph->cuda_context);
     cudaError_t err = cudaMemcpyAsync(dst, src, size, cudaMemcpyHostToDevice, 0);
     if (err != cudaSuccess) {
-        wp::set_error_string("Failed to copy parameter data: %d", err);
+        wp::set_error_string("Warp APIC error: Failed to copy parameter data: %d", err);
         return false;
     }
     return true;
@@ -1097,14 +1101,14 @@ bool apic_get_param_cuda(APICGraph* graph, void* dst, const void* src, size_t si
     ContextGuard guard(graph->cuda_context);
     cudaError_t err = cudaMemcpyAsync(dst, src, size, cudaMemcpyDeviceToHost, 0);
     if (err != cudaSuccess) {
-        wp::set_error_string("Failed to copy parameter data: %d", err);
+        wp::set_error_string("Warp APIC error: Failed to copy parameter data: %d", err);
         return false;
     }
     // get_param returns immediately and the caller reads dst right after; ensure
     // the async copy has actually populated the destination before we return.
     err = cudaStreamSynchronize(0);
     if (err != cudaSuccess) {
-        wp::set_error_string("Failed to synchronize get_param copy: %d", err);
+        wp::set_error_string("Warp APIC error: Failed to synchronize get_param copy: %d", err);
         return false;
     }
     return true;
@@ -1119,7 +1123,7 @@ void* wp_apic_get_cuda_graph(APICGraph* graph)
     if (!graph->cuda_graph) {
         CUstream stream = (CUstream)wp_cuda_stream_create(graph->cuda_context, 0);
         if (!stream) {
-            wp::set_error_string("Failed to create CUDA stream for graph rebuild");
+            wp::set_error_string("Warp APIC error: Failed to create CUDA stream for graph rebuild");
             return nullptr;
         }
         bool success = apic_rebuild_cuda_graph(graph, stream);
@@ -1144,7 +1148,7 @@ void* wp_apic_get_cuda_graph_exec(APICGraph* graph)
             (cudaGraphExec_t*)&graph->cuda_graph_exec, (cudaGraph_t)graph->cuda_graph, 0
         );
         if (err != cudaSuccess) {
-            wp::set_error_string("Failed to instantiate graph: %d", err);
+            wp::set_error_string("Warp APIC error: Failed to instantiate graph: %d", err);
             return nullptr;
         }
     }
@@ -1163,7 +1167,7 @@ bool wp_apic_launch(APICGraph* graph, void* stream)
     ContextGuard guard(graph->cuda_context);
     cudaError_t err = cudaGraphLaunch((cudaGraphExec_t)exec, (cudaStream_t)stream);
     if (err != cudaSuccess) {
-        wp::set_error_string("Failed to launch graph: %d", err);
+        wp::set_error_string("Warp APIC error: Failed to launch graph: %d", err);
         return false;
     }
     return true;
