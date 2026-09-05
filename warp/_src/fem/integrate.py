@@ -1521,10 +1521,20 @@ def _launch_integrate_kernel(
                     raise RuntimeError(
                         f"Incompatible output type {type_repr(output_dtype)}, must be scalar or vector of length {test.node_dof_count}"
                     )
-                if output.ndim != 2 and output.shape[1] != test.node_dof_count:
-                    raise RuntimeError(
-                        f"Incompatible output array shape, last dimension must be of size {test.node_dof_count}"
-                    )
+                if output.ndim == 2:
+                    if output.shape[1] != test.node_dof_count:
+                        raise RuntimeError(
+                            f"Incompatible output array shape, last dimension must be of size {test.node_dof_count}"
+                        )
+                elif output.ndim == 1:
+                    if output.shape[0] < test.space_partition.node_count() * test.node_dof_count:
+                        raise RuntimeError(
+                            f"Output array must have at least {test.space_partition.node_count() * test.node_dof_count} entries"
+                        )
+                    if not output.is_contiguous:
+                        raise RuntimeError("Flat scalar output arrays must be contiguous")
+                else:
+                    raise RuntimeError("Incompatible output array shape, expected a one- or two-dimensional array")
 
         # Launch the integration on the kernel on a 2d scalar view of the actual array
         if not add_to_output:
