@@ -31,6 +31,7 @@ _RE_WP_DOT = re.compile(r"\bwp\.")
 
 HERE = os.path.dirname(__file__)
 WARP_PATH = os.path.realpath(os.path.join(HERE, ".."))
+_DOCS_SOURCES_PREPARED = os.environ.get("WARP_DOCS_SOURCES_PREPARED") == "1"
 
 sys.path.insert(0, WARP_PATH)
 sys.path.insert(0, os.path.join(HERE, "_ext"))
@@ -77,6 +78,7 @@ extensions = [
     "sphinx_copybutton",  # Adds a copy button to code blocks.
     # Local extensions, from `docs/_ext`.
     "wp_builtin_tags",  # Renders the property tags of the built-ins.
+    "wp_doctest",  # Runs selected doctest documents in isolated subprocess shards.
 ]
 
 # Generate targets for Markdown headings through level 2 so standard fragment
@@ -293,6 +295,10 @@ else:
 
 # -- sphinx.ext.autosummary --------------------------------------------------
 
+# Parallel doctest workers share a prepared source tree and must not rewrite
+# autosummary pages while other workers are reading them.
+autosummary_generate = not _DOCS_SOURCES_PREPARED
+
 # Document imported classes and functions.
 autosummary_imported_members = True
 
@@ -459,6 +465,9 @@ sphinx.ext.autosummary.generate.AutosummaryRenderer = AutosummaryRenderer
 
 
 # -- sphinx.ext.doctest ------------------------------------------------------
+
+# Keep CI logs focused on failures and the final per-shard summaries.
+doctest_show_successes = False
 
 # Code to run for every doctest block.
 doctest_global_setup = """
@@ -814,6 +823,8 @@ def resolve_public_builtin_aliases(app, env, node, contnode):
 
 def generate_reference_docs(app):
     """Generate API and language reference .rst files before Sphinx reads sources."""
+    if _DOCS_SOURCES_PREPARED:
+        return
     docs.generate_reference.run()
 
 

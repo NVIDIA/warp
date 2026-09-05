@@ -1006,7 +1006,7 @@ jobs:
   # against a real GPU. PR-style branches gate on the same filter as the GPU test
   # rows, plus a docs/** filter for RST-only doctest changes.
   test-warp-doctest:
-    runs-on: linux-amd64-gpu-l4-latest-1
+    runs-on: linux-amd64-gpu-rtxpro6000-latest-1
     needs: [build-warp, gpu-changes]
     if: |
       github.repository == 'NVIDIA/warp' && (
@@ -1073,7 +1073,7 @@ jobs:
         run: uv run --extra docs python -c "import warp as wp; wp.print_diagnostics(); assert wp.get_cuda_devices(), 'No CUDA device visible to Warp'"
 
       - name: Run doctest
-        run: uv run --extra docs build_docs.py --doctest --no-html --warnings-as-errors
+        run: uv run --extra docs build_docs.py --doctest --doctest-jobs 2 --no-html --warnings-as-errors
 
   build-docs:
     if: github.event_name != 'schedule' || github.repository == 'NVIDIA/warp'
