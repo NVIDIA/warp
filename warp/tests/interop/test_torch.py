@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import os
+import tempfile
 import unittest
 from functools import cache
 
@@ -79,6 +81,12 @@ def copy2d_vec3_kernel(dst: wp.array2d[wp.vec3], src: wp.array2d[wp.vec3]):
 def copy2d_mat22_kernel(dst: wp.array2d[wp.mat22], src: wp.array2d[wp.mat22]):
     i, j = wp.tid()
     dst[i, j] = src[i, j]
+
+
+@wp.kernel
+def write_then_read_alias_kernel(a: wp.array[float], b: wp.array[float], out: wp.array[float]):
+    a[2] = 99.0
+    out[0] = b[0]
 
 
 def _import_torch():
@@ -574,6 +582,71 @@ def test_from_torch_slices(test, device):
     a_contiguous = wp.empty_like(a)
     wp.launch(copy2d_mat22_kernel, dim=a.shape, inputs=[a_contiguous, a], device=device)
     assert_np_equal(a_contiguous.numpy(), t.cpu().numpy())
+
+
+def test_from_torch_view_capacity(test, device):
+    """Verify that Warp arrays created from PyTorch tensor views report the remaining storage capacity."""
+    torch = _import_torch()
+
+    torch_device = wp.device_to_torch(device)
+    base = torch.arange(24, dtype=torch.float32, device=torch_device).reshape((4, 6))
+    issue_base = torch.arange(6, dtype=torch.float32, device=torch_device).reshape((1, 6))
+
+    cases = (
+        ("issue tail view", issue_base[:, 3:], 12),
+        ("interior view", base[1:3, 2:5], 64),
+        ("strided view", base[2:, 1::2], 44),
+    )
+
+    for name, tensor, expected_capacity in cases:
+        with test.subTest(name=name):
+            array = wp.from_torch(tensor)
+            test.assertEqual(array.capacity, expected_capacity)
+
+
+def test_from_torch_apic_storage_alias(test, device):
+    """Verify that APIC round-trips preserve aliasing between PyTorch tensor views converted to Warp arrays."""
+    torch = _import_torch()
+
+    torch_device = wp.device_to_torch(device)
+    base = torch.arange(6, dtype=torch.float32, device=torch_device)
+    first_view = wp.from_torch(base[:4])
+    overlapping_view = wp.from_torch(base[2:])
+    out = wp.zeros(1, dtype=wp.float32, device=device)
+
+    wp.load_module(device=device)
+    if base.is_cuda:
+        torch.cuda.synchronize(base.device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.launch(
+            write_then_read_alias_kernel,
+            dim=1,
+            inputs=[first_view, overlapping_view, out],
+            device=device,
+        )
+
+    # CPU capture executes eagerly. Restore the values that should be serialized
+    # so a stale copy of the overlapping view cannot hide broken aliasing.
+    base.copy_(torch.arange(6, dtype=torch.float32, device=torch_device))
+    if base.is_cuda:
+        torch.cuda.synchronize(base.device)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "torch_storage_alias")
+        wp.capture_save(
+            capture.graph,
+            path,
+            inputs={"first_view": first_view, "overlapping_view": overlapping_view},
+            outputs={"out": out},
+        )
+        loaded = wp.capture_load(path, device=device)
+        wp.capture_launch(loaded)
+        # CUDA replay is asynchronous; synchronize before get_param() copies the output on a separate stream.
+        wp.synchronize_device(device)
+
+        result = wp.zeros(1, dtype=wp.float32, device=device)
+        loaded.get_param("out", result)
+        np.testing.assert_allclose(result.numpy(), np.array([99.0], dtype=np.float32))
 
 
 def test_from_torch_zero_strides(test, device):
@@ -1293,6 +1366,7 @@ except Exception as error:
 else:
     torch_candidate_devices = get_test_devices()
     torch_cuda_candidate_devices = [device for device in torch_candidate_devices if device.is_cuda]
+    torch_apic_candidate_devices = get_test_devices_with_cuda_graph_module_load()
 
     @cache
     def _torch_device_error(device_alias):
@@ -1336,6 +1410,13 @@ else:
             TestTorch,
             "test_from_torch_slices",
             test_from_torch_slices,
+            devices=torch_candidate_devices,
+            device_check=_check_torch_device,
+        )
+        add_function_test(
+            TestTorch,
+            "test_from_torch_view_capacity",
+            test_from_torch_view_capacity,
             devices=torch_candidate_devices,
             device_check=_check_torch_device,
         )
@@ -1479,6 +1560,15 @@ else:
             "test_cuda_array_interface",
             test_cuda_array_interface,
             devices=torch_cuda_candidate_devices,
+            device_check=_check_torch_device,
+        )
+
+    if torch_apic_candidate_devices:
+        add_function_test(
+            TestTorch,
+            "test_from_torch_apic_storage_alias",
+            test_from_torch_apic_storage_alias,
+            devices=torch_apic_candidate_devices,
             device_check=_check_torch_device,
         )
 
