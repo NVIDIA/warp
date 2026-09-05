@@ -396,7 +396,7 @@ def test_typed_constructor_rejects_mismatched_variable(test, device):
     def kernel(x: wp.float64):
         v = wp.vec3f(x, x, x)
 
-    with test.assertRaisesRegex(RuntimeError, r"expected to be of the type"):
+    with test.assertRaisesRegex(TypeError, r"expected to be of the type"):
         wp.launch(kernel, dim=1, inputs=[wp.float64(1.0)], device=device)
 
 
@@ -408,7 +408,7 @@ def test_matrix_constructor_rejects_mismatched_variable(test, device):
     def kernel(x: wp.float64):
         m = mat22f(x, x, x, x)
 
-    with test.assertRaisesRegex(RuntimeError, r"expected to be of the type"):
+    with test.assertRaisesRegex(TypeError, r"expected to be of the type"):
         wp.launch(kernel, dim=1, inputs=[wp.float64(1.0)], device=device)
 
 
@@ -420,7 +420,7 @@ def test_matrix_fill_rejects_mismatched_variable(test, device):
     def kernel(x: wp.float64):
         m = mat22f(x)
 
-    with test.assertRaisesRegex(RuntimeError, r"expected to be of the type"):
+    with test.assertRaisesRegex(TypeError, r"expected to be of the type"):
         wp.launch(kernel, dim=1, inputs=[wp.float64(1.0)], device=device)
 
 
@@ -431,7 +431,7 @@ def test_mixed_literal_variable_rejects_wrong_type(test, device):
     def kernel(x: wp.float32):
         v = wp.vec3h(1.0, x, 3.0)
 
-    with test.assertRaisesRegex(RuntimeError, r"expected to be of the type"):
+    with test.assertRaisesRegex(TypeError, r"expected to be of the type"):
         wp.launch(kernel, dim=1, inputs=[wp.float32(2.0)], device=device)
 
 

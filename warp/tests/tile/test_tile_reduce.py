@@ -153,7 +153,7 @@ def test_tile_atomic_add_unsupported_dtype(test, device):
     for kernel_fn, dtype in ((atomic_add_int8_kernel, wp.int8), (atomic_add_bool_kernel, wp.bool)):
         src = wp.zeros(TILE_M, dtype=dtype, device=device)
         dst = wp.zeros(TILE_M, dtype=dtype, device=device)
-        with test.assertRaisesRegex(RuntimeError, "tile_atomic_add.*only supports"):
+        with test.assertRaisesRegex(TypeError, "tile_atomic_add.*only supports"):
             wp.launch_tiled(kernel_fn, dim=[1], inputs=[src], outputs=[dst], block_dim=32, device=device)
 
 

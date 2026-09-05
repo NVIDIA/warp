@@ -84,7 +84,7 @@ def test_length_mismatch(test, device):
         wp.expect_neq(wp.vec2f(0.0, 0.0), wp.vec3f(0.0, 0.0, 0.0))
 
     with test.assertRaisesRegex(
-        RuntimeError,
+        TypeError,
         r"Can't test equality for objects with different types$",
     ):
         wp.launch(kernel, dim=1, inputs=[], device=device)

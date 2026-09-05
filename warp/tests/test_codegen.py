@@ -555,12 +555,12 @@ def test_error_unmatched_arguments(test, device):
         wp.expect_eq(wp.dot(wp.vec2(1.0, 2.0), wp.vec2h(1.0, 2.0)), 0.0)
 
     kernel = make_isolated_kernel(kernel_1_fn)
-    with test.assertRaisesRegex(RuntimeError, r"Input types must be the same, got \['int32', 'float32'\]"):
+    with test.assertRaisesRegex(TypeError, r"Input types must be the same, got \['int32', 'float32'\]"):
         wp.launch(kernel, dim=1, device=device)
 
     kernel = make_isolated_kernel(kernel_2_fn)
     with test.assertRaisesRegex(
-        RuntimeError,
+        TypeError,
         r"Input types must be exactly the same, got \['vec2f', 'vec2h'\]",
     ):
         wp.launch(kernel, dim=1, device=device)

@@ -41,7 +41,7 @@ def sametypes_create_value_func(default: TypeVar):
             return default
 
         if not sametypes(arg_types):
-            raise RuntimeError(f"Input types must be the same, got {[type_repr(t) for t in arg_types.values()]}")
+            raise TypeError(f"Input types must be the same, got {[type_repr(t) for t in arg_types.values()]}")
 
         arg_type_0 = next(iter(arg_types.values()))
         return arg_type_0
@@ -560,7 +560,7 @@ def _check_vars_match_dtype(arg_values, arg_types, dtype, msg):
         # Extract the scalar type from compound types (vec, mat, quat).
         scalar_t = getattr(t, "_wp_scalar_type_", t)
         if not warp._src.types.scalars_equal(scalar_t, dtype):
-            raise RuntimeError(msg)
+            raise TypeError(msg)
 
 
 def scalar_infer_type(arg_types: Mapping[str, type] | tuple[type, ...] | None):
@@ -578,9 +578,7 @@ def scalar_infer_type(arg_types: Mapping[str, type] | tuple[type, ...] | None):
             scalar_types.add(t)
 
     if len(scalar_types) > 1:
-        raise RuntimeError(
-            f"Couldn't figure out return type as arguments have multiple precisions: {list(scalar_types)}"
-        )
+        raise TypeError(f"Couldn't figure out return type as arguments have multiple precisions: {list(scalar_types)}")
     return next(iter(scalar_types))
 
 
@@ -589,7 +587,7 @@ def scalar_sametypes_value_func(arg_types: Mapping[str, type], arg_values: Mappi
         return Scalar
 
     if not sametypes(arg_types):
-        raise RuntimeError(f"Input types must be exactly the same, got {[type_repr(t) for t in arg_types.values()]}")
+        raise TypeError(f"Input types must be exactly the same, got {[type_repr(t) for t in arg_types.values()]}")
 
     return scalar_infer_type(arg_types)
 
@@ -948,7 +946,7 @@ def trace_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any
         return Scalar
 
     if arg_types["a"]._shape_[0] != arg_types["a"]._shape_[1]:
-        raise RuntimeError(f"Matrix shape is {arg_types['a']._shape_}. Cannot find the trace of non square matrices")
+        raise ValueError(f"Matrix shape is {arg_types['a']._shape_}. Cannot find the trace of non square matrices")
     return arg_types["a"]._wp_scalar_type_
 
 
@@ -982,9 +980,7 @@ def get_diag_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, 
         return vector(length=(Any), dtype=Scalar)
 
     if arg_types["mat"]._shape_[0] != arg_types["mat"]._shape_[1]:
-        raise RuntimeError(
-            f"Matrix shape is {arg_types['mat']._shape_}; get_diag is only available for square matrices."
-        )
+        raise ValueError(f"Matrix shape is {arg_types['mat']._shape_}; get_diag is only available for square matrices.")
     return vector(length=arg_types["mat"]._shape_[0], dtype=arg_types["mat"]._wp_scalar_type_)
 
 
@@ -1062,7 +1058,7 @@ def vector_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
     if variadic_arg_count == 0:
         # Zero-initialization, e.g.: `wp.vecXX()`, `wp.vector(length=2, dtype=wp.float16)`.
         if length is None:
-            raise RuntimeError("the `length` argument must be specified when zero-initializing a vector")
+            raise ValueError("the `length` argument must be specified when zero-initializing a vector")
 
         if dtype is None:
             dtype = float32
@@ -1073,7 +1069,7 @@ def vector_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
             if length is None:
                 length = value_type._length_
             elif value_type._length_ != length:
-                raise RuntimeError(
+                raise ValueError(
                     f"incompatible vector of length {length} given when copy constructing "
                     f"a vector of length {value_type._length_}"
                 )
@@ -1084,7 +1080,7 @@ def vector_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
             # Initialization by filling a value, e.g.: `wp.vecXX(123)`,
             # `wp.vector(123, length=2)`.
             if length is None:
-                raise RuntimeError("the `length` argument must be specified when filling a vector with a value")
+                raise ValueError("the `length` argument must be specified when filling a vector with a value")
 
             if dtype is None:
                 dtype = value_type
@@ -1100,7 +1096,7 @@ def vector_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
         if length is None:
             length = variadic_arg_count
         elif length != variadic_arg_count:
-            raise RuntimeError(
+            raise ValueError(
                 f"incompatible number of values given ({variadic_arg_count}) "
                 f"when constructing a vector of length {length}"
             )
@@ -1117,14 +1113,14 @@ def vector_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
         else:
             try:
                 dtype = scalar_infer_type(variadic_arg_types)
-            except RuntimeError:
-                raise RuntimeError("all values given when constructing a vector must have the same type") from None
+            except TypeError:
+                raise TypeError("all values given when constructing a vector must have the same type") from None
 
     if length is None:
-        raise RuntimeError("could not infer the `length` argument when calling the `wp.types.vector()` function")
+        raise ValueError("could not infer the `length` argument when calling the `wp.types.vector()` function")
 
     if dtype is None:
-        raise RuntimeError("could not infer the `dtype` argument when calling the `wp.types.vector()` function")
+        raise ValueError("could not infer the `dtype` argument when calling the `wp.types.vector()` function")
 
     return vector(length=length, dtype=dtype)
 
@@ -1177,7 +1173,7 @@ def matrix_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
     if variadic_arg_count == 0:
         # Zero-initialization, e.g.: `wp.matXX()`, `wp.matrix(shape=(2, 2), dtype=wp.float16)`.
         if shape is None:
-            raise RuntimeError("the `shape` argument must be specified when zero-initializing a matrix")
+            raise ValueError("the `shape` argument must be specified when zero-initializing a matrix")
 
         if dtype is None:
             dtype = float32
@@ -1188,7 +1184,7 @@ def matrix_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
             if shape is None:
                 shape = value_type._shape_
             elif not seq_check_equal(value_type._shape_, shape):
-                raise RuntimeError(
+                raise ValueError(
                     f"incompatible matrix of shape {tuple(shape)} given when copy constructing "
                     f"a matrix of shape {tuple(value_type._shape_)}"
                 )
@@ -1199,7 +1195,7 @@ def matrix_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
             # Initialization by filling a value, e.g.: `wp.matXX(123)`,
             # `wp.matrix(123, shape=(2, 2))`.
             if shape is None:
-                raise RuntimeError("the `shape` argument must be specified when filling a matrix with a value")
+                raise ValueError("the `shape` argument must be specified when filling a matrix with a value")
 
             if dtype is None:
                 dtype = value_type
@@ -1213,14 +1209,14 @@ def matrix_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
     else:
         # Initializing by value, e.g.: `wp.mat22(1, 2, 3, 4)`, `wp.matrix(1, 2, 3, 4, shape=(2, 2))`.
         if shape is None:
-            raise RuntimeError("the `shape` argument must be specified when initializing a matrix by value")
+            raise ValueError("the `shape` argument must be specified when initializing a matrix by value")
 
         if all(type_is_vector(x) for x in variadic_arg_types):
             raise TypeError(
                 "Passing vectors to `wp.matrix()` isn't supported, use `wp.matrix_from_rows()` or `wp.matrix_from_cols()` instead."
             )
         elif shape[0] * shape[1] != variadic_arg_count:
-            raise RuntimeError(
+            raise ValueError(
                 f"incompatible number of values given ({variadic_arg_count}) "
                 f"when constructing a matrix of shape {tuple(shape)}"
             )
@@ -1235,14 +1231,14 @@ def matrix_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
         else:
             try:
                 dtype = scalar_infer_type(variadic_arg_types)
-            except RuntimeError:
-                raise RuntimeError("all values given when constructing a matrix must have the same type") from None
+            except TypeError:
+                raise TypeError("all values given when constructing a matrix must have the same type") from None
 
     if shape is None:
-        raise RuntimeError("could not infer the `shape` argument when calling the `wp.types.matrix()` function")
+        raise ValueError("could not infer the `shape` argument when calling the `wp.types.matrix()` function")
 
     if dtype is None:
-        raise RuntimeError("could not infer the `dtype` argument when calling the `wp.types.matrix()` function")
+        raise ValueError("could not infer the `dtype` argument when calling the `wp.types.matrix()` function")
 
     return matrix(shape=shape, dtype=dtype)
 
@@ -1303,15 +1299,15 @@ def matrix_from_vecs_create_value_func(cols: bool):
         variadic_arg_count = len(variadic_arg_types)
 
         if not all(type_is_vector(x) for x in variadic_arg_types):
-            raise RuntimeError("all arguments are expected to be vectors")
+            raise TypeError("all arguments are expected to be vectors")
 
         length = variadic_arg_types[0]._length_
         if any(x._length_ != length for x in variadic_arg_types):
-            raise RuntimeError("all vectors are expected to have the same length")
+            raise ValueError("all vectors are expected to have the same length")
 
         dtype = variadic_arg_types[0]._wp_scalar_type_
         if any(x._wp_scalar_type_ != dtype for x in variadic_arg_types):
-            raise RuntimeError("all vectors are expected to have the same dtype")
+            raise TypeError("all vectors are expected to have the same dtype")
 
         shape = (length, variadic_arg_count) if cols else (variadic_arg_count, length)
         return matrix(shape=shape, dtype=dtype)
@@ -1382,7 +1378,7 @@ def identity_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, 
     dtype = arg_values["dtype"]
 
     if n is None:
-        raise RuntimeError("'n' must be a constant when calling identity()")
+        raise ValueError("'n' must be a constant when calling identity()")
 
     return matrix(shape=(n, n), dtype=dtype)
 
@@ -1629,7 +1625,7 @@ def quaternion_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str
         if dtype is None:
             dtype = float32
         elif dtype not in float_types:
-            raise RuntimeError(
+            raise TypeError(
                 f"a float type is expected when zero-initializing a quaternion but got `{type(dtype).__name__}` instead"
             )
     elif variadic_arg_count == 1:
@@ -1649,12 +1645,12 @@ def quaternion_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str
         else:
             try:
                 value_type = scalar_infer_type(variadic_arg_types)
-            except RuntimeError:
-                raise RuntimeError("all values given when constructing a quaternion must have the same type") from None
+            except TypeError:
+                raise TypeError("all values given when constructing a quaternion must have the same type") from None
             dtype = value_type
 
     if dtype is None:
-        raise RuntimeError("could not infer the `dtype` argument when calling the `wp.types.quaternion()` function")
+        raise ValueError("could not infer the `dtype` argument when calling the `wp.types.quaternion()` function")
 
     return quaternion(dtype=dtype)
 
@@ -1896,7 +1892,7 @@ def transformation_value_func(arg_types: Mapping[str, type], arg_values: Mapping
             if dtype is None:
                 dtype = source_dtype
             elif not warp._src.types.scalars_equal(source_dtype, dtype):
-                raise RuntimeError(
+                raise TypeError(
                     "copy constructing a transform requires matching source and target dtypes, "
                     f"got `{source_dtype.__name__}` and `{dtype.__name__}`"
                 )
@@ -1924,16 +1920,16 @@ def transformation_value_func(arg_types: Mapping[str, type], arg_values: Mapping
         else:
             try:
                 dtype = scalar_infer_type(variadic_arg_types)
-            except RuntimeError:
-                raise RuntimeError("all values given when constructing a transform must have the same type") from None
+            except TypeError:
+                raise TypeError("all values given when constructing a transform must have the same type") from None
     else:
-        raise RuntimeError(
+        raise ValueError(
             f"incompatible number of values given ({variadic_arg_count}) "
             "when constructing a transform; expected 0, 1, or 7"
         )
 
     if dtype is None:
-        raise RuntimeError("could not infer the `dtype` argument when calling the `wp.transform()` function")
+        raise ValueError("could not infer the `dtype` argument when calling the `wp.transform()` function")
 
     return transformation(dtype=dtype)
 
@@ -1944,16 +1940,14 @@ def transformation_pq_value_func(arg_types: Mapping[str, type], arg_values: Mapp
 
     try:
         value_type = float_infer_type(arg_types)
-    except RuntimeError:
-        raise RuntimeError(
-            "all values given when constructing a transformation matrix must have the same type"
-        ) from None
+    except TypeError:
+        raise TypeError("all values given when constructing a transformation matrix must have the same type") from None
 
     dtype = arg_values.get("dtype", None)
     if dtype is None:
         dtype = value_type
     elif not warp._src.types.scalars_equal(value_type, dtype):
-        raise RuntimeError(
+        raise TypeError(
             f"all values used to initialize this transformation matrix are expected to be of the type `{dtype.__name__}`"
         )
 
@@ -2523,21 +2517,23 @@ def spatial_vector_value_func(arg_types: Mapping[str, type], arg_values: Mapping
         if dtype is None:
             dtype = float32
     elif variadic_arg_count == 2:
-        if any(not type_is_vector(x) for x in variadic_arg_types) or any(x._length_ != 3 for x in variadic_arg_types):
-            raise RuntimeError("arguments `w` and `v` are expected to be vectors of length 3")
+        if any(not type_is_vector(x) for x in variadic_arg_types):
+            raise TypeError("arguments `w` and `v` are expected to be vectors of length 3")
+        if any(x._length_ != 3 for x in variadic_arg_types):
+            raise ValueError("arguments `w` and `v` are expected to be vectors of length 3")
     elif variadic_arg_count != 6:
-        raise RuntimeError("2 vectors or 6 scalar values are expected when constructing a spatial vector")
+        raise ValueError("2 vectors or 6 scalar values are expected when constructing a spatial vector")
 
     if variadic_arg_count:
         try:
             value_type = float_infer_type(variadic_arg_types)
-        except RuntimeError:
-            raise RuntimeError("all values given when constructing a spatial vector must have the same type") from None
+        except TypeError:
+            raise TypeError("all values given when constructing a spatial vector must have the same type") from None
 
         if dtype is None:
             dtype = value_type
         elif not warp._src.types.scalars_equal(value_type, dtype):
-            raise RuntimeError(
+            raise TypeError(
                 f"all values used to initialize this spatial vector are expected to be of the type `{dtype.__name__}`"
             )
 
@@ -3753,7 +3749,7 @@ def tile_arange_value_func(arg_types: Mapping[str, type], arg_values: Mapping[st
         step = args[2]
 
     if start is None or stop is None or step is None:
-        raise RuntimeError("tile_arange() arguments must be compile time constants")
+        raise ValueError("tile_arange() arguments must be compile time constants")
 
     if "dtype" in arg_values:
         dtype = arg_values["dtype"]
@@ -4453,7 +4449,7 @@ def check_tile_atomic_add_dtype(dtype, fn_name):
     scalar_type = getattr(dtype, "_wp_scalar_type_", dtype)
     supported_atomic_types = (*SUPPORTED_ATOMIC_TYPES, warp.float16, warp.bfloat16)
     if not any(types_equal_generic(scalar_type, x) for x in supported_atomic_types):
-        raise RuntimeError(
+        raise TypeError(
             f"{fn_name}() only supports tiles with [u]int32, [u]int64, float16, bfloat16, float32, "
             f"or float64 as the underlying scalar type, but got {type_repr(dtype)}"
         )
@@ -5249,7 +5245,7 @@ def tile_reshape_value_func(arg_types, arg_values):
             else:
                 denom *= d
         if minus_one_count > 1:
-            raise RuntimeError("Cannot infer shape if more than one index is -1.")
+            raise ValueError("Cannot infer shape if more than one index is -1.")
         new_shape = list(shape)
         new_shape[idx] = int(size / denom)
         shape = tuple(new_shape)
@@ -7587,10 +7583,10 @@ def _get_tile_map_overload(op, dtypes, message):
     try:
         overload = op.get_overload(dtypes, {})
     except KeyError as exc:
-        raise RuntimeError(message) from exc
+        raise TypeError(message) from exc
 
     if overload is None:
-        raise RuntimeError(message)
+        raise TypeError(message)
 
     return overload
 
@@ -11139,7 +11135,7 @@ def _is_volume_type_supported(dtype):
 
 def _check_volume_type_is_supported(dtype):
     if not _is_volume_type_supported(dtype):
-        raise RuntimeError(f"unsupported volume type `{type_repr(dtype)}`")
+        raise TypeError(f"unsupported volume type `{type_repr(dtype)}`")
 
 
 def check_volume_value_grad_compatibility(dtype, grad_dtype):
@@ -11149,7 +11145,7 @@ def check_volume_value_grad_compatibility(dtype, grad_dtype):
         expected = vector(length=3, dtype=dtype)
 
     if not types_equal(grad_dtype, expected):
-        raise RuntimeError(f"Incompatible gradient type, expected {type_repr(expected)}, got {type_repr(grad_dtype)}")
+        raise TypeError(f"Incompatible gradient type, expected {type_repr(expected)}, got {type_repr(grad_dtype)}")
 
 
 def volume_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
@@ -11627,10 +11623,10 @@ def volume_sample_index_value_func(arg_types: Mapping[str, type], arg_values: Ma
     dtype = arg_types["voxel_data"].dtype
 
     if dtype not in _volume_supported_value_types:
-        raise RuntimeError(f"unsupported volume type `{dtype.__name__}`")
+        raise TypeError(f"unsupported volume type `{dtype.__name__}`")
 
     if not types_equal(dtype, arg_types["background"]):
-        raise RuntimeError("the `voxel_data` array and the `background` value must have the same dtype")
+        raise TypeError("the `voxel_data` array and the `background` value must have the same dtype")
 
     return dtype
 
@@ -11705,10 +11701,10 @@ def volume_sample_grad_index_value_func(arg_types: Mapping[str, type], arg_value
     dtype = arg_types["voxel_data"].dtype
 
     if dtype not in _volume_supported_value_types:
-        raise RuntimeError(f"unsupported volume type `{dtype.__name__}`")
+        raise TypeError(f"unsupported volume type `{dtype.__name__}`")
 
     if not types_equal(dtype, arg_types["background"]):
-        raise RuntimeError("the `voxel_data` array and the `background` value must have the same dtype")
+        raise TypeError("the `voxel_data` array and the `background` value must have the same dtype")
 
     check_volume_value_grad_compatibility(dtype, arg_types["grad"])
 
@@ -12024,7 +12020,7 @@ def _is_texture_type_supported(dtype):
 
 def _check_texture_type_is_supported(dtype):
     if not _is_texture_type_supported(dtype):
-        raise RuntimeError(f"unsupported texture type `{type_repr(dtype)}`. Supported types: float, vec2f, vec4f")
+        raise TypeError(f"unsupported texture type `{type_repr(dtype)}`. Supported types: float, vec2f, vec4f")
 
 
 def texture_sample_1d_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
@@ -13041,7 +13037,7 @@ add_builtin(
 def printf_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     if arg_types is not None:
         if len(arg_types.get("args", ())) > 32:
-            raise RuntimeError("the maximum number of variadic arguments that can be passed to `printf` is 32")
+            raise ValueError("the maximum number of variadic arguments that can be passed to `printf` is 32")
 
     return None
 
@@ -13308,7 +13304,7 @@ def where_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any
         joined = type_erasure_join(v_true, v_false)
         if joined is not None:
             return joined
-        raise RuntimeError(f"where() true value type ({v_true}) must be of the same type as the false type ({v_false})")
+        raise TypeError(f"where() true value type ({v_true}) must be of the same type as the false type ({v_false})")
 
     if is_tile(v_false):
         if v_true.storage == "register":
@@ -13397,7 +13393,7 @@ def zeros_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any
     shape = extract_tuple(arg_values["shape"], as_constant=True)
 
     if None in shape:
-        raise RuntimeError("the `shape` argument must be specified as a constant when zero-initializing an array")
+        raise ValueError("the `shape` argument must be specified as a constant when zero-initializing an array")
 
     return fixedarray(dtype=dtype, shape=shape)
 
@@ -13450,19 +13446,19 @@ def address_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, A
     idx_types = tuple(arg_types[x] for x in "ijkl" if arg_types.get(x, None) is not None)
 
     if not is_array(arr_type):
-        raise RuntimeError("address() first argument must be an array")
+        raise TypeError("address() first argument must be an array")
 
     idx_count = len(idx_types)
 
     if idx_count != arr_type.ndim:
-        raise RuntimeError(
+        raise IndexError(
             f"The number of indices provided ({idx_count}) does not match the array dimensions ({arr_type.ndim}) for array load"
         )
 
     # check index types
     for t in idx_types:
         if not type_is_int(t):
-            raise RuntimeError(f"address() index arguments must be of integer type, got index of type {type_repr(t)}")
+            raise TypeError(f"address() index arguments must be of integer type, got index of type {type_repr(t)}")
 
     return Reference(arr_type.dtype)
 
@@ -13485,11 +13481,11 @@ def view_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]
     idx_types = tuple(arg_types[x] for x in "ijkl" if arg_types.get(x, None) is not None)
 
     if not is_array(arr_type):
-        raise RuntimeError("view() first argument must be an array")
+        raise TypeError("view() first argument must be an array")
 
     idx_count = len(idx_types)
     if idx_count > arr_type.ndim:
-        raise RuntimeError(
+        raise IndexError(
             f"Trying to create an array view with {idx_count} indices, "
             f"but the array only has {arr_type.ndim} dimension(s). "
             f"Ensure that the argument type on the function or kernel specifies "
@@ -13501,7 +13497,7 @@ def view_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]
         # check index types
         for t in idx_types:
             if not (type_is_int(t) or is_slice(t)):
-                raise RuntimeError(
+                raise TypeError(
                     f"view() index arguments must be of integer or slice types, got index of type {type_repr(t)}"
                 )
 
@@ -13516,7 +13512,7 @@ def view_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]
         # check index types
         for t in idx_types:
             if not type_is_int(t):
-                raise RuntimeError(
+                raise TypeError(
                     f"view() index arguments must be of integer or slice types, got index of type {type_repr(t)}"
                 )
 
@@ -13565,25 +13561,23 @@ def array_store_value_func(arg_types: Mapping[str, type], arg_values: Mapping[st
     idx_types = tuple(arg_types[x] for x in "ijkl" if arg_types.get(x, None) is not None)
 
     if not is_array(arr_type):
-        raise RuntimeError("array_store() first argument must be an array")
+        raise TypeError("array_store() first argument must be an array")
 
     idx_count = len(idx_types)
 
     if idx_count != arr_type.ndim:
-        raise RuntimeError(
+        raise IndexError(
             f"The number of indices provided ({idx_count}) does not match the array dimensions ({arr_type.ndim}) for array store"
         )
 
     # check index types
     for t in idx_types:
         if not type_is_int(t):
-            raise RuntimeError(
-                f"array_store() index arguments must be of integer type, got index of type {type_repr(t)}"
-            )
+            raise TypeError(f"array_store() index arguments must be of integer type, got index of type {type_repr(t)}")
 
     # check value type
     if not types_equal(arr_type.dtype, value_type):
-        raise RuntimeError(
+        raise TypeError(
             f"array_store() value argument type ({type_repr(value_type)}) must be of the same type as the array ({type_repr(arr_type.dtype)})"
         )
 
@@ -13633,9 +13627,7 @@ for array_type in array_types:
 def store_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     # we already stripped the Reference from the argument type prior to this call
     if not types_equal(arg_types["address"], arg_types["value"]):
-        raise RuntimeError(
-            f"store() value argument type ({arg_types['value']}) must be of the same type as the reference"
-        )
+        raise TypeError(f"store() value argument type ({arg_types['value']}) must be of the same type as the reference")
 
     return None
 
@@ -13700,7 +13692,7 @@ def create_atomic_op_value_func(op: str):
         idx_types = tuple(arg_types[x] for x in "ijkl" if arg_types.get(x, None) is not None)
 
         if not is_array(arr_type):
-            raise RuntimeError(f"atomic_{op}() first argument must be an array")
+            raise TypeError(f"atomic_{op}() first argument must be an array")
 
         idx_count = len(idx_types)
 
@@ -13710,20 +13702,20 @@ def create_atomic_op_value_func(op: str):
             )
 
         if idx_count > arr_type.ndim:
-            raise RuntimeError(
+            raise IndexError(
                 f"Num indices > num dimensions for atomic_{op}(), received {idx_count}, but array only has {arr_type.ndim}"
             )
 
         # check index types
         for t in idx_types:
             if not type_is_int(t):
-                raise RuntimeError(
+                raise TypeError(
                     f"atomic_{op}() index arguments must be of integer type, got index of type {type_repr(t)}"
                 )
 
         # check value type
         if not types_equal(arr_type.dtype, value_type):
-            raise RuntimeError(
+            raise TypeError(
                 f"atomic_{op}() value argument type ({type_repr(value_type)}) must be of the same type as the array ({type_repr(arr_type.dtype)})"
             )
 
@@ -13731,27 +13723,27 @@ def create_atomic_op_value_func(op: str):
         if op in ("add", "sub"):
             supported_atomic_types = (*SUPPORTED_ATOMIC_TYPES, warp.float16, warp.bfloat16)
             if not any(types_equal_generic(scalar_type, x) for x in supported_atomic_types):
-                raise RuntimeError(
+                raise TypeError(
                     f"atomic_{op}() operations only work on arrays with [u]int32, [u]int64, float16, bfloat16, float32, or float64 "
                     f"as the underlying scalar types, but got {type_repr(arr_type.dtype)} (with scalar type {type_repr(scalar_type)})"
                 )
         elif op in ("min", "max"):
             supported_atomic_types = (*SUPPORTED_ATOMIC_TYPES, warp.bfloat16)
             if not any(types_equal_generic(scalar_type, x) for x in supported_atomic_types):
-                raise RuntimeError(
+                raise TypeError(
                     f"atomic_{op}() operations only work on arrays with [u]int32, [u]int64, bfloat16, float32, or float64 "
                     f"as the underlying scalar types, but got {type_repr(arr_type.dtype)} (with scalar type {type_repr(scalar_type)})"
                 )
         elif op in ("cas", "exch"):
             if not any(types_equal_generic(scalar_type, x) for x in SUPPORTED_ATOMIC_TYPES):
-                raise RuntimeError(
+                raise TypeError(
                     f"atomic_{op}() operations only work on arrays with [u]int32, [u]int64, float32, or float64 "
                     f"as the underlying scalar types, but got {type_repr(arr_type.dtype)} (with scalar type {type_repr(scalar_type)})"
                 )
         elif op in ("and", "or", "xor"):
             supported_atomic_types = (warp.int32, warp.int64, warp.uint32, warp.uint64)
             if not any(types_equal_generic(scalar_type, x) for x in supported_atomic_types):
-                raise RuntimeError(
+                raise TypeError(
                     f"atomic_{op}() operations only work on arrays with [u]int32 or [u]int64 "
                     f"as the underlying scalar types, but got {type_repr(arr_type.dtype)} (with scalar type {type_repr(scalar_type)})"
                 )
@@ -15159,7 +15151,7 @@ for t in scalar_types + vector_types + (bool,):
 
 def expect_eq_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     if not types_equal(arg_types["a"], arg_types["b"]):
-        raise RuntimeError("Can't test equality for objects with different types")
+        raise TypeError("Can't test equality for objects with different types")
 
     return None
 
@@ -15279,10 +15271,10 @@ def lerp_create_value_func(default):
             return default
 
         if not lerp_constraint(arg_types):
-            raise RuntimeError("Can't lerp between objects with different types")
+            raise TypeError("Can't lerp between objects with different types")
 
         if arg_types["a"]._wp_scalar_type_ != arg_types["t"]:
-            raise RuntimeError("'t' parameter must have the same scalar type as objects you're lerping between")
+            raise TypeError("'t' parameter must have the same scalar type as objects you're lerping between")
 
         return arg_types["a"]
 
@@ -15689,7 +15681,7 @@ def scalar_mul_create_value_func(default):
         scalar = next(t for t in arg_types.values() if t in scalar_types)
         compound = next(t for t in arg_types.values() if t not in scalar_types)
         if scalar != compound._wp_scalar_type_:
-            raise RuntimeError("Object and coefficient must have the same scalar type when multiplying by scalar")
+            raise TypeError("Object and coefficient must have the same scalar type when multiplying by scalar")
 
         return compound
 
@@ -15770,12 +15762,12 @@ def matvec_mul_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str
         return vector(length=Any, dtype=Scalar)
 
     if arg_types["a"]._wp_scalar_type_ != arg_types["b"]._wp_scalar_type_:
-        raise RuntimeError(
+        raise TypeError(
             f"Can't multiply matrix and vector with different types {arg_types['a']._wp_scalar_type_}, {arg_types['b']._wp_scalar_type_}"
         )
 
     if not matvec_mul_constraint(arg_types):
-        raise RuntimeError(
+        raise ValueError(
             f"Can't multiply matrix of shape {arg_types['a']._shape_} and vector with length {arg_types['b']._length_}"
         )
 
@@ -15803,12 +15795,12 @@ def mul_vecmat_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str
         return vector(length=Any, dtype=Scalar)
 
     if arg_types["b"]._wp_scalar_type_ != arg_types["a"]._wp_scalar_type_:
-        raise RuntimeError(
+        raise TypeError(
             f"Can't multiply vector and matrix with different types {arg_types['b']._wp_scalar_type_}, {arg_types['a']._wp_scalar_type_}"
         )
 
     if not mul_vecmat_constraint(arg_types):
-        raise RuntimeError(
+        raise ValueError(
             f"Can't multiply vector with length {arg_types['a']._length_} and matrix of shape {arg_types['b']._shape_}"
         )
 
@@ -15836,12 +15828,12 @@ def matmat_mul_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str
         return matrix(shape=(Any, Any), dtype=Scalar)
 
     if arg_types["a"]._wp_scalar_type_ != arg_types["b"]._wp_scalar_type_:
-        raise RuntimeError(
+        raise TypeError(
             f"Can't multiply matrices with different types {arg_types['a']._wp_scalar_type_}, {arg_types['b']._wp_scalar_type_}"
         )
 
     if not matmat_mul_constraint(arg_types):
-        raise RuntimeError(f"Can't multiply matrix of shapes {arg_types['a']._shape_} and {arg_types['b']._shape_}")
+        raise ValueError(f"Can't multiply matrix of shapes {arg_types['a']._shape_} and {arg_types['b']._shape_}")
 
     return matrix(shape=(arg_types["a"]._shape_[0], arg_types["b"]._shape_[1]), dtype=arg_types["a"]._wp_scalar_type_)
 
@@ -18493,15 +18485,15 @@ def tuple_extract_value_func(arg_types: Mapping[str, type], arg_values: Mapping[
     elements = tuple_type.types if is_tuple(tuple_type) else tuple_type
 
     if "i" not in arg_values:
-        raise RuntimeError("Tuple index must be a compile time expression.")
+        raise ValueError("Tuple index must be a compile time expression.")
 
     index = arg_values["i"]
     if isinstance(index, Var):
-        raise RuntimeError("Tuple index must be a compile time expression.")
+        raise ValueError("Tuple index must be a compile time expression.")
 
     length = len(elements)
     if index >= length:
-        raise RuntimeError(f"Tuple index out of bounds, {index} >= {length}")
+        raise IndexError(f"Tuple index out of bounds, {index} >= {length}")
 
     value_type = elements[index]
     return value_type

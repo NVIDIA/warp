@@ -353,7 +353,7 @@ def test_print_error_variadic_arg_count(test, device):
         # fmt: on
 
     with test.assertRaisesRegex(
-        RuntimeError,
+        ValueError,
         r"the maximum number of variadic arguments that can be passed to `printf` is 32$",
     ):
         wp.launch(
