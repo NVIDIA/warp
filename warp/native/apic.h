@@ -20,18 +20,11 @@
 // WP_API export macro and `wp_` name prefix; internal helpers live in
 // apic_internal.h.
 
+#include "api.h"
 #include "apic_types.h"
 
 #include <stddef.h>
 #include <stdint.h>
-
-#ifndef WP_API
-#ifdef _WIN32
-#define WP_API __declspec(dllexport)
-#else
-#define WP_API __attribute__((visibility("default")))
-#endif
-#endif
 
 extern "C" {
 

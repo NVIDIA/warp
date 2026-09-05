@@ -50,30 +50,52 @@ if(NOT DEFINED WARP_BIN_DIR)
 endif()
 get_filename_component(WARP_BIN_ABS "${WARP_BIN_DIR}" ABSOLUTE)
 
-# Try to find warp library
-find_library(WARP_LIB
-    NAMES warp warp.so warp.dll
-    HINTS ${WARP_BIN_ABS}
-    PATHS ENV WARP_PATH
-    PATH_SUFFIXES bin lib
-)
+if(WIN32)
+    find_file(WARP_LIBRARY
+        NAMES warp.dll
+        HINTS ${WARP_BIN_ABS}
+        PATHS ENV WARP_PATH
+        PATH_SUFFIXES bin
+    )
+    find_library(WARP_IMPLIB
+        NAMES warp
+        HINTS ${WARP_BIN_ABS}
+        PATHS ENV WARP_PATH
+        PATH_SUFFIXES bin lib
+    )
+    if(NOT WARP_LIBRARY OR NOT WARP_IMPLIB)
+        message(FATAL_ERROR
+            "Could not find warp.dll and warp.lib\n"
+            "Hints searched: ${WARP_BIN_ABS}\n"
+            "Set WARP_BIN_DIR to the directory containing both files")
+    endif()
 
-if(NOT WARP_LIB)
-    message(FATAL_ERROR
-        "Could not find Warp library (warp.dll / warp.so / libwarp.dylib)\n"
-        "Hints searched: ${WARP_BIN_ABS}\n"
-        "Set WARP_BIN_DIR to the directory containing the warp library")
+    add_library(Warp::runtime SHARED IMPORTED)
+    set_target_properties(Warp::runtime PROPERTIES
+        IMPORTED_LOCATION "${WARP_LIBRARY}"
+        IMPORTED_IMPLIB "${WARP_IMPLIB}"
+        INTERFACE_INCLUDE_DIRECTORIES "${WARP_INCLUDE}"
+    )
+else()
+    find_library(WARP_LIBRARY
+        NAMES warp warp.so
+        HINTS ${WARP_BIN_ABS}
+        PATHS ENV WARP_PATH
+        PATH_SUFFIXES bin lib
+    )
+    if(NOT WARP_LIBRARY)
+        message(FATAL_ERROR
+            "Could not find Warp library (warp.so / libwarp.dylib)\n"
+            "Hints searched: ${WARP_BIN_ABS}\n"
+            "Set WARP_BIN_DIR to the directory containing the Warp library")
+    endif()
+
+    add_library(Warp::runtime SHARED IMPORTED)
+    set_target_properties(Warp::runtime PROPERTIES
+        IMPORTED_LOCATION "${WARP_LIBRARY}"
+        INTERFACE_INCLUDE_DIRECTORIES "${WARP_INCLUDE}"
+    )
 endif()
-
-# Wrap the resolved library path in an IMPORTED target so CMake passes the
-# full path to the linker verbatim. Otherwise CMake converts an absolute
-# path like /path/to/warp.so to "-L/path/to -lwarp", which fails on Linux
-# because the library lacks the conventional lib<name>.so prefix.
-add_library(warp::runtime UNKNOWN IMPORTED)
-set_target_properties(warp::runtime PROPERTIES
-    IMPORTED_LOCATION "${WARP_LIB}"
-    IMPORTED_NO_SONAME TRUE
-)
 
 # Fetch GLFW and GLAD
 include(FetchContent)
@@ -126,12 +148,6 @@ endif()
 # Set C++ standard
 target_compile_features(02_apic_visualization PRIVATE cxx_std_17)
 
-# Add includes
-# Use SYSTEM to suppress warnings from external headers
-target_include_directories(02_apic_visualization SYSTEM PRIVATE
-    ${WARP_INCLUDE}
-)
-
 # Link libraries
 target_link_libraries(02_apic_visualization
     CUDA::cuda_driver
@@ -139,22 +155,24 @@ target_link_libraries(02_apic_visualization
     OpenGL::GL
     glfw
     glad
-    warp::runtime
+    Warp::runtime
 )
 
 # On Windows, copy the warp DLL to the output directory
 if(WIN32)
-    get_filename_component(WARP_LIB_DIR "${WARP_LIB}" DIRECTORY)
     add_custom_command(TARGET 02_apic_visualization POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${WARP_LIB_DIR}/warp.dll"
+            "${WARP_LIBRARY}"
             "$<TARGET_FILE_DIR:02_apic_visualization>"
         COMMENT "Copying warp.dll to output directory"
     )
 endif()
 
 message(STATUS "Warp include: ${WARP_INCLUDE}")
-message(STATUS "Warp library: ${WARP_LIB}")
+message(STATUS "Warp library: ${WARP_LIBRARY}")
+if(WIN32)
+    message(STATUS "Warp import library: ${WARP_IMPLIB}")
+endif()
 message(STATUS "CUDA architectures: ${CMAKE_CUDA_ARCHITECTURES}")
 
 # Add headless smoke test (uses --smoke to skip GUI; needs a CUDA-capable runtime).

@@ -659,12 +659,85 @@ The C++ integration examples intentionally use a small native surface:
   Warp's generated type support.
 - ``warp/native/warp.h`` declares the core Warp C API exported by the native
   library.
+- ``warp/native/warp_clang.h`` declares the experimental CPU module loading and
+  symbol lookup API exported by ``warp-clang``.
 - ``warp/native/apic.h`` declares the APIC graph loading and replay API used by
   ``.wrp`` graph consumers.
 
 Other files in ``warp/native/`` implement Warp's runtime and kernel support
 library. They are useful when inspecting generated code, but the examples above
 are the recommended starting points for native host integration.
+
+.. _native_library_linking:
+
+Native Library Linking and Version Checks
+-----------------------------------------
+
+Windows wheels include ``warp.lib`` beside ``warp.dll`` and
+``warp-clang.lib`` beside ``warp-clang.dll``. Link against the ``.lib`` import
+libraries and deploy the corresponding DLLs. On Linux and macOS, link directly
+to the Warp and warp-clang shared libraries.
+
+Warp does not currently provide an official ``find_package()`` configuration.
+A consuming CMake project that knows the wheel's package location can define
+ordinary imported targets. For example, the Windows targets can be defined as:
+
+.. code:: cmake
+
+    set(WARP_PACKAGE_ROOT ".../site-packages/warp")
+
+    add_library(Warp::runtime SHARED IMPORTED)
+    set_target_properties(Warp::runtime PROPERTIES
+        IMPORTED_LOCATION "${WARP_PACKAGE_ROOT}/bin/warp.dll"
+        IMPORTED_IMPLIB "${WARP_PACKAGE_ROOT}/bin/warp.lib"
+        INTERFACE_INCLUDE_DIRECTORIES "${WARP_PACKAGE_ROOT}/native"
+    )
+
+    add_library(Warp::clang SHARED IMPORTED)
+    set_target_properties(Warp::clang PROPERTIES
+        IMPORTED_LOCATION "${WARP_PACKAGE_ROOT}/bin/warp-clang.dll"
+        IMPORTED_IMPLIB "${WARP_PACKAGE_ROOT}/bin/warp-clang.lib"
+        INTERFACE_INCLUDE_DIRECTORIES "${WARP_PACKAGE_ROOT}/native"
+    )
+
+    target_link_libraries(my_app PRIVATE Warp::runtime Warp::clang)
+
+On Linux and macOS, set ``IMPORTED_LOCATION`` to the corresponding ``.so`` or
+``.dylib`` file and omit ``IMPORTED_IMPLIB``.
+
+The native C APIs and ``.wrp`` format do not currently guarantee backward or
+forward compatibility across Warp releases. Build and deploy a native
+application with the headers, DLLs or other shared libraries, Windows import
+libraries, ``.wrp`` files, and companion module artifacts from the same Warp
+release. Mixing these artifacts across releases is unsupported, even when a
+particular combination happens to work. Check both linked libraries during
+startup before loading a graph or CPU module:
+
+.. code:: cpp
+
+    #include "warp.h"
+    #include "warp_clang.h"
+
+    #include <cstring>
+
+    if (wp_init(WP_VERSION_STRING) != 0)
+        return 1;
+    if (std::strcmp(wp_warp_clang_version(), WP_VERSION_STRING) != 0)
+        return 2;
+
+These checks detect a library that reports a different Warp release, but they
+do not establish a stable ABI:
+
+- The Windows loader may reject a missing DLL or symbol before ``main()``, so
+  runtime version checks cannot recover from that failure.
+- An unchanged C symbol with a changed signature remains unsafe despite the
+  version checks.
+- Put the matching DLLs beside the executable or configure the DLL search path
+  deliberately.
+- Linking ``warp-clang.lib`` makes ``warp-clang.dll`` a startup dependency,
+  even for a process that later replays only CUDA graphs.
+- CPU APIC callers should include ``warp_clang.h`` instead of copying the
+  ``wp_load_obj()`` and ``wp_lookup()`` declarations from ``clang.cpp``.
 
 Related Topics
 --------------
