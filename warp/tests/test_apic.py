@@ -93,6 +93,11 @@ _APIC_MEMORY_REGION_RECORD = struct.Struct("<IIQB7x")
 # APICCondRecord: operation type/size, condition region/padding/offset, then each
 # branch's byte size and operation count.
 _APIC_COND_RECORD = struct.Struct("<IIiIQIIII")
+
+# APICMemtileRecord: operation type/size, destination region, inline value size,
+# destination offset, and repetition count.
+_APIC_MEMTILE_RECORD = struct.Struct("<IIiIQQ")
+_APIC_OP_MEMTILE = 10
 _APIC_UINT32 = struct.Struct("<I")  # One serialized uint32_t.
 
 
@@ -225,6 +230,29 @@ def _corrupt_apic_empty_branch_count(path, branch_name):
         wrp_file.write(_APIC_COND_RECORD.pack(*conditional))
 
 
+def _corrupt_apic_memtile_count_to_overflow(path):
+    """Make a four-byte MEMTILE record's destination span overflow uint64_t."""
+    with open(path, "r+b") as wrp_file:
+        wrp_data = wrp_file.read()
+        section_offset, section_size = _find_apic_section(wrp_data, _APIC_SECTION_OPERATIONS)
+
+        if section_size < _APIC_UINT32.size + _APIC_MEMTILE_RECORD.size:
+            raise ValueError("WRP operations section has no MEMTILE record")
+
+        operation_count = _APIC_UINT32.unpack_from(wrp_data, section_offset)[0]
+        if operation_count != 1:
+            raise ValueError("Expected exactly one operation")
+
+        memtile_offset = section_offset + _APIC_UINT32.size
+        memtile = list(_APIC_MEMTILE_RECORD.unpack_from(wrp_data, memtile_offset))
+        if memtile[0] != _APIC_OP_MEMTILE or memtile[3] != 4:
+            raise ValueError("Expected a four-byte MEMTILE operation")
+
+        memtile[5] = 1 << 62
+        wrp_file.seek(memtile_offset)
+        wrp_file.write(_APIC_MEMTILE_RECORD.pack(*memtile))
+
+
 def test_save_apic_false_error(test, device):
     """capture_save() should raise when apic=False."""
     n = 64
@@ -301,6 +329,20 @@ def test_capture_load_rejects_empty_conditional_branches_with_operations(test, d
                     wp.capture_load(path, device=device)
             finally:
                 wp_context.runtime.core.wp_set_error_output_enabled(saved_error_output_enabled)
+
+
+def test_capture_load_rejects_memtile_span_overflow(test, device):
+    """Reject a MEMTILE whose byte-span multiplication overflows."""
+    values = wp.zeros(4, dtype=wp.float32, device=device)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "memtile_span_overflow.wrp")
+        with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+            values.fill_(42.0)
+        wp.capture_save(capture.graph, path, outputs={"values": values})
+        _corrupt_apic_memtile_count_to_overflow(path)
+
+        _assert_apic_load_rejected(test, path, device, r"operation stream failed validation")
 
 
 def test_capture_load_rejects_malformed_memory_regions(test, device):
@@ -3405,6 +3447,12 @@ add_function_test(
 )
 add_function_test(
     TestApic,
+    "test_capture_load_rejects_memtile_span_overflow",
+    test_capture_load_rejects_memtile_span_overflow,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
     "test_capture_load_rejects_malformed_memory_regions",
     test_capture_load_rejects_malformed_memory_regions,
     devices=[d for d in devices if d.is_cpu],
@@ -3484,9 +3532,7 @@ add_function_test(
     test_cpu_graph_replay_after_array_refs_released,
     devices=[d for d in devices if d.is_cpu],
 )
-add_function_test(
-    TestApic, "test_save_load_fill", test_save_load_fill, devices=get_cuda_test_devices()
-)  # CPU: wp_memtile_host not recorded
+add_function_test(TestApic, "test_save_load_fill", test_save_load_fill, devices=devices)
 add_function_test(
     TestApic, "test_save_load_alloc_only", test_save_load_alloc_only, devices=devices_with_graph_capture_allocation
 )

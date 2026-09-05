@@ -518,7 +518,12 @@ static bool apic_replay_ops_into_cuda_capture(
         case APIC_OP_MEMTILE: {
             const APICMemtileRecord* rec = reinterpret_cast<const APICMemtileRecord*>(ptr);
             const void* value = ptr + sizeof(APICMemtileRecord);
-            uint64_t total_bytes = rec->count * rec->srcsize;
+            uint64_t total_bytes;
+            if (!apic_mul_check(rec->count, rec->srcsize, &total_bytes)) {
+                wp::set_error_string("APIC memtile: span overflow at operation %u", i);
+                success = false;
+                break;
+            }
             void* dst = apic_resolve_region_ptr(graph, rec->region_id, rec->offset, total_bytes);
             if (!dst) {
                 wp::set_error_string("Warp APIC error: memtile failed to resolve region (op %u)", i);

@@ -27,7 +27,7 @@
 #include <climits>
 #include <cmath>
 #include <cstddef>  // offsetof
-#include <cstdint>  // SIZE_MAX
+#include <cstdint>  // UINT64_MAX
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -1408,20 +1408,6 @@ static bool apic_is_radix_dtype(uint8_t dtype)
         || dtype == APIC_TYPE_INT64 || dtype == APIC_TYPE_UINT64 || dtype == APIC_TYPE_FLOAT64;
 }
 
-// Checked multiply: writes a*b to *out and returns true, or returns false if
-// the product would overflow size_t. Replay computes byte spans as products of
-// record fields (count, stride, nnz, block size, scalar size) and trusts the
-// validator, so a corrupt/oversized .wrp could otherwise wrap a span to a small
-// value that passes resolve_ptr's bounds check while the host op reads/writes
-// far more. The validator uses this to reject such records up front.
-static bool apic_mul_check(uint64_t a, uint64_t b, uint64_t* out)
-{
-    if (b != 0 && a > (SIZE_MAX / b))
-        return false;
-    *out = a * b;
-    return true;
-}
-
 static bool apic_add_check(uint64_t a, uint64_t b, uint64_t* out)
 {
     if (a > UINT64_MAX - b)
@@ -1598,6 +1584,11 @@ bool apic_validate_operation_stream(const uint8_t* data, size_t size, uint32_t o
             const APICMemtileRecord* rec = reinterpret_cast<const APICMemtileRecord*>(ptr);
             if (op_start + sizeof(APICMemtileRecord) + rec->srcsize > op_end) {
                 fprintf(stderr, "Warp APIC error: memtile inline data overflow at operation %u\n", i);
+                return false;
+            }
+            uint64_t total_bytes;
+            if (!apic_mul_check(rec->count, rec->srcsize, &total_bytes)) {
+                fprintf(stderr, "Warp APIC error: memtile span overflow at operation %u\n", i);
                 return false;
             }
             break;
@@ -2251,7 +2242,11 @@ static bool apic_cpu_replay_stream(
         case APIC_OP_MEMTILE: {
             const APICMemtileRecord* rec = reinterpret_cast<const APICMemtileRecord*>(ptr);
             const void* value = ptr + sizeof(APICMemtileRecord);
-            uint64_t total_bytes = rec->count * rec->srcsize;
+            uint64_t total_bytes;
+            if (!apic_mul_check(rec->count, rec->srcsize, &total_bytes)) {
+                fprintf(stderr, "Warp APIC error: memtile span overflow at operation %u\n", i);
+                return false;
+            }
             void* dst = resolve_ptr(rec->region_id, rec->offset, total_bytes);
             if (!dst) {
                 fprintf(stderr, "Warp APIC error: memtile pointer resolution failed at operation %u\n", i);
