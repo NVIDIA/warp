@@ -4692,6 +4692,15 @@ size_t wp_cuda_compile_program(
     opts.push_back(include_opt);
     opts.push_back("--std=c++17");
 
+#if CUDA_VERSION == 12080 || CUDA_VERSION == 12090
+    // CUDA 12.8 and 12.9 can miscompile base-level vector texture sampling on
+    // sm_89 when functions mix texture return widths. The issue affects CUBIN
+    // and PTX, and CUDA 12.8 ignores the requested optimization level. Apply
+    // the workaround consistently to every compiler mode on this target.
+    if (arch == 89)
+        opts.push_back("--define-macro=WP_WORKAROUND_CUDA_TEXTURE_SM89");
+#endif
+
 #if CUDA_VERSION >= 12080 && CUDA_VERSION < 13000
     // CUDA 12 miscompiles optimized CUBIN texture sampling when texture handles
     // vary across lanes on sm_90 and newer targets. CUDA 12.8 is covered as a
