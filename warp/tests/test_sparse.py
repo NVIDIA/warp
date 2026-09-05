@@ -1492,6 +1492,39 @@ def test_bsr_alloc(test, device):
     assert bsr.values.shape[0] >= 6
 
 
+def test_bsr_scaled_expression_add_sub(test, device):
+    # Scaled expressions must give the same result on either side of + and -
+    rng = np.random.default_rng(123)
+
+    nrow = 3
+    ncol = 4
+    nnz = 6
+
+    x_rows = wp.array(rng.integers(0, high=nrow, size=nnz, dtype=int), dtype=int, device=device)
+    x_cols = wp.array(rng.integers(0, high=ncol, size=nnz, dtype=int), dtype=int, device=device)
+    x_vals = wp.array(rng.random(size=nnz), dtype=float, device=device)
+    x = bsr_from_triplets(nrow, ncol, x_rows, x_cols, x_vals)
+
+    y_rows = wp.array(rng.integers(0, high=nrow, size=nnz, dtype=int), dtype=int, device=device)
+    y_cols = wp.array(rng.integers(0, high=ncol, size=nnz, dtype=int), dtype=int, device=device)
+    y_vals = wp.array(rng.random(size=nnz), dtype=float, device=device)
+    y = bsr_from_triplets(nrow, ncol, y_rows, y_cols, y_vals)
+
+    x_dense = _bsr_to_dense(x)
+    y_dense = _bsr_to_dense(y)
+
+    assert_np_equal(_bsr_to_dense((2.0 * x) + y), 2.0 * x_dense + y_dense, 0.0001)
+    assert_np_equal(_bsr_to_dense(y + (2.0 * x)), 2.0 * x_dense + y_dense, 0.0001)
+    assert_np_equal(_bsr_to_dense((2.0 * x) - y), 2.0 * x_dense - y_dense, 0.0001)
+    assert_np_equal(_bsr_to_dense(y - (2.0 * x)), y_dense - 2.0 * x_dense, 0.0001)
+    assert_np_equal(_bsr_to_dense((2.0 * x) + (3.0 * y)), 2.0 * x_dense + 3.0 * y_dense, 0.0001)
+    assert_np_equal(_bsr_to_dense((2.0 * x) - (3.0 * y)), 2.0 * x_dense - 3.0 * y_dense, 0.0001)
+
+    # operands must be left untouched
+    assert_np_equal(_bsr_to_dense(x), x_dense, 0.0001)
+    assert_np_equal(_bsr_to_dense(y), y_dense, 0.0001)
+
+
 devices = get_test_devices()
 cuda_test_devices = get_selected_cuda_test_devices()
 cuda_test_devices_with_mempool = get_selected_cuda_test_devices_with_mempool()
@@ -1618,6 +1651,7 @@ add_function_test(
 add_function_test(TestSparse, "test_bsr_mm_max_new_nnz", test_bsr_mm_max_new_nnz, devices=devices, check_output=False)
 
 add_function_test(TestSparse, "test_bsr_alloc", test_bsr_alloc, devices=devices)
+add_function_test(TestSparse, "test_bsr_scaled_expression_add_sub", test_bsr_scaled_expression_add_sub, devices=devices)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
