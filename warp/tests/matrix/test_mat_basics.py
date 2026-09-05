@@ -92,6 +92,55 @@ def test_components(test, device, dtype):
     test.assertEqual(m[1, 2], 18)
 
 
+def test_slicing(test, device, dtype):
+    # test slicing matrices from Python. Rectangular shapes are the ones that catch
+    # a row count being used where a column count is expected, and vice versa
+
+    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    mat12 = wp._src.types.matrix(shape=(1, 2), dtype=wptype)
+    mat23 = wp._src.types.matrix(shape=(2, 3), dtype=wptype)
+    mat32 = wp._src.types.matrix(shape=(3, 2), dtype=wptype)
+    vec2 = wp._src.types.vector(length=2, dtype=wptype)
+    vec3 = wp._src.types.vector(length=3, dtype=wptype)
+
+    m = mat23(1, 2, 3, 4, 5, 6)
+
+    # test __getitem__ for row and column vectors
+    test.assertEqual(m[0, :], vec3(1, 2, 3))
+    test.assertEqual(m[1, 1:], vec2(5, 6))
+    test.assertEqual(m[:, 0], vec2(1, 4))
+    test.assertEqual(m[:, 2], vec2(3, 6))
+
+    # test __getitem__ for submatrices
+    test.assertEqual(m[:, :], mat23(1, 2, 3, 4, 5, 6))
+    test.assertEqual(m[1:, :2], mat12(4, 5))
+
+    # test __setitem__ for row and column vectors
+    m[0, :] = vec3(7, 8, 9)
+    test.assertEqual(m, mat23(7, 8, 9, 4, 5, 6))
+    m[:, 2] = vec2(10, 11)
+    test.assertEqual(m, mat23(7, 8, 10, 4, 5, 11))
+
+    # test __setitem__ for submatrices
+    m[:, :] = mat23(12, 13, 14, 15, 16, 17)
+    test.assertEqual(m, mat23(12, 13, 14, 15, 16, 17))
+
+    # the same again with the number of rows and columns swapped
+    n = mat32(1, 2, 3, 4, 5, 6)
+
+    test.assertEqual(n[0, :], vec2(1, 2))
+    test.assertEqual(n[:, 0], vec3(1, 3, 5))
+    test.assertEqual(n[1:, 0], vec2(3, 5))
+    test.assertEqual(n[:, :], mat32(1, 2, 3, 4, 5, 6))
+
+    n[0, :] = vec2(7, 8)
+    test.assertEqual(n, mat32(7, 8, 3, 4, 5, 6))
+    n[:, 1] = vec3(9, 10, 11)
+    test.assertEqual(n, mat32(7, 9, 3, 10, 5, 11))
+    n[:, :] = mat32(12, 13, 14, 15, 16, 17)
+    test.assertEqual(n, mat32(12, 13, 14, 15, 16, 17))
+
+
 def test_indexing(test, device, dtype, register_kernels=False):
     tol = {
         np.float16: 1.0e-3,
@@ -348,6 +397,7 @@ class TestMatBasics(unittest.TestCase):
 for dtype in np_scalar_types:
     add_function_test(TestMatBasics, f"test_arrays_{dtype.__name__}", test_arrays, devices=devices, dtype=dtype)
     add_function_test(TestMatBasics, f"test_components_{dtype.__name__}", test_components, devices=None, dtype=dtype)
+    add_function_test(TestMatBasics, f"test_slicing_{dtype.__name__}", test_slicing, devices=None, dtype=dtype)
     add_function_test_register_kernel(
         TestMatBasics, f"test_indexing_{dtype.__name__}", test_indexing, devices=devices, dtype=dtype
     )

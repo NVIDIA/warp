@@ -1372,20 +1372,20 @@ def matrix(shape, dtype):
                 if ndim == 1:
                     if isinstance(key[1], slice):
                         # Row vector.
-                        cols = range(*key[1].indices(self._shape_[0]))
+                        cols = range(*key[1].indices(self._shape_[1]))
                         row_vec = self.get_row(key[0])
                         values = tuple(row_vec[x] for x in cols)
                         return vector(len(values), self._wp_scalar_type_)(*values)
                     else:
                         # Column vector.
-                        rows = range(*key[0].indices(self._shape_[1]))
+                        rows = range(*key[0].indices(self._shape_[0]))
                         col_vec = self.get_col(key[1])
                         values = tuple(col_vec[x] for x in rows)
                         return vector(len(values), self._wp_scalar_type_)(*values)
 
                 assert ndim == 2
-                rows = range(*key[0].indices(self._shape_[1]))
-                cols = range(*key[1].indices(self._shape_[0]))
+                rows = range(*key[0].indices(self._shape_[0]))
+                cols = range(*key[1].indices(self._shape_[1]))
                 row_vecs = tuple(self.get_row(i) for i in rows)
                 values = tuple(x[j] for x in row_vecs for j in cols)
                 shape = (len(rows), len(cols))
@@ -1442,7 +1442,7 @@ def matrix(shape, dtype):
 
                     if isinstance(key[1], slice):
                         # Row vector.
-                        cols = range(*key[1].indices(self._shape_[0]))
+                        cols = range(*key[1].indices(self._shape_[1]))
                         if v_shape and v_shape[0] != len(cols):
                             raise RuntimeError(
                                 f"The length of the provided vector ({v_shape[0]}) isn't compatible with the given slice (expected {len(cols)})"
@@ -1456,7 +1456,7 @@ def matrix(shape, dtype):
                         return
                     else:
                         # Column vector.
-                        rows = range(*key[0].indices(self._shape_[1]))
+                        rows = range(*key[0].indices(self._shape_[0]))
                         if v_shape and v_shape[0] != len(rows):
                             raise RuntimeError(
                                 f"The length of the provided vector ({v_shape[0]}) isn't compatible with the given slice (expected {len(rows)})"
@@ -1478,8 +1478,8 @@ def matrix(shape, dtype):
                         f"The provided value is expected to be a 2D matrix but got an object of shape {v_shape} instead"
                     )
 
-                rows = range(*key[0].indices(self._shape_[1]))
-                cols = range(*key[1].indices(self._shape_[0]))
+                rows = range(*key[0].indices(self._shape_[0]))
+                cols = range(*key[1].indices(self._shape_[1]))
 
                 if v_shape and v_shape != (len(rows), len(cols)):
                     raise RuntimeError(
