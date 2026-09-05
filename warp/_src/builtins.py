@@ -4958,6 +4958,29 @@ def tile_view_value_func(arg_types, arg_values):
             raise ValueError(
                 f"tile_view() if shape is specified it must have same number of dimensions as source tile, expected {ndim}, got {len(shape)}"
             )
+
+        # The origin was range-checked above, but the extent must fit as well: the
+        # native tile_view() only forms an aliased pointer into the parent storage,
+        # so a view reaching past the end of an axis would silently read (and, when
+        # assigned through, write) whatever shared memory follows. The slice path
+        # cannot express this because its extents are clamped to the parent. Only
+        # constant offsets can be checked here; runtime offsets cannot be validated
+        # at code-gen time.
+        for dim, extent in enumerate(shape):
+            if isinstance(extent, int) and extent <= 0:
+                # Mirror the slice path, which rejects empty tiles; a zero or
+                # negative extent would otherwise reach the tile type constructor
+                # as a nonsensical dimension size.
+                raise ValueError(f"tile_view() shape must contain positive extents, got {extent} for axis {dim}")
+            entry = offset[dim] if dim < len(offset) else 0
+            const = entry.constant if isinstance(entry, Var) else entry
+            if not isinstance(const, int) or not isinstance(extent, int):
+                continue
+            if const + extent > parent_shape[dim]:
+                raise ValueError(
+                    f"tile_view() shape {extent} at offset {const} is out of bounds for axis {dim} "
+                    f"with size {parent_shape[dim]}; the view must lie within the source tile."
+                )
     else:
         # if not specified, then take output shape from unspecified src dimensions
         # e.g.: tile[i] will return a whole row of a 2D tile
