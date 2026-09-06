@@ -10175,9 +10175,17 @@ add_builtin(
     input_types={"query": MeshQueryAABB, "index": int},
     value_type=builtins.bool,
     group="Geometry",
-    doc="""Advance a mesh AABB query to the next overlapping triangle and report whether one was found.
+    doc="""Advance an AABB or sphere mesh query to the next matching triangle.
 
-    .. note:: This is an alias for :func:`mesh_query_next`.""",
+    This function is retained for compatibility. Prefer :func:`mesh_query_next` for new code and
+    query-type-independent traversal.
+
+    Args:
+        query: The query to advance
+        index: Output; receives the zero-based face index of the current result
+
+    Returns:
+        ``True`` if another matching triangle was found, otherwise ``False``.""",
     export=False,
     is_differentiable=False,
 )
@@ -10187,9 +10195,17 @@ add_builtin(
     input_types={"query": _MeshQuerySphere, "index": int},
     value_type=builtins.bool,
     group="Geometry",
-    doc="""Advance a sphere mesh query to the next matching triangle.
+    doc="""Advance an AABB or sphere mesh query to the next matching triangle.
 
-    .. note:: This is an alias for :func:`mesh_query_next`.""",
+    This function is retained for compatibility. Prefer :func:`mesh_query_next` for new code and
+    query-type-independent traversal.
+
+    Args:
+        query: The query to advance
+        index: Output; receives the zero-based face index of the current result
+
+    Returns:
+        ``True`` if another matching triangle was found, otherwise ``False``.""",
     native_func="mesh_query_sphere_next",
     export=False,
     is_differentiable=False,
@@ -10200,9 +10216,17 @@ add_builtin(
     input_types={"query": MeshQuery, "index": int},
     value_type=builtins.bool,
     group="Geometry",
-    doc="""Advance a mesh query to the next matching triangle.
+    doc="""Advance an AABB or sphere mesh query to the next matching triangle.
 
-    .. note:: This is an alias for :func:`mesh_query_next`.""",
+    This function is retained for compatibility. Prefer :func:`mesh_query_next` for new code and
+    query-type-independent traversal.
+
+    Args:
+        query: The query to advance
+        index: Output; receives the zero-based face index of the current result
+
+    Returns:
+        ``True`` if another matching triangle was found, otherwise ``False``.""",
     native_func="mesh_query_next_dynamic",
     export=False,
     is_differentiable=False,

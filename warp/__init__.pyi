@@ -6698,9 +6698,17 @@ def mesh_query_next(query: MeshQueryAABB | MeshQuery, index: int32 | int) -> boo
     ...
 
 def mesh_query_aabb_next(query: MeshQueryAABB | MeshQuery, index: int32 | int) -> bool:
-    """Advance a mesh AABB query to the next overlapping triangle and report whether one was found.
+    """Advance an AABB or sphere mesh query to the next matching triangle.
 
-    .. note:: This is an alias for :func:`mesh_query_next`."""
+    This function is retained for compatibility. Prefer :func:`mesh_query_next` for new code and
+    query-type-independent traversal.
+
+    Args:
+        query: The query to advance
+        index: Output; receives the zero-based face index of the current result
+
+    Returns:
+        ``True`` if another matching triangle was found, otherwise ``False``."""
     ...
 
 def mesh_query_aabb_tiled(id: uint64, low: vec3f, high: vec3f) -> MeshQueryAABBTiled:
