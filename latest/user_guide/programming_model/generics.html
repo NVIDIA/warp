@@ -28,8 +28,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
-<link href="../../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+  <link href="../../_static/styles/theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
@@ -37,10 +37,10 @@
     <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=e5bdcd64" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="../../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
-<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67" />
 
 
 
@@ -51,7 +51,7 @@
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'user_guide/programming_model/generics';</script>
     <script>
-        DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
+        DOCUMENTATION_OPTIONS.theme_version = '0.21.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
         DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'latest';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
@@ -610,9 +610,9 @@ The concepts discussed on this page also apply to <a class="reference internal" 
 </pre></div>
 </div>
 <p>During each one of these launches, a new kernel instance is being generated, which forces the module to be reloaded.  You might see something like this in the output:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Module __main__ load on device &#39;cuda:0&#39; took 170.37 ms
-Module __main__ load on device &#39;cuda:0&#39; took 171.43 ms
-Module __main__ load on device &#39;cuda:0&#39; took 179.49 ms
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Module __main__ load on device 'cuda:0' took 170.37 ms
+Module __main__ load on device 'cuda:0' took 171.43 ms
+Module __main__ load on device 'cuda:0' took 179.49 ms
 </pre></div>
 </div>
 <p>This leads to a couple of potential problems:</p>
@@ -650,9 +650,9 @@ Module __main__ load on device &#39;cuda:0&#39; took 179.49 ms
 </pre></div>
 </div>
 <p>Instead of an argument list, a dictionary can also be provided:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">overload</span><span class="p">(</span><span class="n">scale</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float16</span><span class="p">],</span> <span class="s2">&quot;s&quot;</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float16</span><span class="p">})</span>
-<span class="n">wp</span><span class="o">.</span><span class="n">overload</span><span class="p">(</span><span class="n">scale</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span> <span class="s2">&quot;s&quot;</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">})</span>
-<span class="n">wp</span><span class="o">.</span><span class="n">overload</span><span class="p">(</span><span class="n">scale</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float64</span><span class="p">],</span> <span class="s2">&quot;s&quot;</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float64</span><span class="p">})</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">overload</span><span class="p">(</span><span class="n">scale</span><span class="p">,</span> <span class="p">{</span><span class="s2">"x"</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float16</span><span class="p">],</span> <span class="s2">"s"</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float16</span><span class="p">})</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">overload</span><span class="p">(</span><span class="n">scale</span><span class="p">,</span> <span class="p">{</span><span class="s2">"x"</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span> <span class="s2">"s"</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">})</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">overload</span><span class="p">(</span><span class="n">scale</span><span class="p">,</span> <span class="p">{</span><span class="s2">"x"</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float64</span><span class="p">],</span> <span class="s2">"s"</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float64</span><span class="p">})</span>
 </pre></div>
 </div>
 <p>A dictionary might be preferred for readability.  With dictionaries, only generic arguments need to be specified, which can be even more concise when overloading kernels where some of the arguments are not generic.</p>
@@ -784,9 +784,9 @@ see <a class="reference internal" href="../execution_and_performance/reducing_co
 </pre></div>
 </div>
 <p>This code will also trigger module reloading during each kernel launch, even though it doesn’t use generics at all:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Module __main__ load on device &#39;cuda:0&#39; took 155.73 ms
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Module __main__ load on device 'cuda:0' took 155.73 ms
 17
-Module __main__ load on device &#39;cuda:0&#39; took 164.83 ms
+Module __main__ load on device 'cuda:0' took 164.83 ms
 42
 </pre></div>
 </div>
@@ -911,8 +911,8 @@ Module __main__ load on device &#39;cuda:0&#39; took 164.83 ms
   
 
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
-<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67"></script>
 
 
   <footer class="bd-footer">

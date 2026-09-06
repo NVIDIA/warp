@@ -28,8 +28,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
-<link href="../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+  <link href="../_static/styles/theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
@@ -37,10 +37,10 @@
     <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=e5bdcd64" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
-<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67" />
 
 
 
@@ -52,7 +52,7 @@
     <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'user_guide/limitations';</script>
     <script>
-        DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
+        DOCUMENTATION_OPTIONS.theme_version = '0.21.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
         DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'latest';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
@@ -792,7 +792,7 @@ field is summed across the tile, while the <code class="docutils literal notrans
 <span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">combine_batches</span><span class="p">(</span><span class="n">batches</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">ParticleBatch</span><span class="p">],</span> <span class="n">combined</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">ParticleBatch</span><span class="p">]):</span>
     <span class="c1"># cooperatively reduce a tile of struct elements field-wise</span>
-    <span class="n">t</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">batches</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="n">TILE_N</span><span class="p">,</span> <span class="n">storage</span><span class="o">=</span><span class="s2">&quot;shared&quot;</span><span class="p">)</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">batches</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="n">TILE_N</span><span class="p">,</span> <span class="n">storage</span><span class="o">=</span><span class="s2">"shared"</span><span class="p">)</span>
     <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">combined</span><span class="p">,</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_sum</span><span class="p">(</span><span class="n">t</span><span class="p">))</span>
 
 
@@ -811,7 +811,7 @@ field is summed across the tile, while the <code class="docutils literal notrans
 <span class="n">wp</span><span class="o">.</span><span class="n">launch_tiled</span><span class="p">(</span><span class="n">combine_batches</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">batches</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">combined</span><span class="p">],</span> <span class="n">block_dim</span><span class="o">=</span><span class="n">TILE_N</span><span class="p">)</span>
 
 <span class="c1"># the weight field is summed field-wise across the tile: 0 + 1 + ... + 7</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;weight = </span><span class="si">{</span><span class="n">combined</span><span class="o">.</span><span class="n">numpy</span><span class="p">()[</span><span class="s1">&#39;weight&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"weight = </span><span class="si">{</span><span class="n">combined</span><span class="o">.</span><span class="n">numpy</span><span class="p">()[</span><span class="s1">'weight'</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </pre></div>
 </div>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>weight = 28.0
@@ -928,8 +928,8 @@ kernel rather than relying on struct-value accumulation.</p>
   
 
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
-<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67"></script>
 
 
   <footer class="bd-footer">

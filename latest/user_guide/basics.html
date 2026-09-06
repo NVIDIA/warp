@@ -28,8 +28,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
-<link href="../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+  <link href="../_static/styles/theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
@@ -37,10 +37,10 @@
     <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=e5bdcd64" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
-<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67" />
 
 
 
@@ -52,7 +52,7 @@
     <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'user_guide/basics';</script>
     <script>
-        DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
+        DOCUMENTATION_OPTIONS.theme_version = '0.21.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
         DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'latest';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
@@ -595,9 +595,9 @@ generated kernel code, e.g.:</p>
 <div class="highlight-bat notranslate"><div class="highlight"><pre><span></span>Warp 1.2.0 initialized:
 CUDA Toolkit 12.5, Driver 12.5
 Devices:
-    <span class="s2">&quot;cpu&quot;</span>      : <span class="s2">&quot;x86_64&quot;</span>
-    <span class="s2">&quot;cuda:0&quot;</span>   : <span class="s2">&quot;NVIDIA GeForce RTX 3090&quot;</span> (24 GiB, sm_86, mempool enabled)
-    <span class="s2">&quot;cuda:1&quot;</span>   : <span class="s2">&quot;NVIDIA GeForce RTX 3090&quot;</span> (24 GiB, sm_86, mempool enabled)
+    <span class="s2">"cpu"</span>      : <span class="s2">"x86_64"</span>
+    <span class="s2">"cuda:0"</span>   : <span class="s2">"NVIDIA GeForce RTX 3090"</span> (24 GiB, sm_86, mempool enabled)
+    <span class="s2">"cuda:1"</span>   : <span class="s2">"NVIDIA GeForce RTX 3090"</span> (24 GiB, sm_86, mempool enabled)
 CUDA peer access:
     Supported fully (all-directional)
 Kernel cache:
@@ -650,7 +650,7 @@ To launch a kernel with 1024 threads, we use <a class="reference internal" href=
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="n">simple_kernel</span><span class="p">,</span> <span class="c1"># kernel to launch</span>
           <span class="n">dim</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span>             <span class="c1"># number of threads</span>
           <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">],</span>     <span class="c1"># parameters</span>
-          <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>        <span class="c1"># execution device</span>
+          <span class="n">device</span><span class="o">=</span><span class="s2">"cuda"</span><span class="p">)</span>        <span class="c1"># execution device</span>
 </pre></div>
 </div>
 <p>Inside the kernel, we retrieve the <em>thread index</em> of each thread using the <a class="reference internal" href="../language_reference/_generated/warp.tid.html#warp._src.lang.tid" title="warp._src.lang.tid"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tid()</span></code></a> built-in function:</p>
@@ -662,7 +662,7 @@ To launch a kernel with 1024 threads, we use <a class="reference internal" href=
 documented in the <a class="reference internal" href="../language_reference/builtins.html"><span class="doc">Built-Ins</span></a>.</p>
 <p>Kernels can be launched with 1D, 2D, 3D, or 4D grids of threads.
 To launch a 2D grid of threads to process a 1024x1024 image, we could write:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="n">compute_image</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="p">(</span><span class="mi">1024</span><span class="p">,</span> <span class="mi">1024</span><span class="p">),</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">img</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="n">compute_image</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="p">(</span><span class="mi">1024</span><span class="p">,</span> <span class="mi">1024</span><span class="p">),</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">img</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>We retrieve a 2D thread index inside the kernel by using multiple assignment when calling <a class="reference internal" href="../language_reference/_generated/warp.tid.html#warp._src.lang.tid" title="warp._src.lang.tid"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tid()</span></code></a>:</p>
@@ -695,7 +695,7 @@ construct a 64-bit linear index when the algorithm is naturally expressed in
 <span class="n">rows</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="mi">20</span>
 <span class="n">cols</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="mi">12</span>
 <span class="n">logical_size</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="mi">32</span><span class="p">)</span> <span class="o">-</span> <span class="mi">123</span>
-<span class="n">values</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="n">rows</span><span class="p">,</span> <span class="n">cols</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
+<span class="n">values</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="n">rows</span><span class="p">,</span> <span class="n">cols</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda"</span><span class="p">)</span>
 <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span>
     <span class="n">process_large_array</span><span class="p">,</span>
     <span class="n">dim</span><span class="o">=</span><span class="n">values</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
@@ -719,15 +719,15 @@ All arrays have an associated data type, which can be a scalar data type
 <a class="reference internal" href="runtime.html#data-types"><span class="std std-ref">Data Types</span></a> lists all of Warp’s built-in data types.</p>
 <p>Arrays can be allocated similar to NumPy and PyTorch:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># allocate an uninitialized array of vec3s</span>
-<span class="n">v</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
+<span class="n">v</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda"</span><span class="p">)</span>
 
 <span class="c1"># allocate a zero-initialized array of quaternions</span>
-<span class="n">q</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">quat</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
+<span class="n">q</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">quat</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda"</span><span class="p">)</span>
 
 <span class="c1"># allocate and initialize an array from a NumPy array</span>
 <span class="c1"># will be automatically transferred to the specified device</span>
 <span class="n">a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="mi">10</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
-<span class="n">v</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
+<span class="n">v</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Arrays up to four dimensions are supported. The aliases
@@ -760,7 +760,7 @@ onto the Warp data.</p>
 <p>At Python scope, slicing a Warp array returns a zero-copy view into the same
 allocation. Views can be non-contiguous when the slice changes the memory
 stride:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cpu"</span><span class="p">)</span>
 
 <span class="n">view</span> <span class="o">=</span> <span class="n">a</span><span class="p">[:,</span> <span class="p">::</span><span class="mi">2</span><span class="p">]</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">view</span><span class="p">)</span>
@@ -1132,8 +1132,8 @@ use vector types like <a class="reference internal" href="../api_reference/_gene
   
 
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
-<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67"></script>
 
 
   <footer class="bd-footer">

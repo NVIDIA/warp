@@ -28,8 +28,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
-<link href="../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+  <link href="../_static/styles/theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
@@ -37,10 +37,10 @@
     <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=e5bdcd64" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
-<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67" />
 
 
 
@@ -51,7 +51,7 @@
     <script src="../_static/copybutton.js?v=fd10adb8"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'project/contribution_guide';</script>
     <script>
-        DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
+        DOCUMENTATION_OPTIONS.theme_version = '0.21.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
         DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'latest';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
@@ -610,7 +610,7 @@ Everyone is permitted to copy and distribute verbatim copies of this
 license document, but changing it is not allowed.
 
 
-Developer&#39;s Certificate of Origin 1.1
+Developer's Certificate of Origin 1.1
 
 By making a contribution to this project, I certify that:
 
@@ -831,9 +831,9 @@ clang-format<span class="w"> </span>-i<span class="w"> </span>warp/native/mesh.h
 <p>In rare cases where automatic formatting would break critical formatting (e.g., dependency-sensitive include order,
 carefully aligned matrices), you can disable clang-format for a specific section:</p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// clang-format off</span>
-<span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;vec.h&quot;</span>
-<span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;mat.h&quot;</span>
-<span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;quat.h&quot;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">"vec.h"</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">"mat.h"</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">"quat.h"</span>
 <span class="c1">// clang-format on</span>
 </pre></div>
 </div>
@@ -936,13 +936,13 @@ JIT-compiled kernels in confusing ways, such as when a merge changed a native st
 These options must be used with the <code class="docutils literal notranslate"><span class="pre">-s</span> <span class="pre">autodetect</span></code> option.</p>
 <p>Use <code class="docutils literal notranslate"><span class="pre">-p</span> <span class="pre">PATTERN</span></code> to define a pattern to match test files.
 For example, to run only tests that have <code class="docutils literal notranslate"><span class="pre">mesh</span></code> in the file name, use:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>--extra<span class="w"> </span>dev<span class="w"> </span>-m<span class="w"> </span>warp.tests<span class="w"> </span>-s<span class="w"> </span>autodetect<span class="w"> </span>-p<span class="w"> </span><span class="s1">&#39;*mesh*.py&#39;</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>--extra<span class="w"> </span>dev<span class="w"> </span>-m<span class="w"> </span>warp.tests<span class="w"> </span>-s<span class="w"> </span>autodetect<span class="w"> </span>-p<span class="w"> </span><span class="s1">'*mesh*.py'</span>
 </pre></div>
 </div>
 <p>Use <code class="docutils literal notranslate"><span class="pre">-k</span> <span class="pre">TESTNAMEPATTERNS</span></code> to define <a class="reference external" href="https://docs.python.org/3/library/unittest.html#unittest.TestLoader.testNamePatterns">wildcard test name patterns</a>.
 This option can be used multiple times.
 For example, to run only tests that have either <code class="docutils literal notranslate"><span class="pre">mgpu</span></code> or <code class="docutils literal notranslate"><span class="pre">cuda</span></code> in their name, use:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>--extra<span class="w"> </span>dev<span class="w"> </span>-m<span class="w"> </span>warp.tests<span class="w"> </span>-s<span class="w"> </span>autodetect<span class="w"> </span>-k<span class="w"> </span><span class="s1">&#39;mgpu&#39;</span><span class="w"> </span>-k<span class="w"> </span><span class="s1">&#39;cuda&#39;</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>--extra<span class="w"> </span>dev<span class="w"> </span>-m<span class="w"> </span>warp.tests<span class="w"> </span>-s<span class="w"> </span>autodetect<span class="w"> </span>-k<span class="w"> </span><span class="s1">'mgpu'</span><span class="w"> </span>-k<span class="w"> </span><span class="s1">'cuda'</span>
 </pre></div>
 </div>
 </section>
@@ -980,10 +980,10 @@ multi-process-safe; concurrent clears cause LLVM crashes. The test suite runner 
     <span class="k">pass</span>
 
 
-<span class="n">add_function_test</span><span class="p">(</span><span class="n">TestAmazingCode</span><span class="p">,</span> <span class="s2">&quot;test_amazing_code_test_one&quot;</span><span class="p">,</span> <span class="n">test_amazing_code_test_one</span><span class="p">,</span> <span class="n">devices</span><span class="o">=</span><span class="n">devices</span><span class="p">)</span>
+<span class="n">add_function_test</span><span class="p">(</span><span class="n">TestAmazingCode</span><span class="p">,</span> <span class="s2">"test_amazing_code_test_one"</span><span class="p">,</span> <span class="n">test_amazing_code_test_one</span><span class="p">,</span> <span class="n">devices</span><span class="o">=</span><span class="n">devices</span><span class="p">)</span>
 
 
-<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
     <span class="n">unittest</span><span class="o">.</span><span class="n">main</span><span class="p">(</span><span class="n">verbosity</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -992,9 +992,9 @@ multi-process-safe; concurrent clears cause LLVM crashes. The test suite runner 
 Warp<span class="w"> </span><span class="m">1</span>.11.1<span class="w"> </span>initialized:
 CUDA<span class="w"> </span>Toolkit<span class="w"> </span><span class="m">12</span>.9,<span class="w"> </span>Driver<span class="w"> </span><span class="m">13</span>.1
 Devices:
-<span class="w">    </span><span class="s2">&quot;cpu&quot;</span><span class="w">      </span>:<span class="w"> </span><span class="s2">&quot;x86_64&quot;</span>
-<span class="w">    </span><span class="s2">&quot;cuda:0&quot;</span><span class="w">   </span>:<span class="w"> </span><span class="s2">&quot;NVIDIA RTX 6000 Ada Generation&quot;</span><span class="w"> </span><span class="o">(</span><span class="m">48</span><span class="w"> </span>GiB,<span class="w"> </span>sm_89,<span class="w"> </span>mempool<span class="w"> </span>enabled<span class="o">)</span>
-<span class="w">    </span><span class="s2">&quot;cuda:1&quot;</span><span class="w">   </span>:<span class="w"> </span><span class="s2">&quot;NVIDIA RTX 6000 Ada Generation&quot;</span><span class="w"> </span><span class="o">(</span><span class="m">48</span><span class="w"> </span>GiB,<span class="w"> </span>sm_89,<span class="w"> </span>mempool<span class="w"> </span>enabled<span class="o">)</span>
+<span class="w">    </span><span class="s2">"cpu"</span><span class="w">      </span>:<span class="w"> </span><span class="s2">"x86_64"</span>
+<span class="w">    </span><span class="s2">"cuda:0"</span><span class="w">   </span>:<span class="w"> </span><span class="s2">"NVIDIA RTX 6000 Ada Generation"</span><span class="w"> </span><span class="o">(</span><span class="m">48</span><span class="w"> </span>GiB,<span class="w"> </span>sm_89,<span class="w"> </span>mempool<span class="w"> </span>enabled<span class="o">)</span>
+<span class="w">    </span><span class="s2">"cuda:1"</span><span class="w">   </span>:<span class="w"> </span><span class="s2">"NVIDIA RTX 6000 Ada Generation"</span><span class="w"> </span><span class="o">(</span><span class="m">48</span><span class="w"> </span>GiB,<span class="w"> </span>sm_89,<span class="w"> </span>mempool<span class="w"> </span>enabled<span class="o">)</span>
 CUDA<span class="w"> </span>peer<span class="w"> </span>access:
 <span class="w">    </span>Supported<span class="w"> </span>fully<span class="w"> </span><span class="o">(</span>all-directional<span class="o">)</span>
 Kernel<span class="w"> </span>cache:
@@ -1221,8 +1221,8 @@ reboot, so this is mainly a concern on long-running systems. Pass
   
 
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
-<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67"></script>
 
 
   <footer class="bd-footer">

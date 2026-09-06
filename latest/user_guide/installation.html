@@ -28,8 +28,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
-<link href="../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+  <link href="../_static/styles/theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
@@ -37,10 +37,10 @@
     <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=e5bdcd64" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
-<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67" />
 
 
 
@@ -51,7 +51,7 @@
     <script src="../_static/copybutton.js?v=fd10adb8"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'user_guide/installation';</script>
     <script>
-        DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
+        DOCUMENTATION_OPTIONS.theme_version = '0.21.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
         DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'latest';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
@@ -565,7 +565,7 @@
 <p>Note that the nightly builds are built with the CUDA 12 runtime and are not published for macOS.</p>
 <p>If you plan to install nightly builds regularly, you can simplify future installations by adding NVIDIA’s package
 repository as an extra index via the <code class="docutils literal notranslate"><span class="pre">PIP_EXTRA_INDEX_URL</span></code> environment variable. For example:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>export PIP_EXTRA_INDEX_URL=&quot;https://pypi.nvidia.com&quot;
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>export PIP_EXTRA_INDEX_URL="https://pypi.nvidia.com"
 </pre></div>
 </div>
 <p>This ensures the index is automatically used for <code class="docutils literal notranslate"><span class="pre">pip</span></code> commands, avoiding the need to specify it explicitly.</p>
@@ -763,12 +763,12 @@ be available at runtime when using this option.</p>
 </pre></div>
 </div>
 <p>To build for specific CUDA architectures:</p>
-<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>cmake<span class="w"> </span>-S<span class="w"> </span>.<span class="w"> </span>-B<span class="w"> </span>_build/cmake<span class="w"> </span>-G<span class="w"> </span>Ninja<span class="w"> </span>-DCMAKE_CUDA_ARCHITECTURES<span class="o">=</span><span class="s2">&quot;86;89&quot;</span>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>cmake<span class="w"> </span>-S<span class="w"> </span>.<span class="w"> </span>-B<span class="w"> </span>_build/cmake<span class="w"> </span>-G<span class="w"> </span>Ninja<span class="w"> </span>-DCMAKE_CUDA_ARCHITECTURES<span class="o">=</span><span class="s2">"86;89"</span>
 <span class="gp">$ </span>cmake<span class="w"> </span>--build<span class="w"> </span>_build/cmake<span class="w"> </span>--parallel
 </pre></div>
 </div>
 <p>After building, verify that the libraries can be loaded:</p>
-<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import warp; warp.print_diagnostics()&quot;</span>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-c<span class="w"> </span><span class="s2">"import warp; warp.print_diagnostics()"</span>
 </pre></div>
 </div>
 <p>The CMake path is a native library build path only. It does not replace the
@@ -788,7 +788,7 @@ the build environment has the same C++ runtime library version, or an older
 one, than the execution environment. Otherwise Warp’s shared libraries may end
 up looking for a newer runtime library version than the one available in the
 execution environment. For example, on Linux this error could occur:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>OSError: &lt;...&gt;/libstdc++.so.6: version `GLIBCXX_3.4.30&#39; not found (required by &lt;...&gt;/warp/warp/bin/warp.so)
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>OSError: &lt;...&gt;/libstdc++.so.6: version `GLIBCXX_3.4.30' not found (required by &lt;...&gt;/warp/warp/bin/warp.so)
 </pre></div>
 </div>
 <p>This can be solved by installing a newer C++ runtime version in the runtime
@@ -841,7 +841,7 @@ environment:</p>
 </pre></div>
 </div>
 <p>After building the image, you can test it with:</p>
-<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>--gpus<span class="w"> </span>all<span class="w"> </span>warp-github-clone:example<span class="w"> </span>python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import warp as wp; wp.init()&quot;</span>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>--gpus<span class="w"> </span>all<span class="w"> </span>warp-github-clone:example<span class="w"> </span>python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">"import warp as wp; wp.init()"</span>
 </pre></div>
 </div>
 <p>The <code class="docutils literal notranslate"><span class="pre">--rm</span></code> flag tells Docker to remove the container after the command finishes.
@@ -863,8 +863,8 @@ A copy of this license is made available in this container at /NGC-DL-CONTAINER-
 Warp 1.10.0.dev0 initialized:
 CUDA Toolkit 13.0, Driver 13.0
 Devices:
-    &quot;cpu&quot;      : &quot;x86_64&quot;
-    &quot;cuda:0&quot;   : &quot;NVIDIA L40S&quot; (47 GiB, sm_89, mempool enabled)
+    "cpu"      : "x86_64"
+    "cuda:0"   : "NVIDIA L40S" (47 GiB, sm_89, mempool enabled)
 Kernel cache:
   /root/.cache/warp/1.10.0.dev0
 </pre></div>
@@ -937,7 +937,7 @@ environments, and building the wheel file.</p>
 <span class="c"># Use the virtual environment automatically</span>
 <span class="k">ENV</span><span class="w"> </span><span class="nv">VIRTUAL_ENV</span><span class="o">=</span>/opt/venv
 <span class="c"># Place entry points in the environment at the front of the path</span>
-<span class="k">ENV</span><span class="w"> </span><span class="nv">PATH</span><span class="o">=</span><span class="s2">&quot;/opt/venv/bin:</span><span class="nv">$PATH</span><span class="s2">&quot;</span>
+<span class="k">ENV</span><span class="w"> </span><span class="nv">PATH</span><span class="o">=</span><span class="s2">"/opt/venv/bin:</span><span class="nv">$PATH</span><span class="s2">"</span>
 
 <span class="k">RUN</span><span class="w"> </span>uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>numpy
 
@@ -1064,8 +1064,8 @@ for more details on how to use Warp in Omniverse.</p>
   
 
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
-<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67"></script>
 
 
   <footer class="bd-footer">

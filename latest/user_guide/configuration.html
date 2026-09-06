@@ -28,8 +28,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
-<link href="../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+  <link href="../_static/styles/theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
@@ -37,10 +37,10 @@
     <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=e5bdcd64" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
-<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67" />
 
 
 
@@ -51,7 +51,7 @@
     <script src="../_static/copybutton.js?v=fd10adb8"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'user_guide/configuration';</script>
     <script>
-        DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
+        DOCUMENTATION_OPTIONS.theme_version = '0.21.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
         DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'latest';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
@@ -565,7 +565,7 @@ though some settings only take effect if set prior to initialization.</p>
 <span class="n">example_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">realpath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">))</span>
 
 <span class="c1"># set default cache directory before wp.init()</span>
-<span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">kernel_cache_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">example_dir</span><span class="p">,</span> <span class="s2">&quot;tmp&quot;</span><span class="p">,</span> <span class="s2">&quot;warpcache1&quot;</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">kernel_cache_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">example_dir</span><span class="p">,</span> <span class="s2">"tmp"</span><span class="p">,</span> <span class="s2">"warpcache1"</span><span class="p">)</span>
 
 <span class="n">wp</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
 </pre></div>
@@ -579,7 +579,7 @@ guidance on settings that affect compilation and startup.</p>
 <p>Module-level settings to control runtime compilation and code generation may be changed by passing a dictionary of
 option pairs to <a class="reference internal" href="../api_reference/_generated/warp.set_module_options.html#warp.set_module_options" title="warp.set_module_options"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.set_module_options()</span></code></a>.</p>
 <p>For example, compilation of backward passes for the kernel in an entire module can be disabled with:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">set_module_options</span><span class="p">({</span><span class="s2">&quot;enable_backward&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">})</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">set_module_options</span><span class="p">({</span><span class="s2">"enable_backward"</span><span class="p">:</span> <span class="kc">False</span><span class="p">})</span>
 </pre></div>
 </div>
 <p>The options for a module can also be queried using <a class="reference internal" href="../api_reference/_generated/warp.get_module_options.html#warp.get_module_options" title="warp.get_module_options"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.get_module_options()</span></code></a>.</p>
@@ -781,7 +781,7 @@ with <a class="reference internal" href="../api_reference/_generated/warp.launch
     <span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">**</span> <span class="mf">2.0</span>
 
 
-<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">module</span><span class="o">=</span><span class="s2">&quot;unique&quot;</span><span class="p">)</span>
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">module</span><span class="o">=</span><span class="s2">"unique"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">isolated_kernel</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">b</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
     <span class="c1"># This kernel will be registered in a new unique module created</span>
     <span class="c1"># just for this kernel and its dependent functions and structs</span>
@@ -809,9 +809,9 @@ with <a class="reference internal" href="../api_reference/_generated/warp.launch
     <span class="n">a</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">*</span> <span class="mf">2.0</span>
 
 
-<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">module_options</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;fast_math&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span> <span class="n">module</span><span class="o">=</span><span class="s2">&quot;unique&quot;</span><span class="p">)</span>
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">module_options</span><span class="o">=</span><span class="p">{</span><span class="s2">"fast_math"</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span> <span class="n">module</span><span class="o">=</span><span class="s2">"unique"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">fast_kernel</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">b</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
-    <span class="c1"># fast_math is applied to this kernel&#39;s unique module</span>
+    <span class="c1"># fast_math is applied to this kernel's unique module</span>
     <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
     <span class="n">b</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">+</span> <span class="mf">1.0</span>
 </pre></div>
@@ -1011,8 +1011,8 @@ backend, so the same function remains valid for CPU and CUDA.</p>
   
 
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
-<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67"></script>
 
 
   <footer class="bd-footer">

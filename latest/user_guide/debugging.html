@@ -28,8 +28,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
-<link href="../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+  <link href="../_static/styles/theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
@@ -37,10 +37,10 @@
     <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=e5bdcd64" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
-<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67" />
 
 
 
@@ -51,7 +51,7 @@
     <script src="../_static/copybutton.js?v=fd10adb8"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'user_guide/debugging';</script>
     <script>
-        DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
+        DOCUMENTATION_OPTIONS.theme_version = '0.21.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
         DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'latest';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
@@ -554,7 +554,7 @@
 <h2>Environment Diagnostics<a class="headerlink" href="#environment-diagnostics" title="Link to this heading">#</a></h2>
 <p><a class="reference internal" href="../api_reference/_generated/warp.print_diagnostics.html#warp.print_diagnostics" title="warp.print_diagnostics"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.print_diagnostics()</span></code></a> prints a snapshot of the Warp build
 and runtime environment (e.g., software versions, CUDA info, build flags, and device details):</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="o">-</span><span class="n">c</span> <span class="s2">&quot;import warp; warp.print_diagnostics()&quot;</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="o">-</span><span class="n">c</span> <span class="s2">"import warp; warp.print_diagnostics()"</span>
 </pre></div>
 </div>
 <p>When <a class="reference external" href="https://github.com/NVIDIA/warp/issues">filing a bug report</a>, please include this output
@@ -578,7 +578,7 @@ types using the <a class="reference internal" href="../language_reference/_gener
     <span class="n">x</span> <span class="o">=</span> <span class="mf">1.0</span>
     <span class="n">i</span> <span class="o">=</span> <span class="mi">2</span>
 
-    <span class="n">wp</span><span class="o">.</span><span class="n">printf</span><span class="p">(</span><span class="s2">&quot;A float value </span><span class="si">%f</span><span class="s2">, an int value: </span><span class="si">%d</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">printf</span><span class="p">(</span><span class="s2">"A float value </span><span class="si">%f</span><span class="s2">, an int value: </span><span class="si">%d</span><span class="se">\n</span><span class="s2">"</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
@@ -659,7 +659,7 @@ Python’s <a class="reference external" href="https://docs.python.org/3/library
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
 
-<span class="n">app_logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;myapp.warp&quot;</span><span class="p">)</span>
+<span class="n">app_logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">"myapp.warp"</span><span class="p">)</span>
 
 <span class="k">class</span><span class="w"> </span><span class="nc">StdlibAdapter</span><span class="p">:</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">debug</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span> <span class="n">app_logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
@@ -694,12 +694,12 @@ Warp’s built-in default logger.</p>
 <li><p>(GPU-only) Generate line-number information for device code.</p></li>
 </ul>
 <p>The easiest way to enable the compilation of Warp kernels in debug mode is to set:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">mode</span> <span class="o">=</span> <span class="s2">&quot;debug&quot;</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">mode</span> <span class="o">=</span> <span class="s2">"debug"</span>
 </pre></div>
 </div>
 <p>As an alternative to the previous global setting,
 debug mode can be turned on in a per-module basis by setting</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">set_module_options</span><span class="p">({</span><span class="s2">&quot;mode&quot;</span><span class="p">:</span> <span class="s2">&quot;debug&quot;</span><span class="p">})</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">set_module_options</span><span class="p">({</span><span class="s2">"mode"</span><span class="p">:</span> <span class="s2">"debug"</span><span class="p">})</span>
 </pre></div>
 </div>
 </section>
@@ -713,14 +713,14 @@ in debug mode and the <code class="docutils literal notranslate"><span class="pr
 is an array of ones, but we passed it a single-element array of zeros:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
 
-<span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">mode</span> <span class="o">=</span> <span class="s2">&quot;debug&quot;</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">mode</span> <span class="o">=</span> <span class="s2">"debug"</span>
 
 
 <span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">expect_ones</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">int</span><span class="p">]):</span>
     <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
 
-    <span class="k">assert</span> <span class="n">a</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;Array element must be 1&quot;</span>
+    <span class="k">assert</span> <span class="n">a</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">"Array element must be 1"</span>
 
 
 <span class="n">input_array</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
@@ -731,7 +731,7 @@ is an array of ones, but we passed it a single-element array of zeros:</p>
 </pre></div>
 </div>
 <p>The output of the program will include a line like the following statement:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>default_program:49: void expect_ones_133f9859_cuda_kernel_forward(wp::launch_bounds_t, wp::array_t&lt;int&gt;): block: [0,0,0], thread: [0,0,0] Assertion `(&quot;assert a[i] == 1, \&quot;Array element must be 1\&quot;&quot;,var_3)` failed.
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>default_program:49: void expect_ones_133f9859_cuda_kernel_forward(wp::launch_bounds_t, wp::array_t&lt;int&gt;): block: [0,0,0], thread: [0,0,0] Assertion `("assert a[i] == 1, \"Array element must be 1\"",var_3)` failed.
 </pre></div>
 </div>
 </section>
@@ -739,7 +739,7 @@ is an array of ones, but we passed it a single-element array of zeros:</p>
 <h2>Step-Through Debugging<a class="headerlink" href="#step-through-debugging" title="Link to this heading">#</a></h2>
 <p>It is possible to attach IDE debuggers such as Visual Studio to Warp processes to step through generated kernel code.
 Users should first compile the kernels in debug mode by setting:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">mode</span> <span class="o">=</span> <span class="s2">&quot;debug&quot;</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">mode</span> <span class="o">=</span> <span class="s2">"debug"</span>
 </pre></div>
 </div>
 <p>This setting ensures that line numbers, and debug symbols are generated correctly. After launching the Python process,
@@ -756,14 +756,14 @@ extension.</p>
 <p>An example <a class="reference external" href="https://code.visualstudio.com/docs/debugtest/debugging#_launch-configurations">launch configuration</a>
 for Visual Studio Code is shown below:</p>
 <div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0.2.0&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;configurations&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="nt">"version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"0.2.0"</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">"configurations"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
 <span class="w">        </span><span class="p">{</span>
-<span class="w">            </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;CUDA-GDB + Python: Launch&quot;</span><span class="p">,</span>
-<span class="w">            </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cuda-gdb&quot;</span><span class="p">,</span>
-<span class="w">            </span><span class="nt">&quot;request&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;launch&quot;</span><span class="p">,</span>
-<span class="w">            </span><span class="nt">&quot;program&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;${command:python.interpreterPath}&quot;</span><span class="p">,</span>
-<span class="w">            </span><span class="nt">&quot;args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;${file}&quot;</span><span class="p">]</span>
+<span class="w">            </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"CUDA-GDB + Python: Launch"</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"cuda-gdb"</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">"request"</span><span class="p">:</span><span class="w"> </span><span class="s2">"launch"</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">"program"</span><span class="p">:</span><span class="w"> </span><span class="s2">"${command:python.interpreterPath}"</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">"args"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"${file}"</span><span class="p">]</span>
 <span class="w">        </span><span class="p">}</span>
 <span class="w">    </span><span class="p">]</span>
 <span class="p">}</span>
@@ -778,9 +778,9 @@ The cache location is printed at startup when <a class="reference internal" href
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Warp 0.8.1 initialized:
     CUDA Toolkit: 11.8, Driver: 11.8
     Devices:
-    &quot;cpu&quot;    | AMD64 Family 25 Model 33 Stepping 0, AuthenticAMD
-    &quot;cuda:0&quot; | NVIDIA GeForce RTX 3090 (sm_86)
-    &quot;cuda:1&quot; | NVIDIA GeForce RTX 2080 Ti (sm_75)
+    "cpu"    | AMD64 Family 25 Model 33 Stepping 0, AuthenticAMD
+    "cuda:0" | NVIDIA GeForce RTX 3090 (sm_86)
+    "cuda:1" | NVIDIA GeForce RTX 2080 Ti (sm_75)
     Kernel cache: C:\Users\LukasW\AppData\Local\NVIDIA Corporation\warp\Cache\0.8.1
 </pre></div>
 </div>
@@ -993,8 +993,8 @@ static variables is not detected, because the JIT does not run kernel module con
   
 
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
-<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67"></script>
 
 
   <footer class="bd-footer">

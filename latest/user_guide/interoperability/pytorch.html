@@ -28,8 +28,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
-<link href="../../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+  <link href="../../_static/styles/theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
@@ -37,10 +37,10 @@
     <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=e5bdcd64" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="../../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
-<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67" />
 
 
 
@@ -51,7 +51,7 @@
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'user_guide/interoperability/pytorch';</script>
     <script>
-        DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
+        DOCUMENTATION_OPTIONS.theme_version = '0.21.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
         DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'latest';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
@@ -556,7 +556,7 @@
 <section id="introduction">
 <h2>Introduction<a class="headerlink" href="#introduction" title="Link to this heading">#</a></h2>
 <p>Warp provides helper functions to convert arrays to/from PyTorch:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">w</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">w</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cpu"</span><span class="p">)</span>
 
 <span class="c1"># convert to Torch tensor</span>
 <span class="n">t</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">to_torch</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
@@ -571,7 +571,7 @@ in PyTorch autograd computations.</p>
 <p>Warp also provides helper functions for mapping devices and dtypes between Warp and PyTorch:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 
-<span class="n">torch_device</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">device_to_torch</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+<span class="n">torch_device</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">device_to_torch</span><span class="p">(</span><span class="s2">"cpu"</span><span class="p">)</span>
 <span class="n">torch_dtype</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">dtype_to_torch</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
 <span class="n">t</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">torch_device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch_dtype</span><span class="p">)</span>
 
@@ -613,13 +613,13 @@ created prior to capture, as shown in the examples below.</p>
     <span class="n">a</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">*</span> <span class="n">s</span>
 
 <span class="n">n</span> <span class="o">=</span> <span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span>
-<span class="n">torch_device</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">device_to_torch</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">torch_device</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">device_to_torch</span><span class="p">(</span><span class="s2">"cuda:0"</span><span class="p">)</span>
 
 <span class="c1"># Create a non-default PyTorch stream and convert it to Warp</span>
 <span class="n">torch_stream</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">Stream</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">torch_device</span><span class="p">)</span>
 <span class="n">warp_stream</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">stream_from_torch</span><span class="p">(</span><span class="n">torch_stream</span><span class="p">)</span>
 
-<span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda:0"</span><span class="p">)</span>
 
 <span class="c1"># Capture a graph using the shared stream</span>
 <span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedStream</span><span class="p">(</span><span class="n">warp_stream</span><span class="p">):</span>
@@ -641,13 +641,13 @@ created prior to capture, as shown in the examples below.</p>
 
 <span class="n">n</span> <span class="o">=</span> <span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span>
 
-<span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda:0"</span><span class="p">)</span>
 
 <span class="c1"># Make PyTorch use the Warp stream</span>
-<span class="n">torch_stream</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">stream_to_torch</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">torch_stream</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">stream_to_torch</span><span class="p">(</span><span class="s2">"cuda:0"</span><span class="p">)</span>
 
 <span class="c1"># Capture a graph using the Warp stream</span>
-<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedDevice</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">),</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="n">torch_stream</span><span class="p">):</span>
+<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedDevice</span><span class="p">(</span><span class="s2">"cuda:0"</span><span class="p">),</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="n">torch_stream</span><span class="p">):</span>
     <span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedCapture</span><span class="p">()</span> <span class="k">as</span> <span class="n">capture</span><span class="p">:</span>
         <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">scale</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">])</span>
 
@@ -698,7 +698,7 @@ using <a class="reference internal" href="../../api_reference/_generated/warp.fr
     <span class="c1"># (the optimization just needs the gradient, not the loss value)</span>
     <span class="n">wp_l</span><span class="o">.</span><span class="n">zero_</span><span class="p">()</span>
     <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">loss</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">xs</span><span class="p">),</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">wp_xs</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">wp_l</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">wp_xs</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="se">\t</span><span class="s2">loss: </span><span class="si">{</span><span class="n">l</span><span class="o">.</span><span class="n">item</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="se">\t</span><span class="s2">loss: </span><span class="si">{</span><span class="n">l</span><span class="o">.</span><span class="n">item</span><span class="p">()</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
@@ -733,7 +733,7 @@ Here, we revisit the same example from above where now only a single conversion 
 
     <span class="n">l</span><span class="o">.</span><span class="n">zero_</span><span class="p">()</span>
     <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">loss</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">xs</span><span class="p">),</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">xs</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">l</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">xs</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="se">\t</span><span class="s2">loss: </span><span class="si">{</span><span class="n">l</span><span class="o">.</span><span class="n">numpy</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="se">\t</span><span class="s2">loss: </span><span class="si">{</span><span class="n">l</span><span class="o">.</span><span class="n">numpy</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
@@ -858,7 +858,7 @@ contiguous copy for performance.</p>
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">backward</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">adj_z</span><span class="p">):</span>
-        <span class="c1"># Accessing saved_tensors performs PyTorch&#39;s version check for the input.</span>
+        <span class="c1"># Accessing saved_tensors performs PyTorch's version check for the input.</span>
         <span class="p">(</span><span class="n">xy</span><span class="p">,)</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">saved_tensors</span>
 
         <span class="c1"># Allocate the input adjoint that this backward call will return</span>
@@ -940,7 +940,7 @@ PyTorch autograd functions. These treat arbitrary Python functions (including Wa
     <span class="n">z</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">rosenbrock</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">v</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
 
 
-<span class="nd">@torch</span><span class="o">.</span><span class="n">library</span><span class="o">.</span><span class="n">custom_op</span><span class="p">(</span><span class="s2">&quot;wp::warp_rosenbrock&quot;</span><span class="p">,</span> <span class="n">mutates_args</span><span class="o">=</span><span class="p">())</span>
+<span class="nd">@torch</span><span class="o">.</span><span class="n">library</span><span class="o">.</span><span class="n">custom_op</span><span class="p">(</span><span class="s2">"wp::warp_rosenbrock"</span><span class="p">,</span> <span class="n">mutates_args</span><span class="o">=</span><span class="p">())</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">warp_rosenbrock</span><span class="p">(</span><span class="n">xy</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">num_points</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
     <span class="n">wp_xy</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">xy</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec2</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
     <span class="n">wp_z</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">num_points</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">wp_xy</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
@@ -955,7 +955,7 @@ PyTorch autograd functions. These treat arbitrary Python functions (including Wa
     <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">num_points</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
 
 
-<span class="nd">@torch</span><span class="o">.</span><span class="n">library</span><span class="o">.</span><span class="n">custom_op</span><span class="p">(</span><span class="s2">&quot;wp::warp_rosenbrock_backward&quot;</span><span class="p">,</span> <span class="n">mutates_args</span><span class="o">=</span><span class="p">())</span>
+<span class="nd">@torch</span><span class="o">.</span><span class="n">library</span><span class="o">.</span><span class="n">custom_op</span><span class="p">(</span><span class="s2">"wp::warp_rosenbrock_backward"</span><span class="p">,</span> <span class="n">mutates_args</span><span class="o">=</span><span class="p">())</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">warp_rosenbrock_backward</span><span class="p">(</span>
     <span class="n">xy</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">num_points</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">adj_z</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
@@ -1116,7 +1116,7 @@ correctness. This synchronization overhead can significantly impact performance.
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 
-<span class="n">device</span> <span class="o">=</span> <span class="s1">&#39;cuda&#39;</span>
+<span class="n">device</span> <span class="o">=</span> <span class="s1">'cuda'</span>
 <span class="n">N</span> <span class="o">=</span> <span class="mi">300_000_000</span>
 
 <span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">enable_backward</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
@@ -1201,15 +1201,15 @@ correctness. This synchronization overhead can significantly impact performance.
 <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">synchronize</span><span class="p">()</span>
 
 <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">TRIALS</span><span class="p">):</span>
-    <span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedTimer</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;TRIAL </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">use_nvtx</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">synchronize</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-        <span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedTimer</span><span class="p">(</span><span class="s2">&quot;Create Tensors&quot;</span><span class="p">,</span> <span class="n">use_nvtx</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">synchronize</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedTimer</span><span class="p">(</span><span class="sa">f</span><span class="s2">"TRIAL </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">use_nvtx</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">synchronize</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedTimer</span><span class="p">(</span><span class="s2">"Create Tensors"</span><span class="p">,</span> <span class="n">use_nvtx</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">synchronize</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
             <span class="n">a_torch</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">requires_grad_</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
             <span class="n">b_torch</span> <span class="o">=</span> <span class="n">b</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">requires_grad_</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
-        <span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedTimer</span><span class="p">(</span><span class="s2">&quot;Forward&quot;</span><span class="p">,</span> <span class="n">use_nvtx</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">synchronize</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedTimer</span><span class="p">(</span><span class="s2">"Forward"</span><span class="p">,</span> <span class="n">use_nvtx</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">synchronize</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
             <span class="n">output_warp</span> <span class="o">=</span> <span class="n">WarpFunction</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">a_torch</span><span class="p">,</span> <span class="n">b_torch</span><span class="p">)</span>
-        <span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedTimer</span><span class="p">(</span><span class="s2">&quot;Loss&quot;</span><span class="p">,</span> <span class="n">use_nvtx</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">synchronize</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedTimer</span><span class="p">(</span><span class="s2">"Loss"</span><span class="p">,</span> <span class="n">use_nvtx</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">synchronize</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
             <span class="n">loss_warp</span> <span class="o">=</span> <span class="n">output_warp</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
-        <span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedTimer</span><span class="p">(</span><span class="s2">&quot;Backward&quot;</span><span class="p">,</span> <span class="n">use_nvtx</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">synchronize</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedTimer</span><span class="p">(</span><span class="s2">"Backward"</span><span class="p">,</span> <span class="n">use_nvtx</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">synchronize</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
             <span class="n">loss_warp</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
 </pre></div>
 </div>
@@ -1279,7 +1279,7 @@ Warp to track gradients automatically.</p>
 <p>When managing gradients outside PyTorch’s autograd graph, detaching tensors before wrapping them is a clean approach:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@staticmethod</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
-    <span class="c1"># Store detached tensors - we&#39;ll manage gradients manually</span>
+    <span class="c1"># Store detached tensors - we'll manage gradients manually</span>
     <span class="n">ctx</span><span class="o">.</span><span class="n">a</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span>
     <span class="n">ctx</span><span class="o">.</span><span class="n">b</span> <span class="o">=</span> <span class="n">b</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span>
 
@@ -1327,7 +1327,7 @@ This approach works for both analytic gradient kernels and when using the Warp t
 <p><em>Variant 1: With Analytic Gradient Kernels</em></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@staticmethod</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
-    <span class="c1"># Pre-allocate gradients using PyTorch&#39;s allocator</span>
+    <span class="c1"># Pre-allocate gradients using PyTorch's allocator</span>
     <span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">grad</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">a</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty_like</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">b</span><span class="o">.</span><span class="n">grad</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -1395,7 +1395,7 @@ generated adjoint:</p>
     <span class="n">device</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">device_from_torch</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
     <span class="n">output</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
 
-    <span class="c1"># Pre-allocate zero-filled gradient buffers using PyTorch&#39;s allocator</span>
+    <span class="c1"># Pre-allocate zero-filled gradient buffers using PyTorch's allocator</span>
     <span class="n">ctx</span><span class="o">.</span><span class="n">grad_a</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
     <span class="n">ctx</span><span class="o">.</span><span class="n">grad_b</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
     <span class="n">ctx</span><span class="o">.</span><span class="n">grad_output</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
@@ -1707,8 +1707,8 @@ there will be no need for gradient allocation (deferred or otherwise) and theref
   
 
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
-<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67"></script>
 
 
   <footer class="bd-footer">

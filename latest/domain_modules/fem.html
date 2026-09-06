@@ -28,8 +28,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
-<link href="../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+  <link href="../_static/styles/theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
@@ -37,10 +37,10 @@
     <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=e5bdcd64" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
-<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67" />
 
 
 
@@ -52,7 +52,7 @@
     <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'domain_modules/fem';</script>
     <script>
-        DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
+        DOCUMENTATION_OPTIONS.theme_version = '0.21.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
         DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'latest';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
@@ -606,7 +606,7 @@ and several operators are also provided domains, for example evaluating the norm
 The <a class="reference internal" href="../api_reference/_generated/warp.fem.Sample.html#warp.fem.Sample" title="warp.fem.Sample"><code class="xref py py-data docutils literal notranslate"><span class="pre">Sample</span></code></a> and <a class="reference internal" href="../api_reference/_generated/warp.fem.Domain.html#warp.fem.Domain" title="warp.fem.Domain"><code class="xref py py-class docutils literal notranslate"><span class="pre">Domain</span></code></a> arguments of the root integrand (<cite>integrand</cite> parameter passed to <a class="reference internal" href="../api_reference/_generated/warp.fem.integrate.html#warp.fem.integrate" title="warp.fem.integrate"><code class="xref py py-func docutils literal notranslate"><span class="pre">integrate()</span></code></a> or <a class="reference internal" href="../api_reference/_generated/warp.fem.interpolate.html#warp.fem.interpolate" title="warp.fem.interpolate"><code class="xref py py-func docutils literal notranslate"><span class="pre">interpolate()</span></code></a> call) will get automatically populated.
 <a class="reference internal" href="../api_reference/_generated/warp.fem.Field.html#warp.fem.Field" title="warp.fem.Field"><code class="xref py py-class docutils literal notranslate"><span class="pre">Field</span></code></a> arguments must be passed as a dictionary in the <cite>fields</cite> parameter of the launcher function, and all other standard Warp types arguments must be
 passed as a dictionary in the <cite>values</cite> parameter of the launcher function, for instance:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">integrate</span><span class="p">(</span><span class="n">diffusion_form</span><span class="p">,</span> <span class="n">fields</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;u&quot;</span><span class="p">:</span> <span class="n">trial</span><span class="p">,</span> <span class="s2">&quot;v&quot;</span><span class="p">:</span> <span class="n">test</span><span class="p">},</span> <span class="n">values</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;nu&quot;</span><span class="p">:</span> <span class="n">viscosity</span><span class="p">})</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">integrate</span><span class="p">(</span><span class="n">diffusion_form</span><span class="p">,</span> <span class="n">fields</span><span class="o">=</span><span class="p">{</span><span class="s2">"u"</span><span class="p">:</span> <span class="n">trial</span><span class="p">,</span> <span class="s2">"v"</span><span class="p">:</span> <span class="n">test</span><span class="p">},</span> <span class="n">values</span><span class="o">=</span><span class="p">{</span><span class="s2">"nu"</span><span class="p">:</span> <span class="n">viscosity</span><span class="p">})</span>
 </pre></div>
 </div>
 </section>
@@ -638,18 +638,18 @@ Note that the trial and test functions do not have to be defined over the same f
 <span class="c1"># Right-hand-side (forcing term)</span>
 <span class="n">domain</span> <span class="o">=</span> <span class="n">Cells</span><span class="p">(</span><span class="n">geometry</span><span class="o">=</span><span class="n">geo</span><span class="p">)</span>
 <span class="n">test</span> <span class="o">=</span> <span class="n">make_test</span><span class="p">(</span><span class="n">space</span><span class="o">=</span><span class="n">scalar_space</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="n">domain</span><span class="p">)</span>
-<span class="n">rhs</span> <span class="o">=</span> <span class="n">integrate</span><span class="p">(</span><span class="n">linear_form</span><span class="p">,</span> <span class="n">fields</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;v&quot;</span><span class="p">:</span> <span class="n">test</span><span class="p">})</span>
+<span class="n">rhs</span> <span class="o">=</span> <span class="n">integrate</span><span class="p">(</span><span class="n">linear_form</span><span class="p">,</span> <span class="n">fields</span><span class="o">=</span><span class="p">{</span><span class="s2">"v"</span><span class="p">:</span> <span class="n">test</span><span class="p">})</span>
 
 <span class="c1"># Diffusion form</span>
 <span class="n">trial</span> <span class="o">=</span> <span class="n">make_trial</span><span class="p">(</span><span class="n">space</span><span class="o">=</span><span class="n">scalar_space</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="n">domain</span><span class="p">)</span>
-<span class="n">matrix</span> <span class="o">=</span> <span class="n">integrate</span><span class="p">(</span><span class="n">diffusion_form</span><span class="p">,</span> <span class="n">fields</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;u&quot;</span><span class="p">:</span> <span class="n">trial</span><span class="p">,</span> <span class="s2">&quot;v&quot;</span><span class="p">:</span> <span class="n">test</span><span class="p">},</span> <span class="n">values</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;nu&quot;</span><span class="p">:</span> <span class="n">viscosity</span><span class="p">})</span>
+<span class="n">matrix</span> <span class="o">=</span> <span class="n">integrate</span><span class="p">(</span><span class="n">diffusion_form</span><span class="p">,</span> <span class="n">fields</span><span class="o">=</span><span class="p">{</span><span class="s2">"u"</span><span class="p">:</span> <span class="n">trial</span><span class="p">,</span> <span class="s2">"v"</span><span class="p">:</span> <span class="n">test</span><span class="p">},</span> <span class="n">values</span><span class="o">=</span><span class="p">{</span><span class="s2">"nu"</span><span class="p">:</span> <span class="n">viscosity</span><span class="p">})</span>
 
 <span class="c1"># Boundary conditions on Y sides</span>
 <span class="n">boundary</span> <span class="o">=</span> <span class="n">BoundarySides</span><span class="p">(</span><span class="n">geo</span><span class="p">)</span>
 <span class="n">bd_test</span> <span class="o">=</span> <span class="n">make_test</span><span class="p">(</span><span class="n">space</span><span class="o">=</span><span class="n">scalar_space</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="n">boundary</span><span class="p">)</span>
 <span class="n">bd_trial</span> <span class="o">=</span> <span class="n">make_trial</span><span class="p">(</span><span class="n">space</span><span class="o">=</span><span class="n">scalar_space</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="n">boundary</span><span class="p">)</span>
 <span class="n">bd_matrix</span> <span class="o">=</span> <span class="n">integrate</span><span class="p">(</span>
-    <span class="n">y_boundary_projector_form</span><span class="p">,</span> <span class="n">fields</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;u&quot;</span><span class="p">:</span> <span class="n">bd_trial</span><span class="p">,</span> <span class="s2">&quot;v&quot;</span><span class="p">:</span> <span class="n">bd_test</span><span class="p">},</span> <span class="n">assembly</span><span class="o">=</span><span class="s2">&quot;nodal&quot;</span>
+    <span class="n">y_boundary_projector_form</span><span class="p">,</span> <span class="n">fields</span><span class="o">=</span><span class="p">{</span><span class="s2">"u"</span><span class="p">:</span> <span class="n">bd_trial</span><span class="p">,</span> <span class="s2">"v"</span><span class="p">:</span> <span class="n">bd_test</span><span class="p">},</span> <span class="n">assembly</span><span class="o">=</span><span class="s2">"nodal"</span>
 <span class="p">)</span>
 
 <span class="c1"># Assemble linear system (add diffusion and boundary condition matrices)</span>
@@ -943,7 +943,7 @@ This can be used to visualize discrete fields in VTK-aware viewers such as <code
 
 <span class="c1"># Visualize with pyvista</span>
 <span class="n">grid</span> <span class="o">=</span> <span class="n">pyvista</span><span class="o">.</span><span class="n">UnstructuredGrid</span><span class="p">(</span><span class="n">cells</span><span class="p">,</span> <span class="n">types</span><span class="p">,</span> <span class="n">positions</span><span class="p">)</span>
-<span class="n">grid</span><span class="o">.</span><span class="n">point_data</span><span class="p">[</span><span class="s2">&quot;scalars&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span>
+<span class="n">grid</span><span class="o">.</span><span class="n">point_data</span><span class="p">[</span><span class="s2">"scalars"</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span>
 <span class="n">plotter</span> <span class="o">=</span> <span class="n">pyvista</span><span class="o">.</span><span class="n">Plotter</span><span class="p">()</span>
 <span class="n">plotter</span><span class="o">.</span><span class="n">add_mesh</span><span class="p">(</span><span class="n">grid</span><span class="p">)</span>
 <span class="n">plotter</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
@@ -1052,8 +1052,8 @@ This can be used to visualize discrete fields in VTK-aware viewers such as <code
   
 
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
-<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67"></script>
 
 
   <footer class="bd-footer">

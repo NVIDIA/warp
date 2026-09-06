@@ -28,8 +28,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
-<link href="../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+  <link href="../_static/styles/theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
@@ -37,10 +37,10 @@
     <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=e5bdcd64" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
-<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67" />
 
 
 
@@ -51,7 +51,7 @@
     <script src="../_static/copybutton.js?v=fd10adb8"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'user_guide/interoperability';</script>
     <script>
-        DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
+        DOCUMENTATION_OPTIONS.theme_version = '0.21.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
         DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'latest';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
@@ -631,7 +631,7 @@ FFI, and use Warp with JAX transformations and distributed computation.</p></li>
 <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
 <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
 
-<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">saxpy</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">saxpy</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cpu"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>On CUDA, the same pattern works with CuPy, PyTorch, or any framework that exposes <code class="docutils literal notranslate"><span class="pre">__cuda_array_interface__</span></code>:</p>
@@ -641,7 +641,7 @@ FFI, and use Warp with JAX transformations and distributed computation.</p></li>
     <span class="n">x</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">cp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
     <span class="n">y</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">cp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
 
-<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">saxpy</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">saxpy</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda:0"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>When passing CUDA arrays, ensure the device on which the arrays reside matches the device on which the kernel is launched.</p>
@@ -650,7 +650,7 @@ FFI, and use Warp with JAX transformations and distributed computation.</p></li>
 <h2>NumPy<a class="headerlink" href="#numpy" title="Link to this heading">#</a></h2>
 <p>Warp arrays may be converted to a NumPy array through the <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.numpy" title="warp.array.numpy"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.numpy()</span></code></a> method. When the Warp array lives on the <code class="docutils literal notranslate"><span class="pre">cpu</span></code> device this returns a zero-copy view onto the underlying Warp allocation. If the array lives on a <code class="docutils literal notranslate"><span class="pre">cuda</span></code> device, it is first copied back to a temporary buffer and then copied to NumPy.</p>
 <p>Warp CPU arrays also implement the <code class="docutils literal notranslate"><span class="pre">__array_interface__</span></code> protocol and can be used to construct NumPy arrays directly:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">w</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">w</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cpu"</span><span class="p">)</span>
 <span class="n">a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
 <span class="o">&gt;</span> <span class="p">[</span><span class="mf">1.</span> <span class="mf">2.</span> <span class="mf">3.</span><span class="p">]</span>
@@ -675,7 +675,7 @@ FFI, and use Warp with JAX transformations and distributed computation.</p></li>
 <section id="paddle">
 <span id="paddle-interop"></span><h2>Paddle<a class="headerlink" href="#paddle" title="Link to this heading">#</a></h2>
 <p>Warp provides helper functions to convert arrays to/from Paddle:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">w</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">w</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cpu"</span><span class="p">)</span>
 
 <span class="c1"># convert to Paddle tensor</span>
 <span class="n">t</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">to_paddle</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
@@ -718,7 +718,7 @@ FFI, and use Warp with JAX transformations and distributed computation.</p></li>
 
     <span class="n">l</span><span class="o">.</span><span class="n">zero_</span><span class="p">()</span>
     <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">loss</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">xs</span><span class="p">),</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">xs</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">l</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">xs</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="se">\t</span><span class="s2">loss: </span><span class="si">{</span><span class="n">l</span><span class="o">.</span><span class="n">numpy</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="se">\t</span><span class="s2">loss: </span><span class="si">{</span><span class="n">l</span><span class="o">.</span><span class="n">numpy</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </pre></div>
 </div>
 <div class="admonition note">
@@ -857,8 +857,8 @@ FFI, and use Warp with JAX transformations and distributed computation.</p></li>
   
 
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
-<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67"></script>
 
 
   <footer class="bd-footer">

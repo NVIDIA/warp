@@ -28,8 +28,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
-<link href="../../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+  <link href="../../_static/styles/theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
@@ -37,10 +37,10 @@
     <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=e5bdcd64" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="../../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
-<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67" />
 
 
 
@@ -51,7 +51,7 @@
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'user_guide/execution_and_performance/reducing_compilation_and_startup_time';</script>
     <script>
-        DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
+        DOCUMENTATION_OPTIONS.theme_version = '0.21.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
         DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'latest';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
@@ -609,7 +609,7 @@ launches can reuse the loaded module or cached artifacts.</p>
 <p>If a kernel must be defined later, use <code class="docutils literal notranslate"><span class="pre">module=&quot;unique&quot;</span></code> to assign it to a
 separate module:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">make_scale_kernel</span><span class="p">(</span><span class="n">scale</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
-    <span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">module</span><span class="o">=</span><span class="s2">&quot;unique&quot;</span><span class="p">)</span>
+    <span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">module</span><span class="o">=</span><span class="s2">"unique"</span><span class="p">)</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">scale_kernel</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
         <span class="n">values</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()]</span> <span class="o">*=</span> <span class="n">scale</span>
 
@@ -632,8 +632,8 @@ the first launch:</p>
     <span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">s</span>
 
 
-<span class="n">scale_f32</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">overload</span><span class="p">(</span><span class="n">scale</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span> <span class="s2">&quot;s&quot;</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">})</span>
-<span class="n">scale_f64</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">overload</span><span class="p">(</span><span class="n">scale</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float64</span><span class="p">],</span> <span class="s2">&quot;s&quot;</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float64</span><span class="p">})</span>
+<span class="n">scale_f32</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">overload</span><span class="p">(</span><span class="n">scale</span><span class="p">,</span> <span class="p">{</span><span class="s2">"x"</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span> <span class="s2">"s"</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">})</span>
+<span class="n">scale_f64</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">overload</span><span class="p">(</span><span class="n">scale</span><span class="p">,</span> <span class="p">{</span><span class="s2">"x"</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float64</span><span class="p">],</span> <span class="s2">"s"</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float64</span><span class="p">})</span>
 </pre></div>
 </div>
 <p>Only declare overloads that the application actually uses. Excessive overloads
@@ -680,7 +680,7 @@ loads:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">my_app.kernels</span>
 
-<span class="n">wp</span><span class="o">.</span><span class="n">set_module_options</span><span class="p">({</span><span class="s2">&quot;enable_backward&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">},</span> <span class="n">module</span><span class="o">=</span><span class="n">my_app</span><span class="o">.</span><span class="n">kernels</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">set_module_options</span><span class="p">({</span><span class="s2">"enable_backward"</span><span class="p">:</span> <span class="kc">False</span><span class="p">},</span> <span class="n">module</span><span class="o">=</span><span class="n">my_app</span><span class="o">.</span><span class="n">kernels</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>For individual kernels, use the decorator option:</p>
@@ -706,7 +706,7 @@ preloaded by package name.</p>
 <p>Use <code class="docutils literal notranslate"><span class="pre">module=&quot;unique&quot;</span></code> to isolate one kernel in a separate module. Add
 <code class="docutils literal notranslate"><span class="pre">module_options=...</span></code> when that kernel also needs different compilation
 options:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">module</span><span class="o">=</span><span class="s2">&quot;unique&quot;</span><span class="p">,</span> <span class="n">module_options</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;enable_backward&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">})</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">module</span><span class="o">=</span><span class="s2">"unique"</span><span class="p">,</span> <span class="n">module_options</span><span class="o">=</span><span class="p">{</span><span class="s2">"enable_backward"</span><span class="p">:</span> <span class="kc">False</span><span class="p">})</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">halve_values</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
     <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
     <span class="n">values</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*=</span> <span class="mf">0.5</span>
@@ -730,7 +730,7 @@ concurrently:</p>
 
 <span class="n">wp</span><span class="o">.</span><span class="n">load_module</span><span class="p">(</span>
     <span class="n">my_app</span><span class="o">.</span><span class="n">kernels</span><span class="p">,</span>
-    <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="s2">"cuda:0"</span><span class="p">,</span>
     <span class="n">recursive</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
     <span class="n">max_workers</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
 <span class="p">)</span>
@@ -756,7 +756,7 @@ builds a CUBIN for a deployment GPU with compute capability 9.0:</p>
 <span class="n">wp</span><span class="o">.</span><span class="n">compile_aot_module</span><span class="p">(</span>
     <span class="n">my_app</span><span class="o">.</span><span class="n">kernels</span><span class="p">,</span>
     <span class="n">arch</span><span class="o">=</span><span class="mi">90</span><span class="p">,</span>  <span class="c1"># Deployment GPU has compute capability 9.0</span>
-    <span class="n">module_dir</span><span class="o">=</span><span class="s2">&quot;build/warp_modules&quot;</span><span class="p">,</span>
+    <span class="n">module_dir</span><span class="o">=</span><span class="s2">"build/warp_modules"</span><span class="p">,</span>
     <span class="n">use_ptx</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
 <span class="p">)</span>
 </pre></div>
@@ -767,7 +767,7 @@ architecture, then load the module at runtime:</p>
 <span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">my_app.kernels</span>
 
-<span class="n">wp</span><span class="o">.</span><span class="n">load_aot_module</span><span class="p">(</span><span class="n">my_app</span><span class="o">.</span><span class="n">kernels</span><span class="p">,</span> <span class="n">module_dir</span><span class="o">=</span><span class="s2">&quot;build/warp_modules&quot;</span><span class="p">,</span> <span class="n">use_ptx</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">load_aot_module</span><span class="p">(</span><span class="n">my_app</span><span class="o">.</span><span class="n">kernels</span><span class="p">,</span> <span class="n">module_dir</span><span class="o">=</span><span class="s2">"build/warp_modules"</span><span class="p">,</span> <span class="n">use_ptx</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Choose the output format based on the deployment environment:</p>
@@ -817,7 +817,7 @@ fallback temporarily:</p>
 <p>Use the module option when only one module should use the fallback:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">my_app.kernels</span>
 
-<span class="n">wp</span><span class="o">.</span><span class="n">set_module_options</span><span class="p">({</span><span class="s2">&quot;enable_mathdx_gemm&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">},</span> <span class="n">module</span><span class="o">=</span><span class="n">my_app</span><span class="o">.</span><span class="n">kernels</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">set_module_options</span><span class="p">({</span><span class="s2">"enable_mathdx_gemm"</span><span class="p">:</span> <span class="kc">False</span><span class="p">},</span> <span class="n">module</span><span class="o">=</span><span class="n">my_app</span><span class="o">.</span><span class="n">kernels</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Other MathDx-backed tile operations, including solvers and FFTs, may also incur
@@ -946,8 +946,8 @@ measurement with <a class="reference internal" href="profiling.html#benchmarking
   
 
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
-<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67"></script>
 
 
   <footer class="bd-footer">

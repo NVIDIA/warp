@@ -28,8 +28,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
-<link href="../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+  <link href="../_static/styles/theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
@@ -37,10 +37,10 @@
     <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=e5bdcd64" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
-<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67" />
 
 
 
@@ -52,7 +52,7 @@
     <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'user_guide/differentiability';</script>
     <script>
-        DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
+        DOCUMENTATION_OPTIONS.theme_version = '0.21.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
         DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'latest';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
@@ -554,7 +554,7 @@
 <p>By default, Warp generates a forward and backward (adjoint) version of each kernel definition. The backward version of a kernel can be used
 to compute gradients of loss functions that can be back propagated to machine learning frameworks like PyTorch.</p>
 <p>Arrays that participate in the chain of computation which require gradients must be created with <code class="docutils literal notranslate"><span class="pre">requires_grad=True</span></code>, for example:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1024</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1024</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda"</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>The <a class="reference internal" href="../api_reference/_generated/warp.Tape.html#warp.Tape" title="warp.Tape"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Tape</span></code></a> class can then be used to record kernel launches and replay them to compute the gradient of
@@ -563,9 +563,9 @@ a scalar loss function with respect to the kernel inputs:</p>
 
 <span class="c1"># forward pass</span>
 <span class="k">with</span> <span class="n">tape</span><span class="p">:</span>
-    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="n">compute1</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
-    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="n">compute2</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">c</span><span class="p">,</span> <span class="n">d</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
-    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="n">loss</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="n">l</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="n">compute1</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda"</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="n">compute2</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">c</span><span class="p">,</span> <span class="n">d</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda"</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="n">loss</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="n">l</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda"</span><span class="p">)</span>
 
 <span class="c1"># reverse pass</span>
 <span class="n">tape</span><span class="o">.</span><span class="n">backward</span><span class="p">(</span><span class="n">l</span><span class="p">)</span>
@@ -579,7 +579,7 @@ a scalar loss function with respect to the kernel inputs:</p>
 <p>Note that output gradients are consumed (zeroed) by default during the backward pass.
 To preserve the gradient of an intermediate or output array for inspection after backward,
 create it with <code class="docutils literal notranslate"><span class="pre">retain_grad=True</span></code>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">y</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1024</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">retain_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">y</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1024</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda"</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">retain_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
 <div class="admonition warning">
@@ -877,8 +877,8 @@ by calling <code class="docutils literal notranslate"><span class="pre">wp.grad(
 
 <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">compute_jacobian</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">N</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">z</span><span class="p">,</span> <span class="n">J</span><span class="p">])</span>
 
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;z =&quot;</span><span class="p">,</span> <span class="n">z</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;J =&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"z ="</span><span class="p">,</span> <span class="n">z</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"J ="</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">J</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
 </pre></div>
 </div>
@@ -982,8 +982,8 @@ and the gradients are finite except for the zero input:</p>
     <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">run_safe_sqrt</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">xs</span><span class="p">),</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">xs</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">ys</span><span class="p">])</span>
 <span class="n">tape</span><span class="o">.</span><span class="n">backward</span><span class="p">(</span><span class="n">grads</span><span class="o">=</span><span class="p">{</span><span class="n">ys</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">xs</span><span class="p">)),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">)})</span>
 
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;ys     &quot;</span><span class="p">,</span> <span class="n">ys</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;xs.grad&quot;</span><span class="p">,</span> <span class="n">xs</span><span class="o">.</span><span class="n">grad</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"ys     "</span><span class="p">,</span> <span class="n">ys</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"xs.grad"</span><span class="p">,</span> <span class="n">xs</span><span class="o">.</span><span class="n">grad</span><span class="p">)</span>
 <span class="n">tape</span><span class="o">.</span><span class="n">zero</span><span class="p">()</span>
 </pre></div>
 </div>
@@ -1035,13 +1035,13 @@ the square root of an input array at the incremented index:</p>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">test_add</span><span class="p">,</span> <span class="n">dim</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">counter</span><span class="p">,</span> <span class="nb">input</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">output</span><span class="p">])</span>
 
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;counter:    &quot;</span><span class="p">,</span> <span class="n">counter</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;thread_ids: &quot;</span><span class="p">,</span> <span class="n">thread_ids</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;input:      &quot;</span><span class="p">,</span> <span class="nb">input</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;output:     &quot;</span><span class="p">,</span> <span class="n">output</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"counter:    "</span><span class="p">,</span> <span class="n">counter</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"thread_ids: "</span><span class="p">,</span> <span class="n">thread_ids</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"input:      "</span><span class="p">,</span> <span class="nb">input</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"output:     "</span><span class="p">,</span> <span class="n">output</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
 
 <span class="n">tape</span><span class="o">.</span><span class="n">backward</span><span class="p">(</span><span class="n">grads</span><span class="o">=</span><span class="p">{</span><span class="n">output</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">dim</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">)})</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;input.grad: &quot;</span><span class="p">,</span> <span class="nb">input</span><span class="o">.</span><span class="n">grad</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"input.grad: "</span><span class="p">,</span> <span class="nb">input</span><span class="o">.</span><span class="n">grad</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
 <span class="n">tape</span><span class="o">.</span><span class="n">zero</span><span class="p">()</span>
 </pre></div>
 </div>
@@ -1127,13 +1127,13 @@ covers how native snippets interact with tape replay and backward passes.</p>
 <p>When a native function participates in a tape-recorded computation, Warp needs
 an adjoint implementation for the native operation. Provide it with the
 <code class="docutils literal notranslate"><span class="pre">adj_snippet</span></code> argument:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">snippet</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">snippet</span> <span class="o">=</span> <span class="s2">"""</span>
 <span class="s2">out[tid] = 2.0f * x[tid] + y[tid];</span>
-<span class="s2">&quot;&quot;&quot;</span>
-<span class="n">adj_snippet</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">"""</span>
+<span class="n">adj_snippet</span> <span class="o">=</span> <span class="s2">"""</span>
 <span class="s2">adj_x[tid] += 2.0f * adj_out[tid];</span>
 <span class="s2">adj_y[tid] += adj_out[tid];</span>
-<span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">"""</span>
 
 <span class="nd">@wp</span><span class="o">.</span><span class="n">func_native</span><span class="p">(</span><span class="n">snippet</span><span class="o">=</span><span class="n">snippet</span><span class="p">,</span> <span class="n">adj_snippet</span><span class="o">=</span><span class="n">adj_snippet</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">axpy</span><span class="p">(</span>
@@ -1163,8 +1163,8 @@ an adjoint implementation for the native operation. Provide it with the
 
 <span class="n">tape</span><span class="o">.</span><span class="n">backward</span><span class="p">(</span><span class="n">grads</span><span class="o">=</span><span class="p">{</span><span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">out</span><span class="p">)})</span>
 
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;x.grad = </span><span class="si">{</span><span class="n">x</span><span class="o">.</span><span class="n">grad</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;y.grad = </span><span class="si">{</span><span class="n">y</span><span class="o">.</span><span class="n">grad</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"x.grad = </span><span class="si">{</span><span class="n">x</span><span class="o">.</span><span class="n">grad</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"y.grad = </span><span class="si">{</span><span class="n">y</span><span class="o">.</span><span class="n">grad</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </pre></div>
 </div>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>x.grad = [2. 2. 2. 2. 2. 2. 2. 2.]
@@ -1213,7 +1213,7 @@ evaluated at the given input values.</p>
 
 <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">compute_gradient</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">N</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">x</span><span class="p">,</span> <span class="n">grad_x</span><span class="p">])</span>
 
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;grad_x = </span><span class="si">{</span><span class="n">grad_x</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"grad_x = </span><span class="si">{</span><span class="n">grad_x</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </pre></div>
 </div>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>grad_x = [0. 2. 4.]
@@ -1245,8 +1245,8 @@ evaluated at the given input values.</p>
 
 <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">compute_atan2_gradients</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">N</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">grad_y</span><span class="p">,</span> <span class="n">grad_x</span><span class="p">])</span>
 
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;grad_y = </span><span class="si">{</span><span class="n">grad_y</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;grad_x = </span><span class="si">{</span><span class="n">grad_x</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"grad_y = </span><span class="si">{</span><span class="n">grad_y</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"grad_x = </span><span class="si">{</span><span class="n">grad_x</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </pre></div>
 </div>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>grad_y = [0.  0.5 0.4]
@@ -1310,7 +1310,7 @@ square root gradient:</p>
 
 <span class="n">tape</span><span class="o">.</span><span class="n">backward</span><span class="p">(</span><span class="n">grads</span><span class="o">=</span><span class="p">{</span><span class="n">y</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">y</span><span class="p">)})</span>
 
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;x.grad = </span><span class="si">{</span><span class="n">x</span><span class="o">.</span><span class="n">grad</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"x.grad = </span><span class="si">{</span><span class="n">x</span><span class="o">.</span><span class="n">grad</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </pre></div>
 </div>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>x.grad = [0.         0.5        0.35355338]
@@ -1426,7 +1426,7 @@ the minor (thin, dashed) gridlines for the corresponding subplots indicate the v
     <span class="n">my_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">a</span><span class="p">),</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out1</span><span class="p">,</span> <span class="n">out2</span><span class="p">],</span>
     <span class="n">plot_jacobians</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
     <span class="c1"># select which input/output pairs to compute the Jacobian for</span>
-    <span class="n">input_output_mask</span><span class="o">=</span><span class="p">[(</span><span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="s2">&quot;out1&quot;</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="s2">&quot;out2&quot;</span><span class="p">)],</span>
+    <span class="n">input_output_mask</span><span class="o">=</span><span class="p">[(</span><span class="s2">"a"</span><span class="p">,</span> <span class="s2">"out1"</span><span class="p">),</span> <span class="p">(</span><span class="s2">"b"</span><span class="p">,</span> <span class="s2">"out2"</span><span class="p">)],</span>
     <span class="c1"># limit the number of dimensions to query per output array</span>
     <span class="n">max_outputs_per_var</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
 <span class="p">)</span>
@@ -1478,10 +1478,10 @@ The visualization shows how the Warp arrays are used as inputs and outputs of th
     <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">add</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">b</span><span class="p">,</span> <span class="n">e</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
 
     <span class="c1"># ScopedTimer registers itself as a scope on the tape</span>
-    <span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedTimer</span><span class="p">(</span><span class="s2">&quot;Adder&quot;</span><span class="p">):</span>
+    <span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedTimer</span><span class="p">(</span><span class="s2">"Adder"</span><span class="p">):</span>
 
         <span class="c1"># we can also manually record scopes</span>
-        <span class="n">tape</span><span class="o">.</span><span class="n">record_scope_begin</span><span class="p">(</span><span class="s2">&quot;Custom Scope&quot;</span><span class="p">)</span>
+        <span class="n">tape</span><span class="o">.</span><span class="n">record_scope_begin</span><span class="p">(</span><span class="s2">"Custom Scope"</span><span class="p">)</span>
         <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">add</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">c</span><span class="p">])</span>
         <span class="n">tape</span><span class="o">.</span><span class="n">record_scope_end</span><span class="p">()</span>
 
@@ -1489,8 +1489,8 @@ The visualization shows how the Warp arrays are used as inputs and outputs of th
 
 
 <span class="n">tape</span><span class="o">.</span><span class="n">visualize</span><span class="p">(</span>
-    <span class="n">filename</span><span class="o">=</span><span class="s2">&quot;tape.dot&quot;</span><span class="p">,</span>
-    <span class="n">array_labels</span><span class="o">=</span><span class="p">{</span><span class="n">a</span><span class="p">:</span> <span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="n">c</span><span class="p">:</span> <span class="s2">&quot;c&quot;</span><span class="p">,</span> <span class="n">e</span><span class="p">:</span> <span class="s2">&quot;e&quot;</span><span class="p">,</span> <span class="n">result</span><span class="p">:</span> <span class="s2">&quot;result&quot;</span><span class="p">},</span>
+    <span class="n">filename</span><span class="o">=</span><span class="s2">"tape.dot"</span><span class="p">,</span>
+    <span class="n">array_labels</span><span class="o">=</span><span class="p">{</span><span class="n">a</span><span class="p">:</span> <span class="s2">"a"</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="s2">"b"</span><span class="p">,</span> <span class="n">c</span><span class="p">:</span> <span class="s2">"c"</span><span class="p">,</span> <span class="n">e</span><span class="p">:</span> <span class="s2">"e"</span><span class="p">,</span> <span class="n">result</span><span class="p">:</span> <span class="s2">"result"</span><span class="p">},</span>
 <span class="p">)</span>
 </pre></div>
 </div>
@@ -1643,8 +1643,8 @@ This imposes some restrictions on what kernels can do if they are to remain diff
 
 <span class="n">tape</span><span class="o">.</span><span class="n">backward</span><span class="p">(</span><span class="n">grads</span><span class="o">=</span><span class="p">{</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">a</span><span class="p">)})</span>
 
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;a.grad = </span><span class="si">{</span><span class="n">a</span><span class="o">.</span><span class="n">grad</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;b.grad = </span><span class="si">{</span><span class="n">b</span><span class="o">.</span><span class="n">grad</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"a.grad = </span><span class="si">{</span><span class="n">a</span><span class="o">.</span><span class="n">grad</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"b.grad = </span><span class="si">{</span><span class="n">b</span><span class="o">.</span><span class="n">grad</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>The code produces the expected output:</p>
@@ -2009,8 +2009,8 @@ depends on them to the caller.</p>
   
 
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
-<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67"></script>
 
 
   <footer class="bd-footer">

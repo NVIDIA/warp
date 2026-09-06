@@ -28,8 +28,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
-<link href="../../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+  <link href="../../_static/styles/theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
@@ -37,10 +37,10 @@
     <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=e5bdcd64" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="../../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
-<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67" />
 
 
 
@@ -51,7 +51,7 @@
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.func_native';</script>
     <script>
-        DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
+        DOCUMENTATION_OPTIONS.theme_version = '0.21.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
         DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'latest';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
@@ -546,7 +546,7 @@ supported.</p>
 </div>
 <p class="rubric">Example</p>
 <p>Insert a native element-wise operation:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">snippet</span> <span class="o">=</span> <span class="s2">&quot;out[tid] = x[tid] + 1.0f;&quot;</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">snippet</span> <span class="o">=</span> <span class="s2">"out[tid] = x[tid] + 1.0f;"</span>
 
 
 <span class="nd">@warp</span><span class="o">.</span><span class="n">func_native</span><span class="p">(</span><span class="n">snippet</span><span class="p">)</span>
@@ -565,13 +565,13 @@ supported.</p>
 </div>
 <p>Use CUDA shared memory:</p>
 <p>This pattern assumes the kernel is launched with <code class="docutils literal notranslate"><span class="pre">block_dim=128</span></code>.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">snippet</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">snippet</span> <span class="o">=</span> <span class="s1">'''</span>
 <span class="s1">    int local_tid = threadIdx.x;</span>
 <span class="s1">    __shared__ int values[128];</span>
 <span class="s1">    values[local_tid] = arr[tid];</span>
 <span class="s1">    __syncthreads();</span>
 <span class="s1">    out[tid] = values[127 - local_tid];</span>
-<span class="s1">    &#39;&#39;&#39;</span>
+<span class="s1">    '''</span>
 
 
 <span class="nd">@warp</span><span class="o">.</span><span class="n">func_native</span><span class="p">(</span><span class="n">snippet</span><span class="p">)</span>
@@ -579,11 +579,11 @@ supported.</p>
 </pre></div>
 </div>
 <p>Provide an adjoint snippet for differentiability:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">snippet</span> <span class="o">=</span> <span class="s2">&quot;out[tid] = 2.0f * x[tid] + y[tid];&quot;</span>
-<span class="n">adj_snippet</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">snippet</span> <span class="o">=</span> <span class="s2">"out[tid] = 2.0f * x[tid] + y[tid];"</span>
+<span class="n">adj_snippet</span> <span class="o">=</span> <span class="s1">'''</span>
 <span class="s1">    adj_x[tid] += 2.0f * adj_out[tid];</span>
 <span class="s1">    adj_y[tid] += adj_out[tid];</span>
-<span class="s1">    &#39;&#39;&#39;</span>
+<span class="s1">    '''</span>
 
 
 <span class="nd">@warp</span><span class="o">.</span><span class="n">func_native</span><span class="p">(</span><span class="n">snippet</span><span class="o">=</span><span class="n">snippet</span><span class="p">,</span> <span class="n">adj_snippet</span><span class="o">=</span><span class="n">adj_snippet</span><span class="p">)</span>
@@ -671,8 +671,8 @@ supported.</p>
   
 
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
-<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67"></script>
 
 
   <footer class="bd-footer">

@@ -28,8 +28,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
-<link href="../../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+  <link href="../../_static/styles/theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
@@ -37,10 +37,10 @@
     <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=e5bdcd64" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="../../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
-<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67" />
 
 
 
@@ -51,7 +51,7 @@
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'user_guide/interoperability/jax';</script>
     <script>
-        DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
+        DOCUMENTATION_OPTIONS.theme_version = '0.21.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
         DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'latest';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
@@ -605,8 +605,8 @@ support, the same jitted function can run on either device:</p>
     <span class="k">return</span> <span class="n">jax_triple</span><span class="p">(</span><span class="n">x</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
 
 <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">64</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
-<span class="n">cpu_result</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">jax</span><span class="o">.</span><span class="n">device_put</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">jax</span><span class="o">.</span><span class="n">devices</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]))</span>
-<span class="n">cuda_result</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">jax</span><span class="o">.</span><span class="n">device_put</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">jax</span><span class="o">.</span><span class="n">devices</span><span class="p">(</span><span class="s2">&quot;cuda&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]))</span>
+<span class="n">cpu_result</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">jax</span><span class="o">.</span><span class="n">device_put</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">jax</span><span class="o">.</span><span class="n">devices</span><span class="p">(</span><span class="s2">"cpu"</span><span class="p">)[</span><span class="mi">0</span><span class="p">]))</span>
+<span class="n">cuda_result</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">jax</span><span class="o">.</span><span class="n">device_put</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">jax</span><span class="o">.</span><span class="n">devices</span><span class="p">(</span><span class="s2">"cuda"</span><span class="p">)[</span><span class="mi">0</span><span class="p">]))</span>
 </pre></div>
 </div>
 </section>
@@ -723,7 +723,7 @@ With no inputs, specifying the launch dimensions is required to determine the sh
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">functools</span><span class="w"> </span><span class="kn">import</span> <span class="n">partial</span>
 
 <span class="c1"># make scalar arguments static</span>
-<span class="nd">@partial</span><span class="p">(</span><span class="n">jax</span><span class="o">.</span><span class="n">jit</span><span class="p">,</span> <span class="n">static_argnames</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;s&quot;</span><span class="p">])</span>
+<span class="nd">@partial</span><span class="p">(</span><span class="n">jax</span><span class="o">.</span><span class="n">jit</span><span class="p">,</span> <span class="n">static_argnames</span><span class="o">=</span><span class="p">[</span><span class="s2">"s"</span><span class="p">])</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">f</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">s</span><span class="p">):</span>
     <span class="k">return</span> <span class="n">jax_scale</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>  <span class="c1"># ok: static scalar argument</span>
 
@@ -801,11 +801,11 @@ dimensions using the <code class="docutils literal notranslate"><span class="pre
 </pre></div>
 </div>
 <p>Specify different output dimensions for each output using a dictionary:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">b</span><span class="p">,</span> <span class="n">c</span> <span class="o">=</span> <span class="n">jax_funky</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">output_dims</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;b&quot;</span><span class="p">:</span> <span class="n">n</span><span class="p">,</span> <span class="s2">&quot;c&quot;</span><span class="p">:</span> <span class="n">m</span><span class="p">})</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">b</span><span class="p">,</span> <span class="n">c</span> <span class="o">=</span> <span class="n">jax_funky</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">output_dims</span><span class="o">=</span><span class="p">{</span><span class="s2">"b"</span><span class="p">:</span> <span class="n">n</span><span class="p">,</span> <span class="s2">"c"</span><span class="p">:</span> <span class="n">m</span><span class="p">})</span>
 </pre></div>
 </div>
 <p>Specify custom launch and output dimensions together:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">b</span><span class="p">,</span> <span class="n">c</span> <span class="o">=</span> <span class="n">jax_funky</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">launch_dims</span><span class="o">=</span><span class="n">k</span><span class="p">,</span> <span class="n">output_dims</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;b&quot;</span><span class="p">:</span> <span class="n">n</span><span class="p">,</span> <span class="s2">&quot;c&quot;</span><span class="p">:</span> <span class="n">m</span><span class="p">})</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">b</span><span class="p">,</span> <span class="n">c</span> <span class="o">=</span> <span class="n">jax_funky</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">launch_dims</span><span class="o">=</span><span class="n">k</span><span class="p">,</span> <span class="n">output_dims</span><span class="o">=</span><span class="p">{</span><span class="s2">"b"</span><span class="p">:</span> <span class="n">n</span><span class="p">,</span> <span class="s2">"c"</span><span class="p">:</span> <span class="n">m</span><span class="p">})</span>
 </pre></div>
 </div>
 <p>One-dimensional shapes can be specified using an integer. Multi-dimensional shapes can be specified using tuples or lists of integers.</p>
@@ -844,8 +844,8 @@ In JAX, <code class="docutils literal notranslate"><span class="pre">a</span></c
 with shape <code class="docutils literal notranslate"><span class="pre">(n,</span> <span class="pre">3)</span></code>, and <code class="docutils literal notranslate"><span class="pre">c</span></code> is a three-dimensional array with shape <code class="docutils literal notranslate"><span class="pre">(n,</span> <span class="pre">2,</span> <span class="pre">2)</span></code>.</p>
 <p>When specifying custom output dimensions, it’s possible to use either convention. The following calls are equivalent:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">d</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">f</span> <span class="o">=</span> <span class="n">jax_vecmat</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">output_dims</span><span class="o">=</span><span class="n">n</span><span class="p">)</span>
-<span class="n">d</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">f</span> <span class="o">=</span> <span class="n">jax_vecmat</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">output_dims</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;d&quot;</span><span class="p">:</span> <span class="n">n</span><span class="p">,</span> <span class="s2">&quot;e&quot;</span><span class="p">:</span> <span class="n">n</span><span class="p">,</span> <span class="s2">&quot;f&quot;</span><span class="p">:</span> <span class="n">n</span><span class="p">})</span>
-<span class="n">d</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">f</span> <span class="o">=</span> <span class="n">jax_vecmat</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">output_dims</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;d&quot;</span><span class="p">:</span> <span class="n">n</span><span class="p">,</span> <span class="s2">&quot;e&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="s2">&quot;f&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">)})</span>
+<span class="n">d</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">f</span> <span class="o">=</span> <span class="n">jax_vecmat</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">output_dims</span><span class="o">=</span><span class="p">{</span><span class="s2">"d"</span><span class="p">:</span> <span class="n">n</span><span class="p">,</span> <span class="s2">"e"</span><span class="p">:</span> <span class="n">n</span><span class="p">,</span> <span class="s2">"f"</span><span class="p">:</span> <span class="n">n</span><span class="p">})</span>
+<span class="n">d</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">f</span> <span class="o">=</span> <span class="n">jax_vecmat</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">output_dims</span><span class="o">=</span><span class="p">{</span><span class="s2">"d"</span><span class="p">:</span> <span class="n">n</span><span class="p">,</span> <span class="s2">"e"</span><span class="p">:</span> <span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="s2">"f"</span><span class="p">:</span> <span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">)})</span>
 </pre></div>
 </div>
 <p>This is a convenience feature meant to simplify writing code.
@@ -855,7 +855,7 @@ worrying about the extra vector and matrix dimensions required by JAX:</p>
 </pre></div>
 </div>
 <p>On the other hand, JAX dimensions are also accepted to allow passing shapes directly from JAX:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">d</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">f</span> <span class="o">=</span> <span class="n">jax_vecmat</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">output_dims</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;d&quot;</span><span class="p">:</span> <span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="s2">&quot;e&quot;</span><span class="p">:</span> <span class="n">b</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="s2">&quot;f&quot;</span><span class="p">:</span> <span class="n">c</span><span class="o">.</span><span class="n">shape</span><span class="p">})</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">d</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">f</span> <span class="o">=</span> <span class="n">jax_vecmat</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">output_dims</span><span class="o">=</span><span class="p">{</span><span class="s2">"d"</span><span class="p">:</span> <span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="s2">"e"</span><span class="p">:</span> <span class="n">b</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="s2">"f"</span><span class="p">:</span> <span class="n">c</span><span class="o">.</span><span class="n">shape</span><span class="p">})</span>
 </pre></div>
 </div>
 <p>See <a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/examples/interop/example_jax_kernel.py">example_jax_kernel.py</a> for examples.</p>
@@ -911,14 +911,14 @@ The default is <code class="docutils literal notranslate"><span class="pre">&quo
 This argument can be passed to <a class="reference internal" href="../../api_reference/_generated/warp.jax_kernel.html#warp.jax_kernel" title="warp.jax_kernel"><code class="xref py py-func docutils literal notranslate"><span class="pre">jax_kernel()</span></code></a>,
 and it can also be passed to each call:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># set default vmap behavior</span>
-<span class="n">jax_callback</span> <span class="o">=</span> <span class="n">jax_kernel</span><span class="p">(</span><span class="n">my_kernel</span><span class="p">,</span> <span class="n">vmap_method</span><span class="o">=</span><span class="s2">&quot;sequential&quot;</span><span class="p">)</span>
+<span class="n">jax_callback</span> <span class="o">=</span> <span class="n">jax_kernel</span><span class="p">(</span><span class="n">my_kernel</span><span class="p">,</span> <span class="n">vmap_method</span><span class="o">=</span><span class="s2">"sequential"</span><span class="p">)</span>
 
 <span class="nd">@jax</span><span class="o">.</span><span class="n">jit</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">f</span><span class="p">():</span>
     <span class="o">...</span>
-    <span class="n">b</span> <span class="o">=</span> <span class="n">jax_callback</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>  <span class="c1"># uses &quot;sequential&quot;</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">jax_callback</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>  <span class="c1"># uses "sequential"</span>
     <span class="o">...</span>
-    <span class="n">d</span> <span class="o">=</span> <span class="n">jax_callback</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">vmap_method</span><span class="o">=</span><span class="s2">&quot;expand_dims&quot;</span><span class="p">)</span>  <span class="c1"># uses &quot;expand_dims&quot;</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="n">jax_callback</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">vmap_method</span><span class="o">=</span><span class="s2">"expand_dims"</span><span class="p">)</span>  <span class="c1"># uses "expand_dims"</span>
     <span class="o">...</span>
 </pre></div>
 </div>
@@ -956,7 +956,7 @@ and it can also be passed to each call:</p>
 </pre></div>
 </div>
 <p>Note that <code class="docutils literal notranslate"><span class="pre">sums</span></code> is an in-out argument that should be initialized to zero prior to launch:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">jax_rowsum</span> <span class="o">=</span> <span class="n">jax_kernel</span><span class="p">(</span><span class="n">rowsum_kernel</span><span class="p">,</span> <span class="n">in_out_argnames</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;sums&quot;</span><span class="p">])</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">jax_rowsum</span> <span class="o">=</span> <span class="n">jax_kernel</span><span class="p">(</span><span class="n">rowsum_kernel</span><span class="p">,</span> <span class="n">in_out_argnames</span><span class="o">=</span><span class="p">[</span><span class="s2">"sums"</span><span class="p">])</span>
 
 <span class="c1"># batched input with shape (2, 3, 4)</span>
 <span class="n">matrices</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="mi">3</span> <span class="o">*</span> <span class="mi">4</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">jnp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
@@ -1035,7 +1035,7 @@ To enable autodiff, pass the <code class="docutils literal notranslate"><span cl
 <span class="n">jax_scale</span> <span class="o">=</span> <span class="n">jax_kernel</span><span class="p">(</span><span class="n">scale_sum_square</span><span class="p">,</span> <span class="n">num_outputs</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">enable_backward</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
 <span class="c1"># scalars must be static</span>
-<span class="nd">@partial</span><span class="p">(</span><span class="n">jax</span><span class="o">.</span><span class="n">jit</span><span class="p">,</span> <span class="n">static_argnames</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;s&quot;</span><span class="p">])</span>
+<span class="nd">@partial</span><span class="p">(</span><span class="n">jax</span><span class="o">.</span><span class="n">jit</span><span class="p">,</span> <span class="n">static_argnames</span><span class="o">=</span><span class="p">[</span><span class="s2">"s"</span><span class="p">])</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">loss</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">s</span><span class="p">):</span>
     <span class="p">(</span><span class="n">out</span><span class="p">,)</span> <span class="o">=</span> <span class="n">jax_scale</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
@@ -1100,7 +1100,7 @@ To enable autodiff, pass the <code class="docutils literal notranslate"><span cl
 
 <span class="n">jax_vec</span> <span class="o">=</span> <span class="n">jax_kernel</span><span class="p">(</span><span class="n">scale_vec2</span><span class="p">,</span> <span class="n">num_outputs</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">enable_backward</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
-<span class="nd">@partial</span><span class="p">(</span><span class="n">jax</span><span class="o">.</span><span class="n">jit</span><span class="p">,</span> <span class="n">static_argnames</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;s&quot;</span><span class="p">])</span>
+<span class="nd">@partial</span><span class="p">(</span><span class="n">jax</span><span class="o">.</span><span class="n">jit</span><span class="p">,</span> <span class="n">static_argnames</span><span class="o">=</span><span class="p">[</span><span class="s2">"s"</span><span class="p">])</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">vec_loss</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">s</span><span class="p">):</span>
     <span class="p">(</span><span class="n">out</span><span class="p">,)</span> <span class="o">=</span> <span class="n">jax_vec</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
@@ -1215,7 +1215,7 @@ To call this function from JAX, use <a class="reference internal" href="../../ap
     <span class="n">s</span> <span class="o">=</span> <span class="mf">2.0</span>
 
     <span class="c1"># output shapes</span>
-    <span class="n">output_dims</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;c&quot;</span><span class="p">:</span> <span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="s2">&quot;d&quot;</span><span class="p">:</span> <span class="n">b</span><span class="o">.</span><span class="n">shape</span><span class="p">}</span>
+    <span class="n">output_dims</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"c"</span><span class="p">:</span> <span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="s2">"d"</span><span class="p">:</span> <span class="n">b</span><span class="o">.</span><span class="n">shape</span><span class="p">}</span>
 
     <span class="n">c</span><span class="p">,</span> <span class="n">d</span> <span class="o">=</span> <span class="n">jax_func</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">output_dims</span><span class="o">=</span><span class="n">output_dims</span><span class="p">)</span>
 
@@ -1304,7 +1304,7 @@ for more details):</p>
     <span class="k">if</span> <span class="n">jax</span><span class="o">.</span><span class="n">process_index</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
-<span class="n">print_on_process_0</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Running on </span><span class="si">{</span><span class="n">num_gpus</span><span class="si">}</span><span class="s2"> GPU(s)&quot;</span><span class="p">)</span>
+<span class="n">print_on_process_0</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Running on </span><span class="si">{</span><span class="n">num_gpus</span><span class="si">}</span><span class="s2"> GPU(s)"</span><span class="p">)</span>
 
 <span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">multiply_by_two_kernel</span><span class="p">(</span>
@@ -1336,17 +1336,17 @@ for more details):</p>
     <span class="c1"># shard_map distributes the computation across devices</span>
     <span class="k">return</span> <span class="n">shard_map</span><span class="p">(</span>
         <span class="n">_sharded_operator</span><span class="p">,</span>
-        <span class="n">mesh</span><span class="o">=</span><span class="n">jax</span><span class="o">.</span><span class="n">sharding</span><span class="o">.</span><span class="n">Mesh</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">jax</span><span class="o">.</span><span class="n">devices</span><span class="p">()),</span> <span class="s2">&quot;x&quot;</span><span class="p">),</span>
-        <span class="n">in_specs</span><span class="o">=</span><span class="p">(</span><span class="n">P</span><span class="p">(</span><span class="s2">&quot;x&quot;</span><span class="p">),),</span>  <span class="c1"># Input is sharded along the &#39;x&#39; axis</span>
-        <span class="n">out_specs</span><span class="o">=</span><span class="n">P</span><span class="p">(</span><span class="s2">&quot;x&quot;</span><span class="p">),</span>    <span class="c1"># Output is also sharded along the &#39;x&#39; axis</span>
+        <span class="n">mesh</span><span class="o">=</span><span class="n">jax</span><span class="o">.</span><span class="n">sharding</span><span class="o">.</span><span class="n">Mesh</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">jax</span><span class="o">.</span><span class="n">devices</span><span class="p">()),</span> <span class="s2">"x"</span><span class="p">),</span>
+        <span class="n">in_specs</span><span class="o">=</span><span class="p">(</span><span class="n">P</span><span class="p">(</span><span class="s2">"x"</span><span class="p">),),</span>  <span class="c1"># Input is sharded along the 'x' axis</span>
+        <span class="n">out_specs</span><span class="o">=</span><span class="n">P</span><span class="p">(</span><span class="s2">"x"</span><span class="p">),</span>    <span class="c1"># Output is also sharded along the 'x' axis</span>
         <span class="n">check_rep</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
     <span class="p">)(</span><span class="n">a_in</span><span class="p">)</span>
 
-<span class="n">print_on_process_0</span><span class="p">(</span><span class="s2">&quot;Test distributed multiplication using JAX + Warp&quot;</span><span class="p">)</span>
+<span class="n">print_on_process_0</span><span class="p">(</span><span class="s2">"Test distributed multiplication using JAX + Warp"</span><span class="p">)</span>
 
 <span class="n">devices</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">devices</span><span class="p">()</span>
-<span class="n">mesh</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">sharding</span><span class="o">.</span><span class="n">Mesh</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">devices</span><span class="p">),</span> <span class="s2">&quot;x&quot;</span><span class="p">)</span>
-<span class="n">sharding_spec</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">sharding</span><span class="o">.</span><span class="n">NamedSharding</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">P</span><span class="p">(</span><span class="s2">&quot;x&quot;</span><span class="p">))</span>
+<span class="n">mesh</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">sharding</span><span class="o">.</span><span class="n">Mesh</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">devices</span><span class="p">),</span> <span class="s2">"x"</span><span class="p">)</span>
+<span class="n">sharding_spec</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">sharding</span><span class="o">.</span><span class="n">NamedSharding</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">P</span><span class="p">(</span><span class="s2">"x"</span><span class="p">))</span>
 
 <span class="n">input_size</span> <span class="o">=</span> <span class="n">num_gpus</span> <span class="o">*</span> <span class="mi">5</span>  <span class="c1"># 5 elements per device</span>
 <span class="n">single_device_arrays</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">input_size</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">jnp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
@@ -1365,13 +1365,13 @@ for more details):</p>
 <span class="n">sharded_array</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">make_array_from_single_device_arrays</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">sharding_spec</span><span class="p">,</span> <span class="n">arrays</span><span class="p">)</span>
 
 <span class="c1"># sharded_array has shape (input_size,) but is distributed across devices</span>
-<span class="n">print_on_process_0</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Input array: </span><span class="si">{</span><span class="n">allgather</span><span class="p">(</span><span class="n">sharded_array</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="n">print_on_process_0</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Input array: </span><span class="si">{</span><span class="n">allgather</span><span class="p">(</span><span class="n">sharded_array</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
 <span class="c1"># warp_result has the same shape and sharding as sharded_array</span>
 <span class="n">warp_result</span> <span class="o">=</span> <span class="n">warp_distributed_operator</span><span class="p">(</span><span class="n">sharded_array</span><span class="p">)</span>
 
 <span class="c1"># allgather collects results from all devices, resulting in a full array of shape (input_size,)</span>
-<span class="n">print_on_process_0</span><span class="p">(</span><span class="s2">&quot;Warp Output:&quot;</span><span class="p">,</span> <span class="n">allgather</span><span class="p">(</span><span class="n">warp_result</span><span class="p">))</span>
+<span class="n">print_on_process_0</span><span class="p">(</span><span class="s2">"Warp Output:"</span><span class="p">,</span> <span class="n">allgather</span><span class="p">(</span><span class="n">warp_result</span><span class="p">))</span>
 </pre></div>
 </div>
 <p>In this example, <code class="docutils literal notranslate"><span class="pre">shard_map</span></code> is used to distribute the computation across available devices.
@@ -1498,8 +1498,8 @@ Once Open MPI is installed, you can use <code class="docutils literal notranslat
   
 
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
-<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67"></script>
 
 
   <footer class="bd-footer">

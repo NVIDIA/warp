@@ -28,8 +28,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
-<link href="../../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+  <link href="../../_static/styles/theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
@@ -37,10 +37,10 @@
     <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=e5bdcd64" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="../../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
-<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67" />
 
 
 
@@ -51,7 +51,7 @@
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.Tape';</script>
     <script>
-        DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
+        DOCUMENTATION_OPTIONS.theme_version = '0.21.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
         DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'latest';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
@@ -518,9 +518,9 @@ Gradients can be computed after the operations have been recorded on the tape vi
 
 <span class="c1"># forward pass</span>
 <span class="k">with</span> <span class="n">tape</span><span class="p">:</span>
-    <span class="n">warp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="n">compute1</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
-    <span class="n">warp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="n">compute2</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">c</span><span class="p">,</span> <span class="n">d</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
-    <span class="n">warp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="n">loss</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="n">l</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
+    <span class="n">warp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="n">compute1</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda"</span><span class="p">)</span>
+    <span class="n">warp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="n">compute2</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">c</span><span class="p">,</span> <span class="n">d</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda"</span><span class="p">)</span>
+    <span class="n">warp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="n">loss</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="n">l</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda"</span><span class="p">)</span>
 
 <span class="c1"># reverse pass</span>
 <span class="n">tape</span><span class="o">.</span><span class="n">backward</span><span class="p">(</span><span class="n">l</span><span class="p">)</span>
@@ -706,7 +706,7 @@ a <a class="reference internal" href="warp.struct.html#warp.struct" title="warp.
     <span class="c1"># record Warp kernel launches here</span>
     <span class="n">warp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
 
-<span class="n">dot_code</span> <span class="o">=</span> <span class="n">tape</span><span class="o">.</span><span class="n">visualize</span><span class="p">(</span><span class="s2">&quot;tape.dot&quot;</span><span class="p">)</span>
+<span class="n">dot_code</span> <span class="o">=</span> <span class="n">tape</span><span class="o">.</span><span class="n">visualize</span><span class="p">(</span><span class="s2">"tape.dot"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>This function creates a GraphViz dot file that can be rendered into an image using the GraphViz command line tool, e.g. via</p>
@@ -821,8 +821,8 @@ a <a class="reference internal" href="warp.struct.html#warp.struct" title="warp.
   
 
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
-<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67"></script>
 
 
   <footer class="bd-footer">

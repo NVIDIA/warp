@@ -28,8 +28,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
-<link href="../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+  <link href="../_static/styles/theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
@@ -37,10 +37,10 @@
     <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=e5bdcd64" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
-<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67" />
 
 
 
@@ -51,7 +51,7 @@
     <script src="../_static/copybutton.js?v=fd10adb8"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'domain_modules/sparse';</script>
     <script>
-        DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
+        DOCUMENTATION_OPTIONS.theme_version = '0.21.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
         DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'latest';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
@@ -636,7 +636,7 @@
 <span class="n">C</span> <span class="o">=</span> <span class="n">bsr_copy</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">block_shape</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>       <span class="c1"># 8x8 matrix with 4x4 blocks</span>
 
 <span class="c1"># Invalid conversion (will raise ValueError):</span>
-<span class="n">D</span> <span class="o">=</span> <span class="n">bsr_copy</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">block_shape</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>       <span class="c1"># 3x3 blocks don&#39;t divide 8x8 evenly</span>
+<span class="n">D</span> <span class="o">=</span> <span class="n">bsr_copy</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">block_shape</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>       <span class="c1"># 3x3 blocks don't divide 8x8 evenly</span>
 </pre></div>
 </div>
 </section>
@@ -732,8 +732,8 @@ The older <code class="docutils literal notranslate"><span class="pre">masked=Tr
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">warp.sparse</span><span class="w"> </span><span class="kn">import</span> <span class="n">bsr_assign</span><span class="p">,</span> <span class="n">bsr_set_zero</span><span class="p">,</span> <span class="n">bsr_zeros</span>
 
 <span class="n">dest</span> <span class="o">=</span> <span class="n">bsr_zeros</span><span class="p">(</span><span class="n">src</span><span class="o">.</span><span class="n">nrow</span><span class="p">,</span> <span class="n">src</span><span class="o">.</span><span class="n">ncol</span><span class="p">,</span> <span class="n">src</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">src</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">row_capacity</span><span class="o">=</span><span class="n">src</span><span class="o">.</span><span class="n">ncol</span><span class="p">)</span>
-<span class="n">bsr_set_zero</span><span class="p">(</span><span class="n">dest</span><span class="p">,</span> <span class="n">topology</span><span class="o">=</span><span class="s2">&quot;padded&quot;</span><span class="p">)</span>       <span class="c1"># keep row capacity, clear active rows</span>
-<span class="n">bsr_assign</span><span class="p">(</span><span class="n">dest</span><span class="o">=</span><span class="n">dest</span><span class="p">,</span> <span class="n">src</span><span class="o">=</span><span class="n">src</span><span class="p">,</span> <span class="n">topology</span><span class="o">=</span><span class="s2">&quot;padded&quot;</span><span class="p">)</span>
+<span class="n">bsr_set_zero</span><span class="p">(</span><span class="n">dest</span><span class="p">,</span> <span class="n">topology</span><span class="o">=</span><span class="s2">"padded"</span><span class="p">)</span>       <span class="c1"># keep row capacity, clear active rows</span>
+<span class="n">bsr_assign</span><span class="p">(</span><span class="n">dest</span><span class="o">=</span><span class="n">dest</span><span class="p">,</span> <span class="n">src</span><span class="o">=</span><span class="n">src</span><span class="p">,</span> <span class="n">topology</span><span class="o">=</span><span class="s2">"padded"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">bsr_set_zero(...,</span> <span class="pre">topology=&quot;padded&quot;)</span></code> keeps row capacity only when the matrix size is unchanged. If a new size is provided, the resized empty matrix starts with no row capacity.</p>
@@ -744,7 +744,7 @@ insufficient row capacity from that operation:</p>
 
 <span class="n">work</span> <span class="o">=</span> <span class="n">bsr_axpy_work_arrays</span><span class="p">()</span>
 <span class="n">y</span><span class="o">.</span><span class="n">clear_status</span><span class="p">()</span>
-<span class="n">bsr_axpy</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">topology</span><span class="o">=</span><span class="s2">&quot;padded&quot;</span><span class="p">,</span> <span class="n">work_arrays</span><span class="o">=</span><span class="n">work</span><span class="p">)</span>
+<span class="n">bsr_axpy</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">topology</span><span class="o">=</span><span class="s2">"padded"</span><span class="p">,</span> <span class="n">work_arrays</span><span class="o">=</span><span class="n">work</span><span class="p">)</span>
 <span class="k">if</span> <span class="n">y</span><span class="o">.</span><span class="n">status_sync</span><span class="p">()</span> <span class="o">!=</span> <span class="n">BSR_STATUS_SUCCESS</span><span class="p">:</span>
     <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">y</span><span class="o">.</span><span class="n">status_message</span><span class="p">())</span>
 </pre></div>
@@ -753,7 +753,7 @@ insufficient row capacity from that operation:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">warp.sparse</span><span class="w"> </span><span class="kn">import</span> <span class="n">BSR_STATUS_SUCCESS</span><span class="p">,</span> <span class="n">bsr_set_transpose</span>
 
 <span class="n">dest</span><span class="o">.</span><span class="n">clear_status</span><span class="p">()</span>
-<span class="n">bsr_set_transpose</span><span class="p">(</span><span class="n">dest</span><span class="p">,</span> <span class="n">src</span><span class="p">,</span> <span class="n">topology</span><span class="o">=</span><span class="s2">&quot;padded&quot;</span><span class="p">)</span>
+<span class="n">bsr_set_transpose</span><span class="p">(</span><span class="n">dest</span><span class="p">,</span> <span class="n">src</span><span class="p">,</span> <span class="n">topology</span><span class="o">=</span><span class="s2">"padded"</span><span class="p">)</span>
 <span class="k">if</span> <span class="n">dest</span><span class="o">.</span><span class="n">status_sync</span><span class="p">()</span> <span class="o">!=</span> <span class="n">BSR_STATUS_SUCCESS</span><span class="p">:</span>
     <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">dest</span><span class="o">.</span><span class="n">status_message</span><span class="p">())</span>
 </pre></div>
@@ -764,7 +764,7 @@ Call it after the graph launch instead, keeping the matrix alive beyond the capt
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">warp.sparse</span><span class="w"> </span><span class="kn">import</span> <span class="n">bsr_compress</span>
 
 <span class="n">bsr_compress</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<span class="n">bsr_compress</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">topology</span><span class="o">=</span><span class="s2">&quot;compact&quot;</span><span class="p">)</span>
+<span class="n">bsr_compress</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">topology</span><span class="o">=</span><span class="s2">"compact"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>With the default <code class="docutils literal notranslate"><span class="pre">inplace=False</span></code>, <a class="reference internal" href="../api_reference/_generated/warp.sparse.bsr_compress.html#warp.sparse.bsr_compress" title="warp.sparse.bsr_compress"><code class="xref py py-func docutils literal notranslate"><span class="pre">bsr_compress()</span></code></a> rebuilds the topology natively from the active row and column data, then accumulates values with differentiable Warp kernels. By default it packs active entries into compact row storage. Pass <code class="docutils literal notranslate"><span class="pre">topology=&quot;padded&quot;</span></code> to preserve per-row capacity; compression cannot increase the active block count, so this padded mode does not report row-capacity overflow. The API does not guarantee that existing storage buffers are preserved.</p>
@@ -996,8 +996,8 @@ Custom operators can be implemented using the <a class="reference internal" href
   
 
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
-<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67"></script>
 
 
   <footer class="bd-footer">

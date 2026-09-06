@@ -28,8 +28,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
-<link href="../../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+  <link href="../../_static/styles/theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
@@ -37,10 +37,10 @@
     <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=e5bdcd64" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="../../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
-<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67" />
 
 
 
@@ -51,7 +51,7 @@
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'user_guide/execution_and_performance/memory_management';</script>
     <script>
-        DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
+        DOCUMENTATION_OPTIONS.theme_version = '0.21.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
         DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'latest';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
@@ -618,10 +618,10 @@ copies.</p></td>
 <p>Warp 0.14.0 added support for <a class="reference external" href="https://developer.nvidia.com/blog/using-cuda-stream-ordered-memory-allocator-part-1">stream-ordered memory pool allocators for CUDA arrays</a>.  As of Warp 0.15.0, these allocators are enabled by default on
 all CUDA devices that support them.  “Stream-ordered memory pool allocator” is quite a mouthful, so let’s unpack it one bit at a time.</p>
 <p>Whenever you create an array, the memory needs to be allocated on the device:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
-<span class="n">b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
-<span class="n">c</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
-<span class="n">d</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="mf">42.0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda:0"</span><span class="p">)</span>
+<span class="n">b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda:0"</span><span class="p">)</span>
+<span class="n">c</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda:0"</span><span class="p">)</span>
+<span class="n">d</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="mf">42.0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda:0"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Each of the calls above allocates a block of device memory large enough to hold the array and optionally initializes the contents with
@@ -648,9 +648,9 @@ are supported by the underlying system or not.</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Warp 0.15.1 initialized:
 CUDA Toolkit 11.5, Driver 12.2
 Devices:
-    &quot;cpu&quot;      : &quot;x86_64&quot;
-    &quot;cuda:0&quot;   : &quot;NVIDIA GeForce RTX 4090&quot; (24 GiB, sm_89, mempool enabled)
-    &quot;cuda:1&quot;   : &quot;NVIDIA GeForce RTX 3090&quot; (24 GiB, sm_86, mempool enabled)
+    "cpu"      : "x86_64"
+    "cuda:0"   : "NVIDIA GeForce RTX 4090" (24 GiB, sm_89, mempool enabled)
+    "cuda:1"   : "NVIDIA GeForce RTX 3090" (24 GiB, sm_86, mempool enabled)
 </pre></div>
 </div>
 <p>Note the <code class="docutils literal notranslate"><span class="pre">mempool</span> <span class="pre">enabled</span></code> text next to each CUDA device.  This means that memory pools are enabled on the device.  Whenever you create
@@ -667,21 +667,21 @@ on this device.</p>
 </div>
 <p>The flag defaults to <code class="docutils literal notranslate"><span class="pre">True</span></code>, but can be set to <code class="docutils literal notranslate"><span class="pre">False</span></code> if desired.  Changing this configuration flag after <a class="reference internal" href="../../api_reference/_generated/warp.init.html#warp.init" title="warp.init"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.init()</span></code></a> is called has no effect.</p>
 <p>After <a class="reference internal" href="../../api_reference/_generated/warp.init.html#warp.init" title="warp.init"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.init()</span></code></a>, you can check if the memory pool is enabled on each device like this:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">wp</span><span class="o">.</span><span class="n">is_mempool_enabled</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">):</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">wp</span><span class="o">.</span><span class="n">is_mempool_enabled</span><span class="p">(</span><span class="s2">"cuda:0"</span><span class="p">):</span>
     <span class="o">...</span>
 </pre></div>
 </div>
 <p>You can also independently control enablement on each device:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">wp</span><span class="o">.</span><span class="n">is_mempool_supported</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">):</span>
-    <span class="n">wp</span><span class="o">.</span><span class="n">set_mempool_enabled</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">wp</span><span class="o">.</span><span class="n">is_mempool_supported</span><span class="p">(</span><span class="s2">"cuda:0"</span><span class="p">):</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">set_mempool_enabled</span><span class="p">(</span><span class="s2">"cuda:0"</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>It’s possible to temporarily enable or disable memory pools using a scoped manager:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedMempool</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span>
-    <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedMempool</span><span class="p">(</span><span class="s2">"cuda:0"</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda:0"</span><span class="p">)</span>
 
-<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedMempool</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
-    <span class="n">b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedMempool</span><span class="p">(</span><span class="s2">"cuda:0"</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda:0"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>In the snippet above, array <code class="docutils literal notranslate"><span class="pre">a</span></code> will be allocated using the mempool allocator and array <code class="docutils literal notranslate"><span class="pre">b</span></code> will be allocated using the default allocator.</p>
@@ -705,8 +705,8 @@ Similarly, the high-water mark of used memory can be queried using
 <p>Allocating and releasing memory are rather expensive operations that can add overhead to a program.  We can’t avoid them, since we need to allocate storage for our data somewhere, but there are some simple strategies that can reduce the overall impact of allocations on performance.</p>
 <p>Consider the following example:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">):</span>
-    <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
-    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda:0"</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda:0"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>On each iteration of the loop, we allocate an array and run a kernel on the data.  This program has 100 allocations and 100 deallocations.  When we assign a new value to <code class="docutils literal notranslate"><span class="pre">a</span></code>, the previous value gets garbage collected by Python, which triggers the deallocation.</p>
@@ -714,23 +714,23 @@ Similarly, the high-water mark of used memory can be queried using
 <h4>Reusing Memory<a class="headerlink" href="#reusing-memory" title="Link to this heading">#</a></h4>
 <p>If the size of the array remains fixed, consider reusing the memory on subsequent iterations.  We can allocate the array only once and just re-initialize its contents on each iteration:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># pre-allocate the array</span>
-<span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda:0"</span><span class="p">)</span>
 <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">):</span>
     <span class="c1"># reset the contents</span>
     <span class="n">a</span><span class="o">.</span><span class="n">zero_</span><span class="p">()</span>
-    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda:0"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>This works well if the array size does not change on each iteration.  If the size changes but the upper bound is known, we can still pre-allocate a buffer large enough to store all the elements at any iteration.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># pre-allocate a big enough buffer</span>
-<span class="n">buffer</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">MAX_N</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">buffer</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">MAX_N</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda:0"</span><span class="p">)</span>
 <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">):</span>
     <span class="c1"># get a buffer slice of size n &lt;= MAX_N</span>
     <span class="n">n</span> <span class="o">=</span> <span class="n">get_size</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
     <span class="n">a</span> <span class="o">=</span> <span class="n">buffer</span><span class="p">[:</span><span class="n">n</span><span class="p">]</span>
     <span class="c1"># reset the contents</span>
     <span class="n">a</span><span class="o">.</span><span class="n">zero_</span><span class="p">()</span>
-    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda:0"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Reusing memory this way can improve performance, but may also add undesirable complexity to our code.  The mempool allocators have a useful feature that can improve allocation performance without modifying our original code in any way.</p>
@@ -740,11 +740,11 @@ Similarly, the high-water mark of used memory can be queried using
 <p>The memory pool release threshold determines how much reserved memory the allocator should hold on to before releasing it back to the operating system.  For programs that frequently allocate and release memory, setting a higher release threshold can improve the performance of allocations.</p>
 <p>By default, the release threshold is set to 0.  Setting it to a higher number will reduce the cost of allocations if memory was previously acquired and returned to the pool.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># set the release threshold to reduce re-allocation overhead</span>
-<span class="n">wp</span><span class="o">.</span><span class="n">set_mempool_release_threshold</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">,</span> <span class="mi">1024</span><span class="o">**</span><span class="mi">3</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">set_mempool_release_threshold</span><span class="p">(</span><span class="s2">"cuda:0"</span><span class="p">,</span> <span class="mi">1024</span><span class="o">**</span><span class="mi">3</span><span class="p">)</span>
 
 <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">):</span>
-    <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
-    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda:0"</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda:0"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Threshold values between 0 and 1 are interpreted as fractions of available memory.  For example, 0.5 means half of the device’s physical memory and 1.0 means all of the memory.  Greater values are interpreted as an absolute number of bytes.  For example, 1024**3 means one GiB of memory.</p>
@@ -773,17 +773,17 @@ CUDA-style memory pool.</p>
 <section id="memory-pool-access">
 <span id="mempool-access"></span><h3>Memory Pool Access<a class="headerlink" href="#memory-pool-access" title="Link to this heading">#</a></h3>
 <p>On multi-GPU systems that support <a class="reference internal" href="#peer-access"><span class="std std-ref">peer access</span></a>, we can enable directly accessing a memory pool from a different device:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">wp</span><span class="o">.</span><span class="n">is_mempool_access_supported</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">,</span> <span class="s2">&quot;cuda:1&quot;</span><span class="p">):</span>
-    <span class="n">wp</span><span class="o">.</span><span class="n">set_mempool_access_enabled</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">,</span> <span class="s2">&quot;cuda:1&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">wp</span><span class="o">.</span><span class="n">is_mempool_access_supported</span><span class="p">(</span><span class="s2">"cuda:0"</span><span class="p">,</span> <span class="s2">"cuda:1"</span><span class="p">):</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">set_mempool_access_enabled</span><span class="p">(</span><span class="s2">"cuda:0"</span><span class="p">,</span> <span class="s2">"cuda:1"</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>This will allow the memory pool of device <code class="docutils literal notranslate"><span class="pre">cuda:0</span></code> to be directly accessed on device <code class="docutils literal notranslate"><span class="pre">cuda:1</span></code>.  Memory pool access is directional, which means that enabling access to <code class="docutils literal notranslate"><span class="pre">cuda:0</span></code> from <code class="docutils literal notranslate"><span class="pre">cuda:1</span></code> does not automatically enable access to <code class="docutils literal notranslate"><span class="pre">cuda:1</span></code> from <code class="docutils literal notranslate"><span class="pre">cuda:0</span></code>.</p>
 <p>The benefit of enabling memory pool access is that it allows direct memory transfers (DMA) between the devices.  This is generally a faster way to copy data, since otherwise the transfer needs to be done using a CPU staging buffer.</p>
 <p>The drawback is that enabling memory pool access can slightly reduce the performance of allocations and deallocations.  However, for applications that rely on copying memory between devices, there should be a net benefit.</p>
 <p>It’s possible to temporarily enable or disable memory pool access using a scoped manager:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedMempoolAccess</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">,</span> <span class="s2">&quot;cuda:1&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span>
-    <span class="n">a0</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
-    <span class="n">a1</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:1&quot;</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedMempoolAccess</span><span class="p">(</span><span class="s2">"cuda:0"</span><span class="p">,</span> <span class="s2">"cuda:1"</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span>
+    <span class="n">a0</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda:0"</span><span class="p">)</span>
+    <span class="n">a1</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda:1"</span><span class="p">)</span>
 
     <span class="c1"># use direct memory transfer between GPUs</span>
     <span class="n">wp</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">a1</span><span class="p">,</span> <span class="n">a0</span><span class="p">)</span>
@@ -800,26 +800,26 @@ For memory allocated using default CUDA allocators, we can enable CUDA <a class=
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Warp 0.15.1 initialized:
    CUDA Toolkit 11.5, Driver 12.2
    Devices:
-     &quot;cpu&quot;      : &quot;x86_64&quot;
-     &quot;cuda:0&quot;   : &quot;NVIDIA L40&quot; (48 GiB, sm_89, mempool enabled)
-     &quot;cuda:1&quot;   : &quot;NVIDIA L40&quot; (48 GiB, sm_89, mempool enabled)
-     &quot;cuda:2&quot;   : &quot;NVIDIA L40&quot; (48 GiB, sm_89, mempool enabled)
-     &quot;cuda:3&quot;   : &quot;NVIDIA L40&quot; (48 GiB, sm_89, mempool enabled)
+     "cpu"      : "x86_64"
+     "cuda:0"   : "NVIDIA L40" (48 GiB, sm_89, mempool enabled)
+     "cuda:1"   : "NVIDIA L40" (48 GiB, sm_89, mempool enabled)
+     "cuda:2"   : "NVIDIA L40" (48 GiB, sm_89, mempool enabled)
+     "cuda:3"   : "NVIDIA L40" (48 GiB, sm_89, mempool enabled)
    CUDA peer access:
      Supported fully (all-directional)
 </pre></div>
 </div>
 <p>If the message reports that CUDA peer access is <code class="docutils literal notranslate"><span class="pre">Supported</span> <span class="pre">fully</span></code>, it means that every CUDA device can access every other CUDA device in the system.  If it says <code class="docutils literal notranslate"><span class="pre">Supported</span> <span class="pre">partially</span></code>, it will be followed by the access matrix that shows which devices can access each other.  If it says <code class="docutils literal notranslate"><span class="pre">Not</span> <span class="pre">supported</span></code>, it means that access is not supported between any devices.</p>
 <p>In code, we can check support and enable peer access like this:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">wp</span><span class="o">.</span><span class="n">is_peer_access_supported</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">,</span> <span class="s2">&quot;cuda:1&quot;</span><span class="p">):</span>
-    <span class="n">wp</span><span class="o">.</span><span class="n">set_peer_access_enabled</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">,</span> <span class="s2">&quot;cuda:1&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">wp</span><span class="o">.</span><span class="n">is_peer_access_supported</span><span class="p">(</span><span class="s2">"cuda:0"</span><span class="p">,</span> <span class="s2">"cuda:1"</span><span class="p">):</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">set_peer_access_enabled</span><span class="p">(</span><span class="s2">"cuda:0"</span><span class="p">,</span> <span class="s2">"cuda:1"</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>This will allow the memory of device <code class="docutils literal notranslate"><span class="pre">cuda:0</span></code> to be directly accessed on device <code class="docutils literal notranslate"><span class="pre">cuda:1</span></code>.  Peer access is directional, which means that enabling access to <code class="docutils literal notranslate"><span class="pre">cuda:0</span></code> from <code class="docutils literal notranslate"><span class="pre">cuda:1</span></code> does not automatically enable access to <code class="docutils literal notranslate"><span class="pre">cuda:1</span></code> from <code class="docutils literal notranslate"><span class="pre">cuda:0</span></code>.</p>
 <p>The benefit of enabling peer access is that it allows direct memory transfers (DMA) between the devices.  This is generally a faster way to copy data, since otherwise the transfer needs to be done using a CPU staging buffer.</p>
 <p>The drawback is that enabling peer access can reduce the performance of allocations and deallocations.  Programs that don’t rely on peer-to-peer memory transfers should leave this setting disabled.</p>
 <p>It’s possible to temporarily enable or disable peer access using a scoped manager:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedPeerAccess</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">,</span> <span class="s2">&quot;cuda:1&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedPeerAccess</span><span class="p">(</span><span class="s2">"cuda:0"</span><span class="p">,</span> <span class="s2">"cuda:1"</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span>
     <span class="o">...</span>
 </pre></div>
 </div>
@@ -837,12 +837,12 @@ To accelerate memory pool transfers, <a class="reference internal" href="#mempoo
 <p>There are two workarounds.  If mempool access is supported, you can simply enable mempool access between the devices prior to graph capture, as shown in <a class="reference internal" href="#mempool-access"><span class="std std-ref">Memory Pool Access</span></a>.</p>
 <p>If mempool access is not supported, you will need to pre-allocate the arrays involved in the copy using the default CUDA allocators.  This will need to be done before capture begins:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># pre-allocate the arrays with mempools disabled</span>
-<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedMempool</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
-    <span class="n">a0</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
-<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedMempool</span><span class="p">(</span><span class="s2">&quot;cuda:1&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
-    <span class="n">a1</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:1&quot;</span><span class="p">)</span>
+<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedMempool</span><span class="p">(</span><span class="s2">"cuda:0"</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+    <span class="n">a0</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda:0"</span><span class="p">)</span>
+<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedMempool</span><span class="p">(</span><span class="s2">"cuda:1"</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+    <span class="n">a1</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda:1"</span><span class="p">)</span>
 
-<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedCapture</span><span class="p">(</span><span class="s2">&quot;cuda:1&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">capture</span><span class="p">:</span>
+<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedCapture</span><span class="p">(</span><span class="s2">"cuda:1"</span><span class="p">)</span> <span class="k">as</span> <span class="n">capture</span><span class="p">:</span>
     <span class="n">wp</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">a1</span><span class="p">,</span> <span class="n">a0</span><span class="p">)</span>
 
 <span class="n">wp</span><span class="o">.</span><span class="n">capture_launch</span><span class="p">(</span><span class="n">capture</span><span class="o">.</span><span class="n">graph</span><span class="p">)</span>
@@ -866,7 +866,7 @@ affected.</p>
 <p>Use <a class="reference internal" href="../../api_reference/_generated/warp.set_cuda_allocator.html#warp.set_cuda_allocator" title="warp.set_cuda_allocator"><code class="xref py py-func docutils literal notranslate"><span class="pre">set_cuda_allocator()</span></code></a> to set a custom allocator on all CUDA devices, or
 <a class="reference internal" href="../../api_reference/_generated/warp.set_device_allocator.html#warp.set_device_allocator" title="warp.set_device_allocator"><code class="xref py py-func docutils literal notranslate"><span class="pre">set_device_allocator()</span></code></a> for a specific device:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">set_cuda_allocator</span><span class="p">(</span><span class="n">my_allocator</span><span class="p">)</span>           <span class="c1"># all CUDA devices</span>
-<span class="n">wp</span><span class="o">.</span><span class="n">set_device_allocator</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">,</span> <span class="n">my_allocator</span><span class="p">)</span>  <span class="c1"># one device</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">set_device_allocator</span><span class="p">(</span><span class="s2">"cuda:0"</span><span class="p">,</span> <span class="n">my_allocator</span><span class="p">)</span>  <span class="c1"># one device</span>
 </pre></div>
 </div>
 <p>Pass <code class="docutils literal notranslate"><span class="pre">None</span></code> to restore the built-in allocator:</p>
@@ -874,12 +874,12 @@ affected.</p>
 </pre></div>
 </div>
 <p>Use <a class="reference internal" href="../../api_reference/_generated/warp.get_device_allocator.html#warp.get_device_allocator" title="warp.get_device_allocator"><code class="xref py py-func docutils literal notranslate"><span class="pre">get_device_allocator()</span></code></a> to query the current allocator:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">allocator</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_device_allocator</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">allocator</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_device_allocator</span><span class="p">(</span><span class="s2">"cuda:0"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>For temporary allocator changes, use the <a class="reference internal" href="../../api_reference/_generated/warp.ScopedAllocator.html#warp.ScopedAllocator" title="warp.ScopedAllocator"><code class="xref py py-class docutils literal notranslate"><span class="pre">ScopedAllocator</span></code></a> context manager:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedAllocator</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">,</span> <span class="n">my_allocator</span><span class="p">):</span>
-    <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedAllocator</span><span class="p">(</span><span class="s2">"cuda:0"</span><span class="p">,</span> <span class="n">my_allocator</span><span class="p">):</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda:0"</span><span class="p">)</span>
 <span class="c1"># Original allocator is restored here</span>
 </pre></div>
 </div>
@@ -905,7 +905,7 @@ before CPU code accesses them.</p>
 before choosing a CUDA device. Warp invokes it under the target device’s CUDA
 context, which must support CUDA managed memory:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">managed</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">CudaManagedAllocator</span><span class="p">()</span>
-<span class="n">device</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_device</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">device</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_device</span><span class="p">(</span><span class="s2">"cuda:0"</span><span class="p">)</span>
 
 <span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedAllocator</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">managed</span><span class="p">):</span>
     <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
@@ -971,7 +971,7 @@ PyTorch’s cache, implement a small custom allocator that calls
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">TorchCachingAllocator</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Route Warp CUDA array allocations through PyTorch.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Route Warp CUDA array allocations through PyTorch."""</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_active_allocations</span> <span class="o">=</span> <span class="p">{}</span>
@@ -998,11 +998,11 @@ PyTorch’s cache, implement a small custom allocator that calls
 
         <span class="n">allocated_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_active_allocations</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ptr</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">allocated_size</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unrecognized allocation pointer </span><span class="si">{</span><span class="n">ptr</span><span class="si">:</span><span class="s2">#x</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Unrecognized allocation pointer </span><span class="si">{</span><span class="n">ptr</span><span class="si">:</span><span class="s2">#x</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">allocated_size</span> <span class="o">!=</span> <span class="n">size_in_bytes</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Allocation size mismatch for pointer </span><span class="si">{</span><span class="n">ptr</span><span class="si">:</span><span class="s2">#x</span><span class="si">}</span><span class="s2">: &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;allocated </span><span class="si">{</span><span class="n">allocated_size</span><span class="si">}</span><span class="s2">, deallocating </span><span class="si">{</span><span class="n">size_in_bytes</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="sa">f</span><span class="s2">"Allocation size mismatch for pointer </span><span class="si">{</span><span class="n">ptr</span><span class="si">:</span><span class="s2">#x</span><span class="si">}</span><span class="s2">: "</span>
+                <span class="sa">f</span><span class="s2">"allocated </span><span class="si">{</span><span class="n">allocated_size</span><span class="si">}</span><span class="s2">, deallocating </span><span class="si">{</span><span class="n">size_in_bytes</span><span class="si">}</span><span class="s2">"</span>
             <span class="p">)</span>
 
         <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_active_allocations</span><span class="p">[</span><span class="n">ptr</span><span class="p">]</span>
@@ -1012,7 +1012,7 @@ PyTorch’s cache, implement a small custom allocator that calls
 <span class="n">allocator</span> <span class="o">=</span> <span class="n">TorchCachingAllocator</span><span class="p">()</span>
 <span class="n">wp</span><span class="o">.</span><span class="n">set_cuda_allocator</span><span class="p">(</span><span class="n">allocator</span><span class="p">)</span>
 <span class="k">try</span><span class="p">:</span>
-    <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda:0"</span><span class="p">)</span>
 <span class="k">finally</span><span class="p">:</span>
     <span class="n">wp</span><span class="o">.</span><span class="n">set_cuda_allocator</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
 </pre></div>
@@ -1046,7 +1046,7 @@ routes array allocations through RMM.</p>
 <span class="n">wp</span><span class="o">.</span><span class="n">set_cuda_allocator</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">AllocatorRmm</span><span class="p">())</span>
 
 <span class="c1"># Now both frameworks share the same memory pool</span>
-<span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda:0"</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
@@ -1064,11 +1064,11 @@ CUDA managed memory.</p>
 <h3>Launch Device Versus Allocation Device<a class="headerlink" href="#launch-device-versus-allocation-device" title="Link to this heading">#</a></h3>
 <p>The launch device determines where a kernel runs, and the array device describes
 where the array allocation lives:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">cpu_array</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1024</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
-<span class="n">gpu_array</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1024</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">cpu_array</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1024</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cpu"</span><span class="p">)</span>
+<span class="n">gpu_array</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1024</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda:0"</span><span class="p">)</span>
 
-<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">cpu_array</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">cpu_array</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
-<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">gpu_array</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">gpu_array</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">cpu_array</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">cpu_array</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cpu"</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">gpu_array</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">gpu_array</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda:0"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>The same-device pattern works on all supported systems. Passing an array from
@@ -1144,8 +1144,8 @@ property directly before CPU code reads or writes GPU-resident managed memory.</
 <h3>GPU Kernels Using CPU Arrays<a class="headerlink" href="#gpu-kernels-using-cpu-arrays" title="Link to this heading">#</a></h3>
 <p>When <code class="docutils literal notranslate"><span class="pre">device.is_cpu_memory_access_from_gpu_supported</span></code> is true, a GPU kernel can
 directly read or write a CPU array:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">device</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_device</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
-<span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1024</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">device</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_device</span><span class="p">(</span><span class="s2">"cuda:0"</span><span class="p">)</span>
+<span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1024</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cpu"</span><span class="p">)</span>
 
 <span class="k">if</span> <span class="n">device</span><span class="o">.</span><span class="n">is_cpu_memory_access_from_gpu_supported</span><span class="p">:</span>
     <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
@@ -1161,7 +1161,7 @@ will report a runtime error such as an illegal memory access.</p>
 <section id="cpu-code-using-gpu-resident-data">
 <h3>CPU Code Using GPU-Resident Data<a class="headerlink" href="#cpu-code-using-gpu-resident-data" title="Link to this heading">#</a></h3>
 <p>CPU access to GPU-resident managed memory is a separate capability:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">device</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_device</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">device</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_device</span><span class="p">(</span><span class="s2">"cuda:0"</span><span class="p">)</span>
 <span class="k">if</span> <span class="n">device</span><span class="o">.</span><span class="n">is_gpu_memory_access_from_cpu_supported</span><span class="p">:</span>
     <span class="o">...</span>
 </pre></div>
@@ -1172,8 +1172,8 @@ allocations. This is true whether the array comes from Warp’s <a class="refere
 allocator</span></a> or the built-in default CUDA allocator. For
 those arrays, use an explicit copy before CPU code reads or writes the data:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1024</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
-<span class="n">a_cpu</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
-<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">cpu_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a_cpu</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a_cpu</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+<span class="n">a_cpu</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s2">"cpu"</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">cpu_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a_cpu</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a_cpu</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cpu"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>For explicit CUDA managed-memory arrays, use the allocator construction in
@@ -1206,8 +1206,8 @@ buffers. Warp atomics do not make overlapping CPU/GPU updates safe.</p>
 <h3>Checking a Concrete Array with <code class="docutils literal notranslate"><span class="pre">wp.can_access()</span></code><a class="headerlink" href="#checking-a-concrete-array-with-wp-can-access" title="Link to this heading">#</a></h3>
 <p>The function <a class="reference internal" href="../../api_reference/_generated/warp.can_access.html#warp.can_access" title="warp.can_access"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.can_access()</span></code></a> answers whether code running on one device
 can directly access a specific Warp array:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">launch_device</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_device</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
-<span class="n">data</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">1024</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">launch_device</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_device</span><span class="p">(</span><span class="s2">"cuda:0"</span><span class="p">)</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">1024</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cpu"</span><span class="p">)</span>
 
 <span class="k">if</span> <span class="n">wp</span><span class="o">.</span><span class="n">can_access</span><span class="p">(</span><span class="n">launch_device</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
     <span class="o">...</span>
@@ -1223,11 +1223,11 @@ peer access for default CUDA allocations and memory-pool access for mempool
 allocations.</p>
 <p>CPU access to managed arrays is hardware-dependent. Check a specific managed
 array before CPU code reads or writes it directly:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">wp</span><span class="o">.</span><span class="n">can_access</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">,</span> <span class="n">a</span><span class="p">):</span>
-    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">cpu_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">wp</span><span class="o">.</span><span class="n">can_access</span><span class="p">(</span><span class="s2">"cpu"</span><span class="p">,</span> <span class="n">a</span><span class="p">):</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">cpu_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cpu"</span><span class="p">)</span>
 <span class="k">else</span><span class="p">:</span>
-    <span class="n">a_cpu</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
-    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">cpu_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a_cpu</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a_cpu</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+    <span class="n">a_cpu</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s2">"cpu"</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">cpu_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a_cpu</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a_cpu</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cpu"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">wp.can_access(&quot;cpu&quot;,</span> <span class="pre">a)</span></code> returns <code class="docutils literal notranslate"><span class="pre">True</span></code> for a managed CUDA array only when
@@ -1259,8 +1259,8 @@ argument must be a concrete Warp array instance. Annotation-only arrays such as
 <h3>Checking Coarse Device Access with <code class="docutils literal notranslate"><span class="pre">Device.can_access()</span></code><a class="headerlink" href="#checking-coarse-device-access-with-device-can-access" title="Link to this heading">#</a></h3>
 <p>The method <a class="reference internal" href="../../api_reference/_generated/warp.Device.html#warp.Device.can_access" title="warp.Device.can_access"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Device.can_access()</span></code></a> is a coarse device-level query for cases
 where no concrete array is available:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">launch_device</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_device</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
-<span class="n">array_device</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_device</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">launch_device</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_device</span><span class="p">(</span><span class="s2">"cuda:0"</span><span class="p">)</span>
+<span class="n">array_device</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_device</span><span class="p">(</span><span class="s2">"cpu"</span><span class="p">)</span>
 
 <span class="k">if</span> <span class="n">launch_device</span><span class="o">.</span><span class="n">can_access</span><span class="p">(</span><span class="n">array_device</span><span class="p">):</span>
     <span class="o">...</span>
@@ -1325,7 +1325,7 @@ passed objects exposing this protocol. Advanced users who know such an
 allocation is valid are responsible for ensuring that the launch device can
 legally access the pointer.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">launch_array_access_mode</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">LaunchArrayAccessMode</span><span class="o">.</span><span class="n">CHECKED</span>
-<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda:0"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p><a class="reference internal" href="../../api_reference/_generated/warp.config.launch_array_access_mode.html#warp.config.launch_array_access_mode" title="warp.config.launch_array_access_mode"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.launch_array_access_mode</span></code></a> can add launch overhead in
@@ -1504,8 +1504,8 @@ CPU/GPU platforms.</p>
   
 
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
-<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67"></script>
 
 
   <footer class="bd-footer">
