@@ -14,7 +14,7 @@ def array2d_augassign_kernel(x: wp.array2d(dtype=float), y: wp.array2d(dtype=flo
 
 class CompileModule:
     repeat = 10  # Number of samples to run
-    number = 1  # Number of measurements to make between a single setup and teardown
+    number = 1  # Number of timed calls per sample
 
     def setup(self):
         wp.init()
