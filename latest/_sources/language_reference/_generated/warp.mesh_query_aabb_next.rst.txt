@@ -8,9 +8,16 @@
       :python: false
       :differentiable: false
 
-   Advance a mesh AABB query to the next overlapping triangle and report whether one was found.
+   Advance an AABB or sphere mesh query to the next matching triangle.
    
-   .. note:: This is an alias for :func:`mesh_query_next`.
+   This function is retained for compatibility. Prefer :func:`mesh_query_next` for new code and
+   query-type-independent traversal.
+   
+   :param query: The query to advance
+   :param index: Output; receives the zero-based face index of the current result
+   
+   :returns: ``True`` if another matching triangle was found, otherwise ``False``.
+   
 
 .. function:: warp._src.lang.mesh_query_aabb_next(query: _MeshQuerySphere, index: int32) -> bool
    :noindex:
@@ -20,9 +27,16 @@
       :python: false
       :differentiable: false
 
-   Advance a sphere mesh query to the next matching triangle.
+   Advance an AABB or sphere mesh query to the next matching triangle.
    
-   .. note:: This is an alias for :func:`mesh_query_next`.
+   This function is retained for compatibility. Prefer :func:`mesh_query_next` for new code and
+   query-type-independent traversal.
+   
+   :param query: The query to advance
+   :param index: Output; receives the zero-based face index of the current result
+   
+   :returns: ``True`` if another matching triangle was found, otherwise ``False``.
+   
 
 .. function:: warp._src.lang.mesh_query_aabb_next(query: MeshQuery, index: int32) -> bool
    :noindex:
@@ -32,6 +46,13 @@
       :python: false
       :differentiable: false
 
-   Advance a mesh query to the next matching triangle.
+   Advance an AABB or sphere mesh query to the next matching triangle.
    
-   .. note:: This is an alias for :func:`mesh_query_next`.
+   This function is retained for compatibility. Prefer :func:`mesh_query_next` for new code and
+   query-type-independent traversal.
+   
+   :param query: The query to advance
+   :param index: Output; receives the zero-based face index of the current result
+   
+   :returns: ``True`` if another matching triangle was found, otherwise ``False``.
+   

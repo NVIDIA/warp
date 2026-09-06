@@ -563,11 +563,20 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../../api_reference/_generated/warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></span></span><a class="headerlink" href="#warp._src.lang.mesh_query_aabb_next" title="Link to this definition">#</a></dt>
-<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="differentiable" data-wp-value="false"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li></ul><p>Advance a mesh AABB query to the next overlapping triangle and report whether one was found.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>This is an alias for <a class="reference internal" href="warp.mesh_query_next.html#warp._src.lang.mesh_query_next" title="warp._src.lang.mesh_query_next"><code class="xref py py-func docutils literal notranslate"><span class="pre">mesh_query_next()</span></code></a>.</p>
-</div>
+<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="differentiable" data-wp-value="false"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li></ul><p>Advance an AABB or sphere mesh query to the next matching triangle.</p>
+<p>This function is retained for compatibility. Prefer <a class="reference internal" href="warp.mesh_query_next.html#warp._src.lang.mesh_query_next" title="warp._src.lang.mesh_query_next"><code class="xref py py-func docutils literal notranslate"><span class="pre">mesh_query_next()</span></code></a> for new code and
+query-type-independent traversal.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>query</strong> – The query to advance</p></li>
+<li><p><strong>index</strong> – Output; receives the zero-based face index of the current result</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if another matching triangle was found, otherwise <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -580,11 +589,20 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../../api_reference/_generated/warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></span></span></dt>
-<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="differentiable" data-wp-value="false"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li></ul><p>Advance a sphere mesh query to the next matching triangle.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>This is an alias for <a class="reference internal" href="warp.mesh_query_next.html#warp._src.lang.mesh_query_next" title="warp._src.lang.mesh_query_next"><code class="xref py py-func docutils literal notranslate"><span class="pre">mesh_query_next()</span></code></a>.</p>
-</div>
+<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="differentiable" data-wp-value="false"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li></ul><p>Advance an AABB or sphere mesh query to the next matching triangle.</p>
+<p>This function is retained for compatibility. Prefer <a class="reference internal" href="warp.mesh_query_next.html#warp._src.lang.mesh_query_next" title="warp._src.lang.mesh_query_next"><code class="xref py py-func docutils literal notranslate"><span class="pre">mesh_query_next()</span></code></a> for new code and
+query-type-independent traversal.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>query</strong> – The query to advance</p></li>
+<li><p><strong>index</strong> – Output; receives the zero-based face index of the current result</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if another matching triangle was found, otherwise <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -597,11 +615,20 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../../api_reference/_generated/warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></span></span></dt>
-<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="differentiable" data-wp-value="false"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li></ul><p>Advance a mesh query to the next matching triangle.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>This is an alias for <a class="reference internal" href="warp.mesh_query_next.html#warp._src.lang.mesh_query_next" title="warp._src.lang.mesh_query_next"><code class="xref py py-func docutils literal notranslate"><span class="pre">mesh_query_next()</span></code></a>.</p>
-</div>
+<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="differentiable" data-wp-value="false"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li></ul><p>Advance an AABB or sphere mesh query to the next matching triangle.</p>
+<p>This function is retained for compatibility. Prefer <a class="reference internal" href="warp.mesh_query_next.html#warp._src.lang.mesh_query_next" title="warp._src.lang.mesh_query_next"><code class="xref py py-func docutils literal notranslate"><span class="pre">mesh_query_next()</span></code></a> for new code and
+query-type-independent traversal.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>query</strong> – The query to advance</p></li>
+<li><p><strong>index</strong> – Output; receives the zero-based face index of the current result</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if another matching triangle was found, otherwise <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p>
+</dd>
+</dl>
 </dd></dl>
 
 </section>
