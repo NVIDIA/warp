@@ -111,6 +111,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.cuda.test_pinned import TestPinned
     from warp.tests.cuda.test_streams import TestStreams
     from warp.tests.cuda.test_texture import TestTexture
+    from warp.tests.cuda.test_texture_compiler import TestTextureCompiler
     from warp.tests.cuda.test_unified_memory import TestUnifiedMemory
     from warp.tests.deterministic.test_deterministic_backward import TestDeterministicBackward
     from warp.tests.deterministic.test_deterministic_counter import TestDeterministicCounter
@@ -439,6 +440,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestTape,
         TestTemplateLaunchBounds,
         TestTexture,
+        TestTextureCompiler,
         TestTile,
         TestTileAtomicBitwise,
         TestTileCholesky,
