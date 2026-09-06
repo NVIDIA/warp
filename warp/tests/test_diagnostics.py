@@ -89,7 +89,7 @@ class TestDiagnostics(unittest.TestCase):
         self.assertEqual(devices[0]["alias"], "cpu")
 
     def test_print_diagnostics_optional_frameworks(self):
-        """Optional framework keys match installed packages."""
+        """Verify that optional framework keys match installed packages."""
         info, _ = self.get_print_diagnostics_output()
         for pkg in ("torch", "jax", "jaxlib"):
             try:

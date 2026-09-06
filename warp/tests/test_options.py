@@ -154,7 +154,7 @@ def test_options_opt_level(test, device):
 
 
 def test_options_cpu_compiler_flags_generic(test, device):
-    """Compiling with cpu_compiler_flags="" (generic target) should not crash."""
+    """Verify that compiling with cpu_compiler_flags="" (generic target) should not crash."""
     if device.is_cuda:
         return
 
@@ -172,7 +172,7 @@ def test_options_cpu_compiler_flags_generic(test, device):
 
 
 def test_options_cpu_compiler_flags_native(test, device):
-    """Compiling with cpu_compiler_flags="-march=native" should not crash."""
+    """Verify that compiling with cpu_compiler_flags="-march=native" should not crash."""
     if device.is_cuda:
         return
 
@@ -190,7 +190,7 @@ def test_options_cpu_compiler_flags_native(test, device):
 
 
 def test_options_opt_level_hash(test, device):
-    """Changing warp.config.optimization_level must change the module hash."""
+    """Verify that changing warp.config.optimization_level must change the module hash."""
     module = wp.get_module(__name__)
 
     # Ensure module option is None so the config value is used
@@ -228,13 +228,13 @@ devices = get_test_devices()
 
 class TestOptions(unittest.TestCase):
     def test_set_module_options_via_runpy(self):
-        """set_module_options/get_module_options should work when the calling module is run via runpy."""
+        """Verify that set_module_options/get_module_options should work when the calling module is run via runpy."""
         namespace = runpy.run_module("warp.tests.aux_test_options_runpy", run_name="__main__")
         self.assertTrue(namespace["_result"]["success"])
         self.assertFalse(namespace["_result"]["enable_backward"])
 
     def test_set_module_options_via_runpy_preimported(self):
-        """set_module_options should target __main__ even when the module is already in sys.modules.
+        """Verify that set_module_options should target __main__ even when the module is already in sys.modules.
 
         When a launcher does ``runpy.run_module(mod, run_name="__main__")``,
         the module may already be imported under its qualified name.
@@ -260,7 +260,7 @@ class TestOptions(unittest.TestCase):
         self.assertFalse(main_module.options["enable_backward"])
 
     def test_cpu_target_output_name_differentiation(self):
-        """CPU output filenames must distinguish LLVM and native ISA targets."""
+        """Verify that CPU output filenames must distinguish LLVM and native ISA targets."""
         module = wp.get_module(__name__)
         device = wp.get_device("cpu")
 
@@ -294,7 +294,7 @@ class TestOptions(unittest.TestCase):
             module.options["cpu_compiler_flags"] = old_flags
 
     def test_cpu_isa_aot_warning(self):
-        """compile_aot_module for CPU with -march=native must emit a portability warning."""
+        """Verify that compile_aot_module for CPU with -march=native must emit a portability warning."""
         module = wp.get_module(__name__)
         old_flags = wp.config.cpu_compiler_flags
 
@@ -320,7 +320,7 @@ class TestOptions(unittest.TestCase):
             wp._src.logger._warnings_seen.update(saved_warnings)
 
     def test_cpu_isa_aot_warning_metadata(self):
-        """compile_aot_module CPU -march=native warning must carry warning metadata."""
+        """Verify that compile_aot_module CPU -march=native warning must carry warning metadata."""
         module = wp.get_module(__name__)
         old_flags = wp.config.cpu_compiler_flags
 
@@ -349,7 +349,7 @@ class TestOptions(unittest.TestCase):
             module.hashers.clear()
 
     def test_get_caller_module_name_error_message(self):
-        """_get_caller_module_name should raise RuntimeError with a helpful message when all fallbacks fail."""
+        """Verify that _get_caller_module_name should raise RuntimeError with a helpful message when all fallbacks fail."""
         # Build a fake frame where all fallback steps fail:
         # - __name__ is None (not a normal module or __main__)
         # - __spec__ is None

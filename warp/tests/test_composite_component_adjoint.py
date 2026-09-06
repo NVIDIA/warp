@@ -416,8 +416,10 @@ class TestCompositeComponentAdjoint(unittest.TestCase):
         assert_np_equal(x.grad.numpy(), np.ones((rows, cols), dtype=np.float32))
 
     def test_vec3_subscript_write(self):
-        """``arr[i][1] = rhs`` — vec3 scalar subscript (exercises the
-        ``[k]`` access path rather than ``.y`` attribute)."""
+        """Test a ``vec3`` scalar subscript write through ``arr[i][1]``.
+
+        Exercise the ``[k]`` access path rather than the ``.y`` attribute.
+        """
         n = 3
         x = wp.array(np.full(n, 4.0, dtype=np.float32), dtype=wp.float32, requires_grad=True)
         y = wp.zeros(n, dtype=wp.vec3, requires_grad=True)
@@ -431,7 +433,7 @@ class TestCompositeComponentAdjoint(unittest.TestCase):
         assert_np_equal(x.grad.numpy(), np.ones(n, dtype=np.float32))
 
     def test_quaternion_subscript_write(self):
-        """``arr[i][0] = rhs`` — quat scalar subscript via ``operator[]``."""
+        """Test ``arr[i][0] = rhs`` — quat scalar subscript via ``operator[]``."""
         n = 2
         x = wp.array(np.full(n, 0.25, dtype=np.float32), dtype=wp.float32, requires_grad=True)
         y = wp.zeros(n, dtype=wp.quatf, requires_grad=True)
@@ -445,8 +447,10 @@ class TestCompositeComponentAdjoint(unittest.TestCase):
         assert_np_equal(x.grad.numpy(), np.ones(n, dtype=np.float32))
 
     def test_nested_struct_scalar_field(self):
-        """``arr[i].inner.a = rhs`` — two-level struct chain terminating
-        in a scalar field."""
+        """Test a scalar-field write through a two-level struct chain.
+
+        Assign through ``arr[i].inner.a``.
+        """
         n = 3
         src = wp.array(np.ones(n, dtype=np.float32), dtype=wp.float32, requires_grad=True)
         out = wp.zeros(n, dtype=Outer, requires_grad=True)
@@ -460,9 +464,11 @@ class TestCompositeComponentAdjoint(unittest.TestCase):
         assert_np_equal(src.grad.numpy(), np.ones(n, dtype=np.float32))
 
     def test_struct_mat_element_write(self):
-        """``arr[i].m[r, c] = rhs`` — struct field descending into a
-        matrix element (composite-valued field crossed into, terminating
-        in a scalar slot)."""
+        """Test a matrix-element write through a struct field.
+
+        Assign through ``arr[i].m[r, c]``, crossing a composite-valued field
+        before terminating in a scalar slot.
+        """
         n = 2
         src = wp.array(np.full(n, 7.0, dtype=np.float32), dtype=wp.float32, requires_grad=True)
         out = wp.zeros(n, dtype=MatHolder, requires_grad=True)
@@ -476,8 +482,10 @@ class TestCompositeComponentAdjoint(unittest.TestCase):
         assert_np_equal(src.grad.numpy(), np.ones(n, dtype=np.float32))
 
     def test_struct_vec_component_write(self):
-        """``arr[i].position.y = rhs`` — struct field descending into a
-        vec3 component."""
+        """Test a vector-component write through a struct field.
+
+        Assign through ``arr[i].position.y``.
+        """
         n = 3
         src = wp.array(np.full(n, 2.0, dtype=np.float32), dtype=wp.float32, requires_grad=True)
         out = wp.zeros(n, dtype=StateStruct, requires_grad=True)

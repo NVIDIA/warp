@@ -651,7 +651,7 @@ def test_tile_shared_simple_reduction_sub(test, device):
 
 
 def test_tile_scatter_add_basic(test, device):
-    """Each thread adds its index + 1 to a distinct slot; verify values."""
+    """Verify distinct per-thread scatter additions."""
     TILE_SIZE = 64
 
     @wp.kernel(enable_backward=False, module="unique")
@@ -668,7 +668,7 @@ def test_tile_scatter_add_basic(test, device):
 
 
 def test_tile_scatter_add_conflicting(test, device):
-    """All threads add 1.0 to the same index; verify the sum equals block_dim."""
+    """Sum conflicting per-thread scatter additions at one index."""
     TILE_SIZE = 64
 
     @wp.kernel(enable_backward=False, module="unique")
@@ -687,7 +687,7 @@ def test_tile_scatter_add_conflicting(test, device):
 
 
 def test_tile_scatter_add_partial(test, device):
-    """Only even-indexed threads add; odd slots stay zero."""
+    """Verify that only even-indexed threads add; odd slots stay zero."""
     TILE_SIZE = 64
 
     @wp.kernel(enable_backward=False, module="unique")
@@ -709,7 +709,7 @@ def test_tile_scatter_add_partial(test, device):
 
 
 def test_tile_scatter_add_2d(test, device):
-    """Scatter-add with a 2D shared tile."""
+    """Test scatter-add with a 2D shared tile."""
     ROWS = 8
     COLS = 8
     BLOCK_DIM = ROWS * COLS
@@ -731,7 +731,7 @@ def test_tile_scatter_add_2d(test, device):
 
 
 def test_tile_scatter_add_grad_basic(test, device):
-    """Gradient flows through tile_scatter_add: output = input * 2 via shared tile."""
+    """Verify that gradient flows through tile_scatter_add: output = input * 2 via shared tile."""
     TILE_SIZE = 64
 
     @wp.kernel(module="unique")
@@ -756,7 +756,7 @@ def test_tile_scatter_add_grad_basic(test, device):
 
 
 def test_tile_scatter_add_grad_partial(test, device):
-    """has_value gates the adjoint: only participating threads receive gradients."""
+    """Verify that has_value gates the adjoint: only participating threads receive gradients."""
     TILE_SIZE = 64
 
     @wp.kernel(module="unique")
@@ -782,7 +782,7 @@ def test_tile_scatter_add_grad_partial(test, device):
 
 
 def test_tile_scatter_add_grad_conflicting(test, device):
-    """Gradient fans out correctly when multiple threads scatter-add to the same index."""
+    """Verify that gradient fans out correctly when multiple threads scatter-add to the same index."""
     TILE_SIZE = 64
 
     @wp.kernel(module="unique")
@@ -814,7 +814,7 @@ def test_tile_scatter_add_grad_conflicting(test, device):
 
 
 def test_tile_scatter_add_non_atomic_1d(test, device):
-    """Non-atomic scatter-add with unique indices per thread (1D)."""
+    """Test non-atomic scatter-add with unique indices per thread (1D)."""
     TILE_SIZE = 64
 
     @wp.kernel(enable_backward=False, module="unique")
@@ -831,7 +831,7 @@ def test_tile_scatter_add_non_atomic_1d(test, device):
 
 
 def test_tile_scatter_add_non_atomic_2d(test, device):
-    """Non-atomic scatter-add with unique (row, col) per thread (2D)."""
+    """Test non-atomic scatter-add with unique (row, col) per thread (2D)."""
     ROWS = 4
     COLS = 16
     TILE_SIZE = ROWS * COLS
@@ -853,7 +853,7 @@ def test_tile_scatter_add_non_atomic_2d(test, device):
 
 
 def test_tile_scatter_add_non_atomic_grad(test, device):
-    """Gradient flows correctly through non-atomic tile_scatter_add."""
+    """Verify that gradient flows correctly through non-atomic tile_scatter_add."""
     TILE_SIZE = 64
 
     @wp.kernel(module="unique")
@@ -878,7 +878,7 @@ def test_tile_scatter_add_non_atomic_grad(test, device):
 
 
 def test_tile_shared_coalesced_mat33(test, device):
-    """Shared tile load/store of mat33 exercises the coalesced byte-copy path (sizeof(mat33) = 36 > 16)."""
+    """Verify that shared tile load/store of mat33 exercises the coalesced byte-copy path (sizeof(mat33) = 36 > 16)."""
     TILE_SIZE = 8
     BLOCK_DIM = 64
 
@@ -901,7 +901,7 @@ def test_tile_shared_coalesced_mat33(test, device):
 
 
 def test_tile_shared_coalesced_mat44(test, device):
-    """Shared tile load/store of mat44 exercises the coalesced byte-copy path (sizeof(mat44) = 64 > 16)."""
+    """Verify that shared tile load/store of mat44 exercises the coalesced byte-copy path (sizeof(mat44) = 64 > 16)."""
     TILE_SIZE = 4
     BLOCK_DIM = 64
 
@@ -976,7 +976,7 @@ def test_tile_register_from_shared_reassign(test, device):
 
 
 def test_tile_scatter_masked_basic(test, device):
-    """Each thread writes its index; verify all values are visible after the call."""
+    """Verify distinct per-thread masked scatter writes."""
     TILE_SIZE = 64
 
     @wp.kernel(enable_backward=False, module="unique")
@@ -993,7 +993,7 @@ def test_tile_scatter_masked_basic(test, device):
 
 
 def test_tile_scatter_masked_partial(test, device):
-    """Only even-indexed threads write; odd slots stay zero."""
+    """Verify that only even-indexed threads write; odd slots stay zero."""
     TILE_SIZE = 64
 
     @wp.kernel(enable_backward=False, module="unique")
@@ -1015,7 +1015,7 @@ def test_tile_scatter_masked_partial(test, device):
 
 
 def test_tile_scatter_masked_cross_thread(test, device):
-    """Each thread reads a neighbor's slot, verifying the sync barrier works."""
+    """Verify that each thread reads a neighbor's slot, verifying the sync barrier works."""
     TILE_SIZE = 64
 
     @wp.kernel(enable_backward=False, module="unique")
@@ -1034,7 +1034,7 @@ def test_tile_scatter_masked_cross_thread(test, device):
 
 
 def test_tile_scatter_masked_2d(test, device):
-    """tile_scatter_masked works with a 2-D shared tile."""
+    """Verify that tile_scatter_masked works with a 2-D shared tile."""
     ROWS = 8
     COLS = 8
     BLOCK_DIM = ROWS * COLS
@@ -1056,7 +1056,7 @@ def test_tile_scatter_masked_2d(test, device):
 
 
 def test_tile_scatter_masked_3d(test, device):
-    """tile_scatter_masked works with a 3-D shared tile."""
+    """Verify that tile_scatter_masked works with a 3-D shared tile."""
     D0 = 4
     D1 = 4
     D2 = 4
@@ -1080,7 +1080,7 @@ def test_tile_scatter_masked_3d(test, device):
 
 
 def test_tile_scatter_masked_4d(test, device):
-    """tile_scatter_masked works with a 4-D shared tile."""
+    """Verify that tile_scatter_masked works with a 4-D shared tile."""
     D0 = 2
     D1 = 2
     D2 = 2
@@ -1106,7 +1106,7 @@ def test_tile_scatter_masked_4d(test, device):
 
 
 def test_tile_scatter_masked_grad_basic(test, device):
-    """Gradient flows through tile_scatter_masked: output = input * 2 via shared tile."""
+    """Verify that gradient flows through tile_scatter_masked: output = input * 2 via shared tile."""
     TILE_SIZE = 64
 
     @wp.kernel(module="unique")
@@ -1131,7 +1131,7 @@ def test_tile_scatter_masked_grad_basic(test, device):
 
 
 def test_tile_scatter_masked_grad_partial(test, device):
-    """has_value gates the adjoint: only writing threads receive gradients."""
+    """Verify that has_value gates the adjoint: only writing threads receive gradients."""
     TILE_SIZE = 64
 
     @wp.kernel(module="unique")
@@ -1157,7 +1157,7 @@ def test_tile_scatter_masked_grad_partial(test, device):
 
 
 def test_tile_scatter_masked_grad_cross_thread(test, device):
-    """Gradient flows correctly when threads read each other's slots."""
+    """Verify that gradient flows correctly when threads read each other's slots."""
     TILE_SIZE = 64
 
     @wp.kernel(module="unique")
@@ -1186,7 +1186,7 @@ def test_tile_scatter_masked_grad_cross_thread(test, device):
 
 
 def test_tile_custom_grad_extra_shared(test, device):
-    """A custom func_grad whose backward needs more shared memory than its elementwise forward."""
+    """Test a custom func_grad whose backward needs more shared memory than its elementwise forward."""
     NUM_TILES = 4
     M = 4
     EXTRA = 8  # backward-only shared scratch is EXTRA x EXTRA, dwarfing the M x M forward tile
@@ -1231,7 +1231,7 @@ def test_tile_custom_grad_extra_shared(test, device):
 
 
 def test_tile_custom_grad_shared_forward(test, device):
-    """A custom func_grad on a function whose forward itself owns a shared tile.
+    """Test a custom func_grad on a function whose forward itself owns a shared tile.
 
     The forward frame's auto-generated adjoint is replaced by the custom grad, so in the
     backward it only ever runs as a replay (no gradient buffers): the reservation must be

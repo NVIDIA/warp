@@ -101,7 +101,7 @@ except OSError:
 
 
 def get_selected_cuda_test_devices(mode: str | None = None):
-    """Returns a list of CUDA devices according the selected ``mode`` behavior.
+    """Return CUDA devices according to the selected ``mode`` behavior.
 
     If ``mode`` is ``None``, the ``global test_mode`` value will be used and
     this list will be a subset of the devices returned from ``get_test_devices()``.
@@ -143,7 +143,7 @@ def get_selected_cuda_test_devices(mode: str | None = None):
 
 
 def get_test_devices(mode: str | None = None):
-    """Returns a list of devices based on the mode selected.
+    """Return devices based on the selected mode.
 
     Args:
         mode: The testing mode to specify which devices to include. If not provided or ``None``, the
@@ -399,7 +399,7 @@ def skip_test_func(self):
 
 
 def sanitize_identifier(s):
-    """replace all non-identifier characters with '_'"""
+    """Replace all non-identifier characters with underscores."""
 
     s = str(s)
     if s.isidentifier():
@@ -492,7 +492,7 @@ def write_junit_results(
     tests_skipped: int,
     test_duration: float,
 ):
-    """Write a JUnit XML from our report data
+    """Write a JUnit XML from our report data.
 
     The report file is needed for GitLab to add test reports in merge requests.
     """

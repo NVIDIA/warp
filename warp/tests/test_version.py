@@ -68,11 +68,11 @@ class TestVerifyLibraryVersion(unittest.TestCase):
         return types.SimpleNamespace(**symbols)
 
     def test_matching_version_does_not_raise(self):
-        """A version equal to the expected one passes without raising."""
+        """Verify that a version equal to the expected one passes without raising."""
         _verify_library_version(self._lib(wp_version=lambda: b"1.2.3"), "warp", "wp_version", "1.2.3")
 
     def test_mismatched_version_raises(self):
-        """A decoded-but-different version raises RuntimeError naming both versions."""
+        """Verify that a decoded-but-different version raises RuntimeError naming both versions."""
         lib = self._lib(wp_warp_clang_version=lambda: b"9.9.9")
         with self.assertRaisesRegex(RuntimeError, "Version mismatch") as cm:
             _verify_library_version(lib, "warp-clang", "wp_warp_clang_version", "1.2.3")
@@ -82,7 +82,7 @@ class TestVerifyLibraryVersion(unittest.TestCase):
         self.assertIn("multiple Warp installations", message)
 
     def test_missing_symbol_raises(self):
-        """A missing version symbol raises, naming the symbol and omitting the expected version."""
+        """Verify that a missing version symbol raises, naming the symbol and omitting the expected version."""
         with self.assertRaisesRegex(RuntimeError, "does not export") as cm:
             _verify_library_version(self._lib(), "warp", "wp_version", "1.2.3")
         message = str(cm.exception)
@@ -90,19 +90,19 @@ class TestVerifyLibraryVersion(unittest.TestCase):
         self.assertNotIn("1.2.3", message)
 
     def test_null_return_raises(self):
-        """A NULL (None) return raises an empty-version error, omitting the expected version."""
+        """Verify that a NULL (None) return raises an empty-version error, omitting the expected version."""
         with self.assertRaisesRegex(RuntimeError, "empty version") as cm:
             _verify_library_version(self._lib(wp_version=lambda: None), "warp", "wp_version", "1.2.3")
         self.assertNotIn("1.2.3", str(cm.exception))
 
     def test_empty_return_raises(self):
-        """An empty version string raises an empty-version error, omitting the expected version."""
+        """Verify that an empty version string raises an empty-version error, omitting the expected version."""
         with self.assertRaisesRegex(RuntimeError, "empty version") as cm:
             _verify_library_version(self._lib(wp_version=lambda: b""), "warp", "wp_version", "1.2.3")
         self.assertNotIn("1.2.3", str(cm.exception))
 
     def test_call_exception_is_wrapped_and_chained(self):
-        """Any exception from the call/decode is wrapped (no expected version) and chained via __cause__."""
+        """Verify that any exception from the call/decode is wrapped (no expected version) and chained via __cause__."""
 
         def boom():
             raise ValueError("native call failed")

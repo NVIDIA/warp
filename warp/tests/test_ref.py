@@ -41,7 +41,7 @@ class TestRef(unittest.TestCase):
         self.assertEqual(hash(r1), hash(r2))
 
     def test_ref_rejects_literal_argument(self):
-        """Passing a literal to a wp.ref[T] parameter must raise WarpCodegenError."""
+        """Verify that passing a literal to a wp.ref[T] parameter must raise WarpCodegenError."""
 
         @wp.func
         def takes_ref(x: wp.ref[wp.int32]):
@@ -56,7 +56,7 @@ class TestRef(unittest.TestCase):
             wp.launch(bad_literal_kernel, dim=1)
 
     def test_ref_rejects_function_return_argument(self):
-        """Passing a function-call result to a wp.ref[T] parameter must fail."""
+        """Verify that passing a function-call result to a wp.ref[T] parameter must fail."""
 
         @wp.func
         def make_val() -> wp.int32:
@@ -75,7 +75,7 @@ class TestRef(unittest.TestCase):
             wp.launch(bad_return_kernel, dim=1, inputs=[wp.zeros(1, dtype=wp.int32)])
 
     def test_ref_rejects_function_return_struct_field_argument(self):
-        """Passing a field of a function-call result to wp.ref[T] must fail."""
+        """Verify that passing a field of a function-call result to wp.ref[T] must fail."""
 
         with self.assertRaises(WarpCodegenError):
 
@@ -87,7 +87,7 @@ class TestRef(unittest.TestCase):
             wp.launch(bad_return_field_kernel, dim=1, outputs=[wp.zeros(1, dtype=wp.float32)])
 
     def test_ref_rejects_constant_local_argument(self):
-        """Passing a compile-time constant local to wp.ref[T] must fail."""
+        """Verify that passing a compile-time constant local to wp.ref[T] must fail."""
 
         @wp.func
         def takes_int_ref(x: wp.ref[wp.int32], value: wp.int32):
@@ -116,7 +116,7 @@ class TestRef(unittest.TestCase):
             wp.launch(bad_float_constant_ref_kernel, dim=1)
 
     def test_ref_backward_enabled_kernel_raises(self):
-        """Calling a wp.ref[T] @wp.func from a backward-enabled kernel must raise."""
+        """Verify that calling a wp.ref[T] @wp.func from a backward-enabled kernel must raise."""
 
         @wp.func
         def ref_func(x: wp.ref[wp.float32]):
@@ -136,7 +136,7 @@ class TestRef(unittest.TestCase):
             tape.backward()
 
     def test_ref_shared_helper_backward_raises(self):
-        """Calling a wp.ref[T] @wp.func from a backward-enabled kernel via a shared helper must raise.
+        """Verify that calling a wp.ref[T] @wp.func from a backward-enabled kernel via a shared helper must raise.
 
         The helper may be built (and memoized) through the ``enable_backward=False`` kernel
         first; validation runs at the end of the module build, once backward use is final,
@@ -164,7 +164,7 @@ class TestRef(unittest.TestCase):
             wp.launch(forward_only_kernel, dim=1, inputs=[arr])
 
     def test_native_ref_without_adj_snippet_backward_raises(self):
-        """Calling a wp.ref[T] @wp.func_native without adj_snippet from backward must raise."""
+        """Verify that calling a wp.ref[T] @wp.func_native without adj_snippet from backward must raise."""
 
         @wp.func_native("x = x + 1.0f;")
         def native_no_adj(x: wp.ref[wp.float32]): ...
@@ -183,7 +183,7 @@ class TestRef(unittest.TestCase):
             tape.backward()
 
     def test_ref_overload_differing_only_by_refness_rejected(self):
-        """Warp function overloads cannot differ only by wp.ref[T]."""
+        """Verify that Warp function overloads cannot differ only by wp.ref[T]."""
 
         @wp.func
         def refness_only_overload(x: wp.int32) -> wp.int32:
@@ -196,7 +196,7 @@ class TestRef(unittest.TestCase):
                 x += 1
 
     def test_address_of_rejects_arithmetic_expression(self):
-        """wp.address_of() must reject value temporaries."""
+        """Verify that wp.address_of() must reject value temporaries."""
 
         with self.assertRaises(WarpCodegenError):
 
@@ -209,7 +209,7 @@ class TestRef(unittest.TestCase):
             wp.launch(bad_address_of_expression_kernel, dim=1, inputs=[wp.zeros(1, dtype=wp.uint64)])
 
     def test_address_of_rejects_temporary_vector_component(self):
-        """wp.address_of() must reject component extracts from temporaries."""
+        """Verify that wp.address_of() must reject component extracts from temporaries."""
 
         with self.assertRaises(WarpCodegenError):
 
@@ -220,7 +220,7 @@ class TestRef(unittest.TestCase):
             wp.launch(bad_address_of_component_kernel, dim=1, inputs=[wp.zeros(1, dtype=wp.uint64)])
 
     def test_address_of_rejects_function_return_struct_field(self):
-        """wp.address_of() must reject fields of function-call results."""
+        """Verify that wp.address_of() must reject fields of function-call results."""
 
         with self.assertRaises(WarpCodegenError):
 
@@ -231,7 +231,7 @@ class TestRef(unittest.TestCase):
             wp.launch(bad_address_of_return_field_kernel, dim=1, inputs=[wp.zeros(1, dtype=wp.uint64)])
 
     def test_address_of_rejects_constant_local(self):
-        """wp.address_of() must reject compile-time constant locals."""
+        """Verify that wp.address_of() must reject compile-time constant locals."""
 
         with self.assertRaisesRegex(WarpCodegenError, r"x = wp\.int32\(0\)"):
 
@@ -252,13 +252,13 @@ class TestRef(unittest.TestCase):
             wp.launch(bad_float_constant_address_of_kernel, dim=1, inputs=[wp.zeros(1, dtype=wp.uint64)])
 
     def test_by_value_unchanged(self):
-        """By-value functions still copy - the original is not mutated."""
+        """Verify that by-value functions still copy - the original is not mutated."""
         result = wp.zeros(2, dtype=wp.int32, device="cpu")
         wp.launch(kernel_by_value_unchanged, dim=1, inputs=[result], device="cpu")
         np.testing.assert_array_equal(result.numpy(), [10, 11])
 
     def test_ref_augassign_user_operator_result_type_checked(self):
-        """User-defined += results must match the wp.ref[T] value type."""
+        """Verify that user-defined += results must match the wp.ref[T] value type."""
 
         @wp.func
         def add(x: wp.float32, y: wp.float32) -> wp.int32:
@@ -310,7 +310,7 @@ def kernel_increment_local(result: wp.array[wp.int32]):
 
 
 def test_ref_mutates_local(test, device):
-    """Basic end-to-end: kernel calls @wp.func with wp.ref[T], mutation is visible."""
+    """Propagate a local reference mutation through a Warp function."""
     result = wp.zeros(1, dtype=wp.int32, device=device)
     wp.launch(kernel_increment_local, dim=1, inputs=[result], device=device)
     np.testing.assert_array_equal(result.numpy(), [1])
@@ -328,7 +328,7 @@ def kernel_add_to_array_element(arr: wp.array[wp.float32]):
 
 
 def test_ref_mutates_array_element(test, device):
-    """Passing an array element by reference and mutating it."""
+    """Test passing an array element by reference and mutating it."""
     arr = wp.array([1.0, 2.0, 3.0], dtype=wp.float32, device=device)
     wp.launch(kernel_add_to_array_element, dim=3, inputs=[arr], device=device)
     np.testing.assert_allclose(arr.numpy(), [11.0, 12.0, 13.0])
@@ -353,7 +353,7 @@ def kernel_increment_struct_field(result: wp.array[wp.int32]):
 
 
 def test_ref_mutates_struct_field(test, device):
-    """Passing a struct by reference and mutating a field."""
+    """Test passing a struct by reference and mutating a field."""
     result = wp.zeros(1, dtype=wp.int32, device=device)
     wp.launch(kernel_increment_struct_field, dim=1, inputs=[result], device=device)
     np.testing.assert_array_equal(result.numpy(), [6])
@@ -372,7 +372,7 @@ def kernel_double_via_ref(result: wp.array[wp.float32]):
 
 
 def test_ref_simple_assignment_mutates(test, device):
-    """Simple assignment (x = expr) to a ref param mutates the original storage."""
+    """Verify that simple assignment to a reference mutates its original storage."""
     result = wp.zeros(1, dtype=wp.float32, device=device)
     wp.launch(kernel_double_via_ref, dim=1, inputs=[result], device=device)
     np.testing.assert_allclose(result.numpy(), [6.0])
@@ -396,7 +396,7 @@ def kernel_ref_forwarding(result: wp.array[wp.int32]):
 
 
 def test_ref_forwarding(test, device):
-    """A wp.ref[T] parameter can be forwarded to another wp.ref[T] parameter."""
+    """Verify that a wp.ref[T] parameter can be forwarded to another wp.ref[T] parameter."""
     result = wp.zeros(1, dtype=wp.int32, device=device)
     wp.launch(kernel_ref_forwarding, dim=1, inputs=[result], device=device)
     np.testing.assert_array_equal(result.numpy(), [1])
@@ -465,21 +465,21 @@ def kernel_ref_tuple_unpack_mixed_targets(out: wp.array[wp.float32]):
 
 
 def test_ref_tuple_unpack_assignment(test, device):
-    """Tuple-unpack assignment to wp.ref[T] parameters mutates caller storage."""
+    """Verify that tuple unpacking into references mutates caller storage."""
     out = wp.zeros(2, dtype=wp.float32, device=device)
     wp.launch(kernel_ref_tuple_unpack, dim=1, outputs=[out], device=device)
     np.testing.assert_allclose(out.numpy(), [3.0, 4.0])
 
 
 def test_ref_tuple_unpack_assignment_swaps(test, device):
-    """Tuple-unpack assignment to wp.ref[T] parameters preserves RHS value order."""
+    """Verify that tuple-unpack assignment to wp.ref[T] parameters preserves RHS value order."""
     out = wp.zeros(2, dtype=wp.float32, device=device)
     wp.launch(kernel_ref_tuple_unpack_swap, dim=1, outputs=[out], device=device)
     np.testing.assert_allclose(out.numpy(), [4.0, 3.0])
 
 
 def test_ref_tuple_unpack_assignment_mixed_targets(test, device):
-    """Tuple-unpack assignment snapshots ref RHS values before binding any target."""
+    """Verify that tuple-unpack assignment snapshots ref RHS values before binding any target."""
     out = wp.zeros(6, dtype=wp.float32, device=device)
     wp.launch(kernel_ref_tuple_unpack_mixed_targets, dim=1, outputs=[out], device=device)
     np.testing.assert_allclose(out.numpy(), [9.0, 2.0, 7.0, 1.0, 9.0, 2.0])
@@ -497,7 +497,7 @@ def kernel_array_tuple_unpack_adjoint(
 
 
 def test_array_tuple_unpack_preserves_adjoint(test, device):
-    """Ordinary array-element tuple unpack must preserve reference semantics for autodiff.
+    """Verify that ordinary array-element tuple unpack must preserve reference semantics for autodiff.
 
     The tuple-unpack snapshot must NOT load array-element RHS values into
     plain copies when no target is a wp.ref[T] parameter, or the adjoint
@@ -534,7 +534,7 @@ def kernel_native_ref_param(result: wp.array[wp.int32]):
 
 
 def test_native_ref_param_alias(test, device):
-    """A func_native wp.ref[T] parameter is snippet-visible as a C++ reference."""
+    """Verify that a func_native wp.ref[T] parameter is snippet-visible as a C++ reference."""
     result = wp.zeros(2, dtype=wp.int32, device=device)
     wp.launch(kernel_native_ref_param, dim=1, inputs=[result], device=device)
     np.testing.assert_array_equal(result.numpy(), [15, 5])
@@ -601,7 +601,7 @@ def kernel_native_ref_adjoint_array_nested_slice(
 
 
 def test_native_ref_param_adjoint_local(test, device):
-    """A func_native ref parameter with adj_snippet can receive a local adjoint."""
+    """Verify that a func_native ref parameter with adj_snippet can receive a local adjoint."""
     x = wp.array([1.0, 2.0, 3.0], dtype=wp.float32, device=device, requires_grad=True)
     out = wp.zeros(3, dtype=wp.float32, device=device)
 
@@ -616,7 +616,7 @@ def test_native_ref_param_adjoint_local(test, device):
 
 
 def test_native_ref_param_adjoint_array(test, device):
-    """A func_native ref parameter with adj_snippet can receive an array-element adjoint."""
+    """Verify that a func_native ref parameter with adj_snippet can receive an array-element adjoint."""
     x = wp.array([1.0, 2.0, 3.0], dtype=wp.float32, device=device, requires_grad=True)
     out = wp.zeros(3, dtype=wp.float32, device=device)
 
@@ -631,7 +631,7 @@ def test_native_ref_param_adjoint_array(test, device):
 
 
 def test_native_ref_param_adjoint_array_2d_direct(test, device):
-    """A native ref adjoint can target a direct element of a 2D array."""
+    """Verify that a native ref adjoint can target a direct element of a 2D array."""
     x = wp.array([1.0, 2.0, 3.0], dtype=wp.float32, device=device, requires_grad=True)
     dst = wp.zeros((3, 1), dtype=wp.float32, device=device, requires_grad=True)
     out = wp.zeros(3, dtype=wp.float32, device=device)
@@ -654,7 +654,7 @@ def test_native_ref_param_adjoint_array_2d_direct(test, device):
 
 
 def test_native_ref_param_adjoint_array_slice(test, device):
-    """A native ref adjoint can target an element through an array slice/view."""
+    """Verify that a native ref adjoint can target an element through an array slice/view."""
     x = wp.array([1.0, 2.0, 3.0], dtype=wp.float32, device=device, requires_grad=True)
     dst = wp.zeros((3, 1), dtype=wp.float32, device=device, requires_grad=True)
     out = wp.zeros(3, dtype=wp.float32, device=device)
@@ -677,7 +677,7 @@ def test_native_ref_param_adjoint_array_slice(test, device):
 
 
 def test_native_ref_param_adjoint_array_nested_slice(test, device):
-    """A native ref adjoint can target an element through nested array views."""
+    """Verify that a native ref adjoint can target an element through nested array views."""
     x = wp.array([1.0, 2.0, 3.0], dtype=wp.float32, device=device, requires_grad=True)
     dst = wp.zeros((3, 1), dtype=wp.float32, device=device, requires_grad=True)
     out = wp.zeros(3, dtype=wp.float32, device=device)
@@ -760,7 +760,7 @@ def kernel_native_ref_adjoint_struct_field(x: wp.array[wp.float32], out: wp.arra
 
 
 def test_native_ref_param_adjoint_struct_field(test, device):
-    """A func_native ref parameter with adj_snippet can receive a struct-field adjoint."""
+    """Verify that a func_native ref parameter with adj_snippet can receive a struct-field adjoint."""
     x = wp.array([1.0, 2.0, 3.0], dtype=wp.float32, device=device, requires_grad=True)
     out = wp.zeros(3, dtype=wp.float32, device=device)
 
@@ -782,7 +782,7 @@ def kernel_ref_mutates_struct_array_field(boxes: wp.array[RefBox], out: wp.array
 
 
 def test_ref_mutates_struct_array_field(test, device):
-    """A field of a struct array element can be passed to wp.ref[T]."""
+    """Verify that a field of a struct array element can be passed to wp.ref[T]."""
     boxes = wp.zeros(3, dtype=RefBox, device=device)
     out = wp.zeros(3, dtype=wp.float32, device=device)
     wp.launch(kernel_ref_mutates_struct_array_field, dim=3, inputs=[boxes], outputs=[out], device=device)
@@ -797,7 +797,7 @@ def kernel_ref_mutates_nested_struct_array_field(outers: wp.array[RefOuter], out
 
 
 def test_ref_mutates_nested_struct_array_field(test, device):
-    """Nested fields of struct array elements can be passed to wp.ref[T]."""
+    """Verify that nested fields of struct array elements can be passed to wp.ref[T]."""
     outers = wp.zeros(3, dtype=RefOuter, device=device)
     out = wp.zeros(3, dtype=wp.float32, device=device)
     wp.launch(kernel_ref_mutates_nested_struct_array_field, dim=3, inputs=[outers], outputs=[out], device=device)
@@ -814,7 +814,7 @@ def kernel_ref_mutates_composite_struct_array_fields(boxes: wp.array[RefComposit
 
 
 def test_ref_mutates_composite_struct_array_fields(test, device):
-    """Vector and matrix slots in struct array elements can be passed to wp.ref[T]."""
+    """Verify that vector and matrix slots in struct array elements can be passed to wp.ref[T]."""
     boxes = wp.zeros(3, dtype=RefCompositeBox, device=device)
     out = wp.zeros(6, dtype=wp.float32, device=device)
     wp.launch(kernel_ref_mutates_composite_struct_array_fields, dim=3, inputs=[boxes], outputs=[out], device=device)
@@ -834,7 +834,7 @@ def kernel_ref_augassign_composite_subscripts(out: wp.array[wp.float32]):
 
 
 def test_ref_augassign_composite_subscripts(test, device):
-    """Subscripted += through a wp.ref[T] vector or matrix mutates caller storage."""
+    """Verify that subscripted reference addition mutates caller storage."""
     out = wp.zeros(4, dtype=wp.float32, device=device)
     wp.launch(kernel_ref_augassign_composite_subscripts, dim=1, outputs=[out], device=device)
     np.testing.assert_allclose(out.numpy(), [2.0, 2.0, 2.0, 2.0])
@@ -854,7 +854,7 @@ def kernel_ref_parameter_nested_field_forwarding(x: wp.array[wp.float32], out: w
 
 
 def test_ref_parameter_nested_field_forwarding(test, device):
-    """A nested field of a ref parameter can be forwarded to another ref parameter."""
+    """Verify that a nested field of a ref parameter can be forwarded to another ref parameter."""
     x = wp.array([1.0, 2.0, 3.0], dtype=wp.float32, device=device)
     out = wp.zeros(3, dtype=wp.float32, device=device)
     wp.launch(kernel_ref_parameter_nested_field_forwarding, dim=3, inputs=[x], outputs=[out], device=device)
@@ -871,7 +871,7 @@ def kernel_ref_copy_from_component_is_local(out: wp.array[wp.float32]):
 
 
 def test_ref_copy_from_component_is_local(test, device):
-    """A local copy of a component is addressable without aliasing the source component."""
+    """Verify that a local copy of a component is addressable without aliasing the source component."""
     out = wp.zeros(2, dtype=wp.float32, device=device)
     wp.launch(kernel_ref_copy_from_component_is_local, dim=1, outputs=[out], device=device)
     np.testing.assert_allclose(out.numpy(), [1.0, 9.0])
@@ -891,7 +891,7 @@ def kernel_ref_mutates_negative_subscripts(out: wp.array[wp.float32]):
 
 
 def test_ref_mutates_negative_subscripts(test, device):
-    """Negative vector and matrix subscripts use native wp::index semantics."""
+    """Verify that negative vector and matrix subscripts use native wp::index semantics."""
     out = wp.zeros(4, dtype=wp.float32, device=device)
     wp.launch(kernel_ref_mutates_negative_subscripts, dim=1, outputs=[out], device=device)
     np.testing.assert_allclose(out.numpy(), [10.0, 30.0, 31.0, 20.0])
@@ -918,7 +918,7 @@ def kernel_native_ref_adjoint_components(x: wp.array[wp.float32], out: wp.array[
 
 
 def test_native_ref_param_adjoint_components(test, device):
-    """A native ref adjoint can target local composite components."""
+    """Verify that a native ref adjoint can target local composite components."""
     x = wp.array([1.0, 2.0, 3.0], dtype=wp.float32, device=device, requires_grad=True)
     out = wp.zeros(12, dtype=wp.float32, device=device)
 
@@ -948,7 +948,7 @@ def kernel_native_ref_adjoint_struct_array_components(
 
 
 def test_native_ref_param_adjoint_struct_array_components(test, device):
-    """A native ref adjoint can target components inside struct array elements."""
+    """Verify that a native ref adjoint can target components inside struct array elements."""
     x = wp.array([1.0, 2.0, 3.0], dtype=wp.float32, device=device, requires_grad=True)
     boxes = wp.zeros(3, dtype=RefCompositeBox, device=device, requires_grad=True)
     out = wp.zeros(6, dtype=wp.float32, device=device)
@@ -981,7 +981,7 @@ def kernel_native_ref_adjoint_nested_struct_array_field(
 
 
 def test_native_ref_param_adjoint_nested_struct_array_field(test, device):
-    """A native ref adjoint can target a nested field inside a struct array element."""
+    """Verify that a native ref adjoint can target a nested field inside a struct array element."""
     x = wp.array([1.0, 2.0, 3.0], dtype=wp.float32, device=device, requires_grad=True)
     outers = wp.zeros(3, dtype=RefOuter, device=device, requires_grad=True)
     out = wp.zeros(3, dtype=wp.float32, device=device)
@@ -1013,7 +1013,7 @@ def kernel_ref_parameter_struct_field_forwarding(x: wp.array[wp.float32], out: w
 
 
 def test_ref_parameter_struct_field_forwarding(test, device):
-    """A ref parameter's field can be forwarded to another ref parameter."""
+    """Verify that a ref parameter's field can be forwarded to another ref parameter."""
     x = wp.array([1.0, 2.0, 3.0], dtype=wp.float32, device=device)
     out = wp.zeros(3, dtype=wp.float32, device=device)
 
@@ -1041,7 +1041,7 @@ def kernel_address_of_local(result: wp.array[wp.int32]):
 
 
 def test_address_of_local(test, device):
-    """wp.address_of() on a local variable passes its address to a native snippet."""
+    """Verify that wp.address_of() on a local variable passes its address to a native snippet."""
     result = wp.zeros(1, dtype=wp.int32, device=device)
     wp.launch(kernel_address_of_local, dim=1, inputs=[result], device=device)
     np.testing.assert_array_equal(result.numpy(), [42])
@@ -1060,7 +1060,7 @@ def kernel_address_of_array_element(arr: wp.array[wp.float32]):
 
 
 def test_address_of_array_element(test, device):
-    """wp.address_of(arr[i]) passes element address to a native snippet."""
+    """Verify that wp.address_of(arr[i]) passes element address to a native snippet."""
     arr = wp.array([1.0, 2.0, 3.0], dtype=wp.float32, device=device)
     wp.launch(kernel_address_of_array_element, dim=3, inputs=[arr], device=device)
     np.testing.assert_allclose(arr.numpy(), [2.0, 3.0, 4.0])
@@ -1075,7 +1075,7 @@ def kernel_address_of_struct_field(result: wp.array[wp.float32]):
 
 
 def test_address_of_struct_field(test, device):
-    """wp.address_of(s.field) passes the address of struct field storage."""
+    """Verify that wp.address_of(s.field) passes the address of struct field storage."""
     result = wp.zeros(1, dtype=wp.float32, device=device)
     wp.launch(kernel_address_of_struct_field, dim=1, inputs=[result], device=device)
     np.testing.assert_allclose(result.numpy(), [5.0])
@@ -1089,7 +1089,7 @@ def kernel_address_of_vector_component(result: wp.array[wp.float32]):
 
 
 def test_address_of_vector_component(test, device):
-    """wp.address_of(v.y) passes the address of vector component storage."""
+    """Verify that wp.address_of(v.y) passes the address of vector component storage."""
     result = wp.zeros(1, dtype=wp.float32, device=device)
     wp.launch(kernel_address_of_vector_component, dim=1, outputs=[result], device=device)
     np.testing.assert_allclose(result.numpy(), [3.0])
@@ -1104,7 +1104,7 @@ def kernel_address_of_nested_struct_array_field(outers: wp.array[RefOuter], resu
 
 
 def test_address_of_nested_struct_array_field(test, device):
-    """wp.address_of() supports nested lvalues rooted at struct array elements."""
+    """Verify that wp.address_of() supports nested lvalues rooted at struct array elements."""
     outers = wp.zeros(3, dtype=RefOuter, device=device)
     result = wp.zeros(3, dtype=wp.float32, device=device)
     wp.launch(kernel_address_of_nested_struct_array_field, dim=3, inputs=[outers], outputs=[result], device=device)
@@ -1289,7 +1289,7 @@ def kernel_ref_mutates_quat_component(out: wp.array[wp.float32]):
 
 
 def test_ref_mutates_quat_component(test, device):
-    """A quaternion component can be passed to wp.ref[T] and mutated."""
+    """Verify that a quaternion component can be passed to wp.ref[T] and mutated."""
     out = wp.zeros(4, dtype=wp.float32, device=device)
     wp.launch(kernel_ref_mutates_quat_component, dim=1, outputs=[out], device=device)
     np.testing.assert_allclose(out.numpy(), [1.0, 9.0, 3.0, 4.0])
@@ -1303,7 +1303,7 @@ def kernel_ref_mutates_struct_array_quat_component(boxes: wp.array[RefCompositeB
 
 
 def test_ref_mutates_struct_array_quat_component(test, device):
-    """A quaternion component in a struct array element can be passed to wp.ref[T]."""
+    """Verify that a quaternion component in a struct array element can be passed to wp.ref[T]."""
     boxes = wp.zeros(3, dtype=RefCompositeBox, device=device)
     out = wp.zeros(3, dtype=wp.float32, device=device)
     wp.launch(kernel_ref_mutates_struct_array_quat_component, dim=3, inputs=[boxes], outputs=[out], device=device)
@@ -1320,7 +1320,7 @@ def kernel_ref_copy_from_quat_component_is_local(out: wp.array[wp.float32]):
 
 
 def test_ref_copy_from_quat_component_is_local(test, device):
-    """A local copy of a quat component is addressable without aliasing the source."""
+    """Verify that a local copy of a quat component is addressable without aliasing the source."""
     out = wp.zeros(2, dtype=wp.float32, device=device)
     wp.launch(kernel_ref_copy_from_quat_component_is_local, dim=1, outputs=[out], device=device)
     np.testing.assert_allclose(out.numpy(), [4.0, 9.0])
@@ -1337,7 +1337,7 @@ def kernel_ref_mutates_quat_subscript(out: wp.array[wp.float32]):
 
 
 def test_ref_mutates_quat_subscript(test, device):
-    """A quaternion subscript can be passed to wp.ref[T] and mutated."""
+    """Verify that a quaternion subscript can be passed to wp.ref[T] and mutated."""
     out = wp.zeros(4, dtype=wp.float32, device=device)
     wp.launch(kernel_ref_mutates_quat_subscript, dim=1, outputs=[out], device=device)
     np.testing.assert_allclose(out.numpy(), [1.0, 2.0, 9.0, 4.0])
@@ -1378,7 +1378,7 @@ def kernel_ref_mutates_transform_position_component(out: wp.array[wp.float32]):
 
 
 def test_ref_mutates_transform_position_component(test, device):
-    """A transform position component can be passed to wp.ref[T] and mutated."""
+    """Verify that a transform position component can be passed to wp.ref[T] and mutated."""
     out = wp.zeros(3, dtype=wp.float32, device=device)
     wp.launch(kernel_ref_mutates_transform_position_component, dim=1, outputs=[out], device=device)
     np.testing.assert_allclose(out.numpy(), [9.0, 2.0, 3.0])
@@ -1392,7 +1392,7 @@ def kernel_ref_mutates_struct_array_transform_position(boxes: wp.array[RefCompos
 
 
 def test_ref_mutates_struct_array_transform_position(test, device):
-    """A transform position component in a struct array element can be passed to wp.ref[T]."""
+    """Verify that a transform position component in a struct array element can be passed to wp.ref[T]."""
     boxes = wp.zeros(3, dtype=RefCompositeBox, device=device)
     out = wp.zeros(3, dtype=wp.float32, device=device)
     wp.launch(
@@ -1415,7 +1415,7 @@ def kernel_ref_copy_from_transform_position_is_local(out: wp.array[wp.float32]):
 
 
 def test_ref_copy_from_transform_position_is_local(test, device):
-    """A local copy of a transform position component is addressable without aliasing the source."""
+    """Verify that a local copy of a transform position component is addressable without aliasing the source."""
     out = wp.zeros(2, dtype=wp.float32, device=device)
     wp.launch(kernel_ref_copy_from_transform_position_is_local, dim=1, outputs=[out], device=device)
     np.testing.assert_allclose(out.numpy(), [1.0, 9.0])

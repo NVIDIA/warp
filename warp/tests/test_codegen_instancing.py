@@ -861,7 +861,7 @@ def closure_func_nonoverload_kernel(
 
 
 def test_create_func_closure_nonoverload(test, device):
-    """Test creating function closures that are not overloads of each other (overloads are grouped by scope, not globally)."""
+    """Test independent function closures that share a name."""
     with wp.ScopedDevice(device):
         ai = wp.zeros(2, dtype=int)
         af = wp.zeros(2, dtype=float)
@@ -1165,7 +1165,7 @@ def name_clash_func_kernel(a: wp.array[int]):
 
 
 def test_name_clash_func(test, device):
-    """Test using identically named functions from different modules"""
+    """Test identically named functions from different modules."""
     with wp.ScopedDevice(device):
         a = wp.zeros(4, dtype=int)
         wp.launch(name_clash_func_kernel, dim=1, inputs=[a])
@@ -1240,10 +1240,10 @@ def test_name_clash_struct_ctor(test, device):
 
 
 def test_create_kernel_loop(test, device):
-    """
-    Test creating a kernel in a loop.  The kernel is always the same,
-    so the module hash doesn't change and the module shouldn't be reloaded.
-    This test ensures that the kernel hooks are found for new duplicate kernels.
+    """Find kernel hooks for duplicate kernels created in a loop.
+
+    The kernel remains the same, so its module hash does not change and the
+    module should not be reloaded.
     """
 
     with wp.ScopedDevice(device):
@@ -1310,9 +1310,10 @@ def test_garbage_collection(test, device):
 
 
 def test_create_kernel_loop_hooks_bounded(test, device):
-    """
-    Relaunching an identical recreated kernel must not grow the per-ModuleExec hook cache
-    (regression for an Adjoint leak when hooks were keyed by kernel.adj).
+    """Keep recreated-kernel hook caches bounded across launches.
+
+    Keying hooks by kernel adjoints previously leaked an entry for each recreated
+    kernel.
     """
 
     def make():
@@ -1382,8 +1383,9 @@ _empty_cell_kernel = _make_kernel_with_empty_cell()
 
 
 def test_empty_closure_cell(test, device):
-    """Test that a kernel with an empty closure cell at hash time does not
-    raise ``ValueError: Cell is empty``
+    """Test hashing a kernel with an empty closure cell.
+
+    Ensure hashing does not raise ``ValueError: Cell is empty``.
     """
     with wp.ScopedDevice(device):
         a = wp.zeros(1, dtype=int)

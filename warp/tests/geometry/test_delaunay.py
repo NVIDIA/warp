@@ -104,7 +104,7 @@ def _convex_fan_mesh(n, a=2.0, b=1.0, seed=0):
 
 
 def _star_mesh(num_points=6):
-    """A non-convex star-shaped polygon triangulated as a fan from an added center vertex.
+    """Create a non-convex star polygon triangulated from its center.
 
     The polygon is star-shaped about the origin, so the center fan is a valid
     triangulation of a non-convex simple polygon. Its boundary edges are shared

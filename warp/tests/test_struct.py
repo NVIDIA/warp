@@ -654,7 +654,7 @@ def test_dependent_module_import(c: DependentModuleImport_C):
 
 
 def test_struct_array_hash(test, device):
-    # Ensure that the memory address of the struct does not affect the content hash
+    """Exclude struct memory addresses from content hashes."""
 
     @wp.struct
     class ContentHashStruct:
@@ -724,9 +724,10 @@ def compute_loss_from_struct_array_kernel(s_in: StructWithArray, loss_val: wp.ar
 
 
 def test_struct_array_gc_direct_assignment(test, device):
-    """
-    Tests that an array assigned to a struct (with no other direct Python
-    references) is not garbage collected prematurely.
+    """Keep an array alive when its only Python owner is a struct.
+
+    Assign the array directly to the struct and verify it is not garbage collected
+    prematurely.
     """
     wp.init()
 
@@ -755,9 +756,9 @@ def test_struct_array_gc_direct_assignment(test, device):
 
 
 def test_struct_array_gc_requires_grad_toggle(test, device):
-    """
-    Tests that an array within a struct is not garbage collected prematurely
-    when its requires_grad flag is toggled, and that backward pass works.
+    """Keep a struct-owned array alive when toggling ``requires_grad``.
+
+    Verify that the backward pass works after changing the flag.
     """
     wp.init()
 
@@ -888,7 +889,7 @@ class TestStruct(unittest.TestCase):
         wp.launch(check_default_attributes_kernel, dim=1, inputs=[s])
 
     def test_struct_field_type_preservation(self):
-        """Assigning a Warp scalar to a struct field should preserve the Warp type."""
+        """Verify that assigning a Warp scalar to a struct field should preserve the Warp type."""
 
         @wp.struct
         class ScalarStruct:
@@ -993,7 +994,7 @@ class TestStruct(unittest.TestCase):
                     s.values = wrong_ndim
 
     def test_struct_scalar_to_composite_field_rejected(self):
-        """A single value assigned to a composite struct field must be rejected."""
+        """Verify that a single value assigned to a composite struct field must be rejected."""
 
         @wp.struct
         class CompositeFieldStruct:
@@ -1038,7 +1039,7 @@ class TestStruct(unittest.TestCase):
         assert_np_equal(np.array(s.v), np.zeros(3, dtype=np.float32))
 
     def test_struct_numpy_and_boolean_scalar_to_composite_field_deprecated(self):
-        """NumPy numeric scalars and Python, NumPy, and Warp Booleans must warn while promotion is supported."""
+        """Verify that NumPy numeric scalars and Python, NumPy, and Warp Booleans must warn while promotion is supported."""
 
         @wp.struct
         class CompositeFieldStruct:

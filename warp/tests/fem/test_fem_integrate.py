@@ -427,7 +427,7 @@ def test_grad_decomposition(test, device):
 
 
 def test_interpolate_reduction(test, device):
-    # Test reduction modes of fem.interpolate() on a discontinuous field
+    """Test interpolation reduction modes on a discontinuous field."""
     with wp.ScopedDevice(device):
         N = 2  # 2x2 cells → 3x3 vertices
         geo = fem.Grid2D(res=wp.vec2i(N))

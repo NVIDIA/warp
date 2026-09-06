@@ -226,7 +226,7 @@ def _corrupt_apic_empty_branch_count(path, branch_name):
 
 
 def test_save_apic_false_error(test, device):
-    """capture_save() should raise when apic=False."""
+    """Verify that capture_save() should raise when apic=False."""
     n = 64
     a = wp.array(np.ones(n, dtype=np.float32), device=device)
     b = wp.zeros(n, dtype=float, device=device)
@@ -439,7 +439,9 @@ def test_save_load_round_trip(test, device):
 
 
 def test_save_load_capture_time_scratch_cuda(test, device):
-    """A buffer allocated via the bare wp.array(shape=...) constructor *during* a
+    """Treat capture-time CUDA allocations as graph-scoped scratch buffers.
+
+    A buffer allocated via the bare wp.array(shape=...) constructor *during* a
     CUDA APIC capture is graph-scoped. track_array marks it transient (keyed on this
     capture's apic_state) so capture_save serializes its size only and the rebuild
     regenerates it from the recorded kernels. A persistent array allocated *before* the
@@ -475,7 +477,9 @@ def test_save_load_capture_time_scratch_cuda(test, device):
 
 
 def test_apic_h2d_rejected_during_capture(test, device):
-    """Host-to-device transfers are not recorded into the APIC byte stream, so
+    """Reject host-to-device transfers during CUDA APIC capture.
+
+    Host-to-device transfers are not recorded into the APIC byte stream, so
     initializing a CUDA array from host data during an APIC capture cannot be reproduced on
     replay. wp.copy() from a host array and wp.array(data=..., device=cuda) must be rejected
     rather than silently producing an uninitialized region on load."""
@@ -494,7 +498,9 @@ def test_apic_h2d_rejected_during_capture(test, device):
 
 
 def test_apic_cuda_copy_gaps_rejected_during_capture(test, device):
-    """Copy variants with no APIC byte-stream representation must fail loudly under a CUDA
+    """Reject unrepresentable copy variants during CUDA APIC capture.
+
+    Copy variants with no APIC byte-stream representation must fail loudly under a CUDA
     APIC capture rather than silently dropping from the saved graph: a non-contiguous
     (indexed/strided) CUDA copy, and a device-to-host copy. Contiguous same-device D2D is
     recorded and unaffected."""
@@ -517,7 +523,9 @@ def test_apic_cuda_copy_gaps_rejected_during_capture(test, device):
 
 
 def test_apic_cuda_indexed_fill_rejected_during_capture(test, device):
-    """Indexed CUDA fill has no APIC byte-stream representation yet, so it must fail
+    """Reject indexed fills during CUDA APIC capture.
+
+    Indexed CUDA fill has no APIC byte-stream representation yet, so it must fail
     loudly instead of silently dropping from the saved graph."""
     base = wp.zeros(8, dtype=wp.float32, device=device)
     idx = wp.array([0, 2, 4, 6], dtype=wp.int32, device=device)
@@ -531,7 +539,9 @@ def test_apic_cuda_indexed_fill_rejected_during_capture(test, device):
 
 
 def test_apic_capture_while_body_raises_cleanup(test, device):
-    """A raising capture_while body must propagate cleanly and leave the device's
+    """Restore capture state when a ``capture_while`` body raises.
+
+    A raising capture_while body must propagate cleanly and leave the device's
     capture state consistent (parent graph restored, parent capture resumed, APIC recording
     torn down, no leaked branch) so a subsequent capture works. The broken capture is never
     launched -- its while node has an empty body and would loop forever."""
@@ -565,7 +575,9 @@ def test_apic_capture_while_body_raises_cleanup(test, device):
 
 
 def test_apic_capture_if_body_raises_cleanup(test, device):
-    """Companion to the capture_while case -- a raising capture_if branch body
+    """Restore capture state when a ``capture_if`` body raises.
+
+    Companion to the capture_while case -- a raising capture_if branch body
     propagates cleanly (branch rolled back, parent graph restored and capture resumed) and
     leaves the device reusable for a subsequent capture."""
     if device.is_cuda and not wp.is_conditional_graph_supported():
@@ -596,7 +608,7 @@ def test_apic_capture_if_body_raises_cleanup(test, device):
 
 
 def test_bindings_param_update(test, device):
-    """set_param changes input, verify output changes."""
+    """Verify that parameter updates change graph output."""
     n = 128
     a = wp.array(np.ones(n, dtype=np.float32), device=device)
     b = wp.zeros(n, dtype=float, device=device)
@@ -718,7 +730,7 @@ def test_save_load_memset(test, device):
 
 
 def test_array_slicing(test, device):
-    """Array slices sharing a base allocation map to the same region."""
+    """Verify that array slices sharing a base allocation map to the same region."""
     n = 1024
     base_arr = wp.array(np.arange(n, dtype=np.float32), device=device)
     slice1 = base_arr[0:512]
@@ -743,7 +755,7 @@ def test_array_slicing(test, device):
 
 
 def test_complex_pipeline(test, device):
-    """Multi-stage pipeline: kernels + memcpy round-trip."""
+    """Round-trip a multistage kernel and memory-copy pipeline."""
     n = 128
     a = wp.array(np.ones(n, dtype=np.float32) * 2.0, device=device)
     b = wp.array(np.ones(n, dtype=np.float32) * 3.0, device=device)
@@ -786,7 +798,7 @@ def test_complex_pipeline(test, device):
 
 
 def test_internal_allocation(test, device):
-    """Array allocated inside capture scope, used by subsequent ops."""
+    """Test array allocated inside capture scope, used by subsequent ops."""
     n = 128
     input_data = wp.array(np.arange(n, dtype=np.float32) + 1.0, device=device)
     output_data = wp.zeros(n, dtype=float, device=device)
@@ -821,7 +833,7 @@ def test_internal_allocation(test, device):
 
 
 def test_multiple_internal_allocations(test, device):
-    """Multiple temporary arrays allocated inside capture scope."""
+    """Test multiple temporary arrays allocated inside capture scope."""
     n = 64
     input_data = wp.array(np.full(n, 2.0, dtype=np.float32), device=device)
     output_data = wp.zeros(n, dtype=float, device=device)
@@ -859,7 +871,7 @@ def test_multiple_internal_allocations(test, device):
 
 
 def test_apic_alloc_grow_during_capture(test, device):
-    """A NEW array allocated inside capture stays valid across multiple replays.
+    """Verify that a NEW array allocated inside capture stays valid across multiple replays.
 
     Mirrors the Newton SolverVBD pattern of growing a buffer during capture: the temporary is
     allocated while recording, and the captured graph must re-resolve its region against the
@@ -890,7 +902,7 @@ def test_apic_alloc_grow_during_capture(test, device):
 
 
 def test_cpu_graph_alloc_not_leaked_on_relaunch(test, device):
-    """In-graph allocations on CPU must not accumulate across relaunches.
+    """Verify that in-graph allocations on CPU must not accumulate across relaunches.
 
     CPU APIC allocates a graph's in-capture buffers once (at capture time) and reuses them
     on every replay -- APIC_OP_ALLOC is a no-op during replay and the backing array is
@@ -949,7 +961,7 @@ def test_cpu_graph_alloc_not_leaked_on_relaunch(test, device):
 
 
 def test_graph_execution_unchanged(test, device):
-    """Normal graph execution still works with apic=True."""
+    """Verify that normal graph execution still works with apic=True."""
     n = 1024
     input_data = wp.array(np.arange(n, dtype=np.float32), device=device)
     output_data = wp.zeros(n, dtype=float, device=device)
@@ -967,7 +979,7 @@ def test_graph_execution_unchanged(test, device):
 
 
 def test_save_load_with_param_update(test, device):
-    """Full round-trip with set_param on multiple kernels."""
+    """Round-trip parameter updates across multiple kernels."""
     n = 128
     a = wp.array(np.full(n, 2.0, dtype=np.float32), device=device)
     b = wp.array(np.full(n, 3.0, dtype=np.float32), device=device)
@@ -1039,7 +1051,7 @@ def test_save_load_memcpy_and_kernel(test, device):
 
 
 def test_cpu_graph_replay_after_array_refs_released(test, device):
-    """CPU APIC replay must retain owned arrays used during capture."""
+    """Verify that CPU APIC replay must retain owned arrays used during capture."""
     n = 32
     sentinel = -100.0
     src_values = np.arange(n, dtype=np.float32) + 1.0
@@ -1111,7 +1123,7 @@ def test_save_load_fill(test, device):
 
 
 def test_save_load_alloc_only(test, device):
-    """Allocation + memcpy inside capture, no kernel launches — tests apic_record_alloc round-trip."""
+    """Round-trip a captured allocation and memory copy without kernel launches."""
     n = 64
     src = wp.array(np.arange(n, dtype=np.float32) + 1.0, device=device)
 
@@ -1183,7 +1195,9 @@ def two_d_strided_kernel(
 
 
 def test_capture_2d_launch_minimal(test, device):
-    """Minimal repro of basic_conveyor's narrow_phase_find_mesh_triangle_overlaps_kernel
+    """Capture a two-dimensional launch with many parameters.
+
+    Minimal repro of basic_conveyor's narrow_phase_find_mesh_triangle_overlaps_kernel
     crash: 2D launch with 13 params (10 arrays + 1 scalar + 2 arrays), one of
     them potentially empty."""
     n = 23
@@ -1227,7 +1241,9 @@ def _tile_using_kernel(out: wp.array[float]):
 
 
 def test_capture_replay_with_tile_kernel_no_stack_overflow(test, device):
-    """Regression: a kernel that uses tile primitives allocates ~256 KB on
+    """Replay a tile kernel without overflowing the host stack.
+
+    Regression: a kernel that uses tile primitives allocates ~256 KB on
     the stack via tile_shared_storage_t. The APIC replay path used to keep
     sibling stack arrays (fwd_stack[512], adj_stack[512]) alongside the
     deep replay-call stack frame, which combined with the 256 KB the kernel
@@ -1251,7 +1267,7 @@ def test_capture_replay_with_tile_kernel_no_stack_overflow(test, device):
 
 
 def test_save_load_tiled_nondefault_block_dim(test, device):
-    """APIC save must copy the binary for the captured block_dim variant."""
+    """Verify that APIC save must copy the binary for the captured block_dim variant."""
     n = 32
     block_dim = 64
     out = wp.zeros(n, dtype=float, device=device)
@@ -1298,7 +1314,9 @@ def _vec3_after_int_kernel(
 
 
 def test_capture_replay_vec3_scalar_alignment(test, device):
-    """Regression: a vec3 param (size=12) appearing in the middle of a kernel
+    """Preserve scalar-parameter alignment after a ``vec3`` parameter.
+
+    Regression: a vec3 param (size=12) appearing in the middle of a kernel
     signature has alignof=4 in C++, but the replay packer used a size-based
     heuristic (>= 8 → align 8) that introduced 4 bytes of phantom padding.
     Every subsequent param shifted, so array data pointers were read from
@@ -1325,7 +1343,9 @@ def test_capture_replay_vec3_scalar_alignment(test, device):
 
 
 def test_capture_with_empty_array_input(test, device):
-    """An empty array (shape=(0,), arr.ptr is None) used as a kernel input
+    """Capture a kernel with an empty array input.
+
+    An empty array (shape=(0,), arr.ptr is None) used as a kernel input
     must not crash APIC capture in _find_base / track_array. This is the
     pattern Newton's narrow_phase hits with unused contact buffers."""
     n_out = 64
@@ -1407,7 +1427,9 @@ def big_struct_sum_kernel(s: BigStruct96, out: wp.array[float]):
 
 
 def test_capture_with_large_scalar_param(test, device):
-    """A by-value struct param > 64 B (e.g. Newton's contact-writer struct)
+    """Capture and replay a large by-value struct parameter.
+
+    A by-value struct param > 64 B (e.g. Newton's contact-writer struct)
     must capture and replay correctly via the per-launch scalar pool, both
     for in-memory replay and after a .wrp round-trip."""
     n = 8
@@ -1453,7 +1475,9 @@ def assign_kernel(x: wp.array[float], y: wp.array[float]):
 
 
 def test_capture_backward_consumes_y_grad(test, device):
-    """The adjoint replay path must consume an output array's seeded grad the
+    """Consume seeded output gradients during adjoint replay.
+
+    The adjoint replay path must consume an output array's seeded grad the
     same way live ``Tape.backward()`` does. Regression for the case where
     ``apic_pack_args_buf`` hardcoded ``arr->grad = 0`` and silently dropped
     the array's grad pointer and flags."""
@@ -1481,7 +1505,9 @@ def test_capture_backward_consumes_y_grad(test, device):
 
 
 def test_capture_backward_retain_grad(test, device):
-    """``retain_grad=True`` must survive APIC capture: the array's
+    """Preserve ``retain_grad`` through APIC capture and replay.
+
+    ``retain_grad=True`` must survive APIC capture: the array's
     ARRAY_FLAG_RETAIN_GRAD bit needs to round-trip via array_flags so that
     adj_array_store's consume path is skipped at replay."""
     n = 4
@@ -1507,7 +1533,9 @@ def test_capture_backward_retain_grad(test, device):
 
 
 def test_capture_backward_kernel(test, device):
-    """Backward kernel launches must record cleanly during APIC capture and
+    """Record and replay backward kernel launches during APIC capture.
+
+    Backward kernel launches must record cleanly during APIC capture and
     replay correctly. Drives the diffsim path Newton needs."""
     n = 8
     x = wp.array(np.arange(n, dtype=np.float32), device=device, requires_grad=True)
@@ -1533,9 +1561,12 @@ def test_capture_backward_kernel(test, device):
 
 @wp.struct
 class StructWithArrays:
-    """By-value struct holding two wp.array fields. The launch-param walker
-    must emit DATA_PTR / NULL relocations for each nested array_t.data and
-    array_t.grad slot, at the correct offsets within the struct blob."""
+    """Hold two Warp array fields by value.
+
+    The launch-parameter walker must emit ``DATA_PTR`` or ``NULL`` relocations
+    for each nested ``array_t.data`` and ``array_t.grad`` slot at the correct
+    offsets within the struct blob.
+    """
 
     pos: wp.array[wp.vec3]
     vel: wp.array[wp.vec3]
@@ -1549,7 +1580,9 @@ def step_particles_struct_kernel(p: StructWithArrays, dt: float):
 
 
 def test_capture_struct_with_array(test, device):
-    """A @wp.struct containing wp.array fields must capture + replay correctly:
+    """Capture and replay struct parameters containing arrays.
+
+    A @wp.struct containing wp.array fields must capture + replay correctly:
     each nested array_t.data field is patched via a per-blob relocation, so
     replay writes into the same memory the live launch would have written.
     """
@@ -1590,7 +1623,9 @@ def write_indexed_kernel(arr: wp.indexedarray[float], v: float):
 
 
 def test_capture_indexedarray(test, device):
-    """wp.indexedarray as a launch parameter must capture + replay correctly:
+    """Capture and replay indexed-array launch parameters.
+
+    wp.indexedarray as a launch parameter must capture + replay correctly:
     the value blob is the indexedarray_t descriptor; the walker emits relocs
     for the nested array_t.data, array_t.grad, and each indices[d] pointer.
     """
@@ -1636,7 +1671,9 @@ def weighted_sample_sum_kernel(
 
 
 def test_capture_indexedarray_adjoint_pack(test, device):
-    """Custom-adjoint launch with an ``wp.indexedarray`` argument must capture
+    """Pack indexed-array adjoints during APIC capture.
+
+    Custom-adjoint launch with an ``wp.indexedarray`` argument must capture
     without raising. The forward arg type is ``indexedarray``, but Warp's
     backward ABI represents the corresponding adjoint as a plain ``wp.array``
     (the underlying gradient buffer). APIC must walk the adjoint value blob
@@ -1686,7 +1723,7 @@ def decrement_counter_kernel(c: wp.array[wp.int32]):
 
 
 def test_capture_if_cpu(test, device):
-    """APIC_OP_IF on CPU: condition selects which branch runs at replay."""
+    """Select the replayed CPU branch with ``APIC_OP_IF``."""
     if device.is_cuda and not wp.is_conditional_graph_supported():
         test.skipTest("CUDA conditional graph nodes require Toolkit and driver 12.4+")
 
@@ -1719,7 +1756,9 @@ def test_capture_if_cpu(test, device):
 
 
 def test_save_load_capture_if_cuda(test, device):
-    """CUDA loaded-graph replay DOES support APIC conditional ops --
+    """Rebuild CUDA APIC conditional operations during graph loading.
+
+    CUDA loaded-graph replay DOES support APIC conditional ops --
     apic_replay_ops_into_cuda_capture rebuilds the conditional nodes from the
     byte stream. Save/load a capture_if graph and confirm the recorded branch
     runs on the rebuilt graph."""
@@ -1754,7 +1793,7 @@ def test_save_load_capture_if_cuda(test, device):
 
 
 def test_capture_while_cpu(test, device):
-    """APIC_OP_WHILE on CPU: body re-runs while the condition int32 is nonzero."""
+    """Repeat the CPU replay body with ``APIC_OP_WHILE`` while its condition is nonzero."""
     if device.is_cuda and not wp.is_conditional_graph_supported():
         test.skipTest("CUDA conditional graph nodes require Toolkit and driver 12.4+")
 
@@ -1782,9 +1821,12 @@ def test_capture_while_cpu(test, device):
 
 
 def _make_const_writer(value):
-    """Build a kernel that writes a compile-time constant. Two kernels from this
-    factory share ``kernel.key`` (``_make_const_writer__locals__kernel``) but
-    compile to distinct modules via ``module="unique"``."""
+    """Build a kernel that writes a compile-time constant.
+
+    Two kernels from this factory share ``kernel.key``
+    (``_make_const_writer__locals__kernel``) but compile to distinct modules
+    via ``module="unique"``.
+    """
     constant = value
 
     @wp.kernel(module="unique")
@@ -1795,7 +1837,9 @@ def _make_const_writer(value):
 
 
 def test_capture_distinct_modules_same_key(test, device):
-    """Regression: kernels built with ``module="unique"`` from one factory share
+    """Replay distinct unique-module kernels that share a key.
+
+    Regression: kernels built with ``module="unique"`` from one factory share
     a ``kernel.key`` but compile to distinct functions. APIC keyed CPU replay
     kernels by key alone, so the second registration clobbered the first and
     replay dispatched the wrong compiled kernel (wrong results or out-of-bounds
@@ -1822,7 +1866,7 @@ def test_capture_distinct_modules_same_key(test, device):
 
 
 def test_save_load_distinct_modules_same_key(test, device):
-    """Saved CPU APIC graphs must also dispatch same-key unique-module kernels."""
+    """Verify that saved CPU APIC graphs must also dispatch same-key unique-module kernels."""
     ka = _make_const_writer(111)
     kb = _make_const_writer(222)
     test.assertEqual(ka.key, kb.key)
@@ -1958,7 +2002,9 @@ def test_empty_array_reductions_during_capture(test, device):
 
 
 def test_cpu_helper_not_recorded_during_cuda_capture(test, device):
-    """A CPU host helper invoked during a CUDA APIC capture must execute live,
+    """Execute CPU helpers live during CUDA APIC capture.
+
+    A CPU host helper invoked during a CUDA APIC capture must execute live,
     not record into the CUDA byte stream. The native host hooks are gated on the
     capture's device class, so a CPU array_scan run inside a CUDA capture runs
     immediately (its output is correct once the capture block exits) instead of
@@ -1998,7 +2044,9 @@ def test_array_reduction_cpu_not_recorded_during_cuda_capture(test, device):
 
 
 def test_capture_pause_resume_allows_unrecorded_allocation(test, device):
-    """capture_pause()/capture_resume() must let callers build data outside the
+    """Allow unrecorded allocation while APIC capture is paused.
+
+    capture_pause()/capture_resume() must let callers build data outside the
     recorded APIC stream while surrounding launches still replay."""
     if device.is_cuda and not wp_context.is_conditional_graph_supported():
         test.skipTest("CUDA graph pause/resume requires CUDA Toolkit and driver 12.4+")
@@ -2027,7 +2075,9 @@ def test_capture_pause_resume_allows_unrecorded_allocation(test, device):
 
 
 def test_capture_pause_resume_suspends_apic_recording(test, device):
-    """Work performed while APIC capture is paused must not be recorded into the
+    """Suspend APIC recording through public capture pause and resume calls.
+
+    Work performed while APIC capture is paused must not be recorded into the
     APIC byte stream. Conditional graph construction uses an internal
     non-suspending pause path; this test covers the public pause/resume API."""
     if device.is_cuda and not wp_context.is_conditional_graph_supported():
@@ -2070,7 +2120,9 @@ def test_capture_pause_resume_suspends_apic_recording(test, device):
 
 
 def test_bsr_nnz_sync_during_cpu_apic_capture(test, device):
-    """BsrMatrix.nnz_sync() during a CPU APIC capture must not crash and must
+    """Return the live BSR nonzero count during CPU APIC capture.
+
+    BsrMatrix.nnz_sync() during a CPU APIC capture must not crash and must
     return the real block count: the readback is performed with recording paused
     so it runs live rather than recording a deferred host copy into an
     uninitialized buffer."""
@@ -2087,7 +2139,7 @@ def test_bsr_nnz_sync_during_cpu_apic_capture(test, device):
 
 
 def test_bsr_nnz_sync_after_recorded_topology_rejected(test, device):
-    """A deferred topology update cannot provide a replay-time nnz during capture."""
+    """Verify that a deferred topology update cannot provide a replay-time nnz during capture."""
     from warp.sparse import bsr_set_from_triplets, bsr_zeros  # noqa: PLC0415
 
     rows = wp.array(np.array([1, 0, 1], dtype=np.int32), dtype=wp.int32, device=device)
@@ -2102,7 +2154,9 @@ def test_bsr_nnz_sync_after_recorded_topology_rejected(test, device):
 
 
 def test_bsr_status_sync_during_cpu_apic_capture_rejected(test, device):
-    """BsrMatrix.status_sync() must reject a host readback during a CPU APIC
+    """Reject BSR status readback during CPU APIC capture.
+
+    BsrMatrix.status_sync() must reject a host readback during a CPU APIC
     capture: a padded op recorded in the capture writes the status only on
     replay, so a status read inside the capture would observe a pre-replay
     value. Outside the capture the readback works normally."""
@@ -2222,7 +2276,9 @@ def test_save_load_array_reduction_metadata(test, device):
 
 
 def test_borrow_temporary_not_recycled_during_apic_capture(test, device):
-    """Regression: ``warp.fem`` temporaries borrowed during APIC capture must not
+    """Keep borrowed FEM temporaries alive during APIC capture.
+
+    Regression: ``warp.fem`` temporaries borrowed during APIC capture must not
     be recycled by the temporary pool. The captured byte stream references them by
     pointer, so a release + re-borrow that handed the same pool memory back for a
     distinct captured region left replay reading/writing stale memory.
@@ -2260,7 +2316,9 @@ def copy_scaled_kernel(src: wp.array[float], dst: wp.array[float], idx: int, s: 
 
 
 def test_capture_replay_many_regions(test, device):
-    """Regression for the O(1) region-resolution index in the CPU live-capture
+    """Resolve many distinct regions during CPU APIC replay.
+
+    Regression for the O(1) region-resolution index in the CPU live-capture
     replay path (apic_resolve_state_region_ptr): a graph that registers many
     distinct array regions must resolve every one correctly on replay. Each of
     the `n` launches reads a distinct `src` array (a distinct region) and writes
@@ -2289,7 +2347,9 @@ def test_capture_replay_many_regions(test, device):
 
 
 def test_capture_with_record_cmd_launch(test, device):
-    """Regression: a reusable launch from ``wp.launch(..., record_cmd=True)``
+    """Record reusable launch commands during APIC capture.
+
+    Regression: a reusable launch from ``wp.launch(..., record_cmd=True)``
     invoked during APIC capture must record an APIC_OP_KERNEL_LAUNCH (it
     previously called the kernel hook directly, bypassing the byte stream, so
     the launch was dropped on replay). The output is clobbered after capture, so
@@ -2333,7 +2393,7 @@ def test_capture_with_record_cmd_launch(test, device):
 
 
 def test_record_cmd_raw_array_ctype_rejected_during_apic_capture(test, device):
-    """Raw ctypes array descriptors do not provide APIC relocation ownership."""
+    """Verify that raw ctypes array descriptors do not provide APIC relocation ownership."""
     n = 4
     a = wp.array(np.arange(n, dtype=np.float32), device=device)
     b = wp.ones(n, dtype=wp.float32, device=device)
@@ -2358,7 +2418,9 @@ def fill_diag_triplets_kernel(rows: wp.array[wp.int32], columns: wp.array[wp.int
 
 
 def test_capture_with_bsr_from_triplets(test, device):
-    """Regression: wp.sparse.bsr_set_from_triplets on CPU computes the matrix
+    """Recompute BSR triplet topology during CPU APIC replay.
+
+    Regression: wp.sparse.bsr_set_from_triplets on CPU computes the matrix
     topology via a host function (wp_bsr_matrix_from_triplets_host) that, like the
     sorts/runlength_encode, was invisible to the APIC byte stream. The triplet
     arrays are produced by a kernel inside the capture (deferred at capture time),
@@ -2392,7 +2454,7 @@ def test_capture_with_bsr_from_triplets(test, device):
 
 
 def test_capture_with_bsr_from_triplets_topology_only(test, device):
-    """``bsr_set_from_triplets(values=None)`` still needs the recorded topology op."""
+    """Verify that ``bsr_set_from_triplets(values=None)`` still needs the recorded topology op."""
     from warp.sparse import bsr_set_from_triplets, bsr_zeros  # noqa: PLC0415
 
     rows = wp.array(np.array([1, 0, 1], dtype=np.int32), dtype=wp.int32, device=device)
@@ -2413,7 +2475,7 @@ def test_capture_with_bsr_from_triplets_topology_only(test, device):
 
 
 def test_capture_with_empty_bsr_assign(test, device):
-    """An empty compact assignment must clear topology when a CPU APIC graph replays."""
+    """Verify that an empty compact assignment must clear topology when a CPU APIC graph replays."""
     rows = wp.array([0], dtype=wp.int32, device=device)
     columns = wp.array([0], dtype=wp.int32, device=device)
     values = wp.array([1.0], dtype=wp.float32, device=device)
@@ -2433,7 +2495,7 @@ def test_capture_with_empty_bsr_assign(test, device):
 
 
 def test_save_load_bsr_from_triplets_cuda(test, device):
-    """A loaded CUDA APIC graph rebuilds the native BSR topology operation."""
+    """Verify that a loaded CUDA APIC graph rebuilds the native BSR topology operation."""
     n = 8
     rows = wp.zeros(n, dtype=wp.int32, device=device)
     columns = wp.zeros(n, dtype=wp.int32, device=device)
@@ -2472,7 +2534,7 @@ def test_save_load_bsr_from_triplets_cuda(test, device):
 
 
 def test_save_load_bsr_set_from_triplets_padded_cuda(test, device):
-    """CUDA APIC reconstructs a padded triplet build through its compact scratch topology."""
+    """Reconstruct a padded CUDA BSR triplet build from compact scratch topology."""
     n = 8
     rows = wp.zeros(n, dtype=wp.int32, device=device)
     columns = wp.zeros(n, dtype=wp.int32, device=device)
@@ -2521,7 +2583,7 @@ def test_save_load_bsr_set_from_triplets_padded_cuda(test, device):
 
 
 def test_save_load_bsr_axpy_mm_cuda(test, device):
-    """CUDA APIC reconstructs compact addition and no-sync multiplication topology."""
+    """Reconstruct compact BSR addition and no-sync multiplication topology."""
     rows_a = wp.array([0, 0, 1], dtype=wp.int32, device=device)
     columns_a = wp.array([0, 1, 1], dtype=wp.int32, device=device)
     values_a = wp.array([1.0, 2.0, 3.0], dtype=wp.float32, device=device)
@@ -2577,7 +2639,7 @@ def test_save_load_bsr_axpy_mm_cuda(test, device):
 
 
 def test_save_load_bsr_mm_reuse_topology_cuda(test, device):
-    """CUDA APIC reconstructs ``bsr_mm(reuse_topology=True)`` without readback."""
+    """Verify that CUDA APIC reconstructs ``bsr_mm(reuse_topology=True)`` without readback."""
     A = bsr_from_triplets(
         2,
         2,
@@ -2630,7 +2692,9 @@ def test_save_load_bsr_mm_reuse_topology_cuda(test, device):
 
 
 def test_capture_with_bsr_transpose(test, device):
-    """Regression: wp.sparse.bsr_transposed on CPU computes the transposed topology
+    """Recompute BSR transpose topology during CPU APIC replay.
+
+    Regression: wp.sparse.bsr_transposed on CPU computes the transposed topology
     via a host function (wp_bsr_transpose_host) that was invisible to the APIC byte
     stream. The source matrix is (re)assembled from triplets produced inside the
     capture, so replay must recompute both the from-triplets and the transpose
@@ -2664,7 +2728,7 @@ def test_capture_with_bsr_transpose(test, device):
 
 
 def test_capture_with_padded_bsr_transpose(test, device):
-    """Padded BSR transpose replay must preserve row_counts and status pointers."""
+    """Verify that padded BSR transpose replay must preserve row_counts and status pointers."""
     from warp.sparse import (  # noqa: PLC0415
         BSR_STATUS_ROW_CAPACITY_EXCEEDED,
         bsr_set_from_triplets,
@@ -2714,7 +2778,9 @@ def test_capture_with_padded_bsr_transpose(test, device):
 
 
 def test_capture_padded_bsr_transpose_rebuilds_offsets(test, device):
-    """Regression: the padded BSR transpose reads the destination's
+    """Rebuild padded BSR transpose offsets during APIC replay.
+
+    Regression: the padded BSR transpose reads the destination's
     row-capacity offsets but never writes them, so an APIC replay that found
     those offsets zeroed before capture_launch reconstructed nothing. The capture
     now restores the capacity layout (CPU from the recorded op, CUDA from a
@@ -2758,7 +2824,9 @@ def test_capture_padded_bsr_transpose_rebuilds_offsets(test, device):
 
 
 def test_save_load_padded_bsr_transpose_cuda_rebuild(test, device):
-    """Save/load of a CUDA APIC padded bsr_set_transpose graph. The transpose
+    """Rebuild a saved CUDA APIC padded BSR transpose graph.
+
+    Save/load of a CUDA APIC padded bsr_set_transpose graph. The transpose
     allocates block-index scratch during capture (graph-scoped on a memory-pool
     device); capture_save stores that region's size only (its content regenerates
     on replay), and the rebuild (apic_replay_ops_into_cuda_capture) sizes the
@@ -2911,7 +2979,9 @@ def test_save_load_padded_bsr_transpose_too_small(test, device):
 
 
 def test_apic_cpu_op_not_rejected_under_cuda_capture(test, device):
-    """Device-scoping: the CPU-only ``NotImplementedError`` guards for
+    """Allow unrelated CPU operations during CUDA APIC capture.
+
+    Device-scoping: the CPU-only ``NotImplementedError`` guards for
     non-contiguous ``fill_()`` / ``wp.copy()`` are scoped to a CPU APIC capture
     via ``apic_capture.device == array.device``. ``runtime._apic_capture`` is
     global, so a CUDA APIC capture active on ``device`` must not falsely reject
@@ -2933,7 +3003,9 @@ def test_apic_cpu_op_not_rejected_under_cuda_capture(test, device):
 
 
 def test_apic_cpu_ops_scoped_to_capture_device(test, device):
-    """Device-scoping: a CPU ``wp.launch`` / ``capture_if`` / ``capture_while``
+    """Execute CPU graph operations live during CUDA APIC capture.
+
+    Device-scoping: a CPU ``wp.launch`` / ``capture_if`` / ``capture_while``
     issued during a CUDA APIC capture must execute immediately on the host, not be
     recorded into the global ``runtime._apic_capture`` (which targets the CUDA device).
     Each guard checks ``runtime._apic_capture.device == device``; otherwise the CPU op
@@ -2977,7 +3049,9 @@ def test_apic_cpu_ops_scoped_to_capture_device(test, device):
 
 
 def test_apic_capture_resume_rejects_finished_graph(test, device):
-    """A CPU APIC graph keeps its capture object after capture_end()
+    """Reject resuming a finished CPU APIC graph.
+
+    A CPU APIC graph keeps its capture object after capture_end()
     so it can be replayed. capture_resume() must refuse to restart recording on
     a finished (never-paused) graph rather than silently reopening it."""
     from warp._src.context import capture_resume  # noqa: PLC0415
@@ -2998,7 +3072,9 @@ def test_apic_capture_resume_rejects_finished_graph(test, device):
 
 
 def test_capture_auto_register_unknown_pointer_cpu(test, device):
-    """``wp_memset_host`` against a pointer APIC's tracker has never seen
+    """Register unknown host pointers during CPU APIC capture.
+
+    ``wp_memset_host`` against a pointer APIC's tracker has never seen
     previously dropped the op and emitted an error; the resulting graph
     replayed as a no-op and left the buffer non-zero. The recording hooks
     now auto-register unknown pointers as fresh regions so capture + replay
@@ -3029,7 +3105,7 @@ def test_capture_auto_register_unknown_pointer_cpu(test, device):
 
 
 def test_save_load_auto_registered_native_pointer_cpu(test, device):
-    """Native-only auto-registered host regions must survive save/load.
+    """Verify that native-only auto-registered host regions must survive save/load.
 
     The scratch pointer below never flows through Python's APIC tracker. It is
     registered only by the native host hooks, then used as the source for a raw
@@ -3075,7 +3151,9 @@ def test_save_load_auto_registered_native_pointer_cpu(test, device):
 
 
 def test_end_recording_null_state_preserves_active(test, device):
-    """wp_apic_end_recording(nullptr) must not clobber g_apic_state when
+    """Preserve active APIC state when ending a null recording.
+
+    wp_apic_end_recording(nullptr) must not clobber g_apic_state when
     another (valid) recording is active. Regression for Greptile fb1661ef.
     """
     n = 64
@@ -3112,7 +3190,9 @@ def test_end_recording_null_state_preserves_active(test, device):
 
 
 def test_get_param_ptr(test, device):
-    """get_param_ptr returns a non-zero int for a known name, None for an unknown
+    """Return graph parameter pointers for known names only.
+
+    get_param_ptr returns a non-zero int for a known name, None for an unknown
     name, and raises RuntimeError on a non-loaded graph."""
     n = 64
     a = wp.array(np.ones(n, dtype=np.float32), device=device)
@@ -3145,7 +3225,9 @@ def test_get_param_ptr(test, device):
 
 
 def test_capture_save_aborts_on_mesh_registration_failure(test, device):
-    """A device mesh whose arrays cannot be device-to-host snapshotted during
+    """Abort APIC saves when mesh registration fails.
+
+    A device mesh whose arrays cannot be device-to-host snapshotted during
     capture_save must abort the save loudly rather than silently emit a ``.wrp``
     missing the mesh's data. A real ``cudaMemcpy`` failure is not deterministically
     inducible from Python, so this stubs the native mesh registration to report
@@ -3171,7 +3253,9 @@ def test_capture_save_aborts_on_mesh_registration_failure(test, device):
 
 
 def test_capture_save_aborts_on_region_snapshot_failure(test, device):
-    """A device-region device-to-host snapshot failure during capture_save must
+    """Abort APIC saves when a region snapshot fails.
+
+    A device-region device-to-host snapshot failure during capture_save must
     abort the save (wp_apic_state_save returns false) instead of writing a ``.wrp``
     missing a referenced region's initial data. A real ``cudaMemcpy`` failure is not
     deterministically inducible from Python, so this stubs wp_apic_state_save to
@@ -3310,7 +3394,7 @@ def test_capture_with_bvh_rebuild_save_rejected(test, device):
 
 
 def test_discarded_bvh_op_does_not_block_save(test, device):
-    """A BVH op discarded when a branch body unwinds must not block a later save.
+    """Verify that a BVH op discarded when a branch body unwinds must not block a later save.
 
     Non-serializability is derived from the finalized operation stream, not from
     a flag set when the op is recorded. So recording a BVH refit inside a branch

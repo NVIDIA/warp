@@ -442,9 +442,9 @@ def test_tile_load_scoped_kernel(A: wp.array2d[float], B: wp.array2d[float]):
 
 
 def test_tile_load_scoped(test, device):
-    """Regression test for 2D shared tiles that are allocated in a function then deallocated when they go out of scope
+    """Test scoped allocation and deallocation of two-dimensional shared tiles.
 
-    Passes if it runs without errors
+    Pass if the kernel runs without errors.
     """
     A = wp.ones((TILE_DIM, TILE_DIM), dtype=float, device=device)
     B = wp.ones((TILE_DIM, TILE_DIM), dtype=float, device=device)

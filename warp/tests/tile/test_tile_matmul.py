@@ -271,8 +271,11 @@ def test_tile_gemm_bf16(test, device):
 
 
 def test_tile_matmul_bf16_out_rejected(test, device):
-    """tile_matmul rejects a bfloat16 'out' tile because the accumulator must be float16,
-    float32, or float64."""
+    """Reject a ``bfloat16`` output accumulator in ``tile_matmul``.
+
+    Require an output accumulator with a ``float16``, ``float32``, or ``float64``
+    data type.
+    """
 
     @wp.kernel(module="unique")
     def kernel_bf16_out(
@@ -296,9 +299,11 @@ def test_tile_matmul_bf16_out_rejected(test, device):
 
 
 def test_tile_matmul_bf16_out_rejected_return_form(test, device):
-    """The 2-arg returning form ``c = wp.tile_matmul(a, b)`` synthesizes ``out`` with
-    ``dtype=a.dtype``, so bf16 inputs produce a synthesized bf16 ``out`` that must be
-    rejected by the same gate."""
+    """Reject a synthesized ``bfloat16`` output from ``tile_matmul``.
+
+    The two-argument form ``c = wp.tile_matmul(a, b)`` synthesizes ``out`` with
+    ``dtype=a.dtype``, so ``bfloat16`` inputs must reach the same rejection path.
+    """
 
     @wp.kernel(module="unique")
     def kernel_bf16_return(
@@ -321,8 +326,10 @@ def test_tile_matmul_bf16_out_rejected_return_form(test, device):
 
 
 def test_tile_matmul_bf16_a_with_backward_rejected(test, device):
-    """tile_matmul rejects a bfloat16 'a' tile when the backward pass is enabled, because 'a'
-    is the accumulator for adjA."""
+    """Reject a ``bfloat16`` left operand during ``tile_matmul`` differentiation.
+
+    The left operand is the accumulator for ``adjA``.
+    """
 
     @wp.kernel(module="unique")
     def kernel_bf16_a(
@@ -346,8 +353,10 @@ def test_tile_matmul_bf16_a_with_backward_rejected(test, device):
 
 
 def test_tile_matmul_bf16_b_with_backward_rejected(test, device):
-    """tile_matmul rejects a bfloat16 'b' tile when the backward pass is enabled, because 'b'
-    is the accumulator for adjB."""
+    """Reject a ``bfloat16`` right operand during ``tile_matmul`` differentiation.
+
+    The right operand is the accumulator for ``adjB``.
+    """
 
     @wp.kernel(module="unique")
     def kernel_bf16_b(

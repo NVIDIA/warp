@@ -24,7 +24,7 @@ def make_field_sphere_sdf(field: wp.array3d[float], center: wp.vec3, radius: flo
 
 @wp.kernel
 def make_field_sphere_sdf_unit_domain(field: wp.array3d[float], center: wp.vec3, radius: wp.array[wp.float32]):
-    """Makes a sphere SDF for nodes on the unit domain [-1, 1]^3."""
+    """Create a sphere SDF for nodes on the unit domain ``[-1, 1]^3``."""
     i, j, k = wp.tid()
 
     nx, ny, nz = field.shape[0], field.shape[1], field.shape[2]
@@ -83,7 +83,7 @@ def validate_marching_cubes_output(test, verts_np, faces_np, check_nonempty=True
 
 
 def test_marching_cubes(test, device):
-    """Basic test of typical usage."""
+    """Test typical usage."""
     node_dim = 64
     cell_dim = node_dim - 1
     field = wp.zeros(shape=(node_dim, node_dim, node_dim), dtype=float, device=device)

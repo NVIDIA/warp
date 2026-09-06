@@ -949,7 +949,8 @@ def test_tile_tile_mat_expansion_kernel(x: wp.array[wp.mat33], y: wp.array3d[flo
 
 
 def test_tile_tile(test, device):
-    # preserve type
+    """Preserve tile types through tile-to-tile operations."""
+
     def test_func_preserve_type(type: Any):
         x = wp.ones(1, dtype=type, requires_grad=True, device=device)
         y = wp.zeros((TILE_DIM), dtype=type, requires_grad=True, device=device)

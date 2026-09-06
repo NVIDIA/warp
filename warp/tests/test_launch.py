@@ -109,7 +109,7 @@ def kernel_cmd(params: Params, i: int, f: float, v: wp.vec3, m: wp.mat33, out: w
 
 
 def test_launch_cmd(test, device):
-    """Tests recording and executing a kernel launch command.
+    """Test recording and executing a kernel launch command.
 
     Verifies that:
     - A kernel can be recorded as a command without immediate execution
@@ -416,7 +416,7 @@ def bounded_square_kernel(data: wp.array[float], output: wp.array[float]):
 
 
 def test_launch_bounds_none(test, device):
-    """Test kernel without launch_bounds"""
+    """Test a kernel without launch bounds."""
     n = 1024
     x = wp.array(np.ones(n, dtype=np.float32), dtype=float, device=device)
     wp.launch(kernel_no_bounds, dim=n, inputs=[x], device=device)
@@ -425,7 +425,7 @@ def test_launch_bounds_none(test, device):
 
 
 def test_launch_bounds_single(test, device):
-    """Test kernel with single int launch_bounds"""
+    """Test a kernel with a single integer launch bound."""
     n = 1024
     x = wp.array(np.ones(n, dtype=np.float32), dtype=float, device=device)
     wp.launch(kernel_single_bound, dim=n, inputs=[x], device=device)
@@ -434,7 +434,7 @@ def test_launch_bounds_single(test, device):
 
 
 def test_launch_bounds_tuple(test, device):
-    """Test kernel with tuple launch_bounds (maxThreadsPerBlock, minBlocksPerMultiprocessor)"""
+    """Test a kernel with both launch-bound values."""
     n = 1024
     x = wp.array(np.ones(n, dtype=np.float32), dtype=float, device=device)
     wp.launch(kernel_tuple_bounds, dim=n, inputs=[x], device=device)
@@ -443,7 +443,7 @@ def test_launch_bounds_tuple(test, device):
 
 
 def test_launch_bounds_single_tuple(test, device):
-    """Test kernel with single-element tuple launch_bounds"""
+    """Test a kernel with a single-element launch-bounds tuple."""
     n = 1024
     x = wp.array(np.ones(n, dtype=np.float32), dtype=float, device=device)
     wp.launch(kernel_single_tuple_bound, dim=n, inputs=[x], device=device)
@@ -494,7 +494,7 @@ def kernel_composite_params(v: wp.vec3, m: wp.mat22, q: wp.quat, t: wp.transform
 
 
 def test_launch_cmd_composite_defaults(test, device):
-    """Composite parameters left unset on a default-constructed Launch are zero-initialized."""
+    """Verify that composite parameters left unset on a default-constructed Launch are zero-initialized."""
     out = wp.full(18, -1.0, dtype=float, device=device)
 
     cmd = wp.Launch(kernel_composite_params, device)
@@ -582,7 +582,7 @@ cuda_devices = get_cuda_test_devices()
 
 class TestLaunch(unittest.TestCase):
     def test_launch_scalar_to_composite_param_rejected(self):
-        """A single value passed where a composite kernel parameter is expected must be rejected."""
+        """Verify that a single value passed where a composite kernel parameter is expected must be rejected."""
         kernels = (
             (kernel_vec3_param, "v", "vec3f"),
             (kernel_mat22_param, "m", "mat22f"),
@@ -612,7 +612,7 @@ class TestLaunch(unittest.TestCase):
         wp.synchronize_device()
 
     def test_launch_numpy_and_boolean_scalar_to_composite_param_deprecated(self):
-        """NumPy numeric scalars and Python, NumPy, and Warp Booleans must warn while promotion is supported."""
+        """Verify that NumPy numeric scalars and Python, NumPy, and Warp Booleans must warn while promotion is supported."""
         values = (True, np.bool_(True), wp.bool(True), np.float32(1.5), np.int64(3))
         params = (("v", "vec3f"), ("m", "mat22f"), ("q", "quatf"), ("t", "transformf"))
         out = wp.empty(18, dtype=float)
@@ -639,7 +639,7 @@ class TestLaunch(unittest.TestCase):
             _logger._warnings_seen.update(saved_warnings_seen)
 
     def test_launch_cmd_set_param_scalar_to_composite_rejected(self):
-        """A single value set on a recorded launch's composite parameter must be rejected."""
+        """Verify that a single value set on a recorded launch's composite parameter must be rejected."""
         cmd = wp.Launch(kernel_vec3_param, wp.get_device())
 
         with self.assertRaisesRegex(RuntimeError, r"argument 'v' expects vec3f but got a single value"):

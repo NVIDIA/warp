@@ -1013,7 +1013,7 @@ def make_test_bsr_mv(block_shape, scalar_type):
 
 def make_test_bsr_multiply_deep(block_shape, scalar_type):
     def test_bsr_multiply_deep(test, device):
-        """Test BSR matrix multiplication with deep matrices (many columns > 256)"""
+        """Test BSR matrix multiplication with deep matrices (many columns > 256)."""
         rng = np.random.default_rng(123)
 
         # Generate a dense matrix with few rows and many columns (> 256)
@@ -1071,7 +1071,7 @@ def make_test_bsr_multiply_deep(block_shape, scalar_type):
 
 
 def test_bsr_mm_max_new_nnz(test, device):
-    """Test that BSR matrix multiplication with max_new_nnz works"""
+    """Test BSR matrix multiplication with ``max_new_nnz``."""
     A = bsr_from_triplets(
         2,
         2,
@@ -1111,7 +1111,7 @@ def test_bsr_mm_max_new_nnz(test, device):
 
 
 def test_capturability(test, device):
-    """Test that BSR operations are graph-capturable"""
+    """Test graph capture of BSR operations."""
 
     N = 5
     M = 3
@@ -1404,9 +1404,11 @@ def test_padded_bsr_status_sync_cuda_capture_rejected(test, device):
 
 
 def test_padded_bsr_capture_per_row_without_nnz_capacity_rejected(test, device):
-    """A per-row ``row_capacity`` array without an explicit ``nnz_capacity`` needs
-    a host nnz readback, which is rejected with a clear error during a live CUDA
-    graph capture rather than failing obscurely."""
+    """Reject padded BSR capture without an explicit nonzero capacity.
+
+    A per-row ``row_capacity`` array needs a host nonzero-count readback when
+    ``nnz_capacity`` is absent. Raise a clear error during live CUDA graph capture.
+    """
 
     row_capacity = wp.array([1, 0, 3], dtype=int, device=device)
 

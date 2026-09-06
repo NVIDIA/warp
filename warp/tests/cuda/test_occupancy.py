@@ -86,7 +86,7 @@ def _constructor_kernel_func(a: wp.array[float]):
 
 
 def test_suggested_block_size_kernel_constructor(test, device):
-    """Kernel created via wp.Kernel() constructor works with get_suggested_block_size."""
+    """Verify block-size suggestions for a directly constructed kernel."""
     kernel = wp.Kernel(func=_constructor_kernel_func)
     block_size, min_grid_size = wp.get_suggested_block_size(kernel, device)
     test.assertGreater(block_size, 0)
@@ -96,7 +96,7 @@ def test_suggested_block_size_kernel_constructor(test, device):
 
 
 def test_suggested_block_size_rejects_generic_parent(test, device):
-    """Generic kernel parents produce an actionable overload-selection error."""
+    """Verify that generic kernel parents produce an actionable overload-selection error."""
     with test.assertRaisesRegex(RuntimeError, "requires a concrete overload.*wp.overload"):
         wp.get_suggested_block_size(generic_kernel, device)
 
@@ -116,7 +116,7 @@ devices = get_selected_cuda_test_devices()
 
 class TestOccupancy(unittest.TestCase):
     def test_suggested_block_size_cpu(self):
-        """CPU fallback returns (1, 1)."""
+        """Verify that CPU fallback returns (1, 1)."""
         for kernel in (simple_kernel, generic_kernel):
             with self.subTest(kernel=kernel.key):
                 result = wp.get_suggested_block_size(kernel, "cpu")

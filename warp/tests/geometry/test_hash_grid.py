@@ -546,7 +546,7 @@ def test_hashgrid_grouped_query_rebuild_after_in_place_groups(test, device):
 
 
 def test_hashgrid_grouped_query_extreme_group_ids(test, device):
-    """Every int32 value is a valid group id; no value is reserved as an all-groups sentinel."""
+    """Verify that every int32 value is a valid group id; no value is reserved as an all-groups sentinel."""
     int32_min = np.iinfo(np.int32).min
 
     # three groups with overlapping coordinates, exercising both extremes of the int32 domain
@@ -594,7 +594,7 @@ def test_hashgrid_grouped_query_extreme_group_ids(test, device):
 
 
 def test_hashgrid_grouped_many_groups(test, device):
-    """Cell storage no longer scales with the number of distinct groups."""
+    """Verify that cell storage no longer scales with the number of distinct groups."""
     num_points = 1025
     radius = 1.0
 
@@ -627,7 +627,7 @@ def test_hashgrid_saveable_capture_unsupported(test, device):
 
 
 def test_hashgrid_grouped_graph_capture_changing_group_ids(test, device):
-    """Group values written by captured work are honored on replay, including unseen group ids."""
+    """Verify that group values written by captured work are honored on replay, including unseen group ids."""
     points = np.array(
         [
             [0.0, 0.0, 0.0],
@@ -682,7 +682,7 @@ def test_hashgrid_grouped_graph_capture_changing_group_ids(test, device):
 
 
 def test_hashgrid_grouped_graph_capture_after_reserve(test, device):
-    """reserve(with_groups=True) makes a captured grouped build work without a prior warm-up build."""
+    """Verify that reserve(with_groups=True) makes a captured grouped build work without a prior warm-up build."""
     points = np.array(
         [
             [0.0, 0.0, 0.0],
@@ -986,7 +986,7 @@ class TestHashGrid(unittest.TestCase):
         wp.Kernel(func=kernel_fn)
 
     def test_hashgrid_new_del(self):
-        # test the scenario in which a hashgrid is created but not initialized before gc
+        """Delete a hash grid that was allocated without initialization."""
         instance = wp.HashGrid.__new__(wp.HashGrid)
         instance.__del__()
 

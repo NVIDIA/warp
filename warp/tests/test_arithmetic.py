@@ -1096,9 +1096,11 @@ for dtype in np_float_types:
 
 
 def test_floordiv_negative(test, device, dtype, register_kernels=False):
-    # Warp's `//` maps to the floordiv builtin, which is documented as floor
-    # division and must round toward negative infinity for signed operands,
-    # matching Python/NumPy and the floating-point overloads.
+    """Round signed floor division toward negative infinity.
+
+    Match Python, NumPy, and the floating-point overloads when mapping ``//`` to
+    the ``floordiv`` builtin.
+    """
     wptype = wp.dtype_from_numpy(np.dtype(dtype))
 
     def check_floordiv(

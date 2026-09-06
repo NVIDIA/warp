@@ -455,7 +455,7 @@ class TestSubscriptTypes(unittest.TestCase):
         self.assertTrue(hasattr(mat_type, "_wp_generic_type_hint_"))
 
     def test_annotation_is_lightweight(self):
-        """Subscript annotations are lightweight objects, not full array instances."""
+        """Verify that subscript annotations are lightweight objects, not full array instances."""
         arr_ann = wp.array[float]
         self.assertIsInstance(arr_ann, _ArrayAnnotation)
         self.assertIsInstance(arr_ann, _ArrayAnnotationBase)
@@ -492,7 +492,7 @@ class TestSubscriptTypes(unittest.TestCase):
         "returning NotImplemented, so the __ror__ fallback is never triggered.",
     )
     def test_annotation_union_operator(self):
-        """Array annotations support runtime union expressions in both operand orders."""
+        """Verify that array annotations support runtime union expressions in both operand orders."""
         arr_ann = wp.array[float]
         ia_ann = wp.indexedarray[wp.float64]
 
@@ -525,7 +525,7 @@ class TestSubscriptTypes(unittest.TestCase):
         "returning NotImplemented, so the __ror__ fallback is never triggered.",
     )
     def test_annotation_union_invalid_for_codegen(self):
-        """Union annotations are intentionally invalid in Warp codegen."""
+        """Verify that union annotations are intentionally invalid in Warp codegen."""
 
         with self.assertRaisesRegex(
             RuntimeError,
@@ -567,7 +567,7 @@ class TestSubscriptTypes(unittest.TestCase):
         self.assertIs(concrete_array_type(ifa_ann), wp.indexedfabricarray)
 
     def test_annotation_equality_and_hashing(self):
-        """Annotations with same parameters are equal and hashable."""
+        """Verify that annotations with same parameters are equal and hashable."""
         a1 = wp.array[float]
         a2 = wp.array[wp.float32]
         self.assertEqual(a1, a2)
@@ -582,7 +582,7 @@ class TestSubscriptTypes(unittest.TestCase):
         self.assertNotEqual(a1, ia)
 
     def test_annotation_repr(self):
-        """repr() produces subscript forms that match source syntax and round-trip."""
+        """Verify that repr() produces subscript forms that match source syntax and round-trip."""
         # Built-in scalar dtypes
         self.assertEqual(repr(wp.array[wp.float32]), "wp.array[wp.float32]")
         self.assertEqual(repr(wp.array[wp.uint32]), "wp.array[wp.uint32]")
@@ -675,7 +675,7 @@ class TestSubscriptTypes(unittest.TestCase):
         self.assertEqual(get_origin(result), Vector)
 
     def test_array_type_id_with_annotations(self):
-        """array_type_id() returns correct constants for annotation objects."""
+        """Verify that array_type_id() returns correct constants for annotation objects."""
         self.assertEqual(array_type_id(wp.array[float]), ARRAY_TYPE_REGULAR)
         self.assertEqual(array_type_id(wp.array[wp.float64, Literal[2]]), ARRAY_TYPE_REGULAR)
         self.assertEqual(array_type_id(wp.indexedarray[float]), ARRAY_TYPE_INDEXED)
@@ -686,7 +686,7 @@ class TestSubscriptTypes(unittest.TestCase):
         self.assertEqual(array_type_id(wp.indexedfabricarray[wp.float64, Literal[2]]), ARRAY_TYPE_FABRIC_INDEXED)
 
     def test_get_type_code_with_annotations(self):
-        """get_type_code() returns identical codes for annotations and concrete instances."""
+        """Verify that get_type_code() returns identical codes for annotations and concrete instances."""
         # array annotation should match concrete array instance
         arr_ann = wp.array[wp.float32, Literal[2]]
         arr_inst = wp.array(dtype=wp.float32, ndim=2)
@@ -732,7 +732,7 @@ class TestSubscriptTypes(unittest.TestCase):
         # fail immediately for truly unknown types. This is expected behavior.
 
     def test_any_ndim(self):
-        """wp.array[dtype, Any] means any dimensionality."""
+        """Verify that ``wp.array[dtype, Any]`` accepts any dimensionality."""
         ann = wp.array[float, Any]
         self.assertEqual(ann.dtype, wp.float32)
         self.assertIs(ann.ndim, Any)
@@ -749,7 +749,7 @@ class TestSubscriptTypes(unittest.TestCase):
         self.assertIs(ifa.ndim, Any)
 
     def test_any_dtype(self):
-        """wp.array[Any] means any dtype, 1D."""
+        """Verify that ``wp.array[Any]`` accepts any data type for one dimension."""
         ann = wp.array[Any]
         self.assertIs(ann.dtype, Any)
         self.assertEqual(ann.ndim, 1)

@@ -449,8 +449,11 @@ def test_copy_offset_unsupported(test, device):
 
 
 def test_copy_invalid_args(test, device):
-    # wp.copy must reject malformed offsets/count and incompatible element sizes
-    # before any pointer arithmetic or device work (contiguous path).
+    """Reject invalid copy ranges and incompatible element sizes.
+
+    Validate arguments before performing pointer arithmetic or device work on the
+    contiguous path.
+    """
     src = wp.array([1, 2, 3, 4], dtype=wp.int32, device=device)
     dest = wp.zeros_like(src)
 
@@ -488,8 +491,11 @@ def test_copy_invalid_args(test, device):
 
 
 def test_copy_count_zero_copies_all(test, device):
-    # count == 0 keeps its documented "copy all" meaning now that negative counts
-    # are rejected (the historical `count <= 0` default narrowed to `count == 0`).
+    """Preserve the copy-all meaning of a zero count.
+
+    Negative counts are rejected after narrowing the historical ``count <= 0``
+    default to ``count == 0``.
+    """
     expected = np.array([1, 2, 3, 4], dtype=np.int32)
 
     src = wp.array(expected, dtype=wp.int32, device=device)

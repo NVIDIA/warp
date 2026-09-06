@@ -215,7 +215,7 @@ def test_register_tile_inplace_no_return(test, device):
 
 
 def test_nested_func_calls_grad(test, device):
-    """Backward pass through chained @wp.func calls with tile args.
+    """Test gradient propagation through chained tile functions.
 
     f(x) = sum(2*x), df/dx = 2.0 for every element.
     """
@@ -239,7 +239,7 @@ def test_nested_func_calls_grad(test, device):
 
 
 def test_shared_tile_func_grad(test, device):
-    """Backward pass through a @wp.func with a shared tile argument.
+    """Test gradient propagation through a function with a shared tile argument.
 
     f(x) = sum(2*x), df/dx = 2.0 for every element.
     """
@@ -263,7 +263,7 @@ def test_shared_tile_func_grad(test, device):
 
 
 def test_register_tile_func_grad(test, device):
-    """Backward pass through a @wp.func with a register tile argument.
+    """Test gradient propagation through a function with a register tile argument.
 
     f(x) = sum(2*x), df/dx = 2.0 for every element.
     """
@@ -287,7 +287,7 @@ def test_register_tile_func_grad(test, device):
 
 
 def test_mixed_storage_func_grad(test, device):
-    """Backward pass through a @wp.func with mixed shared + register tile args.
+    """Test gradient propagation through mixed tile storage.
 
     f(a, b) = sum(a + b), df/da = df/db = 1.0 for every element.
     """
@@ -319,7 +319,7 @@ def test_mixed_storage_func_grad(test, device):
 
 
 def test_inplace_modify_func_grad(test, device):
-    """Backward pass through a @wp.func that modifies a tile in place (+=).
+    """Test gradient propagation through an in-place tile update.
 
     f(a, b) = sum(a + b) computed via a += b; return a.
     df/da = df/db = 1.0 for every element.

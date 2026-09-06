@@ -70,7 +70,7 @@ def helper_counter_side_effect_kernel(
     output: wp.array[wp.float32],
     scratch: wp.array[wp.float32],
 ):
-    """Normal stores before helper counter calls must be suppressed in phase 0."""
+    """Suppress normal stores before helper counter calls in Phase 0."""
     tid = wp.tid()
     scratch[tid] = scratch[tid] + 1.0
     _det_counter_write(counter, output, float(tid))
@@ -358,7 +358,7 @@ def strided_counter_gap_kernel(
     gaps: wp.array[wp.int32],
     output: wp.array[wp.int32],
 ):
-    """Stores to a neighboring strided view must be skipped during Phase 0."""
+    """Skip stores to a neighboring strided view during Phase 0."""
     tid = wp.tid()
     gaps[tid] = gaps[tid] + 1
     slot = wp.atomic_add(counter, 0, 1)
@@ -518,7 +518,7 @@ def test_counter_function_parameter_unconsumed_atomic(test, device):
 
 
 def test_counter_consumed_bitwise_atomic_rejected(test, device):
-    """Consuming a bitwise atomic return inside a two-pass body must be rejected."""
+    """Verify that consuming a bitwise atomic return inside a two-pass body must be rejected."""
     flag = wp.full(1, value=1, dtype=wp.int32, device=device)
     counter = wp.zeros(1, dtype=wp.int32, device=device)
     output = wp.full(1, value=-1, dtype=wp.int32, device=device)

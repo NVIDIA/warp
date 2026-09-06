@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-"""Test Warp examples with unittest.
+"""Tests for Warp examples using unittest.
 
 This module tests the Warp examples registered in it using the unittest
 framework. When registering tests with add_example_test(), three optional
@@ -44,7 +44,7 @@ from warp.tests.unittest_utils import (
 
 
 def _build_command_line_options(test_options: dict[str, Any]) -> list:
-    """Helper function to build command-line options from the test options dictionary."""
+    """Build command-line options from the test options dictionary."""
     additional_options = []
 
     for key, value in test_options.items():
@@ -65,7 +65,7 @@ def add_example_test(
     test_options_cpu: dict[str, Any] | None = None,
     test_options_cuda: dict[str, Any] | None = None,
 ):
-    """Registers a Warp example to run on ``devices`` as a TestCase."""
+    """Register a Warp example on ``devices`` as a test case."""
 
     if test_options is None:
         test_options = {}

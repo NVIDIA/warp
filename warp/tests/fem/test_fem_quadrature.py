@@ -337,7 +337,7 @@ def test_particle_quadratures(test, device):
 
 
 def test_gimp_quadrature(test, device):
-    # Test GIMP mode for PicQuadrature: particles spanning multiple cells
+    """Test GIMP quadrature for particles spanning multiple cells."""
 
     geo = fem.Grid2D(res=wp.vec2i(2))
     domain = fem.Cells(geo)

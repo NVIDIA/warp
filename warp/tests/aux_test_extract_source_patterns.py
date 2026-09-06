@@ -1,8 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-"""Fixtures for the success and fallback paths of
-:meth:`warp._src.codegen.Adjoint.extract_function_source`.
+"""Fixtures for the success and fallback paths of function-source extraction.
 
 Most fixtures pin a branch of ``_try_extract_function_source``'s forward walk
 — the accompanying tests in :mod:`warp.tests.test_codegen` mock
@@ -38,9 +37,10 @@ def multiline_paren_return():
 # The docstring lives between ``def`` and the first executable line, so it is
 # always within ``[co_firstlineno, max_line]`` and needs no forward walk.
 def with_multiline_docstring():
-    """A docstring that
-    spans multiple
-    lines.
+    """Exercise source extraction with a multi-line docstring.
+
+    Keep this description across multiple physical lines so the fixture
+    retains a multi-line docstring.
     """
     return 1
 

@@ -898,7 +898,7 @@ def _test_closest_point_on_tet_kernel(
 
 
 def test_closest_point_queries(test, device):
-    # Test some simple lookup queries
+    """Test basic closest-point lookup queries."""
     e0 = wp.vec2(2.0, 0.0)
     e1 = wp.vec2(0.0, 2.0)
 

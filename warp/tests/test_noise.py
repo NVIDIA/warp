@@ -584,9 +584,11 @@ def curlnoise_2d_reimpl_loss(
 
 
 def test_adj_curlnoise_2d_autodiff_reimpl(test, device):
-    """Independent verification: autodiff of a pure-Python-kernel
-    reimplementation of 2D curlnoise vs the native ``adj_curlnoise``.
-    Both compute analytic gradients, so they should agree to FP noise."""
+    """Compare native 2D curl-noise gradients with a Warp reimplementation.
+
+    Both implementations compute analytic gradients, so they should agree within
+    floating-point noise.
+    """
     seed = 42
     octaves = 3
     lac = 2.0

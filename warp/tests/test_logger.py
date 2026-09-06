@@ -183,7 +183,7 @@ class TestLogger(unittest.TestCase):
         self.assertEqual(recorded, [])
 
     def test_set_logger_accepts_duck_typed_object(self):
-        """Logger is a Protocol -- any object with the four methods works."""
+        """Verify that Logger is a Protocol -- any object with the four methods works."""
 
         class DuckLogger:
             def debug(self, message):
@@ -249,7 +249,7 @@ class TestLogger(unittest.TestCase):
         self.assertEqual(output, "Warp Error: something broke\n")
 
     def test_basic_logger_warning_respects_filters(self):
-        """User warning filters must not be overridden."""
+        """Verify that user warning filters must not be overridden."""
         logger = LoggerBasic()
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -408,7 +408,7 @@ class TestLogger(unittest.TestCase):
         self.assertEqual(output, "debug msg\n")
 
     def test_log_error_always_emits(self):
-        """log_error ignores log_level -- errors are never suppressed."""
+        """Verify that log_error ignores log_level -- errors are never suppressed."""
         original_level = warp.config.log_level
         warp.config.log_level = wp.LOG_ERROR + 10
         old_stderr = sys.stderr
@@ -524,8 +524,10 @@ class TestLogger(unittest.TestCase):
         self.assertTrue(any("kernel: _print_launches_test_kernel" in message for message in logger.infos))
 
     def test_log_warning_deprecation_warnings_deduplicate_without_once(self):
-        """DeprecationWarnings are deduplicated even when ``once`` is not passed,
-        matching the legacy ``warn()`` helper this replaced."""
+        """Deduplicate deprecation warnings when ``once`` is omitted.
+
+        Match the legacy ``warn()`` helper that this behavior replaced.
+        """
         saved = _logger_module._warnings_seen.copy()
         _logger_module._warnings_seen.clear()
         with warnings.catch_warnings():
@@ -543,9 +545,11 @@ class TestLogger(unittest.TestCase):
         self.assertEqual(output.count("legacy api"), 1)
 
     def test_scoped_logger_exit_tolerates_mutated_saved_logger(self):
-        """``ScopedLogger.__exit__`` must restore the saved logger without
-        re-validating it; otherwise a TypeError would mask any in-flight
-        exception propagating through the context."""
+        """Restore a mutated saved logger without revalidating it.
+
+        Revalidation would raise ``TypeError`` and mask an in-flight exception
+        propagating through ``ScopedLogger``.
+        """
 
         class MutableLogger:
             def debug(self, message):

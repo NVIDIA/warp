@@ -417,7 +417,7 @@ def tile_math_lower_solve_backward_multiple_rhs_float32(
 
 
 def lower_solve_adjoint_numpy(L, y, adj_z):
-    """Reference gradients for the kernel z = tile_lower_solve(L, y).
+    """Compute reference gradients for ``z = tile_lower_solve(L, y)``.
 
     Backward of L z = y:
         w = solve(L^T, adj_z)

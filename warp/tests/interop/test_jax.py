@@ -862,7 +862,7 @@ def double_func(
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_add(test, device):
-    # two inputs and one output
+    """Call an FFI kernel with two inputs and one output."""
     jp = _import_jax_numpy()
 
     jax_kernel = wp.jax_kernel
@@ -889,7 +889,7 @@ def test_ffi_jax_kernel_add(test, device):
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_sincos(test, device):
-    # one input and two outputs
+    """Call an FFI kernel with one input and two outputs."""
     jp = _import_jax_numpy()
 
     jax_kernel = wp.jax_kernel
@@ -921,7 +921,7 @@ def test_ffi_jax_kernel_sincos(test, device):
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_diagonal(test, device):
-    # no inputs and one output
+    """Call an FFI kernel with no inputs and one output."""
     jax_kernel = wp.jax_kernel
 
     jax_diagonal = jax_kernel(diagonal_kernel)
@@ -952,7 +952,7 @@ def test_ffi_jax_kernel_diagonal(test, device):
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_in_out(test, device):
-    # in-out args
+    """Call an FFI kernel with input-output arguments."""
     jp = _import_jax_numpy()
 
     jax_kernel = wp.jax_kernel
@@ -1037,7 +1037,7 @@ def test_ffi_jax_kernel_cache_argnames(test, device):
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_scale_vec_constant(test, device):
-    # multiply vectors by scalar (constant)
+    """Scale vectors in an FFI kernel with a constant scalar."""
     jp = _import_jax_numpy()
 
     jax_kernel = wp.jax_kernel
@@ -1092,7 +1092,7 @@ def test_ffi_jax_kernel_scale_vec_static(test, device):
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_launch_dims_default(test, device):
-    # specify default launch dims
+    """Specify default FFI kernel launch dimensions."""
     jp = _import_jax_numpy()
 
     jax_kernel = wp.jax_kernel
@@ -1122,7 +1122,7 @@ def test_ffi_jax_kernel_launch_dims_default(test, device):
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_launch_dims_custom(test, device):
-    # specify custom launch dims per call
+    """Specify FFI kernel launch dimensions per call."""
     jp = _import_jax_numpy()
 
     jax_kernel = wp.jax_kernel
@@ -1188,7 +1188,7 @@ def test_ffi_jax_kernel_block_dim_tile(test, device):
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_callable_scale_constant(test, device):
-    # scale two arrays using a constant
+    """Scale two arrays in an FFI callable with a constant."""
     jp = _import_jax_numpy()
 
     jax_callable = wp.jax_callable
@@ -1223,7 +1223,7 @@ def test_ffi_jax_callable_scale_constant(test, device):
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_callable_scale_static(test, device):
-    # scale two arrays using a static arg
+    """Scale two arrays in an FFI callable with a static argument."""
     jp = _import_jax_numpy()
 
     jax_callable = wp.jax_callable
@@ -1258,7 +1258,7 @@ def test_ffi_jax_callable_scale_static(test, device):
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_callable_in_out(test, device):
-    # in-out arguments
+    """Call an FFI callable with input-output arguments."""
     jp = _import_jax_numpy()
 
     jax_callable = wp.jax_callable
@@ -1411,7 +1411,7 @@ def test_ffi_jax_callable_cache_stage_argnames(test, device):
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_callable_graph_cache(test, device):
-    # test graph caching limits
+    """Test FFI callable graph-cache limits."""
     jax = _import_jax()
     jp = _import_jax_numpy()
 
@@ -2373,7 +2373,7 @@ def scale_outer_2d_kernel(
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_launch_dims_autodiff_basic(test, device):
-    """launch_dims is accepted with enable_backward=True."""
+    """Verify that launch_dims is accepted with enable_backward=True."""
     jax = _import_jax()
     jnp = _import_jax_numpy()
 
@@ -2399,7 +2399,7 @@ def test_ffi_jax_kernel_launch_dims_autodiff_basic(test, device):
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_launch_dims_autodiff_gradient(test, device):
-    """Gradient matches the analytical value when launch_dims is explicit.
+    """Verify that gradient matches the analytical value when launch_dims is explicit.
 
     Without this fix, auto-inference returns the full 4-D shape and the
     adjoint kernel over-accumulates by a factor equal to the outer axis
@@ -2437,13 +2437,11 @@ def test_ffi_jax_kernel_launch_dims_autodiff_gradient(test, device):
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_launch_dims_autodiff_separate_cache(test, device):
-    """Wrapping the same kernel with different launch_dims must not share
-    wrappers.
+    """Keep autodiff wrapper caches distinct across launch dimensions.
 
-    Regression guard for the _FFI_DIFF_KERNEL_REGISTRY cache key: without
-    launch_dims in the key, the second wrapper silently reuses the first
-    wrapper's closure, so the launch_dims passed to the second call is
-    ignored at runtime.
+    Without ``launch_dims`` in the ``_FFI_DIFF_KERNEL_REGISTRY`` cache key, the
+    second wrapper silently reuses the first wrapper's closure, so the launch
+    dimensions passed to the second call are ignored at runtime.
     """
     jax = _import_jax()
     jnp = _import_jax_numpy()
@@ -2518,7 +2516,7 @@ def test_ffi_jax_kernel_launch_dims_autodiff_separate_cache(test, device):
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_autodiff_per_call_override_rejected(test, device):
-    """Passing FfiKernel-style per-call kwargs to a differentiable wrapper raises TypeError."""
+    """Verify that passing FfiKernel-style per-call kwargs to a differentiable wrapper raises TypeError."""
     jnp = _import_jax_numpy()
 
     jax_kernel = wp.jax_kernel
@@ -2539,7 +2537,7 @@ def test_ffi_jax_kernel_autodiff_per_call_override_rejected(test, device):
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_output_dims_autodiff_still_blocked(test, device):
-    """output_dims with enable_backward=True remains a follow-up (still blocked)."""
+    """Reject output dimensions on differentiable FFI kernel wrappers."""
     jax_kernel = wp.jax_kernel
 
     with test.assertRaises(NotImplementedError):
@@ -2553,7 +2551,7 @@ def test_ffi_jax_kernel_output_dims_autodiff_still_blocked(test, device):
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_launch_dims_autodiff_vmap(test, device):
-    """launch_dims + enable_backward=True composes with jax.vmap.
+    """Verify that launch_dims + enable_backward=True composes with jax.vmap.
 
     The user-supplied launch_dims fixes the inner (kernel tid) iteration
     space, and jax.vmap prefixes an additional outer axis which the FFI
@@ -2747,8 +2745,10 @@ def lookup_kernel(table: wp.array[float], indices: wp.array[int], output: wp.arr
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_vmap_lookup(test, device, vmap_method):
-    """
-    Test the following vmap features:
+    """Test supported FFI vectorization cases.
+
+    The cases cover:
+
     - Unbatched inputs (lookup table).
     - Custom launch and output dimensions for kernels (not inferred from argument shape).
     - Custom output dimensions for callables.

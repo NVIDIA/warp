@@ -138,8 +138,10 @@ def test_arrays(test, device, dtype):
 
 
 def test_components(test, device, dtype):
-    # test accessing vector components from Python - this is especially important
-    # for float16, which requires special handling internally
+    """Test Python access to vector components.
+
+    Include ``float16``, which requires special handling internally.
+    """
 
     wptype = wp.dtype_from_numpy(np.dtype(dtype))
     vec3 = wp.types.vector(length=3, dtype=wptype)

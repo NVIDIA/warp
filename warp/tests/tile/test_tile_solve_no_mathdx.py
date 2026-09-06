@@ -260,7 +260,7 @@ def test_lower_solve_inplace_matrix(test, device):
 
 
 def _lower_solve_adjoint_numpy(L, y, adj_z):
-    """Reference gradients for the kernel z = tile_lower_solve(L, y).
+    """Compute reference gradients for ``z = tile_lower_solve(L, y)``.
 
     ``L`` is lower triangular and loaded directly (no transpose), so the
     gradient lands on L itself. Backward of L z = y:

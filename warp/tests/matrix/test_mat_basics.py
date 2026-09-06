@@ -41,8 +41,10 @@ def test_arrays(test, device, dtype):
 
 
 def test_components(test, device, dtype):
-    # test accessing matrix components from Python - this is especially important
-    # for float16, which requires special handling internally
+    """Test Python access to matrix components.
+
+    Include ``float16``, which requires special handling internally.
+    """
 
     wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
     mat23 = wp._src.types.matrix(shape=(2, 3), dtype=wptype)

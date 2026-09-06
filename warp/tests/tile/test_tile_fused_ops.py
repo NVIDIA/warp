@@ -19,7 +19,7 @@ TILE_N = 4
 
 
 def test_tile_axpy_shared_register(test, device):
-    """Fused dest += src * alpha with shared dest, register src."""
+    """Test fused dest += src * alpha with shared dest, register src."""
 
     @wp.kernel(enable_backward=False, module="unique")
     def compute(
@@ -49,7 +49,7 @@ def test_tile_axpy_shared_register(test, device):
 
 
 def test_tile_axpy_shared_shared(test, device):
-    """Fused dest += src * alpha with both tiles in shared memory."""
+    """Test fused dest += src * alpha with both tiles in shared memory."""
 
     @wp.kernel(enable_backward=False, module="unique")
     def compute(
@@ -79,7 +79,7 @@ def test_tile_axpy_shared_shared(test, device):
 
 
 def test_tile_axpy_1d(test, device):
-    """tile_axpy with 1-D tiles."""
+    """Test tile_axpy with 1-D tiles."""
     N = 64
 
     @wp.kernel(enable_backward=False, module="unique")
@@ -110,7 +110,7 @@ def test_tile_axpy_1d(test, device):
 
 
 def test_tile_axpy_register_register(test, device):
-    """Fused dest += src * alpha with both tiles in register storage."""
+    """Test fused dest += src * alpha with both tiles in register storage."""
     N = 64
 
     @wp.kernel(enable_backward=False, module="unique")
@@ -141,7 +141,7 @@ def test_tile_axpy_register_register(test, device):
 
 
 def test_tile_axpy_zero_alpha(test, device):
-    """tile_axpy with alpha=0 should leave dest unchanged."""
+    """Verify that tile_axpy with alpha=0 should leave dest unchanged."""
     N = 64
 
     @wp.kernel(enable_backward=False, module="unique")
@@ -174,7 +174,7 @@ def test_tile_axpy_zero_alpha(test, device):
 
 
 def test_tile_axpy_grad(test, device):
-    """Gradient flows through tile_axpy for src and alpha."""
+    """Verify that gradient flows through tile_axpy for src and alpha."""
     N = 16
 
     @wp.kernel(module="unique")
@@ -226,7 +226,7 @@ def test_tile_axpy_grad(test, device):
 
 
 def test_tile_dot_basic(test, device):
-    """Basic dot product of two tiles returns correct single-element tile."""
+    """Verify that basic dot product of two tiles returns correct single-element tile."""
     N = 64
 
     @wp.kernel(enable_backward=False, module="unique")
@@ -255,7 +255,7 @@ def test_tile_dot_basic(test, device):
 
 
 def test_tile_dot_nonuniform(test, device):
-    """Dot product with non-uniform values."""
+    """Test dot product with non-uniform values."""
     N = 32
 
     @wp.kernel(enable_backward=False, module="unique")
@@ -284,7 +284,7 @@ def test_tile_dot_nonuniform(test, device):
 
 
 def test_tile_dot_2d(test, device):
-    """Dot product of 2-D tiles (flattened element-wise)."""
+    """Test dot product of 2-D tiles (flattened element-wise)."""
 
     @wp.kernel(enable_backward=False, module="unique")
     def compute(
@@ -312,7 +312,7 @@ def test_tile_dot_2d(test, device):
 
 
 def test_tile_dot_shared_shared(test, device):
-    """Dot product with both tiles in shared storage."""
+    """Test dot product with both tiles in shared storage."""
     N = 64
 
     @wp.kernel(enable_backward=False, module="unique")
@@ -344,7 +344,7 @@ def test_tile_dot_shared_shared(test, device):
 
 
 def test_tile_dot_grad_shared(test, device):
-    """Gradient flows through tile_dot with shared-storage operands."""
+    """Verify that gradient flows through tile_dot with shared-storage operands."""
     N = 16
 
     @wp.kernel(module="unique")
@@ -380,7 +380,7 @@ def test_tile_dot_grad_shared(test, device):
 
 
 def test_tile_dot_grad(test, device):
-    """Gradient flows correctly through tile_dot."""
+    """Verify that gradient flows correctly through tile_dot."""
     N = 16
 
     @wp.kernel(module="unique")
@@ -418,7 +418,7 @@ def test_tile_dot_grad(test, device):
 
 
 def test_tile_dot_grad_extract(test, device):
-    """Gradient propagates correctly when tile_extract is used on tile_dot result.
+    """Verify that gradient propagates correctly when tile_extract is used on tile_dot result.
 
     Uses tile_extract to obtain the scalar, then a single-thread write.
     This exercises the adjoint broadcast path: adj_tile_extract writes the
@@ -462,7 +462,7 @@ def test_tile_dot_grad_extract(test, device):
 
 
 def test_tile_dot_grad_extract_shared(test, device):
-    """Same as test_tile_dot_grad_extract but with shared-storage operands."""
+    """Test extracted dot-product gradients with shared-storage operands."""
     N = 16
 
     @wp.kernel(module="unique")
@@ -500,7 +500,7 @@ def test_tile_dot_grad_extract_shared(test, device):
 
 
 def test_tile_dot_float(test, device):
-    """tile_dot preserves the scalar dtype of its operands across float widths."""
+    """Verify that tile_dot preserves the scalar dtype of its operands across float widths."""
     N = 64
 
     def run(wp_dtype, rtol):
@@ -542,7 +542,7 @@ def test_tile_dot_float(test, device):
 
 
 def test_tile_dot_vec3(test, device):
-    """tile_dot on vec3 tiles returns a single-element tile (full contraction via tensordot)."""
+    """Verify that tile_dot on vec3 tiles returns a single-element tile (full contraction via tensordot)."""
     N = 16
 
     @wp.kernel(enable_backward=False, module="unique")
@@ -572,7 +572,7 @@ def test_tile_dot_vec3(test, device):
 
 
 def test_tile_dot_mat33(test, device):
-    """tile_dot on mat33 tiles returns a single-element tile (full contraction via tensordot)."""
+    """Verify that tile_dot on mat33 tiles returns a single-element tile (full contraction via tensordot)."""
     N = 8
 
     @wp.kernel(enable_backward=False, module="unique")
@@ -602,7 +602,7 @@ def test_tile_dot_mat33(test, device):
 
 
 def test_tile_axpy_vec3(test, device):
-    """tile_axpy with vec3 tiles and scalar alpha."""
+    """Test tile_axpy with vec3 tiles and scalar alpha."""
     N = 16
 
     @wp.kernel(enable_backward=False, module="unique")
@@ -633,7 +633,7 @@ def test_tile_axpy_vec3(test, device):
 
 
 def test_tile_axpy_broadcast_dest(test, device):
-    """tile_axpy onto a broadcast shared tile (non-unique layout) uses atomics."""
+    """Verify that tile_axpy onto a broadcast shared tile (non-unique layout) uses atomics."""
     ROWS = 4
     COLS = 4
 

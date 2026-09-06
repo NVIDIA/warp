@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-"""This file defines a kernel that fails on codegen.py"""
+"""This file defines a kernel that fails on codegen.py."""
 
 import warp as wp
 

@@ -399,9 +399,13 @@ def test_custom_named_overload_stub(test, device):
 
 
 def test_ambiguous_custom_named_overload_stub(test, device):
-    # A kernel factory that registers one function under several custom keys leaves the
-    # decorator form of @wp.overload with no way to tell the resulting kernels apart, since
-    # they all share the Python-qualified name it looks up.
+    """Reject ambiguous decorator overloads for custom-named functions.
+
+    A factory can register one function under several custom keys, but the decorator
+    form of ``@wp.overload`` cannot distinguish kernels that share a Python-qualified
+    name.
+    """
+
     def ambiguous_factory_kernel(x: Any):
         return
 

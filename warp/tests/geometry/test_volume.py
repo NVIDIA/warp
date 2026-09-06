@@ -1071,7 +1071,7 @@ def test_volume_from_numpy_3d(test, device):
 
 
 def test_volume_from_numpy_anisotropic(test, device):
-    # Verify load_from_numpy works with per-axis voxel sizes
+    """Verify loading NumPy data with per-axis voxel sizes."""
     mins = np.array([-2.0, -2.0, -2.0])
     voxel_size = (0.2, 0.3, 0.4)
     maxs = np.array([2.0, 2.0, 2.0])
@@ -1096,7 +1096,7 @@ def test_volume_from_numpy_anisotropic(test, device):
 
 
 def test_volume_from_numpy_3d_anisotropic(test, device):
-    # Verify load_from_numpy with vec3 bg_value and anisotropic voxel_size
+    """Verify loading vector-valued NumPy data with anisotropic voxels."""
     mins = np.array([-1.0, -1.0, -1.0])
     voxel_size = (0.1, 0.2, 0.3)
     maxs = np.array([1.0, 1.0, 1.0])
@@ -1113,14 +1113,14 @@ def test_volume_from_numpy_3d_anisotropic(test, device):
 
 
 def test_volume_from_numpy_bad_voxel_size(test, device):
-    # Verify ValueError for voxel_size with wrong number of elements
+    """Reject voxel sizes with the wrong number of elements."""
     data = np.zeros((8, 8, 8), dtype=np.float32)
     with test.assertRaises(ValueError):
         wp.Volume.load_from_numpy(data, (0, 0, 0), voxel_size=(0.1, 0.2), bg_value=0.0, device=device)
 
 
 def test_volume_from_numpy_numpy_scalar(test, device):
-    # Verify NumPy scalar types (e.g. np.float32) work as voxel_size
+    """Accept NumPy scalar types as voxel sizes."""
     mins = np.array([-2.0, -2.0, -2.0])
     voxel_size = np.float32(0.5)
     shape = (16, 16, 16)
@@ -1131,7 +1131,7 @@ def test_volume_from_numpy_numpy_scalar(test, device):
 
 
 def test_volume_bad_voxel_size_values(test, device):
-    # Verify ValueError for zero, negative, and non-finite voxel sizes
+    """Reject zero, negative, and nonfinite voxel sizes."""
     data = np.zeros((8, 8, 8), dtype=np.float32)
     with test.assertRaises(ValueError):
         wp.Volume.load_from_numpy(data, (0, 0, 0), voxel_size=0.0, bg_value=0.0, device=device)
@@ -1144,7 +1144,7 @@ def test_volume_bad_voxel_size_values(test, device):
 
 
 def test_volume_bad_voxel_size_type(test, device):
-    # Verify TypeError for non-numeric, non-sequence voxel_size
+    """Reject nonnumeric and nonsequence voxel sizes."""
     data = np.zeros((8, 8, 8), dtype=np.float32)
     with test.assertRaises(TypeError):
         wp.Volume.load_from_numpy(data, (0, 0, 0), voxel_size=None, bg_value=0.0, device=device)
@@ -1153,7 +1153,7 @@ def test_volume_bad_voxel_size_type(test, device):
 
 
 def test_volume_allocate_bad_voxel_size(test, device):
-    # Verify ValueError for wrong-length voxel_size in allocate
+    """Reject wrong-length voxel sizes during volume allocation."""
     with test.assertRaises(ValueError):
         wp.Volume.allocate(
             min=[0, 0, 0],
@@ -1166,7 +1166,7 @@ def test_volume_allocate_bad_voxel_size(test, device):
 
 
 def test_volume_allocate_anisotropic(test, device):
-    # Verify Volume.allocate works with anisotropic voxel_size
+    """Allocate a volume with anisotropic voxel sizes."""
     volume = wp.Volume.allocate(
         min=[0, 0, 0],
         max=[2.0, 3.0, 4.0],
@@ -1262,7 +1262,7 @@ class TestVolume(unittest.TestCase):
             super().tearDownClass()
 
     def test_volume_new_del(self):
-        # test the scenario in which a volume is created but not initialized before gc
+        """Delete a volume that was allocated without initialization."""
         instance = wp.Volume.__new__(wp.Volume)
         instance.__del__()
 

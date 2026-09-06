@@ -280,7 +280,7 @@ def test_graph_fill_noncontiguous_cpu_rejected(test, device):
 
 
 def test_graph_fill_indexed_cpu_rejected(test, device):
-    # Indexedarray.fill_() during CPU APIC capture has no recording path yet.
+    """Reject indexed-array fills during CPU APIC capture."""
     if not device.is_cpu:
         test.skipTest("CPU-only: CUDA indexed fill APIC rejection is covered in test_apic")
     arr = wp.zeros(8, dtype=wp.int32, device=device)
@@ -433,7 +433,7 @@ def test_graph_launch_array_access_mode_checked_mempool_access_cuda_capture(test
 
 
 def test_graph_alloc(test, device):
-    """Array allocated inside capture scope, used by subsequent kernel."""
+    """Test array allocated inside capture scope, used by subsequent kernel."""
     n = 128
     input_arr = wp.array(np.arange(n, dtype=np.float32) + 1.0, device=device)
     output_arr = wp.zeros(n, dtype=float, device=device)
@@ -463,7 +463,7 @@ def test_graph_alloc(test, device):
 
 
 def test_cuda_graph_alloc_free_preserves_merged_frontier(test, device):
-    """In-capture free preserves cross-stream dependencies merged via ``wait_stream``."""
+    """Verify that in-capture free preserves cross-stream dependencies merged via ``wait_stream``."""
     n = 1 << 14
     spin = 1 << 24
 
@@ -853,7 +853,7 @@ def test_cuda_graph_topo_alloc_sequential_free(test, device):
 
 
 def test_cuda_graph_topo_alloc_side_stream_independent(test, device):
-    """Alloc on an unjoined side stream is independent from the parent."""
+    """Verify that alloc on an unjoined side stream is independent from the parent."""
 
     # Expected topology:
     #
@@ -879,7 +879,7 @@ def test_cuda_graph_topo_alloc_side_stream_independent(test, device):
 
 
 def test_cuda_graph_topo_alloc_side_stream_independent_free(test, device):
-    """Alloc/free on an unjoined side stream doesn't serialize parent."""
+    """Verify that alloc/free on an unjoined side stream doesn't serialize parent."""
 
     # Expected topology:
     #
@@ -910,7 +910,7 @@ def test_cuda_graph_topo_alloc_side_stream_independent_free(test, device):
 
 
 def test_cuda_graph_topo_alloc_side_stream_joined(test, device):
-    """Joining a side stream exposes its alloc to the parent."""
+    """Verify that joining a side stream exposes its alloc to the parent."""
 
     # Expected topology:
     #
@@ -941,7 +941,7 @@ def test_cuda_graph_topo_alloc_side_stream_joined(test, device):
 
 
 def test_cuda_graph_topo_alloc_fork(test, device):
-    """A forked side stream inherits allocs from before the fork, but not from after the fork."""
+    """Verify that a forked side stream inherits allocs from before the fork, but not from after the fork."""
 
     # Expected topology:
     #
@@ -977,7 +977,7 @@ def test_cuda_graph_topo_alloc_fork(test, device):
 
 
 def test_cuda_graph_topo_alloc_fork_free_on_main(test, device):
-    """Forked allocs freed on main stream without sync."""
+    """Test forked allocs freed on main stream without sync."""
 
     # Expected topology:
     #
@@ -1025,7 +1025,7 @@ def test_cuda_graph_topo_alloc_fork_free_on_main(test, device):
 
 
 def test_cuda_graph_topo_alloc_fork_free_on_side(test, device):
-    """Forked allocs freed on side stream without sync."""
+    """Test forked allocs freed on side stream without sync."""
 
     # Expected topology:
     #
@@ -1073,7 +1073,7 @@ def test_cuda_graph_topo_alloc_fork_free_on_side(test, device):
 
 
 def test_cuda_graph_topo_alloc_parallel_streams(test, device):
-    """Parallel side streams' allocs are mutually independent."""
+    """Verify that parallel side streams' allocs are mutually independent."""
 
     # Expected topology:
     #
@@ -1102,7 +1102,7 @@ def test_cuda_graph_topo_alloc_parallel_streams(test, device):
 
 
 def test_cuda_graph_topo_alloc_parallel_streams_free_on_sides(test, device):
-    """Freeing side stream allocs does not serialize independent streams"""
+    """Keep independent streams concurrent when freeing side-stream allocations."""
 
     # Expected topology:
     #
@@ -1137,7 +1137,7 @@ def test_cuda_graph_topo_alloc_parallel_streams_free_on_sides(test, device):
 
 
 def test_cuda_graph_topo_alloc_parallel_streams_free_on_main(test, device):
-    """Freeing side stream allocs does not serialize independent streams"""
+    """Keep independent streams concurrent when freeing allocations on the main stream."""
 
     # Expected topology:
     #
@@ -1172,7 +1172,7 @@ def test_cuda_graph_topo_alloc_parallel_streams_free_on_main(test, device):
 
 
 def test_cuda_graph_topo_alloc_parallel_streams_free_on_other(test, device):
-    """Freeing side stream allocs does not serialize independent streams"""
+    """Keep independent streams concurrent when freeing allocations on another stream."""
 
     # Expected topology:
     #
@@ -1211,7 +1211,7 @@ def test_cuda_graph_topo_alloc_parallel_streams_free_on_other(test, device):
 
 
 def test_cuda_graph_topo_alloc_parallel_streams_joined(test, device):
-    """Joining parallel side streams exposes both allocs to the parent."""
+    """Verify that joining parallel side streams exposes both allocs to the parent."""
 
     # Expected topology:
     #
@@ -1265,7 +1265,7 @@ def test_cuda_graph_topo_alloc_parallel_streams_joined(test, device):
 
 
 def test_cuda_graph_topo_alloc_nested_streams_chain(test, device):
-    """Nested ``ScopedStream`` blocks chain alloc visibility."""
+    """Verify that nested ``ScopedStream`` blocks chain alloc visibility."""
 
     # Expected topology:
     #
@@ -1304,7 +1304,7 @@ def test_cuda_graph_topo_alloc_nested_streams_chain(test, device):
 
 
 def test_cuda_graph_topo_alloc_nested_streams_chain_free(test, device):
-    """Nested ``ScopedStream`` blocks chain alloc visibility."""
+    """Verify that nested ``ScopedStream`` blocks chain alloc visibility."""
 
     # Expected topology:
     #

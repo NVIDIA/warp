@@ -88,8 +88,7 @@ def test_array_scan_vector(test, device):
 
 
 def test_array_scan_strided_views(test, device):
-    # Interleave data with padding to exercise 1D strided views and
-    # verify array_scan() writes only through the output view.
+    """Write array-scan results only through a strided output view."""
     scalar_values = np.array((6, -3, 5, 0, -2, 8), dtype=np.int64)
     scalar_base = np.zeros(scalar_values.size * 2, dtype=np.int64)
     scalar_base[::2] = scalar_values
@@ -192,7 +191,7 @@ def test_array_scan_error_unsupported_dtype(test, device):
 
 
 def test_array_scan_error_device_failure_is_reported(test, device):
-    """A failed device scan raises instead of leaving the output silently unwritten."""
+    """Verify that a failed device scan raises instead of leaving the output silently unwritten."""
     values = wp.zeros(16, dtype=wp.int32, device=device)
     result = wp.zeros(16, dtype=wp.int32, device=device)
 
@@ -248,8 +247,7 @@ def test_radix_sort_pairs_value_types(test, device):
 
 
 def test_radix_sort_pairs_64_bit_keys_8_byte_values(test, device):
-    # Use duplicate 64-bit keys plus 8-byte payloads large enough to catch
-    # unstable key/value movement or payload truncation.
+    """Preserve duplicate 64-bit keys and eight-byte payloads during radix sort."""
     cases = (
         (
             wp.int64,
