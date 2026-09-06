@@ -638,6 +638,18 @@ DECLARE_INT_OPS(uint64)
 template <typename T> inline CUDA_CALLABLE T floordiv_signed(T a, T b)
 {
     T q = a / b;
+
+#if !defined(__CUDA_ARCH__) && (defined(__clang__) || defined(__GNUC__))
+    // Keep the quotient/remainder form below for constant divisors so the
+    // compiler can strength-reduce both operations. For runtime divisors,
+    // checking the operand signs first avoids unnecessary correction work.
+    if (!__builtin_constant_p(b)) {
+        if ((a < T(0)) != (b < T(0)) && a % b != T(0))
+            q -= T(1);
+        return q;
+    }
+#endif
+
     T r = a % b;
     if (r != T(0) && ((r < T(0)) != (b < T(0))))
         q -= T(1);
