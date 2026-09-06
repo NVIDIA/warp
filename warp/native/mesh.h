@@ -1880,7 +1880,12 @@ CUDA_CALLABLE inline mesh_query_aabb_t mesh_query_impl(uint64_t id, const vec3& 
     query.mesh = mesh;
 
 #if BVH_SHARED_STACK
-    query.stack.ptr = &mesh_query_shared_stack()[threadIdx.x];
+    // threadIdx.x is only unique within a 1D block. Flatten the block coordinates
+    // so external multidimensional launches still select one stack per thread.
+    const int linear_thread_idx = static_cast<int>(threadIdx.x)
+        + static_cast<int>(blockDim.x)
+            * (static_cast<int>(threadIdx.y) + static_cast<int>(blockDim.y) * static_cast<int>(threadIdx.z));
+    query.stack.ptr = &mesh_query_shared_stack()[linear_thread_idx];
 #endif
 
     query.stack[0] = *mesh.bvh.root;
