@@ -22,8 +22,11 @@ TEXTURE_3D_DEPTH = 64
 
 @wp.func
 def query_2d(tid: int) -> wp.vec2f:
-    x = tid % TEXTURE_2D_WIDTH
-    y = (tid // TEXTURE_2D_WIDTH) % TEXTURE_2D_HEIGHT
+    coord = wp.uint32(tid)
+    width = wp.uint32(TEXTURE_2D_WIDTH)
+    height = wp.uint32(TEXTURE_2D_HEIGHT)
+    x = coord % width
+    y = (coord // width) % height
     return wp.vec2f(
         (float(x) + 0.5) / float(TEXTURE_2D_WIDTH),
         (float(y) + 0.5) / float(TEXTURE_2D_HEIGHT),
@@ -32,9 +35,13 @@ def query_2d(tid: int) -> wp.vec2f:
 
 @wp.func
 def query_3d(tid: int) -> wp.vec3f:
-    x = tid % TEXTURE_3D_WIDTH
-    y = (tid // TEXTURE_3D_WIDTH) % TEXTURE_3D_HEIGHT
-    z = (tid // (TEXTURE_3D_WIDTH * TEXTURE_3D_HEIGHT)) % TEXTURE_3D_DEPTH
+    coord = wp.uint32(tid)
+    width = wp.uint32(TEXTURE_3D_WIDTH)
+    height = wp.uint32(TEXTURE_3D_HEIGHT)
+    depth = wp.uint32(TEXTURE_3D_DEPTH)
+    x = coord % width
+    y = (coord // width) % height
+    z = (coord // (width * height)) % depth
     return wp.vec3f(
         float(x) + 0.5,
         float(y) + 0.5,
