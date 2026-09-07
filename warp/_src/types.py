@@ -1347,6 +1347,17 @@ def matrix(shape, dtype):
                 v = converted
             super().__setitem__(slice(col_start, col_end, col_step), v)
 
+        def _component_index(self, row, col):
+            if row < -self._shape_[0] or row >= self._shape_[0]:
+                raise IndexError("Invalid row index")
+            if col < -self._shape_[1] or col >= self._shape_[1]:
+                raise IndexError("Invalid column index")
+            if row < 0:
+                row += self._shape_[0]
+            if col < 0:
+                col += self._shape_[1]
+            return row * self._shape_[1] + col
+
         def __getitem__(self, key):
             if isinstance(key, tuple):
                 # element indexing m[i,j]
@@ -1357,14 +1368,13 @@ def matrix(shape, dtype):
                 ndim = sum(1 for x in key if isinstance(x, slice))
 
                 if ndim == 0:
-                    row = key[0] + self._shape_[0] if key[0] < 0 else key[0]
-                    col = key[1] + self._shape_[1] if key[1] < 0 else key[1]
+                    idx = self._component_index(key[0], key[1])
 
                     if warp.config.legacy_scalar_return_types:
                         # Legacy path before addressing GH-905.
-                        return mat_t.scalar_export(super().__getitem__(row * self._shape_[1] + col))
+                        return mat_t.scalar_export(super().__getitem__(idx))
 
-                    value = mat_t.scalar_export(super().__getitem__(row * self._shape_[1] + col))
+                    value = mat_t.scalar_export(super().__getitem__(idx))
                     if dtype in native_scalar_types:
                         return value
                     return self._wp_scalar_type_(value)
@@ -1426,9 +1436,7 @@ def matrix(shape, dtype):
                             f"The provided value is expected to be a scalar but got an object of shape {v_shape} instead"
                         )
 
-                    row = key[0] + self._shape_[0] if key[0] < 0 else key[0]
-                    col = key[1] + self._shape_[1] if key[1] < 0 else key[1]
-                    idx = row * self._shape_[1] + col
+                    idx = self._component_index(key[0], key[1])
                     super().__setitem__(idx, mat_t.scalar_import(value))
                     return
 
