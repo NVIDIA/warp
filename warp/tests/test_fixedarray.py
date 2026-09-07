@@ -136,7 +136,7 @@ def test_error_runtime_shape(test, device):
         wp.zeros(shape=(tid,), dtype=int)
 
     with test.assertRaisesRegex(
-        RuntimeError,
+        ValueError,
         r"the `shape` argument must be specified as a constant when zero-initializing an array$",
     ):
         wp.launch(kernel, 1, device=device)

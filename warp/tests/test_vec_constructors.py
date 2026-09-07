@@ -26,7 +26,7 @@ def test_anon_constructor_error_length_mismatch(test, device):
         wp.types.vector(wp.types.vector(length=2, dtype=float), length=3, dtype=float)
 
     with test.assertRaisesRegex(
-        RuntimeError,
+        ValueError,
         r"incompatible vector of length 3 given when copy constructing a vector of length 2$",
     ):
         wp.launch(kernel, dim=1, inputs=[], device=device)
@@ -38,7 +38,7 @@ def test_anon_constructor_error_numeric_arg_missing(test, device):
         wp.types.vector(1.0, 2.0, length=12345)
 
     with test.assertRaisesRegex(
-        RuntimeError,
+        ValueError,
         r"incompatible number of values given \(2\) when constructing a vector of length 12345$",
     ):
         wp.launch(kernel, dim=1, inputs=[], device=device)
@@ -50,7 +50,7 @@ def test_anon_constructor_error_length_arg_missing(test, device):
         wp.types.vector()
 
     with test.assertRaisesRegex(
-        RuntimeError,
+        ValueError,
         r"the `length` argument must be specified when zero-initializing a vector$",
     ):
         wp.launch(kernel, dim=1, inputs=[], device=device)
@@ -62,7 +62,7 @@ def test_anon_constructor_error_numeric_args_mismatch(test, device):
         wp.types.vector(1.0, 2)
 
     with test.assertRaisesRegex(
-        RuntimeError,
+        TypeError,
         r"all values given when constructing a vector must have the same type$",
     ):
         wp.launch(kernel, dim=1, inputs=[], device=device)
@@ -74,7 +74,7 @@ def test_tpl_constructor_error_incompatible_sizes(test, device):
         wp.vec3(wp.vec2(1.0, 2.0))
 
     with test.assertRaisesRegex(
-        RuntimeError, "incompatible vector of length 3 given when copy constructing a vector of length 2"
+        ValueError, "incompatible vector of length 3 given when copy constructing a vector of length 2"
     ):
         wp.launch(kernel, dim=1, inputs=[], device=device)
 
@@ -85,7 +85,7 @@ def test_tpl_constructor_error_numeric_args_mismatch(test, device):
         wp.vec2(x, x)
 
     with test.assertRaisesRegex(
-        RuntimeError,
+        TypeError,
         r"all values used to initialize this vector are expected to be of the type `float32`$",
     ):
         wp.launch(kernel, dim=1, inputs=[wp.float64(1.0)], device=device)

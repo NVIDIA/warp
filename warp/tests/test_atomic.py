@@ -243,7 +243,7 @@ def test_atomic_add_unsupported_dtypes(test, device, dtype):
 
     arr = wp.zeros(1, dtype=dtype, device=device)
     with test.assertRaisesRegex(
-        RuntimeError,
+        TypeError,
         (
             r"atomic_add\(\) operations only work on arrays with \[u\]int32, \[u\]int64, float16, bfloat16, float32, or float64 "
             rf"as the underlying scalar types, but got {dtype_str} \(with scalar type {scalar_type_str}\)$"
@@ -264,7 +264,7 @@ def test_atomic_min_unsupported_dtypes(test, device, dtype):
 
     arr = wp.zeros(1, dtype=dtype, device=device)
     with test.assertRaisesRegex(
-        RuntimeError,
+        TypeError,
         (
             r"atomic_min\(\) operations only work on arrays with \[u\]int32, \[u\]int64, bfloat16, float32, or float64 "
             rf"as the underlying scalar types, but got {dtype_str} \(with scalar type {scalar_type_str}\)$"
@@ -285,7 +285,7 @@ def test_atomic_max_unsupported_dtypes(test, device, dtype):
 
     arr = wp.zeros(1, dtype=dtype, device=device)
     with test.assertRaisesRegex(
-        RuntimeError,
+        TypeError,
         (
             r"atomic_max\(\) operations only work on arrays with \[u\]int32, \[u\]int64, bfloat16, float32, or float64 "
             rf"as the underlying scalar types, but got {dtype_str} \(with scalar type {scalar_type_str}\)$"
