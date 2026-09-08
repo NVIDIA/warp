@@ -508,6 +508,27 @@ inline CUDA_CALLABLE void _svd_2( // input A
     // output V
     Type& v11, Type& v12, Type& v21, Type& v22)
 {
+    // Step 0: Scale by the largest magnitude entry so the squared terms below
+    // cannot underflow (which would fake a zero discriminant for low-magnitude
+    // inputs, most visibly in float16). U and V are scale-invariant; the
+    // singular values are rescaled at the end.
+    Type amax = max(max(abs(a11), abs(a12)), max(abs(a21), abs(a22)));
+    if (amax == Type(0)) {
+        // A = 0
+        s1 = s2 = Type(0);
+        u11 = v11 = Type(1);
+        u12 = v12 = Type(0);
+        u21 = v21 = Type(0);
+        u22 = v22 = Type(1);
+        return;
+    }
+    // Divide directly rather than multiplying by 1 / amax: the reciprocal
+    // overflows to infinity in float16 for amax below ~1.5e-5.
+    a11 /= amax;
+    a12 /= amax;
+    a21 /= amax;
+    a22 /= amax;
+
     // Step 1: Compute ATA
     Type ATA11 = a11 * a11 + a21 * a21;
     Type ATA12 = a11 * a12 + a21 * a22;
@@ -520,12 +541,21 @@ inline CUDA_CALLABLE void _svd_2( // input A
 
     // Step 3: Singular values
     if (discriminant == Type(0)) {
-        // Duplicate eigenvalue, A ~ s Id
-        s1 = s2 = sqrt(Type(0.5) * trace);
-        u11 = v11 = Type(1);
-        u12 = v12 = Type(0);
-        u21 = v21 = Type(0);
-        u22 = v22 = Type(1);
+        // Duplicate eigenvalue, ATA = lambda Id, so A = s Q with Q orthogonal
+        // (any scaled rotation or reflection, not just a scaled identity).
+        // A / s is exactly orthogonal, so U = A / s, V = Id reconstructs A.
+        // The scaling above guarantees s > 0 here.
+        Type s = sqrt(Type(0.5) * trace);
+        Type inv_sigma = Type(1) / s;
+        s1 = s2 = s * amax;
+        v11 = Type(1);
+        v12 = Type(0);
+        v21 = Type(0);
+        v22 = Type(1);
+        u11 = a11 * inv_sigma;
+        u12 = a12 * inv_sigma;
+        u21 = a21 * inv_sigma;
+        u22 = a22 * inv_sigma;
         return;
     }
 
@@ -559,9 +589,9 @@ inline CUDA_CALLABLE void _svd_2( // input A
     u12 = -u21 * det_sign;
     u22 = u11 * det_sign;
 
-    // Step 6: Set S
-    s1 = sigma1;
-    s2 = sigma2;
+    // Step 6: Set S (undo the input scaling)
+    s1 = sigma1 * amax;
+    s2 = sigma2 * amax;
 }
 
 template <typename Type>
@@ -655,6 +685,53 @@ inline CUDA_CALLABLE void adj_svd2(
 )
 {
     const Type epsilon = _svd_config<Type>::SVD_EPSILON;
+
+    // Recompute _svd_2's branch predicate with the same arithmetic (including the
+    // underflow-avoiding scaling) so forward and adjoint always agree on the path
+    // taken: equal sigmas alone can also arise from rounding on the general path,
+    // where V is not the identity.
+    Type amax = max(max(abs(A.data[0][0]), abs(A.data[0][1])), max(abs(A.data[1][0]), abs(A.data[1][1])));
+    if (amax == Type(0)) {
+        // A = 0 has no well-defined direction
+        return;
+    }
+    Type a11 = A.data[0][0] / amax;
+    Type a12 = A.data[0][1] / amax;
+    Type a21 = A.data[1][0] / amax;
+    Type a22 = A.data[1][1] / amax;
+    Type ATA11 = a11 * a11 + a21 * a21;
+    Type ATA12 = a11 * a12 + a21 * a22;
+    Type ATA22 = a12 * a12 + a22 * a22;
+    Type diff = ATA11 - ATA22;
+    Type discriminant = diff * diff + Type(4) * ATA12 * ATA12;
+
+    if (discriminant == Type(0)) {
+        // _svd_2's duplicate-eigenvalue branch sets sigma = |A|_F / sqrt(2),
+        // U = A / sigma, and V = Id. U and V are not individually unique there,
+        // so a convention is required: recover the cotangent C of the smooth
+        // reconstruction U diag(sigma) V^T symmetrically from adj_U and adj_V
+        // (for a loss <C, U diag(sigma) V^T>, adj_U = sigma C and
+        // adj_V = sigma C^T U, so C = (adj_U + U adj_V^T) / (2 sigma)), then
+        // remove the part already carried by adj_sigma. Exact for losses of
+        // the reconstruction and of the singular values; the pure-gauge
+        // response is dropped.
+        Type inv_two_sigma = Type(0.5) / sigma[0];
+        Type c00
+            = (adj_U.data[0][0] + U.data[0][0] * adj_V.data[0][0] + U.data[0][1] * adj_V.data[0][1]) * inv_two_sigma;
+        Type c01
+            = (adj_U.data[0][1] + U.data[0][0] * adj_V.data[1][0] + U.data[0][1] * adj_V.data[1][1]) * inv_two_sigma;
+        Type c10
+            = (adj_U.data[1][0] + U.data[1][0] * adj_V.data[0][0] + U.data[1][1] * adj_V.data[0][1]) * inv_two_sigma;
+        Type c11
+            = (adj_U.data[1][1] + U.data[1][0] * adj_V.data[1][0] + U.data[1][1] * adj_V.data[1][1]) * inv_two_sigma;
+        Type d0 = adj_sigma[0] - (U.data[0][0] * c00 + U.data[1][0] * c10);
+        Type d1 = adj_sigma[1] - (U.data[0][1] * c01 + U.data[1][1] * c11);
+        adj_A.data[0][0] += c00 + U.data[0][0] * d0;
+        adj_A.data[0][1] += c01 + U.data[0][1] * d1;
+        adj_A.data[1][0] += c10 + U.data[1][0] * d0;
+        adj_A.data[1][1] += c11 + U.data[1][1] * d1;
+        return;
+    }
 
     Type s1_squared = sigma[0] * sigma[0];
     Type s2_squared = sigma[1] * sigma[1];
