@@ -14921,26 +14921,15 @@ def export_stubs(file):  # pragma: no cover
     init_import_lines = []
     init_other_lines = []
 
-    skip_runtime_dunder_getattr = False
     for line in init_lines:
-        if skip_runtime_dunder_getattr:
-            if line and not line[0].isspace():
-                skip_runtime_dunder_getattr = False
-            else:
-                continue
-
         if line.startswith("#"):
             continue  # Skip comment lines from __init__.py
-
-        if line.startswith("def __getattr__("):
-            skip_runtime_dunder_getattr = True
-            continue
 
         if line.startswith("_register_module_source("):
             continue
 
         # Check if this line is a top-level import statement (no leading whitespace).
-        # Indented imports inside function bodies (e.g., in __getattr__) are not top-level imports.
+        # Indented imports inside function bodies are not top-level imports.
         is_top_level = not line or not line[0].isspace()
         is_import = is_top_level and (import_pattern.search(line) or line.startswith("import ") or "import *" in line)
 

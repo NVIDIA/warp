@@ -1,16 +1,12 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-import contextlib
-import io
 import unittest
-import warnings
 from typing import Any
 
 import numpy as np
 
 import warp as wp
-from warp._src import logger as _logger_module
 from warp.tests.unittest_utils import *
 
 dim_x = 128
@@ -92,17 +88,6 @@ def count_neighbors_fixed_group(
     counts[tid] = count
 
 
-_saved_warnings_seen = _logger_module._warnings_seen.copy()
-try:
-    with warnings.catch_warnings(), contextlib.redirect_stderr(io.StringIO()):
-        warnings.simplefilter("always", DeprecationWarning)
-        LegacyHashGridQueryH = wp.HashGridQueryH
-        LegacyHashGridQueryD = wp.HashGridQueryD
-finally:
-    _logger_module._warnings_seen.clear()
-    _logger_module._warnings_seen.update(_saved_warnings_seen)
-
-
 @wp.func
 def closest_hashgrid_neighbor_float16(
     query: wp.HashGridQuery[wp.float16], center: wp.vec3h, points: wp.array[wp.vec3h], radius: wp.float16
@@ -157,42 +142,6 @@ def closest_hashgrid_neighbor_float64(
     return best
 
 
-@wp.func
-def closest_hashgrid_neighbor_legacy_float16(
-    query: LegacyHashGridQueryH, center: wp.vec3h, points: wp.array[wp.vec3h], radius: wp.float16
-):
-    best = int(-1)
-    best_dist_sq = radius * radius
-    index = int(0)
-
-    while wp.hash_grid_query_next(query, index):
-        offset = points[index] - center
-        dist_sq = wp.dot(offset, offset)
-        if dist_sq <= best_dist_sq:
-            best = index
-            best_dist_sq = dist_sq
-
-    return best
-
-
-@wp.func
-def closest_hashgrid_neighbor_legacy_float64(
-    query: LegacyHashGridQueryD, center: wp.vec3d, points: wp.array[wp.vec3d], radius: wp.float64
-):
-    best = int(-1)
-    best_dist_sq = radius * radius
-    index = int(0)
-
-    while wp.hash_grid_query_next(query, index):
-        offset = points[index] - center
-        dist_sq = wp.dot(offset, offset)
-        if dist_sq <= best_dist_sq:
-            best = index
-            best_dist_sq = dist_sq
-
-    return best
-
-
 @wp.kernel
 def closest_hashgrid_neighbor_kernel_float16(
     grid: wp.uint64,
@@ -200,15 +149,12 @@ def closest_hashgrid_neighbor_kernel_float16(
     points: wp.array[wp.vec3h],
     radius: wp.float16,
     closest: wp.array[int],
-    closest_legacy: wp.array[int],
 ):
     tid = wp.tid()
     center = query_points[tid]
     query = wp.hash_grid_query(grid, center, radius)
-    legacy_query = wp.hash_grid_query(grid, center, radius)
 
     closest[tid] = closest_hashgrid_neighbor_float16(query, center, points, radius)
-    closest_legacy[tid] = closest_hashgrid_neighbor_legacy_float16(legacy_query, center, points, radius)
 
 
 @wp.kernel
@@ -233,15 +179,12 @@ def closest_hashgrid_neighbor_kernel_float64(
     points: wp.array[wp.vec3d],
     radius: wp.float64,
     closest: wp.array[int],
-    closest_legacy: wp.array[int],
 ):
     tid = wp.tid()
     center = query_points[tid]
     query = wp.hash_grid_query(grid, center, radius)
-    legacy_query = wp.hash_grid_query(grid, center, radius)
 
     closest[tid] = closest_hashgrid_neighbor_float64(query, center, points, radius)
-    closest_legacy[tid] = closest_hashgrid_neighbor_legacy_float64(legacy_query, center, points, radius)
 
 
 @wp.func
@@ -769,12 +712,12 @@ def test_hashgrid_query_func_annotations(test, device):
     expected_closest = np.array([1, 2, 3, -1], dtype=np.int32)
 
     cases = [
-        (wp.float16, wp.vec3h, closest_hashgrid_neighbor_kernel_float16, True),
-        (wp.float32, wp.vec3f, closest_hashgrid_neighbor_kernel_float32, False),
-        (wp.float64, wp.vec3d, closest_hashgrid_neighbor_kernel_float64, True),
+        (wp.float16, wp.vec3h, closest_hashgrid_neighbor_kernel_float16),
+        (wp.float32, wp.vec3f, closest_hashgrid_neighbor_kernel_float32),
+        (wp.float64, wp.vec3d, closest_hashgrid_neighbor_kernel_float64),
     ]
 
-    for scalar_dtype, vec3_dtype, kernel, has_legacy_alias in cases:
+    for scalar_dtype, vec3_dtype, kernel in cases:
         with test.subTest(dtype=scalar_dtype.__name__):
             points_arr = wp.array(points, dtype=vec3_dtype, device=device)
             query_points_arr = wp.array(query_points, dtype=vec3_dtype, device=device)
@@ -783,30 +726,12 @@ def test_hashgrid_query_func_annotations(test, device):
             grid = wp.HashGrid(16, 16, 16, device, dtype=scalar_dtype)
             grid.build(points_arr, 0.5)
 
-            if has_legacy_alias:
-                closest_legacy = wp.empty(len(query_points), dtype=int, device=device)
-                wp.launch(
-                    kernel=kernel,
-                    dim=len(query_points),
-                    inputs=[
-                        wp.uint64(grid.id),
-                        query_points_arr,
-                        points_arr,
-                        scalar_dtype(0.35),
-                        closest,
-                        closest_legacy,
-                    ],
-                    device=device,
-                )
-
-                assert_np_equal(closest_legacy.numpy(), expected_closest)
-            else:
-                wp.launch(
-                    kernel=kernel,
-                    dim=len(query_points),
-                    inputs=[wp.uint64(grid.id), query_points_arr, points_arr, scalar_dtype(0.35), closest],
-                    device=device,
-                )
+            wp.launch(
+                kernel=kernel,
+                dim=len(query_points),
+                inputs=[wp.uint64(grid.id), query_points_arr, points_arr, scalar_dtype(0.35), closest],
+                device=device,
+            )
 
             assert_np_equal(closest.numpy(), expected_closest)
 
@@ -1007,28 +932,6 @@ class TestHashGrid(unittest.TestCase):
         self.assertIn("HashGridQuery", public_names)
         self.assertNotIn("HashGridQueryH", public_names)
         self.assertNotIn("HashGridQueryD", public_names)
-
-    def test_hashgrid_query_legacy_aliases_warn(self):
-        saved_warnings = _logger_module._warnings_seen.copy()
-        _logger_module._warnings_seen.clear()
-
-        try:
-            with warnings.catch_warnings(), contextlib.redirect_stderr(io.StringIO()) as stderr:
-                warnings.simplefilter("always", DeprecationWarning)
-                query_h = wp.HashGridQueryH
-                query_d = wp.HashGridQueryD
-
-            output = stderr.getvalue()
-        finally:
-            _logger_module._warnings_seen.clear()
-            _logger_module._warnings_seen.update(saved_warnings)
-
-        self.assertIs(query_h, wp._src.types.hash_grid_query_type(wp.float16))
-        self.assertIs(query_d, wp._src.types.hash_grid_query_type(wp.float64))
-        self.assertIn("Warp DeprecationWarning", output)
-        self.assertIn("HashGridQueryH", output)
-        self.assertIn("HashGridQueryD", output)
-        self.assertIn("warp.hash_grid_query()", output)
 
     def test_hashgrid_graph_rebuilds_current_points(self):
         """Rebuild a CPU HashGrid from a current strided point view on every replay."""

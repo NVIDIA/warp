@@ -599,24 +599,4 @@ from warp._src.marching_cubes import MarchingCubes as MarchingCubes
 from warp._src.context import RegisteredGLBuffer as RegisteredGLBuffer
 
 
-def __getattr__(name):
-    if name == "HashGridQueryH":
-        dtype = float16
-    elif name == "HashGridQueryD":
-        dtype = float64
-    else:
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-
-    from warp._src.logger import log_warning  # noqa: PLC0415
-    from warp._src.types import hash_grid_query_type  # noqa: PLC0415
-
-    log_warning(
-        f"warp.{name} is deprecated and will be removed in a future release. "
-        "Use warp.HashGridQuery in public type references; query objects are returned by warp.hash_grid_query().",
-        category=DeprecationWarning,
-        stacklevel=2,
-    )
-    return hash_grid_query_type(dtype)
-
-
 __version__ = config.version
