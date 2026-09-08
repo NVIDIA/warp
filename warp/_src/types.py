@@ -7005,15 +7005,15 @@ class Volume:
     ) -> Volume:
         """Create a :class:`Volume` object from a dense 3D NumPy array.
 
-        This function is only supported for CUDA devices.
-
         Args:
             min_world: The 3D coordinate of the lower corner of the volume.
             voxel_size: The size of each voxel in spatial
                 coordinates. Can be a scalar for isotropic voxels or a 3-element
                 sequence ``(sx, sy, sz)`` for anisotropic voxels.
-            bg_value: Background value
-            device: The CUDA device to create the volume on, e.g.: ``"cuda"`` or ``"cuda:0"``.
+            bg_value: Value of unallocated voxels of the volume. A four-dimensional ``ndarray`` with a
+                length-three last axis makes a ``vec3f`` volume. For scalar data, a Python ``int``
+                ``bg_value`` makes an ``int32`` volume; other values make a ``float32`` volume.
+            device: The device to create the volume on.
 
         Returns:
             A ``warp.Volume`` object.
@@ -7100,8 +7100,6 @@ class Volume:
     ) -> Volume:
         """Allocate a new Volume based on the bounding box defined by min and max.
 
-        This function is only supported for CUDA devices.
-
         Allocate a volume that is large enough to contain voxels [min[0], min[1], min[2]] - [max[0], max[1], max[2]], inclusive.
         If points_in_world_space is true, then min and max are first converted to index space using the given voxel size
         (per-axis for anisotropic volumes) and translation, and the volume is allocated with those.
@@ -7114,10 +7112,14 @@ class Volume:
             max: Upper 3D coordinates of the bounding box in index space or world space, inclusive.
             voxel_size: Voxel size(s) of the new volume. Can be a scalar for isotropic
                 voxels or a 3-element sequence ``(sx, sy, sz)`` for anisotropic voxels.
-            bg_value: Value of unallocated voxels of the volume, also defines the volume's type,
-              a :class:`warp.vec3` volume is created if this is `array-like`, otherwise a float volume is created
+            bg_value: Value of unallocated voxels of the volume, also defines the volume's type.
+              An index volume will be created if ``bg_value`` is ``None``.
+              Other supported grid types are ``int32``, ``uint32``, ``int64``, ``float32``, ``float64``,
+              ``vec3f``, ``vec3d``, ``vec4f``, and ``vec4d``. A plain list or NumPy array always makes a
+              single-precision grid: ``vec3f`` for three values, ``vec4f`` for four. To get a
+              double-precision grid, pass a Warp vector such as ``vec3d``.
             translation: Translation between the index and world spaces.
-            device: The CUDA device to create the volume on, e.g.: ``"cuda"`` or ``"cuda:0"``.
+            device: The device to create the volume on.
         """
         voxel_size = cls._normalize_voxel_size(voxel_size)
 
@@ -7199,7 +7201,17 @@ class Volume:
 
     # nanovdb types for which we instantiate the grid builder
     # Should be in sync with WP_VOLUME_BUILDER_INSTANTIATE_TYPES in volume_builder.h
-    _supported_allocation_types = ("int32", "uint32", "int64", "float", "double", "Vec3f", "Vec3d", "Vec4f")
+    _supported_allocation_types = (
+        "int32",
+        "uint32",
+        "int64",
+        "float",
+        "double",
+        "Vec3f",
+        "Vec3d",
+        "Vec4f",
+        "Vec4d",
+    )
 
     REBUILD_SUCCESS: ClassVar[int] = 0
     """Rebuild completed without setting a status flag."""
@@ -7237,8 +7249,6 @@ class Volume:
     ) -> Volume:
         """Allocate a new :class:`Volume` with active tiles for each point ``tile_points``.
 
-        This function is supported on CPU and CUDA devices.
-
         The smallest unit of allocation is a dense tile of 8x8x8 voxels.
         This is the primary method for allocating sparse volumes.
         It uses an array of points indicating the tiles that must be allocated.
@@ -7265,7 +7275,10 @@ class Volume:
             voxel_size: Voxel size(s) of the new volume. Ignored if ``transform`` is given.
             bg_value: Value of unallocated voxels of the volume, also defines the volume's type.
               An index volume will be created if ``bg_value`` is ``None``.
-              Other supported grid types are ``int``, ``float``, ``vec3f``, and ``vec4f``.
+              Other supported grid types are ``int32``, ``uint32``, ``int64``, ``float32``, ``float64``,
+              ``vec3f``, ``vec3d``, ``vec4f``, and ``vec4d``. A plain list or NumPy array always makes a
+              single-precision grid: ``vec3f`` for three values, ``vec4f`` for four. To get a
+              double-precision grid, pass a Warp vector such as ``vec3d``.
             translation: Translation between the index and world spaces.
             transform: Linear transform between the index and world spaces.
               If ``None``, deduced from ``voxel_size``.
@@ -7279,7 +7292,7 @@ class Volume:
             status: Optional one-element ``uint32`` array receiving ``Volume.REBUILD_*`` status flags from the
               initial build. ``Volume.REBUILD_SUCCESS`` means the requested topology fit in the reserved capacity.
             point_mask: Optional ``int32`` array with one entry per point. Points with a zero mask value are ignored.
-            device: The device to create the volume on, e.g. ``"cpu"``, ``"cuda"``, or ``"cuda:0"``.
+            device: The device to create the volume on.
 
         Raises:
             RuntimeError: If ``tile_points``, ``point_mask``, or ``status`` is not a contiguous array of the
@@ -7489,7 +7502,7 @@ class Volume:
             status: Optional one-element ``uint32`` array receiving ``Volume.REBUILD_*`` status flags from the
                 initial build. ``Volume.REBUILD_SUCCESS`` means the requested topology fit in the reserved capacity.
             point_mask: Optional ``int32`` array with one entry per point. Points with a zero mask value are ignored.
-            device: The device to create the volume on, e.g. ``"cpu"``, ``"cuda"``, or ``"cuda:0"``.
+            device: The device to create the volume on.
 
         Raises:
             RuntimeError: If ``voxel_points``, ``point_mask``, or ``status`` is not a contiguous array of the

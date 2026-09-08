@@ -11301,9 +11301,8 @@ add_builtin(
 
     Behaves like :func:`~warp.volume_sample`, additionally writing the gradient of the sampled value
     with respect to the index-space coordinates ``uvw`` into ``grad``. For a scalar ``dtype``,
-    ``grad`` is a length-three vector with the same scalar type. For :class:`warp.vec3f` and
-    :class:`warp.vec3d`, it is a 3-by-3 Jacobian matrix with one row per value component.
-    Four-component vector data is not supported by this function.
+    ``grad`` is a length-three vector with the same scalar type. For a supported N-component vector
+    type, ``grad`` is an N-by-3 Jacobian matrix with one row per value component.
 
     For floating-point scalar and vector data under :attr:`warp.Volume.LINEAR`, this is the gradient
     of the trilinear interpolant away from integer voxel planes. The interpolant is not generally
@@ -11654,8 +11653,7 @@ def volume_sample_index_value_func(arg_types: Mapping[str, type], arg_values: Ma
 
     dtype = arg_types["voxel_data"].dtype
 
-    if dtype not in _volume_supported_value_types:
-        raise RuntimeError(f"unsupported volume type `{dtype.__name__}`")
+    _check_volume_type_is_supported(dtype)
 
     if not types_equal(dtype, arg_types["background"]):
         raise RuntimeError("the `voxel_data` array and the `background` value must have the same dtype")
@@ -11732,8 +11730,7 @@ def volume_sample_grad_index_value_func(arg_types: Mapping[str, type], arg_value
 
     dtype = arg_types["voxel_data"].dtype
 
-    if dtype not in _volume_supported_value_types:
-        raise RuntimeError(f"unsupported volume type `{dtype.__name__}`")
+    _check_volume_type_is_supported(dtype)
 
     if not types_equal(dtype, arg_types["background"]):
         raise RuntimeError("the `voxel_data` array and the `background` value must have the same dtype")
@@ -11761,9 +11758,8 @@ add_builtin(
 
     Like :func:`~warp.volume_sample_index`, but also writes the gradient of the sampled value with
     respect to the index-space coordinates ``uvw`` into ``grad``. For scalar data, ``grad`` is a
-    length-three vector with the same scalar type. For :class:`warp.vec3f` and
-    :class:`warp.vec3d` data, it is a 3-by-3 Jacobian matrix with one row per value component.
-    Four-component vector data is not supported by this function.
+    length-three vector with the same scalar type. For a supported N-component vector type, ``grad``
+    is an N-by-3 Jacobian matrix with one row per value component.
 
     For floating-point scalar and vector data under :attr:`warp.Volume.LINEAR`, the function is
     differentiable with respect to ``uvw``, ``voxel_data``, and ``background`` away from integer
