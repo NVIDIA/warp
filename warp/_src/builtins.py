@@ -5149,6 +5149,10 @@ def tile_squeeze_value_func(arg_types, arg_values):
             # promote to tuple
             axis = (axis,)
 
+        for a in axis:
+            if a < -ndim or a >= ndim:
+                raise ValueError(f"tile_squeeze() axis {a} is out of bounds for tile with {ndim} dimensions")
+
         # promote negative indices to their positive equivalents
         axis = tuple([a if a >= 0 else a + ndim for a in axis])
 
