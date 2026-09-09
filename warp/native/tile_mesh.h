@@ -360,7 +360,9 @@ tile_mesh_query_aabb(uint64_t id, const vec3& lower, const vec3& upper)
 
 #else
 
-// CPU implementation: falls back to single-threaded query, returns index only in first element
+// Each CPU fiber advances an identical private query, but only the register
+// slot owned by logical lane 0 reports a result. This prevents untile() users
+// from observing one externally visible hit per fiber.
 template <int Length> inline auto tile_mesh_query_aabb_next_impl(mesh_query_aabb_thread_block_t& query)
 {
     // On CPU, mesh_query_aabb_thread_block_t is aliased to mesh_query_aabb_t
@@ -374,18 +376,15 @@ template <int Length> inline auto tile_mesh_query_aabb_next_impl(mesh_query_aabb
     auto result = tile_register<int, Length>();
     using ResultLayout = typename decltype(result)::Layout;
     for (int i = 0; i < ResultLayout::NumRegs; ++i) {
-        result.data[i] = (i == 0) ? index : -1;
+        const int linear = ResultLayout::linear_from_register(i);
+        result.data[i] = (linear == 0) ? index : -1;
     }
     return result;
 }
 
-// Wrapper - on CPU this needs an explicit block_dim parameter since WP_TILE_BLOCK_DIM is not defined
-// However, for consistency we'll use a default value
 inline auto tile_mesh_query_aabb_next(mesh_query_aabb_thread_block_t& query)
 {
-    // On CPU, just return a single element tile with the query result
-    // Using Length=1 since we don't have block_dim available
-    return tile_mesh_query_aabb_next_impl<1>(query);
+    return tile_mesh_query_aabb_next_impl<WP_TILE_BLOCK_DIM>(query);
 }
 
 inline bool tile_query_valid(const mesh_query_aabb_thread_block_t& query) { return query.last_query_valid; }

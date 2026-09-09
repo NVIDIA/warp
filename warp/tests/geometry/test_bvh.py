@@ -1108,6 +1108,20 @@ add_function_test(TestBvh, "test_tile_bvh_query_ray", test_tile_bvh_query_ray, d
 add_function_test(TestBvh, "test_bvh_query_aabb_tiled", test_bvh_query_aabb_tiled, devices=devices)
 add_function_test(TestBvh, "test_bvh_query_ray_tiled", test_bvh_query_ray_tiled, devices=devices)
 
+for name, func in (
+    ("test_tile_bvh_query_aabb", test_tile_bvh_query),
+    ("test_tile_bvh_query_ray", test_tile_bvh_query_ray),
+    ("test_bvh_query_aabb_tiled", test_bvh_query_aabb_tiled),
+    ("test_bvh_query_ray_tiled", test_bvh_query_ray_tiled),
+):
+    add_function_test(
+        TestBvh,
+        f"{name}_cpu_blocks",
+        func,
+        devices=["cpu"] if wp.is_cpu_available() else [],
+        enable_cpu_blocks=True,
+    )
+
 add_function_test(TestBvh, "test_capture_bvh_rebuild", test_capture_bvh_rebuild, devices=cuda_devices_with_mempool)
 
 if __name__ == "__main__":

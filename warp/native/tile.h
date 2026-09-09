@@ -6136,10 +6136,23 @@ template <typename T, int Capacity> struct tile_stack_t {
     // (cinit allocates, the forward call triggers init via assignment).
     inline CUDA_CALLABLE tile_stack_t& operator=(int)
     {
+#if defined(__CUDA_ARCH__)
         if (WP_TILE_THREAD_IDX == 0)
             *count = 0;
         for (int i = WP_TILE_THREAD_IDX; i < Capacity; i += WP_TILE_BLOCK_DIM)
             data[i] = T {};
+#else
+        // Redundant initialization keeps the stack valid if lane 0, or any
+        // sparse subset of lanes, returned before construction.
+        *count = 0;
+        if constexpr (WP_TILE_BLOCK_DIM == 1) {
+            for (int i = WP_TILE_THREAD_IDX; i < Capacity; i += WP_TILE_BLOCK_DIM)
+                data[i] = T {};
+        } else {
+            for (int i = 0; i < Capacity; ++i)
+                data[i] = T {};
+        }
+#endif
         WP_TILE_SYNC();
         return *this;
     }
@@ -6188,7 +6201,11 @@ inline CUDA_CALLABLE int tile_stack_push(tile_stack_t<T, Capacity>& s, T value, 
     // Non-atomic clamp is safe: the preceding barrier guarantees all atomics are
     // complete, and the following barrier ensures all threads see the clamped value
     // before any subsequent operation.
+#if defined(__CUDA_ARCH__)
     if (WP_TILE_THREAD_IDX == 0 && *s.count > Capacity)
+#else
+    if (*s.count > Capacity)
+#endif
         *s.count = Capacity;
     WP_TILE_SYNC();
     return (has_value && idx >= 0 && idx < Capacity) ? idx : -1;
@@ -6210,7 +6227,11 @@ inline CUDA_CALLABLE void tile_stack_pop(tile_stack_t<T, Capacity>& s, T& out_va
     WP_TILE_SYNC();
     // Count may be deeply negative (all threads decrement atomically).
     // Non-atomic clamp is safe: barriers bracket this write (see push comment).
+#if defined(__CUDA_ARCH__)
     if (WP_TILE_THREAD_IDX == 0 && *s.count < 0)
+#else
+    if (*s.count < 0)
+#endif
         *s.count = 0;
     WP_TILE_SYNC();
 }
@@ -6219,8 +6240,12 @@ template <typename T, int Capacity> inline CUDA_CALLABLE void tile_stack_clear(t
 {
     // Leading barrier: see tile_stack_push comment.
     WP_TILE_SYNC();
+#if defined(__CUDA_ARCH__)
     if (WP_TILE_THREAD_IDX == 0)
         *s.count = 0;
+#else
+    *s.count = 0;
+#endif
     WP_TILE_SYNC();
 }
 

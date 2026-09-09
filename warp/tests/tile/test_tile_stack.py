@@ -33,7 +33,7 @@ def test_push_all(test, device):
     wp.launch_tiled(push_all_kernel, dim=[1], inputs=[out], block_dim=TILE_DIM, device=device)
 
     vals = out.numpy()
-    if device == "cpu":
+    if device == "cpu" and not wp.config.enable_cpu_blocks:
         written = vals[vals >= 0]
         expected = [0]
     else:
@@ -59,7 +59,7 @@ def test_push_partial(test, device):
     wp.launch_tiled(push_partial_kernel, dim=[1], inputs=[out_count], block_dim=TILE_DIM, device=device)
 
     counts = out_count.numpy()
-    if device == "cpu":
+    if device == "cpu" and not wp.config.enable_cpu_blocks:
         # CPU: block_dim=1, only thread 0 runs, 0%2==0 so it pushes => count=1
         test.assertEqual(counts[0], 1)
     else:
@@ -88,7 +88,7 @@ def test_overflow(test, device):
 
     idxs = out_idx.numpy()
     counts = out_count.numpy()
-    if device == "cpu":
+    if device == "cpu" and not wp.config.enable_cpu_blocks:
         # CPU: 1 thread, capacity 4 => 1 push succeeds
         test.assertEqual(idxs[0], 0)
         test.assertEqual(counts[0], 1)
@@ -117,7 +117,7 @@ def test_pop_empty(test, device):
 
     oks = out_ok.numpy()
     vals = out_val.numpy()
-    if device == "cpu":
+    if device == "cpu" and not wp.config.enable_cpu_blocks:
         test.assertEqual(oks[0], 0)
         test.assertEqual(vals[0], 0)
     else:
@@ -149,7 +149,7 @@ def test_push_pop_clear_cycle(test, device):
     wp.launch_tiled(push_pop_clear_cycle_kernel, dim=[1], inputs=[out_count], block_dim=TILE_DIM, device=device)
 
     counts = out_count.numpy()
-    if device == "cpu":
+    if device == "cpu" and not wp.config.enable_cpu_blocks:
         test.assertEqual(counts[0], 1)
     else:
         test.assertEqual(counts[0], TILE_DIM)
@@ -187,7 +187,7 @@ def test_pop_more_than_pushed(test, device):
 
     oks1 = out_ok1.numpy()
     oks2 = out_ok2.numpy()
-    if device == "cpu":
+    if device == "cpu" and not wp.config.enable_cpu_blocks:
         test.assertEqual(oks1[0], 1)
         test.assertEqual(oks2[0], 0)
     else:
@@ -221,7 +221,7 @@ def test_multi_tile(test, device):
     )
 
     counts = out_counts.numpy()
-    if device == "cpu":
+    if device == "cpu" and not wp.config.enable_cpu_blocks:
         # CPU: block_dim=1, each tile has j=0, j<=i always true => each pushes 1
         for t in range(num_tiles):
             test.assertEqual(counts[t], 1)
@@ -252,7 +252,7 @@ def test_has_value_false_returns_minus_one(test, device):
     )
 
     idxs = out_idx.numpy()
-    if device == "cpu":
+    if device == "cpu" and not wp.config.enable_cpu_blocks:
         test.assertEqual(idxs[0], -1)
     else:
         assert_np_equal(idxs, np.full(TILE_DIM, -1, dtype=np.int32))
@@ -276,7 +276,7 @@ def test_clear_resets_count(test, device):
     wp.launch_tiled(clear_resets_count_kernel, dim=[1], inputs=[out_count], block_dim=TILE_DIM, device=device)
 
     counts = out_count.numpy()
-    if device == "cpu":
+    if device == "cpu" and not wp.config.enable_cpu_blocks:
         test.assertEqual(counts[0], 0)
     else:
         assert_np_equal(counts, np.zeros(TILE_DIM, dtype=np.int32))
@@ -301,7 +301,7 @@ def test_float_dtype(test, device):
     wp.launch_tiled(float_dtype_kernel, dim=[1], inputs=[out], block_dim=TILE_DIM, device=device)
 
     vals = out.numpy()
-    if device == "cpu":
+    if device == "cpu" and not wp.config.enable_cpu_blocks:
         expected = [0.0]
         written = vals[vals >= 0.0]
     else:
@@ -337,7 +337,7 @@ def test_overflow_data_integrity(test, device):
 
     vals = out_vals.numpy()
     oks = out_ok.numpy()
-    if device == "cpu":
+    if device == "cpu" and not wp.config.enable_cpu_blocks:
         # 1 thread, capacity 4, push succeeds, pop succeeds
         test.assertEqual(oks[0], 1)
         test.assertEqual(vals[0], 0)  # j=0, 0*10=0
@@ -372,7 +372,7 @@ def test_vec3_dtype(test, device):
     wp.launch_tiled(vec3_dtype_kernel, dim=[1], inputs=[out], block_dim=TILE_DIM, device=device)
 
     vals = out.numpy()
-    if device == "cpu":
+    if device == "cpu" and not wp.config.enable_cpu_blocks:
         # Only thread 0: vec3(0, 0, 0)
         assert_np_equal(vals[0], np.array([0.0, 0.0, 0.0]))
     else:
@@ -405,7 +405,7 @@ def test_float16_dtype(test, device):
 
     vals = out.numpy()
     oks = out_ok.numpy()
-    if device == "cpu":
+    if device == "cpu" and not wp.config.enable_cpu_blocks:
         test.assertEqual(oks[0], 1)
         assert_np_equal(np.array([float(vals[0])]), np.array([0.0]))
     else:
@@ -431,7 +431,7 @@ def test_count_after_push(test, device):
     wp.launch_tiled(count_after_push_kernel, dim=[1], inputs=[out_count], block_dim=TILE_DIM, device=device)
 
     counts = out_count.numpy()
-    if device == "cpu":
+    if device == "cpu" and not wp.config.enable_cpu_blocks:
         # CPU: 1 thread, j=0, 0<10 => pushes => count=1
         test.assertEqual(counts[0], 1)
     else:
@@ -467,7 +467,7 @@ def test_two_stacks(test, device):
 
     ints = out_ints.numpy()
     floats = out_floats.numpy()
-    if device == "cpu":
+    if device == "cpu" and not wp.config.enable_cpu_blocks:
         test.assertEqual(ints[0], 0)
         assert_np_equal(np.array([floats[0]]), np.array([0.0]))
     else:
@@ -507,7 +507,7 @@ def test_pop_slot_compact(test, device):
     wp.launch_tiled(pop_slot_compact_kernel, dim=[1], inputs=[out_slot], block_dim=TILE_DIM, device=device)
 
     slots = out_slot.numpy()
-    if device == "cpu":
+    if device == "cpu" and not wp.config.enable_cpu_blocks:
         # 1 thread: j=0 < HALF_DIM, pushes once, pops once successfully
         test.assertEqual(slots[0], 0)
     else:
@@ -546,11 +546,47 @@ def test_func_tile_stack_arg(test, device):
     wp.launch_tiled(func_tile_stack_kernel, dim=[1], inputs=[out], block_dim=n, device=device)
     vals = out.numpy()
     written = vals[vals >= 0]
-    if device == "cpu":
+    if device == "cpu" and not wp.config.enable_cpu_blocks:
         expected = [0]
     else:
         expected = list(range(0, n * 10, 10))
     test.assertEqual(sorted(written.tolist()), expected)
+
+
+SPARSE_BLOCK_DIM = 32
+
+
+@wp.kernel
+def sparse_survivor_stack_kernel(out_count: wp.array[int]):
+    tid = wp.tid()
+    lane = tid % SPARSE_BLOCK_DIM
+    if lane == 0 or lane % 3 == 0:
+        return
+
+    s = wp.tile_stack(capacity=CAPACITY, dtype=int)
+    wp.tile_stack_push(s, lane, True)
+    out_count[tid] = wp.tile_stack_count(s)
+
+
+def test_sparse_survivor_stack(test, device):
+    # The second block is also a partial prefix. Together these cover lane 0
+    # returning first, non-contiguous survivors, and warm fiber reuse.
+    dim = 2 * SPARSE_BLOCK_DIM - 5
+    out_count = wp.full(dim, -1, dtype=int, device=device)
+    wp.launch(
+        sparse_survivor_stack_kernel,
+        dim=dim,
+        inputs=[out_count],
+        block_dim=SPARSE_BLOCK_DIM,
+        device=device,
+    )
+
+    actual = out_count.numpy()
+    for block_start in (0, SPARSE_BLOCK_DIM):
+        active_count = min(SPARSE_BLOCK_DIM, dim - block_start)
+        survivors = [lane for lane in range(active_count) if lane != 0 and lane % 3 != 0]
+        for lane in survivors:
+            test.assertEqual(actual[block_start + lane], len(survivors))
 
 
 # ----------------------------------------------------------------
@@ -582,6 +618,41 @@ add_function_test(TestTileStack, "test_count_after_push", test_count_after_push,
 add_function_test(TestTileStack, "test_two_stacks", test_two_stacks, devices=devices)
 add_function_test(TestTileStack, "test_pop_slot_compact", test_pop_slot_compact, devices=devices)
 add_function_test(TestTileStack, "test_func_tile_stack_arg", test_func_tile_stack_arg, devices=devices)
+add_function_test(
+    TestTileStack,
+    "test_sparse_survivor_stack",
+    test_sparse_survivor_stack,
+    devices=["cpu"] if wp.is_cpu_available() else [],
+    enable_cpu_blocks=True,
+)
+
+cpu_block_stack_tests = (
+    ("test_push_all", test_push_all),
+    ("test_push_partial", test_push_partial),
+    ("test_overflow", test_overflow),
+    ("test_pop_empty", test_pop_empty),
+    ("test_push_pop_clear_cycle", test_push_pop_clear_cycle),
+    ("test_pop_more_than_pushed", test_pop_more_than_pushed),
+    ("test_multi_tile", test_multi_tile),
+    ("test_has_value_false_returns_minus_one", test_has_value_false_returns_minus_one),
+    ("test_clear_resets_count", test_clear_resets_count),
+    ("test_float_dtype", test_float_dtype),
+    ("test_overflow_data_integrity", test_overflow_data_integrity),
+    ("test_vec3_dtype", test_vec3_dtype),
+    ("test_float16_dtype", test_float16_dtype),
+    ("test_count_after_push", test_count_after_push),
+    ("test_two_stacks", test_two_stacks),
+    ("test_pop_slot_compact", test_pop_slot_compact),
+    ("test_func_tile_stack_arg", test_func_tile_stack_arg),
+)
+for name, func in cpu_block_stack_tests:
+    add_function_test(
+        TestTileStack,
+        f"{name}_cpu_blocks",
+        func,
+        devices=["cpu"] if wp.is_cpu_available() else [],
+        enable_cpu_blocks=True,
+    )
 
 
 def test_bool_capacity_rejected(test, device):

@@ -1006,7 +1006,7 @@ WP_API int wp_load_obj(const char* object_file, const char* module_name, bool us
                 SYMBOL(fmaf), SYMBOL_T(fma, double (*)(double, double, double)), SYMBOL(erff),
                 SYMBOL_T(erf, double (*)(double)), SYMBOL(erfcf), SYMBOL_T(erfc, double (*)(double)), SYMBOL(erfinvf),
                 SYMBOL_T(erfinv, double (*)(double)), SYMBOL(erfcinvf), SYMBOL_T(erfcinv, double (*)(double)),
-                SYMBOL(memcpy), SYMBOL(memset), SYMBOL(memmove),
+                SYMBOL(memcpy), SYMBOL(memset), SYMBOL(memmove), SYMBOL(malloc), SYMBOL(calloc), SYMBOL(free),
                 SYMBOL(_wp_assert), SYMBOL(_wp_isfinite), SYMBOL(_wp_isnan), SYMBOL(_wp_isinf),
                 SYMBOL_PTR(wp_cpu_get_thread_idx, cpu_block_runtime.get_thread_idx),
                 SYMBOL_PTR(wp_cpu_get_active_count, cpu_block_runtime.get_active_count),

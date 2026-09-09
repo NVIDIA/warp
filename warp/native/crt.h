@@ -325,6 +325,7 @@ void* memcpy(void*, const void*, size_t);
 
 // stdlib.h
 void* malloc(size_t);
+void* calloc(size_t, size_t);
 void free(void*);
 
 }  // extern "C"

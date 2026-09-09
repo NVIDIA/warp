@@ -404,7 +404,7 @@ def test_tile_mesh_query_aabb(test, device):
     indices_wp = wp.array(indices, dtype=int, device=device)
 
     # Cover the cuBQL constructor alongside the default Warp BVH path.
-    if device.is_cpu:
+    if wp.get_device(device).is_cpu:
         constructors = ["sah", "median"]
     else:
         constructors = ["sah", "median", "lbvh"]
@@ -1008,6 +1008,19 @@ add_function_test(
     TestMeshQueryAABBMethods, "test_mesh_query_erased_func_param", test_mesh_query_erased_func_param, devices=devices
 )
 add_function_test(TestMeshQueryAABBMethods, "test_mesh_get_bvh", test_mesh_get_bvh, devices=devices)
+
+for name, func in (
+    ("test_tile_mesh_query_aabb", test_tile_mesh_query_aabb),
+    ("test_tile_mesh_query_aabb_large", test_tile_mesh_query_aabb_large),
+    ("test_mesh_query_aabb_tiled", test_mesh_query_aabb_tiled),
+):
+    add_function_test(
+        TestMeshQueryAABBMethods,
+        f"{name}_cpu_blocks",
+        func,
+        devices=["cpu"] if wp.is_cpu_available() else [],
+        enable_cpu_blocks=True,
+    )
 
 
 if __name__ == "__main__":

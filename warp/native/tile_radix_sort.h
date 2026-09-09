@@ -1039,8 +1039,20 @@ void bitonic_sort_pairs_general_size_cpu(K* keys, V* values, int length)
 {
     constexpr int pow2_size = next_higher_pow2(max_size);
 
-    K keys_tmp[pow2_size];
-    V values_tmp[pow2_size];
+    K keys_local[WP_TILE_BLOCK_DIM == 1 ? pow2_size : 1];
+    V values_local[WP_TILE_BLOCK_DIM == 1 ? pow2_size : 1];
+    K* keys_tmp = keys_local;
+    V* values_tmp = values_local;
+    if constexpr (WP_TILE_BLOCK_DIM > 1) {
+        keys_tmp = (K*)malloc(sizeof(K) * pow2_size);
+        values_tmp = (V*)malloc(sizeof(V) * pow2_size);
+        if (!keys_tmp || !values_tmp) {
+            free(keys_tmp);
+            free(values_tmp);
+            _wp_assert("Warp CPU tile sort temporary allocation failed", __FILE__, (unsigned int)__LINE__);
+            return;
+        }
+    }
 
     KeyToUint converter;
     K max_key = converter.max_possible_key_value();
@@ -1055,6 +1067,11 @@ void bitonic_sort_pairs_general_size_cpu(K* keys, V* values, int length)
     for (int i = 0; i < length; ++i) {
         keys[i] = keys_tmp[i];
         values[i] = values_tmp[i];
+    }
+
+    if constexpr (WP_TILE_BLOCK_DIM > 1) {
+        free(values_tmp);
+        free(keys_tmp);
     }
 }
 
@@ -1088,8 +1105,17 @@ template <typename K, typename V, typename KeyToUint>
 void radix_sort_pairs_cpu_core(K* keys, K* aux_keys, V* values, V* aux_values, int n)
 {
     KeyToUint converter;
-    unsigned int tables[2][1 << 16];
-    memset(tables, 0, sizeof(tables));
+    constexpr size_t table_size = sizeof(unsigned int) * 2 * (1 << 16);
+    unsigned int tables_local[WP_TILE_BLOCK_DIM == 1 ? 2 * (1 << 16) : 1];
+    auto tables = (unsigned int (*)[1 << 16]) tables_local;
+    if constexpr (WP_TILE_BLOCK_DIM > 1) {
+        tables = (unsigned int (*)[1 << 16]) malloc(table_size);
+        if (!tables) {
+            _wp_assert("Warp CPU tile radix-sort table allocation failed", __FILE__, (unsigned int)__LINE__);
+            return;
+        }
+    }
+    memset(tables, 0, table_size);
 
     // build histograms
     for (int i = 0; i < n; ++i) {
@@ -1145,6 +1171,9 @@ void radix_sort_pairs_cpu_core(K* keys, K* aux_keys, V* values, V* aux_values, i
         keys[offset] = f;
         values[offset] = v;
     }
+
+    if constexpr (WP_TILE_BLOCK_DIM > 1)
+        free(tables);
 }
 
 template <typename V>
@@ -1185,17 +1214,34 @@ template <typename TileK, typename TileV> void tile_sort(TileK& t, TileV& t2)
     T* keys = &t.data(0);
     V* values = &t2.data(0);
 
-    // Trim away the code that won't be used - possible because the number of elements to sort is known at compile time
-    if constexpr (num_elements_to_sort <= BITONIC_SORT_THRESHOLD || sizeof(T) > 4) {
-        if constexpr (is_power_of_two(num_elements_to_sort))
-            bitonic_sort_pairs_pow2_length_cpu<T, V>(keys, values, num_elements_to_sort);
-        else
-            bitonic_sort_pairs_general_size_cpu<V, num_elements_to_sort>(keys, values, num_elements_to_sort);
-    } else {
-        T keys_tmp[num_elements_to_sort];
-        V values_tmp[num_elements_to_sort];
-
-        radix_sort_pairs_cpu<V>(keys, keys_tmp, values, values_tmp, num_elements_to_sort);
+    // Shared input tiles must be fully populated before the serial phase.
+    WP_TILE_SYNC();
+    int first_active_lane = 0;
+    if constexpr (WP_TILE_BLOCK_DIM > 1)
+        first_active_lane = wp_cpu_get_first_active_lane();
+    if (WP_TILE_THREAD_IDX == first_active_lane) {
+        if constexpr (num_elements_to_sort <= BITONIC_SORT_THRESHOLD || sizeof(T) > 4) {
+            if constexpr (is_power_of_two(num_elements_to_sort))
+                bitonic_sort_pairs_pow2_length_cpu<T, V>(keys, values, num_elements_to_sort);
+            else
+                bitonic_sort_pairs_general_size_cpu<V, num_elements_to_sort>(keys, values, num_elements_to_sort);
+        } else if constexpr (WP_TILE_BLOCK_DIM == 1) {
+            T keys_tmp[num_elements_to_sort];
+            V values_tmp[num_elements_to_sort];
+            radix_sort_pairs_cpu<V>(keys, keys_tmp, values, values_tmp, num_elements_to_sort);
+        } else {
+            T* keys_tmp = (T*)malloc(sizeof(T) * num_elements_to_sort);
+            V* values_tmp = (V*)malloc(sizeof(V) * num_elements_to_sort);
+            if (!keys_tmp || !values_tmp) {
+                free(keys_tmp);
+                free(values_tmp);
+                _wp_assert("Warp CPU tile radix-sort temporary allocation failed", __FILE__, (unsigned int)__LINE__);
+            } else {
+                radix_sort_pairs_cpu<V>(keys, keys_tmp, values, values_tmp, num_elements_to_sort);
+                free(values_tmp);
+                free(keys_tmp);
+            }
+        }
     }
 
     WP_TILE_SYNC();
@@ -1211,17 +1257,36 @@ template <typename TileK, typename TileV> void tile_sort(TileK& t, TileV& t2, in
     T* keys = &t.data(start);
     V* values = &t2.data(start);
 
-    if (num_elements_to_sort <= BITONIC_SORT_THRESHOLD || sizeof(T) > 4) {
-        if (is_power_of_two(num_elements_to_sort))
-            bitonic_sort_pairs_pow2_length_cpu<T, V>(keys, values, num_elements_to_sort);
-        else
-            bitonic_sort_pairs_general_size_cpu<V, max_elements_to_sort>(keys, values, num_elements_to_sort);
-    } else {
-        if constexpr (max_elements_to_sort > BITONIC_SORT_THRESHOLD) {
-            T keys_tmp[max_elements_to_sort];
-            V values_tmp[max_elements_to_sort];
-
-            radix_sort_pairs_cpu<V>(keys, keys_tmp, values, values_tmp, num_elements_to_sort);
+    WP_TILE_SYNC();
+    int first_active_lane = 0;
+    if constexpr (WP_TILE_BLOCK_DIM > 1)
+        first_active_lane = wp_cpu_get_first_active_lane();
+    if (WP_TILE_THREAD_IDX == first_active_lane) {
+        if (num_elements_to_sort <= BITONIC_SORT_THRESHOLD || sizeof(T) > 4) {
+            if (is_power_of_two(num_elements_to_sort))
+                bitonic_sort_pairs_pow2_length_cpu<T, V>(keys, values, num_elements_to_sort);
+            else
+                bitonic_sort_pairs_general_size_cpu<V, max_elements_to_sort>(keys, values, num_elements_to_sort);
+        } else if constexpr (max_elements_to_sort > BITONIC_SORT_THRESHOLD) {
+            if constexpr (WP_TILE_BLOCK_DIM == 1) {
+                T keys_tmp[max_elements_to_sort];
+                V values_tmp[max_elements_to_sort];
+                radix_sort_pairs_cpu<V>(keys, keys_tmp, values, values_tmp, num_elements_to_sort);
+            } else {
+                T* keys_tmp = (T*)malloc(sizeof(T) * max_elements_to_sort);
+                V* values_tmp = (V*)malloc(sizeof(V) * max_elements_to_sort);
+                if (!keys_tmp || !values_tmp) {
+                    free(keys_tmp);
+                    free(values_tmp);
+                    _wp_assert(
+                        "Warp CPU tile radix-sort temporary allocation failed", __FILE__, (unsigned int)__LINE__
+                    );
+                } else {
+                    radix_sort_pairs_cpu<V>(keys, keys_tmp, values, values_tmp, num_elements_to_sort);
+                    free(values_tmp);
+                    free(keys_tmp);
+                }
+            }
         }
     }
 
