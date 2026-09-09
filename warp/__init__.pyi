@@ -3354,89 +3354,214 @@ def spatial_bottom(svec: Vector[Float, Literal[6]]) -> Vector[Float, Literal[3]]
 def tile_zeros(shape: tuple[int, ...], dtype: Any = float, storage: str = "register") -> Tile[Any, tuple[int, ...]]:
     """Allocate a tile of zero-initialized items.
 
+    Every element is set to the zero value of ``dtype``. Scalar, vector, matrix, and
+    Warp struct element types are all zero-filled component-wise.
+
     Args:
-        shape: Shape of the output tile
-        dtype: Data type of output tile's elements
+        shape: Shape of the output tile. Must be a compile-time constant.
+        dtype: Data type of output tile's elements. Must be a compile-time constant.
         storage: The storage location for the tile: ``"register"`` for registers or
-            ``"shared"`` for shared memory.
+            ``"shared"`` for shared memory. Must be a compile-time constant.
 
     Returns:
-        A zero-initialized tile with shape and data type as specified."""
+        A zero-initialized tile with the requested shape and data type.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def add_tiles(a: wp.array[float], b: wp.array[float], out: wp.array[float]):
+                total = wp.tile_zeros(shape=(4,), dtype=float)
+                total += wp.tile_load(a, shape=(4,))
+                total += wp.tile_load(b, shape=(4,))
+                wp.tile_store(out, total)
+
+            a = wp.array([1.0, 2.0, 3.0, 4.0], dtype=float)
+            b = wp.array([10.0, 20.0, 30.0, 40.0], dtype=float)
+            out = wp.zeros(4, dtype=float)
+
+            wp.launch_tiled(add_tiles, dim=1, inputs=[a, b], outputs=[out], block_dim=2)
+
+            print(out.numpy())
+
+        .. testoutput::
+
+            [11. 22. 33. 44.]"""
     ...
 
 @over
 def tile_zeros(shape: int32 | int, dtype: Any = float, storage: str = "register") -> Tile[Any, tuple[int, ...]]:
-    """Allocate a tile of zero-initialized items."""
+    """Allocate a tile of zero-initialized items.
+
+    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
+    ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument for usage
+    details and an example."""
     ...
 
 @over
-def tile_ones(shape: tuple[int, ...], dtype: Any, storage: str = "register") -> Tile[Any, tuple[int, ...]]:
+def tile_ones(shape: tuple[int, ...], dtype: Any = float, storage: str = "register") -> Tile[Any, tuple[int, ...]]:
     """Allocate a tile of one-initialized items.
 
+    Every element is initialized with ``dtype(1)``. For vector and matrix element types
+    this sets *every* component to one - it does not produce an identity matrix. For
+    quaternion element types ``dtype(1)`` sets only the first component, giving
+    ``(1, 0, 0, 0)``. Warp struct element types are rejected; use
+    :func:`~warp.tile_full` with a value of the struct type instead.
+
     Args:
-        shape: Shape of the output tile
-        dtype: Data type of output tile's elements
+        shape: Shape of the output tile. Must be a compile-time constant.
+        dtype: Data type of output tile's elements. Must be a compile-time constant.
         storage: The storage location for the tile: ``"register"`` for registers or
-            ``"shared"`` for shared memory.
+            ``"shared"`` for shared memory. Must be a compile-time constant.
 
     Returns:
-        A one-initialized tile with shape and data type as specified."""
+        A tile with the requested shape whose elements are all ``dtype(1)``.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def multiply_tiles(a: wp.array[float], b: wp.array[float], out: wp.array[float]):
+                total = wp.tile_ones(shape=(4,), dtype=float)
+                total *= wp.tile_load(a, shape=(4,))
+                total *= wp.tile_load(b, shape=(4,))
+                wp.tile_store(out, total)
+
+            a = wp.array([1.0, 2.0, 3.0, 4.0], dtype=float)
+            b = wp.array([10.0, 20.0, 30.0, 40.0], dtype=float)
+            out = wp.zeros(4, dtype=float)
+
+            wp.launch_tiled(multiply_tiles, dim=1, inputs=[a, b], outputs=[out], block_dim=2)
+
+            print(out.numpy())
+
+        .. testoutput::
+
+            [ 10.  40.  90. 160.]"""
     ...
 
 @over
-def tile_ones(shape: int32 | int, dtype: Any, storage: str = "register") -> Tile[Any, tuple[int, ...]]:
-    """Allocate a tile of one-initialized items."""
+def tile_ones(shape: int32 | int, dtype: Any = float, storage: str = "register") -> Tile[Any, tuple[int, ...]]:
+    """Allocate a tile of one-initialized items.
+
+    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
+    ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument for usage
+    details and an example."""
     ...
 
 @over
 def tile_empty(shape: tuple[int, ...], dtype: Any = float, storage: str = "register") -> Tile[Any, tuple[int, ...]]:
     """Allocate a tile of uninitialized items.
 
-    The tile's contents are undefined; the caller is responsible for overwriting
-    every element before any read. This matches the semantics of ``numpy.empty``.
+    The tile's contents are undefined; overwrite every element before any read. This
+    matches the semantics of ``numpy.empty``.
 
     Because it skips initialization, ``tile_empty`` can avoid unnecessary stores
-    when every element will be overwritten, especially for ``"shared"`` tiles.
-
-    For accumulator patterns (``a += ...``), use :func:`tile_zeros` instead -
-    accumulation reads the prior value and would propagate uninitialized data.
-    Use ``tile_empty`` only when the first operation after construction is a
-    full overwrite (a ``tile_load``, a tile-typed assignment, or a complete
-    element-wise fill).
+    when every element will be overwritten, especially for ``"shared"`` tiles. For
+    accumulator patterns (``a += ...``), use :func:`~warp.tile_zeros` instead.
 
     Args:
-        shape: Shape of the output tile
-        dtype: Data type of output tile's elements
+        shape: Shape of the output tile. Must be a compile-time constant.
+        dtype: Data type of output tile's elements. Must be a compile-time constant.
         storage: The storage location for the tile: ``"register"`` for registers or
-            ``"shared"`` for shared memory.
+            ``"shared"`` for shared memory. Must be a compile-time constant.
 
     Returns:
-        An uninitialized tile with the requested shape and data type."""
+        An uninitialized tile with the requested shape and data type.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def concatenate(a: wp.array[float], b: wp.array[float], out: wp.array[float]):
+                # every element is written below, so skipping initialization is safe
+                t = wp.tile_empty(shape=(8,), dtype=float, storage="shared")
+                wp.tile_assign(t, wp.tile_load(a, shape=(4,)), offset=(0,))
+                wp.tile_assign(t, wp.tile_load(b, shape=(4,)), offset=(4,))
+                wp.tile_store(out, t)
+
+            a = wp.array([1.0, 2.0, 3.0, 4.0], dtype=float)
+            b = wp.array([10.0, 20.0, 30.0, 40.0], dtype=float)
+            out = wp.zeros(8, dtype=float)
+
+            wp.launch_tiled(concatenate, dim=1, inputs=[a, b], outputs=[out], block_dim=4)
+
+            print(out.numpy())
+
+        .. testoutput::
+
+            [ 1.  2.  3.  4. 10. 20. 30. 40.]"""
     ...
 
 @over
 def tile_empty(shape: int32 | int, dtype: Any = float, storage: str = "register") -> Tile[Any, tuple[int, ...]]:
-    """Allocate a tile of uninitialized items."""
+    """Allocate a tile of uninitialized items.
+
+    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
+    ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument for usage
+    details and an example."""
     ...
 
 @over
-def tile_full(shape: tuple[int, ...], value: Any, dtype: Any, storage: str = "register") -> Tile[Any, tuple[int, ...]]:
+def tile_full(
+    shape: tuple[int, ...],
+    value: Any,
+    dtype: Any = ...,
+    storage: str = "register",
+) -> Tile[Any, tuple[int, ...]]:
     """Allocate a tile filled with the specified value.
 
+    Every element is initialized with ``value``. Omitting ``dtype`` gives a tile whose
+    element type is the type of ``value``. When ``dtype`` is provided, a scalar ``value``
+    is converted to it; a composite or Warp struct ``value`` must already have that type.
+
     Args:
-        shape: Shape of the output tile
-        value: Value to fill the tile with
-        dtype: Data type of output tile's elements
+        shape: Shape of the output tile. Must be a compile-time constant.
+        value: Value to fill the tile with.
+        dtype: Data type of output tile's elements. Must be a compile-time constant.
         storage: The storage location for the tile: ``"register"`` for registers or
-            ``"shared"`` for shared memory.
+            ``"shared"`` for shared memory. Must be a compile-time constant.
 
     Returns:
-        A tile filled with the specified value."""
+        A tile with the requested shape and data type filled with ``value``.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def clamp_below(x: wp.array[float], out: wp.array[float]):
+                lo = wp.tile_full(shape=(4,), value=2.0, dtype=float)
+                t = wp.tile_load(x, shape=(4,))
+                wp.tile_store(out, wp.tile_map(wp.max, t, lo))
+
+            x = wp.array([1.0, 2.0, 3.0, 4.0], dtype=float)
+            out = wp.zeros(4, dtype=float)
+
+            wp.launch_tiled(clamp_below, dim=1, inputs=[x], outputs=[out], block_dim=2)
+
+            print(out.numpy())
+
+        .. testoutput::
+
+            [2. 2. 3. 4.]"""
     ...
 
 @over
-def tile_full(shape: int32 | int, value: Any, dtype: Any, storage: str = "register") -> Tile[Any, tuple[int, ...]]:
-    """Allocate a tile filled with the specified value."""
+def tile_full(
+    shape: int32 | int,
+    value: Any,
+    dtype: Any = ...,
+    storage: str = "register",
+) -> Tile[Any, tuple[int, ...]]:
+    """Allocate a tile filled with the specified value.
+
+    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
+    ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument for usage
+    details and an example."""
     ...
 
 @over
@@ -3448,66 +3573,68 @@ def tile_from_thread(
 ) -> Tile[Any, tuple[int, ...]]:
     """Allocate a tile filled with a value from a specific thread.
 
-    This function broadcasts a value from one thread to all threads in the block,
-    then creates a tile filled with that broadcast value. This is useful for
-    efficiently sharing a computed result (e.g., from an atomic operation) with
-    all threads in a block using minimal shared memory (only 1 element).
+    This function broadcasts one thread's value to all threads in the block, then
+    creates a tile filled with that broadcast value. It is useful for sharing a
+    computed result (e.g. from an atomic operation) with the whole block. Every thread
+    in the block must call this function.
+
+    ``thread_idx`` is block-local: each block broadcasts from its own lane
+    ``thread_idx``, and it must satisfy ``0 <= thread_idx < wp.block_dim()``. The
+    resulting tile's data type is the type of ``value``.
+
+    On CPU the effective block width is ``1``, so the tile is always filled with the
+    calling invocation's own ``value`` and ``thread_idx`` is ignored. In particular
+    the common ``thread_idx=wp.block_dim() - 1`` idiom selects thread ``0`` on CPU;
+    see :ref:`CPU Tile Semantics <cpu_tile_semantics>` for the portability rules.
 
     Args:
-        shape: Shape of the output tile
-        value: Per-thread value (only the value from ``thread_idx`` is used)
-        thread_idx: Index of the thread whose value should fill the tile
+        shape: Shape of the output tile. Must be a compile-time constant.
+        value: Per-thread value; only the value from ``thread_idx`` is used.
+        thread_idx: Block-local index of the thread whose value should fill the tile.
+            Must have the same value in every thread of the block.
         storage: The storage location for the tile: ``"register"`` for registers or
-            ``"shared"`` for shared memory.
+            ``"shared"`` for shared memory. Must be a compile-time constant.
 
     Returns:
-        A tile filled with the value from the specified thread.
+        A tile with the requested shape, with the data type of ``value``, in which
+        every element holds the value broadcast from ``thread_idx``.
 
     Example:
 
-        .. code-block:: python
+        Broadcasting a per-block scale factor read by a single thread. Because the
+        value is read by thread ``0``, this kernel produces the same result on CPU
+        and GPU.
 
-            import warp as wp
+        .. testcode::
 
-            TILE_SIZE = 8
+            TILE_SIZE = 4
+            TILE_THREADS = 2
 
             @wp.kernel
-            def compute(output: wp.array[int]):
-                i, j = wp.tid()
+            def scale_block(scales: wp.array[float], out: wp.array[float]):
+                block, lane = wp.tid()
 
-                # Compute offset on the last thread
-                offset = 0
-                if j == wp.block_dim() - 1:
-                    offset = i * wp.block_dim()
+                # only thread 0 reads the per-block scale factor
+                s = float(0.0)
+                if lane == 0:
+                    s = scales[block]
 
-                # Broadcast the last thread's offset to all threads (uses only 1 element of shared memory)
-                offset_tile = wp.tile_from_thread(shape=TILE_SIZE, value=offset, thread_idx=wp.block_dim() - 1)
+                # broadcast thread 0's value to the whole block
+                scale = wp.tile_from_thread(shape=(TILE_SIZE,), value=s, thread_idx=0)
+                t = wp.tile_arange(TILE_SIZE, dtype=float)
 
-                # Combine with other tiles using tile operations
-                indices = wp.tile_arange(0, TILE_SIZE, dtype=int)
-                result = offset_tile + indices
+                wp.tile_store(out, scale * t, offset=(block * TILE_SIZE,))
 
-                wp.tile_store(output, result, offset=(i * TILE_SIZE,))
+            scales = wp.array([1.0, 10.0], dtype=float)
+            out = wp.zeros(8, dtype=float)
 
-            output = wp.zeros(16, dtype=int)
-            wp.launch_tiled(compute, dim=[2], inputs=[output], block_dim=TILE_SIZE)
+            wp.launch_tiled(scale_block, dim=[2], inputs=[scales], outputs=[out], block_dim=TILE_THREADS)
 
-            print(output.numpy())
+            print(out.numpy())
 
-        .. code-block:: text
+        .. testoutput::
 
-            [ 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15]
-
-        The output above assumes GPU execution. On CPU, ``wp.block_dim()`` returns ``1``,
-        so ``offset`` becomes ``i * 1`` instead of ``i * TILE_SIZE``, and
-        ``thread_idx=wp.block_dim() - 1`` selects thread ``0``. The CPU output is:
-
-        .. code-block:: text
-
-            [0 1 2 3 4 5 6 7 1 2 3 4 5 6 7 8]
-
-        See :ref:`CPU Tile Semantics <cpu_tile_semantics>` for more detail on the CPU/GPU
-        differences that affect portable tile code."""
+            [ 0.  1.  2.  3.  0. 10. 20. 30.]"""
     ...
 
 @over
@@ -3517,39 +3644,57 @@ def tile_from_thread(
     thread_idx: int32 | int,
     storage: str = "register",
 ) -> Tile[Any, tuple[int, ...]]:
-    """Allocate a tile filled with a value from a specific thread."""
+    """Allocate a tile filled with a value from a specific thread.
+
+    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
+    ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument for usage
+    details and an example."""
     ...
 
 @over
 def tile_randi(shape: tuple[int, ...], rng: uint32, storage: str = "register") -> Tile[Any, tuple[int, ...]]:
     """Generate a tile of random integers.
 
+    Each element is drawn with :func:`~warp.randi` using ``rng``. Values are deterministic
+    for a fixed kernel, device, and ``block_dim`` given the same ``rng``, but are not
+    portable across ``block_dim`` values or between CPU and GPU (see
+    :ref:`CPU Tile Semantics <cpu_tile_semantics>`).
+
+    The call leaves ``rng`` unchanged, so two calls with the same ``rng`` in the same
+    thread produce identical tiles. Pass a different ``rng`` (for example a
+    :func:`~warp.rand_init` offset that is unique per block) to get different values.
+
     Args:
-        shape: Shape of the output tile
-        rng: Random number generator state, typically from :func:`~warp._src.lang.rand_init`
+        shape: Shape of the output tile. Must be a compile-time constant.
+        rng: Random number generator state, typically from :func:`~warp.rand_init`.
         storage: The storage location for the tile: ``"register"`` for registers or
-            ``"shared"`` for shared memory.
+            ``"shared"`` for shared memory. Must be a compile-time constant.
 
     Returns:
-        A tile of random integers with the specified shape.
+        A tile of ``int32`` elements with the requested shape, each in the range
+        ``[-2^31, 2^31)`` as for :func:`~warp.randi`.
 
     Example:
 
         .. testcode::
+            :skipif: wp.get_device() == "cpu" or wp.get_cuda_device_count() == 0
 
             TILE_M, TILE_N = 2, 2
             M, N = 2, 2
             seed = 42
 
             @wp.kernel
-            def rand_kernel(seed: int, x: wp.array2d[int]):
+            def generate_random_integers(seed: int, x: wp.array2d[int]):
                 i, j = wp.tid()
-                rng = wp.rand_init(seed, i * TILE_M + j)
+                # one distinct RNG offset per block
+                rng = wp.rand_init(seed, i * N + j)
                 t = wp.tile_randi(shape=(TILE_M, TILE_N), rng=rng)
                 wp.tile_store(x, t, offset=(i * TILE_M, j * TILE_N))
 
             x = wp.zeros(shape=(M * TILE_M, N * TILE_N), dtype=int)
-            wp.launch_tiled(rand_kernel, dim=[M, N], inputs=[seed, x], block_dim=32)
+
+            wp.launch_tiled(generate_random_integers, dim=[M, N], inputs=[seed], outputs=[x], block_dim=8)
+
             print(x.numpy())
 
         .. testoutput::
@@ -3557,12 +3702,19 @@ def tile_randi(shape: tuple[int, ...], rng: uint32, storage: str = "register") -
             [[  798497746  1803297529  -955788638    17806966]
              [ 1788185933  1320194893  2073257406 -2009156320]
              [ -257534450 -1138585923  1145322783  -321794125]
-             [-2096177388 -1835610841  1159339128  -652221052]]"""
+             [-2096177388 -1835610841  1159339128  -652221052]]
+
+        The values above are those produced on a CUDA device; a CPU launch of the same
+        kernel generates a different sequence."""
     ...
 
 @over
 def tile_randi(shape: int32 | int, rng: uint32, storage: str = "register") -> Tile[Any, tuple[int, ...]]:
-    """Generate a tile of random integers."""
+    """Generate a tile of random integers.
+
+    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
+    ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument for usage
+    details and an example."""
     ...
 
 @over
@@ -3573,46 +3725,24 @@ def tile_randi(
     max: int32 | int,
     storage: str = "register",
 ) -> Tile[Any, tuple[int, ...]]:
-    """Generate a tile of random integers.
+    """Generate a tile of random integers in the range ``[min, max)``.
 
-    Sample values in the range [min, max).
+    See the overload without ``min`` and ``max`` for reproducibility details and a usage
+    example.
 
     Args:
-        shape: Shape of the output tile
-        rng: Random number generator state, typically from :func:`~warp._src.lang.rand_init`
-        min: Minimum value (inclusive) for random integers
-        max: Maximum value (exclusive) for random integers
+        shape: Shape of the output tile. Must be a compile-time constant.
+        rng: Random number generator state, typically from :func:`~warp.rand_init`.
+        min: Minimum value (inclusive). Must be a compile-time integer constant
+            representable as ``int32``.
+        max: Maximum value (exclusive). Must be a compile-time integer constant
+            representable as ``int32`` and strictly greater than ``min``.
         storage: The storage location for the tile: ``"register"`` for registers or
-            ``"shared"`` for shared memory.
+            ``"shared"`` for shared memory. Must be a compile-time constant.
 
     Returns:
-        A tile of random integers in the range [min, max) with the specified shape.
-
-    Example:
-
-        .. testcode::
-
-            TILE_M, TILE_N = 2, 2
-            M, N = 2, 2
-            seed = 42
-
-            @wp.kernel
-            def rand_range_kernel(seed: int, x: wp.array2d[int]):
-                i, j = wp.tid()
-                rng = wp.rand_init(seed, i * TILE_M + j)
-                t = wp.tile_randi(shape=(TILE_M, TILE_N), rng=rng, min=-5, max=5)
-                wp.tile_store(x, t, offset=(i * TILE_M, j * TILE_N))
-
-            x = wp.zeros(shape=(M * TILE_M, N * TILE_N), dtype=int)
-            wp.launch_tiled(rand_range_kernel, dim=[M, N], inputs=[seed, x], block_dim=32)
-            print(x.numpy())
-
-        .. testoutput::
-
-            [[ 1  4  3  1]
-             [-2 -2  1  1]
-             [ 1 -2 -2 -4]
-             [ 3  0  3 -1]]"""
+        A tile of ``int32`` elements with the requested shape, each in
+        ``[min, max)``."""
     ...
 
 @over
@@ -3623,41 +3753,56 @@ def tile_randi(
     max: int32 | int,
     storage: str = "register",
 ) -> Tile[Any, tuple[int, ...]]:
-    """Generate a tile of random integers.
+    """Generate a tile of random integers in the range ``[min, max)``.
 
-    Sample values in the range [min, max)."""
+    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
+    ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument with ``min``
+    and ``max`` for usage details and an example."""
     ...
 
 @over
 def tile_randf(shape: tuple[int, ...], rng: uint32, storage: str = "register") -> Tile[Any, tuple[int, ...]]:
     """Generate a tile of random floats.
 
+    Each element is drawn with :func:`~warp.randf` using ``rng``. Values are deterministic
+    for a fixed kernel, device, and ``block_dim`` given the same ``rng``, but are not
+    portable across ``block_dim`` values or between CPU and GPU (see
+    :ref:`CPU Tile Semantics <cpu_tile_semantics>`).
+
+    The call leaves ``rng`` unchanged, so two calls with the same ``rng`` in the same
+    thread produce identical tiles. Pass a different ``rng`` (for example a
+    :func:`~warp.rand_init` offset that is unique per block) to get different values.
+
     Args:
-        shape: Shape of the output tile
-        rng: Random number generator state, typically from :func:`~warp._src.lang.rand_init`
+        shape: Shape of the output tile. Must be a compile-time constant.
+        rng: Random number generator state, typically from :func:`~warp.rand_init`.
         storage: The storage location for the tile: ``"register"`` for registers or
-            ``"shared"`` for shared memory.
+            ``"shared"`` for shared memory. Must be a compile-time constant.
 
     Returns:
-        A tile of random floats in the range [0, 1) with the specified shape.
+        A tile of ``float32`` elements with the requested shape, each in ``[0, 1)``.
 
     Example:
 
         .. testcode::
+            :skipif: wp.get_device() == "cpu" or wp.get_cuda_device_count() == 0
 
             TILE_M, TILE_N = 2, 2
             M, N = 2, 2
             seed = 42
 
             @wp.kernel
-            def rand_kernel(seed: int, x: wp.array2d[float]):
+            def generate_random_floats(seed: int, x: wp.array2d[float]):
                 i, j = wp.tid()
-                rng = wp.rand_init(seed, i * TILE_M + j)
+                # one distinct RNG offset per block
+                rng = wp.rand_init(seed, i * N + j)
                 t = wp.tile_randf(shape=(TILE_M, TILE_N), rng=rng)
                 wp.tile_store(x, t, offset=(i * TILE_M, j * TILE_N))
 
             x = wp.zeros(shape=(M * TILE_M, N * TILE_N), dtype=float)
-            wp.launch_tiled(rand_kernel, dim=[M, N], inputs=[seed, x], block_dim=32)
+
+            wp.launch_tiled(generate_random_floats, dim=[M, N], inputs=[seed], outputs=[x], block_dim=8)
+
             print(x.numpy())
 
         .. testoutput::
@@ -3665,12 +3810,19 @@ def tile_randf(shape: tuple[int, ...], rng: uint32, storage: str = "register") -
             [[0.1859147  0.41986287 0.7774631  0.00414598]
              [0.41634446 0.3073818  0.4827178  0.53220683]
              [0.9400381  0.73490226 0.26666623 0.9250764 ]
-             [0.51194566 0.57261354 0.26992965 0.8481429 ]]"""
+             [0.51194566 0.57261354 0.26992965 0.8481429 ]]
+
+        The values above are those produced on a CUDA device; a CPU launch of the same
+        kernel generates a different sequence."""
     ...
 
 @over
 def tile_randf(shape: int32 | int, rng: uint32, storage: str = "register") -> Tile[Any, tuple[int, ...]]:
-    """Generate a tile of random floats."""
+    """Generate a tile of random floats.
+
+    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
+    ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument for usage
+    details and an example."""
     ...
 
 @over
@@ -3681,46 +3833,24 @@ def tile_randf(
     max: float32 | float,
     storage: str = "register",
 ) -> Tile[Any, tuple[int, ...]]:
-    """Generate a tile of random floats.
+    """Generate a tile of random floats in the range ``[min, max)``.
 
-    Sample values in the range [min, max).
+    See the overload without ``min`` and ``max`` for reproducibility details and a usage
+    example.
 
     Args:
-        shape: Shape of the output tile
-        rng: Random number generator state, typically from :func:`~warp._src.lang.rand_init`
-        min: Minimum value (inclusive) for random floats
-        max: Maximum value (exclusive) for random floats
+        shape: Shape of the output tile. Must be a compile-time constant.
+        rng: Random number generator state, typically from :func:`~warp.rand_init`.
+        min: Minimum value (inclusive). Must be a compile-time floating-point constant;
+            it is interpreted at ``float32`` precision.
+        max: Maximum value (exclusive). Must be a compile-time floating-point constant
+            that remains greater than ``min`` after both are converted to ``float32``.
         storage: The storage location for the tile: ``"register"`` for registers or
-            ``"shared"`` for shared memory.
+            ``"shared"`` for shared memory. Must be a compile-time constant.
 
     Returns:
-        A tile of random floats in the range [min, max) with the specified shape.
-
-    Example:
-
-        .. testcode::
-
-            TILE_M, TILE_N = 2, 2
-            M, N = 2, 2
-            seed = 42
-
-            @wp.kernel
-            def rand_range_kernel(seed: int, x: wp.array2d[float]):
-                i, j = wp.tid()
-                rng = wp.rand_init(seed, i * TILE_M + j)
-                t = wp.tile_randf(shape=(TILE_M, TILE_N), rng=rng, min=-5.0, max=5.0)
-                wp.tile_store(x, t, offset=(i * TILE_M, j * TILE_N))
-
-            x = wp.zeros(shape=(M * TILE_M, N * TILE_N), dtype=float)
-            wp.launch_tiled(rand_range_kernel, dim=[M, N], inputs=[seed, x], block_dim=32)
-            print(x.numpy())
-
-        .. testoutput::
-
-            [[-3.140853   -0.80137134  2.7746308  -4.95854   ]
-             [-0.83655536 -1.9261819  -0.17282188  0.32206833]
-             [ 4.400381    2.3490226  -2.3333378   4.2507644 ]
-             [ 0.11945665  0.7261354  -2.3007035   3.481429  ]]"""
+        A tile of ``float32`` elements with the requested shape, each in
+        ``[min, max)``."""
     ...
 
 @over
@@ -3731,45 +3861,107 @@ def tile_randf(
     max: float32 | float,
     storage: str = "register",
 ) -> Tile[Any, tuple[int, ...]]:
-    """Generate a tile of random floats.
+    """Generate a tile of random floats in the range ``[min, max)``.
 
-    Sample values in the range [min, max)."""
+    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
+    ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument with ``min``
+    and ``max`` for usage details and an example."""
     ...
 
 @over
 def tile_arange(*args: Scalar, storage: str = "register") -> Tile[float32, tuple[int]]:
-    """Generate a tile of linearly spaced elements.
+    """Generate a 1D tile of linearly spaced elements.
 
-    - ``(stop,)``: Generates values from ``0`` to ``stop - 1``
-    - ``(start, stop)``: Generates values from ``start`` to ``stop - 1``
-    - ``(start, stop, step)``: Generates values from ``start`` to ``stop - 1`` with a step size
+    The range follows the half-open interval ``[start, stop)`` and holds
+    ``ceil((stop - start) / step)`` elements. For example, ``tile_arange(0, 10, 3)`` yields
+    ``[0, 3, 6, 9]``.
+
+    The interval excludes ``stop``, except when ``step`` is non-integral and floating-point
+    round-off affects the number of elements.
 
     Args:
-        args: Variable-length positional arguments, interpreted as:
-        dtype: Data type of output tile's elements (``float`` if not provided)
+        args: Positional compile-time constants specifying the range:
+
+            - ``(stop,)``: Use ``0`` for ``start`` and ``1`` for ``step``.
+            - ``(start, stop)``: Use ``1`` for ``step``.
+            - ``(start, stop, step)``: Use the supplied ``start``, ``stop``, and ``step``.
+        dtype: Data type of output tile's elements. Defaults to ``float`` even when the
+            range arguments are integers; pass ``dtype=int`` for an integer tile. Must
+            be a compile-time constant.
         storage: The storage location for the tile: ``"register"`` for registers or
-            ``"shared"`` for shared memory.
+            ``"shared"`` for shared memory. Must be a compile-time constant.
 
     Returns:
-        A tile with ``shape=(n)`` with linearly spaced elements of specified data type."""
+        A tile with ``shape=(n,)`` holding the linearly spaced elements.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def store_ranges(out: wp.array[int]):
+                a = wp.tile_arange(4, dtype=int)
+                b = wp.tile_arange(9, 0, -3, dtype=int)
+                wp.tile_store(out, a)
+                wp.tile_store(out, b, offset=(4,))
+
+            out = wp.zeros(7, dtype=int)
+
+            wp.launch_tiled(store_ranges, dim=1, outputs=[out], block_dim=4)
+
+            print(out.numpy())
+
+        .. testoutput::
+
+            [0 1 2 3 9 6 3]"""
     ...
 
 @over
 def tile_arange(*args: Scalar, dtype: type[DTypeScalar], storage: str = "register") -> Tile[DTypeScalar, tuple[int]]:
-    """Generate a tile of linearly spaced elements.
+    """Generate a 1D tile of linearly spaced elements.
 
-    - ``(stop,)``: Generates values from ``0`` to ``stop - 1``
-    - ``(start, stop)``: Generates values from ``start`` to ``stop - 1``
-    - ``(start, stop, step)``: Generates values from ``start`` to ``stop - 1`` with a step size
+    The range follows the half-open interval ``[start, stop)`` and holds
+    ``ceil((stop - start) / step)`` elements. For example, ``tile_arange(0, 10, 3)`` yields
+    ``[0, 3, 6, 9]``.
+
+    The interval excludes ``stop``, except when ``step`` is non-integral and floating-point
+    round-off affects the number of elements.
 
     Args:
-        args: Variable-length positional arguments, interpreted as:
-        dtype: Data type of output tile's elements (``float`` if not provided)
+        args: Positional compile-time constants specifying the range:
+
+            - ``(stop,)``: Use ``0`` for ``start`` and ``1`` for ``step``.
+            - ``(start, stop)``: Use ``1`` for ``step``.
+            - ``(start, stop, step)``: Use the supplied ``start``, ``stop``, and ``step``.
+        dtype: Data type of output tile's elements. Defaults to ``float`` even when the
+            range arguments are integers; pass ``dtype=int`` for an integer tile. Must
+            be a compile-time constant.
         storage: The storage location for the tile: ``"register"`` for registers or
-            ``"shared"`` for shared memory.
+            ``"shared"`` for shared memory. Must be a compile-time constant.
 
     Returns:
-        A tile with ``shape=(n)`` with linearly spaced elements of specified data type."""
+        A tile with ``shape=(n,)`` holding the linearly spaced elements.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def store_ranges(out: wp.array[int]):
+                a = wp.tile_arange(4, dtype=int)
+                b = wp.tile_arange(9, 0, -3, dtype=int)
+                wp.tile_store(out, a)
+                wp.tile_store(out, b, offset=(4,))
+
+            out = wp.zeros(7, dtype=int)
+
+            wp.launch_tiled(store_ranges, dim=1, outputs=[out], block_dim=4)
+
+            print(out.numpy())
+
+        .. testoutput::
+
+            [0 1 2 3 9 6 3]"""
     ...
 
 @over
@@ -4307,38 +4499,59 @@ def tile_assign(
 def tile(x: Any, preserve_type: bool | _builtins.bool = False) -> Tile[Any, tuple]:
     """Construct a new tile from per-thread kernel values.
 
-    This function converts values computed using scalar kernel code to a tile representation for input into collective operations.
+    This function converts values computed using scalar kernel code to a tile
+    representation for input into collective operations. Each thread of the block
+    contributes one value, so the tile's trailing dimension is always ``block_dim``:
 
     * If the input value is a scalar, then the resulting tile has ``shape=(block_dim,)``
-    * If the input value is a vector, then the resulting tile has ``shape=(length(vector), block_dim)``
-    * If the input value is a vector, and ``preserve_type=True``, then the resulting tile has ``dtype=vector`` and ``shape=(block_dim,)``
-    * If the input value is a matrix, then the resulting tile has ``shape=(rows, cols, block_dim)``
-    * If the input value is a matrix, and ``preserve_type=True``, then the resulting tile has ``dtype=matrix`` and ``shape=(block_dim,)``
+    * If the input value is a vector, then the resulting tile has
+      ``shape=(length(vector), block_dim)``
+    * If the input value is a vector, and ``preserve_type=True``, then the resulting
+      tile has ``dtype=vector`` and ``shape=(block_dim,)``
+    * If the input value is a matrix, then the resulting tile has
+      ``shape=(rows, cols, block_dim)``
+    * If the input value is a matrix, and ``preserve_type=True``, then the resulting
+      tile has ``dtype=matrix`` and ``shape=(block_dim,)``
+
+    Quaternion values are supported with ``preserve_type=True``. Use
+    :func:`~warp.untile` to convert the tile back to per-thread values.
+
+    Every thread of the block must reach this call. On CPU the effective block width is
+    ``1``, so the tile has a single element regardless of the requested ``block_dim`` -
+    see :ref:`CPU Tile Semantics <cpu_tile_semantics>`.
 
     Args:
         x: A per-thread local value, e.g. scalar, vector, or matrix.
         preserve_type: If true, the tile will have the same data type as the input value.
+            Must be a compile-time constant.
 
     Returns:
-        If ``preserve_type=True``, a tile of type ``x.type`` of length ``block_dim``. Otherwise, an N-dimensional tile such that the first N-1 dimensions match the shape of ``x`` and the final dimension is of size ``block_dim``.
+        If ``preserve_type=True``, a tile of type ``x.type`` of length ``block_dim``.
+        Otherwise, an N-dimensional tile such that the first N-1 dimensions match the
+        shape of ``x`` and the final dimension is of size ``block_dim``.
 
     Example:
 
         This example shows how to create a linear sequence from thread variables.
 
-        .. code-block:: python
+        .. testcode::
+            :skipif: wp.get_device() == "cpu" or wp.get_cuda_device_count() == 0
 
             @wp.kernel
-            def compute():
+            def store_doubled_thread_indices(out: wp.array[int]):
                 i = wp.tid()
-                t = wp.tile(i*2)
-                print(t)
+                t = wp.tile(i * 2)
+                wp.tile_store(out, t)
 
-            wp.launch(compute, dim=16, inputs=[], block_dim=16)
+            out = wp.zeros(16, dtype=int)
 
-        .. code-block:: text
+            wp.launch(store_doubled_thread_indices, dim=16, outputs=[out], block_dim=16)
 
-            [0 2 4 6 8 10 12 14 16 18 20 22 24 26 28 30] = tile(shape=(16), storage=register)"""
+            print(out.numpy())
+
+        .. testoutput::
+
+            [ 0  2  4  6  8 10 12 14 16 18 20 22 24 26 28 30]"""
     ...
 
 def untile(a: Tile[Any, tuple[int, ...]]) -> Any:

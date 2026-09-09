@@ -286,6 +286,45 @@ def test_tile_zeros_default_dtype(test, device):
     assert_np_equal(src.grad.numpy(), np.ones(TILE_EMPTY_M, dtype=np.float32))
 
 
+# tile_full() defaults its dtype to the type of the value it is filled with, so a
+# tile always matches its fill value instead of being converted to a fixed type.
+# tile_store() rejects a dtype mismatch, so each store below asserts the element
+# type the tile was given.
+@wp.kernel
+def tile_full_default_dtype_kernel(
+    dst_float: wp.array[float],
+    dst_int: wp.array[int],
+    dst_vec: wp.array[wp.vec3],
+    dst_converted: wp.array[float],
+):
+    wp.tile_store(dst_float, wp.tile_full(shape=(TILE_EMPTY_M,), value=1.5))
+    wp.tile_store(dst_int, wp.tile_full(TILE_EMPTY_M, value=wp.int32(7)))
+    wp.tile_store(dst_vec, wp.tile_full(shape=(TILE_EMPTY_M,), value=wp.vec3(1.0, 2.0, 3.0)))
+
+    # an explicit dtype still converts the value
+    wp.tile_store(dst_converted, wp.tile_full(shape=(TILE_EMPTY_M,), value=7, dtype=float))
+
+
+def test_tile_full_default_dtype(test, device):
+    dst_float = wp.zeros(TILE_EMPTY_M, dtype=float, device=device)
+    dst_int = wp.zeros(TILE_EMPTY_M, dtype=int, device=device)
+    dst_vec = wp.zeros(TILE_EMPTY_M, dtype=wp.vec3, device=device)
+    dst_converted = wp.zeros(TILE_EMPTY_M, dtype=float, device=device)
+
+    wp.launch_tiled(
+        tile_full_default_dtype_kernel,
+        dim=[1],
+        outputs=[dst_float, dst_int, dst_vec, dst_converted],
+        block_dim=TILE_DIM,
+        device=device,
+    )
+
+    assert_np_equal(dst_float.numpy(), np.full(TILE_EMPTY_M, 1.5, dtype=np.float32))
+    assert_np_equal(dst_int.numpy(), np.full(TILE_EMPTY_M, 7, dtype=np.int32))
+    assert_np_equal(dst_vec.numpy(), np.tile(np.array([1.0, 2.0, 3.0], dtype=np.float32), (TILE_EMPTY_M, 1)))
+    assert_np_equal(dst_converted.numpy(), np.full(TILE_EMPTY_M, 7.0, dtype=np.float32))
+
+
 devices = get_test_devices()
 
 
@@ -309,6 +348,7 @@ add_function_test(
 )
 add_function_test(TestTileEmpty, "test_tile_empty_in_loop", test_tile_empty_in_loop, devices=devices)
 add_function_test(TestTileEmpty, "test_tile_zeros_default_dtype", test_tile_zeros_default_dtype, devices=devices)
+add_function_test(TestTileEmpty, "test_tile_full_default_dtype", test_tile_full_default_dtype, devices=devices)
 
 
 if __name__ == "__main__":

@@ -5,6 +5,8 @@ import unittest
 
 import numpy as np
 
+from warp._src.builtins import tile_full_value_func, tile_randf_dispatch_func, tile_randi_dispatch_func
+from warp._src.codegen import Var
 from warp._src.context import Function, get_builtin_call_desc
 from warp.tests.unittest_utils import *
 
@@ -257,6 +259,57 @@ class TestBuiltinsResolution(unittest.TestCase):
         expected = wp.curlnoise(state, position, wp.uint32(1), 2.0, 0.5)
 
         np.testing.assert_allclose(result, expected)
+
+    def test_tile_random_invalid_range_rejected(self):
+        """Reject tile random ranges that are empty after native conversion."""
+        cases = (
+            (
+                "tile_randi",
+                tile_randi_dispatch_func,
+                wp.int32,
+                (
+                    (1, 1, "max.*greater than.*min"),
+                    (2, 1, "max.*greater than.*min"),
+                    (2147483647, 2147483648, "int32"),
+                ),
+            ),
+            (
+                "tile_randf",
+                tile_randf_dispatch_func,
+                wp.float32,
+                (
+                    (1.0, 1.0, "max.*greater than.*min"),
+                    (2.0, 1.0, "max.*greater than.*min"),
+                    (1.00000001, 1.00000002, "max.*greater than.*min"),
+                ),
+            ),
+        )
+
+        for name, dispatch_func, dtype, bounds in cases:
+            for min_value, max_value, message in bounds:
+                with self.subTest(name=name, min=min_value, max=max_value):
+                    arg_values = {
+                        "shape": (2, 2),
+                        "rng": Var(None, wp.uint32, constant=0),
+                        "min": Var(None, dtype, constant=min_value),
+                        "max": Var(None, dtype, constant=max_value),
+                        "storage": "register",
+                    }
+                    with self.assertRaisesRegex(ValueError, rf"{name}.*{message}"):
+                        dispatch_func(None, None, arg_values)
+
+    def test_tile_full_mismatched_composite_rejected(self):
+        """Reject a composite fill value whose type differs from ``dtype``."""
+        with self.assertRaisesRegex(TypeError, r"tile_full.*vec3h.*vec3f"):
+            tile_full_value_func(
+                {"value": wp.vec3h},
+                {
+                    "shape": (2,),
+                    "value": None,
+                    "dtype": wp.vec3f,
+                    "storage": "register",
+                },
+            )
 
     def test_int_arg_overflow(self):
         value = -1234567890123456789
