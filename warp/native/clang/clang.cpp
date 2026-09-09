@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+#include "../native/cpu_block_runtime.h"
 #include "../native/crt.h"
 #include "../version.h"
 #include <clang/Basic/DiagnosticOptions.h>
@@ -983,7 +984,8 @@ WP_API int wp_load_obj(const char* object_file, const char* module_name, bool us
                 SYMBOL_T(erf, double (*)(double)), SYMBOL(erfcf), SYMBOL_T(erfc, double (*)(double)), SYMBOL(erfinvf),
                 SYMBOL_T(erfinv, double (*)(double)), SYMBOL(erfcinvf), SYMBOL_T(erfcinv, double (*)(double)),
                 SYMBOL(memcpy), SYMBOL(memset), SYMBOL(memmove), SYMBOL(_wp_assert), SYMBOL(_wp_isfinite),
-                SYMBOL(_wp_isnan), SYMBOL(_wp_isinf),
+                SYMBOL(_wp_isnan), SYMBOL(_wp_isinf), SYMBOL(wp_cpu_get_thread_idx), SYMBOL(wp_cpu_get_active_count),
+                SYMBOL(wp_cpu_tile_sync), SYMBOL(wp_cpu_run_block),
 #if defined(_WIN64)
                 // For functions with large stack frames the compiler will emit a call to
                 // __chkstk() to linearly touch each memory page. This grows the stack without

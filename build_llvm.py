@@ -440,6 +440,7 @@ def build_warp_clang_for_arch(args, lib_name: str, arch: str) -> None:
         cpp_sources = [
             "native/clang/clang.cpp",
             "native/crt.cpp",
+            "native/cpu_block_runtime.cpp",
             "native/cpu_fiber.cpp",
         ]
         clang_cpp_paths = [os.path.join(build_path, cpp) for cpp in cpp_sources]

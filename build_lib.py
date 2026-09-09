@@ -532,6 +532,7 @@ def main(argv: list[str] | None = None) -> int:
             "native/scan.cpp",
             "native/apic.cpp",
             "native/alloc_tracker.cpp",
+            "native/cpu_block_runtime.cpp",
             "native/cpu_fiber.cpp",
             "native/crt.cpp",
             "native/error.cpp",
