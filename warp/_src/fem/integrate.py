@@ -1600,7 +1600,7 @@ def _launch_integrate_kernel(
                 wp.launch(
                     kernel=dispatch_kernel,
                     dim=(test.space_restriction.node_count(), dispatch_tile_size),
-                    block_dim=dispatch_tile_size if dispatch_tile_size > 1 else 256,
+                    block_dim=dispatch_tile_size if dispatch_tile_size > 1 else None,
                     inputs=[
                         qp_arg,
                         domain_elt_arg,
@@ -1809,7 +1809,7 @@ def _launch_integrate_kernel(
                     trial.space.topology.MAX_NODES_PER_ELEMENT,
                     dispatch_tile_size,
                 ),
-                block_dim=dispatch_tile_size if dispatch_tile_size > 1 else 256,
+                block_dim=dispatch_tile_size if dispatch_tile_size > 1 else None,
                 inputs=[
                     qp_arg,
                     domain_elt_arg,

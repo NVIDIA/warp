@@ -249,6 +249,14 @@ enable_backward: bool = True
 This setting can be overridden at the module level by setting the ``"enable_backward"`` module option.
 """
 
+enable_cpu_blocks: bool = False
+"""Enable CPU kernel launches with more than one logical thread per block.
+
+When ``False``, CPU launch block dimensions greater than one resolve to one,
+preserving the historical CPU execution model. When ``True``, explicit CPU
+block dimensions from 2 through 1024 run with cooperative fibers.
+"""
+
 default_grid_stride: bool = True
 """Default ``grid_stride`` for kernels that make no explicit choice.
 

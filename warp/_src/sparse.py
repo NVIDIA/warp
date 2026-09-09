@@ -4466,7 +4466,7 @@ def bsr_mm(
             kernel=make_bsr_mm_count_coeffs(count_tile_size),
             device=device,
             dim=(z.nrow, count_tile_size),
-            block_dim=count_tile_size if count_tile_size > 1 else 256,
+            block_dim=count_tile_size if count_tile_size > 1 else None,
             inputs=[
                 y.ncol,
                 copied_z_nnz,

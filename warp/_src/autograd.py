@@ -43,7 +43,7 @@ def gradcheck(
     input_output_mask: list[tuple[str | int, str | int]] | None = None,
     device: wp.DeviceLike = None,
     max_blocks: int = 0,
-    block_dim: int = 256,
+    block_dim: int | None = None,
     max_inputs_per_var: int = -1,
     max_outputs_per_var: int = -1,
     plot_relative_error: bool = False,
@@ -81,7 +81,7 @@ def gradcheck(
         input_output_mask: List of tuples specifying the input-output pairs to compute the Jacobian for. Inputs and outputs can be identified either by their integer indices of where they appear in the kernel input/output arguments, or by the respective argument names as strings. If ``None``, computes the Jacobian for all input-output pairs.
         device: The device to launch on (optional)
         max_blocks: The maximum number of CUDA thread blocks to use.
-        block_dim: The number of threads per block.
+        block_dim: The requested number of threads per block. Defaults to 1 on CPU and 256 on CUDA.
         max_inputs_per_var: Maximum number of input dimensions over which to evaluate the Jacobians for the input-output pairs. Evaluates all input dimensions if value <= 0.
         max_outputs_per_var: Maximum number of output dimensions over which to evaluate the Jacobians for the input-output pairs. Evaluates all output dimensions if value <= 0.
         plot_relative_error: If True, visualizes the relative error of the Jacobians in a plot (requires ``matplotlib``).
@@ -713,7 +713,7 @@ def jacobian(
     input_output_mask: list[tuple[str | int, str | int]] | None = None,
     device: wp.DeviceLike = None,
     max_blocks=0,
-    block_dim=256,
+    block_dim: int | None = None,
     max_outputs_per_var=-1,
     plot_jacobians=False,
     metadata: FunctionMetadata | None = None,
@@ -741,7 +741,7 @@ def jacobian(
         input_output_mask: List of tuples specifying the input-output pairs to compute the Jacobian for. Inputs and outputs can be identified either by their integer indices of where they appear in the kernel input/output arguments, or by the respective argument names as strings. If None, computes the Jacobian for all input-output pairs.
         device: The device to launch on (optional). Only used if ``function`` is a Warp kernel.
         max_blocks: The maximum number of CUDA thread blocks to use. Only used if ``function`` is a Warp kernel.
-        block_dim: The number of threads per block. Only used if ``function`` is a Warp kernel.
+        block_dim: The requested number of threads per block. Defaults to 1 on CPU and 256 on CUDA. Only used if ``function`` is a Warp kernel.
         max_outputs_per_var: Maximum number of output dimensions over which to evaluate the Jacobians for the input-output pairs. Evaluates all output dimensions if value <= 0.
         plot_jacobians: If True, visualizes the computed Jacobians in a plot (requires ``matplotlib``).
         metadata: The metadata of the kernel function, containing the input and output labels, strides, and dtypes. If None or empty, the metadata is inferred from the kernel or function.
@@ -859,7 +859,7 @@ def jacobian_fd(
     input_output_mask: list[tuple[str | int, str | int]] | None = None,
     device: wp.DeviceLike = None,
     max_blocks=0,
-    block_dim=256,
+    block_dim: int | None = None,
     max_inputs_per_var=-1,
     eps: float = 1e-4,
     plot_jacobians=False,
@@ -890,7 +890,7 @@ def jacobian_fd(
         input_output_mask: List of tuples specifying the input-output pairs to compute the Jacobian for. Inputs and outputs can be identified either by their integer indices of where they appear in the kernel input/output arguments, or by the respective argument names as strings. If None, computes the Jacobian for all input-output pairs.
         device: The device to launch on (optional). Only used if ``function`` is a Warp kernel.
         max_blocks: The maximum number of CUDA thread blocks to use. Only used if ``function`` is a Warp kernel.
-        block_dim: The number of threads per block. Only used if ``function`` is a Warp kernel.
+        block_dim: The requested number of threads per block. Defaults to 1 on CPU and 256 on CUDA. Only used if ``function`` is a Warp kernel.
         max_inputs_per_var: Maximum number of input dimensions over which to evaluate the Jacobians for the input-output pairs. Evaluates all input dimensions if value <= 0.
         eps: The finite-difference step size.
         plot_jacobians: If True, visualizes the computed Jacobians in a plot (requires ``matplotlib``).

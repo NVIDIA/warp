@@ -1754,7 +1754,7 @@ class GMRES(LinearSolverState):
         self._least_squares_solve = wp.launch(
             least_squares_kernel,
             dim=(batch_count, tile_size),
-            block_dim=tile_size if tile_size > 1 else 256,
+            block_dim=tile_size if tile_size > 1 else None,
             device=device,
             inputs=[restart, self._pivot_tolerance, self._beta, self._H, self._y],
             record_cmd=True,

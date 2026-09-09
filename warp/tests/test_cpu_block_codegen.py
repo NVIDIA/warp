@@ -26,7 +26,17 @@ def _generate_source(block_dim):
 
 
 def _launch_specialization(block_dim, values, output, *, adjoint=False, adj_values=None, adj_output=None):
-    command = Launch(cpu_block_codegen_kernel, wp.get_device("cpu"), block_dim=block_dim, adjoint=adjoint)
+    previous = wp.config.enable_cpu_blocks
+    wp.config.enable_cpu_blocks = True
+    try:
+        command = Launch(
+            cpu_block_codegen_kernel,
+            wp.get_device("cpu"),
+            block_dim=block_dim,
+            adjoint=adjoint,
+        )
+    finally:
+        wp.config.enable_cpu_blocks = previous
     command.set_dim(len(values))
     command.set_params((values, output))
     if adjoint:

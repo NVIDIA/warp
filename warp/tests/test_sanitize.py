@@ -197,6 +197,20 @@ class TestSanitize(unittest.TestCase):
         self.assertIn("INBOUNDS_OK", stdout)
         self.assertNotIn("AddressSanitizer", stderr)
 
+    def test_cpu_block_fibers_rejected(self):
+        self._skip_unless_asan()
+        previous = wp.config.enable_cpu_blocks
+        wp.config.enable_cpu_blocks = True
+        try:
+            message = "Cooperative CPU fibers do not support AddressSanitizer builds"
+            a = wp.empty(1, dtype=int, device="cpu")
+            with self.assertRaisesRegex(NotImplementedError, message):
+                wp.launch(_write_at_offset, dim=1, inputs=[a, 0], device="cpu", block_dim=2)
+            with self.assertRaisesRegex(NotImplementedError, message):
+                wp.launch_tiled(_write_at_offset, dim=[1], inputs=[a, 0], device="cpu", block_dim=2)
+        finally:
+            wp.config.enable_cpu_blocks = previous
+
 
 if __name__ == "__main__":
     wp.init()

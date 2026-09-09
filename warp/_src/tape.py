@@ -155,6 +155,8 @@ class Tape:
                     adj_outputs.append(self.get_adjoint(a))
 
                 if enable_backward:
+                    from warp._src.context import _ResolvedBlockDim  # noqa: PLC0415
+
                     wp.launch(
                         kernel=kernel,
                         dim=dim,
@@ -165,7 +167,7 @@ class Tape:
                         device=device,
                         adjoint=True,
                         max_blocks=max_blocks,
-                        block_dim=block_dim,
+                        block_dim=_ResolvedBlockDim(block_dim),
                     )
 
         # reads are consumed; see the Note in the docstring
@@ -174,6 +176,10 @@ class Tape:
 
     # record a kernel launch on the tape
     def record_launch(self, kernel, dim, max_blocks, inputs, outputs, device, block_dim=0, metadata=None):
+        from warp._src.context import _resolve_launch_block_dim, runtime  # noqa: PLC0415
+
+        device = runtime.get_device(device)
+        block_dim = _resolve_launch_block_dim(device, block_dim)
         if metadata is None:
             metadata = {}
         self.launches.append([kernel, dim, max_blocks, inputs, outputs, device, block_dim, metadata])
