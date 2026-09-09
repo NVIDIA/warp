@@ -3318,6 +3318,19 @@ def test_numpy_array_interface(test, device):
         assert a1.strides == a2.strides
 
 
+def test_numpy_array_interface_empty(test, device):
+    """Verify that NumPy accepts an empty Warp array through the array interface."""
+    a = wp.zeros((1, 0), dtype=wp.vec2f, device=device)
+
+    test.assertNotEqual(a.__array_interface__["data"][0], 0)
+
+    na = np.asarray(a)
+
+    test.assertEqual(na.shape, (1, 0, 2))
+    test.assertEqual(na.dtype, np.dtype(np.float32))
+    test.assertEqual(na.strides, (0, 8, 4))
+
+
 @wp.kernel
 def kernel_indexing_types(
     arr_1d: wp.array[wp.int32],
@@ -4235,6 +4248,7 @@ add_function_test(TestArray, "test_array_of_structs_roundtrip", test_array_of_st
 add_function_test(TestArray, "test_array_from_numpy", test_array_from_numpy, devices=devices)
 add_function_test(TestArray, "test_array_aliasing_from_numpy", test_array_aliasing_from_numpy, devices=["cpu"])
 add_function_test(TestArray, "test_numpy_array_interface", test_numpy_array_interface, devices=["cpu"])
+add_function_test(TestArray, "test_numpy_array_interface_empty", test_numpy_array_interface_empty, devices=["cpu"])
 
 add_function_test(TestArray, "test_array_inplace_diff_ops", test_array_inplace_diff_ops, devices=devices)
 add_function_test(TestArray, "test_array_inplace_non_diff_ops", test_array_inplace_non_diff_ops, devices=devices)

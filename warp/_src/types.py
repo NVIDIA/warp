@@ -34,6 +34,12 @@ import warp
 import warp.config
 from warp._src.logger import log_warning
 
+# NumPy versions before 2.4 incorrectly take an undocumented scalar path when
+# ``__array_interface__`` exposes a NULL data pointer. Keep a valid byte alive
+# for empty arrays so those versions can consume the interface.
+# https://github.com/numpy/numpy/issues/26037
+_ARRAY_INTERFACE_EMPTY_DATA = ctypes.c_byte()
+
 # type hints
 T = TypeVar("T")
 Length = TypeVar("Length", bound=int)
@@ -3988,8 +3994,15 @@ class array(Array[DType, NDim]):
                 arr_strides = self.strides
                 descr = None
 
+            if self.ptr:
+                data_ptr = self.ptr
+            elif self.size == 0:
+                data_ptr = ctypes.addressof(_ARRAY_INTERFACE_EMPTY_DATA)
+            else:
+                data_ptr = 0
+
             self._array_interface = {
-                "data": (self.ptr if self.ptr is not None else 0, False),
+                "data": (data_ptr, False),
                 "shape": tuple(arr_shape),
                 "strides": tuple(arr_strides),
                 "typestr": type_typestr(self.dtype),
