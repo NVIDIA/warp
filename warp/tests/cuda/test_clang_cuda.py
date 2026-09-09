@@ -127,6 +127,27 @@ def test_bf16_arithmetic(test, device):
     np.testing.assert_allclose(out.numpy(), a_np + b_np, rtol=1e-2)
 
 
+@wp.kernel
+def slice_kernel(src: wp.array2d[float], out: wp.array[float]):
+    i = wp.tid()
+    view = src[i : i + 2, 1]
+    out[i] = view[0] + view[1]
+
+
+def test_slice_kernel(test, device):
+    # Slicing reaches byte_offset_helper() in array.h, which Clang rejects unless
+    # it is marked CUDA_CALLABLE. No other test in this file slices an array, so
+    # without this the annotation could be dropped without any test noticing.
+    rows, cols = 5, 3
+    src_np = np.arange(rows * cols, dtype=np.float32).reshape(rows, cols)
+    src = wp.array(src_np, dtype=float, device=device)
+    n = rows - 1
+    out = wp.zeros(n, dtype=float, device=device)
+    wp.launch(slice_kernel, dim=n, inputs=[src, out], device=device)
+    expected = src_np[0:n, 1] + src_np[1 : n + 1, 1]
+    np.testing.assert_allclose(out.numpy(), expected, rtol=1e-5)
+
+
 def test_invalid_native_func_compile_error(test, device):
     @wp.func_native("""
         INVALID SOURCE;
@@ -160,6 +181,7 @@ add_function_test(TestClangCUDA, "test_trivial_kernel", test_trivial_kernel, dev
 add_function_test(TestClangCUDA, "test_math_kernel", test_math_kernel, devices=devices)
 add_function_test(TestClangCUDA, "test_vec_kernel", test_vec_kernel, devices=devices)
 add_function_test(TestClangCUDA, "test_conditional_kernel", test_conditional_kernel, devices=devices)
+add_function_test(TestClangCUDA, "test_slice_kernel", test_slice_kernel, devices=devices)
 bf16_devices = [d for d in devices if d.arch >= 80]
 add_function_test(TestClangCUDA, "test_bf16_round_trip", test_bf16_round_trip, devices=bf16_devices)
 add_function_test(TestClangCUDA, "test_bf16_arithmetic", test_bf16_arithmetic, devices=bf16_devices)

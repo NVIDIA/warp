@@ -11,8 +11,6 @@
 #pragma clang diagnostic ignored "-Wc++17-extensions"
 #endif  // __clang__
 
-#define WP_TILE_WARP_SIZE 32
-
 namespace wp {
 
 
@@ -30,7 +28,7 @@ template <typename T> int argmin_tracker(T champion_value, T current_value, int 
 #if defined(__CUDA_ARCH__)
 
 // half / float16 uses a dedicated overload to shuffle its 16-bit payload directly.
-inline CUDA_CALLABLE half warp_shuffle_down(half val, int offset, int mask)
+inline CUDA_CALLABLE half warp_shuffle_down(half val, int offset, wp_tile_lane_mask_bits_t mask)
 {
     unsigned int bits = static_cast<unsigned int>(val.u);
     bits = __shfl_down_sync(mask, bits, offset, WP_TILE_WARP_SIZE);
@@ -41,7 +39,7 @@ inline CUDA_CALLABLE half warp_shuffle_down(half val, int offset, int mask)
 }
 
 #ifndef WP_NO_BFLOAT16
-inline CUDA_CALLABLE bfloat16 warp_shuffle_down(bfloat16 val, int offset, int mask)
+inline CUDA_CALLABLE bfloat16 warp_shuffle_down(bfloat16 val, int offset, wp_tile_lane_mask_bits_t mask)
 {
     unsigned int bits = static_cast<unsigned int>(val.u);
     bits = __shfl_down_sync(mask, bits, offset, WP_TILE_WARP_SIZE);
@@ -52,7 +50,7 @@ inline CUDA_CALLABLE bfloat16 warp_shuffle_down(bfloat16 val, int offset, int ma
 }
 #endif  // WP_NO_BFLOAT16
 
-template <typename T> inline CUDA_CALLABLE T warp_shuffle_down(T val, int offset, int mask)
+template <typename T> inline CUDA_CALLABLE T warp_shuffle_down(T val, int offset, wp_tile_lane_mask_bits_t mask)
 {
     // Shuffle word-by-word over the raw bytes so any trivially-copyable value type is
     // supported. A plain word buffer (rather than a union over T) avoids the deleted
@@ -83,7 +81,8 @@ template <typename T> inline CUDA_CALLABLE T warp_shuffle_down(T val, int offset
 
 // vector overload
 template <unsigned Length, typename T>
-inline CUDA_CALLABLE wp::vec_t<Length, T> warp_shuffle_down(wp::vec_t<Length, T> val, int offset, int mask)
+inline CUDA_CALLABLE wp::vec_t<Length, T>
+warp_shuffle_down(wp::vec_t<Length, T> val, int offset, wp_tile_lane_mask_bits_t mask)
 {
     wp::vec_t<Length, T> result;
 
@@ -94,7 +93,8 @@ inline CUDA_CALLABLE wp::vec_t<Length, T> warp_shuffle_down(wp::vec_t<Length, T>
 }
 
 template <unsigned Length>
-inline CUDA_CALLABLE wp::vec_t<Length, half> warp_shuffle_down(wp::vec_t<Length, half> val, int offset, int mask)
+inline CUDA_CALLABLE wp::vec_t<Length, half>
+warp_shuffle_down(wp::vec_t<Length, half> val, int offset, wp_tile_lane_mask_bits_t mask)
 {
     wp::vec_t<Length, half> result;
 
@@ -107,7 +107,7 @@ inline CUDA_CALLABLE wp::vec_t<Length, half> warp_shuffle_down(wp::vec_t<Length,
 #ifndef WP_NO_BFLOAT16
 template <unsigned Length>
 inline CUDA_CALLABLE wp::vec_t<Length, bfloat16>
-warp_shuffle_down(wp::vec_t<Length, bfloat16> val, int offset, int mask)
+warp_shuffle_down(wp::vec_t<Length, bfloat16> val, int offset, wp_tile_lane_mask_bits_t mask)
 {
     wp::vec_t<Length, bfloat16> result;
 
@@ -120,7 +120,8 @@ warp_shuffle_down(wp::vec_t<Length, bfloat16> val, int offset, int mask)
 
 // matrix overload
 template <unsigned Rows, unsigned Cols, typename T>
-inline CUDA_CALLABLE wp::mat_t<Rows, Cols, T> warp_shuffle_down(wp::mat_t<Rows, Cols, T> val, int offset, int mask)
+inline CUDA_CALLABLE wp::mat_t<Rows, Cols, T>
+warp_shuffle_down(wp::mat_t<Rows, Cols, T> val, int offset, wp_tile_lane_mask_bits_t mask)
 {
     wp::mat_t<Rows, Cols, T> result;
 
@@ -133,7 +134,7 @@ inline CUDA_CALLABLE wp::mat_t<Rows, Cols, T> warp_shuffle_down(wp::mat_t<Rows, 
 
 template <unsigned Rows, unsigned Cols>
 inline CUDA_CALLABLE wp::mat_t<Rows, Cols, half>
-warp_shuffle_down(wp::mat_t<Rows, Cols, half> val, int offset, int mask)
+warp_shuffle_down(wp::mat_t<Rows, Cols, half> val, int offset, wp_tile_lane_mask_bits_t mask)
 {
     wp::mat_t<Rows, Cols, half> result;
 
@@ -147,7 +148,7 @@ warp_shuffle_down(wp::mat_t<Rows, Cols, half> val, int offset, int mask)
 #ifndef WP_NO_BFLOAT16
 template <unsigned Rows, unsigned Cols>
 inline CUDA_CALLABLE wp::mat_t<Rows, Cols, bfloat16>
-warp_shuffle_down(wp::mat_t<Rows, Cols, bfloat16> val, int offset, int mask)
+warp_shuffle_down(wp::mat_t<Rows, Cols, bfloat16> val, int offset, wp_tile_lane_mask_bits_t mask)
 {
     wp::mat_t<Rows, Cols, bfloat16> result;
 
@@ -160,7 +161,7 @@ warp_shuffle_down(wp::mat_t<Rows, Cols, bfloat16> val, int offset, int mask)
 #endif  // WP_NO_BFLOAT16
 
 
-template <typename T> inline CUDA_CALLABLE T* warp_shuffle_down(T* val, int offset, int mask)
+template <typename T> inline CUDA_CALLABLE T* warp_shuffle_down(T* val, int offset, wp_tile_lane_mask_bits_t mask)
 {
     unsigned long long ptr = reinterpret_cast<unsigned long long>(val);
     unsigned int ptr_lo = static_cast<unsigned int>(ptr);
@@ -171,7 +172,7 @@ template <typename T> inline CUDA_CALLABLE T* warp_shuffle_down(T* val, int offs
     return reinterpret_cast<T*>(ptr);
 }
 
-inline CUDA_CALLABLE wp::shape_t warp_shuffle_down(wp::shape_t val, int offset, int mask)
+inline CUDA_CALLABLE wp::shape_t warp_shuffle_down(wp::shape_t val, int offset, wp_tile_lane_mask_bits_t mask)
 {
     wp::shape_t result;
 
@@ -181,7 +182,8 @@ inline CUDA_CALLABLE wp::shape_t warp_shuffle_down(wp::shape_t val, int offset, 
     return result;
 }
 
-template <typename T> inline CUDA_CALLABLE wp::array_t<T> warp_shuffle_down(wp::array_t<T> val, int offset, int mask)
+template <typename T>
+inline CUDA_CALLABLE wp::array_t<T> warp_shuffle_down(wp::array_t<T> val, int offset, wp_tile_lane_mask_bits_t mask)
 {
     wp::array_t<T> result;
 
@@ -200,7 +202,8 @@ template <typename T> inline CUDA_CALLABLE wp::array_t<T> warp_shuffle_down(wp::
 }
 
 template <typename T>
-inline CUDA_CALLABLE wp::indexedarray_t<T> warp_shuffle_down(wp::indexedarray_t<T> val, int offset, int mask)
+inline CUDA_CALLABLE wp::indexedarray_t<T>
+warp_shuffle_down(wp::indexedarray_t<T> val, int offset, wp_tile_lane_mask_bits_t mask)
 {
     wp::indexedarray_t<T> result;
 
@@ -213,11 +216,11 @@ inline CUDA_CALLABLE wp::indexedarray_t<T> warp_shuffle_down(wp::indexedarray_t<
 }
 
 
-template <typename T, typename Op> inline CUDA_CALLABLE T warp_reduce(T val, Op f, unsigned int mask)
+template <typename T, typename Op> inline CUDA_CALLABLE T warp_reduce(T val, Op f, wp_tile_lane_mask_bits_t mask)
 {
     T sum = val;
 
-    if (mask == 0xFFFFFFFF) {
+    if (mask == WP_TILE_LANE_MASK_ALL) {
         // handle case where entire warp is active
         for (int offset = WP_TILE_WARP_SIZE / 2; offset > 0; offset /= 2) {
             sum = f(sum, warp_shuffle_down(sum, offset, mask));
@@ -226,7 +229,7 @@ template <typename T, typename Op> inline CUDA_CALLABLE T warp_reduce(T val, Op 
         // handle partial warp case - works for contiguous masks
         for (int offset = WP_TILE_WARP_SIZE / 2; offset > 0; offset /= 2) {
             T shfl_val = warp_shuffle_down(sum, offset, mask);
-            if ((mask & (1 << ((threadIdx.x + offset) % WP_TILE_WARP_SIZE))) != 0)
+            if ((mask & (((wp_tile_lane_mask_bits_t)1) << ((threadIdx.x + offset) % WP_TILE_WARP_SIZE))) != 0)
                 sum = f(sum, shfl_val);
         }
     }
@@ -240,12 +243,13 @@ template <typename T> struct ValueAndIndex {
 };
 
 template <typename T, typename Op, typename OpTrack>
-inline CUDA_CALLABLE ValueAndIndex<T> warp_reduce_tracked(T val, int idx, Op f, OpTrack track, unsigned int mask)
+inline CUDA_CALLABLE ValueAndIndex<T>
+warp_reduce_tracked(T val, int idx, Op f, OpTrack track, wp_tile_lane_mask_bits_t mask)
 {
     T sum = val;
     int index = idx;
 
-    if (mask == 0xFFFFFFFF) {
+    if (mask == WP_TILE_LANE_MASK_ALL) {
         // handle case where entire warp is active
         for (int offset = WP_TILE_WARP_SIZE / 2; offset > 0; offset /= 2) {
             auto shfl_val = warp_shuffle_down(sum, offset, mask);
@@ -258,7 +262,7 @@ inline CUDA_CALLABLE ValueAndIndex<T> warp_reduce_tracked(T val, int idx, Op f, 
         for (int offset = WP_TILE_WARP_SIZE / 2; offset > 0; offset /= 2) {
             T shfl_val = warp_shuffle_down(sum, offset, mask);
             int shfl_index = warp_shuffle_down(index, offset, mask);
-            if ((mask & (1 << ((threadIdx.x + offset) % WP_TILE_WARP_SIZE))) != 0) {
+            if ((mask & (((wp_tile_lane_mask_bits_t)1) << ((threadIdx.x + offset) % WP_TILE_WARP_SIZE))) != 0) {
                 index = track(sum, shfl_val, index, shfl_index);
                 sum = f(sum, shfl_val);
             }
@@ -283,7 +287,7 @@ block_combine_thread_results(T thread_sum, bool thread_has_data, Op f, T* partia
     const int lane_index = threadIdx.x % WP_TILE_WARP_SIZE;
 
     // determine which threads have data
-    unsigned int mask = __ballot_sync(0xFFFFFFFF, thread_has_data);
+    wp_tile_lane_mask_bits_t mask = __ballot_sync(WP_TILE_LANE_MASK_ALL, thread_has_data);
     bool warp_is_active = mask != 0;
 
     // warp reduction
@@ -343,12 +347,12 @@ template <typename Tile, typename Op> CUDA_CALLABLE_DEVICE auto tile_reduce_impl
     T block_sum;
     if constexpr (warp_count == 1) {
         // fast path: single warp, just do warp reduction
-        unsigned int mask = __ballot_sync(0xFFFFFFFF, thread_has_data);
+        wp_tile_lane_mask_bits_t mask = __ballot_sync(WP_TILE_LANE_MASK_ALL, thread_has_data);
         if (thread_has_data)
             block_sum = warp_reduce(thread_sum, f, mask);
 
         // write from first active lane (warp_reduce result is only valid there)
-        int first_active = __ffs(mask) - 1;
+        int first_active = WP_TILE_LANE_MASK_FFS(mask) - 1;
         if (threadIdx.x == first_active)
             output.data[0] = block_sum;
     } else {
@@ -440,7 +444,7 @@ template <int Axis, typename Op, typename Tile> CUDA_CALLABLE_DEVICE auto tile_r
 
                 // warp reduce this chunk (only valid lanes may call warp_reduce,
                 // because __shfl_down_sync requires all executing threads to be in the mask)
-                unsigned int mask = __ballot_sync(0xFFFFFFFF, valid);
+                wp_tile_lane_mask_bits_t mask = __ballot_sync(WP_TILE_LANE_MASK_ALL, valid);
                 T chunk_result;
                 if (valid)
                     chunk_result = warp_reduce(val, f, mask);
@@ -494,12 +498,12 @@ template <int Axis, typename Op, typename Tile> CUDA_CALLABLE_DEVICE auto tile_r
             T block_sum;
             if constexpr (warp_count == 1) {
                 // fast path: single warp, just do warp reduction
-                unsigned int mask = __ballot_sync(0xFFFFFFFF, thread_has_data);
+                wp_tile_lane_mask_bits_t mask = __ballot_sync(WP_TILE_LANE_MASK_ALL, thread_has_data);
                 if (thread_has_data)
                     block_sum = warp_reduce(thread_sum, f, mask);
 
                 // write from first active lane (warp_reduce result is only valid there)
-                int first_active = __ffs(mask) - 1;
+                int first_active = WP_TILE_LANE_MASK_FFS(mask) - 1;
                 if (threadIdx.x == first_active)
                     output_buffer[out_idx] = block_sum;
             } else {
@@ -565,7 +569,7 @@ CUDA_CALLABLE_DEVICE auto tile_arg_reduce_impl(Op f, OpTrack track, Tile& t)
     }
 
     // determine which threads have valid data
-    unsigned int mask = __ballot_sync(0xFFFFFFFF, thread_has_data);
+    wp_tile_lane_mask_bits_t mask = __ballot_sync(WP_TILE_LANE_MASK_ALL, thread_has_data);
     bool warp_is_active = mask != 0;
 
     // warp reduction (only threads with valid data may participate,
@@ -813,11 +817,11 @@ template <typename TileA, typename TileB> CUDA_CALLABLE auto tile_dot(TileA& a, 
 
     ScalarT result {};
     if constexpr (warp_count == 1) {
-        unsigned int mask = __ballot_sync(0xFFFFFFFF, has_data);
+        wp_tile_lane_mask_bits_t mask = __ballot_sync(WP_TILE_LANE_MASK_ALL, has_data);
         if (has_data)
             result = warp_reduce(thread_sum, add_op, mask);
 
-        int first_active = __ffs(mask) - 1;
+        int first_active = WP_TILE_LANE_MASK_FFS(mask) - 1;
         if (threadIdx.x == first_active)
             output.data[0] = result;
     } else {

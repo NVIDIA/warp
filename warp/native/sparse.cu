@@ -594,8 +594,6 @@ CUDA_CALLABLE_DEVICE int bsr_compress_select_sorted_runs(
     int* selected_run_starts
 )
 {
-    constexpr unsigned int full_warp_mask = 0xffffffffu;
-
     const int tid = threadIdx.x;
     const int lane = tid & (WP_TILE_WARP_SIZE - 1);
     const int warp = tid / WP_TILE_WARP_SIZE;
@@ -616,9 +614,9 @@ CUDA_CALLABLE_DEVICE int bsr_compress_select_sorted_runs(
             run_start = col >= 0 && col != BSR_COMPRESS_INVALID_COLUMN && prev_col != col;
         }
 
-        const unsigned int keep_mask = __ballot_sync(full_warp_mask, run_start);
-        const int warp_total = __popc(keep_mask);
-        const int lane_prefix = __popc(keep_mask & ((1u << lane) - 1u));
+        const wp_tile_lane_mask_bits_t keep_mask = __ballot_sync(WP_TILE_LANE_MASK_ALL, run_start);
+        const int warp_total = WP_TILE_LANE_MASK_POPC(keep_mask);
+        const int lane_prefix = WP_TILE_LANE_MASK_POPC(keep_mask & WP_TILE_LANE_MASK_BELOW(lane));
 
         if (lane == WP_TILE_WARP_SIZE - 1) {
             warp_offsets[warp] = warp_total;
@@ -629,7 +627,7 @@ CUDA_CALLABLE_DEVICE int bsr_compress_select_sorted_runs(
             int warp_prefix = lane < warp_count ? warp_offsets[lane] : 0;
 #pragma unroll
             for (int offset = 1; offset < WP_TILE_WARP_SIZE; offset <<= 1) {
-                const int other = __shfl_up_sync(full_warp_mask, warp_prefix, offset, WP_TILE_WARP_SIZE);
+                const int other = __shfl_up_sync(WP_TILE_LANE_MASK_ALL, warp_prefix, offset, WP_TILE_WARP_SIZE);
                 if (lane >= offset) {
                     warp_prefix += other;
                 }
