@@ -39,6 +39,14 @@ struct block_context {
 
 thread_local block_context* g_block_context = nullptr;
 thread_local int g_lane = 0;
+thread_local const char* g_block_error = nullptr;
+thread_local bool g_fail_next_worker_allocation = false;
+
+int report_block_error(const char* message)
+{
+    g_block_error = message;
+    return 0;
+}
 
 inline void bit_set(lane_set& set, int lane) { set.words[lane >> 6] |= 1ull << (lane & 63); }
 
@@ -114,16 +122,72 @@ struct lane_task {
     void* args;
 };
 
-void lane_entry(void* raw_task)
-{
-    lane_task* task = static_cast<lane_task*>(raw_task);
-    g_block_context = task->context;
-    g_lane = task->lane;
-    task->kernel_fn(task->dim, task->block_id, task->lane, task->args);
+struct worker_slot {
+    wp_fiber_t* fiber = nullptr;
+    lane_task* task = nullptr;
+    bool available = true;
+};
 
-    const int next = finish_lane(*task->context, task->lane);
-    wp_fiber_switch(next < 0 ? task->context->main_fiber : task->context->fibers[next]);
-    _wp_assert("A completed CPU block lane was resumed", __FILE__, static_cast<unsigned int>(__LINE__));
+struct worker_pool {
+    std::vector<worker_slot*> workers;
+
+    ~worker_pool()
+    {
+        for (worker_slot* worker : workers) {
+            wp_fiber_destroy(worker->fiber);
+            delete worker;
+        }
+    }
+};
+
+thread_local worker_pool g_worker_pool;
+
+void lane_entry(void* raw_worker)
+{
+    worker_slot* worker = static_cast<worker_slot*>(raw_worker);
+
+    for (;;) {
+        lane_task* task = worker->task;
+        if (!task)
+            return;
+
+        g_block_context = task->context;
+        g_lane = task->lane;
+        task->kernel_fn(task->dim, task->block_id, task->lane, task->args);
+
+        const int next = finish_lane(*task->context, task->lane);
+        worker->available = true;
+        wp_fiber_switch(next < 0 ? task->context->main_fiber : task->context->fibers[next]);
+    }
+}
+
+bool grow_worker_pool(size_t required_size)
+{
+    while (g_worker_pool.workers.size() < required_size) {
+        if (g_fail_next_worker_allocation) {
+            g_fail_next_worker_allocation = false;
+            return false;
+        }
+
+        worker_slot* worker = new (std::nothrow) worker_slot;
+        if (!worker)
+            return false;
+
+        worker->fiber = wp_fiber_create(&lane_entry, worker, kFiberStackSize);
+        if (!worker->fiber) {
+            delete worker;
+            return false;
+        }
+
+        try {
+            g_worker_pool.workers.push_back(worker);
+        } catch (...) {
+            wp_fiber_destroy(worker->fiber);
+            delete worker;
+            return false;
+        }
+    }
+    return true;
 }
 
 struct schedule_probe {
@@ -202,6 +266,19 @@ extern "C" WP_API void wp_cpu_tile_sync()
     }
 }
 
+extern "C" WP_API size_t wp_cpu_block_pool_size() { return g_worker_pool.workers.size(); }
+
+extern "C" WP_API void wp_cpu_block_error_clear() { g_block_error = nullptr; }
+
+extern "C" WP_API const char* wp_cpu_block_error_take()
+{
+    const char* error = g_block_error;
+    g_block_error = nullptr;
+    return error;
+}
+
+extern "C" WP_API void wp_cpu_test_fail_next_worker_allocation() { g_fail_next_worker_allocation = true; }
+
 extern "C" WP_API int wp_cpu_run_block(
     int block_dim, int active_count, wp_cpu_block_lane_fn kernel_fn, void* dim, size_t block_id, void* args
 )
@@ -231,16 +308,29 @@ extern "C" WP_API int wp_cpu_run_block(
     context.front.generation = 0;
 
     if (!context.main_fiber) {
-        _wp_assert(
-            "Warp failed to initialize the main CPU fiber context", __FILE__, static_cast<unsigned int>(__LINE__)
-        );
-        return 0;
+        return report_block_error("Warp failed to initialize the main CPU fiber context");
     }
 
-    std::vector<wp_fiber_t*> fibers(active_count, nullptr);
-    std::vector<uint64_t> generations(active_count, 0);
-    std::vector<uint8_t> finished(active_count, 0);
-    std::vector<lane_task> tasks(active_count);
+    if (!grow_worker_pool(static_cast<size_t>(active_count))) {
+        g_block_context = saved_context;
+        g_lane = saved_lane;
+        return report_block_error("Warp failed to allocate a reusable CPU block fiber with a 1 MiB usable stack");
+    }
+
+    std::vector<wp_fiber_t*> fibers;
+    std::vector<uint64_t> generations;
+    std::vector<uint8_t> finished;
+    std::vector<lane_task> tasks;
+    try {
+        fibers.resize(active_count);
+        generations.resize(active_count, 0);
+        finished.resize(active_count, 0);
+        tasks.resize(active_count);
+    } catch (...) {
+        g_block_context = saved_context;
+        g_lane = saved_lane;
+        return report_block_error("Warp failed to allocate CPU block scheduler state");
+    }
     context.fibers = fibers.data();
     context.lane_generations = generations.data();
     context.lane_finished = finished.data();
@@ -249,27 +339,34 @@ extern "C" WP_API int wp_cpu_run_block(
         bit_set(context.front, lane);
 
     for (int lane = 0; lane < active_count; ++lane) {
-        tasks[lane] = lane_task { &context, lane, kernel_fn, dim, block_id, args };
-        fibers[lane] = wp_fiber_create(&lane_entry, &tasks[lane], kFiberStackSize);
-        if (!fibers[lane]) {
-            for (int created = 0; created < lane; ++created)
-                wp_fiber_destroy(fibers[created]);
-            _wp_assert(
-                "Warp failed to allocate a CPU block fiber with a 1 MiB usable stack", __FILE__,
-                static_cast<unsigned int>(__LINE__)
-            );
+        if (!g_worker_pool.workers[lane]->available) {
+            _wp_assert("A reusable CPU block fiber is already active", __FILE__, static_cast<unsigned int>(__LINE__));
             g_block_context = saved_context;
             g_lane = saved_lane;
             return 0;
         }
     }
 
+    for (int lane = 0; lane < active_count; ++lane) {
+        worker_slot* worker = g_worker_pool.workers[lane];
+        tasks[lane] = lane_task { &context, lane, kernel_fn, dim, block_id, args };
+        worker->task = &tasks[lane];
+        worker->available = false;
+        fibers[lane] = worker->fiber;
+    }
+
     g_block_context = &context;
     g_lane = 0;
     wp_fiber_switch(fibers[0]);
 
-    for (wp_fiber_t* fiber : fibers)
-        wp_fiber_destroy(fiber);
+    for (int lane = 0; lane < active_count; ++lane) {
+        if (!g_worker_pool.workers[lane]->available) {
+            _wp_assert("A reusable CPU block fiber did not complete", __FILE__, static_cast<unsigned int>(__LINE__));
+            g_block_context = saved_context;
+            g_lane = saved_lane;
+            return 0;
+        }
+    }
 
     g_block_context = saved_context;
     g_lane = saved_lane;
@@ -285,6 +382,7 @@ extern "C" WP_API int wp_cpu_test_schedule(
     size_t* event_count
 )
 {
+    wp_cpu_block_error_clear();
     if (!barrier_counts || !event_count || (event_capacity && !events))
         return 0;
 

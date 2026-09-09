@@ -27,6 +27,18 @@ WP_API int wp_cpu_run_block(
     int block_dim, int active_count, wp_cpu_block_lane_fn kernel_fn, void* dim, size_t block_id, void* args
 );
 
+// Clear or consume the calling thread's recoverable block-dispatch error.
+// Native/Python launch bridges use these around the generated void kernel ABI.
+WP_API void wp_cpu_block_error_clear();
+WP_API const char* wp_cpu_block_error_take();
+
+// Return the number of reusable worker fibers allocated by this thread.
+// This is an internal diagnostic used by the CPU block runtime tests.
+WP_API size_t wp_cpu_block_pool_size();
+
+// Make the next worker-pool growth fail. Internal test hook only.
+WP_API void wp_cpu_test_fail_next_worker_allocation();
+
 // Native scheduler probe used by ``warp/tests/test_cpu_block_runtime.py``.
 // Barrier arrivals are encoded as ``lane`` and lane completion as
 // ``active_count + lane`` in ``events``.

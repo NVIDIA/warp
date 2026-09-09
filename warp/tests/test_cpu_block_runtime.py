@@ -6,6 +6,7 @@
 import ctypes
 import itertools
 import os
+import subprocess
 import sys
 import unittest
 
@@ -33,6 +34,7 @@ def _setup_runtime():
         ctypes.POINTER(ctypes.c_size_t),
     ]
     lib.wp_cpu_test_schedule.restype = ctypes.c_int
+    lib.wp_cpu_block_pool_size.restype = ctypes.c_size_t
     return lib
 
 
@@ -95,6 +97,31 @@ def _native_schedule(lib, block_dim, barrier_counts):
     if not result:
         raise RuntimeError(f"native scheduler rejected block_dim={block_dim}, active_count={active_count}")
     return list(events[: event_count.value])
+
+
+def _check_pool_reuse():
+    lib = _setup_runtime()
+    if lib.wp_cpu_block_pool_size() != 0:
+        raise RuntimeError("the CPU block fiber pool was not initially empty")
+
+    cases = (
+        (1024, [2, 0, 1]),
+        (2, [4, 4]),
+        (64, [0, 3, 1, 4, 0, 2, 5, 1]),
+        (8, [1, 0, 2, 0, 3, 0, 4, 0]),
+        (511, [7, 1, 0, 5]),
+    )
+    expected_pool_sizes = (3, 3, 8, 8, 8)
+    for (block_dim, counts), expected_pool_size in zip(cases, expected_pool_sizes, strict=True):
+        actual = _native_schedule(lib, block_dim, counts)
+        expected = _scalar_schedule(counts)
+        if actual != expected:
+            raise RuntimeError(f"reused fiber schedule mismatch: {actual} != {expected}")
+        pool_size = lib.wp_cpu_block_pool_size()
+        if pool_size != expected_pool_size:
+            raise RuntimeError(f"unexpected CPU block fiber pool size: {pool_size} != {expected_pool_size}")
+
+    print("CPU block fiber pool reuse probe passed")
 
 
 class TestCpuBlockRuntime(unittest.TestCase):
@@ -170,6 +197,19 @@ class TestCpuBlockRuntime(unittest.TestCase):
             with self.subTest(block_dim=block_dim, active_count=active_count):
                 self.assertSchedule(block_dim, counts)
 
+    def test_worker_pool_reuse_and_growth(self):
+        result = subprocess.run(
+            [sys.executable, __file__, "--pool-reuse-probe"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(result.returncode, 0, msg=f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}")
+        self.assertIn("CPU block fiber pool reuse probe passed", result.stdout)
+
 
 if __name__ == "__main__":
-    unittest.main(verbosity=2, failfast=True)
+    if "--pool-reuse-probe" in sys.argv:
+        _check_pool_reuse()
+    else:
+        unittest.main(verbosity=2, failfast=True)
