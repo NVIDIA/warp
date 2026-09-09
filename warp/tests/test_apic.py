@@ -438,6 +438,33 @@ def test_save_load_round_trip(test, device):
         np.testing.assert_allclose(result.numpy(), expected)
 
 
+def test_save_load_block_dependent_static_kernel(test, device):
+    """Serialize the selected executable's symbols after switching block sizes."""
+
+    @wp.func
+    def helper(out: wp.array[int]):
+        values = wp.tile(1)
+        out[0] = wp.static(len(values))
+
+    @wp.kernel(module="unique", enable_backward=False)
+    def kernel(out: wp.array[int]):
+        helper(out)
+
+    out = wp.zeros(1, dtype=int, device=device)
+    wp.launch(kernel, dim=1, inputs=[out], block_dim=256, device=device)
+    wp.launch(kernel, dim=1, inputs=[out], block_dim=64, device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.launch(kernel, dim=1, inputs=[out], block_dim=256, device=device)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "block_dependent_static")
+        wp.capture_save(capture.graph, path, outputs={"out": out})
+        loaded = wp.capture_load(path, device=device)
+        wp.capture_launch(loaded)
+        loaded.get_param("out", out)
+        np.testing.assert_array_equal(out.numpy(), [256])
+
+
 def test_save_load_capture_time_scratch_cuda(test, device):
     """Treat capture-time CUDA allocations as graph-scoped scratch buffers.
 
@@ -3931,6 +3958,14 @@ add_function_test(
     "test_capture_save_aborts_on_region_snapshot_failure",
     test_capture_save_aborts_on_region_snapshot_failure,
     devices=devices_with_cuda_graph_module_load,
+)
+
+
+add_function_test(
+    TestApic,
+    "test_save_load_block_dependent_static_kernel",
+    test_save_load_block_dependent_static_kernel,
+    devices=get_cuda_test_devices(),
 )
 
 

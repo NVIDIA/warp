@@ -523,7 +523,7 @@ class APICapture:
         kernel_key = kernel.key
         kernel_id = (module_hash, kernel_key)
         if kernel_id not in self.collected_kernels:
-            name = kernel.get_mangled_name()
+            name = module_exec.get_kernel_mangled_name(kernel)
             options = kernel.module.options | kernel.options
 
             if self.device.is_cuda:
