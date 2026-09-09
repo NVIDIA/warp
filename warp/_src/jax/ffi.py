@@ -62,10 +62,8 @@ def check_jax_version():
     if jax.__version_info__ < (0, 5, 0):
         msg = (
             "This version of jax_kernel() requires JAX version 0.5.0 or higher, "
-            f"but installed JAX version is {jax.__version_info__}."
+            f"but installed JAX version is {jax.__version_info__}. Upgrade JAX to version 0.5.0 or newer."
         )
-        if jax.__version_info__ >= (0, 4, 25):
-            msg += " Please use warp.jax_experimental.custom_call.jax_kernel instead."
         raise RuntimeError(msg)
 
 
@@ -637,8 +635,6 @@ class FfiCallDesc:
 
 
 class FfiCallable:
-    default_graph_cache_max: int | None = JAX_CALLABLE_DEFAULT_GRAPH_CACHE_MAX
-
     def __init__(
         self,
         func,
@@ -1864,20 +1860,6 @@ def jax_callable(
             callable.graph_cache_max = graph_cache_max
 
     return callable
-
-
-def get_jax_callable_default_graph_cache_max():
-    """
-    Get the maximum size of the graph cache for graphs captured using ``JaxCallableGraphMode.WARP``, unlimited if ``None``.
-    """
-    return FfiCallable.default_graph_cache_max
-
-
-def set_jax_callable_default_graph_cache_max(cache_max: int | None):
-    """
-    Set the maximum size of the graph cache for graphs captured using ``JaxCallableGraphMode.WARP``, unlimited if ``None``.
-    """
-    FfiCallable.default_graph_cache_max = cache_max
 
 
 def clear_jax_callable_graph_cache(callable: FfiCallable | None = None):

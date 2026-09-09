@@ -81,7 +81,6 @@ BUILTINS_REF_DIR = "language_reference"
 SKIP = (
     "warp._src",
     "warp.examples",
-    "warp.jax_experimental",
     "warp.tests",
 )
 

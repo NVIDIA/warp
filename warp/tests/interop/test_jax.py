@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import contextlib
-import importlib
 import io
 import os
 import subprocess
@@ -18,6 +17,7 @@ import numpy as np
 
 import warp as wp
 from warp._src.jax import get_jax_device
+from warp._src.jax.ffi import register_ffi_callback
 from warp.tests.unittest_utils import *
 
 # Prevent JAX from preallocating GPU memory before any module-level version checks import it.
@@ -182,108 +182,6 @@ class _RecordingFfiModule:
         return self.load_result
 
 
-_JAX_NAMESPACE_MODULES = ("warp.jax", "warp.jax_experimental")
-
-
-def _clear_jax_namespace_modules():
-    for module_name in list(sys.modules):
-        if any(module_name == prefix or module_name.startswith(prefix + ".") for prefix in _JAX_NAMESPACE_MODULES):
-            del sys.modules[module_name]
-
-
-def _clear_jax_experimental_warning_cache():
-    wp._src.logger._warnings_seen = {
-        entry
-        for entry in wp._src.logger._warnings_seen
-        if not (entry[0] is DeprecationWarning and isinstance(entry[1], str) and "warp.jax_experimental" in entry[1])
-    }
-
-
-def _import_deprecated_jax_namespace(module_name):
-    _clear_jax_experimental_warning_cache()
-    with warnings.catch_warnings(), contextlib.redirect_stderr(io.StringIO()) as stderr:
-        warnings.simplefilter("always", DeprecationWarning)
-        module = importlib.import_module(module_name)
-    return module, stderr.getvalue()
-
-
-def _get_experimental_custom_call_jax_kernel():
-    _clear_jax_experimental_warning_cache()
-    try:
-        with warnings.catch_warnings(), contextlib.redirect_stderr(io.StringIO()):
-            warnings.simplefilter("ignore", DeprecationWarning)
-            module = importlib.import_module("warp.jax_experimental.custom_call")
-        return module.jax_kernel
-    finally:
-        _clear_jax_experimental_warning_cache()
-
-
-def _get_experimental_register_ffi_callback():
-    _clear_jax_experimental_warning_cache()
-    try:
-        with warnings.catch_warnings(), contextlib.redirect_stderr(io.StringIO()):
-            warnings.simplefilter("ignore", DeprecationWarning)
-            module = importlib.import_module("warp.jax_experimental.ffi")
-        return module.register_ffi_callback
-    finally:
-        _clear_jax_experimental_warning_cache()
-
-
-def test_jax_experimental_import_deprecation(test, device):
-    _clear_jax_namespace_modules()
-
-    module, output = _import_deprecated_jax_namespace("warp.jax_experimental")
-
-    expected = (
-        "Warp DeprecationWarning: The `warp.jax_experimental` namespace is deprecated "
-        "and will be removed in Warp 1.18. Use top-level `warp` JAX APIs instead.\n"
-    )
-    test.assertEqual(output, expected)
-    test.assertIs(module.jax_kernel, wp.jax_kernel)
-    test.assertIsNot(module.jax_callable, wp.jax_callable)
-    test.assertIs(module.GraphMode, wp.JaxCallableGraphMode)
-    test.assertIs(module.ModulePreloadMode, wp.JaxModulePreloadMode)
-    test.assertTrue(callable(module.register_ffi_callback))
-
-
-def test_jax_experimental_ffi_import_deprecation(test, device):
-    _clear_jax_namespace_modules()
-    with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
-        importlib.import_module("warp.jax_experimental")
-    sys.modules.pop("warp.jax_experimental.ffi", None)
-
-    module, output = _import_deprecated_jax_namespace("warp.jax_experimental.ffi")
-    ffi_module = importlib.import_module("warp._src.jax.ffi")
-
-    expected = (
-        "Warp DeprecationWarning: The `warp.jax_experimental.ffi` namespace is deprecated "
-        "and will be removed in Warp 1.18. Use top-level `warp` JAX APIs instead.\n"
-    )
-    test.assertEqual(output, expected)
-    test.assertIs(module.jax_kernel, ffi_module.jax_kernel)
-    test.assertIsNot(module.jax_callable, ffi_module.jax_callable)
-    test.assertIs(module.register_ffi_callback, ffi_module.register_ffi_callback)
-    test.assertIs(module.GraphMode, ffi_module.JaxCallableGraphMode)
-    test.assertIs(module.ModulePreloadMode, ffi_module.JaxModulePreloadMode)
-
-
-def test_jax_experimental_custom_call_import_deprecation(test, device):
-    _clear_jax_namespace_modules()
-    with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
-        importlib.import_module("warp.jax_experimental")
-    sys.modules.pop("warp.jax_experimental.custom_call", None)
-
-    module, output = _import_deprecated_jax_namespace("warp.jax_experimental.custom_call")
-    custom_call_module = importlib.import_module("warp._src.jax.custom_call")
-
-    expected = (
-        "Warp DeprecationWarning: The `warp.jax_experimental.custom_call` namespace is deprecated "
-        "and will be removed in Warp 1.18. Use `warp.jax_kernel()` instead.\n"
-    )
-    test.assertEqual(output, expected)
-    test.assertIs(module.jax_kernel, custom_call_module.jax_kernel)
-
-
 def test_dtype_from_jax(test, device):
     jp = _import_jax_numpy()
 
@@ -331,17 +229,9 @@ def test_device_conversion(test, device):
     test.assertEqual(warp_device, device)
 
 
-def test_jax_kernel_basic(test, device, use_ffi=False):
+def test_jax_kernel_basic(test, device):
     jp = _import_jax_numpy()
-
-    if use_ffi:
-        jax_kernel = wp.jax_kernel
-
-        jax_triple = jax_kernel(triple_kernel)
-    else:
-        jax_kernel = _get_experimental_custom_call_jax_kernel()
-
-        jax_triple = jax_kernel(triple_kernel, quiet=True)  # suppress deprecation warnings
+    jax_triple = wp.jax_kernel(triple_kernel)
 
     n = ARRAY_SIZE
 
@@ -362,17 +252,8 @@ def test_jax_kernel_basic(test, device, use_ffi=False):
     assert_np_equal(result, expected)
 
 
-def test_jax_kernel_scalar(test, device, use_ffi=False):
+def test_jax_kernel_scalar(test, device):
     jp = _import_jax_numpy()
-
-    if use_ffi:
-        jax_kernel = wp.jax_kernel
-
-        kwargs = {}
-    else:
-        jax_kernel = _get_experimental_custom_call_jax_kernel()
-
-        kwargs = {"quiet": True}
 
     # use a smallish size to ensure arange * 3 doesn't overflow
     n = 64
@@ -383,7 +264,7 @@ def test_jax_kernel_scalar(test, device, use_ffi=False):
         np_dtype = wp.dtype_to_numpy(T)
 
         kernel_instance = triple_kernel_scalar.add_overload([wp.array[T], wp.array[T]])
-        jax_triple = jax_kernel(kernel_instance, **kwargs)
+        jax_triple = wp.jax_kernel(kernel_instance)
         cases.append((T, jp_dtype, np_dtype, jax_triple))
 
     # Compile the complete type matrix together instead of once per type.
@@ -404,17 +285,8 @@ def test_jax_kernel_scalar(test, device, use_ffi=False):
             assert_np_equal(result, expected)
 
 
-def test_jax_kernel_vecmat(test, device, use_ffi=False):
+def test_jax_kernel_vecmat(test, device):
     jp = _import_jax_numpy()
-
-    if use_ffi:
-        jax_kernel = wp.jax_kernel
-
-        kwargs = {}
-    else:
-        jax_kernel = _get_experimental_custom_call_jax_kernel()
-
-        kwargs = {"quiet": True}
 
     cases = []
     for T in [*vector_types, *matrix_types]:
@@ -427,7 +299,7 @@ def test_jax_kernel_vecmat(test, device, use_ffi=False):
         scalar_len = n * T._length_
 
         kernel_instance = triple_kernel_vecmat.add_overload([wp.array[T], wp.array[T]])
-        jax_triple = jax_kernel(kernel_instance, **kwargs)
+        jax_triple = wp.jax_kernel(kernel_instance)
         cases.append((T, jp_dtype, np_dtype, scalar_len, scalar_shape, jax_triple))
 
     # Compile the complete type matrix together instead of once per type.
@@ -451,17 +323,9 @@ def test_jax_kernel_vecmat(test, device, use_ffi=False):
             assert_np_equal(result, expected)
 
 
-def test_jax_kernel_multiarg(test, device, use_ffi=False):
+def test_jax_kernel_multiarg(test, device):
     jp = _import_jax_numpy()
-
-    if use_ffi:
-        jax_kernel = wp.jax_kernel
-
-        jax_multiarg = jax_kernel(multiarg_kernel, num_outputs=2)
-    else:
-        jax_kernel = _get_experimental_custom_call_jax_kernel()
-
-        jax_multiarg = jax_kernel(multiarg_kernel, quiet=True)
+    jax_multiarg = wp.jax_kernel(multiarg_kernel, num_outputs=2)
 
     n = ARRAY_SIZE
 
@@ -486,24 +350,15 @@ def test_jax_kernel_multiarg(test, device, use_ffi=False):
     assert_np_equal(result_y, expected_y)
 
 
-def test_jax_kernel_launch_dims(test, device, use_ffi=False):
+def test_jax_kernel_launch_dims(test, device):
     jp = _import_jax_numpy()
-
-    if use_ffi:
-        jax_kernel = wp.jax_kernel
-
-        kwargs = {}
-    else:
-        jax_kernel = _get_experimental_custom_call_jax_kernel()
-
-        kwargs = {"quiet": True}
 
     n = 64
     m = 32
 
     # Test with 1D launch dims
-    jax_inc_1d = jax_kernel(
-        inc_1d_kernel, launch_dims=(n - 2,), **kwargs
+    jax_inc_1d = wp.jax_kernel(
+        inc_1d_kernel, launch_dims=(n - 2,)
     )  # Intentionally not the same as the first dimension of the input
 
     @jax.jit
@@ -512,8 +367,8 @@ def test_jax_kernel_launch_dims(test, device, use_ffi=False):
         return jax_inc_1d(x)
 
     # Test with 2D launch dims
-    jax_inc_2d = jax_kernel(
-        inc_2d_kernel, launch_dims=(n - 2, m - 2), **kwargs
+    jax_inc_2d = wp.jax_kernel(
+        inc_2d_kernel, launch_dims=(n - 2, m - 2)
     )  # Intentionally not the same as the first dimension of the input
 
     @jax.jit
@@ -536,24 +391,6 @@ def test_jax_kernel_launch_dims(test, device, use_ffi=False):
 
     assert_np_equal(result_1d, expected_1d)
     assert_np_equal(result_2d, expected_2d)
-
-
-def test_jax_kernel_rejects_oversized_scalar_tid_launch_dims(test, device, use_ffi=False):
-    """Reject oversized scalar ``wp.tid()`` dimensions during legacy lowering."""
-    jax = _import_jax()
-    jp = _import_jax_numpy()
-    jax_kernel = _get_experimental_custom_call_jax_kernel()
-    jax_inc = jax_kernel(inc_1d_kernel, launch_dims=(2**31 + 1,), quiet=True)
-
-    @jax.jit
-    def run():
-        return jax_inc(jp.ones(1, dtype=jp.float32))
-
-    with jax.default_device(wp.device_to_jax(device)):
-        with test.assertRaisesRegex(
-            ValueError, r"Warp cannot launch a kernel using scalar wp\.tid\(\) with extent 2147483649"
-        ):
-            run.lower()
 
 
 def test_ffi_jax_kernel_rejects_oversized_explicit_scalar_tid_launch_dims(test, device):
@@ -596,23 +433,15 @@ def test_ffi_jax_kernel_rejects_oversized_inferred_scalar_tid_launch_dims(test, 
             run.lower(abstract_input)
 
 
-def test_jax_kernel_accepts_oversized_compile_time_dead_scalar_tid_launch_dims(test, device, use_ffi=False):
+def test_jax_kernel_accepts_oversized_compile_time_dead_scalar_tid_launch_dims(test, device):
     """Accept oversized launches when codegen removes scalar ``wp.tid()``."""
     jp = _import_jax_numpy()
-    if use_ffi:
-        jax_noop = wp.jax_kernel(
-            compile_time_dead_scalar_tid_kernel,
-            launch_dims=(2**31 + 1,),
-            output_dims=1,
-            module_preload_mode=wp.JaxModulePreloadMode.NONE,
-        )
-    else:
-        jax_kernel = _get_experimental_custom_call_jax_kernel()
-        jax_noop = jax_kernel(
-            compile_time_dead_scalar_tid_kernel,
-            launch_dims=(2**31 + 1,),
-            quiet=True,
-        )
+    jax_noop = wp.jax_kernel(
+        compile_time_dead_scalar_tid_kernel,
+        launch_dims=(2**31 + 1,),
+        output_dims=1,
+        module_preload_mode=wp.JaxModulePreloadMode.NONE,
+    )
 
     @jax.jit
     def run():
@@ -1415,13 +1244,7 @@ def test_ffi_jax_callable_graph_cache(test, device):
     jax = _import_jax()
     jp = _import_jax_numpy()
 
-    ffi_module = importlib.import_module("warp._src.jax.ffi")
-    default_graph_cache_max = ffi_module.JAX_CALLABLE_DEFAULT_GRAPH_CACHE_MAX
-
-    with contextlib.redirect_stderr(io.StringIO()):
-        experimental_ffi = importlib.import_module("warp.jax_experimental.ffi")
-
-    _clear_jax_experimental_warning_cache()
+    default_graph_cache_max = wp._src.jax.ffi.JAX_CALLABLE_DEFAULT_GRAPH_CACHE_MAX
     wp.load_module(module=scale_kernel.module, device=device)
     old_force_module_load = wp.config.enable_graph_capture_module_load_by_default
     wp.config.enable_graph_capture_module_load_by_default = False
@@ -1492,52 +1315,8 @@ def test_ffi_jax_callable_graph_cache(test, device):
             for c in wp._src.jax.ffi._FFI_CALLABLE_REGISTRY.values():
                 test.assertEqual(c.graph_cache_size, 0)
 
-        # --- test with a custom default cache limit ---
-
-        saved_max = ffi_module.get_jax_callable_default_graph_cache_max()
-        try:
-            ffi_module.set_jax_callable_default_graph_cache_max(5)
-            jax_double = jax_callable(double_func, graph_mode=JaxCallableGraphMode.WARP)
-            test.assertEqual(jax_double.graph_cache_max, default_graph_cache_max)
-            jax_double_none = jax_callable(double_func, graph_mode=JaxCallableGraphMode.WARP, graph_cache_max=None)
-            test.assertIsNone(jax_double_none.graph_cache_max)
-
-            # Deprecated namespace preserves the runtime-default behavior for compatibility.
-            jax_double = experimental_ffi.jax_callable(double_func, graph_mode=JaxCallableGraphMode.WARP)
-            f = jax.jit(jax_double)
-            arrays = []
-
-            test.assertEqual(jax_double.graph_cache_max, ffi_module.get_jax_callable_default_graph_cache_max())
-            jax_double_none = experimental_ffi.jax_callable(
-                double_func, graph_mode=JaxCallableGraphMode.WARP, graph_cache_max=None
-            )
-            test.assertEqual(jax_double_none.graph_cache_max, ffi_module.get_jax_callable_default_graph_cache_max())
-
-            with jax.default_device(wp.device_to_jax(device)):
-                for i in range(10):
-                    n = 10 + i
-                    a = jp.arange(n, dtype=jp.float32)
-                    (b,) = f(a)
-
-                    assert_np_equal(b, 2 * np.arange(n, dtype=np.float32))
-
-                    # ensure graph cache size is capped
-                    test.assertEqual(
-                        jax_double.graph_cache_size,
-                        min(i + 1, ffi_module.get_jax_callable_default_graph_cache_max()),
-                    )
-
-                    # keep JAX array alive to prevent the memory from being reused, thus forcing a new graph capture
-                    arrays.append(a)
-
-            clear_jax_callable_graph_cache()
-
-        finally:
-            ffi_module.set_jax_callable_default_graph_cache_max(saved_max)
-
     finally:
         wp.config.enable_graph_capture_module_load_by_default = old_force_module_load
-        _clear_jax_experimental_warning_cache()
 
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
@@ -1920,8 +1699,6 @@ def test_ffi_callback(test, device):
 
     # in-out arguments
     jp = _import_jax_numpy()
-
-    register_ffi_callback = _get_experimental_register_ffi_callback()
 
     # the Python function to call
     def warp_func(inputs, outputs, attrs, ctx):
@@ -3286,24 +3063,6 @@ else:
         for device in pmap_warp_devices:
             _check_jax_device(test, device)
 
-    add_function_test(
-        TestJax,
-        "test_jax_experimental_import_deprecation",
-        test_jax_experimental_import_deprecation,
-        devices=None,
-    )
-    add_function_test(
-        TestJax,
-        "test_jax_experimental_ffi_import_deprecation",
-        test_jax_experimental_ffi_import_deprecation,
-        devices=None,
-    )
-    add_function_test(
-        TestJax,
-        "test_jax_experimental_custom_call_import_deprecation",
-        test_jax_experimental_custom_call_import_deprecation,
-        devices=None,
-    )
     add_function_test(TestJax, "test_dtype_from_jax", test_dtype_from_jax, devices=None)
     add_function_test(TestJax, "test_dtype_to_jax", test_dtype_to_jax, devices=None)
     if jax_candidate_devices:
@@ -3369,18 +3128,13 @@ else:
             )
 
             for test_func in backend_neutral_ffi_tests:
-                test_name = test_func.__name__
-                test_kwargs = {}
-                if test_func in jax_kernel_ffi_tests:
-                    test_name = f"{test_name}_ffi"
-                    test_kwargs["use_ffi"] = True
+                test_name = f"{test_func.__name__}_ffi" if test_func in jax_kernel_ffi_tests else test_func.__name__
                 add_function_test(
                     TestJax,
                     test_name,
                     test_func,
                     devices=jax_candidate_devices,
                     device_check=_check_jax_device,
-                    **test_kwargs,
                 )
 
             for vmap_method in ["broadcast_all", "sequential"]:
@@ -3432,53 +3186,31 @@ else:
             for test_func in shard_map_tests:
                 add_function_test(TestJax, test_func.__name__, test_func, devices=None)
 
-    if jax_cuda_candidate_devices:
-        if (0, 4, 25) <= jax.__version_info__ < (0, 8, 0):
-            # legacy custom_call path is CUDA-only
-            legacy_custom_call_tests = (
-                test_jax_kernel_basic,
-                test_jax_kernel_scalar,
-                test_jax_kernel_vecmat,
-                test_jax_kernel_multiarg,
-                test_jax_kernel_launch_dims,
-                test_jax_kernel_rejects_oversized_scalar_tid_launch_dims,
-                test_jax_kernel_accepts_oversized_compile_time_dead_scalar_tid_launch_dims,
+    if jax_cuda_candidate_devices and jax.__version_info__ >= (0, 5, 0):
+        cuda_only_jax_tests = (
+            test_ffi_jax_callable_graph_cache,
+            test_ffi_jax_callable_graph_replay_skips_module_load,
+            test_ffi_jax_cuda_requires_cuda_support,
+            test_ffi_jax_kernel_block_dim_tile,
+            test_ffi_callback,
+        )
+        for test_func in cuda_only_jax_tests:
+            add_function_test(
+                TestJax,
+                test_func.__name__,
+                test_func,
+                devices=jax_cuda_candidate_devices,
+                device_check=_check_jax_device,
             )
-            for test_func in legacy_custom_call_tests:
-                add_function_test(
-                    TestJax,
-                    f"{test_func.__name__}_cc",
-                    test_func,
-                    devices=jax_cuda_candidate_devices,
-                    device_check=_check_jax_device,
-                    use_ffi=False,
-                )
 
-        if jax.__version_info__ >= (0, 5, 0):
-            cuda_only_jax_tests = (
-                test_ffi_jax_callable_graph_cache,
-                test_ffi_jax_callable_graph_replay_skips_module_load,
-                test_ffi_jax_cuda_requires_cuda_support,
-                test_ffi_jax_kernel_block_dim_tile,
-                test_ffi_callback,
+        if jax_cpu_candidate_devices:
+            add_function_test(
+                TestJax,
+                "test_ffi_jax_mixed_devices",
+                test_ffi_jax_mixed_devices,
+                devices=jax_cuda_candidate_devices,
+                device_check=_check_jax_device,
             )
-            for test_func in cuda_only_jax_tests:
-                add_function_test(
-                    TestJax,
-                    test_func.__name__,
-                    test_func,
-                    devices=jax_cuda_candidate_devices,
-                    device_check=_check_jax_device,
-                )
-
-            if jax_cpu_candidate_devices:
-                add_function_test(
-                    TestJax,
-                    "test_ffi_jax_mixed_devices",
-                    test_ffi_jax_mixed_devices,
-                    devices=jax_cuda_candidate_devices,
-                    device_check=_check_jax_device,
-                )
 
     # bfloat16 tests require arch >= 80
     bf16_jax_devices = [
