@@ -339,9 +339,11 @@ respect to Python. Both devices use the same kernel language, but they have
 different performance and concurrency characteristics.
 
 Tile kernels need additional care on the CPU backend because its effective
-``block_dim`` is one. Consult :ref:`CPU Tile Semantics <cpu_tile_semantics>`
-when the same tile kernel must run on both backends. Other device differences
-are covered in :ref:`devices`.
+``block_dim`` is one by default. The experimental
+:attr:`warp.config.enable_cpu_blocks` option honors explicit CPU block dimensions
+through 1024 with cooperative fibers on one host thread. Consult
+:ref:`CPU Tile Semantics <cpu_tile_semantics>` when the same tile kernel must run
+on both backends. Other device differences are covered in :ref:`devices`.
 
 When do I need to synchronize explicitly?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

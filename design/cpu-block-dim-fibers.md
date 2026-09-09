@@ -1,6 +1,6 @@
 # Opt-in CPU Block Execution with Cooperative Fibers
 
-**Status**: Proposed
+**Status**: Implemented (experimental)
 
 **Issue**: [GH-1638](https://github.com/NVIDIA/warp/issues/1638)
 
@@ -12,14 +12,14 @@ synchronization. CUDA launches execute multiple logical kernel threads in each
 block. Those threads have distinct lane indices, share block-scoped tile state,
 and rendezvous at barriers.
 
-The CPU backend does not currently implement that model. It forces every launch
-to ``block_dim=1``, even when the caller requests a larger value. Consequently,
-CPU kernels can observe different thread indices and tile layouts than the same
-kernel on CUDA. Code that is correct for the requested block shape can compute an
-incorrect result or access tile memory out of bounds after the CPU silently
-changes that shape.
+Historically, the CPU backend did not implement that model. It forced every
+launch to ``block_dim=1``, even when the caller requested a larger value.
+Consequently, CPU kernels could observe different thread indices and tile layouts
+than the same kernel on CUDA. Code that was correct for the requested block shape
+could compute an incorrect result or access tile memory out of bounds after the
+CPU silently changed that shape.
 
-This design adds an opt-in CPU implementation of ``block_dim > 1`` using
+This design implements opt-in CPU ``block_dim > 1`` execution using
 cooperative, stackful fibers. Each logical kernel thread in a CPU block runs as a
 fiber on one host OS thread. A tile barrier suspends the current fiber and resumes
 a peer until all still-participating lanes have arrived. This preserves ordinary
@@ -119,7 +119,7 @@ CUDA launch resolution is unaffected.
 
 ### Configuration and launch resolution
 
-Add the following setting to ``warp/config.py``:
+The feature is controlled by the following setting in ``warp/config.py``:
 
 ```python
 enable_cpu_blocks: bool = False
@@ -257,13 +257,11 @@ support and silently force an enabled launch back to 1.
 AArch64 requires special care because the CPU tile arena pointer is held in a
 reserved callee-saved register. A fresh fiber must receive the block's arena
 pointer before entering JIT code, and a reused fiber must rebind it for every new
-block. The preferred portable mechanism is for the generated ``block_dim > 1``
+block. The portable mechanism is for the generated ``block_dim > 1``
 lane thunk to install the pointer from its block payload before calling the
 kernel body; this works with both the POSIX context switch and the Windows fiber
-API. Until safe rebinding is implemented and tested, AArch64 may create and
-destroy active fibers per block instead of pooling them, but every fresh context
-must still initialize the pointer. This is a performance difference, not a
-feature reduction.
+API. The implemented AArch64 backends rebind this pointer on every dispatch and
+therefore use the same reusable worker pool as the other supported platforms.
 
 ### Stacks and failure behavior
 
@@ -367,11 +365,11 @@ foundation used by CI.
 
 ### Shared tile state and primitive coverage
 
-All fibers in a block share one tile arena. Lane-local register tiles and ordinary
-locals stay on the fiber stack. CPU tile allocation must preserve the existing
-lockstep allocator contract: participating lanes executing the same logical tile
-allocation receive the same block-relative storage while retaining any per-lane
-allocation bookkeeping required by existing layouts.
+All fibers in a block share one fixed 256 KiB tile arena. Lane-local register
+tiles and ordinary locals stay on the fiber stack. CPU tile allocation must
+preserve the existing lockstep allocator contract: participating lanes executing
+the same logical tile allocation receive the same block-relative storage while
+retaining any per-lane allocation bookkeeping required by existing layouts.
 
 Block initialization resets allocator state for every possible lane, not only the
 currently executing lane. Reusing an arena for a later block must not expose stale

@@ -34,6 +34,40 @@ See :doc:`../api_reference/warp_config` for a complete list of global settings.
 See :doc:`execution_and_performance/reducing_compilation_and_startup_time` for
 guidance on settings that affect compilation and startup.
 
+Experimental CPU Block Execution
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+By default, an omitted or non-positive ``block_dim`` selects one logical thread
+per block on CPU and 256 threads per block on CUDA. CPU launches also preserve
+the historical effective ``block_dim`` of ``1`` when a larger value is
+requested. To honor an explicit CPU ``block_dim`` from 2 through 1024, enable
+the experimental cooperative-block path:
+
+.. code-block:: python
+
+    wp.config.enable_cpu_blocks = True
+    wp.launch(kernel, dim=count, block_dim=64, device="cpu")
+
+The setting applies to :func:`wp.launch() <warp.launch>` and
+:func:`wp.launch_tiled() <warp.launch_tiled>`. Warp resolves the effective block
+dimension when the launch is created, so recorded commands and captured launches
+retain that value if the setting later changes. An explicit CPU value greater
+than 1024 raises ``ValueError`` even when the feature is disabled.
+
+Enabled CPU blocks run their logical lanes as cooperative stackful fibers on one
+host operating-system thread. This first implementation is intended for
+correctness testing and CPU/CUDA semantic equivalence; it is not SIMD or
+multi-core acceleration. The runtime lazily grows a thread-local pool and retains
+at most 1024 worker fibers per host thread. Each retained worker reserves a 1 MiB
+usable virtual stack, whose physical-memory use grows as pages are touched. Each
+running CPU block also has a fixed 256 KiB shared tile arena.
+
+AddressSanitizer fiber switching is not yet supported. In an AddressSanitizer
+build, an enabled CPU launch with ``block_dim > 1`` raises
+``NotImplementedError``; one-lane CPU launches remain available. See
+:ref:`CPU Tile Semantics <cpu_tile_semantics>` for how the option affects tile
+kernels.
+
 .. _module-settings:
 
 Module Settings

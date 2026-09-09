@@ -3413,6 +3413,8 @@ add_builtin(
 
     On a partial CPU block, ``thread_idx`` must identify an active lane. If the
     selected lane is inactive, no producer executes and the result is undefined.
+    See :ref:`CPU Tile Semantics <cpu_tile_semantics>` for definitions of partial
+    CPU blocks and active lanes.
 
     Args:
         shape: Shape of the output tile. Must be a compile-time constant.
@@ -3482,7 +3484,9 @@ add_builtin(
     details and an example.
 
     On a partial CPU block, ``thread_idx`` must identify an active lane. If the
-    selected lane is inactive, no producer executes and the result is undefined.""",
+    selected lane is inactive, no producer executes and the result is undefined.
+    See :ref:`CPU Tile Semantics <cpu_tile_semantics>` for definitions of partial
+    CPU blocks and active lanes.""",
     group="Tile Primitives",
     export=False,
 )
@@ -7517,6 +7521,8 @@ add_builtin(
     On a partial CPU block, a slice with no active values returns the operation's identity for
     ``wp.add``, ``wp.mul``, ``wp.min``, and ``wp.max``. Other operators have no declared
     identity, so an empty slice triggers an assertion instead of returning an arbitrary value.
+    See :ref:`CPU Tile Semantics <cpu_tile_semantics>` for definitions of partial
+    CPU blocks and active lanes.
 
     Example:
 
