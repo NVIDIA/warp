@@ -6310,6 +6310,11 @@ class Mesh:
             self.runtime.verify_cuda_device(self.device)
 
 
+# Must match wp_volume_validation_result in warp/native/warp.h.
+_VOLUME_VALIDATION_SUCCESS = 1
+_VOLUME_VALIDATION_UNSUPPORTED_LAYOUT = 2
+
+
 class Volume:
     """Sparse volumetric data structure based on NanoVDB for efficient 3D sampling."""
 
@@ -6788,7 +6793,17 @@ class Volume:
         if magic not in (0x304244566F6E614E, 0x314244566F6E614E):  # NanoVDB0 or NanoVDB1 in hex, little-endian
             raise RuntimeError("NanoVDB signature not found on grid!")
 
-        data_array = array(np.frombuffer(grid_data, dtype=np.byte), device=device)
+        grid_array = np.frombuffer(grid_data, dtype=np.byte)
+        warp.init()
+        validation_result = warp._src.context.runtime.core.wp_volume_validate_host(
+            grid_array.ctypes.data, grid_array.size
+        )
+        if validation_result == _VOLUME_VALIDATION_UNSUPPORTED_LAYOUT:
+            raise RuntimeError("Unsupported NanoVDB tree layout")
+        if validation_result != _VOLUME_VALIDATION_SUCCESS:
+            raise RuntimeError("Invalid NanoVDB grid structure")
+
+        data_array = array(grid_array, device=device)
         return cls(data_array)
 
     def save_to_nvdb(self, path, codec: Literal["none", "zip", "blosc"] = "none"):

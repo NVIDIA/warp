@@ -136,6 +136,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.geometry.test_mesh_query_point import TestMeshQueryPoint
     from warp.tests.geometry.test_mesh_query_ray import TestMeshQueryRay
     from warp.tests.geometry.test_volume import TestVolume
+    from warp.tests.geometry.test_volume_validation import TestVolumeValidation
     from warp.tests.geometry.test_volume_write import TestVolumeWrite
     from warp.tests.interop.test_dlpack import TestDLPack
     from warp.tests.interop.test_jax import TestJax
@@ -487,6 +488,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestVerifyFP,
         TestVersion,
         TestVolume,
+        TestVolumeValidation,
         TestVolumeWrite,
     ]
 
@@ -560,6 +562,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.geometry.test_mesh_query_point import TestMeshQueryPoint
     from warp.tests.geometry.test_mesh_query_ray import TestMeshQueryRay
     from warp.tests.geometry.test_volume import TestVolume
+    from warp.tests.geometry.test_volume_validation import TestVolumeValidation
     from warp.tests.geometry.test_volume_write import TestVolumeWrite
     from warp.tests.interop.test_dlpack import TestDLPack
     from warp.tests.matrix.test_mat import TestMat
@@ -821,6 +824,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestHashGrid,
         TestMarchingCubes,
         TestVolume,
+        TestVolumeValidation,
         TestVolumeWrite,
         TestDLPack,
         TestMatAssignCopy,
