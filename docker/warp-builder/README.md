@@ -92,15 +92,15 @@ docker run --rm -it \
 **Short aliases (recommended for most users):**
 
 - `latest` - Default CUDA 13 build
-- `cuda13` - Selected CUDA 13.x build (currently 13.0.2)
+- `cuda13` - Selected CUDA 13.x build (currently 13.4.1)
 - `cuda12` - Latest CUDA 12.x build (currently 12.9.1)
 
 **Full version tags (for reproducibility):**
 
-- `cuda13.0.2-latest` - Multi-arch, always current
-- `cuda13.0.2-YYYYMMDD` - Multi-arch, date-pinned workflow build
-- `cuda13.0.2-x86_64-latest` - Architecture-specific
-- `cuda13.0.2-aarch64-latest` - Architecture-specific
+- `cuda13.4.1-latest` - Multi-arch, always current
+- `cuda13.4.1-YYYYMMDD` - Multi-arch, date-pinned workflow build
+- `cuda13.4.1-x86_64-latest` - Architecture-specific
+- `cuda13.4.1-aarch64-latest` - Architecture-specific
 
 **Examples:**
 
@@ -109,10 +109,10 @@ docker run --rm -it \
 docker pull ghcr.io/nvidia/warp-builder:cuda13
 
 # Pinned to specific CUDA version
-docker pull ghcr.io/nvidia/warp-builder:cuda13.0.2-latest
+docker pull ghcr.io/nvidia/warp-builder:cuda13.4.1-latest
 
 # Pinned to exact build date
-docker pull ghcr.io/nvidia/warp-builder:cuda13.0.2-YYYYMMDD
+docker pull ghcr.io/nvidia/warp-builder:cuda13.4.1-YYYYMMDD
 ```
 
 Replace `YYYYMMDD` with the date from a published workflow build.
@@ -166,13 +166,13 @@ If you cannot access published images, you can build them locally:
 ```bash
 cd docker/warp-builder
 docker buildx build --platform linux/amd64 -t warp-builder:cuda13 -f Dockerfile \
-  --build-arg CUDA_VERSION=13.0.2 --load .
+  --build-arg CUDA_VERSION=13.4.1 --load .
 ```
 
 ## Image Contents
 
 - **Base:** manylinux_2_28 (x86_64) / manylinux_2_34 (aarch64)
-- **CUDA:** Configurable (supports 12.x and 13.x, default 13.0.2)
+- **CUDA:** Configurable (supports 12.x and 13.x, default 13.4.1)
   - Installed using NVIDIA's [parse_redist.py](https://github.com/NVIDIA/build-system-archive-import-examples) script to pull only the minimal components needed for building Warp
 - **LLVM:** Not included. Fetched at build time by `build_lib.py` through Packman, per
   `deps/llvm-deps.packman.xml`.
@@ -188,7 +188,7 @@ Images are automatically built by the workflow at `.github/workflows/build-warp-
 **Each workflow run builds:**
 
 - CUDA 12.9.1 (x86_64 + aarch64)
-- CUDA 13.0.2 (x86_64 + aarch64)
+- CUDA 13.4.1 (x86_64 + aarch64)
 - All 4 builds run in parallel (a few minutes; no LLVM is built or downloaded here)
 
 **To trigger a rebuild:**
