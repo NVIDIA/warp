@@ -18,7 +18,8 @@
     EXPAND_BUILDER_TYPE(double)                                                                                        \
     EXPAND_BUILDER_TYPE(nanovdb::Vec3f)                                                                                \
     EXPAND_BUILDER_TYPE(nanovdb::Vec3d)                                                                                \
-    EXPAND_BUILDER_TYPE(nanovdb::Vec4f)
+    EXPAND_BUILDER_TYPE(nanovdb::Vec4f)                                                                                \
+    EXPAND_BUILDER_TYPE(nanovdb::Vec4d)
 
 template <typename BuildT> struct BuildGridParams {
     nanovdb::Map map;

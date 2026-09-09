@@ -1240,6 +1240,8 @@ def test_volume_rebuild_capacity_status_capture(test, device):
 
 devices = get_selected_cuda_test_devices()
 capture_devices = get_selected_cuda_test_devices_with_mempool()
+# Volume.allocate() is supported on CPU as well, unlike the write paths exercised below.
+allocation_devices = get_test_devices()
 
 
 class TestVolumeWrite(unittest.TestCase):
@@ -1488,7 +1490,7 @@ class TestVolumeWrite(unittest.TestCase):
         test_volume_rebuild_tiles_mutable_background(self, "cpu")
 
 
-add_function_test(TestVolumeWrite, "test_volume_allocation", test_volume_allocation, devices=devices)
+add_function_test(TestVolumeWrite, "test_volume_allocation", test_volume_allocation, devices=allocation_devices)
 add_function_test(TestVolumeWrite, "test_volume_allocate_by_tiles_f", test_volume_allocate_by_tiles_f, devices=devices)
 add_function_test(TestVolumeWrite, "test_volume_allocate_by_tiles_v", test_volume_allocate_by_tiles_v, devices=devices)
 add_function_test(

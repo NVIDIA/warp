@@ -6,16 +6,10 @@
    :noindex:
 {%- endif %}
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-{%- if overload.is_exported %}
-      * Python
-{%- endif %}
-{%- if overload.is_differentiable %}
-      * Differentiable
-{%- endif %}
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: {{ "true" if overload.is_exported else "false" }}
+      :differentiable: {{ "true" if overload.is_differentiable else "false" }}
 
    {{ overload.doc | indent(width=3, first=false, blank=true) }}
 {%- endfor %}

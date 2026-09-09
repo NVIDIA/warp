@@ -1994,9 +1994,46 @@ add_builtin(
     dispatch_func=transformation_dispatch_func,
     native_func="transform_t",
     group="Transformations",
-    doc="""Construct a transformation.
+    doc="""Construct a transformation from translation ``p`` and rotation ``q``.
 
-    Use translation ``p`` and rotation ``q``.""",
+    ``q`` is not normalized; transform operations assume it has unit length and may distort
+    otherwise. Autodiff treats the four quaternion components as independent variables and does not
+    enforce unit length. Re-normalize ``q`` after applying gradient updates, or use a unit-length
+    parameterization.
+
+    All arguments must have the same scalar type. For construction in the Python scope, use
+    :class:`warp.transform`, :class:`warp.transformh`, or :class:`warp.transformd`.
+
+    Args:
+        p: Translation vector in ``(x, y, z)`` order, added after applying the rotation.
+        q: Rotation quaternion in ``(x, y, z, w)`` order, applied before the translation. It must
+            have unit length.
+        dtype: Scalar type of the components, inferred from ``p`` and ``q`` when omitted.
+
+    Returns:
+        The transformation, stored as ``(p.x, p.y, p.z, q.x, q.y, q.z, q.w)``, which maps ``x`` to
+        ``quat_rotate(q, x) + p``.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def make_transforms(out: wp.array[wp.transform]):
+                q = wp.quat_from_axis_angle(wp.vec3(0.0, 0.0, 1.0), wp.pi / 2.0)
+                out[0] = wp.transformation(wp.vec3(1.0, 2.0, 3.0), q)
+                out[1] = wp.transformation(wp.vec3(1.0, 2.0, 3.0))  # identity rotation
+                out[2] = wp.transformation(1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 1.0)  # from components
+
+            out = wp.empty(3, dtype=wp.transform)
+            wp.launch(make_transforms, dim=1, outputs=[out])
+            print(np.round(out.numpy(), 3))
+
+        .. testoutput::
+
+            [[1.    2.    3.    0.    0.    0.707 0.707]
+             [1.    2.    3.    0.    0.    0.    1.   ]
+             [1.    2.    3.    0.    0.    0.    1.   ]]""",
     export=False,
 )
 
@@ -2011,9 +2048,20 @@ add_builtin(
     export_func=lambda input_types: {k: v for k, v in input_types.items() if k not in ("dtype")},
     dispatch_func=transformation_dispatch_func,
     native_func="transform_t",
-    doc="""Construct a transformation.
+    doc="""Construct a transformation from component values.
 
-    Build a spatial transform vector from components.""",
+    One scalar fills all seven components. Seven scalars specify ``(px, py, pz, qx, qy, qz, qw)``
+    and must have the same type. With no arguments, all components are zero, including the
+    quaternion; use :func:`~warp.transform_identity` for an identity.
+
+    See the overload that accepts ``p`` and ``q`` for an example.
+
+    Args:
+        args: No arguments, one scalar, or seven scalar components.
+        dtype: Scalar type of the components, inferred from the arguments when omitted.
+
+    Returns:
+        The transformation.""",
     group="Spatial Math",
     export=False,
 )
@@ -2048,7 +2096,34 @@ add_builtin(
     export_func=lambda input_types: {},
     dispatch_func=transform_identity_dispatch_func,
     group="Transformations",
-    doc="Construct an identity transform with zero translation and identity rotation.",
+    doc="""Construct an identity transform with zero translation and identity rotation.
+
+    The result is neutral under composition and leaves points and vectors unchanged. Unlike a
+    zero-argument :func:`~warp.transformation`, it contains a valid rotation quaternion.
+
+    Args:
+        dtype: Scalar type of the components. Defaults to ``float32``.
+
+    Returns:
+        The identity transformation.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def reset(out: wp.array[wp.transform]):
+                i = wp.tid()
+                out[i] = wp.transform_identity()
+
+            out = wp.empty(2, dtype=wp.transform)
+            wp.launch(reset, dim=out.shape, outputs=[out])
+            print(out.numpy())
+
+        .. testoutput::
+
+            [[0. 0. 0. 0. 0. 0. 1.]
+             [0. 0. 0. 0. 0. 0. 1.]]""",
     export=True,
     is_differentiable=False,
 )
@@ -2058,28 +2133,114 @@ add_builtin(
     input_types={"xform": transformation(dtype=Float)},
     value_func=lambda arg_types, arg_values: vector(length=3, dtype=float_infer_type(arg_types)),
     group="Transformations",
-    doc="Extract the translational part of transform ``xform``.",
+    doc="""Return the translation component of ``xform`` (``xform.p``).
+
+    Args:
+        xform: Transformation to read from.
+
+    Returns:
+        The translation from components 0 through 2 of ``xform``, as a 3D vector of the same scalar
+        type as ``xform``.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def split(
+                xforms: wp.array[wp.transform],
+                translations: wp.array[wp.vec3],
+                rotations: wp.array[wp.quat],
+            ):
+                i = wp.tid()
+                translations[i] = wp.transform_get_translation(xforms[i])
+                rotations[i] = wp.transform_get_rotation(xforms[i])
+
+            xform = wp.transform(wp.vec3(1.0, 2.0, 3.0), wp.quat_rpy(0.0, 0.0, wp.pi / 2.0))
+            xforms = wp.array([xform], dtype=wp.transform)
+            translations = wp.empty(1, dtype=wp.vec3)
+            rotations = wp.empty(1, dtype=wp.quat)
+            wp.launch(split, dim=1, inputs=[xforms], outputs=[translations, rotations])
+            print(np.round(translations.numpy(), 3))
+            print(np.round(rotations.numpy(), 3))
+
+        .. testoutput::
+
+            [[1. 2. 3.]]
+            [[0.    0.    0.707 0.707]]""",
 )
 add_builtin(
     "transform_get_rotation",
     input_types={"xform": transformation(dtype=Float)},
     value_func=lambda arg_types, arg_values: quaternion(dtype=float_infer_type(arg_types)),
     group="Transformations",
-    doc="Extract the rotational part of transform ``xform``.",
+    doc="""Return the rotation component of ``xform`` (``xform.q``).
+
+    The quaternion is returned as stored, in ``(x, y, z, w)`` order, without normalization.
+
+    Args:
+        xform: Transformation to read from.
+
+    Returns:
+        The rotation from components 3 through 6 of ``xform``, as a quaternion of the same scalar
+        type as ``xform``.
+
+    See :func:`~warp.transform_get_translation` for a usage example.""",
 )
 add_builtin(
     "transform_set_translation",
     input_types={"xform": transformation(dtype=Float), "p": vector(length=3, dtype=Float)},
     value_type=None,
     group="Transformations",
-    doc="Set the translational part of a transform ``xform``.",
+    doc="""Set the translational part of the transform ``xform`` in place, leaving its rotation unchanged.
+
+    In a kernel, ``xform.p = p`` is equivalent.
+
+    Do not pass an array element directly: ``wp.transform_set_translation(xforms[i], p)`` modifies
+    a discarded copy and contributes no gradients. Use ``xforms[i].p = p``, or load, modify, and
+    store the element.
+
+    Args:
+        xform: Transformation to modify in place.
+        p: New translation.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def offset(xforms: wp.array[wp.transform], out: wp.array[wp.transform]):
+                i = wp.tid()
+                xform = xforms[i]
+                wp.transform_set_translation(xform, wp.vec3(0.0, 0.0, 1.0))
+                wp.transform_set_rotation(xform, wp.quat_identity())
+                out[i] = xform
+
+            xform = wp.transform(wp.vec3(1.0, 2.0, 3.0), wp.quat_rpy(0.0, 0.0, wp.pi / 2.0))
+            xforms = wp.array([xform], dtype=wp.transform)
+            out = wp.empty(1, dtype=wp.transform)
+            wp.launch(offset, dim=1, inputs=[xforms], outputs=[out])
+            print(np.round(out.numpy(), 3))
+
+        .. testoutput::
+
+            [[0. 0. 1. 0. 0. 0. 1.]]""",
 )
 add_builtin(
     "transform_set_rotation",
     input_types={"xform": transformation(dtype=Float), "q": quaternion(dtype=Float)},
     value_type=None,
     group="Transformations",
-    doc="Set the rotational part of a transform ``xform``.",
+    doc="""Set the rotational part of the transform ``xform`` in place, leaving its translation unchanged.
+
+    ``q`` is not normalized. In a kernel, ``xform.q = q`` is equivalent. See
+    :func:`~warp.transform_set_translation` for the array-element caveat.
+
+    Args:
+        xform: Transformation to modify in place.
+        q: New rotation, expected to be a unit quaternion in ``(x, y, z, w)`` order.
+
+    See :func:`~warp.transform_set_translation` for a usage example.""",
 )
 # performs a copy internally if wp.config.enable_vector_component_overwrites is True
 add_builtin(
@@ -2087,7 +2248,23 @@ add_builtin(
     input_types={"xform": transformation(dtype=Float), "p": vector(length=3, dtype=Float)},
     value_type=transformation(dtype=Float),
     group="Transformations",
-    doc="Set the translational part of a transform ``xform``.",
+    doc="""Return a copy of the transform ``xform`` with its translational part set to ``p``.
+
+    Counterpart of :func:`~warp.transform_set_translation` for the copy-on-write lowering selected
+    by ``wp.config.enable_vector_component_overwrites``.
+
+    .. note::
+
+        Currently unusable: the return type is declared generic, so it never resolves to the scalar
+        type of ``xform`` and the result cannot be stored or passed on. No lowering emits this
+        built-in today.
+
+    Args:
+        xform: Transformation to copy.
+        p: New translation of the copy.
+
+    Returns:
+        The modified copy.""",
     hidden=True,
     export=False,
 )
@@ -2097,7 +2274,19 @@ add_builtin(
     input_types={"xform": transformation(dtype=Float), "q": quaternion(dtype=Float)},
     value_type=transformation(dtype=Float),
     group="Transformations",
-    doc="Set the rotational part of a transform ``xform``.",
+    doc="""Return a copy of the transform ``xform`` with its rotational part set to ``q``.
+
+    ``q`` is not normalized. Counterpart of :func:`~warp.transform_set_rotation` for the
+    copy-on-write lowering selected by ``wp.config.enable_vector_component_overwrites``, and subject
+    to the same limitation as :func:`~warp.transform_set_translation_copy`: currently unusable,
+    since its return type never resolves to the scalar type of ``xform``.
+
+    Args:
+        xform: Transformation to copy.
+        q: New rotation of the copy, expected to be a unit quaternion in ``(x, y, z, w)`` order.
+
+    Returns:
+        The modified copy.""",
     hidden=True,
     export=False,
 )
@@ -2106,62 +2295,217 @@ add_builtin(
     input_types={"a": transformation(dtype=Float), "b": transformation(dtype=Float)},
     value_func=lambda arg_types, arg_values: transformation(dtype=float_infer_type(arg_types)),
     group="Transformations",
-    doc="Multiply two rigid body transformations together.",
+    doc="""Return the composition of transformations ``a`` and ``b``, applying ``b`` before ``a``.
+
+    With unit quaternions, the operation is associative but not commutative, and
+    ``transform_point(a * b, x) == transform_point(a, transform_point(b, x))``. Non-unit
+    quaternions may distort and invalidate these identities.
+
+    Args:
+        a: Outer transformation, applied second.
+        b: Inner transformation, applied first.
+
+    Returns:
+        The composed transformation, with translation ``a.p + quat_rotate(a.q, b.p)`` and rotation
+        ``a.q * b.q``.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def compose(
+                a: wp.array[wp.transform], b: wp.array[wp.transform], out: wp.array[wp.transform]
+            ):
+                i = wp.tid()
+                out[i] = wp.transform_multiply(a[i], b[i])
+
+            # a turns a quarter turn about the z axis and shifts along x, b only shifts along x
+            a = wp.array([wp.transform(wp.vec3(1.0, 0.0, 0.0), wp.quat_rpy(0.0, 0.0, wp.pi / 2.0))],
+                         dtype=wp.transform)
+            b = wp.array([wp.transform(wp.vec3(2.0, 0.0, 0.0), wp.quat_identity())], dtype=wp.transform)
+            out = wp.empty(1, dtype=wp.transform)
+            wp.launch(compose, dim=1, inputs=[a, b], outputs=[out])
+            print(np.round(out.numpy(), 3))
+
+        .. testoutput::
+
+            [[1.    2.    0.    0.    0.    0.707 0.707]]""",
 )
 add_builtin(
     "transform_point",
     input_types={"xform": transformation(dtype=Float), "point": vector(length=3, dtype=Float)},
     value_func=lambda arg_types, arg_values: vector(length=3, dtype=float_infer_type(arg_types)),
     group="Transformations",
-    doc="""Apply a transform to a point.
+    doc="""Return ``point`` transformed by ``xform``, with rotation applied before translation.
 
-    Treat the homogeneous coordinate as w=1 (translation and rotation).""",
+    ``xform.q`` must have unit length; otherwise the result may distort. Use
+    :func:`~warp.transform_vector` to transform directions.
+
+    Args:
+        xform: Transformation to apply.
+        point: Point to transform.
+
+    Returns:
+        ``quat_rotate(xform.q, point) + xform.p``, equivalent to using homogeneous coordinate
+        ``w = 1``.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def apply(
+                xform: wp.transform,
+                points: wp.array[wp.vec3],
+                out_points: wp.array[wp.vec3],
+                out_vectors: wp.array[wp.vec3],
+            ):
+                i = wp.tid()
+                out_points[i] = wp.transform_point(xform, points[i])
+                out_vectors[i] = wp.transform_vector(xform, points[i])
+
+            xform = wp.transform(wp.vec3(0.0, 0.0, 5.0), wp.quat_rpy(0.0, 0.0, wp.pi / 2.0))
+            points = wp.array([wp.vec3(1.0, 2.0, 0.0)], dtype=wp.vec3)
+            out_points = wp.empty(1, dtype=wp.vec3)
+            out_vectors = wp.empty(1, dtype=wp.vec3)
+            wp.launch(apply, dim=1, inputs=[xform, points], outputs=[out_points, out_vectors])
+            print(np.round(out_points.numpy(), 3))  # rotated and translated
+            print(np.round(out_vectors.numpy(), 3))  # rotated only
+
+        .. testoutput::
+
+            [[-2.  1.  5.]]
+            [[-2.  1.  0.]]""",
 )
 add_builtin(
     "transform_point",
     input_types={"mat": matrix(shape=(4, 4), dtype=Float), "point": vector(length=3, dtype=Float)},
     value_func=lambda arg_types, arg_values: vector(length=3, dtype=float_infer_type(arg_types)),
     group="Vector Math",
-    doc="""Apply a transform to a point.
+    doc="""Return ``point`` transformed by the 4x4 matrix ``mat``, using homogeneous coordinate ``w = 1``.
 
-    Treat the homogeneous coordinate as w=1.
+    The fourth component is discarded without a perspective divide. Matrices that use row-vector
+    conventions, such as those from USD, must be transposed. Use :func:`~warp.transform_vector` to
+    transform directions.
 
-    The transformation is applied treating ``point`` as a column vector, e.g.: ``y = mat*point``.
+    Args:
+        mat: Transformation matrix, applied to a column vector.
+        point: Point to transform.
 
-    This is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = point^T*mat^T``.
-    If the transform is coming from a library that uses row-vectors, then users should transpose the transformation
-    matrix before calling this method.""",
+    Returns:
+        The first three components of ``mat * (point.x, point.y, point.z, 1)``.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def apply(
+                mat: wp.mat44,
+                points: wp.array[wp.vec3],
+                out_points: wp.array[wp.vec3],
+                out_vectors: wp.array[wp.vec3],
+            ):
+                i = wp.tid()
+                out_points[i] = wp.transform_point(mat, points[i])
+                out_vectors[i] = wp.transform_vector(mat, points[i])
+
+            # scale by 2 along x and translate by 5 along z
+            mat = wp.mat44(2.0, 0.0, 0.0, 0.0,
+                           0.0, 1.0, 0.0, 0.0,
+                           0.0, 0.0, 1.0, 5.0,
+                           0.0, 0.0, 0.0, 1.0)
+            points = wp.array([wp.vec3(1.0, 2.0, 3.0)], dtype=wp.vec3)
+            out_points = wp.empty(1, dtype=wp.vec3)
+            out_vectors = wp.empty(1, dtype=wp.vec3)
+            wp.launch(apply, dim=1, inputs=[mat, points], outputs=[out_points, out_vectors])
+            print(out_points.numpy())  # translation included
+            print(out_vectors.numpy())  # translation ignored
+
+        .. testoutput::
+
+            [[2. 2. 8.]]
+            [[2. 2. 3.]]""",
 )
 add_builtin(
     "transform_vector",
     input_types={"xform": transformation(dtype=Float), "vec": vector(length=3, dtype=Float)},
     value_func=lambda arg_types, arg_values: vector(length=3, dtype=float_infer_type(arg_types)),
     group="Transformations",
-    doc="""Apply a transform to a vector.
+    doc="""Return ``vec`` transformed by the rotation of ``xform``, ignoring its translation.
 
-    Treat the homogeneous coordinate as w=0 (rotation only).""",
+    ``xform.q`` must have unit length; otherwise the result may distort. Use
+    :func:`~warp.transform_point` to transform positions.
+
+    Args:
+        xform: Transformation whose rotation is applied.
+        vec: Direction vector to transform, which need not be normalized.
+
+    Returns:
+        ``quat_rotate(xform.q, vec)``, equivalent to using homogeneous coordinate ``w = 0``.
+
+    See :func:`~warp.transform_point` for a usage example.""",
 )
 add_builtin(
     "transform_vector",
     input_types={"mat": matrix(shape=(4, 4), dtype=Float), "vec": vector(length=3, dtype=Float)},
     value_func=lambda arg_types, arg_values: vector(length=3, dtype=float_infer_type(arg_types)),
     group="Vector Math",
-    doc="""Apply a transform to a vector.
+    doc="""Return ``vec`` transformed by the 4x4 matrix ``mat``, using homogeneous coordinate ``w = 0``.
 
-    Treat the homogeneous coordinate as w=0.
+    Matrices that use row-vector conventions, such as those from USD, must be transposed. When
+    ``mat`` contains non-uniform scale, transform normals using the inverse transpose of its
+    upper-left 3x3 linear component, then normalize the result. Use :func:`~warp.transform_point`
+    to transform positions.
 
-    The transformation is applied treating ``vec`` as a column vector, e.g.: ``y = mat*vec``.
+    Args:
+        mat: Transformation matrix, applied to a column vector.
+        vec: Direction vector to transform, which need not be normalized.
 
-    This is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = vec^T*mat^T``.
-    If the transform is coming from a library that uses row-vectors, then users should transpose the transformation
-    matrix before calling this method.""",
+    Returns:
+        The first three components of ``mat * (vec.x, vec.y, vec.z, 0)``, ignoring translation.
+
+    See :func:`~warp.transform_point` for a usage example.""",
 )
 add_builtin(
     "transform_inverse",
     input_types={"xform": transformation(dtype=Float)},
     value_func=sametypes_create_value_func(transformation(dtype=Float)),
     group="Transformations",
-    doc="Compute the inverse of the transformation ``xform``.",
+    doc="""Return the inverse of ``xform``.
+
+    The inverse maps points transformed by ``xform`` back to their original coordinate frame.
+    Because :func:`~warp.quat_inverse` returns the conjugate, ``xform.q`` must have unit length;
+    normalize it first if needed.
+
+    Args:
+        xform: Transformation to invert. Its rotation quaternion must have unit length.
+
+    Returns:
+        The inverse transformation, with rotation ``quat_inverse(xform.q)`` and translation
+        ``-quat_rotate(quat_inverse(xform.q), xform.p)``.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def to_local(
+                xform: wp.transform, points: wp.array[wp.vec3], out: wp.array[wp.vec3]
+            ):
+                i = wp.tid()
+                out[i] = wp.transform_point(wp.transform_inverse(xform), points[i])
+
+            xform = wp.transform(wp.vec3(0.0, 0.0, 5.0), wp.quat_rpy(0.0, 0.0, wp.pi / 2.0))
+            points = wp.array([wp.vec3(-2.0, 1.0, 8.0)], dtype=wp.vec3)
+            out = wp.empty(1, dtype=wp.vec3)
+            wp.launch(to_local, dim=1, inputs=[xform, points], outputs=[out])
+            print(np.round(out.numpy(), 3))
+
+        .. testoutput::
+
+            [[1. 2. 3.]]""",
 )
 # ---------------------------------
 # Spatial Math
@@ -2224,9 +2568,15 @@ add_builtin(
     dispatch_func=spatial_vector_dispatch_func,
     native_func="vec_t",
     group="Spatial Math",
-    doc="""Construct a 6D screw vector.
+    doc="""Return a zero 6D spatial vector.
 
-    Zero-initialize the vector.""",
+    See the overload that accepts ``w`` and ``v`` for an example.
+
+    Args:
+        dtype: Scalar type of the components. Defaults to ``float32``.
+
+    Returns:
+        The zero spatial vector.""",
     export=False,
 )
 
@@ -2240,9 +2590,38 @@ add_builtin(
     dispatch_func=spatial_vector_dispatch_func,
     native_func="vec_t",
     group="Spatial Math",
-    doc="""Construct a 6D screw vector.
+    doc="""Construct a 6D spatial vector from the two 3D vectors ``w`` and ``v``.
 
-    Use two 3D vectors.""",
+    A spatial vector can represent a twist ``(angular velocity, linear velocity)`` or a wrench
+    ``(torque, force)``. Warp does not distinguish these interpretations at the type level. Both
+    vectors must have the same scalar type.
+
+    Args:
+        w: First 3D part: angular velocity for a twist or torque for a wrench.
+        v: Last 3D part: linear velocity for a twist or force for a wrench.
+        dtype: Scalar type of the components, inferred from ``w`` and ``v`` when omitted.
+
+    Returns:
+        The spatial vector ``(w.x, w.y, w.z, v.x, v.y, v.z)``.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def make_twists(out: wp.array[wp.spatial_vector]):
+                # spinning about the z axis while moving along x
+                out[0] = wp.spatial_vector(wp.vec3(0.0, 0.0, 2.0), wp.vec3(1.0, 0.0, 0.0))
+                out[1] = wp.spatial_vector(0.0, 0.0, 2.0, 1.0, 0.0, 0.0)
+
+            out = wp.empty(2, dtype=wp.spatial_vector)
+            wp.launch(make_twists, dim=1, outputs=[out])
+            print(out.numpy())
+
+        .. testoutput::
+
+            [[0. 0. 2. 1. 0. 0.]
+             [0. 0. 2. 1. 0. 0.]]""",
     export=False,
 )
 
@@ -2256,9 +2635,24 @@ add_builtin(
     dispatch_func=spatial_vector_dispatch_func,
     native_func="vec_t",
     group="Spatial Math",
-    doc="""Construct a 6D screw vector.
+    doc="""Construct a 6D spatial vector from six scalar components.
 
-    Use six scalar values.""",
+    See the overload that accepts ``w`` and ``v`` for the twist and wrench interpretations. All
+    values must have the same scalar type.
+
+    Args:
+        wx: First component of the first 3D part.
+        wy: Second component of the first 3D part.
+        wz: Third component of the first 3D part.
+        vx: First component of the last 3D part.
+        vy: Second component of the last 3D part.
+        vz: Third component of the last 3D part.
+        dtype: Scalar type of the components, inferred from the arguments when omitted.
+
+    Returns:
+        The spatial vector ``(wx, wy, wz, vx, vy, vz)``.
+
+    See the overload that accepts ``w`` and ``v`` for an example.""",
     export=False,
 )
 
@@ -2268,7 +2662,45 @@ add_builtin(
     input_types={"r": matrix(shape=(3, 3), dtype=Float), "s": matrix(shape=(3, 3), dtype=Float)},
     value_func=lambda arg_types, arg_values: matrix(shape=(6, 6), dtype=float_infer_type(arg_types)),
     group="Spatial Math",
-    doc="Construct a 6x6 spatial inertial matrix from two 3x3 diagonal blocks.",
+    doc="""Construct a 6x6 spatial matrix from the two 3x3 blocks ``r`` and ``s``.
+
+    For a rigid transform ``(R, p)``, setting ``r = R`` and ``s = skew(p) * R`` constructs the
+    matrix that maps twist ``(w, v)`` to ``(R * w, cross(p, R * w) + R * v)``. Wrenches transform
+    differently from twists; use :func:`~warp.transform_wrench` to transform them.
+
+    Args:
+        r: Block placed on both diagonals.
+        s: Block placed in the lower-left corner.
+
+    Returns:
+        The 6x6 block matrix ``[[r, 0], [s, r]]``.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def build(out: wp.array[wp.spatial_matrix]):
+                r = wp.mat33(1.0, 0.0, 0.0,
+                             0.0, 1.0, 0.0,
+                             0.0, 0.0, 1.0)
+                s = wp.mat33(0.0, -3.0, 2.0,
+                             3.0, 0.0, -1.0,
+                             -2.0, 1.0, 0.0)
+                out[0] = wp.spatial_adjoint(r, s)
+
+            out = wp.empty(1, dtype=wp.spatial_matrix)
+            wp.launch(build, dim=1, outputs=[out])
+            print(out.numpy()[0])
+
+        .. testoutput::
+
+            [[ 1.  0.  0.  0.  0.  0.]
+             [ 0.  1.  0.  0.  0.  0.]
+             [ 0.  0.  1.  0.  0.  0.]
+             [ 0. -3.  2.  1.  0.  0.]
+             [ 3.  0. -1.  0.  1.  0.]
+             [-2.  1.  0.  0.  0.  1.]]""",
     export=False,
 )
 add_builtin(
@@ -2276,21 +2708,126 @@ add_builtin(
     input_types={"a": vector(length=6, dtype=Float), "b": vector(length=6, dtype=Float)},
     value_func=float_sametypes_value_func,
     group="Spatial Math",
-    doc="Compute the dot product of two 6D screw vectors.",
+    doc="""Return the dot product of two 6D spatial vectors.
+
+    A wrench dotted with a twist gives instantaneous power. Both arguments must have the same
+    scalar type.
+
+    Args:
+        a: First spatial vector.
+        b: Second spatial vector.
+
+    Returns:
+        The dot product, as a scalar of the same type as the arguments.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def compute_power(
+                twists: wp.array[wp.spatial_vector],
+                wrenches: wp.array[wp.spatial_vector],
+                out: wp.array[float],
+            ):
+                i = wp.tid()
+                out[i] = wp.spatial_dot(wrenches[i], twists[i])
+
+            # spinning at 2 rad/s about z under a torque of 3 N.m about z
+            twists = wp.array([wp.spatial_vector(0.0, 0.0, 2.0, 1.0, 0.0, 0.0)], dtype=wp.spatial_vector)
+            wrenches = wp.array([wp.spatial_vector(0.0, 0.0, 3.0, 0.0, 0.0, 0.0)], dtype=wp.spatial_vector)
+            out = wp.empty(1, dtype=float)
+            wp.launch(compute_power, dim=1, inputs=[twists, wrenches], outputs=[out])
+            print(out.numpy())
+
+        .. testoutput::
+
+            [6.]""",
 )
 add_builtin(
     "spatial_cross",
     input_types={"a": vector(length=6, dtype=Float), "b": vector(length=6, dtype=Float)},
     value_func=sametypes_create_value_func(vector(length=6, dtype=Float)),
     group="Spatial Math",
-    doc="Compute the cross product of two 6D screw vectors.",
+    doc="""Return the spatial cross product of ``a`` and ``b``, treating both as twists.
+
+    The operation is antisymmetric: ``spatial_cross(a, b) == -spatial_cross(b, a)``. It computes
+    velocity-product terms used in spatial-acceleration calculations for moving coordinate frames.
+    Use :func:`~warp.spatial_cross_dual` when ``b`` is a wrench. Both arguments must have the same
+    scalar type.
+
+    Args:
+        a: First spatial vector, interpreted as a twist.
+        b: Second spatial vector, interpreted as a twist.
+
+    Returns:
+        The spatial vector ``(w_a x w_b, v_a x w_b + w_a x v_b)``, where
+        ``a = (w_a, v_a)`` and ``b = (w_b, v_b)``.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def compute_spatial_cross(
+                a: wp.array[wp.spatial_vector],
+                b: wp.array[wp.spatial_vector],
+                out: wp.array[wp.spatial_vector],
+            ):
+                i = wp.tid()
+                out[i] = wp.spatial_cross(a[i], b[i])
+
+            a = wp.array([wp.spatial_vector(0.0, 0.0, 1.0, 0.0, 0.0, 0.0)], dtype=wp.spatial_vector)
+            b = wp.array([wp.spatial_vector(0.0, 0.0, 0.0, 1.0, 0.0, 0.0)], dtype=wp.spatial_vector)
+            out = wp.empty(1, dtype=wp.spatial_vector)
+            wp.launch(compute_spatial_cross, dim=1, inputs=[a, b], outputs=[out])
+            print(out.numpy())
+
+        .. testoutput::
+
+            [[0. 0. 0. 0. 1. 0.]]""",
 )
 add_builtin(
     "spatial_cross_dual",
     input_types={"a": vector(length=6, dtype=Float), "b": vector(length=6, dtype=Float)},
     value_func=sametypes_create_value_func(vector(length=6, dtype=Float)),
     group="Spatial Math",
-    doc="Compute the dual cross product of two 6D screw vectors.",
+    doc="""Return the spatial force cross product of twist ``a`` and wrench ``b``.
+
+    This is the wrench counterpart of :func:`~warp.spatial_cross`: the second operand and result are
+    both wrenches. "Dual" refers to the wrench-twist dot product, which computes mechanical power.
+    The operation is not antisymmetric, so its operands are not interchangeable. Both arguments
+    must have the same scalar type.
+
+    Args:
+        a: Twist represented as a spatial vector.
+        b: Wrench represented as a spatial vector.
+
+    Returns:
+        The wrench ``(w x n + v x f, w x f)``, where ``a = (w, v)`` and ``b = (n, f)``.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def compute_spatial_cross_dual(
+                twists: wp.array[wp.spatial_vector],
+                wrenches: wp.array[wp.spatial_vector],
+                out: wp.array[wp.spatial_vector],
+            ):
+                i = wp.tid()
+                out[i] = wp.spatial_cross_dual(twists[i], wrenches[i])
+
+            twists = wp.array([wp.spatial_vector(0.0, 0.0, 1.0, 1.0, 0.0, 0.0)], dtype=wp.spatial_vector)
+            wrenches = wp.array([wp.spatial_vector(0.0, 0.0, 0.0, 0.0, 1.0, 0.0)], dtype=wp.spatial_vector)
+            out = wp.empty(1, dtype=wp.spatial_vector)
+            wp.launch(compute_spatial_cross_dual, dim=1, inputs=[twists, wrenches], outputs=[out])
+            print(out.numpy())
+
+        .. testoutput::
+
+            [[ 0.  0.  1. -1.  0.  0.]]""",
 )
 
 add_builtin(
@@ -2302,7 +2839,43 @@ add_builtin(
         else vector(length=3, dtype=arg_types["svec"]._wp_scalar_type_)
     ),
     group="Spatial Math",
-    doc="Extract the top (first) part of a 6D screw vector.",
+    doc="""Return the angular velocity or torque stored in ``svec``.
+
+    See :func:`~warp.spatial_bottom` to access the linear velocity or force stored in components 3
+    through 5.
+
+    Args:
+        svec: Spatial vector to read from.
+
+    Returns:
+        The angular velocity or torque from components 0 through 2 of ``svec``, as a 3D vector of
+        the same scalar type.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def split(
+                twists: wp.array[wp.spatial_vector],
+                angular: wp.array[wp.vec3],
+                linear: wp.array[wp.vec3],
+            ):
+                i = wp.tid()
+                angular[i] = wp.spatial_top(twists[i])
+                linear[i] = wp.spatial_bottom(twists[i])
+
+            twists = wp.array([wp.spatial_vector(0.0, 0.0, 2.0, 1.0, 0.0, 0.0)], dtype=wp.spatial_vector)
+            angular = wp.empty(1, dtype=wp.vec3)
+            linear = wp.empty(1, dtype=wp.vec3)
+            wp.launch(split, dim=1, inputs=[twists], outputs=[angular, linear])
+            print(angular.numpy())
+            print(linear.numpy())
+
+        .. testoutput::
+
+            [[0. 0. 2.]]
+            [[1. 0. 0.]]""",
 )
 add_builtin(
     "spatial_bottom",
@@ -2313,7 +2886,18 @@ add_builtin(
         else vector(length=3, dtype=arg_types["svec"]._wp_scalar_type_)
     ),
     group="Spatial Math",
-    doc="Extract the bottom (second) part of a 6D screw vector.",
+    doc="""Return the linear velocity or force stored in ``svec``.
+
+    See :func:`~warp.spatial_top` to access the angular velocity or torque stored in components 0
+    through 2.
+
+    Args:
+        svec: Spatial vector to read from.
+
+    Returns:
+        Components 3 through 5 of ``svec``, as a 3D vector of the same scalar type.
+
+    See :func:`~warp.spatial_top` for a usage example.""",
 )
 
 # ------------------
@@ -3334,26 +3918,59 @@ add_builtin(
     variadic=False,
     doc="""Load a tile from a global memory array.
 
-    This method will cooperatively load a tile from global memory using all threads in the block.
+    This is a cooperative operation: the threads of the block divide the copy between
+    them, so every thread must reach the call. Tile element ``(i, j, ...)`` is read from
+    ``a[offset[0] + i, offset[1] + j, ...]``.
+
+    With ``"shared"`` storage, every thread in the block can access every tile element.
+    With ``"register"`` storage, the tile elements are distributed across the block's
+    threads. ``shape``, ``storage``, ``bounds_check``, and ``aligned`` must be compile-time
+    constants.
 
     Args:
         a: The source array in global memory
         shape: Shape of the tile to load, must have the same number of dimensions as ``a``
-        offset: Offset in the source array to begin reading from (optional)
-        storage: The storage location for the tile: ``"register"`` for registers or
-            ``"shared"`` for shared memory.
-        bounds_check: Needed for unaligned tiles, but can disable for memory-aligned tiles for faster load times
-        aligned: If True, skip runtime alignment checks for vectorized loads (shared memory,
-            2D+ tiles only). Has no effect for 1D tiles or register storage. Use when you
-            guarantee that: (1) the base address at the tile offset is 16-byte aligned,
-            (2) the array is contiguous (dense row-major strides), (3) all outer-dimension
-            strides are multiples of 16 bytes, and (4) the tile fits entirely within array
-            bounds. Address-alignment violations trap unconditionally (even in release
-            builds). Bounds and contiguity violations trigger debug-only asserts; in
-            release builds they cause silent data corruption.
+        offset: Offset in the source array to begin reading from, one value per dimension
+            of ``a``; may be a runtime value.
+        storage: The storage location for the tile: ``"register"`` for registers
+            or ``"shared"`` for shared memory.
+        bounds_check: Whether to treat a source coordinate at or past the array's upper
+            extent on any axis as out of bounds; such elements read as zero. When False,
+            all source coordinates must be in bounds.
+        aligned: If True, the caller guarantees that the source address at ``offset`` is
+            16-byte aligned and that the load meets the contiguity, shape, stride, and
+            bounds requirements in :ref:`vectorized_tile_loads`. This optimization
+            applies only to 2D or higher shared-memory tiles.
 
     Returns:
-        A tile with shape as specified and data type the same as the source array.""",
+        A tile with shape as specified and data type the same as the source array.
+
+    Example:
+
+        .. testcode::
+
+            TILE_M, TILE_N = 4, 4
+            TILE_THREADS = 8
+
+            @wp.kernel
+            def copy_tiles(a: wp.array2d[float], b: wp.array2d[float]):
+                i, j = wp.tid()
+                # The rightmost tiles extend past the array bounds; those elements read as zero
+                t = wp.tile_load(a, shape=(TILE_M, TILE_N), offset=(i * TILE_M, j * TILE_N))
+                wp.tile_store(b, t, offset=(i * TILE_M, j * TILE_N))
+
+            a = wp.array(np.arange(1, 21, dtype=np.float32).reshape(4, 5), dtype=float)
+            b = wp.zeros((4, 8), dtype=float)
+            wp.launch_tiled(copy_tiles, dim=(1, 2), inputs=[a], outputs=[b], block_dim=TILE_THREADS)
+            print(b.numpy())
+
+        .. testoutput::
+
+            [[ 1.  2.  3.  4.  5.  0.  0.  0.]
+             [ 6.  7.  8.  9. 10.  0.  0.  0.]
+             [11. 12. 13. 14. 15.  0.  0.  0.]
+             [16. 17. 18. 19. 20.  0.  0.  0.]]
+    """,
     group="Tile Primitives",
     export=False,
 )
@@ -3372,7 +3989,11 @@ add_builtin(
     value_func=tile_load_tuple_value_func,
     dispatch_func=tile_load_tuple_dispatch_func,
     defaults={"offset": None, "storage": "register", "bounds_check": True, "aligned": False},
-    doc="""Load a tile from a global memory array.""",
+    doc="""Load a 1D tile from a 1D global memory array.
+
+    Overload for a scalar ``shape`` and ``offset``, equivalent to passing one-element
+    tuples. For the full contract and a usage example, see the overload that takes
+    tuple-valued ``shape`` and ``offset`` arguments.""",
     group="Tile Primitives",
     export=False,
 )
@@ -3464,61 +4085,60 @@ add_builtin(
     dispatch_func=tile_load_indexed_tuple_dispatch_func,
     defaults={"offset": None, "axis": 0, "storage": "register"},
     variadic=False,
-    doc="""Load a tile from a global memory array, with loads along a specified axis mapped according to a 1D tile of indices.
+    doc="""Load a tile from a global memory array, gathering along one axis through a 1D tile of indices.
+
+    Cooperative operation: every thread of the block must reach the call. Tile element
+    ``c`` is read from ``a`` at ``offset[d] + c[d]`` along every dimension ``d`` other
+    than ``axis``, and at ``offset[axis] + indices[c[axis]]`` along ``axis``. Every
+    coordinate is checked against both the lower and upper array bounds: an element whose
+    source index is negative or past the end of ``a`` reads as zero, so ``-1`` can be used
+    as a padding sentinel without a physical zero row.
+
+    ``shape``, ``axis``, and ``storage`` must be compile-time constants. In a backward
+    pass the adjoint of the returned tile is atomically accumulated into ``a.grad`` at
+    the same gathered locations.
 
     Args:
         a: The source array in global memory
-        indices: A 1D tile of integer indices mapping to elements in ``a``.
-        shape: Shape of the tile to load, must have the same number of dimensions as ``a``, and along ``axis``, it must have the same number of elements as the ``indices`` tile.
-        offset: Offset in the source array to begin reading from (optional)
-        axis: Axis of ``a`` that indices refer to
-        storage: The storage location for the tile: ``"register"`` for registers or ``"shared"`` for shared memory.
+        indices: A 1D tile of ``int32`` indices into ``a`` along ``axis``. It must hold
+            exactly ``shape[axis]`` values and is always placed in shared memory (a
+            register tile passed here is promoted).
+        shape: Shape of the tile to load, must have the same number of dimensions as ``a``,
+            and along ``axis`` the same number of elements as the ``indices`` tile
+        offset: Offset in the source array to begin reading from, one value per dimension
+            of ``a``; the entry for ``axis`` is added to each index; may be a runtime value.
+        axis: Axis of ``a`` that the indices refer to
+        storage: The storage location for the tile: ``"register"`` for registers
+            or ``"shared"`` for shared memory.
 
     Returns:
         A tile with shape as specified and data type the same as the source array.
 
     Example:
 
-        This example shows how to select and store the even indexed rows from a 2D array.
+        This example gathers the even-numbered rows of a 2D array.
 
-        .. code-block:: python
+        .. testcode::
 
-            TILE_M = wp.constant(2)
-            TILE_N = wp.constant(2)
-            HALF_M = wp.constant(TILE_M // 2)
-            HALF_N = wp.constant(TILE_N // 2)
+            TILE_M, TILE_N = 2, 4
+            TILE_THREADS = 4
 
             @wp.kernel
-            def compute(x: wp.array2d[float], y: wp.array2d[float]):
-                i, j = wp.tid()
+            def gather_even_rows(x: wp.array2d[float], y: wp.array2d[float]):
+                # gather rows 0, 2, 4, ... of `x`
+                rows = wp.tile_arange(TILE_M, dtype=int) * 2
+                t = wp.tile_load_indexed(x, indices=rows, shape=(TILE_M, TILE_N), axis=0)
+                wp.tile_store(y, t)
 
-                evens = wp.tile_arange(HALF_M, dtype=int, storage="shared") * 2
-
-                t0 = wp.tile_load_indexed(x, indices=evens, shape=(HALF_M, TILE_N), offset=(i*TILE_M, j*TILE_N), axis=0, storage="register")
-                wp.tile_store(y, t0, offset=(i*HALF_M, j*TILE_N))
-
-            M = TILE_M * 2
-            N = TILE_N * 2
-
-            arr = np.arange(M * N).reshape(M, N)
-
-            x = wp.array(arr, dtype=float)
-            y = wp.zeros((M // 2, N), dtype=float)
-
-            wp.launch_tiled(compute, dim=[2,2], inputs=[x], outputs=[y], block_dim=32, device=device)
-
-            print(x.numpy())
+            x = wp.array(np.arange(1, 17, dtype=np.float32).reshape(4, 4), dtype=float)
+            y = wp.zeros((2, 4), dtype=float)
+            wp.launch_tiled(gather_even_rows, dim=1, inputs=[x], outputs=[y], block_dim=TILE_THREADS)
             print(y.numpy())
 
-        .. code-block:: text
+        .. testoutput::
 
-            [[ 0.  1.  2.  3.]
-             [ 4.  5.  6.  7.]
-             [ 8.  9. 10. 11.]
-             12. 13. 14. 15.]]
-
-            [[ 0.  1.  2.  3.]
-             [ 8.  9. 10. 11.]]
+            [[ 1.  2.  3.  4.]
+             [ 9. 10. 11. 12.]]
     """,
     group="Tile Primitives",
     export=False,
@@ -3604,21 +4224,55 @@ add_builtin(
     skip_replay=True,
     doc="""Store a tile to a global memory array.
 
-    This method will cooperatively store a tile to global memory using all threads in the block.
+    This is a cooperative operation: the threads of the block divide the copy between
+    them, so every thread must reach the call. Element ``(i, j, ...)`` of ``t`` is written
+    to ``a[offset[0] + i, offset[1] + j, ...]``. No barrier is issued by the store itself.
+
+    The elements of ``a`` covered by the tile are overwritten. ``bounds_check`` and
+    ``aligned`` must be compile-time constants. The backward pass accumulates gradients
+    from the written region into the adjoint of ``t``, then clears those entries from
+    ``a.grad``.
 
     Args:
         a: The destination array in global memory
-        t: The source tile to store data from, must have the same data type and number of dimensions as the destination array
-        offset: Offset in the destination array (optional)
-        bounds_check: Needed for unaligned tiles, but can disable for memory-aligned tiles for faster write times.
-        aligned: If True, skip runtime alignment checks for vectorized stores (shared memory,
-            2D+ tiles only). Has no effect for 1D tiles or register storage. Use when you
-            guarantee that: (1) the base address at the tile offset is 16-byte aligned,
-            (2) the array is contiguous (dense row-major strides), (3) all outer-dimension
-            strides are multiples of 16 bytes, and (4) the tile fits entirely within array
-            bounds. Address-alignment violations trap unconditionally (even in release
-            builds). Bounds and contiguity violations trigger debug-only asserts; in
-            release builds they cause silent data corruption.""",
+        t: The source tile to store data from, must have the same data type and number of
+            dimensions as the destination array
+        offset: Offset in the destination array, one value per dimension of ``a``; may be
+            a runtime value.
+        bounds_check: Whether to treat a destination coordinate at or past the array's
+            upper extent on any axis as out of bounds; such writes are skipped. When
+            False, all destination coordinates must be in bounds.
+        aligned: If True, the caller guarantees that the destination address at ``offset``
+            is 16-byte aligned and that the store meets the contiguity, shape, stride, and
+            bounds requirements in
+            :ref:`vectorized tile loads and stores <vectorized_tile_loads>`. This
+            optimization applies only to 2D or higher shared-memory tiles.
+
+    Example:
+
+        .. testcode::
+
+            TILE_M, TILE_N = 2, 2
+            TILE_THREADS = 2
+
+            @wp.kernel
+            def scale_tiles(a: wp.array2d[float], b: wp.array2d[float]):
+                i, j = wp.tid()
+                t = wp.tile_load(a, shape=(TILE_M, TILE_N), offset=(i * TILE_M, j * TILE_N))
+                # `b` is smaller than `a`, so elements that fall outside it are dropped
+                wp.tile_store(b, t * 2.0, offset=(i * TILE_M, j * TILE_N))
+
+            a = wp.array(np.arange(1, 17, dtype=np.float32).reshape(4, 4), dtype=float)
+            b = wp.zeros((3, 3), dtype=float)
+            wp.launch_tiled(scale_tiles, dim=(2, 2), inputs=[a], outputs=[b], block_dim=TILE_THREADS)
+            print(b.numpy())
+
+        .. testoutput::
+
+            [[ 2.  4.  6.]
+             [10. 12. 14.]
+             [18. 20. 22.]]
+    """,
     group="Tile Primitives",
     export=False,
 )
@@ -3638,7 +4292,11 @@ add_builtin(
     defaults={"offset": None, "bounds_check": True, "aligned": False},
     variadic=False,
     skip_replay=True,
-    doc="""Store a tile to a global memory array.""",
+    doc="""Store a 1D tile to a 1D global memory array.
+
+    Overload for a scalar ``offset``, equivalent to passing a one-element tuple. For
+    the full contract and a usage example, see the overload that takes a tuple-valued
+    ``offset`` argument.""",
     group="Tile Primitives",
     export=False,
 )
@@ -3726,64 +4384,60 @@ add_builtin(
     defaults={"offset": None, "axis": 0},
     variadic=False,
     skip_replay=True,
-    doc="""Store a tile to a global memory array, with storage along a specified axis mapped according to a 1D tile of indices.
+    doc="""Store a tile to a global memory array, scattering along one axis through a 1D tile of indices.
+
+    Cooperative operation: every thread of the block must reach the call. Element ``c``
+    of ``t`` is written to ``a`` at ``offset[d] + c[d]`` along every dimension ``d``
+    other than ``axis``, and at
+    ``offset[axis] + indices[c[axis]]`` along ``axis``. Every coordinate is checked
+    against both the lower and upper array bounds: an element whose destination index is
+    negative or past the end of ``a`` is skipped, so ``-1`` can be used to discard a
+    slice.
+
+    The selected elements of ``a`` are overwritten. Each destination must be selected by
+    at most one element — duplicate indices race. ``axis`` must be a compile-time
+    constant. The backward pass accumulates gradients at the written destinations into
+    the adjoint of ``t``, then clears those entries from ``a.grad``.
 
     Args:
         a: The destination array in global memory
-        indices: A 1D tile of integer indices mapping to elements in ``a``.
-        t: The source tile to store data from, must have the same data type and number of dimensions as the destination array, and along ``axis``, it must have the same number of elements as the ``indices`` tile.
-        offset: Offset in the destination array (optional)
-        axis: Axis of ``a`` that indices refer to.
+        indices: A 1D tile of ``int32`` indices into ``a`` along ``axis``. It must hold
+            exactly ``t.shape[axis]`` values and is always placed in shared memory (a
+            register tile passed here is promoted).
+        t: The source tile to store data from, must have the same data type and number of
+            dimensions as the destination array, and along ``axis`` the same number of
+            elements as the ``indices`` tile
+        offset: Offset in the destination array, one value per dimension of ``a``. The
+            entry for ``axis`` is added to each index; may be a runtime value.
+        axis: Axis of ``a`` that the indices refer to
 
     Example:
 
-        This example shows how to map tile rows to the even rows of a 2D array.
+        This example writes the rows of a tile to the even-numbered rows of a 2D array.
 
-        .. code-block:: python
+        .. testcode::
 
-            TILE_M = wp.constant(2)
-            TILE_N = wp.constant(2)
-            TWO_M = wp.constant(TILE_M * 2)
-            TWO_N = wp.constant(TILE_N * 2)
+            TILE_M, TILE_N = 2, 4
+            TILE_THREADS = 4
 
             @wp.kernel
-            def compute(x: wp.array2d[float], y: wp.array2d[float]):
-                i, j = wp.tid()
+            def scatter_even_rows(x: wp.array2d[float], y: wp.array2d[float]):
+                t = wp.tile_load(x, shape=(TILE_M, TILE_N))
+                # tile row k is written to row 2*k of `y`
+                rows = wp.tile_arange(TILE_M, dtype=int) * 2
+                wp.tile_store_indexed(y, indices=rows, t=t, axis=0)
 
-                t = wp.tile_load(x, shape=(TILE_M, TILE_N), offset=(i*TILE_M, j*TILE_N), storage="register")
-
-                evens_M = wp.tile_arange(TILE_M, dtype=int, storage="shared") * 2
-
-                wp.tile_store_indexed(y, indices=evens_M, t=t, offset=(i*TWO_M, j*TILE_N), axis=0)
-
-            M = TILE_M * 2
-            N = TILE_N * 2
-
-            arr = np.arange(M * N, dtype=float).reshape(M, N)
-
-            x = wp.array(arr, dtype=float, requires_grad=True, device=device)
-            y = wp.zeros((M * 2, N), dtype=float, requires_grad=True, device=device)
-
-            wp.launch_tiled(compute, dim=[2,2], inputs=[x], outputs=[y], block_dim=32, device=device)
-
-            print(x.numpy())
+            x = wp.array(np.arange(1, 9, dtype=np.float32).reshape(2, 4), dtype=float)
+            y = wp.zeros((4, 4), dtype=float)
+            wp.launch_tiled(scatter_even_rows, dim=1, inputs=[x], outputs=[y], block_dim=TILE_THREADS)
             print(y.numpy())
 
-        .. code-block:: text
+        .. testoutput::
 
-            [[ 0.  1.  2.  3.]
-                [ 4.  5.  6.  7.]
-                [ 8.  9. 10. 11.]
-                [12. 13. 14. 15.]]
-
-            [[ 0.  1.  2.  3.]
-                [ 0.  0.  0.  0.]
-                [ 4.  5.  6.  7.]
-                [ 0.  0.  0.  0.]
-                [ 8.  9. 10. 11.]
-                [ 0.  0.  0.  0.]
-                [12. 13. 14. 15.]
-                [ 0.  0.  0.  0.]]
+            [[1. 2. 3. 4.]
+             [0. 0. 0. 0.]
+             [5. 6. 7. 8.]
+             [0. 0. 0. 0.]]
     """,
     group="Tile Primitives",
     export=False,
@@ -3873,18 +4527,69 @@ add_builtin(
     defaults={"offset": None, "bounds_check": True},
     variadic=False,
     skip_replay=True,
-    doc="""Atomically add a tile onto the array ``a``.
+    doc="""Atomically add a tile onto the array ``a`` and return the values it replaced.
 
-    Each element is updated atomically.
+    This is a cooperative operation: the threads of the block divide the work between
+    them, so every thread must reach the call. Element ``(i, j, ...)`` of ``t`` is added
+    atomically to ``a[offset[0] + i, offset[1] + j, ...]`` and the destination's previous
+    value is placed in the returned tile. No barrier is issued by the call itself.
+
+    Only the individual element updates are atomic. Concurrent updates from other threads
+    or blocks are interleaved in an unspecified order, so the returned values — and, for
+    floating-point types, the rounding of the accumulated result — are not reproducible.
+    For Warp struct elements, only fields whose underlying scalar type supports atomic
+    addition are updated. Boolean, narrow-integer, array, and other non-atomic fields
+    remain unchanged, although their previous values are still present in the returned
+    tile.
+
+    In a backward pass the gradients of the updated region of ``a`` are accumulated into
+    the adjoint of ``t`` and left in place in ``a.grad``; the adjoint of the returned tile
+    is not propagated.
 
     Args:
-        a: Array in global memory, should have the same ``dtype`` as the input tile
+        a: Array in global memory, must have the same ``dtype`` as the input tile. Its
+            underlying scalar type must be one that supports atomic addition: ``int32``,
+            ``uint32``, ``int64``, ``uint64``, ``float16``, ``bfloat16``, ``float32``, or
+            ``float64``.
         t: Source tile to add to the destination array
-        offset: Offset in the destination array (optional)
-        bounds_check: Needed for unaligned tiles, but can disable for memory-aligned tiles for faster write times
+        offset: Offset in the destination array, one value per dimension of ``a``; may be
+            a runtime value.
+        bounds_check: Whether to treat a destination coordinate at or past the array's
+            upper extent on any axis as out of bounds; such updates are skipped. Must be
+            a compile-time constant.
 
     Returns:
-        A tile with the same dimensions and data type as the source tile, holding the original value of the destination elements.""",
+        A tile with the same shape, data type and storage as ``t``, holding the value each
+        destination element had before the addition. Passing a shared ``t`` therefore
+        allocates a second shared-memory tile for the result.
+
+    Example:
+
+        .. testcode::
+
+            TILE_THREADS = 2
+
+            @wp.kernel
+            def accumulate(x: wp.array2d[float], totals: wp.array2d[float], previous: wp.array2d[float]):
+                t = wp.tile_load(x, shape=(2, 2))
+                # `p` holds what `totals` contained before the addition
+                p = wp.tile_atomic_add(totals, t)
+                wp.tile_store(previous, p)
+
+            x = wp.array(np.arange(1, 5, dtype=np.float32).reshape(2, 2), dtype=float)
+            totals = wp.array(np.arange(4, dtype=np.float32).reshape(2, 2), dtype=float)
+            previous = wp.zeros((2, 2), dtype=float)
+            wp.launch_tiled(accumulate, dim=1, inputs=[x], outputs=[totals, previous], block_dim=TILE_THREADS)
+            print(totals.numpy())
+            print(previous.numpy())
+
+        .. testoutput::
+
+            [[1. 3.]
+             [5. 7.]]
+            [[0. 1.]
+             [2. 3.]]
+    """,
     group="Tile Primitives",
     export=False,
 )
@@ -3903,7 +4608,11 @@ add_builtin(
     defaults={"offset": None, "bounds_check": True},
     variadic=False,
     skip_replay=True,
-    doc="""Atomically add a tile onto the array ``a``.""",
+    doc="""Atomically add a 1D tile onto the 1D array ``a`` and return the values it replaced.
+
+    Overload for a scalar ``offset``, equivalent to passing a one-element tuple. For
+    the full contract and a usage example, see the overload that takes a tuple-valued
+    ``offset`` argument.""",
     group="Tile Primitives",
     export=False,
 )
@@ -3993,56 +4702,83 @@ add_builtin(
     defaults={"offset": None, "axis": 0},
     variadic=False,
     skip_replay=True,
-    doc="""Atomically add a tile to a global memory array, with storage along a specified axis mapped according to a 1D tile of indices.
+    doc="""Atomically add a tile onto a global memory array, scattering along one axis through a 1D tile of indices.
+
+    Cooperative operation: every thread of the block must reach the call. Element ``c``
+    of ``t`` is added atomically to ``a`` at ``offset[d] + c[d]`` along every dimension
+    ``d`` other than ``axis``, and at
+    ``offset[axis] + indices[c[axis]]`` along ``axis``, and the destination's previous
+    value is placed in the returned tile. Every coordinate is checked against both the
+    lower and upper array bounds: an element whose destination index is negative or past
+    the end of ``a`` is skipped.
+
+    Repeated indices are allowed and accumulate, which is what makes this useful for
+    segmented or row-wise reductions. Only the individual element updates are atomic.
+    When repeated indices or concurrent updates target the same destination, their order
+    is unspecified. In those cases, the returned values — and, for floating-point types,
+    the rounding of the accumulated result — are not reproducible.
+
+    For Warp struct elements, only fields whose underlying scalar type supports atomic
+    addition are updated. Boolean, narrow-integer, array, and other non-atomic fields
+    remain unchanged, although their previous values are still present in the returned
+    tile.
+
+    In a backward pass the gradients of the updated elements of ``a`` are accumulated
+    into the adjoint of ``t`` and left in place in ``a.grad``; the adjoint of the returned
+    tile is not propagated.
 
     Args:
-        a: The destination array in global memory
-        indices: A 1D tile of integer indices mapping to elements in ``a``.
-        t: The source tile to extract data from, must have the same data type and number of dimensions as the destination array, and along ``axis``, it must have the same number of elements as the ``indices`` tile.
-        offset: Offset in the destination array (optional)
-        axis: Axis of ``a`` that indices refer to.
+        a: The destination array in global memory, must have the same ``dtype`` as the
+            input tile. Its underlying scalar type must be one that supports atomic
+            addition: ``int32``, ``uint32``, ``int64``, ``uint64``, ``float16``,
+            ``bfloat16``, ``float32``, or ``float64``.
+        indices: A 1D tile of ``int32`` indices into ``a`` along ``axis``. It must hold
+            exactly ``t.shape[axis]`` values and is always placed in shared memory (a
+            register tile passed here is promoted).
+        t: The source tile to add to the destination array, must have the same data type
+            and number of dimensions as the destination array, and along ``axis`` the same
+            number of elements as the ``indices`` tile
+        offset: Offset in the destination array, one value per dimension of ``a``. The
+            entry for ``axis`` is added to each index; may be a runtime value.
+        axis: Axis of ``a`` that the indices refer to. Must be a compile-time constant.
+
+    Returns:
+        A tile with the same shape, data type and storage as ``t``, holding the value each
+        updated destination element had before the addition. Passing a shared ``t``
+        therefore allocates a second shared-memory tile for the result.
 
     Example:
 
-        This example shows how to compute a blocked, row-wise reduction.
+        This example accumulates the rows of a tile into the even-numbered rows of a 2D array.
 
-        .. code-block:: python
+        .. testcode::
 
-            TILE_M = wp.constant(2)
-            TILE_N = wp.constant(2)
+            TILE_M, TILE_N = 2, 4
+            TILE_THREADS = 4
 
             @wp.kernel
-            def tile_atomic_add_indexed(x: wp.array2d[float], y: wp.array2d[float]):
-                i, j = wp.tid()
+            def accumulate_even_rows(x: wp.array2d[float], y: wp.array2d[float], previous: wp.array2d[float]):
+                t = wp.tile_load(x, shape=(TILE_M, TILE_N))
+                # tile row k accumulates into row 2*k of `y`
+                rows = wp.tile_arange(TILE_M, dtype=int) * 2
+                p = wp.tile_atomic_add_indexed(y, indices=rows, t=t, axis=0)
+                wp.tile_store(previous, p)
 
-                t = wp.tile_load(x, shape=(TILE_M, TILE_N), offset=(i*TILE_M, j*TILE_N), storage="register")
-
-                zeros = wp.tile_zeros(TILE_M, dtype=int, storage="shared")
-
-                wp.tile_atomic_add_indexed(y, indices=zeros, t=t, offset=(i, j*TILE_N), axis=0)
-
-            M = TILE_M * 2
-            N = TILE_N * 2
-
-            arr = np.arange(M * N, dtype=float).reshape(M, N)
-
-            x = wp.array(arr, dtype=float, requires_grad=True, device=device)
-            y = wp.zeros((2, N), dtype=float, requires_grad=True, device=device)
-
-            wp.launch_tiled(tile_atomic_add_indexed, dim=[2,2], inputs=[x], outputs=[y], block_dim=32, device=device)
-
-            print(x.numpy())
+            x = wp.array(np.arange(1, 9, dtype=np.float32).reshape(2, 4), dtype=float)
+            y = wp.array(np.arange(16, dtype=np.float32).reshape(4, 4), dtype=float)
+            previous = wp.zeros((2, 4), dtype=float)
+            wp.launch_tiled(accumulate_even_rows, dim=1, inputs=[x], outputs=[y, previous], block_dim=TILE_THREADS)
             print(y.numpy())
+            print(previous.numpy())
 
-        .. code-block:: text
+        .. testoutput::
 
+            [[ 1.  3.  5.  7.]
+             [ 4.  5.  6.  7.]
+             [13. 15. 17. 19.]
+             [12. 13. 14. 15.]]
             [[ 0.  1.  2.  3.]
-                [ 4.  5.  6.  7.]
-                [ 8.  9. 10. 11.]
-                [12. 13. 14. 15.]]
-
-            [[ 4.  6.  8. 10.]
-                [20. 22. 24. 26.]]
+             [ 8.  9. 10. 11.]]
     """,
     group="Tile Primitives",
     export=False,
@@ -4412,6 +5148,10 @@ def tile_squeeze_value_func(arg_types, arg_values):
         if not isinstance(axis, Sequence):
             # promote to tuple
             axis = (axis,)
+
+        for a in axis:
+            if a < -ndim or a >= ndim:
+                raise ValueError(f"tile_squeeze() axis {a} is out of bounds for tile with {ndim} dimensions")
 
         # promote negative indices to their positive equivalents
         axis = tuple([a if a >= 0 else a + ndim for a in axis])
@@ -5206,44 +5946,56 @@ add_builtin(
     defaults={"atomic": True},
     doc="""Scatter-add a per-thread value into a shared-memory tile.
 
-    Cooperative operation -- all threads in the block must call this function.
-    Each thread whose ``has_value`` is ``True`` adds ``value`` at index ``i``.
+    This is a cooperative operation, so every thread in the block must call it. Threads
+    with ``has_value=True`` add ``value`` at index ``i``; threads with nothing to add pass
+    ``has_value=False``. Threads that collide on an index are applied in an unspecified
+    order, so for floating-point values the rounding of the accumulated result is not
+    reproducible. The updates are available to subsequent tile operations when the call
+    returns.
 
-    A synchronization barrier is included so the updated values are visible to
-    all threads after the call returns.
+    Because the values come from individual threads, the result depends on
+    ``block_dim`` and differs on CPU, which runs a single lane per block (see
+    :ref:`cpu_tile_semantics`). In a backward pass the adjoint of ``value`` picks up the
+    tile's gradient at ``i``.
+
+    For Warp struct elements, only fields whose underlying scalar type supports addition
+    are accumulated. Boolean, narrow-integer, array, and other non-accumulating fields
+    remain unchanged.
 
     Args:
-        a: A shared-memory tile to scatter-add into.
-        i: Index of the element to add to.
+        a: Tile to scatter-add into. It is always placed in shared memory; a register tile
+            passed here is promoted.
+        i: Index of the element to add to. Must be valid when ``has_value`` is ``True``.
         value: The value to add (must match the tile's dtype).
         has_value: Whether this thread should perform the add.
-        atomic: If True, use atomic add for safe concurrent writes.
-            Set to False when indices are guaranteed unique across threads
-            (e.g., lane-parallel writes) for better performance.
+        atomic: If True, accumulate with an atomic add. Pass False — a compile-time
+            constant — only when you can guarantee that no two threads of the block target
+            the same index in this call: a plain read-modify-write is then used and
+            conflicting updates are lost.
 
     Example:
 
-        .. code-block:: python
+        .. testcode::
+            :skipif: wp.get_cuda_device_count() == 0
 
             @wp.kernel
-            def histogram(data: wp.array[float], out: wp.array[float]):
-
-                bins = wp.tile_zeros(dtype=float, shape=4, storage="shared")
-                _tile, i = wp.tid()
-                # Bin values in [0, 8) into 4 bins of width 2
+            def histogram(data: wp.array[float], bins_out: wp.array[float]):
+                _block, i = wp.tid()
+                bins = wp.tile_zeros(shape=4, dtype=float, storage="shared")
+                # bin values in [0, 8) into four bins of width 2
                 b = int(data[i] / 2.0)
                 wp.tile_scatter_add(bins, b, 1.0, True)
-                wp.tile_store(out, bins, offset=0)
+                wp.tile_store(bins_out, bins)
 
-            data = wp.array([0.5, 1.0, 2.5, 3.0, 4.5, 5.0, 6.5, 7.0], dtype=float)
-            output = wp.zeros(4, dtype=float)
-            wp.launch_tiled(histogram, dim=[1], inputs=[data, output], block_dim=8)
+            data = wp.array([0.5, 2.0, 3.0, 4.0, 4.5, 5.5, 6.0, 7.0], dtype=float)
+            bins_out = wp.zeros(4, dtype=float)
+            wp.launch_tiled(histogram, dim=1, inputs=[data], outputs=[bins_out], block_dim=8)
+            print(bins_out.numpy())
 
-            print(output.numpy())
+        .. testoutput::
 
-        .. code-block:: text
-
-            [2. 2. 2. 2.]""",
+            [1. 2. 3. 2.]
+    """,
     group="Tile Primitives",
     export=False,
 )
@@ -5262,6 +6014,10 @@ add_builtin(
     defaults={"atomic": True},
     group="Tile Primitives",
     export=False,
+    doc="""Scatter-add a per-thread value into a 2D shared-memory tile.
+
+    Overload taking one index per tile dimension. For the full contract and a usage
+    example, see the 1D overload that takes only ``i`` as its index.""",
 )
 add_builtin(
     "tile_scatter_add",
@@ -5279,6 +6035,10 @@ add_builtin(
     defaults={"atomic": True},
     group="Tile Primitives",
     export=False,
+    doc="""Scatter-add a per-thread value into a 3D shared-memory tile.
+
+    Overload taking one index per tile dimension. For the full contract and a usage
+    example, see the 1D overload that takes only ``i`` as its index.""",
 )
 add_builtin(
     "tile_scatter_add",
@@ -5297,6 +6057,10 @@ add_builtin(
     defaults={"atomic": True},
     group="Tile Primitives",
     export=False,
+    doc="""Scatter-add a per-thread value into a 4D shared-memory tile.
+
+    Overload taking one index per tile dimension. For the full contract and a usage
+    example, see the 1D overload that takes only ``i`` as its index.""",
 )
 
 
@@ -5329,38 +6093,50 @@ add_builtin(
     "tile_scatter_masked",
     input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "value": Any, "has_value": builtins.bool},
     value_func=tile_scatter_masked_value_func,
-    doc="""Write a value into a shared-memory tile from the calling thread.
+    doc="""Write a per-thread value into a shared-memory tile.
 
-    All threads in the block must call this function cooperatively.
-    Each thread whose ``has_value`` is ``True`` writes ``value`` at the
-    specified index.  A synchronization barrier is included so the written
-    values are visible to all threads after the call returns.
+    This is a cooperative operation, so every thread in the block must call it. Threads
+    with ``has_value=True`` write ``value`` at index ``i``; threads with nothing to write
+    pass ``has_value=False``. The writes are available to subsequent tile operations when
+    the call returns.
 
-    Each index should be written by at most one thread per call.  If multiple
-    threads write to the same index, the result is undefined (data race in the
-    forward pass, incorrect gradients in the backward pass).
+    Each index must be written by at most one thread per call; conflicting writes are
+    undefined. Use :func:`~warp.tile_scatter_add` when several threads may target the same
+    index.
+
+    Because the values come from individual threads, the result depends on ``block_dim``
+    and differs on CPU, which runs a single lane per block (see
+    :ref:`cpu_tile_semantics`). In a backward pass the adjoint of ``value`` takes the
+    tile's gradient at ``i``, which is then cleared.
+
+    Args:
+        a: Tile to write into; a register tile is promoted to shared memory.
+        i: Index of the element to write. Must be valid when ``has_value`` is ``True``.
+        value: The value to write (must match the tile's dtype).
+        has_value: Whether this thread should perform the write.
 
     Example:
 
-        .. code-block:: python
+        .. testcode::
+            :skipif: wp.get_cuda_device_count() == 0
 
             @wp.kernel
-            def write_kernel(out: wp.array[int]):
-                tile_idx, thread_idx = wp.tid()
+            def reverse_lanes(src: wp.array[int], dst: wp.array[int]):
+                _block, i = wp.tid()
+                t = wp.tile_zeros(shape=8, dtype=int, storage="shared")
+                # a permutation: every slot is written by exactly one thread
+                wp.tile_scatter_masked(t, 7 - i, src[i], True)
+                wp.tile_store(dst, t)
 
-                # Allocate a shared-memory tile
-                t = wp.tile_zeros(shape=64, dtype=int, storage="shared")
+            src = wp.array(np.arange(1, 9), dtype=int)
+            dst = wp.zeros(8, dtype=int)
+            wp.launch_tiled(reverse_lanes, dim=1, inputs=[src], outputs=[dst], block_dim=8)
+            print(dst.numpy())
 
-                # Each thread writes its own slot
-                wp.tile_scatter_masked(t, thread_idx, thread_idx + 1, True)
+        .. testoutput::
 
-                wp.tile_store(out, t)
-
-    Args:
-        a: The tile to write into (will use shared memory).
-        i: Index of the element to write.
-        value: The value to write (must match the tile's dtype).
-        has_value: Whether this thread should perform the write.""",
+            [8 7 6 5 4 3 2 1]
+    """,
     group="Tile Primitives",
     export=False,
 )
@@ -5376,6 +6152,10 @@ add_builtin(
     value_func=tile_scatter_masked_value_func,
     group="Tile Primitives",
     export=False,
+    doc="""Write a per-thread value into a 2D shared-memory tile.
+
+    Overload taking one index per tile dimension. For the full contract and a usage
+    example, see the 1D overload that takes only ``i`` as its index.""",
 )
 add_builtin(
     "tile_scatter_masked",
@@ -5390,6 +6170,10 @@ add_builtin(
     value_func=tile_scatter_masked_value_func,
     group="Tile Primitives",
     export=False,
+    doc="""Write a per-thread value into a 3D shared-memory tile.
+
+    Overload taking one index per tile dimension. For the full contract and a usage
+    example, see the 1D overload that takes only ``i`` as its index.""",
 )
 add_builtin(
     "tile_scatter_masked",
@@ -5405,6 +6189,10 @@ add_builtin(
     value_func=tile_scatter_masked_value_func,
     group="Tile Primitives",
     export=False,
+    doc="""Write a per-thread value into a 4D shared-memory tile.
+
+    Overload taking one index per tile dimension. For the full contract and a usage
+    example, see the 1D overload that takes only ``i`` as its index.""",
 )
 
 
@@ -9391,9 +10179,17 @@ add_builtin(
     input_types={"query": MeshQueryAABB, "index": int},
     value_type=builtins.bool,
     group="Geometry",
-    doc="""Advance a mesh AABB query to the next overlapping triangle and report whether one was found.
+    doc="""Advance an AABB or sphere mesh query to the next matching triangle.
 
-    .. note:: This is an alias for :func:`mesh_query_next`.""",
+    This function is retained for compatibility. Prefer :func:`mesh_query_next` for new code and
+    query-type-independent traversal.
+
+    Args:
+        query: The query to advance
+        index: Output; receives the zero-based face index of the current result
+
+    Returns:
+        ``True`` if another matching triangle was found, otherwise ``False``.""",
     export=False,
     is_differentiable=False,
 )
@@ -9403,9 +10199,17 @@ add_builtin(
     input_types={"query": _MeshQuerySphere, "index": int},
     value_type=builtins.bool,
     group="Geometry",
-    doc="""Advance a sphere mesh query to the next matching triangle.
+    doc="""Advance an AABB or sphere mesh query to the next matching triangle.
 
-    .. note:: This is an alias for :func:`mesh_query_next`.""",
+    This function is retained for compatibility. Prefer :func:`mesh_query_next` for new code and
+    query-type-independent traversal.
+
+    Args:
+        query: The query to advance
+        index: Output; receives the zero-based face index of the current result
+
+    Returns:
+        ``True`` if another matching triangle was found, otherwise ``False``.""",
     native_func="mesh_query_sphere_next",
     export=False,
     is_differentiable=False,
@@ -9416,9 +10220,17 @@ add_builtin(
     input_types={"query": MeshQuery, "index": int},
     value_type=builtins.bool,
     group="Geometry",
-    doc="""Advance a mesh query to the next matching triangle.
+    doc="""Advance an AABB or sphere mesh query to the next matching triangle.
 
-    .. note:: This is an alias for :func:`mesh_query_next`.""",
+    This function is retained for compatibility. Prefer :func:`mesh_query_next` for new code and
+    query-type-independent traversal.
+
+    Args:
+        query: The query to advance
+        index: Output; receives the zero-based face index of the current result
+
+    Returns:
+        ``True`` if another matching triangle was found, otherwise ``False``.""",
     native_func="mesh_query_next_dynamic",
     export=False,
     is_differentiable=False,
@@ -10489,9 +11301,8 @@ add_builtin(
 
     Behaves like :func:`~warp.volume_sample`, additionally writing the gradient of the sampled value
     with respect to the index-space coordinates ``uvw`` into ``grad``. For a scalar ``dtype``,
-    ``grad`` is a length-three vector with the same scalar type. For :class:`warp.vec3f` and
-    :class:`warp.vec3d`, it is a 3-by-3 Jacobian matrix with one row per value component.
-    Four-component vector data is not supported by this function.
+    ``grad`` is a length-three vector with the same scalar type. For a supported N-component vector
+    type, ``grad`` is an N-by-3 Jacobian matrix with one row per value component.
 
     For floating-point scalar and vector data under :attr:`warp.Volume.LINEAR`, this is the gradient
     of the trilinear interpolant away from integer voxel planes. The interpolant is not generally
@@ -10842,8 +11653,7 @@ def volume_sample_index_value_func(arg_types: Mapping[str, type], arg_values: Ma
 
     dtype = arg_types["voxel_data"].dtype
 
-    if dtype not in _volume_supported_value_types:
-        raise RuntimeError(f"unsupported volume type `{dtype.__name__}`")
+    _check_volume_type_is_supported(dtype)
 
     if not types_equal(dtype, arg_types["background"]):
         raise RuntimeError("the `voxel_data` array and the `background` value must have the same dtype")
@@ -10920,8 +11730,7 @@ def volume_sample_grad_index_value_func(arg_types: Mapping[str, type], arg_value
 
     dtype = arg_types["voxel_data"].dtype
 
-    if dtype not in _volume_supported_value_types:
-        raise RuntimeError(f"unsupported volume type `{dtype.__name__}`")
+    _check_volume_type_is_supported(dtype)
 
     if not types_equal(dtype, arg_types["background"]):
         raise RuntimeError("the `voxel_data` array and the `background` value must have the same dtype")
@@ -10949,9 +11758,8 @@ add_builtin(
 
     Like :func:`~warp.volume_sample_index`, but also writes the gradient of the sampled value with
     respect to the index-space coordinates ``uvw`` into ``grad``. For scalar data, ``grad`` is a
-    length-three vector with the same scalar type. For :class:`warp.vec3f` and
-    :class:`warp.vec3d` data, it is a 3-by-3 Jacobian matrix with one row per value component.
-    Four-component vector data is not supported by this function.
+    length-three vector with the same scalar type. For a supported N-component vector type, ``grad``
+    is an N-by-3 Jacobian matrix with one row per value component.
 
     For floating-point scalar and vector data under :attr:`warp.Volume.LINEAR`, the function is
     differentiable with respect to ``uvw``, ``voxel_data``, and ``background`` away from integer

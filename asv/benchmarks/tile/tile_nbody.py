@@ -80,7 +80,7 @@ def integrate_bodies_simt(
 
 
 class TileNBody:
-    number = 10  # Number of measurements to make between a single setup and teardown
+    number = 10  # Number of timed calls per sample
 
     def setup(self):
         self._initialize()

@@ -40,7 +40,7 @@ class TestArrayFillCapture(unittest.TestCase):
 
 
 def test_array_fill_forked_stream_capture(test, device):
-    """``arr.fill_`` on a forked stream must not invalidate a captured graph."""
+    """Verify that ``arr.fill_`` on a forked stream must not invalidate a captured graph."""
     with wp.ScopedDevice(device):
         wp.synchronize_device()
 
@@ -81,7 +81,7 @@ def test_array_fill_forked_stream_capture(test, device):
 
 
 def test_contiguous_vec3_fill_forked_stream_capture(test, device):
-    """Contiguous fills through ``device.memtile`` must also avoid pause/resume capture."""
+    """Verify that contiguous fills through ``device.memtile`` must also avoid pause/resume capture."""
     with wp.ScopedDevice(device):
         wp.synchronize_device()
 
@@ -109,7 +109,7 @@ def test_contiguous_vec3_fill_forked_stream_capture(test, device):
 
 
 def test_contiguous_byte_fill_capture(test, device):
-    """Contiguous 1-byte fills through ``device.memtile`` must be capturable."""
+    """Verify that contiguous 1-byte fills through ``device.memtile`` must be capturable."""
     cases = (
         (wp.bool, True, np.bool_),
         (wp.int8, -3, np.int8),
@@ -133,7 +133,7 @@ def test_contiguous_byte_fill_capture(test, device):
 
 
 def test_array_fill_oversized_value_fallback(test, device):
-    """Fill values larger than the largest inline bucket use the ``_devptr`` fallback path correctly.
+    """Verify that fill values larger than the largest inline bucket use the ``_devptr`` fallback path correctly.
 
     User struct dtypes containing very large vector/matrix members (or several
     ``wp.array`` fields) can exceed the inline kernel-arg buckets. For those,

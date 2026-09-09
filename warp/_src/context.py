@@ -71,7 +71,7 @@ import warp._src.codegen
 import warp._src.module_registry
 import warp.config
 from warp._src.codegen import WarpCodegenError, WarpCodegenTypeError, _codegen_lock, synchronized
-from warp._src.logger import LOG_DEBUG, LOG_WARNING, get_logger, log_debug, log_error, log_info, log_warning
+from warp._src.logger import get_logger, log_debug, log_error, log_info, log_warning
 from warp._src.texture import Texture1D, Texture2D, Texture3D, texture1d_t, texture2d_t, texture3d_t
 from warp._src.types import LAUNCH_MAX_DIMS, Array, LaunchBounds, array_t, launch_bounds_t, type_repr
 
@@ -2098,7 +2098,7 @@ def kernel(
                 # user_modules and will not be compiled. Returning the existing kernel ensures
                 # its .module points to the registered, compiled module, and its .hash stays
                 # in sync with ModuleHasher updates (e.g., resolving static expressions).
-                if warp.config.verbose or warp.config.log_level <= warp.LOG_DEBUG:
+                if warp.config.log_level <= warp.LOG_DEBUG:
                     # Show number of overloads if this is a generic kernel
                     overload_info = ""
                     if existing_kernel_same_key.is_generic:
@@ -2951,11 +2951,7 @@ class ModuleHasher:
                     old_hash = ovl.hash
                     ovl.hash = self.hash_kernel(ovl, default_grid_stride)
                     # Only log hash changes when old hash was not None (unexpected changes)
-                    if (
-                        (warp.config.verbose or warp.config.log_level <= warp.LOG_DEBUG)
-                        and old_hash is not None
-                        and old_hash != ovl.hash
-                    ):
+                    if warp.config.log_level <= warp.LOG_DEBUG and old_hash is not None and old_hash != ovl.hash:
                         old_str = old_hash.hex()[:8]
                         new_str = ovl.hash.hex()[:8] if ovl.hash else "None"
                         log_debug(f"[ModuleHasher] Generic kernel hash changed: {ovl.key} ({old_str} -> {new_str})")
@@ -2963,11 +2959,7 @@ class ModuleHasher:
                 old_hash = kernel.hash
                 kernel.hash = self.hash_kernel(kernel, default_grid_stride)
                 # Only log hash changes when old hash was not None (unexpected changes)
-                if (
-                    (warp.config.verbose or warp.config.log_level <= warp.LOG_DEBUG)
-                    and old_hash is not None
-                    and old_hash != kernel.hash
-                ):
+                if warp.config.log_level <= warp.LOG_DEBUG and old_hash is not None and old_hash != kernel.hash:
                     old_str = old_hash.hex()[:8]
                     new_str = kernel.hash.hex()[:8] if kernel.hash else "None"
                     log_debug(f"[ModuleHasher] Kernel hash changed: {kernel.key} ({old_str} -> {new_str})")
@@ -4643,9 +4635,7 @@ class Module:
         try:
             if is_cpu:
                 # build object code
-                with warp.ScopedTimer(
-                    "Compile x86", active=(warp.config.verbose or warp.config.log_level <= warp.LOG_DEBUG)
-                ):
+                with warp.ScopedTimer("Compile x86", active=warp.config.log_level <= warp.LOG_DEBUG):
                     warp._src.build.build_cpu(
                         output_path,
                         source_code_path,
@@ -4655,7 +4645,7 @@ class Module:
                         fuse_fp=options["fuse_fp"],
                         extra_flags=options["cpu_compiler_flags"],
                         optimization_level=opt,
-                        verbose=warp.config.verbose or warp.config.log_level <= warp.LOG_DEBUG,
+                        verbose=warp.config.log_level <= warp.LOG_DEBUG,
                         use_precompiled_headers=options["use_precompiled_headers"],
                         pch_dir=runtime.get_clang_pch_dir() if options["use_precompiled_headers"] else None,
                         block_dim=options["block_dim"],
@@ -4666,7 +4656,7 @@ class Module:
                 # generate PTX or CUBIN
                 with warp.ScopedTimer(
                     f"Compile CUDA (arch={options['output_arch']}{arch_suffix}, mode={mode}, block_dim={options['block_dim']})",
-                    active=(warp.config.verbose or warp.config.log_level <= warp.LOG_DEBUG),
+                    active=warp.config.log_level <= warp.LOG_DEBUG,
                 ):
                     warp._src.build.build_cuda(
                         source_code_path,
@@ -4781,7 +4771,7 @@ class Module:
             if self.options["strip_hash"] or (exec.module_hash == current_hash):
                 return exec
             # else: Hash mismatch means module changed, need to recompile
-            if warp.config.verbose or warp.config.log_level <= warp.LOG_DEBUG:
+            if warp.config.log_level <= warp.LOG_DEBUG:
                 old_str = exec.module_hash.hex()[:8] if exec.module_hash else "None"
                 new_str = current_hash.hex()[:8] if current_hash else "None"
                 log_debug(f"[Module.load] Module hash changed, recompiling: {self.name} ({old_str} -> {new_str})")
@@ -4807,12 +4797,12 @@ class Module:
             f"device='{device}', block_dim={active_block_dim}, module_hash={module_hash.hex()[:7]}"
         )
 
-        if warp.config.verbose or warp.config.log_level <= warp.LOG_DEBUG:
+        if warp.config.log_level <= warp.LOG_DEBUG:
             module_load_timer_name += f" (block_dim={active_block_dim})"
 
         with warp.ScopedTimer(
             module_load_timer_name,
-            active=not warp.config.quiet and warp.config.log_level <= warp.LOG_INFO,
+            active=warp.config.log_level <= warp.LOG_INFO,
         ) as module_load_timer:
             # -----------------------------------------------------------
             # Determine binary path and build if necessary
@@ -4923,7 +4913,7 @@ class Module:
     def get_kernel_hooks(self, kernel, device: Device) -> KernelHooks:
         module_exec = self.execs.get((device.context, self.options["block_dim"]))
         if module_exec is not None:
-            if warp.config.verbose or warp.config.log_level <= warp.LOG_DEBUG:
+            if warp.config.log_level <= warp.LOG_DEBUG:
                 kernel_hash_str = kernel.hash.hex()[:8] if kernel.hash else "None"
                 log_debug(f"[Module.get_kernel_hooks] Looking up kernel: {kernel.key} (hash: {kernel_hash_str})")
             return module_exec.get_kernel_hooks(kernel)
@@ -6321,31 +6311,6 @@ class Runtime:
                 "or upgrade to Apple Silicon hardware (ARM64)."
             )
 
-        if warp.config.quiet:
-            if not warp.config._deprecated_quiet_warning_seen:
-                log_warning(
-                    "warp.config.quiet is deprecated; "
-                    "use warp.config.log_level = warp.LOG_WARNING to suppress the init banner.",
-                    category=DeprecationWarning,
-                    once=True,
-                )
-                warp.config._deprecated_quiet_warning_seen = True
-            # Honor the legacy flag during the deprecation window without
-            # clobbering an explicit user log_level that's already at least
-            # this restrictive.
-            if warp.config.log_level < LOG_WARNING:
-                warp.config.log_level = LOG_WARNING
-        if warp.config.verbose:
-            if not warp.config._deprecated_verbose_warning_seen:
-                log_warning(
-                    "warp.config.verbose is deprecated; use warp.config.log_level = warp.LOG_DEBUG instead.",
-                    category=DeprecationWarning,
-                    once=True,
-                )
-                warp.config._deprecated_verbose_warning_seen = True
-            if not warp.config._suppress_verbose_log_level_mapping and warp.config.log_level > LOG_DEBUG:
-                warp.config.log_level = LOG_DEBUG
-
         bin_path = os.path.join(warp_home, "bin")
 
         if os.name == "nt":
@@ -6865,6 +6830,7 @@ class Runtime:
                 ctypes.c_int,
                 ctypes.c_bool,
             ]
+            self.core.wp_array_scan_int_device.restype = ctypes.c_bool
             self.core.wp_array_scan_int64_device.argtypes = [
                 ctypes.c_uint64,
                 ctypes.c_uint64,
@@ -6874,6 +6840,7 @@ class Runtime:
                 ctypes.c_int,
                 ctypes.c_bool,
             ]
+            self.core.wp_array_scan_int64_device.restype = ctypes.c_bool
             self.core.wp_array_scan_float_device.argtypes = [
                 ctypes.c_uint64,
                 ctypes.c_uint64,
@@ -6883,6 +6850,7 @@ class Runtime:
                 ctypes.c_int,
                 ctypes.c_bool,
             ]
+            self.core.wp_array_scan_float_device.restype = ctypes.c_bool
             self.core.wp_array_scan_double_device.argtypes = [
                 ctypes.c_uint64,
                 ctypes.c_uint64,
@@ -6892,6 +6860,7 @@ class Runtime:
                 ctypes.c_int,
                 ctypes.c_bool,
             ]
+            self.core.wp_array_scan_double_device.restype = ctypes.c_bool
 
             self.core.wp_radix_sort_pairs_int_host.argtypes = [
                 ctypes.c_uint64,
@@ -7223,6 +7192,8 @@ class Runtime:
                 ctypes.c_bool,
             ]
 
+            self.core.wp_volume_validate_host.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
+            self.core.wp_volume_validate_host.restype = ctypes.c_int
             self.core.wp_volume_create_host.argtypes = [ctypes.c_void_p, ctypes.c_uint64, ctypes.c_bool, ctypes.c_bool]
             self.core.wp_volume_create_host.restype = ctypes.c_uint64
             self.core.wp_volume_get_tiles_host.argtypes = [
@@ -8287,7 +8258,7 @@ class Runtime:
         self.tape = None
 
         # print device and version information
-        if not warp.config.quiet and warp.config.log_level <= warp.LOG_INFO:
+        if warp.config.log_level <= warp.LOG_INFO:
             greeting = []
 
             greeting.append(f"Warp {warp.config.version} initialized:")
@@ -14751,169 +14722,6 @@ def resolve_exported_function_sig(f):
     return (func_args, return_type)
 
 
-def print_function(f, file, is_exported, noentry=False):  # pragma: no cover
-    """Write a function definition to a file for use in reST documentation.
-
-    Args:
-        f: The function being written
-        file: The file object for output
-        is_exported: Whether the function is available in Python's runtime
-        noentry: If True, then the :noindex: and :nocontentsentry: directive
-          options will be added
-
-    Returns:
-        A bool indicating True if f was written to file
-    """
-
-    if f.hidden:
-        return False
-
-    args = ", ".join(f"{k}: {type_str(v)}" for k, v in f.input_types.items())
-
-    return_type = ""
-
-    try:
-        # todo: construct a default value for each of the functions args
-        # so we can generate the return type for overloaded functions
-        return_type = " -> " + type_str(f.value_func(None, None))
-    except Exception:
-        pass
-
-    print(f".. py:function:: {f.key}({args}){return_type}", file=file)
-    if noentry:
-        print("    :noindex:", file=file)
-        print("    :nocontentsentry:", file=file)
-    print("", file=file)
-
-    print("    .. hlist::", file=file)
-    print("       :columns: 8", file=file)
-    print("", file=file)
-    print("       * Kernel", file=file)
-
-    if is_exported:
-        print("       * Python", file=file)
-
-    if f.is_differentiable:
-        print("       * Differentiable", file=file)
-
-    print("", file=file)
-
-    if f.doc != "":
-        print(f"    {f.doc}", file=file)
-        print("", file=file)
-
-    print(file=file)
-
-    return True
-
-
-def export_functions_rst(file):  # pragma: no cover
-    header = (
-        "..\n"
-        "   Autogenerated File - Do not edit. Run build_docs.py to generate.\n"
-        "\n"
-        ".. functions:\n"
-        ".. currentmodule:: warp\n"
-        "\n"
-        "Built-Ins Reference\n"
-        "===================\n"
-        "This section lists the Warp types and functions available to use from Warp kernels and optionally also from the Warp Python runtime API.\n"
-        "For a listing of the API that is exclusively intended to be used at the *Python Scope* and run inside the CPython interpreter, see the :doc:`runtime` section.\n"
-    )
-
-    print(header, file=file)
-
-    # type definitions of all functions by group
-    print("\nScalar Types", file=file)
-    print("------------", file=file)
-
-    for t in warp._src.types.scalar_types:
-        print(f".. class:: {t.__name__}", file=file)
-    # Manually add wp.bool since it's inconvenient to add to wp._src.types.scalar_types:
-    print(f".. class:: {warp._src.types.bool.__name__}", file=file)
-
-    print("\n\nVector Types", file=file)
-    print("------------", file=file)
-
-    for t in warp._src.types.vector_types:
-        print(f".. class:: {t.__name__}", file=file)
-
-    print("\nGeneric Types", file=file)
-    print("-------------", file=file)
-
-    print(".. class:: Int", file=file)
-    print(".. class:: Float", file=file)
-    print(".. class:: Scalar", file=file)
-    print(".. class:: Vector", file=file)
-    print(".. class:: Matrix", file=file)
-    print(".. class:: Quaternion", file=file)
-    print(".. class:: Transformation", file=file)
-    print(".. class:: Array", file=file)
-
-    # build dictionary of all functions by group
-    groups = {}
-
-    functions = list(builtin_functions.values())
-
-    for f in functions:
-        # build dict of groups
-        if f.group not in groups:
-            groups[f.group] = []
-
-        if hasattr(f, "overloads"):
-            # append all overloads to the group
-            for o in f.overloads:
-                sig = resolve_exported_function_sig(f)
-                is_exported = sig is not None
-                groups[f.group].append((o, is_exported))
-        else:
-            is_exported = False
-            groups[f.group].append((f, is_exported))
-
-    # Keep track of what function and query types have been written
-    written_functions = set()
-    written_query_types = set()
-
-    query_types = (
-        ("bvh_query", "BvhQuery"),
-        ("mesh_query_aabb", "MeshQuery"),
-        ("mesh_query_point", "MeshQueryPoint"),
-        ("mesh_query_ray", "MeshQueryRay"),
-        ("hash_grid_query", "HashGridQuery"),
-    )
-
-    for k, g in groups.items():
-        print("\n", file=file)
-        print(k, file=file)
-        print("---------------", file=file)
-
-        for f, is_exported in g:
-            if not isinstance(f, Function) and callable(f):
-                # f is a plain Python function
-                print(f".. autofunction:: {f.__module__}.{f.__name__}", file=file)
-                continue
-            if f.func:
-                # f is a Warp function written in Python, we can use autofunction
-                ns = f.func.__module__
-                ns = ns.replace("._src.", ".")
-                ns = ns.replace(".math", "")
-                print(f".. autofunction:: {ns}.{f.key}", file=file)
-                continue
-            for f_prefix, query_type in query_types:
-                if f.key.startswith(f_prefix) and query_type not in written_query_types:
-                    print(f".. autoclass:: warp.{query_type}", file=file)
-                    print("   :exclude-members: Var, vars", file=file)
-                    written_query_types.add(query_type)
-                    break
-
-            if f.key in written_functions:
-                # Add :noindex: + :nocontentsentry: since Sphinx gets confused
-                print_function(f, file, is_exported, noentry=True)
-            else:
-                if print_function(f, file, is_exported):
-                    written_functions.add(f.key)
-
-
 def export_stubs(file):  # pragma: no cover
     """Generate stub file for auto-complete of builtin functions."""
     # =========================================================================
@@ -15080,26 +14888,15 @@ def export_stubs(file):  # pragma: no cover
     init_import_lines = []
     init_other_lines = []
 
-    skip_runtime_dunder_getattr = False
     for line in init_lines:
-        if skip_runtime_dunder_getattr:
-            if line and not line[0].isspace():
-                skip_runtime_dunder_getattr = False
-            else:
-                continue
-
         if line.startswith("#"):
             continue  # Skip comment lines from __init__.py
-
-        if line.startswith("def __getattr__("):
-            skip_runtime_dunder_getattr = True
-            continue
 
         if line.startswith("_register_module_source("):
             continue
 
         # Check if this line is a top-level import statement (no leading whitespace).
-        # Indented imports inside function bodies (e.g., in __getattr__) are not top-level imports.
+        # Indented imports inside function bodies are not top-level imports.
         is_top_level = not line or not line[0].isspace()
         is_import = is_top_level and (import_pattern.search(line) or line.startswith("import ") or "import *" in line)
 
@@ -16165,15 +15962,8 @@ def print_diagnostics() -> dict:
     if runtime is None:
         from warp._src.utils import ScopedLogLevel  # noqa: PLC0415
 
-        suppress_verbose_log_level_mapping = warp.config._suppress_verbose_log_level_mapping
-        try:
-            warp.config._suppress_verbose_log_level_mapping = True
-            with ScopedLogLevel(warp.LOG_WARNING):
-                init()
-        finally:
-            warp.config._suppress_verbose_log_level_mapping = suppress_verbose_log_level_mapping
-        if warp.config.verbose and warp.config.log_level > warp.LOG_DEBUG:
-            warp.config.log_level = warp.LOG_DEBUG
+        with ScopedLogLevel(warp.LOG_WARNING):
+            init()
 
     def _version_str(ver):
         """Format a (major, minor) version tuple as 'major.minor', or None."""

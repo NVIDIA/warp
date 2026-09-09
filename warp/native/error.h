@@ -6,6 +6,8 @@
 namespace wp {
 // functions related to error reporting
 
+// Error state is process-global and must be consumed immediately by the caller.
+// Concurrent host calls can overwrite it.
 // get error string from Python
 const char* get_error_string();
 

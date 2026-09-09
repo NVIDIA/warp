@@ -1,9 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-"""Tests for parallel module compilation via the max_workers option in
-wp.force_load() and wp.load_module().
-"""
+"""Tests for parallel module compilation through ``wp.force_load()`` and ``wp.load_module()``."""
 
 import importlib
 import os
@@ -408,11 +406,11 @@ class TestParallelLoadSharedHelper(unittest.TestCase):
         return modules
 
     def test_force_load_parallel_with_shared_func(self):
-        """N modules sharing a chain of ``@wp.func`` helpers must load
-        successfully under ``max_workers > 1``. Without the codegen
-        lock at least one of the ``ATTEMPTS`` parallel CUDA builds
-        raises because the shared helpers' adjoints were clobbered
-        mid-build."""
+        """Load parallel modules that share a chain of Warp functions.
+
+        Without the code-generation lock, at least one of the ``ATTEMPTS`` CUDA
+        builds raises because the shared helpers' adjoints are clobbered mid-build.
+        """
         device = wp.get_preferred_device()
         for attempt in range(self.ATTEMPTS):
             modules = self._build_kernels(attempt)
@@ -426,9 +424,10 @@ class TestParallelLoadSharedHelper(unittest.TestCase):
             _assert_modules_loaded_on_cuda(self, modules, device)
 
     def test_force_load_parallel_with_shared_func_high_concurrency(self):
-        """Same race but with more modules than worker threads, so the
-        ``ThreadPoolExecutor`` queues tasks and reuses workers between
-        builds."""
+        """Load more shared-function modules than parallel worker threads.
+
+        Make ``ThreadPoolExecutor`` queue tasks and reuse workers between builds.
+        """
         device = wp.get_preferred_device()
         max_workers = max(2, self.NUM_MODULES // 2)
         for attempt in range(self.ATTEMPTS):

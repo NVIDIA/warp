@@ -380,7 +380,7 @@ def test_grad_in_func_grad(test, device):
 
 class TestFunc(unittest.TestCase):
     def test_user_func_export(self):
-        # tests calling overloaded user-defined functions from Python
+        """Call overloaded user-defined functions from Python."""
         i = custom(1)
         f = custom(1.0)
         v = custom(wp.vec3(1.0, 0.0, 0.0))
@@ -390,7 +390,7 @@ class TestFunc(unittest.TestCase):
         assert_np_equal(np.array([*v]), np.array([2.0, 0.0, 0.0]))
 
     def test_native_func_export(self):
-        # tests calling native functions from Python
+        """Call native functions from Python."""
 
         q = wp.quat(0.0, 0.0, 0.0, 1.0)
         assert_np_equal(np.array([*q]), np.array([0.0, 0.0, 0.0, 1.0]))

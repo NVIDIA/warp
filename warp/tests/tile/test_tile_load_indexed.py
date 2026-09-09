@@ -99,8 +99,11 @@ def tile_load_indexed_oob_kernel(src: wp.array2d[float], idx: wp.array1d[int], o
 
 
 def test_tile_load_indexed_oob(test, device):
-    """A gather index outside the axis (negative or >= its length) predicates the element to zero
-    on both the forward and backward passes, instead of reading/writing out of bounds."""
+    """Predicate out-of-bounds indexed tile loads to zero.
+
+    Cover negative indices and indices at or beyond the axis length in both the
+    forward and backward passes.
+    """
     # src is a view onto rows 1: of buf, so src's row -1 aliases buf[0]. Seeding buf[0] with a
     # sentinel makes an out-of-bounds negative-index read observable (999, not 0) rather than
     # reading undefined memory before the array.

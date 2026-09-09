@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-"""Dummy class used in test_reload.py"""
+"""Dummy class used in test_reload.py."""
 
 import warp as wp
 

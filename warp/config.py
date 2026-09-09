@@ -20,60 +20,10 @@ import types as _types
 from enum import IntEnum as _IntEnum
 
 from warp._src.logger import LOG_INFO as _LOG_INFO
-from warp._src.logger import log_warning as _log_warning
-
-_deprecated_verbose_warning_seen = False
-_deprecated_quiet_warning_seen = False
-_suppress_verbose_log_level_mapping = False
-
-
-def _is_internal_warp_config_access() -> bool:
-    try:
-        # Temporary verbose/quiet migration hook. Frame depth 3 assumes:
-        # _is_internal_warp_config_access -> _warn_deprecated_config_access
-        # -> module __getattribute__/__setattr__ -> caller. Remove this when
-        # verbose/quiet are removed.
-        module_name = _sys._getframe(3).f_globals.get("__name__", "")
-    except ValueError:
-        return False
-    return module_name == "warp" or module_name.startswith("warp.")
-
-
-def _warn_deprecated_config_access(name: str) -> None:
-    global _deprecated_verbose_warning_seen, _deprecated_quiet_warning_seen
-
-    if _is_internal_warp_config_access():
-        return
-
-    if name == "verbose":
-        if _deprecated_verbose_warning_seen:
-            return
-        message = "warp.config.verbose is deprecated; use warp.config.log_level = warp.LOG_DEBUG instead."
-    elif name == "quiet":
-        if _deprecated_quiet_warning_seen:
-            return
-        message = (
-            "warp.config.quiet is deprecated; use warp.config.log_level = warp.LOG_WARNING to suppress the init banner."
-        )
-    else:
-        return
-
-    _log_warning(message, category=DeprecationWarning, stacklevel=3)
-    if name == "verbose":
-        _deprecated_verbose_warning_seen = True
-    else:
-        _deprecated_quiet_warning_seen = True
 
 
 class _ConfigModule(_types.ModuleType):
-    def __getattribute__(self, name):
-        if name in ("verbose", "quiet"):
-            _warn_deprecated_config_access(name)
-        return super().__getattribute__(name)
-
     def __setattr__(self, name, value):
-        if name in ("verbose", "quiet"):
-            _warn_deprecated_config_access(name)
         if name == "launch_array_access_mode" and not isinstance(value, LaunchArrayAccessMode):
             raise ValueError(
                 f"warp.config.launch_array_access_mode must be a warp.config.LaunchArrayAccessMode value, got {value!r}"
@@ -133,7 +83,7 @@ Note: Strict and checked modes impact performance.
 """
 
 
-version: str = "1.18.0.dev2"
+version: str = "1.18.0.dev3"
 """Warp version string"""
 
 verify_fp: bool = False
@@ -187,24 +137,8 @@ Note: Higher optimization levels increase compilation time but may improve run-t
 This setting can be overridden at the module level by setting the ``"optimization_level"`` module option.
 """
 
-verbose: bool = False
-"""Enable detailed logging during code generation and compilation.
-
-.. deprecated::
-    Use ``warp.config.log_level = warp.LOG_DEBUG`` instead. Reading or setting
-    this flag emits a ``DeprecationWarning`` for external callers.
-"""
-
 verbose_warnings: bool = False
 """Enable extended warning messages with source location information."""
-
-quiet: bool = False
-"""Disable Warp module initialization messages.
-
-.. deprecated::
-    Use ``warp.config.log_level = warp.LOG_WARNING`` instead. Reading or setting
-    this flag emits a ``DeprecationWarning`` for external callers.
-"""
 
 log_level: int = _LOG_INFO
 """Log level threshold for Warp's logging infrastructure.

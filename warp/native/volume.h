@@ -331,7 +331,7 @@ template <typename T> struct val_traits {
 };
 
 template <unsigned Length, typename T> struct val_traits<vec_t<Length, T>> {
-    using grad_t = mat_t<3, Length, T>;
+    using grad_t = mat_t<Length, 3, T>;
     using scalar_t = T;
 
     static CUDA_CALLABLE inline vec_t<Length, T> rmul(const grad_t& grad, const vec_t<3, scalar_t>& rhs)

@@ -8,7 +8,7 @@ import warp.tests.unittest_suites
 
 
 def run_suite() -> bool:
-    """Run a test suite"""
+    """Run a test suite."""
 
     # force rebuild of all kernels
     wp.clear_lto_cache()

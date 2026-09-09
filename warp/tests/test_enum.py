@@ -111,7 +111,7 @@ MY_INTFLAG_CONST = wp.constant(wp.int32(MyIntFlag.B))
 
 
 def test_intenum_constant(test, device):
-    """wp.constant(wp.int32(IntEnum_value)) should emit the integer, not the symbolic name."""
+    """Verify that wp.constant(wp.int32(IntEnum_value)) should emit the integer, not the symbolic name."""
 
     @wp.kernel(module="unique")
     def expect_intenum_constant():
@@ -121,7 +121,7 @@ def test_intenum_constant(test, device):
 
 
 def test_intflag_constant(test, device):
-    """wp.constant(wp.int32(IntFlag_value)) should emit the integer, not the symbolic name."""
+    """Verify that wp.constant(wp.int32(IntFlag_value)) should emit the integer, not the symbolic name."""
 
     @wp.kernel(module="unique")
     def expect_intflag_constant():

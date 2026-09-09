@@ -357,7 +357,7 @@ def test_short_circuit_or_kernel(
 
 
 def test_short_circuit_and(test: unittest.TestCase, device):
-    """Chained `and` must short-circuit so null array is never dereferenced."""
+    """Verify that chained `and` must short-circuit so null array is never dereferenced."""
     result = wp.zeros(3, dtype=int, device=device)
     # None array: should short-circuit, never access arr[tid]
     wp.launch(test_short_circuit_and_kernel, dim=3, inputs=[None, result], device=device)
@@ -370,7 +370,7 @@ def test_short_circuit_and(test: unittest.TestCase, device):
 
 
 def test_short_circuit_or(test: unittest.TestCase, device):
-    """Chained `or` must short-circuit so null array is never dereferenced."""
+    """Verify that chained `or` must short-circuit so null array is never dereferenced."""
     result = wp.zeros(3, dtype=int, device=device)
     # None array: `not arr` is true, should short-circuit
     wp.launch(test_short_circuit_or_kernel, dim=3, inputs=[None, result], device=device)
@@ -413,7 +413,7 @@ def test_short_circuit_or_grad_kernel(
 
 
 def test_short_circuit_and_grad(test: unittest.TestCase, device):
-    """Backward pass through chained `and` propagates correct gradients."""
+    """Verify that the backward pass through chained ``and`` propagates gradients."""
     n = 4
     x = wp.array(np.ones(n, dtype=np.float32), device=device, requires_grad=True)
     flag = wp.array([1, 1, 0, 0], dtype=int, device=device)
@@ -433,7 +433,7 @@ def test_short_circuit_and_grad(test: unittest.TestCase, device):
 
 
 def test_short_circuit_or_grad(test: unittest.TestCase, device):
-    """Backward pass through chained `or` propagates correct gradients."""
+    """Verify that the backward pass through chained ``or`` propagates gradients."""
     n = 4
     x = wp.array(np.ones(n, dtype=np.float32), device=device, requires_grad=True)
     flag = wp.array([0, 1, 1, 0], dtype=int, device=device)
@@ -474,7 +474,7 @@ def _run_ifexp_reference_branch_grad(kernel, flag: bool, device):
 
 
 def test_ifexp_reference_branch_grad(test: unittest.TestCase, device):
-    """Ternary branches returning array elements must propagate selected adjoints."""
+    """Verify that ternary branches returning array elements must propagate selected adjoints."""
     out, grad_arr, grad_term = _run_ifexp_reference_branch_grad(
         test_conditional_ifexp_reference_div_or_load_grad_kernel, False, device
     )
@@ -536,7 +536,7 @@ def _run_ifexp_reference_vec_branch_grad(flag: bool, device):
 
 
 def test_ifexp_reference_vec_branch_grad(test: unittest.TestCase, device):
-    """Ternary branches returning vector array elements must propagate selected adjoints."""
+    """Verify that ternary branches returning vector array elements must propagate selected adjoints."""
     arr_np = np.array(
         [
             [1.0, 2.0, 3.0],

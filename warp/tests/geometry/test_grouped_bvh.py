@@ -658,7 +658,7 @@ class TestGroupedBvh(unittest.TestCase):
         wp.Kernel(func=kernel_fn)
 
     def test_bvh_new_del(self):
-        # test the scenario in which a bvh is created but not initialized before gc
+        """Delete a grouped BVH that was allocated without initialization."""
         instance = wp.Bvh.__new__(wp.Bvh)
         instance.__del__()
 

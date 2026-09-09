@@ -69,7 +69,7 @@ def test_closure_capture(test, device):
 
 
 def test_closure_precedence(test, device):
-    """Verifies that closure constants take precedence over globals"""
+    """Verify that closure constants take precedence over globals."""
 
     SHADOWED_GLOBAL = wp.constant(42)
 
@@ -81,14 +81,14 @@ def test_closure_precedence(test, device):
 
 
 def test_hash_global_capture(test, device):
-    """Verifies that global variables are included in the module hash"""
+    """Verify that global variables are included in the module hash."""
 
     a = 0
     wp.launch(test_int, (1,), inputs=[a], device=device)
 
 
 def test_hash_redefine_kernel(test, device):
-    """This test defines a second ``test_function`` so that the second launch returns the correct result."""
+    """Invalidate the module hash after redefining a kernel."""
 
     @wp.kernel
     def test_function(data: wp.array[wp.float32]):
@@ -119,10 +119,7 @@ def test_hash_redefine_kernel(test, device):
 
 
 def test_hash_redefine_constant_only(test, device):
-    """This test does not define a second ``test_function``, so the second launch does not invalidate the cache.
-
-    For now this is expected behavior, but we can verify that the content has is different.
-    """
+    """Include referenced constant values in the module hash."""
 
     @wp.kernel
     def test_function(data: wp.array[wp.float32]):
@@ -147,7 +144,7 @@ def test_hash_redefine_constant_only(test, device):
 
 
 def test_hash_shadowed_var(test, device):
-    """Tests to ensure shadowed variables are not mistakenly added to the module hash"""
+    """Ensure shadowed variables are omitted from the module hash."""
 
     TEST_CONSTANT_SHADOW_0 = wp.constant(1.0)
     TEST_CONSTANT_SHADOW_1 = wp.constant(1.0)
@@ -174,7 +171,7 @@ def test_hash_shadowed_var(test, device):
 
 
 def test_uint64_large_constant(test, device):
-    """Tests that uint64 literals larger than uint32 max are not truncated."""
+    """Test that uint64 literals larger than uint32 max are not truncated."""
 
     @wp.kernel
     def uint64_large_const_kernel(data: wp.array[wp.uint64]):
@@ -190,7 +187,7 @@ def test_uint64_large_constant(test, device):
 
 
 def test_float64_precision(test, device):
-    """Tests that float64 literals are not truncated to float32 precision."""
+    """Test that float64 literals are not truncated to float32 precision."""
 
     @wp.kernel
     def float64_precision_kernel(data: wp.array[wp.float64]):
@@ -208,7 +205,7 @@ def test_float64_precision(test, device):
 
 
 def test_float64_wp_pi(test, device):
-    """Tests that wp.PI preserves full float64 precision through wp.float64()."""
+    """Test that wp.PI preserves full float64 precision through wp.float64()."""
 
     @wp.kernel
     def wp_pi_kernel(data: wp.array[wp.float64]):
@@ -224,7 +221,7 @@ def test_float64_wp_pi(test, device):
 
 
 def test_int64_negative(test, device):
-    """Tests that negative int64 literals preserve precision."""
+    """Test that negative int64 literals preserve precision."""
 
     @wp.kernel
     def int64_neg_kernel(data: wp.array[wp.int64]):
@@ -238,7 +235,7 @@ def test_int64_negative(test, device):
 
 
 def test_scalar_constructor_edge_cases(test, device):
-    """Tests wp.INF, wp.NAN, and -wp.INF through scalar constructors."""
+    """Test wp.INF, wp.NAN, and -wp.INF through scalar constructors."""
 
     @wp.kernel
     def special_float_kernel(
@@ -261,7 +258,7 @@ def test_scalar_constructor_edge_cases(test, device):
 
 
 def test_float64_from_large_int(test, device):
-    """Tests that float64(large_int) preserves precision for ints beyond float32 range."""
+    """Test that float64(large_int) preserves precision for ints beyond float32 range."""
 
     @wp.kernel
     def float64_large_int_kernel(data: wp.array[wp.float64]):
@@ -277,7 +274,7 @@ def test_float64_from_large_int(test, device):
 
 
 def test_negative_constant_codegen(test, device):
-    """Verifies negative float/int constants emit as negative literals in C++."""
+    """Verify negative float/int constants emit as negative literals in C++."""
 
     @wp.kernel
     def neg_codegen_kernel(
@@ -305,7 +302,8 @@ def test_negative_constant_codegen(test, device):
 
 class TestConstants(unittest.TestCase):
     def test_constant_math(self):
-        # test doing math with python defined constants in *python* scope
+        """Test arithmetic with Python-defined constants in Python scope."""
+
         twopi = wp.pi * 2.0
         self.assertEqual(twopi, math.pi * 2.0)
 

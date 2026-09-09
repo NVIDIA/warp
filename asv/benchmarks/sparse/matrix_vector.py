@@ -61,7 +61,7 @@ class BsrMvQuadraticTetmeshMatrix(BsrMvFemMatrix):
 
     rounds = 1
     repeat = 2
-    number = 10  # Number of measurements to make between a single setup and teardown
+    number = 10  # Number of timed calls per sample
 
     @setup_once
     def setup(self):
@@ -84,7 +84,7 @@ class BsrMvLinearGridMatrix(BsrMvFemMatrix):
 
     rounds = 1
     repeat = 2
-    number = 10  # Number of measurements to make between a single setup and teardown
+    number = 10  # Number of timed calls per sample
 
     @setup_once
     def setup(self):
@@ -106,7 +106,7 @@ class BsrMvAlmostDense(BsrMvFemMatrix):
 
     rounds = 1
     repeat = 2
-    number = 10  # Number of measurements to make between a single setup and teardown
+    number = 10  # Number of timed calls per sample
 
     @setup_once
     def setup(self):

@@ -287,9 +287,11 @@ def test_bvh_query_sphere(test, device):
 
 
 def test_bvh_query_capsule(test, device):
-    # The broad-phase inflates node AABBs by radius as an axis-aligned box, not a true sphere,
-    # so it is conservative: it never misses a primitive within radius of the segment but may
-    # return extra candidates near box corners. Tests validate this conservative semantics.
+    """Validate conservative broad-phase BVH capsule queries.
+
+    Inflating node AABBs by radius as an axis-aligned box never misses a primitive
+    within radius of the segment but may return extra candidates near box corners.
+    """
     for leaf_size in [1, 2, 4]:
         test_bvh(test, "capsule", device, leaf_size)
 
@@ -316,8 +318,7 @@ def _runtime_kind_test_bvh(device):
 
 
 def test_bvh_query_runtime_kind(test, device):
-    # A query whose kind is chosen by a runtime branch decays to the erased parent
-    # BvhQuery type and must match the statically-typed kernels for every kind.
+    """Match static BVH queries when selecting the query kind at runtime."""
     bvh, num_bounds = _runtime_kind_test_bvh(device)
 
     query_lower = wp.vec3(2.0, 2.0, 2.0)
@@ -374,8 +375,7 @@ def test_bvh_query_runtime_kind(test, device):
 
 
 def test_bvh_query_erased_func_param(test, device):
-    # A wp.func parameter annotated with the parent BvhQuery type accepts any
-    # concrete query kind and must keep that kind's traversal semantics.
+    """Preserve BVH traversal semantics through an erased function parameter."""
     bvh, num_bounds = _runtime_kind_test_bvh(device)
 
     query_start = wp.vec3(0.0, 0.0, 0.0)
@@ -392,8 +392,7 @@ def test_bvh_query_erased_func_param(test, device):
 
 
 def test_bvh_ray_query_inside_and_outside_bounds(test, device):
-    """Regression test for issue #288: BVH ray queries should detect intersections
-    regardless of whether the ray origin is inside or outside the bounding volumes.
+    """Verify BVH ray intersections for origins inside and outside the bounds.
 
     Previously, rays starting outside the bounds would fail to detect intersections.
     """
@@ -1075,7 +1074,7 @@ class TestBvh(unittest.TestCase):
         wp.Kernel(func=kernel_fn)
 
     def test_bvh_new_del(self):
-        # test the scenario in which a bvh is created but not initialized before gc
+        """Delete a BVH that was allocated without initialization."""
         instance = wp.Bvh.__new__(wp.Bvh)
         instance.__del__()
 

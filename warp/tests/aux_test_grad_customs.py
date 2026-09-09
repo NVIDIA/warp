@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-"""This file is used to test importing a user-defined function with a custom gradient"""
+"""This file is used to test importing a user-defined function with a custom gradient."""
 
 import warp as wp
 

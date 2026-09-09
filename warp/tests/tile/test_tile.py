@@ -949,7 +949,8 @@ def test_tile_tile_mat_expansion_kernel(x: wp.array[wp.mat33], y: wp.array3d[flo
 
 
 def test_tile_tile(test, device):
-    # preserve type
+    """Preserve tile types through tile-to-tile operations."""
+
     def test_func_preserve_type(type: Any):
         x = wp.ones(1, dtype=type, requires_grad=True, device=device)
         y = wp.zeros((TILE_DIM), dtype=type, requires_grad=True, device=device)
@@ -1671,6 +1672,55 @@ def test_tile_squeeze(test, device):
 
     assert_np_equal(y.numpy(), np.ones((TILE_M,), dtype=np.float32))
     assert_np_equal(x.grad.numpy(), np.ones((1, TILE_M, 1), dtype=np.float32))
+
+
+@wp.kernel
+def test_tile_squeeze_negative_axis_kernel(x: wp.array3d[float], y: wp.array2d[float]):
+    a = wp.tile_load(x, shape=(1, TILE_M, 1), offset=(0, 0, 0))
+    b = wp.tile_squeeze(a, axis=(-3,))
+
+    wp.tile_store(y, b, offset=(0, 0))
+
+
+def test_tile_squeeze_negative_axis(test, device):
+    """Verify that ``tile_squeeze()`` accepts the lowest valid negative axis."""
+    x = wp.ones((1, TILE_M, 1), dtype=float, device=device)
+    y = wp.zeros((TILE_M, 1), dtype=float, device=device)
+
+    wp.launch_tiled(
+        test_tile_squeeze_negative_axis_kernel,
+        dim=1,
+        inputs=[x],
+        outputs=[y],
+        block_dim=TILE_DIM,
+        device=device,
+    )
+
+    assert_np_equal(y.numpy(), np.ones((TILE_M, 1), dtype=np.float32))
+
+
+def test_tile_squeeze_axis_bounds(test, device):
+    """Verify that ``tile_squeeze()`` rejects axes outside the valid range."""
+
+    @wp.kernel(module="unique")
+    def invalid_tile_squeeze_axis_below_lower_bound_kernel():
+        a = wp.tile_zeros(shape=(1, 2, 1), dtype=float)
+        wp.tile_squeeze(a, axis=(-4,))
+
+    @wp.kernel(module="unique")
+    def invalid_tile_squeeze_axis_at_upper_bound_kernel():
+        a = wp.tile_zeros(shape=(1, 2, 1), dtype=float)
+        wp.tile_squeeze(a, axis=(3,))
+
+    for kernel, axis in (
+        (invalid_tile_squeeze_axis_below_lower_bound_kernel, -4),
+        (invalid_tile_squeeze_axis_at_upper_bound_kernel, 3),
+    ):
+        with test.subTest(axis=axis):
+            with test.assertRaisesRegex(
+                ValueError, rf"tile_squeeze\(\) axis {axis} is out of bounds for tile with 3 dimensions"
+            ):
+                wp.launch_tiled(kernel, dim=1, block_dim=TILE_DIM, device=device)
 
 
 @wp.kernel
@@ -3218,6 +3268,8 @@ add_function_test(TestTile, "test_tile_broadcast_add_3d", test_tile_broadcast_ad
 add_function_test(TestTile, "test_tile_broadcast_add_4d", test_tile_broadcast_add_4d, devices=devices)
 add_function_test(TestTile, "test_tile_broadcast_grad", test_tile_broadcast_grad, devices=devices)
 add_function_test(TestTile, "test_tile_squeeze", test_tile_squeeze, devices=devices)
+add_function_test(TestTile, "test_tile_squeeze_negative_axis", test_tile_squeeze_negative_axis, devices=devices)
+add_function_test(TestTile, "test_tile_squeeze_axis_bounds", test_tile_squeeze_axis_bounds, devices=devices)
 add_function_test(TestTile, "test_tile_reshape", test_tile_reshape, devices=devices)
 add_function_test(TestTile, "test_tile_len", test_tile_len, devices=devices)
 add_function_test(TestTile, "test_tile_construction", test_tile_construction, devices=devices)

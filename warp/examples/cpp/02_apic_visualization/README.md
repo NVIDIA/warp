@@ -82,7 +82,13 @@ make              # Build everything (auto-captures graph if needed)
 python capture_wave.py                        # Step 1: Capture the graph
 cmake -B build -DCMAKE_BUILD_TYPE=Release     # Step 2: Configure
 cmake --build build --config Release          # Step 3: Build
-./build/02_apic_visualization                 # Step 4: Run
+./build/02_apic_visualization                 # Step 4: Run (Ninja / Unix Makefiles)
+```
+
+If using the Visual Studio generator on Windows, run:
+
+```powershell
+.\build\Release\02_apic_visualization.exe
 ```
 
 **Headless smoke mode**:
@@ -93,8 +99,22 @@ graph 10 times without opening a GLFW window. CTest registers this mode
 as `apic_visualization_smoke` so the example runs in CI on hosts without
 a display server.
 
+**Using Make (Unix/Linux)**:
+
 ```bash
 ./02_apic_visualization --smoke    # exits 0 with "smoke OK (10 graph launches)"
+```
+
+**Using CMake (Ninja / Unix Makefiles)**:
+
+```bash
+./build/02_apic_visualization --smoke
+```
+
+**Using CMake (Visual Studio on Windows)**:
+
+```powershell
+.\build\Release\02_apic_visualization.exe --smoke
 ```
 
 ## How It Works

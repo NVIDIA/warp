@@ -40,7 +40,7 @@ class ColdCompileGemmLTO:
     """Benchmark GEMM compilation time from scratch."""
 
     repeat = 2  # Number of samples to run
-    number = 1  # Number of measurements to make between a single setup and teardown
+    number = 1  # Number of timed calls per sample
     timeout = 120.0
 
     def setup(self):
@@ -59,7 +59,7 @@ class WarmCompileGemmLTO:
     """Benchmark GEMM compilation time with cached LTO."""
 
     repeat = 1  # Number of samples to run
-    number = 10  # Number of measurements to make between a single setup and teardown
+    number = 10  # Number of timed calls per sample
     timeout = 120.0
 
     @setup_once

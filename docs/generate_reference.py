@@ -81,7 +81,6 @@ BUILTINS_REF_DIR = "language_reference"
 SKIP = (
     "warp._src",
     "warp.examples",
-    "warp.jax_experimental",
     "warp.tests",
 )
 
@@ -732,7 +731,6 @@ def run():
 
     # Third pass: handle the built-ins symbols.
     # Include a builtin if ANY of its overloads are visible (not hidden).
-    # This matches the behavior of the old export_functions_rst system.
     def has_visible_overload(func):
         """Check if a builtin function has at least one non-hidden overload."""
         if hasattr(func, "overloads"):

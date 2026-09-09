@@ -86,14 +86,14 @@ def register_tile_oob_kernel(out: wp.array[int]):
 
 
 def _trigger_shared_tile_oob(device):
-    wp.config.quiet = True
+    wp.config.log_level = wp.LOG_WARNING
 
     with wp.ScopedDevice(device):
         wp.launch(shared_tile_oob_kernel, dim=2, inputs=[wp.zeros(1, dtype=int, device=device)], device=device)
 
 
 def _trigger_shared_tile_oob_cuda(device):
-    wp.config.quiet = True
+    wp.config.log_level = wp.LOG_WARNING
 
     with wp.ScopedDevice(device):
         out = wp.zeros(1, dtype=int, device=device)
@@ -102,21 +102,21 @@ def _trigger_shared_tile_oob_cuda(device):
 
 
 def _trigger_shared_tile_negative_oob(device):
-    wp.config.quiet = True
+    wp.config.log_level = wp.LOG_WARNING
 
     with wp.ScopedDevice(device):
         wp.launch(shared_tile_negative_oob_kernel, dim=1, inputs=[wp.zeros(1, dtype=int, device=device)], device=device)
 
 
 def _trigger_shared_tile_2d_oob(device):
-    wp.config.quiet = True
+    wp.config.log_level = wp.LOG_WARNING
 
     with wp.ScopedDevice(device):
         wp.launch(shared_tile_2d_oob_kernel, dim=1, inputs=[wp.zeros(1, dtype=int, device=device)], device=device)
 
 
 def _trigger_register_tile_oob(device):
-    wp.config.quiet = True
+    wp.config.log_level = wp.LOG_WARNING
 
     with wp.ScopedDevice(device):
         wp.launch(register_tile_oob_kernel, dim=2, inputs=[wp.zeros(1, dtype=int, device=device)], device=device)

@@ -9,7 +9,9 @@ import subprocess
 import sys
 import unittest
 import warnings
+from unittest.mock import patch
 
+from warp._src import context as _context
 from warp._src import logger as _logger
 from warp._src.logger import log_warning
 from warp.tests.unittest_utils import *
@@ -86,8 +88,7 @@ def test_array_scan_vector(test, device):
 
 
 def test_array_scan_strided_views(test, device):
-    # Interleave data with padding to exercise 1D strided views and
-    # verify array_scan() writes only through the output view.
+    """Write array-scan results only through a strided output view."""
     scalar_values = np.array((6, -3, 5, 0, -2, 8), dtype=np.int64)
     scalar_base = np.zeros(scalar_values.size * 2, dtype=np.int64)
     scalar_base[::2] = scalar_values
@@ -189,6 +190,18 @@ def test_array_scan_error_unsupported_dtype(test, device):
         wp.utils.array_scan(values, result, True)
 
 
+def test_array_scan_error_device_failure_is_reported(test, device):
+    """Verify that a failed device scan raises instead of leaving the output silently unwritten."""
+    values = wp.zeros(16, dtype=wp.int32, device=device)
+    result = wp.zeros(16, dtype=wp.int32, device=device)
+
+    with (
+        patch.object(_context.runtime.core, "wp_array_scan_int_device", lambda *args: False),
+        test.assertRaises(RuntimeError),
+    ):
+        wp.utils.array_scan(values, result, True)
+
+
 def test_radix_sort_pairs(test, device):
     keyTypes = [int, wp.uint32, wp.float32, wp.int64, wp.uint64, wp.float64]
 
@@ -234,8 +247,7 @@ def test_radix_sort_pairs_value_types(test, device):
 
 
 def test_radix_sort_pairs_64_bit_keys_8_byte_values(test, device):
-    # Use duplicate 64-bit keys plus 8-byte payloads large enough to catch
-    # unstable key/value movement or payload truncation.
+    """Preserve duplicate 64-bit keys and eight-byte payloads during radix sort."""
     cases = (
         (
             wp.int64,
@@ -801,14 +813,28 @@ def test_array_inner(test, device):
     test.assertEqual(wp.utils.array_inner(a, b), 14.0)
 
 
-def test_array_inner_error_sizes_mismatch(test, device):
-    a = wp.array((1.0, 2.0), dtype=wp.float32, device=device)
-    b = wp.array((1.0, 2.0, 3.0), dtype=wp.float32, device=device)
-    with test.assertRaisesRegex(
-        RuntimeError,
-        r"A and b array storage sizes do not match \(2 vs 3\)$",
-    ):
-        wp.utils.array_inner(a, b)
+def test_array_inner_error_shapes_mismatch(test, device):
+    """Verify that ``array_inner()`` rejects mismatched input shapes."""
+    cases = (
+        ((2,), (3,), {}),
+        ((2, 3), (6,), {}),
+        ((2, 3), (6,), {"axis": 1}),
+        ((2, 3), (6,), {"count": 0}),
+        ((0, 3), (3, 0), {}),
+    )
+
+    for a_shape, b_shape, kwargs in cases:
+        with test.subTest(a_shape=a_shape, b_shape=b_shape, kwargs=kwargs):
+            a = wp.empty(a_shape, dtype=wp.float32, device=device)
+            b = wp.empty(b_shape, dtype=wp.float32, device=device)
+
+            with test.assertRaises(ValueError) as raises:
+                wp.utils.array_inner(a, b, **kwargs)
+
+            test.assertEqual(
+                str(raises.exception),
+                f"array_inner() arguments must have the same shape, got {a_shape} and {b_shape}",
+            )
 
 
 def test_array_inner_error_dtypes_mismatch(test, device):
@@ -904,6 +930,7 @@ def parenthesized_multiline_lambda():
 
 
 devices = get_test_devices()
+cuda_devices = get_cuda_test_devices()
 
 
 class TestUtils(unittest.TestCase):
@@ -1237,7 +1264,7 @@ add_function_test(
 )
 add_function_test(TestUtils, "test_array_inner", test_array_inner, devices=devices)
 add_function_test(
-    TestUtils, "test_array_inner_error_sizes_mismatch", test_array_inner_error_sizes_mismatch, devices=devices
+    TestUtils, "test_array_inner_error_shapes_mismatch", test_array_inner_error_shapes_mismatch, devices=devices
 )
 add_function_test(
     TestUtils, "test_array_inner_error_dtypes_mismatch", test_array_inner_error_dtypes_mismatch, devices=devices
@@ -1252,6 +1279,12 @@ add_function_test(
     TestUtils, "test_array_inner_error_unsupported_dtype", test_array_inner_error_unsupported_dtype, devices=devices
 )
 add_function_test(TestUtils, "test_array_cast", test_array_cast, devices=devices)
+add_function_test(
+    TestUtils,
+    "test_array_scan_error_device_failure_is_reported",
+    test_array_scan_error_device_failure_is_reported,
+    devices=cuda_devices,
+)
 add_function_test(
     TestUtils,
     "test_array_cast_error_unsupported_partial_cast",

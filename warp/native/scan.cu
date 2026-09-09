@@ -72,7 +72,7 @@ template <typename T> struct cub_strided_iterator {
 }  // anonymous namespace
 
 template <typename T>
-void scan_device(
+bool scan_device(
     const T* values_in, T* values_out, int n, int in_byte_stride, int out_byte_stride, int type_length, bool inclusive
 )
 {
@@ -91,28 +91,40 @@ void scan_device(
     cub_strided_iterator<const T> values_in_iter { values_in, in_stride };
     cub_strided_iterator<T> values_out_iter { values_out, out_stride };
 
+    // Stop if CUB cannot size its temporary storage; otherwise the scan could
+    // continue without valid temporary storage.
     if (inclusive) {
-        check_cuda(cub::DeviceScan::InclusiveSum(NULL, scan_temp_size, values_in_iter, values_out_iter, n, stream));
+        if (!check_cuda(
+                cub::DeviceScan::InclusiveSum(NULL, scan_temp_size, values_in_iter, values_out_iter, n, stream)
+            ))
+            return false;
     } else {
-        check_cuda(cub::DeviceScan::ExclusiveSum(NULL, scan_temp_size, values_in_iter, values_out_iter, n, stream));
+        if (!check_cuda(
+                cub::DeviceScan::ExclusiveSum(NULL, scan_temp_size, values_in_iter, values_out_iter, n, stream)
+            ))
+            return false;
     }
 
     void* temp_buffer = wp_alloc_device(WP_CURRENT_CONTEXT, scan_temp_size, "(native:scan)");
+    // wp_alloc_device() already records the CUDA error.
+    if (scan_temp_size > 0 && !temp_buffer)
+        return false;
 
     // scan each scalar component independently
-    for (int k = 0; k < type_length; ++k) {
+    bool success = true;
+    for (int k = 0; k < type_length && success; ++k) {
         cub_strided_iterator<const T> values_in_iter { values_in + k, in_stride };
         cub_strided_iterator<T> values_out_iter { values_out + k, out_stride };
         size_t temp_storage_bytes = scan_temp_size;
 
         if (inclusive) {
-            check_cuda(
+            success = check_cuda(
                 cub::DeviceScan::InclusiveSum(
                     temp_buffer, temp_storage_bytes, values_in_iter, values_out_iter, n, stream
                 )
             );
         } else {
-            check_cuda(
+            success = check_cuda(
                 cub::DeviceScan::ExclusiveSum(
                     temp_buffer, temp_storage_bytes, values_in_iter, values_out_iter, n, stream
                 )
@@ -121,19 +133,20 @@ void scan_device(
     }
 
     wp_free_device(WP_CURRENT_CONTEXT, temp_buffer);
+    return success;
 }
 
-template <typename T> void scan_device(const T* values_in, T* values_out, int n, bool inclusive)
+template <typename T> bool scan_device(const T* values_in, T* values_out, int n, bool inclusive)
 {
-    scan_device(values_in, values_out, n, sizeof(T), sizeof(T), 1, inclusive);
+    return scan_device(values_in, values_out, n, sizeof(T), sizeof(T), 1, inclusive);
 }
 
-template void scan_device(const int*, int*, int, bool);
-template void scan_device(const int64_t*, int64_t*, int, bool);
-template void scan_device(const float*, float*, int, bool);
-template void scan_device(const double*, double*, int, bool);
+template bool scan_device(const int*, int*, int, bool);
+template bool scan_device(const int64_t*, int64_t*, int, bool);
+template bool scan_device(const float*, float*, int, bool);
+template bool scan_device(const double*, double*, int, bool);
 
-template void scan_device(const int*, int*, int, int, int, int, bool);
-template void scan_device(const int64_t*, int64_t*, int, int, int, int, bool);
-template void scan_device(const float*, float*, int, int, int, int, bool);
-template void scan_device(const double*, double*, int, int, int, int, bool);
+template bool scan_device(const int*, int*, int, int, int, int, bool);
+template bool scan_device(const int64_t*, int64_t*, int, int, int, int, bool);
+template bool scan_device(const float*, float*, int, int, int, int, bool);
+template bool scan_device(const double*, double*, int, int, int, int, bool);

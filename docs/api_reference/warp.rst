@@ -23,6 +23,7 @@ These modules must be explicitly imported (e.g., ``import warp.autograd``).
 
 - :mod:`warp.autograd`
 - :mod:`warp.fem`
+- :mod:`warp.geometry`
 - :mod:`warp.optim`
 - :mod:`warp.render`
 - :mod:`warp.sparse`

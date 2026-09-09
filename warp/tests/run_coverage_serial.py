@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-"""Serial code-coverage runner
+"""Serial code-coverage runner.
 
 This script is used to generate code-coverage reports by running Warp tests.
 It runs in serial so can take over an hour to finish. To generate a coverage

@@ -613,8 +613,7 @@ def test_fabricarray_generic_array(test, device):
 
 
 def test_fabricarray_empty(test, device):
-    # Test whether common operations work with empty (zero-sized) indexed arrays
-    # without throwing exceptions.
+    """Test common operations on empty fabric arrays."""
 
     def test_empty_ops(nrows, ncols, wptype, nptype):
         # scalar, vector, or matrix
@@ -766,7 +765,7 @@ def test_fabricarray_fill_scalar(test, device):
 
 
 def test_fabricarray_fill_vector(test, device):
-    # test filling a vector array with scalar or vector values (vec_type, list, or numpy array)
+    """Fill a fabric vector array with scalar and vector values."""
 
     for nptype, wptype in wp._src.types.np_dtype_to_warp_type.items():
         # vector types
@@ -907,7 +906,7 @@ def test_fabricarray_fill_vector(test, device):
 
 
 def test_fabricarray_fill_matrix(test, device):
-    # test filling a matrix array with scalar or matrix values (mat_type, nested list, or 2d numpy array)
+    """Fill a fabric matrix array with scalar and matrix values."""
 
     for nptype, wptype in wp._src.types.np_dtype_to_warp_type.items():
         # matrix types
@@ -1202,7 +1201,7 @@ cuda_devices = get_cuda_test_devices()
 
 class TestFabricArray(unittest.TestCase):
     def test_fabricarray_new_del(self):
-        # test the scenario in which a fabricarray is created but not initialized before gc
+        """Delete a fabric array that was allocated without initialization."""
         instance = wp.fabricarray.__new__(wp.fabricarray)
         instance.__del__()
 

@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-"""Warp Test Suites
+"""Warp Test Suites.
 
 This file is intended to define functions that return TestSuite objects, which
 can be used in parallel or serial unit tests (with optional code coverage)
@@ -33,15 +33,15 @@ def _create_suite_from_test_classes(test_loader, test_classes):
 
 
 def auto_discover_suite(loader=unittest.defaultTestLoader, pattern="test*.py"):
-    """Uses unittest auto-discovery to build a test suite (test_*.py pattern)"""
+    """Build a test suite through unittest auto-discovery."""
 
     return loader.discover(start_dir=START_DIRECTORY, pattern=pattern, top_level_dir=TOP_LEVEL_DIRECTORY)
 
 
 def _iter_class_suites(test_suite):
-    """Iterate class-level test suites - test suites that contains test cases
+    """Iterate over class-level test suites that contain test cases.
 
-    From unittest_parallel.py
+    Adapt this helper from ``unittest_parallel.py``.
     """
     has_cases = any(isinstance(suite, unittest.TestCase) for suite in test_suite)
     if has_cases:
@@ -88,9 +88,9 @@ def compare_unittest_suites(
 
 
 def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
-    """Example of a manually constructed test suite.
+    """Build an example test suite manually.
 
-    Intended to be modified to create additional test suites
+    Modify this function to create additional test suites.
     """
     # Keep suite member imports lazy. The serial runner clears Warp caches
     # before building this suite, and importing all test modules here registers
@@ -111,6 +111,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.cuda.test_pinned import TestPinned
     from warp.tests.cuda.test_streams import TestStreams
     from warp.tests.cuda.test_texture import TestTexture
+    from warp.tests.cuda.test_texture_compiler import TestTextureCompiler
     from warp.tests.cuda.test_unified_memory import TestUnifiedMemory
     from warp.tests.deterministic.test_deterministic_backward import TestDeterministicBackward
     from warp.tests.deterministic.test_deterministic_counter import TestDeterministicCounter
@@ -127,6 +128,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.fem.test_fem_quadrature import TestFemQuadrature
     from warp.tests.fem.test_fem_shape import TestFemShape
     from warp.tests.geometry.test_bvh import TestBvh
+    from warp.tests.geometry.test_delaunay import TestDelaunay
     from warp.tests.geometry.test_hash_grid import TestHashGrid
     from warp.tests.geometry.test_marching_cubes import TestMarchingCubes
     from warp.tests.geometry.test_mesh import TestMesh
@@ -134,6 +136,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.geometry.test_mesh_query_point import TestMeshQueryPoint
     from warp.tests.geometry.test_mesh_query_ray import TestMeshQueryRay
     from warp.tests.geometry.test_volume import TestVolume
+    from warp.tests.geometry.test_volume_validation import TestVolumeValidation
     from warp.tests.geometry.test_volume_write import TestVolumeWrite
     from warp.tests.interop.test_dlpack import TestDLPack
     from warp.tests.interop.test_jax import TestJax
@@ -231,6 +234,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_rand import TestRand
     from warp.tests.test_ref import TestRef
     from warp.tests.test_reload import TestReload
+    from warp.tests.test_render_opengl import TestOpenGLRenderer
     from warp.tests.test_rounding import TestRounding
     from warp.tests.test_runlength_encode import TestRunlengthEncode
     from warp.tests.test_sanitize import TestSanitize
@@ -332,6 +336,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestCudaArchSuffix,
         TestCudaProfiler,
         TestCustomAllocator,
+        TestDelaunay,
         TestDense,
         TestDeterministicBackward,
         TestDeterministicCounter,
@@ -416,6 +421,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestRand,
         TestRef,
         TestReload,
+        TestOpenGLRenderer,
         TestRmmAllocator,
         TestRounding,
         TestRunlengthEncode,
@@ -435,6 +441,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestTape,
         TestTemplateLaunchBounds,
         TestTexture,
+        TestTextureCompiler,
         TestTile,
         TestTileAtomicBitwise,
         TestTileCholesky,
@@ -481,6 +488,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestVerifyFP,
         TestVersion,
         TestVolume,
+        TestVolumeValidation,
         TestVolumeWrite,
     ]
 
@@ -554,6 +562,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.geometry.test_mesh_query_point import TestMeshQueryPoint
     from warp.tests.geometry.test_mesh_query_ray import TestMeshQueryRay
     from warp.tests.geometry.test_volume import TestVolume
+    from warp.tests.geometry.test_volume_validation import TestVolumeValidation
     from warp.tests.geometry.test_volume_write import TestVolumeWrite
     from warp.tests.interop.test_dlpack import TestDLPack
     from warp.tests.matrix.test_mat import TestMat
@@ -667,6 +676,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.test_rand import TestRand
     from warp.tests.test_ref import TestRef
     from warp.tests.test_reload import TestReload
+    from warp.tests.test_render_opengl import TestOpenGLRenderer
     from warp.tests.test_rounding import TestRounding
     from warp.tests.test_runlength_encode import TestRunlengthEncode
     from warp.tests.test_scalar_ops import TestScalarOps
@@ -814,6 +824,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestHashGrid,
         TestMarchingCubes,
         TestVolume,
+        TestVolumeValidation,
         TestVolumeWrite,
         TestDLPack,
         TestMatAssignCopy,
@@ -894,6 +905,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestQuatAssignCopy,
         TestRand,
         TestReload,
+        TestOpenGLRenderer,
         TestRounding,
         TestRunlengthEncode,
         TestSGD,

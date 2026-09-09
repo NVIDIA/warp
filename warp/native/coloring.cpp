@@ -20,6 +20,8 @@
 
 #include "warp.h"
 
+#include "error.h"
+
 #include <algorithm>
 #include <array>
 #include <climits>
@@ -41,7 +43,7 @@ struct Graph {
         : num_nodes(num_nodes_in)
     {
         if (edges.ndim != 2 || edges.shape[1] != 2) {
-            fprintf(stderr, "The edges array must have shape (edge_count, 2)!\n");
+            wp::set_error_string("The edges array must have shape (edge_count, 2)!");
             valid = false;
             return;
         }
@@ -57,9 +59,9 @@ struct Graph {
             int e1 = *address(edges, edge_idx, 1);
 
             if (e0 < 0 || e0 >= num_nodes || e1 < 0 || e1 >= num_nodes) {
-                fprintf(
-                    stderr, "Graph edge %zu has endpoints (%d, %d), but valid node indices are in the range [0, %d).\n",
-                    edge_idx, e0, e1, num_nodes
+                wp::set_error_string(
+                    "Graph edge %zu has endpoints (%d, %d), but valid node indices are in the range [0, %d).", edge_idx,
+                    e0, e1, num_nodes
                 );
                 valid = false;
                 return;
@@ -506,17 +508,17 @@ extern "C" {
 int wp_graph_coloring(int num_nodes, wp::array_t<int> edges, int algorithm, wp::array_t<int> node_colors)
 {
     if (node_colors.ndim != 1 || node_colors.shape[0] != num_nodes) {
-        fprintf(stderr, "The node_colors array must have the preallocated shape of (num_nodes,)!\n");
+        wp::set_error_string("The node_colors array must have the preallocated shape of (num_nodes,)!");
         return -1;
     }
 
     if (edges.ndim != 2) {
-        fprintf(stderr, "The edges array must have 2 dimensions!\n");
+        wp::set_error_string("The edges array must have 2 dimensions!");
         return -1;
     }
 
     if (num_nodes == 0) {
-        fprintf(stderr, "Empty graph!\n");
+        wp::set_error_string("Empty graph!");
         return -1;
     }
 
@@ -547,7 +549,7 @@ int wp_graph_coloring(int num_nodes, wp::array_t<int> edges, int algorithm, wp::
     //     num_colors = graph_coloring_naive_greedy(graph);
     //     break;
     default:
-        fprintf(stderr, "Unrecognized coloring algorithm number: %d!\n", algorithm);
+        wp::set_error_string("Unrecognized coloring algorithm number: %d!", algorithm);
         return -1;
         break;
     }

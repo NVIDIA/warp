@@ -1013,7 +1013,7 @@ def make_test_bsr_mv(block_shape, scalar_type):
 
 def make_test_bsr_multiply_deep(block_shape, scalar_type):
     def test_bsr_multiply_deep(test, device):
-        """Test BSR matrix multiplication with deep matrices (many columns > 256)"""
+        """Test BSR matrix multiplication with deep matrices (many columns > 256)."""
         rng = np.random.default_rng(123)
 
         # Generate a dense matrix with few rows and many columns (> 256)
@@ -1071,7 +1071,7 @@ def make_test_bsr_multiply_deep(block_shape, scalar_type):
 
 
 def test_bsr_mm_max_new_nnz(test, device):
-    """Test that BSR matrix multiplication with max_new_nnz works"""
+    """Test BSR matrix multiplication with ``max_new_nnz``."""
     A = bsr_from_triplets(
         2,
         2,
@@ -1111,7 +1111,7 @@ def test_bsr_mm_max_new_nnz(test, device):
 
 
 def test_capturability(test, device):
-    """Test that BSR operations are graph-capturable"""
+    """Test graph capture of BSR operations."""
 
     N = 5
     M = 3
@@ -1404,9 +1404,11 @@ def test_padded_bsr_status_sync_cuda_capture_rejected(test, device):
 
 
 def test_padded_bsr_capture_per_row_without_nnz_capacity_rejected(test, device):
-    """A per-row ``row_capacity`` array without an explicit ``nnz_capacity`` needs
-    a host nnz readback, which is rejected with a clear error during a live CUDA
-    graph capture rather than failing obscurely."""
+    """Reject padded BSR capture without an explicit nonzero capacity.
+
+    A per-row ``row_capacity`` array needs a host nonzero-count readback when
+    ``nnz_capacity`` is absent. Raise a clear error during live CUDA graph capture.
+    """
 
     row_capacity = wp.array([1, 0, 3], dtype=int, device=device)
 
@@ -1490,6 +1492,39 @@ def test_bsr_alloc(test, device):
     assert bsr.nnz_sync() == 6
     assert bsr.columns.shape[0] >= 6
     assert bsr.values.shape[0] >= 6
+
+
+def test_bsr_scaled_expression_add_sub(test, device):
+    # Scaled expressions must give the same result on either side of + and -
+    rng = np.random.default_rng(123)
+
+    nrow = 3
+    ncol = 4
+    nnz = 6
+
+    x_rows = wp.array(rng.integers(0, high=nrow, size=nnz, dtype=int), dtype=int, device=device)
+    x_cols = wp.array(rng.integers(0, high=ncol, size=nnz, dtype=int), dtype=int, device=device)
+    x_vals = wp.array(rng.random(size=nnz), dtype=float, device=device)
+    x = bsr_from_triplets(nrow, ncol, x_rows, x_cols, x_vals)
+
+    y_rows = wp.array(rng.integers(0, high=nrow, size=nnz, dtype=int), dtype=int, device=device)
+    y_cols = wp.array(rng.integers(0, high=ncol, size=nnz, dtype=int), dtype=int, device=device)
+    y_vals = wp.array(rng.random(size=nnz), dtype=float, device=device)
+    y = bsr_from_triplets(nrow, ncol, y_rows, y_cols, y_vals)
+
+    x_dense = _bsr_to_dense(x)
+    y_dense = _bsr_to_dense(y)
+
+    assert_np_equal(_bsr_to_dense((2.0 * x) + y), 2.0 * x_dense + y_dense, 0.0001)
+    assert_np_equal(_bsr_to_dense(y + (2.0 * x)), 2.0 * x_dense + y_dense, 0.0001)
+    assert_np_equal(_bsr_to_dense((2.0 * x) - y), 2.0 * x_dense - y_dense, 0.0001)
+    assert_np_equal(_bsr_to_dense(y - (2.0 * x)), y_dense - 2.0 * x_dense, 0.0001)
+    assert_np_equal(_bsr_to_dense((2.0 * x) + (3.0 * y)), 2.0 * x_dense + 3.0 * y_dense, 0.0001)
+    assert_np_equal(_bsr_to_dense((2.0 * x) - (3.0 * y)), 2.0 * x_dense - 3.0 * y_dense, 0.0001)
+
+    # operands must be left untouched
+    assert_np_equal(_bsr_to_dense(x), x_dense, 0.0001)
+    assert_np_equal(_bsr_to_dense(y), y_dense, 0.0001)
 
 
 devices = get_test_devices()
@@ -1618,6 +1653,7 @@ add_function_test(
 add_function_test(TestSparse, "test_bsr_mm_max_new_nnz", test_bsr_mm_max_new_nnz, devices=devices, check_output=False)
 
 add_function_test(TestSparse, "test_bsr_alloc", test_bsr_alloc, devices=devices)
+add_function_test(TestSparse, "test_bsr_scaled_expression_add_sub", test_bsr_scaled_expression_add_sub, devices=devices)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -544,7 +544,7 @@ class TestExternalBuild(unittest.TestCase):
 
 
 def test_preamble_follows_warp_headers(test, device):
-    """The preamble must be able to use Warp's macros on every backend.
+    """Verify that the preamble must be able to use Warp's macros on every backend.
 
     A leading preamble lands after Warp's headers on CPU (Clang injects the precompiled
     builtin.h ahead of the translation unit) but before them under NVRTC, so the same

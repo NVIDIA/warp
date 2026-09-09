@@ -2758,7 +2758,7 @@ devices = get_test_devices()
 
 class TestSpatial(unittest.TestCase):
     def test_transform_identity_type(self):
-        """Mutating builtins on identity values must modify the original, not a copy."""
+        """Verify that mutating builtins on identity values must modify the original, not a copy."""
         t = wp.transform_identity()
         self.assertTrue(wp.types.types_equal(type(t), wp.transformf))
 
@@ -2778,7 +2778,7 @@ class TestSpatial(unittest.TestCase):
         self.assertTrue(wp.types.types_equal(type(q), wp.quatf))
 
     def test_generic_type_mutating_builtins(self):
-        """Mutating builtins must modify the original when given generic-typed instances.
+        """Verify that mutating builtins must modify the original when given generic-typed instances.
 
         Types created via ``wp.types.transformation(dtype=...)`` or ``wp.types.vector(...)``
         are valid user-facing constructs. Passing instances of these types to mutating builtins
@@ -2933,7 +2933,7 @@ class TestSpatial(unittest.TestCase):
                 transform_type(*components, pos=(8.0, 9.0, 10.0))
 
     def test_transform_constructor_invalid_kernel_arity(self):
-        """Unsupported argument counts must be reported, not reach an internal error."""
+        """Verify that unsupported argument counts must be reported, not reach an internal error."""
 
         @wp.kernel(module="unique")
         def kernel_two_values():

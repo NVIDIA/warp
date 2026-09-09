@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import contextlib
 import ctypes
 import ctypes.util
 import functools
@@ -45,6 +46,23 @@ pxr = importlib.util.find_spec("pxr")
 USD_AVAILABLE = pxr is not None
 
 
+@contextlib.contextmanager
+def suppress_native_error_output():
+    """Suppress native ``stderr`` output while preserving the recorded diagnostic.
+
+    Native output originates in C, so :func:`contextlib.redirect_stderr` cannot
+    intercept it. The diagnostic remains available through
+    :meth:`warp._src.context.Runtime.get_error_string`.
+    """
+    core = wp._src.context.runtime.core
+    saved_error_output_enabled = core.wp_is_error_output_enabled()
+    try:
+        core.wp_set_error_output_enabled(False)
+        yield
+    finally:
+        core.wp_set_error_output_enabled(saved_error_output_enabled)
+
+
 def make_isolated_kernel(func, **kwargs):
     """Build a :class:`warp.Kernel` in a module of its own.
 
@@ -83,7 +101,7 @@ except OSError:
 
 
 def get_selected_cuda_test_devices(mode: str | None = None):
-    """Returns a list of CUDA devices according the selected ``mode`` behavior.
+    """Return CUDA devices according to the selected ``mode`` behavior.
 
     If ``mode`` is ``None``, the ``global test_mode`` value will be used and
     this list will be a subset of the devices returned from ``get_test_devices()``.
@@ -125,7 +143,7 @@ def get_selected_cuda_test_devices(mode: str | None = None):
 
 
 def get_test_devices(mode: str | None = None):
-    """Returns a list of devices based on the mode selected.
+    """Return devices based on the selected mode.
 
     Args:
         mode: The testing mode to specify which devices to include. If not provided or ``None``, the
@@ -381,7 +399,7 @@ def skip_test_func(self):
 
 
 def sanitize_identifier(s):
-    """replace all non-identifier characters with '_'"""
+    """Replace all non-identifier characters with underscores."""
 
     s = str(s)
     if s.isidentifier():
@@ -474,7 +492,7 @@ def write_junit_results(
     tests_skipped: int,
     test_duration: float,
 ):
-    """Write a JUnit XML from our report data
+    """Write a JUnit XML from our report data.
 
     The report file is needed for GitLab to add test reports in merge requests.
     """

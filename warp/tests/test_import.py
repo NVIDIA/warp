@@ -26,7 +26,7 @@ devices = get_test_devices()
 
 class TestImport(unittest.TestCase):
     def test_normalize_direct_test_sys_path(self):
-        """Direct test execution should not shadow top-level packages."""
+        """Verify that direct test execution should not shadow top-level packages."""
         tests_root = os.path.dirname(os.path.abspath(unittest_utils.__file__))
         repo_root = os.path.dirname(os.path.dirname(tests_root))
         original_sys_path = sys.path[:]

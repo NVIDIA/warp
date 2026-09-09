@@ -279,6 +279,8 @@ Validation checks:
 
 Replay then trusts the record layout but continues to validate region resolution and operation-specific memory spans. Structural validation is deliberately paid once at capture close or load rather than repeated for every operation in launch-dense replay loops; runtime address and span checks remain in place. CPU replay and CUDA reconstruction return failure when a kernel, region, module, or helper operation cannot be resolved.
 
+Native diagnostics emitted by APIC use a product-first prefix so standalone and Python callers can identify their source. Errors begin with ``Warp APIC error:`` and warnings begin with ``Warp APIC warning:``, whether they are written directly to ``stderr`` or stored through ``wp::set_error_string()`` for propagation to Python.
+
 Handle relocation is a current exception. When an ``APIC_RELOC_HANDLE`` value has no entry in ``handle_ptr_remap``, both CPU replay and CUDA reconstruction preserve the original captured integer instead of failing. The same fallback applies to registered handle fields inside memory regions. Missing mesh metadata or a handle for an unsupported object type can therefore reach replay as a stale process-local handle.
 
 The fail-closed rule applies to structural stream validation, required memory snapshots, and explicitly recognized non-serializable process-local operations. It does not yet cover unresolved generic handle relocations.

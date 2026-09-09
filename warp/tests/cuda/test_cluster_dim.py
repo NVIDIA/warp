@@ -82,7 +82,7 @@ def cluster_nctarank() -> wp.uint32: ...
 
 
 def make_cluster_probe(cluster_dim: int, grid_stride: bool):
-    """A clustered kernel where each leading CTA records its rank and cluster size."""
+    """Create a clustered kernel that records each leading CTA's rank and cluster size."""
 
     @wp.kernel(cluster_dim=cluster_dim, grid_stride=grid_stride, enable_backward=False, module="unique")
     def probe(rank: wp.array[wp.uint32], size: wp.array[wp.uint32]):
@@ -133,8 +133,11 @@ def cluster_lean_fill(a: wp.array[int]):
 
 
 def run_cluster_probe(test, probe, cluster_total, n_clusters, device, block_dim=32):
-    """Launch *probe* and verify every CTA sees the requested cluster size and a
-    valid rank within its cluster."""
+    """Launch ``probe`` and verify each CTA's cluster size and rank.
+
+    Require every CTA to see the requested cluster size and a valid rank within
+    its cluster.
+    """
     n_blocks = n_clusters * cluster_total
     rank = wp.zeros(n_blocks, dtype=wp.uint32, device=device)
     size = wp.zeros(n_blocks, dtype=wp.uint32, device=device)

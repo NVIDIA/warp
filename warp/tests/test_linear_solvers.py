@@ -796,8 +796,7 @@ def test_batched_gmres_nonuniform(test, device, dtype=wp.float32):
 
 
 def test_functor_reuse(test, device):
-    # For each solver, construct a pre-allocated functor, then re-run on a different
-    # (but compatible) system without re-allocating temporary buffers.
+    """Reuse preallocated solver functors with compatible systems."""
     cases = [
         (cg, CG, _make_spd_system, 32, {"maxiter": 500, "restart": 32}),
         (cr, CR, _make_spd_system, 32, {"maxiter": 500, "restart": 32}),
@@ -888,7 +887,7 @@ def test_functor_iteration_buffer_reuse(test, device):
 
 
 def test_functor_preconditioner(test, device):
-    # CG and CR allow toggling M between None and a valid preconditioner between calls.
+    """Toggle CG and CR preconditioners between solver calls."""
     with wp.ScopedDevice(device):
         A, b = _make_spd_system(n=32, seed=33, dtype=wp.float64, device=device)
         M = preconditioner(A, "diag")

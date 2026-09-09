@@ -12,7 +12,7 @@ class ArrayEmpty:
     """Benchmark wp.empty()."""
 
     repeat = 1000  # Number of samples to run
-    number = 1  # Number of measurements to make between a single setup and teardown
+    number = 1  # Number of timed calls per sample
 
     def setup(self):
         wp.init()

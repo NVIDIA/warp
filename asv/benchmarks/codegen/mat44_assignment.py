@@ -24,7 +24,7 @@ def component_assignment(a: wp.array2d(dtype=wp.mat44), b: wp.array2d(dtype=wp.m
 
 class CompileModule:
     repeat = 20  # Number of samples to run
-    number = 1  # Number of measurements to make between a single setup and teardown
+    number = 1  # Number of timed calls per sample
 
     def setup(self):
         wp.init()

@@ -324,7 +324,7 @@ class Example:
                     inv_volume,
                     pressure_field.dof_values,
                     velocity_field.dof_values,
-                    quiet=not wp.config.verbose,
+                    quiet=wp.config.log_level > wp.LOG_DEBUG,
                 )
             else:
                 pressure_env_offsets = (
@@ -337,7 +337,7 @@ class Example:
                     pressure_field.dof_values,
                     velocity_field.dof_values,
                     pressure_env_offsets=pressure_env_offsets,
-                    quiet=not wp.config.verbose,
+                    quiet=wp.config.log_level > wp.LOG_DEBUG,
                 )
 
             fem.interpolate(

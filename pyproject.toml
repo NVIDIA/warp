@@ -115,6 +115,11 @@ select = [
     "PLW", # pylint warning
     "UP",  # pyupgrade
     "RUF",
+    "D200", # One-line docstrings should fit on one line
+    "D205", # Separate summaries from descriptions with a blank line
+    "D400", # End summary lines with a period
+    "D401", # Write summary lines in the imperative mood
+    "D403", # Capitalize the first word of each docstring
 ]
 ignore = [
     "E501",    # Many lines are over 120 characters already
@@ -130,6 +135,8 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
+# Enforce the selected pydocstyle rules only in the Warp test suite for now.
+"!warp/tests/**.py" = ["D200", "D205", "D400", "D401", "D403"]
 "__init__.py" = ["F401", "PLC0414"]
 "__init__.pyi" = ["B008", "E402", "I001"]
 # `warp/__init__.py` registers all Warp module source declarations before

@@ -899,9 +899,9 @@ def build_dll_for_arch(
 
                 if args.libmathdx_path:
                     if args.use_dynamic_cuda:
-                        ld_inputs.append(f"-lnvJitLink -L{args.libmathdx_path}/lib -lmathdx")
+                        ld_inputs.append(f"-lnvJitLink -L{quote(args.libmathdx_path + '/lib')} -lmathdx")
                     else:
-                        ld_inputs.append(f"-lnvJitLink_static -L{args.libmathdx_path}/lib -lmathdx_static")
+                        ld_inputs.append(f"-lnvJitLink_static -L{quote(args.libmathdx_path + '/lib')} -lmathdx_static")
 
             if args.jobs <= 1:
                 with ScopedTimer("build_cuda", active=args.verbose):
@@ -936,7 +936,9 @@ def build_dll_for_arch(
             # C++ hosts even on distros that flip the default to -z now via RELRO.
             opt_undefined = "-Wl,-z,lazy"
             opt_exclude_libs = "-Wl,--exclude-libs,ALL"
-            opt_static_runtime = f"-static-libstdc++ -static-libgcc -Wl,--version-script={native_dir}/warp.map"
+            opt_static_runtime = (
+                f"-static-libstdc++ -static-libgcc -Wl,--version-script={quote(native_dir + '/warp.map')}"
+            )
 
         sanitize_ld = f" -fsanitize={args.sanitize}" if args.sanitize else ""
 
@@ -979,11 +981,12 @@ def build_dll_for_arch(
             # Strip symbols to reduce the binary size
             if mode == "release":
                 if sys.platform == "darwin":
-                    run_cmd(f"strip -x {dll_path}")  # Strip all local symbols
+                    run_cmd(f"strip -x {quote(dll_path)}")  # Strip all local symbols
                 else:  # Linux
                     # Strip symbols not needed for dynamic linking, except those needed to support debugging JIT-compiled code
                     run_cmd(
-                        f"strip --strip-unneeded --keep-symbol=__jit_debug_register_code --keep-symbol=__jit_debug_descriptor {dll_path}"
+                        f"strip --strip-unneeded --keep-symbol=__jit_debug_register_code "
+                        f"--keep-symbol=__jit_debug_descriptor {quote(dll_path)}"
                     )
 
 

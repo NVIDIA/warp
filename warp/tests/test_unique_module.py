@@ -167,7 +167,7 @@ class TestUniqueModule(unittest.TestCase):
         np.testing.assert_allclose(b.numpy(), [2.0, 3.0, 4.0])
 
     def test_module_options_affect_unique_module_identity(self):
-        """Module options must contribute to unique module hashing."""
+        """Verify that module options must contribute to unique module hashing."""
 
         @wp.kernel(module="unique")
         def _scatter_normal(values: wp.array[wp.float32], indices: wp.array[wp.int32], out: wp.array[float]):
@@ -204,7 +204,7 @@ class TestUniqueModule(unittest.TestCase):
         np.testing.assert_allclose(out_deterministic.numpy(), [10.0])
 
     def test_deterministic_load_populates_launch_metadata(self):
-        """Loading deterministic kernels must populate metadata used on cache hits."""
+        """Verify that loading deterministic kernels must populate metadata used on cache hits."""
         cuda_devices = get_cuda_test_devices()
         if not cuda_devices:
             self.skipTest("No CUDA devices available")
@@ -232,7 +232,7 @@ class TestUniqueModule(unittest.TestCase):
         self.assertEqual(_scatter_deterministic.adj.det_meta.max_records, 1)
 
     def test_global_deterministic_captured_at_module_creation(self):
-        """Global deterministic config changes do not rehash existing modules."""
+        """Verify that global deterministic config changes do not rehash existing modules."""
 
         old_det = wp.config.deterministic
         try:
@@ -261,7 +261,7 @@ class TestUniqueModule(unittest.TestCase):
             wp.config.deterministic = old_det
 
     def test_deterministic_max_records_validation(self):
-        """``deterministic_max_records`` must be a non-negative integer."""
+        """Verify that ``deterministic_max_records`` must be a non-negative integer."""
 
         @wp.kernel(module="unique", module_options={"deterministic_max_records": 2})
         def _valid_max_records(a: wp.array[float]):
@@ -284,7 +284,7 @@ class TestUniqueModule(unittest.TestCase):
                 pass
 
     def test_module_options_error_without_unique(self):
-        """ValueError raised when module_options are used without ``module="unique"``."""
+        """Raise ``ValueError`` when module_options are used without ``module="unique"``."""
         with self.assertRaises(ValueError) as cm:
 
             @wp.kernel(module_options={"fast_math": True})
@@ -295,7 +295,7 @@ class TestUniqueModule(unittest.TestCase):
         self.assertIn('module="unique"', str(cm.exception))
 
     def test_module_options_empty_dict(self):
-        """``module_options={}`` with ``module="unique"`` behaves the same as ``module_options=None``."""
+        """Verify that ``module_options={}`` with ``module="unique"`` behaves the same as ``module_options=None``."""
         with contextlib.redirect_stdout(io.StringIO()) as f:
 
             @wp.kernel(module="unique", module_options={})
@@ -305,7 +305,7 @@ class TestUniqueModule(unittest.TestCase):
         self.assertEqual(f.getvalue(), "")
 
     def test_module_options_empty_dict_non_unique_raises(self):
-        """``module_options={}`` without ``module="unique"`` raises ``ValueError``."""
+        """Verify that ``module_options={}`` without ``module="unique"`` raises ``ValueError``."""
         with self.assertRaises(ValueError) as cm:
 
             @wp.kernel(module_options={})
@@ -315,7 +315,7 @@ class TestUniqueModule(unittest.TestCase):
         self.assertIn('module="unique"', str(cm.exception))
 
     def test_module_options_no_warning_unique(self):
-        """No warning when module_options are used with ``module="unique"``."""
+        """Expect no warning when module_options are used with ``module="unique"``."""
         with contextlib.redirect_stdout(io.StringIO()) as f:
 
             @wp.kernel(module_options={"fast_math": True}, module="unique")
@@ -325,7 +325,7 @@ class TestUniqueModule(unittest.TestCase):
         self.assertEqual(f.getvalue(), "")
 
     def test_module_options_multiple_keys(self):
-        """Multiple module_options are applied to unique modules."""
+        """Verify that multiple module_options are applied to unique modules."""
 
         @wp.kernel(module_options={"fast_math": True, "mode": "release"}, module="unique")
         def _multi_opts_kernel(a: wp.array[float]):
@@ -335,7 +335,7 @@ class TestUniqueModule(unittest.TestCase):
         self.assertEqual(_multi_opts_kernel.module.options["mode"], "release")
 
     def test_module_options_unknown_key(self):
-        """ValueError raised for unrecognized module_options keys."""
+        """Raise ``ValueError`` for unrecognized module_options keys."""
         with self.assertRaises(ValueError) as cm:
 
             @wp.kernel(module_options={"fast_mth": True}, module="unique")
@@ -346,7 +346,7 @@ class TestUniqueModule(unittest.TestCase):
         self.assertIn("Valid options", str(cm.exception))
 
     def test_module_options_invalid_type(self):
-        """TypeError raised when module_options is not a dict."""
+        """Raise ``TypeError`` when module_options is not a dict."""
         with self.assertRaises(TypeError) as cm:
 
             @wp.kernel(module_options="fast_math", module="unique")
@@ -357,7 +357,7 @@ class TestUniqueModule(unittest.TestCase):
         self.assertIn("str", str(cm.exception))
 
     def test_module_options_error_with_named_module(self):
-        """ValueError raised when module_options are used with a named (non-unique) module."""
+        """Raise ``ValueError`` when module_options are used with a named (non-unique) module."""
         with self.assertRaises(ValueError) as cm:
 
             @wp.kernel(module_options={"fast_math": True}, module="some_shared_module")
@@ -436,7 +436,7 @@ class TestUniqueModule(unittest.TestCase):
             assert_np_equal(y_i32_2.numpy(), [10, 12, 14])
 
     def test_unique_module_generic_kernel_options_disambiguation(self):
-        """Generic unique kernels differing only in a per-kernel option must stay distinct.
+        """Verify that generic unique kernels differing only in a per-kernel option must stay distinct.
 
         Each option is passed through a factory variable, so it never appears in the
         kernel source text and is not referenced in the body. The no-overload generic
@@ -570,7 +570,7 @@ def test_unique_module_deferred_static_expressions(test, device):
 
 
 def test_unique_module_generic_closure_disambiguation(test, device):
-    """Different closure-bound funcs should not collide for generic unique kernels.
+    """Verify that different closure-bound funcs should not collide for generic unique kernels.
 
     This covers the generic/no-overload declaration-time path where module naming
     must incorporate closure-bound function identity.
@@ -600,7 +600,7 @@ def test_unique_module_generic_closure_disambiguation(test, device):
 
 
 def test_unique_module_generic_closure_reuse(test, device):
-    """The same closure-bound func should still be stable and reusable."""
+    """Verify that the same closure-bound func should still be stable and reusable."""
     first_kernel = _make_unique_writer_kernel(_unique_writer_a)
     second_kernel = _make_unique_writer_kernel(_unique_writer_a)
 
@@ -616,7 +616,7 @@ def test_unique_module_generic_closure_reuse(test, device):
 
 
 def test_unique_module_reuse_does_not_retain_temporary_dependents(test, device):
-    """Reusing a unique module must not retain discarded temporary modules."""
+    """Verify that reusing a unique module must not retain discarded temporary modules."""
 
     @wp.func
     def _increment_for_unique_reuse(value: int) -> int:
@@ -653,7 +653,7 @@ def test_unique_module_reuse_does_not_retain_temporary_dependents(test, device):
 
 
 def test_unique_module_nongeneric_closure_disambiguation(test, device):
-    """Non-generic closure kernels with different captured functions must get different modules.
+    """Verify that non-generic closure kernels with different captured functions must get different modules.
 
     This tests the ModuleHasher path for closure disambiguation independently
     of the generic-kernel salt path (which only applies to generic kernels that

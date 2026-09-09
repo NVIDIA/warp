@@ -263,10 +263,7 @@ def test_preserve_outputs_grad(test, device):
 
 
 def gradcheck(func, func_name, inputs, device, eps=1e-4, tol=1e-2):
-    """
-    Checks that the gradient of the Warp kernel is correct by comparing it to the
-    numerical gradient computed using finite differences.
-    """
+    """Check a Warp kernel gradient against finite differences."""
 
     kernel = wp.Kernel(func=func, key=func_name)
 
@@ -537,7 +534,7 @@ def name_clash_kernel(
 
 
 def test_name_clash(test, device):
-    # tests that no name clashes occur when variable names such as `adj_a` are used in custom gradient code
+    """Avoid variable-name collisions in custom gradient code."""
     with wp.ScopedDevice(device):
         input_a = wp.array([1.0, -2.0, 3.0], dtype=wp.float32, requires_grad=True)
         input_b = wp.array([4.0, 5.0, -6.0], dtype=wp.float32, requires_grad=True)

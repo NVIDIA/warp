@@ -567,7 +567,8 @@ def test_error_unmatched_arguments(test, device):
 
 
 def test_error_kernel_return_value(test, device):
-    # kernels can return without a value
+    """Allow kernels to return without a value."""
+
     @wp.kernel(module="unique")
     def f0(x: float):
         return
@@ -2019,9 +2020,11 @@ class TestCodeGen(unittest.TestCase):
         self.assertEqual(directive, '#line 1 "C:/warp/kernels/example.py"')
 
     def test_extract_function_source_slow_path_when_fast_returns_none(self):
-        """When ``_try_extract_function_source`` returns ``None`` (e.g. for an
-        ``exec``-defined function with no linecache entry), ``extract_function_source``
-        falls through to ``inspect.getsourcelines`` exactly once and parses its result.
+        """Verify source extraction falls back when the fast path returns ``None``.
+
+        For an ``exec``-defined function with no line-cache entry,
+        ``extract_function_source`` falls through to ``inspect.getsourcelines``
+        exactly once and parses its result.
         """
         slow_source = "def generated():\n    return 42\n"
 
@@ -2035,10 +2038,11 @@ class TestCodeGen(unittest.TestCase):
         get_lines.assert_called_once()
 
     def test_extract_function_source_fast_path_patterns(self):
-        """Every fixture in ``aux_test_extract_source_patterns`` is served by the
-        fast path. We force a hard failure if ``inspect.getsourcelines`` is ever
-        called, so each ``subTest`` proves the corresponding branch of the forward
-        walk produced a parseable slice on its own.
+        """Verify fast source extraction for every supported fixture pattern.
+
+        Force a hard failure if ``inspect.getsourcelines`` is called, so each
+        ``subTest`` proves the corresponding branch of the forward walk produced a
+        parseable slice on its own.
         """
         fixtures = [
             patterns.plain,
@@ -2075,9 +2079,10 @@ class TestCodeGen(unittest.TestCase):
                 self.assertEqual(tree.body[0].name, fn.__code__.co_name)
 
     def test_extract_function_source_unwraps_like_inspect(self):
-        """``extract_function_source`` follows ``__wrapped__`` so the fast path is
-        a true substitute for ``inspect.getsourcelines`` on ``functools.wraps``-style
-        decorators.
+        """Follow ``__wrapped__`` during fast source extraction.
+
+        This makes the fast path a true substitute for ``inspect.getsourcelines``
+        with ``functools.wraps``-style decorators.
         """
 
         def real_kernel():
@@ -2103,8 +2108,9 @@ class TestCodeGen(unittest.TestCase):
         self.assertEqual(tree.body[0].name, "real_kernel")
 
     def test_adjoint_recovers_from_truncated_fast_extract(self):
-        """When the fast extractor truncates a multi-line string, the parse-time
-        fallback inside :meth:`extract_function_source` recovers via
+        """Recover when fast source extraction truncates a multiline string.
+
+        The parse-time fallback inside :meth:`extract_function_source` uses
         ``inspect.getsourcelines``.
         """
         # Sanity: the fast path really does produce a truncated, unparsable slice
@@ -2127,8 +2133,9 @@ class TestCodeGen(unittest.TestCase):
         self.assertEqual(adj.source, textwrap.dedent(inspect.getsource(contains_truncating_string)))
 
     def test_extract_function_source_refreshes_stale_linecache(self):
-        """The fast path must not accept stale ``linecache`` content for a file that
-        was rewritten and recompiled in the same process.
+        """Reject stale line-cache content during fast source extraction.
+
+        Cover a file rewritten and recompiled in the same process.
         """
 
         def load_function(path, source):
@@ -2157,9 +2164,10 @@ class TestCodeGen(unittest.TestCase):
                 linecache.cache.pop(path, None)
 
     def test_extract_function_source_rejects_non_function_fast_slice(self):
-        """If malformed line metadata makes the fast slice start inside a function,
-        the parse may still succeed. That slice must be rejected and recovered via
-        ``inspect.getsourcelines``.
+        """Reject fast source slices that do not start at a function.
+
+        Malformed line metadata can make a slice start inside a function while still
+        parsing successfully. Recover through ``inspect.getsourcelines`` instead.
         """
         source = "def line_shifted():\n    x = 1\n"
 
@@ -2401,11 +2409,11 @@ class TestCodeGen(unittest.TestCase):
                 return
 
     def test_replace_static_expressions_replaces_call_in_ast(self):
-        """The walker actually mutates ``adj.tree``: every resolvable ``wp.static``
-        Call gets replaced with an ``ast.Constant`` (or ``ast.Name`` for a
-        Function result). This pins the deferred-replacement application step,
-        which is the only behavioural difference vs upstream's in-flight
-        replacement.
+        """Replace resolvable ``wp.static`` calls in the abstract syntax tree.
+
+        The walker mutates ``adj.tree`` by replacing each resolvable call with an
+        ``ast.Constant`` or, for a function result, an ``ast.Name``. This pins the
+        deferred-replacement application step.
         """
         _value_a = 7
         _value_b = 13
@@ -2431,10 +2439,11 @@ class TestCodeGen(unittest.TestCase):
         self.assertIn(_value_b, constants)
 
     def test_replace_static_expressions_defers_loop_var_reference(self):
-        """A ``wp.static`` call inside a ``for`` body that references the loop
-        variable must be deferred — ``has_unresolved_static_expressions`` set,
-        Call left in the AST for codegen-time resolution. This pins the
-        loop-variable tracking in ``visit_For`` / ``visit_Call``.
+        """Defer ``wp.static`` calls that reference a loop variable.
+
+        Set ``has_unresolved_static_expressions`` and leave the call in the abstract
+        syntax tree for code-generation-time resolution. This pins loop-variable
+        tracking in ``visit_For`` and ``visit_Call``.
         """
 
         def _kernel_with_loop_var_static(out: wp.array[int]):
@@ -2453,8 +2462,10 @@ class TestCodeGen(unittest.TestCase):
         self.assertEqual(len(remaining_static_calls), 1)
 
     def test_shared_source_across_redeclarations(self):
-        """Redeclarations of one code object share the extracted source and tree;
-        resolution stays per-adjoint, so closure values are not shared."""
+        """Share extracted syntax across redeclarations of one code object.
+
+        Keep resolution per-adjoint so closure values are not shared.
+        """
 
         def make(v):
             @wp.kernel(module="unique")
@@ -2472,8 +2483,10 @@ class TestCodeGen(unittest.TestCase):
         self.assertIs(make(1.0), k1)
 
     def test_rebind_observed_through_shared_source(self):
-        """A rebound module global must be observed by the next redeclaration's
-        references and hash, even though syntax is served from the cache."""
+        """Observe rebound module globals when reusing cached syntax.
+
+        Include the rebound value in the next redeclaration's references and hash.
+        """
         module = sys.modules[__name__]
         module.SHARED_SOURCE_REBOUND = wp.constant(10.0)
         self.addCleanup(delattr, module, "SHARED_SOURCE_REBOUND")
@@ -2495,9 +2508,12 @@ class TestCodeGen(unittest.TestCase):
         self.assertNotEqual(k1.module.name, k2.module.name)
 
     def test_recompiled_equal_code_object_reextracts(self):
-        """A new code object that compares equal to a cached one (old text compiled
-        again while the file moved on, as with a stale .pyc) must miss the cache
-        and re-extract the current file contents."""
+        """Re-extract source for an equal but distinct code object.
+
+        An old source string compiled again after the file changes, as with a stale
+        ``.pyc`` file, can compare equal to the cached code object. It must miss the
+        identity-based cache and extract the current file contents.
+        """
         v1 = "import warp as wp\n\ndef kf(a: wp.array[wp.float32]):\n    tid = wp.tid()\n    a[tid] = 1.0\n"
         v2 = v1.replace("1.0", "42.25")
 
@@ -2529,8 +2545,7 @@ class TestCodeGen(unittest.TestCase):
             self.assertNotEqual(k_a.module.name, k_b.module.name)
 
     def test_shared_source_lookup_requires_identity(self):
-        # A record planted under another code object's id (the address-reuse case)
-        # must be rejected by the weakref identity guard.
+        """Reject cached source records belonging to another code object."""
         code_1 = compile("def g1():\n    return 1\n", "g.py", "exec").co_consts[0]
         code_2 = compile("def g2():\n    return 2\n", "g.py", "exec").co_consts[0]
         entry = codegen._SharedFunctionSource("src", 0, None)

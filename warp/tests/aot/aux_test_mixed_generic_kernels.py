@@ -15,7 +15,7 @@ import warp as wp
 
 @wp.kernel
 def scale_with_overloads(x: wp.array[Any], s: Any):
-    """Generic kernel with overloads - should compile successfully."""
+    """Compile a generic kernel with overloads successfully."""
     i = wp.tid()
     x[i] = s * x[i]
 
@@ -27,6 +27,6 @@ scale_f64 = wp.overload(scale_with_overloads, [wp.array[wp.float64], wp.float64]
 
 @wp.kernel
 def multiply_without_overloads(x: wp.array[Any], y: wp.array[Any], result: wp.array[Any]):
-    """Generic kernel without overloads - should trigger a warning."""
+    """Trigger a warning for a generic kernel without overloads."""
     i = wp.tid()
     result[i] = x[i] * y[i]

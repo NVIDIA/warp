@@ -64,7 +64,7 @@ def augassign_add_kernel(
     dest_indices: wp.array[wp.int32],
     output: wp.array[wp.float32],
 ):
-    """Same as scatter_add_kernel but using += syntax."""
+    """Implement ``scatter_add_kernel`` with augmented-assignment syntax."""
     tid = wp.tid()
     idx = dest_indices[tid]
     output[idx] += data[tid]
@@ -589,7 +589,7 @@ def test_sliced_3d_array_atomic_add(test, device):
 
 
 def test_strided_1d_view_atomic_add(test, device):
-    """Atomic add through a non-contiguous ``base[::2]`` view: odd slots untouched."""
+    """Preserve odd slots during atomic addition through ``base[::2]``."""
     n = 1024
     base_size = 128
     view_size = base_size // 2
@@ -620,7 +620,7 @@ def test_strided_1d_view_atomic_add(test, device):
 
 
 def test_zero_stride_view_atomic_add(test, device):
-    """Atomic add through a zero-stride view reduces to the one physical slot."""
+    """Verify that atomic add through a zero-stride view reduces to the one physical slot."""
     n = 1024
     logical_size = 8
     rng = np.random.default_rng(306)
@@ -656,7 +656,7 @@ def test_zero_stride_view_atomic_add(test, device):
 
 
 def test_column_slice_atomic_add(test, device):
-    """Atomic add through a non-contiguous ``base[:, col]`` view: other columns untouched."""
+    """Preserve other columns during atomic addition through ``base[:, col]``."""
     n = 1024
     rows, cols = 64, 4
     target_col = 2
@@ -688,7 +688,7 @@ def test_column_slice_atomic_add(test, device):
 
 
 def test_transposed_2d_atomic_add(test, device):
-    """Atomic add through a transposed 2D view: ``view[i, j]`` writes to ``base[j, i]``."""
+    """Map transposed-view atomic additions to the corresponding base elements."""
     n = 2048
     base_rows, base_cols = 16, 8
     view_rows, view_cols = base_cols, base_rows

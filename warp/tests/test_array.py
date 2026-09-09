@@ -564,8 +564,11 @@ def compare_3darrays(x: wp.array3d[float], y: wp.array3d[float], z: wp.array3d[i
 
 
 def test_transpose(test, device):
-    # test default transpose in non-square 2d case
-    # wp does not support copying from/to non-contiguous arrays so check in kernel
+    """Test default transposition of a nonsquare two-dimensional array.
+
+    Warp does not support copying to or from noncontiguous arrays, so check the
+    result in a kernel.
+    """
     np_arr = np.array([[1, 2], [3, 4], [5, 6]], dtype=float)
     arr = wp.array(np_arr, dtype=float, device=device)
     arr_transpose = arr.transpose()
@@ -667,7 +670,7 @@ def test_fill_scalar(test, device):
 
 
 def test_fill_vector(test, device):
-    # test filling a vector array with scalar or vector values (vec_type, list, or numpy array)
+    """Fill a vector array with scalar and vector values."""
 
     dim_x = 4
 
@@ -806,7 +809,7 @@ def test_fill_vector(test, device):
 
 
 def test_fill_matrix(test, device):
-    # test filling a matrix array with scalar or matrix values (mat_type, nested list, or 2d numpy array)
+    """Fill a matrix array with scalar and matrix values."""
 
     dim_x = 4
 
@@ -1073,8 +1076,11 @@ def test_fill_struct(test, device):
 
 
 def test_fill_slices(test, device):
-    # test fill_ and zero_ for non-contiguous arrays
-    # Note: we don't need to test the whole range of dtypes (vectors, matrices, structs) here
+    """Test filling and zeroing noncontiguous array slices.
+
+    A representative data type is sufficient because other tests cover vectors,
+    matrices, and structs.
+    """
 
     dim_x = 8
 
@@ -1768,8 +1774,7 @@ def test_round_trip(test, device):
 
 
 def test_empty_array(test, device):
-    # Test whether common operations work with empty (zero-sized) arrays
-    # without throwing exceptions.
+    """Test common operations on empty arrays."""
 
     def test_empty_ops(ndim, nrows, ncols, wptype, nptype):
         shape = (0,) * ndim
@@ -1844,7 +1849,7 @@ def test_empty_array(test, device):
 
 
 def test_empty_from_numpy(test, device):
-    # Test whether wrapping an empty (zero-sized) numpy array works correctly
+    """Wrap an empty NumPy array as a Warp array."""
 
     def test_empty_from_data(ndim, nrows, ncols, wptype, nptype):
         shape = (0,) * ndim
@@ -1884,7 +1889,7 @@ def test_empty_from_numpy(test, device):
 
 
 def test_empty_from_list(test, device):
-    # Test whether creating an array from an empty Python list works correctly
+    """Create a Warp array from an empty Python list."""
 
     def test_empty_from_data(nrows, ncols, wptype):
         if ncols > 0:
@@ -3013,7 +3018,7 @@ def inc_matrix(a: wp.array[wp.mat22f]):
 
 
 def test_direct_from_numpy(test, device):
-    """Pass NumPy arrays to Warp kernels directly"""
+    """Pass NumPy arrays directly to Warp kernels."""
 
     n = 12
 
@@ -3096,8 +3101,10 @@ def test_kernel_array_from_ptr_variable_shape(test, device):
 
 
 def test_array_shape_int_promotion(test, device):
-    # Verify that numpy integer shape elements are promoted to Python int
-    # to prevent 32-bit overflow in capacity calculations.
+    """Promote NumPy integer shape elements before capacity calculations.
+
+    Convert them to Python integers to prevent 32-bit overflow.
+    """
     for dtype in (np.int32, np.int64):
         arr = wp.zeros(np.array([4, 3, 2], dtype=dtype), dtype=wp.float32, device=device)
         test.assertEqual(arr.shape, (4, 3, 2))
@@ -3171,7 +3178,7 @@ def test_retain_grad(test, device):
 
 
 def test_retain_grad_validation(test, device):
-    # retain_grad=True without requires_grad=True should raise
+    """Reject ``retain_grad`` when ``requires_grad`` is disabled."""
     with test.assertRaises(ValueError):
         wp.zeros(10, dtype=float, retain_grad=True, device=device)
 
@@ -3286,8 +3293,10 @@ def test_array_from_int64_domain(test, device):
 
 
 def test_numpy_array_interface(test, device):
-    # We should be able to convert between NumPy and Warp arrays using __array_interface__ on CPU.
-    # This tests all scalar types supported by both.
+    """Convert between NumPy and Warp arrays through ``__array_interface__``.
+
+    Cover every scalar type supported by both libraries on CPU.
+    """
 
     n = 10
 
@@ -4113,7 +4122,7 @@ class TestArray(unittest.TestCase):
             _ = array[::0]
 
     def test_array_new_del(self):
-        # test the scenario in which an array instance is created but not initialized before gc
+        """Delete an array that was allocated without initialization."""
         instance = wp.array.__new__(wp.array)
         instance.__del__()
 

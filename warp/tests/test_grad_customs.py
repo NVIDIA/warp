@@ -17,7 +17,7 @@ from warp.tests.unittest_utils import *
 def reversible_increment(
     counter: wp.array[int], counter_index: int, value: int, thread_values: wp.array[int], tid: int
 ):
-    """This is a docstring"""
+    """Preserve this text: This is a docstring."""
     next_index = wp.atomic_add(counter, counter_index, value)
     thread_values[tid] = next_index
     return next_index
@@ -27,7 +27,7 @@ def reversible_increment(
 def replay_reversible_increment(
     counter: wp.array[int], counter_index: int, value: int, thread_values: wp.array[int], tid: int
 ):
-    """This is a docstring"""
+    """Preserve this text: This is a docstring."""
     return thread_values[tid]
 
 
@@ -62,20 +62,20 @@ def test_custom_replay_grad(test, device):
 
 @wp.func
 def overload_fn(x: float, y: float):
-    """This is a docstring"""
+    """Preserve this text: This is a docstring."""
     return x * 3.0 + y / 3.0, y**2.5
 
 
 @wp.func_grad(overload_fn)
 def overload_fn_grad(x: float, y: float, adj_ret0: float, adj_ret1: float):
-    """This is a docstring"""
+    """Preserve this text: This is a docstring."""
     wp.adjoint[x] += x * adj_ret0 * 42.0 + y * adj_ret1 * 10.0
     wp.adjoint[y] += y * adj_ret1 * 3.0
 
 
 @wp.struct
 class MyStruct:
-    """This is a docstring"""
+    """Preserve this text: This is a docstring."""
 
     scalar: float
     vec: wp.vec3
@@ -83,13 +83,13 @@ class MyStruct:
 
 @wp.func
 def overload_fn(x: MyStruct):
-    """This is a docstring"""
+    """Preserve this text: This is a docstring."""
     return x.vec[0] * x.vec[1] * x.vec[2] * 4.0, wp.length(x.vec), x.scalar**0.5
 
 
 @wp.func_grad(overload_fn)
 def overload_fn_grad(x: MyStruct, adj_ret0: float, adj_ret1: float, adj_ret2: float):
-    """This is a docstring"""
+    """Preserve this text: This is a docstring."""
     wp.adjoint[x.scalar] += x.scalar * adj_ret0 * 10.0
     wp.adjoint[x.vec][0] += adj_ret0 * x.vec[1] * x.vec[2] * 20.0
     wp.adjoint[x.vec][1] += adj_ret1 * x.vec[0] * x.vec[2] * 30.0
@@ -98,7 +98,7 @@ def overload_fn_grad(x: MyStruct, adj_ret0: float, adj_ret1: float, adj_ret2: fl
 
 @wp.kernel
 def run_overload_float_fn(xs: wp.array[float], ys: wp.array[float], output0: wp.array[float], output1: wp.array[float]):
-    """This is a docstring"""
+    """Preserve this text: This is a docstring."""
     i = wp.tid()
     out0, out1 = overload_fn(xs[i], ys[i])
     output0[i] = out0
@@ -308,14 +308,14 @@ def custom_norm(v: wp.vec3):
 
 @wp.func_grad(custom_norm)
 def adj_custom_norm(v: wp.vec3, adj_ret: float):
-    """Custom gradient that normalizes the adjoint."""
+    """Normalize the adjoint in the custom gradient."""
     # Use normalized gradient instead of the automatic one
     wp.adjoint[v] += wp.normalize(v) * adj_ret
 
 
 @wp.func
 def nested_norm(v: wp.vec3):
-    """Function that calls another function with custom gradient."""
+    """Call another function that has a custom gradient."""
     # This call will generate an adjoint that references adj_custom_norm
     return custom_norm(v)
 
@@ -379,21 +379,21 @@ def helper_multiply(x: float):
 
 @wp.func
 def custom_transform(x: float):
-    """Function with custom gradient that depends on helper_multiply."""
+    """Apply a custom gradient that depends on ``helper_multiply``."""
     # This function calls a regular helper - important for testing ordering!
     return helper_multiply(x) + 1.0
 
 
 @wp.func_grad(custom_transform)
 def adj_custom_transform(x: float, adj_ret: float):
-    """Custom gradient for custom_transform."""
+    """Apply the custom gradient for ``custom_transform``."""
     # Custom gradient: derivative is 2.0 (from helper_multiply)
     wp.adjoint[x] += 2.0 * adj_ret
 
 
 @wp.func
 def outer_transform(x: float):
-    """Function that calls custom_transform."""
+    """Call ``custom_transform`` and scale its result."""
     return custom_transform(x) * 3.0
 
 
@@ -475,7 +475,7 @@ def build_order_kernel(x: wp.array[float], y: wp.array[float]):
 
 
 def test_custom_grad_helper_backward_propagation(test, device):
-    """A helper reached first through a custom grad must keep its callee's adjoint enabled.
+    """Verify that a helper reached first through a custom grad must keep its callee's adjoint enabled.
 
     Otherwise ``adj_build_order_leaf`` is a disabled stub and the gradient is silently zeroed.
     Forward value is x*x, so the expected gradient is d/dx (x*x) = 2x.
@@ -517,7 +517,7 @@ def cross_kernel_backward(x: wp.array[float], y: wp.array[float]):
 
 
 def test_backward_use_propagation_across_kernels(test, device):
-    """A helper built by a forward-only kernel first must still differentiate in a backward kernel.
+    """Verify that a helper built by a forward-only kernel first must still differentiate in a backward kernel.
 
     ``cross_kernel_forward_only`` (enable_backward=False) builds ``cross_kernel_helper`` /
     ``cross_kernel_leaf`` with backward disabled; ``cross_kernel_backward`` then differentiates the
@@ -561,7 +561,7 @@ def add_two_native(a: float) -> float:
 
 @wp.func
 def func_with_native_and_custom_grad(x: float):
-    """Function that calls native snippet and has custom gradient."""
+    """Call a native snippet from a function with a custom gradient."""
     # Forward pass calls native snippet
     y = add_two_native(x)
     return y * 3.0
@@ -569,7 +569,7 @@ def func_with_native_and_custom_grad(x: float):
 
 @wp.func_grad(func_with_native_and_custom_grad)
 def adj_func_with_native_and_custom_grad(x: float, adj_ret: float):
-    """Custom gradient that provides derivative: d/dx[(x+2)*3] = 3."""
+    """Provide the derivative ``d/dx[(x + 2) * 3] = 3``."""
     wp.adjoint[x] += 3.0 * adj_ret
 
 
@@ -638,7 +638,7 @@ def func_with_custom_grad_calling_native(x: float):
 
 @wp.func_grad(func_with_custom_grad_calling_native)
 def adj_func_with_custom_grad_calling_native(x: float, adj_ret: float):
-    """Custom gradient that calls a native snippet."""
+    """Call a native snippet from a custom gradient."""
     # Custom gradient computes: derivative = 2 (by calling native snippet)
     factor = multiply_by_two_native(1.0)
     wp.adjoint[x] += factor * adj_ret
@@ -683,7 +683,7 @@ def test_native_snippet_in_custom_grad(test, device):
 
 
 def test_custom_grad_tile_matmul(test, device):
-    """A custom func_grad on a function that uses tile_matmul."""
+    """Test a custom gradient for a function that uses ``tile_matmul``."""
     M = 4
 
     @wp.func

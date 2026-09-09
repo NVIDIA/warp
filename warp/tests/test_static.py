@@ -225,7 +225,8 @@ def test_static_expression_return_types(test, device):
 
 
 def test_function_variable(test, device):
-    # create a function and pass it in as a static variable to the kernel
+    """Pass a function to a kernel as a static variable."""
+
     @wp.func
     def func1(a: int, b: int):
         return a + b
@@ -618,9 +619,7 @@ def unresolved_builder(funcids):
 
 
 def test_unresolved_static_expression(test, device):
-    # The module hash will need to be updated from the static expressions
-    # resolved at code generation time, since some of them cannot be evaluated
-    # at declaration time.
+    """Update module hashes after resolving deferred static expressions."""
     with wp.ScopedDevice(device):
         output1 = wp.array((1,), dtype=int)
         wp.launch(
@@ -730,7 +729,7 @@ devices = get_test_devices()
 
 class TestStatic(unittest.TestCase):
     def test_static_python_call(self):
-        # ensure wp.static() works from a Python context
+        """Call ``wp.static()`` from a Python context."""
         self.assertEqual(static_global_variable_func(), 5)
 
 

@@ -685,7 +685,7 @@ def test_torch_mgpu_interop(test, device):
 
 
 def test_torch_retain_grad_from_torch(test, device):
-    """Test that retain_grad can be set when converting from PyTorch via from_torch"""
+    """Test that ``retain_grad`` can be set after conversion from PyTorch."""
     torch = _import_torch()
 
     torch_device = wp.device_to_torch(device)
@@ -931,7 +931,7 @@ def test_torch_tape_autograd_torch_stream(test, device):
 
 
 def test_torch_graph_torch_stream(test, device):
-    """Capture Torch graph on Torch stream"""
+    """Capture a Torch graph on a Torch stream."""
 
     wp.load_module(device=device)
 
@@ -1053,7 +1053,7 @@ def test_torch_graph_radix_sort_unregistered(test, device):
 
 
 def test_torch_graph_warp_stream(test, device):
-    """Capture Torch graph on Warp stream"""
+    """Capture a Torch graph on a Warp stream."""
 
     torch = _import_torch()
 
@@ -1095,7 +1095,7 @@ def test_torch_graph_warp_stream(test, device):
 
 
 def test_warp_graph_warp_stream(test, device):
-    """Capture Warp graph on Warp stream"""
+    """Capture a Warp graph on a Warp stream."""
 
     torch = _import_torch()
 
@@ -1129,7 +1129,7 @@ def test_warp_graph_warp_stream(test, device):
 
 
 def test_warp_graph_torch_stream(test, device):
-    """Capture Warp graph on Torch stream"""
+    """Capture a Warp graph on a Torch stream."""
 
     wp.load_module(device=device)
 
@@ -1169,7 +1169,7 @@ def test_warp_graph_torch_stream(test, device):
 
 
 def test_direct(test, device):
-    """Pass Torch tensors to Warp kernels directly"""
+    """Pass Torch tensors directly to Warp kernels."""
 
     torch = _import_torch()
 

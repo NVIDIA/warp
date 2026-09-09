@@ -587,7 +587,6 @@ inline CUDA_CALLABLE T mod(T a, T b) { return a%b; } \
 inline CUDA_CALLABLE T min(T a, T b) { return a<b?a:b; } \
 inline CUDA_CALLABLE T max(T a, T b) { return a>b?a:b; } \
 inline CUDA_CALLABLE T clamp(T x, T a, T b) { return min(max(a, x), b); } \
-inline CUDA_CALLABLE T floordiv(T a, T b) { return a/b; } \
 inline CUDA_CALLABLE T nonzero(T x) { return x == T(0) ? T(0) : T(1); } \
 inline CUDA_CALLABLE T bit_and(T a, T b) { return a&b; } \
 inline CUDA_CALLABLE T bit_or(T a, T b) { return a|b; } \
@@ -633,6 +632,37 @@ DECLARE_INT_OPS(uint8)
 DECLARE_INT_OPS(uint16)
 DECLARE_INT_OPS(uint32)
 DECLARE_INT_OPS(uint64)
+
+/* C++ integer division truncates toward zero; adjust signed, non-exact
+   results with opposite signs to round toward negative infinity. */
+template <typename T> inline CUDA_CALLABLE T floordiv_signed(T a, T b)
+{
+    T q = a / b;
+
+#if !defined(__CUDA_ARCH__) && (defined(__clang__) || defined(__GNUC__))
+    // Keep the quotient/remainder form below for constant divisors so the
+    // compiler can strength-reduce both operations. For runtime divisors,
+    // checking the operand signs first avoids unnecessary correction work.
+    if (!__builtin_constant_p(b)) {
+        if ((a < T(0)) != (b < T(0)) && a % b != T(0))
+            q -= T(1);
+        return q;
+    }
+#endif
+
+    T r = a % b;
+    if (r != T(0) && ((r < T(0)) != (b < T(0))))
+        q -= T(1);
+    return q;
+}
+inline CUDA_CALLABLE int8 floordiv(int8 a, int8 b) { return floordiv_signed(a, b); }
+inline CUDA_CALLABLE int16 floordiv(int16 a, int16 b) { return floordiv_signed(a, b); }
+inline CUDA_CALLABLE int32 floordiv(int32 a, int32 b) { return floordiv_signed(a, b); }
+inline CUDA_CALLABLE int64 floordiv(int64 a, int64 b) { return floordiv_signed(a, b); }
+inline CUDA_CALLABLE uint8 floordiv(uint8 a, uint8 b) { return a / b; }
+inline CUDA_CALLABLE uint16 floordiv(uint16 a, uint16 b) { return a / b; }
+inline CUDA_CALLABLE uint32 floordiv(uint32 a, uint32 b) { return a / b; }
+inline CUDA_CALLABLE uint64 floordiv(uint64 a, uint64 b) { return a / b; }
 
 
 inline CUDA_CALLABLE int8 step(int8 x) { return x < 0 ? 1 : 0; }

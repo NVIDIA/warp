@@ -26,7 +26,7 @@ class ColdCompileFftLTO:
     """Benchmark FFT compilation time from scratch."""
 
     repeat = 2  # Number of samples to run
-    number = 1  # Number of measurements to make between a single setup and teardown
+    number = 1  # Number of timed calls per sample
 
     def setup(self):
         wp.init()
@@ -44,7 +44,7 @@ class WarmCompileFftLTO:
     """Benchmark FFT compilation time with cached LTO."""
 
     repeat = 1  # Number of samples to run
-    number = 10  # Number of measurements to make between a single setup and teardown
+    number = 10  # Number of timed calls per sample
 
     @setup_once
     def setup(self):
