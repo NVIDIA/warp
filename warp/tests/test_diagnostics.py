@@ -126,16 +126,14 @@ class TestDiagnostics(unittest.TestCase):
             self.assertIn("CPU->GPU mem:", diagnostics_output)
             self.assertIn("CPU/GPU atomics:", diagnostics_output)
 
-    def test_print_diagnostics_suppresses_init_banner_with_deprecated_verbose(self):
+    def test_print_diagnostics_suppresses_init_banner_at_debug_log_level(self):
         script = textwrap.dedent(
             """
             import contextlib
             import io
-            import warnings
             import warp as wp
 
-            warnings.filterwarnings("ignore", category=DeprecationWarning)
-            wp.config.verbose = True
+            wp.config.log_level = wp.LOG_DEBUG
             output = io.StringIO()
             with contextlib.redirect_stdout(output):
                 wp.print_diagnostics()

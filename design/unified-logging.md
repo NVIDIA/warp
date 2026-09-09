@@ -26,7 +26,7 @@ ring buffer, is outside the scope of this branch.
 | R2  | Add one global threshold for Warp host diagnostics                       | Must     | `wp.config.log_level`                      |
 | R3  | Route host warnings through Python's `warnings` machinery by default     | Must     | Honors `-W`, `simplefilter()`, etc.        |
 | R4  | Provide a pluggable host logger for framework integration                | Must     | `wp.Logger`, `wp.set_logger()`             |
-| R5  | Preserve legacy `verbose` and `quiet` behavior during deprecation        | Must     | Existing callers should keep working       |
+| R5  | Remove legacy `verbose` and `quiet` after their deprecation window      | Must     | Removed in 1.18; use `log_level`           |
 | R6  | Avoid bundling application-specific logger adapters in Warp              | Must     | App-side adapters live outside the library |
 
 **Non-goals:**
@@ -92,9 +92,7 @@ def log_error(message: str) -> None: ...
 These helpers are not re-exported as public API. Internal callers import them
 directly from `warp._src.logger`.
 
-`log_debug()` emits when either legacy `wp.config.verbose` is true or
-`wp.config.log_level <= wp.LOG_DEBUG`. Keeping both checks preserves behavior
-for code that still toggles `verbose` after `wp.init()`.
+`log_debug()` emits when `wp.config.log_level <= wp.LOG_DEBUG`.
 
 `log_info()` emits when `wp.config.log_level <= wp.LOG_INFO`.
 
@@ -160,27 +158,6 @@ Warp does not ship a `LoggerKit` or other application-specific adapter. For
 example, an Omniverse Kit integration should live in the application layer and
 install itself with `wp.set_logger()`.
 
-### Deprecated Config Flags
-
-`wp.config.verbose` and `wp.config.quiet` remain available during the
-deprecation window:
-
-- External reads or writes of either flag emit a one-time `DeprecationWarning`
-  routed through the active Warp logger.
-- Internal Warp reads do not emit those access warnings.
-- `Runtime.__init__` still maps `quiet=True` to at least `wp.LOG_WARNING` and
-  `verbose=True` to `wp.LOG_DEBUG`, unless the diagnostics path is temporarily
-  suppressing the init banner.
-- Call sites that historically honored runtime changes to `verbose` continue to
-  check `wp.config.verbose or wp.config.log_level <= wp.LOG_DEBUG`.
-
-The deprecated setter does not directly mutate `log_level`; compatibility is
-handled at initialization and at the legacy verbose-sensitive call sites. This
-avoids surprising side effects while keeping existing code functional.
-
-`wp.config.verbose_warnings` is not deprecated. It only controls warning
-formatting and has no `log_level` replacement.
-
 ### Migrated Call Sites
 
 This branch migrates Warp's host-side diagnostics onto the new logger path,
@@ -203,14 +180,12 @@ of internal Warp files.
   `ScopedLogger`, duck-typed custom loggers, validation failures, default logger
   stdout/stderr routing, and restoration semantics.
 - **Level gating:** Verify `LOG_DEBUG`, `LOG_INFO`, `LOG_WARNING`, and
-  `LOG_ERROR` thresholds, including the legacy `verbose` compatibility path.
+  `LOG_ERROR` thresholds.
 - **Warnings:** Verify Python warning filters still work with the default
   logger, custom warning adapters receive a `warnings.warn()`-ready stack level,
   duplicate deprecation warnings are suppressed, and deprecation warnings remain
   visible under default filters when attributed to user call sites.
-- **Deprecated config flags:** Verify external `verbose` / `quiet` access emits
-  one-time warnings through the active logger, respects `log_level`, and does
-  not warn for internal Warp callers.
+- **Removed config flags:** Verify `warp.config` no longer exposes `verbose` or
+  `quiet`.
 - **Integration:** Verify print-launch output, diagnostics banner suppression,
-  CUDA compiler verbosity, and JAX FFI debug gates use the new logging behavior
-  without dropping legacy `verbose` support.
+  CUDA compiler verbosity, and JAX FFI debug gates use `log_level`.

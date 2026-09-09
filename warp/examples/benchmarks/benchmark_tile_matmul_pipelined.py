@@ -285,7 +285,7 @@ def main():
     if args.iterations <= 0 or args.repeats <= 0 or args.warm_up < 0:
         raise ValueError("--iterations and --repeats must be positive and --warm-up must be non-negative")
 
-    wp.config.quiet = True
+    wp.config.log_level = wp.LOG_WARNING
     wp.init()
     wp.set_module_options({"fast_math": True, "enable_backward": False, "enable_mathdx_gemm": False})
 

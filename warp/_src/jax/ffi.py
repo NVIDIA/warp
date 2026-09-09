@@ -1275,7 +1275,7 @@ class FfiCallable:
         call_desc.output_staging_arrays = output_staging_arrays
         call_desc.static_staging_arrays = static_staging_arrays
 
-        if wp.config.verbose:
+        if wp.config.log_level <= wp.LOG_DEBUG:
             # print some stats
             total_input_size = 0
             for i in range(input_memcpy_count):

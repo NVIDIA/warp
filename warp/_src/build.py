@@ -125,7 +125,7 @@ def build_cuda(
             cuda_include_dirs,
             config == "debug",
             optimization_level,
-            warp.config.verbose or warp.config.log_level <= LOG_DEBUG,
+            warp.config.log_level <= LOG_DEBUG,
             verify_fp,
             fast_math,
             fuse_fp,
