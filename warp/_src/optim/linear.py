@@ -255,7 +255,10 @@ def preconditioner(A: _Matrix, ptype: str = "diag") -> LinearOperator:
            8 and roughly 7 minutes at block size 16 on first use in a fresh process; cached
            reruns are fast). To avoid that cliff, requesting this strategy for a block size
            larger than 8 automatically falls back to ``"block_jacobi_tile"`` instead, with a
-           warning.
+           warning -- unless ``A``'s scalar type isn't ``float32``/``float64`` (e.g.
+           ``float16``), in which case ``"block_jacobi_tile"`` can't be used and this strategy
+           is kept despite the compile-time cost, to avoid silently breaking its documented
+           ``float16`` support.
          - ``"block_jacobi_sequential"``: Block-Jacobi preconditioner that factorizes each
            diagonal block via a scalar LDL^T factorization. Requires the block to be symmetric
            positive-definite, but is zero-safe like ``"block_jacobi_direct"``: a non-SPD block
@@ -271,10 +274,13 @@ def preconditioner(A: _Matrix, ptype: str = "diag") -> LinearOperator:
            be symmetric positive-definite (no identity fallback), and ``A``'s scalar type must be
            ``float32`` or ``float64`` (the types supported by :func:`warp.tile_cholesky`).
          - ``"block_jacobi_auto"``: Dispatches to ``"block_jacobi_direct"`` for block sizes 2-6,
-           ``"block_jacobi_sequential"`` for 7-11, or ``"block_jacobi_tile"`` for 12 and up.
-           These thresholds pick a strategy that supports the input scalar type and stays
-           zero-safe by default; they are not a performance recommendation (see
-           ``"block_jacobi_tile"`` above) and may change in the future.
+           ``"block_jacobi_sequential"`` for 7-11, or ``"block_jacobi_tile"`` for 12 and up --
+           except when ``A``'s scalar type isn't ``float32``/``float64`` (e.g. ``float16``), in
+           which case block sizes 7 and up use ``"block_jacobi_sequential"`` instead of
+           ``"block_jacobi_tile"``, since the tile strategy can't accept that dtype. These
+           thresholds pick a strategy that supports the input scalar type and stays zero-safe by
+           default; they are not a performance recommendation (see ``"block_jacobi_tile"``
+           above) and may change in the future.
          - ``"block_jacobi"``: Alias for ``"block_jacobi_auto"``, kept for backward
            compatibility.
 
@@ -335,15 +341,21 @@ def _make_block_jacobi_preconditioner(A: _Matrix, strategy: str) -> LinearOperat
         # A CSR matrix; block-Jacobi degenerates to standard (scalar) Jacobi.
         return _make_jacobi_preconditioner(A, use_abs=False)
 
+    tile_supports_dtype = A.scalar_type in (wp.float32, wp.float64)
+
     if strategy == "auto":
         if block_size <= _BLOCK_JACOBI_AUTO_DIRECT_MAX:
             strategy = "direct"
-        elif block_size <= _BLOCK_JACOBI_AUTO_SEQUENTIAL_MAX:
+        elif block_size <= _BLOCK_JACOBI_AUTO_SEQUENTIAL_MAX or not tile_supports_dtype:
+            # "tile" only supports float32/float64; for a dtype it can't handle (e.g. float16)
+            # at a block size that would otherwise dispatch to "tile", use "sequential" instead
+            # (it supports every floating scalar type) rather than dispatching to a strategy
+            # that will raise.
             strategy = "sequential"
         else:
             strategy = "tile"
 
-    if strategy == "direct" and block_size > _BLOCK_JACOBI_DIRECT_MAX_BLOCK_SIZE:
+    if strategy == "direct" and block_size > _BLOCK_JACOBI_DIRECT_MAX_BLOCK_SIZE and tile_supports_dtype:
         log_warning(
             f"'block_jacobi_direct' preconditioner requested for block size {block_size}, which "
             f"is larger than {_BLOCK_JACOBI_DIRECT_MAX_BLOCK_SIZE}. Its QR-based kernel has a "
@@ -354,6 +366,9 @@ def _make_block_jacobi_preconditioner(A: _Matrix, strategy: str) -> LinearOperat
             stacklevel=3,
         )
         strategy = "tile"
+    # If the dtype isn't one "tile" supports, keep "direct" even above the size cap: falling
+    # back to "tile" would just trade a slow compile for an immediate ValueError, and "direct"
+    # documents float16 support that this size cap must not silently break.
 
     if strategy == "direct":
         return _make_block_jacobi_direct(A, block_size)

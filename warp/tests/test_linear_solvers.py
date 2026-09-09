@@ -1250,18 +1250,65 @@ def test_block_jacobi_direct_size_cap_falls_back_to_tile(test, device):
     assert_np_equal(x_fallback.numpy(), x_tile.numpy(), tol=1.0e-5)
 
 
-def test_block_jacobi_preconditioner_unsupported_dtype(test, device):
-    """Verify "block_jacobi_tile"/"auto"-into-tile fail fast on an unsupported scalar type.
+def test_block_jacobi_direct_size_cap_preserved_for_unsupported_dtype(test, device):
+    """Verify "block_jacobi_direct" above the size cap keeps "direct" for a dtype "tile" rejects.
 
-    ``wp.tile_cholesky`` only supports ``float32``/``float64``, so "block_jacobi_tile" (and
-    "auto" when it dispatches into "tile") must raise a clear ``ValueError`` for any other
-    scalar type, rather than a kernel-compile error. "direct"/"sequential" are scoped out of
-    this restriction; see :func:`test_block_jacobi_preconditioner_dtype_coverage`.
+    The size-cap fallback to "block_jacobi_tile" only applies when the input's scalar type is
+    one "tile" actually supports (``float32``/``float64``). For ``float16`` (or any other
+    unsupported scalar type), falling back would just trade the QR kernel's slow compile for an
+    immediate ``ValueError`` from "tile" -- and would silently break "block_jacobi_direct"'s
+    documented ``float16`` support. So above the size cap with ``float16`` input, "direct" must
+    still be used (no warning, no fallback), producing the same result as calling it below the
+    cap would.
+    """
+    block_size = _BLOCK_JACOBI_DIRECT_MAX_BLOCK_SIZE + 4
+    A, b, _diag_blocks = _make_block_spd_system(
+        num_blocks=4, block_size=block_size, seed=98, device=device, dtype=wp.float16
+    )
+
+    original_log_level = wp.config.log_level
+    wp.config.log_level = wp.LOG_WARNING
+    try:
+        with warnings.catch_warnings(), contextlib.redirect_stderr(io.StringIO()) as stderr:
+            warnings.simplefilter("always", UserWarning)
+            M_direct = preconditioner(A, "block_jacobi_direct")
+    finally:
+        wp.config.log_level = original_log_level
+    test.assertEqual(stderr.getvalue(), "")
+
+    x_direct = wp.zeros_like(b)
+    M_direct.matvec(b, x_direct, x_direct, alpha=1.0, beta=0.0)
+
+    with test.assertRaises(ValueError):
+        preconditioner(A, "block_jacobi_tile")
+
+
+def test_block_jacobi_preconditioner_unsupported_dtype(test, device):
+    """Verify "block_jacobi_tile" fails fast on an unsupported scalar type, and "auto" avoids it.
+
+    ``wp.tile_cholesky`` only supports ``float32``/``float64``, so explicitly requesting
+    "block_jacobi_tile" for any other scalar type must raise a clear ``ValueError`` rather than
+    a kernel-compile error. "block_jacobi_auto" must not hit that error at all: for a block size
+    that would otherwise dispatch to "tile" (12 and up), an unsupported dtype instead routes to
+    "block_jacobi_sequential" (which accepts any floating scalar type), so "auto" succeeds and
+    its result matches calling "block_jacobi_sequential" directly. "direct"/"sequential" are
+    scoped out of the dtype restriction; see :func:`test_block_jacobi_preconditioner_dtype_coverage`.
     """
     A, _b, _diag_blocks = _make_block_spd_system(num_blocks=4, block_size=16, seed=321, dtype=wp.float16, device=device)
-    for ptype in ("block_jacobi_tile", "block_jacobi_auto"):
-        with test.assertRaises(ValueError):
-            preconditioner(A, ptype)
+
+    with test.assertRaises(ValueError):
+        preconditioner(A, "block_jacobi_tile")
+
+    x_np = np.random.default_rng(4).uniform(low=-1.0, high=1.0, size=(A.shape[0],)).astype(np.float16)
+    x = wp.array(x_np, dtype=wp.float16, device=device)
+
+    z_auto = wp.zeros_like(x)
+    preconditioner(A, "block_jacobi_auto").matvec(x, z_auto, z_auto, alpha=1.0, beta=0.0)
+
+    z_sequential = wp.zeros_like(x)
+    preconditioner(A, "block_jacobi_sequential").matvec(x, z_sequential, z_sequential, alpha=1.0, beta=0.0)
+
+    assert_np_equal(z_auto.numpy(), z_sequential.numpy())
 
 
 class TestLinearSolvers(unittest.TestCase):
@@ -1419,6 +1466,12 @@ add_function_test(
     TestLinearSolvers,
     "test_block_jacobi_direct_size_cap_falls_back_to_tile",
     test_block_jacobi_direct_size_cap_falls_back_to_tile,
+    devices=devices,
+)
+add_function_test(
+    TestLinearSolvers,
+    "test_block_jacobi_direct_size_cap_preserved_for_unsupported_dtype",
+    test_block_jacobi_direct_size_cap_preserved_for_unsupported_dtype,
     devices=devices,
 )
 
