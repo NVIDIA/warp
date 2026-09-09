@@ -374,7 +374,9 @@ template <typename Tile, typename Op> CUDA_CALLABLE_DEVICE auto tile_reduce_impl
     return output;
 }
 
-template <int Axis, typename Op, typename Tile> CUDA_CALLABLE_DEVICE auto tile_reduce_axis_impl(Op f, Tile& t)
+template <int Axis, typename Op, typename Tile>
+CUDA_CALLABLE_DEVICE auto
+tile_reduce_axis_impl(Op f, Tile& t, typename Tile::Type empty_identity, bool has_empty_identity)
 {
     using T = typename Tile::Type;
     using InputShape = typename Tile::Layout::Shape;
@@ -382,6 +384,12 @@ template <int Axis, typename Op, typename Tile> CUDA_CALLABLE_DEVICE auto tile_r
 
     constexpr int reduce_dim_size = InputShape::dim(Axis);
     constexpr int output_size = OutputShape::size();
+
+    // Partial CUDA blocks cannot execute cooperative tile operations because
+    // all hardware threads must reach each barrier. The identity metadata is
+    // used only by the CPU cooperative-fiber path below.
+    (void)empty_identity;
+    (void)has_empty_identity;
 
     // special case: 1D input delegates to block-wide tile_reduce_impl for optimal performance
     if constexpr (InputShape::N == 1) {
@@ -629,71 +637,207 @@ template <typename Tile, typename Op> auto tile_reduce_impl(Op f, Tile& t)
 
     using Layout = typename decltype(input)::Layout;
 
-    T sum = input.data[0];
+    if constexpr (WP_TILE_BLOCK_DIM == 1) {
+        // Block-dim 1 fast path: full tile in one thread's registers.
+        T sum = input.data[0];
+        WP_PRAGMA_UNROLL
+        for (int i = 1; i < Layout::NumRegs; ++i) {
+            int linear = Layout::linear_from_register(i);
+            if (!Layout::valid(linear))
+                break;
+            sum = f(sum, input.data[i]);
+        }
+        output.data[0] = sum;
+        return output;
+    } else {
+        // Cross-fiber reduction: each fiber reduces its register slice into
+        // a partial, drops it into shared scratch[tid], syncs, then every
+        // fiber re-reduces the partials so they all return the same total.
+        // O(block_dim) per fiber after the sync; comparable to the GPU
+        // warp-shuffle path for moderate block_dim.
+        T* scratch = (T*)tile_shared_storage_t::alloc(int(sizeof(T) * WP_TILE_BLOCK_DIM));
+        bool* has_data = (bool*)tile_shared_storage_t::alloc(int(sizeof(bool) * WP_TILE_BLOCK_DIM));
+        const int tid = WP_TILE_THREAD_IDX;
 
-    WP_PRAGMA_UNROLL
-    for (int i = 1; i < Layout::NumRegs; ++i) {
-        int linear = Layout::linear_from_register(i);
-        if (!Layout::valid(linear))
-            break;
+        // Zero `has_data` for every slot — including slots whose fibers
+        // returned early in the partial-block thunk (`task_index >= dim->size`)
+        // and so never reach here. The bump allocator hands back arenas that
+        // are dirty across calls, so without this the stale flags from a
+        // previous reduction make the combine loop read uninitialized
+        // `scratch[i]`. Every participating fiber clears every flag before
+        // the barrier.
+        // The redundant work is intentional: lane 0, or any sparse subset
+        // of lanes, may already have returned from the logical block.
+        for (int i = 0; i < WP_TILE_BLOCK_DIM; ++i)
+            has_data[i] = false;
+        WP_TILE_SYNC();
 
-        sum = f(sum, input.data[i]);
+        // Local partial. If a fiber has zero register slots (only possible at
+        // block_dim > Size), it contributes the identity, but we approximate
+        // by skipping it via the first-valid check.
+        bool have_first = false;
+        T partial {};
+        WP_PRAGMA_UNROLL
+        for (int i = 0; i < Layout::NumRegs; ++i) {
+            int linear = Layout::linear_from_register(i);
+            if (!Layout::valid(linear))
+                break;
+            if (!have_first) {
+                partial = input.data[i];
+                have_first = true;
+            } else {
+                partial = f(partial, input.data[i]);
+            }
+        }
+        scratch[tid] = partial;
+        has_data[tid] = have_first;
+        WP_TILE_SYNC();
+
+        // Combine across fibers in deterministic tid order.
+        bool got = false;
+        T total {};
+        for (int i = 0; i < WP_TILE_BLOCK_DIM; ++i) {
+            if (!has_data[i])
+                continue;
+            if (!got) {
+                total = scratch[i];
+                got = true;
+            } else {
+                total = f(total, scratch[i]);
+            }
+        }
+        WP_TILE_SYNC();
+        tile_shared_storage_t::alloc(-(int)(sizeof(bool) * WP_TILE_BLOCK_DIM));
+        tile_shared_storage_t::alloc(-(int)(sizeof(T) * WP_TILE_BLOCK_DIM));
+
+        output.data[0] = total;
+        return output;
     }
-
-    output.data[0] = sum;
-    return output;
 }
 
-template <int Axis, typename Op, typename Tile> auto tile_reduce_axis_impl(Op f, Tile& t)
+template <int Axis, typename Op, typename Tile>
+auto tile_reduce_axis_impl(Op f, Tile& t, typename Tile::Type empty_identity, bool has_empty_identity)
 {
     using T = typename Tile::Type;
     using InputShape = typename Tile::Layout::Shape;
     using OutputShape = typename tile_shape_remove_dim<Axis, InputShape>::type;
 
     constexpr int reduce_dim_size = InputShape::dim(Axis);
+    constexpr int input_size = InputShape::size();
 
-    // CPU version - work directly with register tiles, no thread coordination needed
     auto input = t.copy_to_register();
     auto output = tile_register_t<T, tile_layout_register_t<OutputShape>>();
+    using InputLayout = tile_layout_register_t<InputShape>;
     using OutputLayout = typename decltype(output)::Layout;
 
-    // iterate through each output element and reduce along the axis
     constexpr int output_size = OutputShape::size();
-    for (int out_idx = 0; out_idx < output_size; ++out_idx) {
-        T accumulator;
 
-        // special case for 1D input (reduces to single value)
-        if constexpr (InputShape::N == 1) {
-            accumulator = input.data[0];
-            for (int i = 1; i < reduce_dim_size; ++i) {
-                // input is in registers, linear access
-                accumulator = f(accumulator, input.data[i]);
+    if constexpr (WP_TILE_BLOCK_DIM == 1) {
+        // Fast path: full input held in this thread's registers.
+        for (int out_idx = 0; out_idx < output_size; ++out_idx) {
+            T accumulator;
+            if constexpr (InputShape::N == 1) {
+                accumulator = input.data[0];
+                for (int i = 1; i < reduce_dim_size; ++i) {
+                    accumulator = f(accumulator, input.data[i]);
+                }
+            } else {
+                auto out_coord = OutputLayout::coord_from_linear(out_idx);
+                auto coord_0 = tile_coord_insert_axis<Axis>(out_coord, 0);
+                int input_reg_0 = InputLayout::register_from_linear(InputLayout::linear_from_coord(coord_0));
+                accumulator = input.data[input_reg_0];
+                for (int i = 1; i < reduce_dim_size; ++i) {
+                    auto coord_i = tile_coord_insert_axis<Axis>(out_coord, i);
+                    int input_reg_i = InputLayout::register_from_linear(InputLayout::linear_from_coord(coord_i));
+                    accumulator = f(accumulator, input.data[input_reg_i]);
+                }
             }
-        } else {
-            // multi-dimensional case
-            auto out_coord = OutputLayout::coord_from_linear(out_idx);
+            int output_reg = OutputLayout::register_from_linear(out_idx);
+            output.data[output_reg] = accumulator;
+        }
+        return output;
+    } else {
+        // Block-dim>1: input registers are split across fibers. Gather the
+        // whole tile into block-shared scratch via the linear<->register
+        // mapping (same shape as `tile_scan_inclusive_impl`'s gather), sync,
+        // then each fiber computes its output register slots by reading
+        // along the reduced axis from scratch.
+        T* scratch = (T*)tile_shared_storage_t::alloc(int(sizeof(T) * input_size));
+        bool* active = (bool*)tile_shared_storage_t::alloc(int(sizeof(bool) * WP_TILE_BLOCK_DIM));
+        const int tid = WP_TILE_THREAD_IDX;
 
-            // get input coordinates by inserting axis values
-            auto coord_0 = tile_coord_insert_axis<Axis>(out_coord, 0);
-            int input_linear_0 = tile_layout_register_t<InputShape>::linear_from_coord(coord_0);
-            int input_reg_0 = tile_layout_register_t<InputShape>::register_from_linear(input_linear_0);
-            accumulator = input.data[input_reg_0];
+        // In a partial CPU block, tail fibers return before entering the
+        // kernel and therefore never populate their register-owned scratch
+        // slots. Track the fibers that did enter this operation so reductions
+        // never consume stale values left in those slots by an earlier tile
+        // operation or block.
+        // Do not elect lane 0 as the initializer because it may have
+        // returned while the remaining fibers continue this block.
+        for (int i = 0; i < WP_TILE_BLOCK_DIM; ++i)
+            active[i] = false;
+        WP_TILE_SYNC();
+        active[tid] = true;
 
-            // reduce across the axis
-            for (int i = 1; i < reduce_dim_size; ++i) {
-                auto coord_i = tile_coord_insert_axis<Axis>(out_coord, i);
-                int input_linear_i = tile_layout_register_t<InputShape>::linear_from_coord(coord_i);
-                int input_reg_i = tile_layout_register_t<InputShape>::register_from_linear(input_linear_i);
-                accumulator = f(accumulator, input.data[input_reg_i]);
+        WP_PRAGMA_UNROLL
+        for (int r = 0; r < InputLayout::NumRegs; ++r) {
+            int linear = InputLayout::linear_from_register(r);
+            if (linear < input_size && InputLayout::valid(linear))
+                scratch[linear] = input.data[r];
+        }
+        WP_TILE_SYNC();
+
+        WP_PRAGMA_UNROLL
+        for (int r = 0; r < OutputLayout::NumRegs; ++r) {
+            int out_idx = OutputLayout::linear_from_register(r);
+            if (out_idx >= output_size || !OutputLayout::valid(out_idx))
+                continue;
+
+            bool got = false;
+            T accumulator {};
+            if constexpr (InputShape::N == 1) {
+                for (int i = 0; i < reduce_dim_size; ++i) {
+                    if (!active[InputLayout::thread_from_linear(i)])
+                        continue;
+                    if (!got) {
+                        accumulator = scratch[i];
+                        got = true;
+                    } else {
+                        accumulator = f(accumulator, scratch[i]);
+                    }
+                }
+            } else {
+                auto out_coord = OutputLayout::coord_from_linear(out_idx);
+                for (int i = 0; i < reduce_dim_size; ++i) {
+                    auto coord_i = tile_coord_insert_axis<Axis>(out_coord, i);
+                    int linear_i = InputLayout::linear_from_coord(coord_i);
+                    if (!active[InputLayout::thread_from_linear(linear_i)])
+                        continue;
+                    if (!got) {
+                        accumulator = scratch[linear_i];
+                        got = true;
+                    } else {
+                        accumulator = f(accumulator, scratch[linear_i]);
+                    }
+                }
+            }
+            if (got) {
+                output.data[r] = accumulator;
+            } else if (has_empty_identity) {
+                output.data[r] = empty_identity;
+            } else {
+                _wp_assert(
+                    "Warp tile_reduce() axis slice has no active values and the reduction operator has no declared "
+                    "identity",
+                    __FILE__, (unsigned int)__LINE__
+                );
+                output.data[r] = T {};
             }
         }
-
-        // store to output register
-        int output_reg = OutputLayout::register_from_linear(out_idx);
-        output.data[output_reg] = accumulator;
+        WP_TILE_SYNC();
+        tile_shared_storage_t::alloc(-(int)(sizeof(bool) * WP_TILE_BLOCK_DIM));
+        tile_shared_storage_t::alloc(-(int)(sizeof(T) * input_size));
+        return output;
     }
-
-    return output;
 }
 
 template <typename Tile, typename Op, typename OpTrack> auto tile_arg_reduce_impl(Op f, OpTrack track, Tile& t)
@@ -705,21 +849,85 @@ template <typename Tile, typename Op, typename OpTrack> auto tile_arg_reduce_imp
 
     using Layout = typename decltype(input)::Layout;
 
-    int champion_index = Layout::NumRegs > 0 ? Layout::linear_from_register(0) : -1;
-    T sum = input.data[0];
+    if constexpr (WP_TILE_BLOCK_DIM == 1) {
+        // Fast path.
+        int champion_index = Layout::NumRegs > 0 ? Layout::linear_from_register(0) : -1;
+        T sum = input.data[0];
+        WP_PRAGMA_UNROLL
+        for (int i = 1; i < Layout::NumRegs; ++i) {
+            int linear = Layout::linear_from_register(i);
+            if (!Layout::valid(linear))
+                break;
+            champion_index = track(sum, input.data[i], champion_index, linear);
+            sum = f(sum, input.data[i]);
+        }
+        output.data[0] = champion_index;
+        return output;
+    } else {
+        // Cross-fiber arg-reduction: each fiber finds its local champion
+        // (value + linear index in the global tile), drops both into shared
+        // scratch[tid], syncs, then every fiber re-reduces using the same
+        // `track` op so they all return the same global champion index.
+        T* val_scratch = (T*)tile_shared_storage_t::alloc(int(sizeof(T) * WP_TILE_BLOCK_DIM));
+        int* idx_scratch = (int*)tile_shared_storage_t::alloc(int(sizeof(int) * WP_TILE_BLOCK_DIM));
+        bool* has_data = (bool*)tile_shared_storage_t::alloc(int(sizeof(bool) * WP_TILE_BLOCK_DIM));
+        const int tid = WP_TILE_THREAD_IDX;
 
-    WP_PRAGMA_UNROLL
-    for (int i = 1; i < Layout::NumRegs; ++i) {
-        int linear = Layout::linear_from_register(i);
-        if (!Layout::valid(linear))
-            break;
+        // Zero `has_data` for every slot — same partial-block reasoning as
+        // `tile_reduce_impl`. Without this, fibers that returned early in
+        // the bounds-check thunk leave stale `true` flags and the combine
+        // loop reads uninitialized scratch.
+        for (int i = 0; i < WP_TILE_BLOCK_DIM; ++i)
+            has_data[i] = false;
+        WP_TILE_SYNC();
 
-        champion_index = track(sum, input.data[i], champion_index, linear);
-        sum = f(sum, input.data[i]);
+        // Local champion across this fiber's registers.
+        bool got = false;
+        T local_val {};
+        int local_idx = -1;
+        WP_PRAGMA_UNROLL
+        for (int i = 0; i < Layout::NumRegs; ++i) {
+            int linear = Layout::linear_from_register(i);
+            if (!Layout::valid(linear))
+                break;
+            if (!got) {
+                local_val = input.data[i];
+                local_idx = linear;
+                got = true;
+            } else {
+                local_idx = track(local_val, input.data[i], local_idx, linear);
+                local_val = f(local_val, input.data[i]);
+            }
+        }
+        val_scratch[tid] = local_val;
+        idx_scratch[tid] = local_idx;
+        has_data[tid] = got;
+        WP_TILE_SYNC();
+
+        // Combine across fibers in deterministic tid order.
+        bool combined = false;
+        T total_val {};
+        int total_idx = -1;
+        for (int i = 0; i < WP_TILE_BLOCK_DIM; ++i) {
+            if (!has_data[i])
+                continue;
+            if (!combined) {
+                total_val = val_scratch[i];
+                total_idx = idx_scratch[i];
+                combined = true;
+            } else {
+                total_idx = track(total_val, val_scratch[i], total_idx, idx_scratch[i]);
+                total_val = f(total_val, val_scratch[i]);
+            }
+        }
+        WP_TILE_SYNC();
+        tile_shared_storage_t::alloc(-(int)(sizeof(bool) * WP_TILE_BLOCK_DIM));
+        tile_shared_storage_t::alloc(-(int)(sizeof(int) * WP_TILE_BLOCK_DIM));
+        tile_shared_storage_t::alloc(-(int)(sizeof(T) * WP_TILE_BLOCK_DIM));
+
+        output.data[0] = total_idx;
+        return output;
     }
-
-    output.data[0] = champion_index;
-    return output;
 }
 
 #endif  // !defined(__CUDA_ARCH__)
@@ -737,7 +945,8 @@ void adj_tile_reduce(Op op, Tile& t, AdjOp& adj_op, AdjTile& adj_t, AdjRet& adj_
 #define tile_arg_reduce(op, opTrack, t) tile_arg_reduce_impl([](auto x, auto y) { return op(x, y);}, [](auto a, auto b, auto c, auto d) { return opTrack(a, b, c, d); }, t)
 
 // axis-specific reduction entry points
-#define tile_reduce_axis(op, t, axis) tile_reduce_axis_impl<axis>([](auto x, auto y) { return op(x, y);}, t)
+#define tile_reduce_axis(op, t, axis, identity, has_identity) \
+    tile_reduce_axis_impl<axis>([](auto x, auto y) { return op(x, y);}, t, identity, has_identity)
 
 template <typename Op, typename Tile, typename AdjOp, typename AdjTile, typename AdjRet>
 void adj_tile_reduce_axis(Op op, Tile& t, int axis, AdjOp& adj_op, AdjTile& adj_t, int& adj_axis, AdjRet& adj_ret)
@@ -758,15 +967,32 @@ template <typename Tile, typename AdjTile> CUDA_CALLABLE void adj_tile_sum(Tile&
 
     auto adj_reg = adj_ret.grad_to_register();
 
-#if !defined(__CUDA_ARCH__)
-    T scratch = adj_reg.data[0];
-#else
+#if defined(__CUDA_ARCH__)
     // broadcast incoming adjoint to block
     __shared__ T scratch;
     if (WP_TILE_THREAD_IDX == 0)
         scratch = adj_reg.data[0];
 
     WP_TILE_SYNC();
+#else
+    // CPU. At block_dim==1 this thread holds the single 1-element adjoint
+    // tile in `adj_reg.data[0]`. At block_dim>1 only thread 0's register
+    // slot holds the meaningful value (the others' linear index is invalid),
+    // so broadcast through a block-shared scratch slot, mirroring the GPU
+    // path. Without the broadcast each fiber would seed `scratch` with its
+    // own undefined adj_reg.data[0] and the gradient would be garbage.
+    T scratch_local {};
+    if constexpr (WP_TILE_BLOCK_DIM == 1) {
+        scratch_local = adj_reg.data[0];
+    } else {
+        wp_block_shared<T> scratch_holder;
+        if (WP_TILE_THREAD_IDX == 0)
+            *scratch_holder = adj_reg.data[0];
+        WP_TILE_SYNC();
+        scratch_local = *scratch_holder;
+        WP_TILE_SYNC();
+    }
+    T& scratch = scratch_local;
 #endif
 
     auto adj_ret_reg = tile_register_like<Tile>();
@@ -838,7 +1064,36 @@ template <typename TileA, typename TileB> CUDA_CALLABLE auto tile_dot(TileA& a, 
             output.data[0] = result;
     }
 #else
-    output.data[0] = thread_sum;
+    if constexpr (WP_TILE_BLOCK_DIM == 1) {
+        output.data[0] = thread_sum;
+    } else {
+        // Cross-fiber sum of partials. Same pattern as `tile_reduce_impl`'s
+        // block_dim>1 path: each fiber drops its partial into shared scratch,
+        // syncs, and re-reduces so they all see the same total.
+        ScalarT* scratch = (ScalarT*)tile_shared_storage_t::alloc(int(sizeof(ScalarT) * WP_TILE_BLOCK_DIM));
+        bool* has_data_arr = (bool*)tile_shared_storage_t::alloc(int(sizeof(bool) * WP_TILE_BLOCK_DIM));
+        const int tid = WP_TILE_THREAD_IDX;
+        // Zero `has_data_arr` for every slot — partial-block fibers that
+        // returned early in the bounds-check thunk would otherwise leave
+        // stale `true` flags. See the matching block in `tile_reduce_impl`.
+        for (int i = 0; i < WP_TILE_BLOCK_DIM; ++i)
+            has_data_arr[i] = false;
+        WP_TILE_SYNC();
+        scratch[tid] = thread_sum;
+        has_data_arr[tid] = has_data;
+        WP_TILE_SYNC();
+
+        ScalarT total = ScalarT(0);
+        for (int i = 0; i < WP_TILE_BLOCK_DIM; ++i) {
+            if (has_data_arr[i])
+                total += scratch[i];
+        }
+        WP_TILE_SYNC();
+        tile_shared_storage_t::alloc(-(int)(sizeof(bool) * WP_TILE_BLOCK_DIM));
+        tile_shared_storage_t::alloc(-(int)(sizeof(ScalarT) * WP_TILE_BLOCK_DIM));
+
+        output.data[0] = total;
+    }
 #endif
 
     return output;
@@ -856,14 +1111,28 @@ CUDA_CALLABLE void adj_tile_dot(TileA& a, TileB& b, AdjTileA& adj_a, AdjTileB& a
 
     auto adj_reg = adj_ret.grad_to_register();
 
-#if !defined(__CUDA_ARCH__)
-    ScalarT scratch = adj_reg.data[0];
-#else
+#if defined(__CUDA_ARCH__)
     // broadcast incoming adjoint to block
     __shared__ ScalarT scratch;
     if (WP_TILE_THREAD_IDX == 0)
         scratch = adj_reg.data[0];
     WP_TILE_SYNC();
+#else
+    // CPU. Same shape as adj_tile_sum: at block_dim==1 the local register
+    // slot holds the value; at block_dim>1 only thread 0's register is
+    // valid for the size-1 adjoint tile, so broadcast through block-shared.
+    ScalarT scratch_local {};
+    if constexpr (WP_TILE_BLOCK_DIM == 1) {
+        scratch_local = adj_reg.data[0];
+    } else {
+        wp_block_shared<ScalarT> scratch_holder;
+        if (WP_TILE_THREAD_IDX == 0)
+            *scratch_holder = adj_reg.data[0];
+        WP_TILE_SYNC();
+        scratch_local = *scratch_holder;
+        WP_TILE_SYNC();
+    }
+    ScalarT& scratch = scratch_local;
 #endif
 
     auto a_reg = a.copy_to_register();
@@ -929,7 +1198,7 @@ CUDA_CALLABLE void adj_tile_axpy(
 // axis-specific sum
 template <int Axis, typename Tile> auto tile_sum(Tile& t)
 {
-    return tile_reduce_axis_impl<Axis>([](auto x, auto y) { return add(x, y); }, t);
+    return tile_reduce_axis_impl<Axis>([](auto x, auto y) { return add(x, y); }, t, typename Tile::Type(0), true);
 }
 
 // special case adjoint for axis-specific summation

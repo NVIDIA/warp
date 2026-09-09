@@ -7445,10 +7445,62 @@ def tile_reduce_axis_value_func(arg_types, arg_values):
     return tile(dtype=a.dtype, shape=new_shape)
 
 
+def tile_reduce_axis_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
+    op = arg_values["op"]
+    tile_arg = arg_values["a"]
+    axis_var = arg_values["axis"]
+    if not hasattr(axis_var, "constant") or axis_var.constant is None:
+        raise ValueError("tile_reduce() axis must be a compile-time constant")
+
+    dtype = tile_arg.type.dtype
+    op_name = op.native_func if op.module is None else None
+    has_identity = op_name in ("add", "mul", "min", "max")
+
+    if op_name == "mul":
+        identity_value = 1
+    elif op_name == "min":
+        if dtype in float_types:
+            identity_value = math.inf
+        else:
+            identity_value = {
+                int8: 127,
+                uint8: 255,
+                int16: 32767,
+                uint16: 65535,
+                int32: 2147483647,
+                uint32: 4294967295,
+                int64: 9223372036854775807,
+                uint64: 18446744073709551615,
+            }[dtype]
+    elif op_name == "max":
+        if dtype in float_types:
+            identity_value = -math.inf
+        else:
+            identity_value = {
+                int8: -128,
+                uint8: 0,
+                int16: -32768,
+                uint16: 0,
+                int32: -2147483648,
+                uint32: 0,
+                int64: -9223372036854775808,
+                uint64: 0,
+            }[dtype]
+    else:
+        # Addition and unknown custom operations use zero as the transported
+        # value. Native code rejects an empty slice for custom operators.
+        identity_value = 0
+
+    identity = Var(None, type=dtype, constant=dtype(identity_value))
+    identity_is_valid = Var(None, type=bool, constant=has_identity)
+    return ((op, tile_arg, axis_var, identity, identity_is_valid), ())
+
+
 add_builtin(
     "tile_reduce",
     input_types={"op": Callable, "a": tile(dtype=Scalar, shape=tuple[int, ...]), "axis": int},
     value_func=tile_reduce_axis_value_func,
+    dispatch_func=tile_reduce_axis_dispatch_func,
     native_func="tile_reduce_axis",
     doc="""Apply a custom reduction operator across a tile.
 
@@ -7461,6 +7513,10 @@ add_builtin(
 
     Returns:
         A tile with the same shape as the input tile less the axis dimension and the same data type as the input tile.
+
+    On a partial CPU block, a slice with no active values returns the operation's identity for
+    ``wp.add``, ``wp.mul``, ``wp.min``, and ``wp.max``. Other operators have no declared
+    identity, so an empty slice triggers an assertion instead of returning an arbitrary value.
 
     Example:
 

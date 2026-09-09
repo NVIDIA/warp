@@ -5292,6 +5292,10 @@ def tile_reduce(op: Callable, a: Tile[Scalar, tuple[int, ...]], axis: int32 | in
     Returns:
         A tile with the same shape as the input tile less the axis dimension and the same data type as the input tile.
 
+    On a partial CPU block, a slice with no active values returns the operation's identity for
+    ``wp.add``, ``wp.mul``, ``wp.min``, and ``wp.max``. Other operators have no declared
+    identity, so an empty slice triggers an assertion instead of returning an arbitrary value.
+
     Example:
 
         .. code-block:: python
