@@ -604,22 +604,6 @@ the level.</p>
 <p>At <code class="docutils literal notranslate"><span class="pre">wp.LOG_DEBUG</span></code>, additional messages are printed to standard output
 regarding program progress and code generation, such as when operations may be
 non-differentiable.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>The legacy <code class="docutils literal notranslate"><span class="pre">wp.config.verbose</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.config.quiet</span></code> flags are
-deprecated. Migrate to <code class="docutils literal notranslate"><span class="pre">wp.config.log_level</span></code>:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">wp.config.verbose</span> <span class="pre">=</span> <span class="pre">True</span></code> → <code class="docutils literal notranslate"><span class="pre">wp.config.log_level</span> <span class="pre">=</span> <span class="pre">wp.LOG_DEBUG</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">wp.config.quiet</span> <span class="pre">=</span> <span class="pre">True</span></code> → <code class="docutils literal notranslate"><span class="pre">wp.config.log_level</span> <span class="pre">=</span> <span class="pre">wp.LOG_WARNING</span></code></p></li>
-</ul>
-<p>Reading or setting either deprecated flag emits a one-time
-<code class="docutils literal notranslate"><span class="pre">DeprecationWarning</span></code>. During the deprecation window the flag is still
-honored alongside <code class="docutils literal notranslate"><span class="pre">log_level</span></code>, so existing code keeps working. Remove the
-flag once your code sets <code class="docutils literal notranslate"><span class="pre">log_level</span></code> directly.</p>
-<p><code class="docutils literal notranslate"><span class="pre">wp.config.verbose_warnings</span></code> is not deprecated. It is an orthogonal
-formatting flag that controls whether warning messages include the source
-location and has no <code class="docutils literal notranslate"><span class="pre">log_level</span></code> equivalent.</p>
-</div>
 </section>
 <section id="verbose-warnings">
 <h3>Verbose Warnings<a class="headerlink" href="#verbose-warnings" title="Link to this heading">#</a></h3>
