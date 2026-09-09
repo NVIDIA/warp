@@ -110,7 +110,7 @@ def tile_ifft_kernel_vec2d_npo2(gx: wp.array2d[wp.vec2d], gy: wp.array2d[wp.vec2
     wp.tile_store(gy, xy)
 
 
-def test_tile_fft(test, device, wp_dtype, kernel, data_shape):
+def test_tile_fft(test, device, wp_dtype, kernel, data_shape, block_dim=TILE_DIM):
     # CUDA path requires MathDx for cuFFTDx; CPU path has a built-in implementation.
     wp_device = wp.get_device(device)
     if wp_device.is_cuda and not wp._src.context.runtime.core.wp_is_mathdx_enabled():
@@ -132,7 +132,7 @@ def test_tile_fft(test, device, wp_dtype, kernel, data_shape):
     Y_c = np.fft.fft(X_c, axis=-1)
 
     with wp.Tape() as tape:
-        wp.launch_tiled(kernel, dim=[1], inputs=[X_wp, Y_wp], block_dim=TILE_DIM, device=device)
+        wp.launch_tiled(kernel, dim=[1], inputs=[X_wp, Y_wp], block_dim=block_dim, device=device)
 
     # verify forward pass
     Y_wp_c = Y_wp.numpy().view(np_cplx_dtype).reshape(complex_shape)
@@ -152,7 +152,7 @@ def test_tile_fft(test, device, wp_dtype, kernel, data_shape):
     assert_np_equal(actual_grad_c, expected_grad_c, tol=1.0e-4)
 
 
-def test_tile_ifft(test, device, wp_dtype, kernel, data_shape):
+def test_tile_ifft(test, device, wp_dtype, kernel, data_shape, block_dim=TILE_DIM):
     # CUDA path requires MathDx for cuFFTDx; CPU path has a built-in implementation.
     wp_device = wp.get_device(device)
     if wp_device.is_cuda and not wp._src.context.runtime.core.wp_is_mathdx_enabled():
@@ -175,7 +175,7 @@ def test_tile_ifft(test, device, wp_dtype, kernel, data_shape):
     Y_c = np.fft.ifft(X_c, axis=-1) * fft_size
 
     with wp.Tape() as tape:
-        wp.launch_tiled(kernel, dim=[1], inputs=[X_wp, Y_wp], block_dim=TILE_DIM, device=device)
+        wp.launch_tiled(kernel, dim=[1], inputs=[X_wp, Y_wp], block_dim=block_dim, device=device)
 
     # verify forward pass
     Y_wp_c = Y_wp.numpy().view(np_cplx_dtype).reshape(complex_shape)
@@ -307,6 +307,7 @@ add_function_test(
         wp_dtype=wp.vec2f,
         kernel=tile_fft_kernel_vec2f_npo2,
         data_shape=(FFT_SIZE_NPO2, 2 * FFT_SIZE_NPO2),
+        block_dim=1,
     ),
     devices=["cpu"],
     check_output=False,
@@ -319,6 +320,7 @@ add_function_test(
         wp_dtype=wp.vec2d,
         kernel=tile_fft_kernel_vec2d_npo2,
         data_shape=(FFT_SIZE_NPO2, 2 * FFT_SIZE_NPO2),
+        block_dim=1,
     ),
     devices=["cpu"],
     check_output=False,
@@ -331,6 +333,7 @@ add_function_test(
         wp_dtype=wp.vec2f,
         kernel=tile_ifft_kernel_vec2f_npo2,
         data_shape=(FFT_SIZE_NPO2, 2 * FFT_SIZE_NPO2),
+        block_dim=1,
     ),
     devices=["cpu"],
     check_output=False,
@@ -343,10 +346,95 @@ add_function_test(
         wp_dtype=wp.vec2d,
         kernel=tile_ifft_kernel_vec2d_npo2,
         data_shape=(FFT_SIZE_NPO2, 2 * FFT_SIZE_NPO2),
+        block_dim=1,
     ),
     devices=["cpu"],
     check_output=False,
 )
+
+cpu_block_fft_tests = (
+    (
+        "test_tile_fft_2d_vec2f_cpu_blocks",
+        functools.partial(
+            test_tile_fft,
+            wp_dtype=wp.vec2f,
+            kernel=tile_fft_kernel_vec2f,
+            data_shape=(FFT_SIZE_FP32, 2 * FFT_SIZE_FP32),
+        ),
+    ),
+    (
+        "test_tile_fft_2d_vec2d_cpu_blocks",
+        functools.partial(
+            test_tile_fft,
+            wp_dtype=wp.vec2d,
+            kernel=tile_fft_kernel_vec2d,
+            data_shape=(FFT_SIZE_FP64, 2 * FFT_SIZE_FP64),
+        ),
+    ),
+    (
+        "test_tile_ifft_2d_vec2f_cpu_blocks",
+        functools.partial(
+            test_tile_ifft,
+            wp_dtype=wp.vec2f,
+            kernel=tile_ifft_kernel_vec2f,
+            data_shape=(FFT_SIZE_FP32, 2 * FFT_SIZE_FP32),
+        ),
+    ),
+    (
+        "test_tile_ifft_2d_vec2d_cpu_blocks",
+        functools.partial(
+            test_tile_ifft,
+            wp_dtype=wp.vec2d,
+            kernel=tile_ifft_kernel_vec2d,
+            data_shape=(FFT_SIZE_FP64, 2 * FFT_SIZE_FP64),
+        ),
+    ),
+    (
+        "test_tile_fft_3d_vec2f_cpu_blocks",
+        functools.partial(
+            test_tile_fft,
+            wp_dtype=wp.vec2f,
+            kernel=tile_fft_3d_kernel_vec2f,
+            data_shape=(FFT_3D_DIM0, FFT_3D_DIM1, 2 * FFT_SIZE_FP32),
+        ),
+    ),
+    (
+        "test_tile_fft_3d_vec2d_cpu_blocks",
+        functools.partial(
+            test_tile_fft,
+            wp_dtype=wp.vec2d,
+            kernel=tile_fft_3d_kernel_vec2d,
+            data_shape=(FFT_3D_DIM0, FFT_3D_DIM1, 2 * FFT_SIZE_FP64),
+        ),
+    ),
+    (
+        "test_tile_ifft_3d_vec2f_cpu_blocks",
+        functools.partial(
+            test_tile_ifft,
+            wp_dtype=wp.vec2f,
+            kernel=tile_ifft_3d_kernel_vec2f,
+            data_shape=(FFT_3D_DIM0, FFT_3D_DIM1, 2 * FFT_SIZE_FP32),
+        ),
+    ),
+    (
+        "test_tile_ifft_3d_vec2d_cpu_blocks",
+        functools.partial(
+            test_tile_ifft,
+            wp_dtype=wp.vec2d,
+            kernel=tile_ifft_3d_kernel_vec2d,
+            data_shape=(FFT_3D_DIM0, FFT_3D_DIM1, 2 * FFT_SIZE_FP64),
+        ),
+    ),
+)
+for name, func in cpu_block_fft_tests:
+    add_function_test(
+        TestTileFFT,
+        name,
+        func,
+        devices=["cpu"] if wp.is_cpu_available() else [],
+        check_output=False,
+        enable_cpu_blocks=True,
+    )
 
 
 if __name__ == "__main__":

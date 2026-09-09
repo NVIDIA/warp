@@ -485,5 +485,14 @@ add_function_test(TestTileMatmul, "test_tile_grouped_gemm", test_tile_grouped_ge
 add_function_test(TestTileMatmul, "test_tile_transpose_matmul", test_tile_transpose_matmul, devices=devices)
 add_function_test(TestTileMatmul, "test_tile_matmul_return_form", test_tile_matmul_return_form, devices=devices)
 
+cpu_devices = ["cpu"] if wp.is_cpu_available() else []
+for name, func in (
+    ("test_tile_gemm_fp32_cpu_blocks", test_tile_gemm(wp.float32)),
+    ("test_tile_grouped_gemm_cpu_blocks", test_tile_grouped_gemm),
+    ("test_tile_transpose_matmul_cpu_blocks", test_tile_transpose_matmul),
+    ("test_tile_matmul_return_form_cpu_blocks", test_tile_matmul_return_form),
+):
+    add_function_test(TestTileMatmul, name, func, devices=cpu_devices, enable_cpu_blocks=True)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2, failfast=True)

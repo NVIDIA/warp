@@ -93,6 +93,11 @@ inline CUDA_CALLABLE void scalar_cholesky_impl(TileA& A, TileOut& Out)
         // Diagonal: redundant compute on all threads.
         T s = A.data(tile_coord(j, j));
 
+        // In-place callers alias A and Out. Unlike GPU lockstep execution,
+        // one CPU fiber could otherwise overwrite the diagonal before its
+        // peers have read the original value.
+        WP_TILE_SYNC();
+
         for (int k = 0; k < j; ++k) {
             T r = Out.data(idx(j, k));
             s -= r * r;
@@ -145,9 +150,8 @@ inline CUDA_CALLABLE void scalar_cholesky_impl(TileA& A, TileOut& Out)
 // Each phase ends with WP_TILE_SYNC(). Intra-phase, every thread writes to a
 // unique address.
 //
-// CPU compile: __shared__ is replaced with stack arrays. WP_TILE_BLOCK_DIM == 1
-// makes thread-strided loops collapse to sequential. Behaviour matches the
-// previous single-threaded adjoint on CPU.
+// CPU blocks share W1 and W2 through the tile arena. The one-lane
+// specialization retains the original local stack arrays.
 //
 // Upper=false: A = L L^T, Upper=true: A = U^T U
 template <bool Upper, typename TileA, typename TileOut>
@@ -164,8 +168,17 @@ inline CUDA_CALLABLE void cooperative_scalar_cholesky_adj(TileA& adj_A, TileOut&
     __shared__ T W1[n * n];
     __shared__ T W2[n * n];
 #else
-    T W1[n * n];
-    T W2[n * n];
+    T W1_local[WP_TILE_BLOCK_DIM == 1 ? n * n : 1];
+    T W2_local[WP_TILE_BLOCK_DIM == 1 ? n * n : 1];
+    T* W1;
+    T* W2;
+    if constexpr (WP_TILE_BLOCK_DIM == 1) {
+        W1 = W1_local;
+        W2 = W2_local;
+    } else {
+        W1 = (T*)tile_shared_storage_t::alloc(int(sizeof(T) * n * n));
+        W2 = (T*)tile_shared_storage_t::alloc(int(sizeof(T) * n * n));
+    }
 #endif
 
     // Phase 1: gemm into W1.
@@ -245,6 +258,13 @@ inline CUDA_CALLABLE void cooperative_scalar_cholesky_adj(TileA& adj_A, TileOut&
         }
     }
     WP_TILE_SYNC();
+
+#if !defined(__CUDA_ARCH__)
+    if constexpr (WP_TILE_BLOCK_DIM > 1) {
+        tile_shared_storage_t::alloc(-int(sizeof(T) * n * n));
+        tile_shared_storage_t::alloc(-int(sizeof(T) * n * n));
+    }
+#endif
 }
 
 

@@ -17465,15 +17465,36 @@ def tile_fft_generic_lto_dispatch_func(
             # across batches inside `tile_fft_gpu_impl`.
             dtype_size = 2 * (4 if precision == 5 else 8)
             shared_memory_bytes = size * dtype_size
-        else:
-            # CPU path: non-power-of-two sizes use an O(n^2) DFT with fixed
-            # stack buffers capped at WP_FFT_CPU_MAX_DFT_SIZE (4096).
+        elif num_threads == 1:
+            # The sequential CPU path supports a direct-DFT fallback for
+            # non-power-of-two transforms.
             if (size & (size - 1)) != 0 and size > 4096:
                 raise ValueError(
                     f"{func_name}() on CPU with a non-power-of-two FFT size is limited to "
                     f"4096 elements, got {size}. Use a power-of-two size for larger transforms."
                 )
             shared_memory_bytes = 0
+        else:
+            # Cooperative CPU fibers use the same scalar butterfly path and
+            # shared scratch constraints as a GPU build without libmathdx.
+            if size <= 0 or (size & (size - 1)) != 0:
+                raise ValueError(
+                    f"{func_name}() on CPU with block_dim={num_threads} (>1) requires a "
+                    f"power-of-two FFT size, got {size}. Use block_dim=1 for arbitrary sizes "
+                    f"up to 4096."
+                )
+            if size % num_threads != 0:
+                raise ValueError(
+                    f"{func_name}() on CPU requires fft_size to be divisible by block_dim "
+                    f"(got fft_size={size}, block_dim={num_threads})."
+                )
+            if size // num_threads < 1:
+                raise ValueError(
+                    f"{func_name}() on CPU requires block_dim <= fft_size "
+                    f"(got fft_size={size}, block_dim={num_threads})."
+                )
+            dtype_size = 2 * (4 if precision == 5 else 8)
+            shared_memory_bytes = size * dtype_size
 
         lto_placeholder = "/* scalar */ 0"
         return (
