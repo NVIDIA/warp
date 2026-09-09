@@ -10,24 +10,43 @@
 
    Allocate a tile of uninitialized items.
    
-   The tile's contents are undefined; the caller is responsible for overwriting
-   every element before any read. This matches the semantics of ``numpy.empty``.
+   The tile's contents are undefined; overwrite every element before any read. This
+   matches the semantics of ``numpy.empty``.
    
    Because it skips initialization, ``tile_empty`` can avoid unnecessary stores
-   when every element will be overwritten, especially for ``"shared"`` tiles.
+   when every element will be overwritten, especially for ``"shared"`` tiles. For
+   accumulator patterns (``a += ...``), use :func:`~warp.tile_zeros` instead.
    
-   For accumulator patterns (``a += ...``), use :func:`tile_zeros` instead -
-   accumulation reads the prior value and would propagate uninitialized data.
-   Use ``tile_empty`` only when the first operation after construction is a
-   full overwrite (a ``tile_load``, a tile-typed assignment, or a complete
-   element-wise fill).
-   
-   :param shape: Shape of the output tile
-   :param dtype: Data type of output tile's elements
+   :param shape: Shape of the output tile. Must be a compile-time constant.
+   :param dtype: Data type of output tile's elements. Must be a compile-time constant.
    :param storage: The storage location for the tile: ``"register"`` for registers or
-                   ``"shared"`` for shared memory.
+                   ``"shared"`` for shared memory. Must be a compile-time constant.
    
    :returns: An uninitialized tile with the requested shape and data type.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def concatenate(a: wp.array[float], b: wp.array[float], out: wp.array[float]):
+           # every element is written below, so skipping initialization is safe
+           t = wp.tile_empty(shape=(8,), dtype=float, storage="shared")
+           wp.tile_assign(t, wp.tile_load(a, shape=(4,)), offset=(0,))
+           wp.tile_assign(t, wp.tile_load(b, shape=(4,)), offset=(4,))
+           wp.tile_store(out, t)
+   
+       a = wp.array([1.0, 2.0, 3.0, 4.0], dtype=float)
+       b = wp.array([10.0, 20.0, 30.0, 40.0], dtype=float)
+       out = wp.zeros(8, dtype=float)
+   
+       wp.launch_tiled(concatenate, dim=1, inputs=[a, b], outputs=[out], block_dim=4)
+   
+       print(out.numpy())
+   
+   .. testoutput::
+   
+       [ 1.  2.  3.  4. 10. 20. 30. 40.]
    
 
 .. function:: warp._src.lang.tile_empty(shape: int32, dtype: Any = float, storage: str = "register") -> Tile[Any, tuple[int, ...]]
@@ -39,3 +58,7 @@
       :differentiable: false
 
    Allocate a tile of uninitialized items.
+   
+   Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
+   ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument for usage
+   details and an example.

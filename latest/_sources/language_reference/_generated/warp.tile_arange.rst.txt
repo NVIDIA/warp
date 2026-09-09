@@ -8,16 +8,46 @@
       :python: false
       :differentiable: false
 
-   Generate a tile of linearly spaced elements.
+   Generate a 1D tile of linearly spaced elements.
    
-   - ``(stop,)``: Generates values from ``0`` to ``stop - 1``
-   - ``(start, stop)``: Generates values from ``start`` to ``stop - 1``
-   - ``(start, stop, step)``: Generates values from ``start`` to ``stop - 1`` with a step size
+   The range follows the half-open interval ``[start, stop)`` and holds
+   ``ceil((stop - start) / step)`` elements. For example, ``tile_arange(0, 10, 3)`` yields
+   ``[0, 3, 6, 9]``.
    
-   :param args: Variable-length positional arguments, interpreted as:
-   :param dtype: Data type of output tile's elements (``float`` if not provided)
+   The interval excludes ``stop``, except when ``step`` is non-integral and floating-point
+   round-off affects the number of elements.
+   
+   :param args: Positional compile-time constants specifying the range:
+   
+                - ``(stop,)``: Use ``0`` for ``start`` and ``1`` for ``step``.
+                - ``(start, stop)``: Use ``1`` for ``step``.
+                - ``(start, stop, step)``: Use the supplied ``start``, ``stop``, and ``step``.
+   :param dtype: Data type of output tile's elements. Defaults to ``float`` even when the
+                 range arguments are integers; pass ``dtype=int`` for an integer tile. Must
+                 be a compile-time constant.
    :param storage: The storage location for the tile: ``"register"`` for registers or
-                   ``"shared"`` for shared memory.
+                   ``"shared"`` for shared memory. Must be a compile-time constant.
    
-   :returns: A tile with ``shape=(n)`` with linearly spaced elements of specified data type.
+   :returns: A tile with ``shape=(n,)`` holding the linearly spaced elements.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def store_ranges(out: wp.array[int]):
+           a = wp.tile_arange(4, dtype=int)
+           b = wp.tile_arange(9, 0, -3, dtype=int)
+           wp.tile_store(out, a)
+           wp.tile_store(out, b, offset=(4,))
+   
+       out = wp.zeros(7, dtype=int)
+   
+       wp.launch_tiled(store_ranges, dim=1, outputs=[out], block_dim=4)
+   
+       print(out.numpy())
+   
+   .. testoutput::
+   
+       [0 1 2 3 9 6 3]
    

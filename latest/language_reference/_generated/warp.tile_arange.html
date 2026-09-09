@@ -564,25 +564,51 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tile</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><span class="pre">float32</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#warp._src.lang.tile_arange" title="Link to this definition">#</a></dt>
-<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="differentiable" data-wp-value="false"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li></ul><p>Generate a tile of linearly spaced elements.</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">(stop,)</span></code>: Generates values from <code class="docutils literal notranslate"><span class="pre">0</span></code> to <code class="docutils literal notranslate"><span class="pre">stop</span> <span class="pre">-</span> <span class="pre">1</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">(start,</span> <span class="pre">stop)</span></code>: Generates values from <code class="docutils literal notranslate"><span class="pre">start</span></code> to <code class="docutils literal notranslate"><span class="pre">stop</span> <span class="pre">-</span> <span class="pre">1</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">(start,</span> <span class="pre">stop,</span> <span class="pre">step)</span></code>: Generates values from <code class="docutils literal notranslate"><span class="pre">start</span></code> to <code class="docutils literal notranslate"><span class="pre">stop</span> <span class="pre">-</span> <span class="pre">1</span></code> with a step size</p></li>
-</ul>
+<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="differentiable" data-wp-value="false"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li></ul><p>Generate a 1D tile of linearly spaced elements.</p>
+<p>The range follows the half-open interval <code class="docutils literal notranslate"><span class="pre">[start,</span> <span class="pre">stop)</span></code> and holds
+<code class="docutils literal notranslate"><span class="pre">ceil((stop</span> <span class="pre">-</span> <span class="pre">start)</span> <span class="pre">/</span> <span class="pre">step)</span></code> elements. For example, <code class="docutils literal notranslate"><span class="pre">tile_arange(0,</span> <span class="pre">10,</span> <span class="pre">3)</span></code> yields
+<code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">3,</span> <span class="pre">6,</span> <span class="pre">9]</span></code>.</p>
+<p>The interval excludes <code class="docutils literal notranslate"><span class="pre">stop</span></code>, except when <code class="docutils literal notranslate"><span class="pre">step</span></code> is non-integral and floating-point
+round-off affects the number of elements.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>args</strong> – Variable-length positional arguments, interpreted as:</p></li>
-<li><p><strong>dtype</strong> – Data type of output tile’s elements (<code class="docutils literal notranslate"><span class="pre">float</span></code> if not provided)</p></li>
+<li><p><strong>args</strong> – <p>Positional compile-time constants specifying the range:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">(stop,)</span></code>: Use <code class="docutils literal notranslate"><span class="pre">0</span></code> for <code class="docutils literal notranslate"><span class="pre">start</span></code> and <code class="docutils literal notranslate"><span class="pre">1</span></code> for <code class="docutils literal notranslate"><span class="pre">step</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">(start,</span> <span class="pre">stop)</span></code>: Use <code class="docutils literal notranslate"><span class="pre">1</span></code> for <code class="docutils literal notranslate"><span class="pre">step</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">(start,</span> <span class="pre">stop,</span> <span class="pre">step)</span></code>: Use the supplied <code class="docutils literal notranslate"><span class="pre">start</span></code>, <code class="docutils literal notranslate"><span class="pre">stop</span></code>, and <code class="docutils literal notranslate"><span class="pre">step</span></code>.</p></li>
+</ul>
+</p></li>
+<li><p><strong>dtype</strong> – Data type of output tile’s elements. Defaults to <code class="docutils literal notranslate"><span class="pre">float</span></code> even when the
+range arguments are integers; pass <code class="docutils literal notranslate"><span class="pre">dtype=int</span></code> for an integer tile. Must
+be a compile-time constant.</p></li>
 <li><p><strong>storage</strong> – The storage location for the tile: <code class="docutils literal notranslate"><span class="pre">&quot;register&quot;</span></code> for registers or
-<code class="docutils literal notranslate"><span class="pre">&quot;shared&quot;</span></code> for shared memory.</p></li>
+<code class="docutils literal notranslate"><span class="pre">&quot;shared&quot;</span></code> for shared memory. Must be a compile-time constant.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>A tile with <code class="docutils literal notranslate"><span class="pre">shape=(n)</span></code> with linearly spaced elements of specified data type.</p>
+<dd class="field-even"><p>A tile with <code class="docutils literal notranslate"><span class="pre">shape=(n,)</span></code> holding the linearly spaced elements.</p>
 </dd>
 </dl>
+<p class="rubric">Example</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">store_ranges</span><span class="p">(</span><span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">int</span><span class="p">]):</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_arange</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_arange</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">3</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,))</span>
+
+<span class="n">out</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch_tiled</span><span class="p">(</span><span class="n">store_ranges</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">],</span> <span class="n">block_dim</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[0 1 2 3 9 6 3]
+</pre></div>
+</div>
 </dd></dl>
 
 </section>

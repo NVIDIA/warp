@@ -1,7 +1,7 @@
 ﻿warp.tile\_ones
 ===============
 
-.. function:: warp._src.lang.tile_ones(shape: tuple[int, ...], dtype: Any, storage: str = "register") -> Tile[Any, tuple[int, ...]]
+.. function:: warp._src.lang.tile_ones(shape: tuple[int, ...], dtype: Any = float, storage: str = "register") -> Tile[Any, tuple[int, ...]]
 
    .. wp-builtin-tags::
       :kernel: true
@@ -10,15 +10,44 @@
 
    Allocate a tile of one-initialized items.
    
-   :param shape: Shape of the output tile
-   :param dtype: Data type of output tile's elements
-   :param storage: The storage location for the tile: ``"register"`` for registers or
-                   ``"shared"`` for shared memory.
+   Every element is initialized with ``dtype(1)``. For vector and matrix element types
+   this sets *every* component to one - it does not produce an identity matrix. For
+   quaternion element types ``dtype(1)`` sets only the first component, giving
+   ``(1, 0, 0, 0)``. Warp struct element types are rejected; use
+   :func:`~warp.tile_full` with a value of the struct type instead.
    
-   :returns: A one-initialized tile with shape and data type as specified.
+   :param shape: Shape of the output tile. Must be a compile-time constant.
+   :param dtype: Data type of output tile's elements. Must be a compile-time constant.
+   :param storage: The storage location for the tile: ``"register"`` for registers or
+                   ``"shared"`` for shared memory. Must be a compile-time constant.
+   
+   :returns: A tile with the requested shape whose elements are all ``dtype(1)``.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def multiply_tiles(a: wp.array[float], b: wp.array[float], out: wp.array[float]):
+           total = wp.tile_ones(shape=(4,), dtype=float)
+           total *= wp.tile_load(a, shape=(4,))
+           total *= wp.tile_load(b, shape=(4,))
+           wp.tile_store(out, total)
+   
+       a = wp.array([1.0, 2.0, 3.0, 4.0], dtype=float)
+       b = wp.array([10.0, 20.0, 30.0, 40.0], dtype=float)
+       out = wp.zeros(4, dtype=float)
+   
+       wp.launch_tiled(multiply_tiles, dim=1, inputs=[a, b], outputs=[out], block_dim=2)
+   
+       print(out.numpy())
+   
+   .. testoutput::
+   
+       [ 10.  40.  90. 160.]
    
 
-.. function:: warp._src.lang.tile_ones(shape: int32, dtype: Any, storage: str = "register") -> Tile[Any, tuple[int, ...]]
+.. function:: warp._src.lang.tile_ones(shape: int32, dtype: Any = float, storage: str = "register") -> Tile[Any, tuple[int, ...]]
    :noindex:
 
    .. wp-builtin-tags::
@@ -27,3 +56,7 @@
       :differentiable: false
 
    Allocate a tile of one-initialized items.
+   
+   Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
+   ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument for usage
+   details and an example.

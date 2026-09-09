@@ -566,64 +566,66 @@
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tile</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#warp._src.lang.tile_from_thread" title="Link to this definition">#</a></dt>
 <dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="differentiable" data-wp-value="false"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li></ul><p>Allocate a tile filled with a value from a specific thread.</p>
-<p>This function broadcasts a value from one thread to all threads in the block,
-then creates a tile filled with that broadcast value. This is useful for
-efficiently sharing a computed result (e.g., from an atomic operation) with
-all threads in a block using minimal shared memory (only 1 element).</p>
+<p>This function broadcasts one thread’s value to all threads in the block, then
+creates a tile filled with that broadcast value. It is useful for sharing a
+computed result (e.g. from an atomic operation) with the whole block. Every thread
+in the block must call this function.</p>
+<p><code class="docutils literal notranslate"><span class="pre">thread_idx</span></code> is block-local: each block broadcasts from its own lane
+<code class="docutils literal notranslate"><span class="pre">thread_idx</span></code>, and it must satisfy <code class="docutils literal notranslate"><span class="pre">0</span> <span class="pre">&lt;=</span> <span class="pre">thread_idx</span> <span class="pre">&lt;</span> <span class="pre">wp.block_dim()</span></code>. The
+resulting tile’s data type is the type of <code class="docutils literal notranslate"><span class="pre">value</span></code>.</p>
+<p>On CPU the effective block width is <code class="docutils literal notranslate"><span class="pre">1</span></code>, so the tile is always filled with the
+calling invocation’s own <code class="docutils literal notranslate"><span class="pre">value</span></code> and <code class="docutils literal notranslate"><span class="pre">thread_idx</span></code> is ignored. In particular
+the common <code class="docutils literal notranslate"><span class="pre">thread_idx=wp.block_dim()</span> <span class="pre">-</span> <span class="pre">1</span></code> idiom selects thread <code class="docutils literal notranslate"><span class="pre">0</span></code> on CPU;
+see <a class="reference internal" href="../../user_guide/programming_model/tiles.html#cpu-tile-semantics"><span class="std std-ref">CPU Tile Semantics</span></a> for the portability rules.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>shape</strong> – Shape of the output tile</p></li>
-<li><p><strong>value</strong> – Per-thread value (only the value from <code class="docutils literal notranslate"><span class="pre">thread_idx</span></code> is used)</p></li>
-<li><p><strong>thread_idx</strong> – Index of the thread whose value should fill the tile</p></li>
+<li><p><strong>shape</strong> – Shape of the output tile. Must be a compile-time constant.</p></li>
+<li><p><strong>value</strong> – Per-thread value; only the value from <code class="docutils literal notranslate"><span class="pre">thread_idx</span></code> is used.</p></li>
+<li><p><strong>thread_idx</strong> – Block-local index of the thread whose value should fill the tile.
+Must have the same value in every thread of the block.</p></li>
 <li><p><strong>storage</strong> – The storage location for the tile: <code class="docutils literal notranslate"><span class="pre">&quot;register&quot;</span></code> for registers or
-<code class="docutils literal notranslate"><span class="pre">&quot;shared&quot;</span></code> for shared memory.</p></li>
+<code class="docutils literal notranslate"><span class="pre">&quot;shared&quot;</span></code> for shared memory. Must be a compile-time constant.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>A tile filled with the value from the specified thread.</p>
+<dd class="field-even"><p>A tile with the requested shape, with the data type of <code class="docutils literal notranslate"><span class="pre">value</span></code>, in which
+every element holds the value broadcast from <code class="docutils literal notranslate"><span class="pre">thread_idx</span></code>.</p>
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
-
-<span class="n">TILE_SIZE</span> <span class="o">=</span> <span class="mi">8</span>
+<p>Broadcasting a per-block scale factor read by a single thread. Because the
+value is read by thread <code class="docutils literal notranslate"><span class="pre">0</span></code>, this kernel produces the same result on CPU
+and GPU.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">TILE_SIZE</span> <span class="o">=</span> <span class="mi">4</span>
+<span class="n">TILE_THREADS</span> <span class="o">=</span> <span class="mi">2</span>
 
 <span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">compute</span><span class="p">(</span><span class="n">output</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">int</span><span class="p">]):</span>
-    <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">scale_block</span><span class="p">(</span><span class="n">scales</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+    <span class="n">block</span><span class="p">,</span> <span class="n">lane</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
 
-    <span class="c1"># Compute offset on the last thread</span>
-    <span class="n">offset</span> <span class="o">=</span> <span class="mi">0</span>
-    <span class="k">if</span> <span class="n">j</span> <span class="o">==</span> <span class="n">wp</span><span class="o">.</span><span class="n">block_dim</span><span class="p">()</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
-        <span class="n">offset</span> <span class="o">=</span> <span class="n">i</span> <span class="o">*</span> <span class="n">wp</span><span class="o">.</span><span class="n">block_dim</span><span class="p">()</span>
+    <span class="c1"># only thread 0 reads the per-block scale factor</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">lane</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">scales</span><span class="p">[</span><span class="n">block</span><span class="p">]</span>
 
-    <span class="c1"># Broadcast the last thread's offset to all threads (uses only 1 element of shared memory)</span>
-    <span class="n">offset_tile</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_from_thread</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="n">TILE_SIZE</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">offset</span><span class="p">,</span> <span class="n">thread_idx</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">block_dim</span><span class="p">()</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="c1"># broadcast thread 0's value to the whole block</span>
+    <span class="n">scale</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_from_thread</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">TILE_SIZE</span><span class="p">,),</span> <span class="n">value</span><span class="o">=</span><span class="n">s</span><span class="p">,</span> <span class="n">thread_idx</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_arange</span><span class="p">(</span><span class="n">TILE_SIZE</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
 
-    <span class="c1"># Combine with other tiles using tile operations</span>
-    <span class="n">indices</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">TILE_SIZE</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
-    <span class="n">result</span> <span class="o">=</span> <span class="n">offset_tile</span> <span class="o">+</span> <span class="n">indices</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">scale</span> <span class="o">*</span> <span class="n">t</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="p">(</span><span class="n">block</span> <span class="o">*</span> <span class="n">TILE_SIZE</span><span class="p">,))</span>
 
-    <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">result</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="p">(</span><span class="n">i</span> <span class="o">*</span> <span class="n">TILE_SIZE</span><span class="p">,))</span>
+<span class="n">scales</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+<span class="n">out</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
 
-<span class="n">output</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
-<span class="n">wp</span><span class="o">.</span><span class="n">launch_tiled</span><span class="p">(</span><span class="n">compute</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">output</span><span class="p">],</span> <span class="n">block_dim</span><span class="o">=</span><span class="n">TILE_SIZE</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch_tiled</span><span class="p">(</span><span class="n">scale_block</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">scales</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">],</span> <span class="n">block_dim</span><span class="o">=</span><span class="n">TILE_THREADS</span><span class="p">)</span>
 
-<span class="nb">print</span><span class="p">(</span><span class="n">output</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
 </pre></div>
 </div>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>[ 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15]
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[ 0.  1.  2.  3.  0. 10. 20. 30.]
 </pre></div>
 </div>
-<p>The output above assumes GPU execution. On CPU, <code class="docutils literal notranslate"><span class="pre">wp.block_dim()</span></code> returns <code class="docutils literal notranslate"><span class="pre">1</span></code>,
-so <code class="docutils literal notranslate"><span class="pre">offset</span></code> becomes <code class="docutils literal notranslate"><span class="pre">i</span> <span class="pre">*</span> <span class="pre">1</span></code> instead of <code class="docutils literal notranslate"><span class="pre">i</span> <span class="pre">*</span> <span class="pre">TILE_SIZE</span></code>, and
-<code class="docutils literal notranslate"><span class="pre">thread_idx=wp.block_dim()</span> <span class="pre">-</span> <span class="pre">1</span></code> selects thread <code class="docutils literal notranslate"><span class="pre">0</span></code>. The CPU output is:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>[0 1 2 3 4 5 6 7 1 2 3 4 5 6 7 8]
-</pre></div>
-</div>
-<p>See <a class="reference internal" href="../../user_guide/programming_model/tiles.html#cpu-tile-semantics"><span class="std std-ref">CPU Tile Semantics</span></a> for more detail on the CPU/GPU
-differences that affect portable tile code.</p>
 </dd></dl>
 
 <dl class="py function">
@@ -639,6 +641,9 @@ differences that affect portable tile code.</p>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tile</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span></dt>
 <dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="differentiable" data-wp-value="false"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li></ul><p>Allocate a tile filled with a value from a specific thread.</p>
+<p>Overload for 1D tiles: <code class="docutils literal notranslate"><span class="pre">shape</span></code> is the number of elements, equivalent to passing
+<code class="docutils literal notranslate"><span class="pre">(shape,)</span></code>. See the overload taking a tuple-valued <code class="docutils literal notranslate"><span class="pre">shape</span></code> argument for usage
+details and an example.</p>
 </dd></dl>
 
 </section>

@@ -10,64 +10,66 @@
 
    Allocate a tile filled with a value from a specific thread.
    
-   This function broadcasts a value from one thread to all threads in the block,
-   then creates a tile filled with that broadcast value. This is useful for
-   efficiently sharing a computed result (e.g., from an atomic operation) with
-   all threads in a block using minimal shared memory (only 1 element).
+   This function broadcasts one thread's value to all threads in the block, then
+   creates a tile filled with that broadcast value. It is useful for sharing a
+   computed result (e.g. from an atomic operation) with the whole block. Every thread
+   in the block must call this function.
    
-   :param shape: Shape of the output tile
-   :param value: Per-thread value (only the value from ``thread_idx`` is used)
-   :param thread_idx: Index of the thread whose value should fill the tile
+   ``thread_idx`` is block-local: each block broadcasts from its own lane
+   ``thread_idx``, and it must satisfy ``0 <= thread_idx < wp.block_dim()``. The
+   resulting tile's data type is the type of ``value``.
+   
+   On CPU the effective block width is ``1``, so the tile is always filled with the
+   calling invocation's own ``value`` and ``thread_idx`` is ignored. In particular
+   the common ``thread_idx=wp.block_dim() - 1`` idiom selects thread ``0`` on CPU;
+   see :ref:`CPU Tile Semantics <cpu_tile_semantics>` for the portability rules.
+   
+   :param shape: Shape of the output tile. Must be a compile-time constant.
+   :param value: Per-thread value; only the value from ``thread_idx`` is used.
+   :param thread_idx: Block-local index of the thread whose value should fill the tile.
+                      Must have the same value in every thread of the block.
    :param storage: The storage location for the tile: ``"register"`` for registers or
-                   ``"shared"`` for shared memory.
+                   ``"shared"`` for shared memory. Must be a compile-time constant.
    
-   :returns: A tile filled with the value from the specified thread.
+   :returns: A tile with the requested shape, with the data type of ``value``, in which
+             every element holds the value broadcast from ``thread_idx``.
    
    .. rubric:: Example
    
-   .. code-block:: python
+   Broadcasting a per-block scale factor read by a single thread. Because the
+   value is read by thread ``0``, this kernel produces the same result on CPU
+   and GPU.
    
-       import warp as wp
+   .. testcode::
    
-       TILE_SIZE = 8
+       TILE_SIZE = 4
+       TILE_THREADS = 2
    
        @wp.kernel
-       def compute(output: wp.array[int]):
-           i, j = wp.tid()
+       def scale_block(scales: wp.array[float], out: wp.array[float]):
+           block, lane = wp.tid()
    
-           # Compute offset on the last thread
-           offset = 0
-           if j == wp.block_dim() - 1:
-               offset = i * wp.block_dim()
+           # only thread 0 reads the per-block scale factor
+           s = float(0.0)
+           if lane == 0:
+               s = scales[block]
    
-           # Broadcast the last thread's offset to all threads (uses only 1 element of shared memory)
-           offset_tile = wp.tile_from_thread(shape=TILE_SIZE, value=offset, thread_idx=wp.block_dim() - 1)
+           # broadcast thread 0's value to the whole block
+           scale = wp.tile_from_thread(shape=(TILE_SIZE,), value=s, thread_idx=0)
+           t = wp.tile_arange(TILE_SIZE, dtype=float)
    
-           # Combine with other tiles using tile operations
-           indices = wp.tile_arange(0, TILE_SIZE, dtype=int)
-           result = offset_tile + indices
+           wp.tile_store(out, scale * t, offset=(block * TILE_SIZE,))
    
-           wp.tile_store(output, result, offset=(i * TILE_SIZE,))
+       scales = wp.array([1.0, 10.0], dtype=float)
+       out = wp.zeros(8, dtype=float)
    
-       output = wp.zeros(16, dtype=int)
-       wp.launch_tiled(compute, dim=[2], inputs=[output], block_dim=TILE_SIZE)
+       wp.launch_tiled(scale_block, dim=[2], inputs=[scales], outputs=[out], block_dim=TILE_THREADS)
    
-       print(output.numpy())
+       print(out.numpy())
    
-   .. code-block:: text
+   .. testoutput::
    
-       [ 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15]
-   
-   The output above assumes GPU execution. On CPU, ``wp.block_dim()`` returns ``1``,
-   so ``offset`` becomes ``i * 1`` instead of ``i * TILE_SIZE``, and
-   ``thread_idx=wp.block_dim() - 1`` selects thread ``0``. The CPU output is:
-   
-   .. code-block:: text
-   
-       [0 1 2 3 4 5 6 7 1 2 3 4 5 6 7 8]
-   
-   See :ref:`CPU Tile Semantics <cpu_tile_semantics>` for more detail on the CPU/GPU
-   differences that affect portable tile code.
+       [ 0.  1.  2.  3.  0. 10. 20. 30.]
    
 
 .. function:: warp._src.lang.tile_from_thread(shape: int32, value: Any, thread_idx: int32, storage: str = "register") -> Tile[Any, tuple[int, ...]]
@@ -79,3 +81,7 @@
       :differentiable: false
 
    Allocate a tile filled with a value from a specific thread.
+   
+   Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
+   ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument for usage
+   details and an example.

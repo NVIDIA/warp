@@ -10,12 +10,38 @@
 
    Allocate a tile of zero-initialized items.
    
-   :param shape: Shape of the output tile
-   :param dtype: Data type of output tile's elements
-   :param storage: The storage location for the tile: ``"register"`` for registers or
-                   ``"shared"`` for shared memory.
+   Every element is set to the zero value of ``dtype``. Scalar, vector, matrix, and
+   Warp struct element types are all zero-filled component-wise.
    
-   :returns: A zero-initialized tile with shape and data type as specified.
+   :param shape: Shape of the output tile. Must be a compile-time constant.
+   :param dtype: Data type of output tile's elements. Must be a compile-time constant.
+   :param storage: The storage location for the tile: ``"register"`` for registers or
+                   ``"shared"`` for shared memory. Must be a compile-time constant.
+   
+   :returns: A zero-initialized tile with the requested shape and data type.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def add_tiles(a: wp.array[float], b: wp.array[float], out: wp.array[float]):
+           total = wp.tile_zeros(shape=(4,), dtype=float)
+           total += wp.tile_load(a, shape=(4,))
+           total += wp.tile_load(b, shape=(4,))
+           wp.tile_store(out, total)
+   
+       a = wp.array([1.0, 2.0, 3.0, 4.0], dtype=float)
+       b = wp.array([10.0, 20.0, 30.0, 40.0], dtype=float)
+       out = wp.zeros(4, dtype=float)
+   
+       wp.launch_tiled(add_tiles, dim=1, inputs=[a, b], outputs=[out], block_dim=2)
+   
+       print(out.numpy())
+   
+   .. testoutput::
+   
+       [11. 22. 33. 44.]
    
 
 .. function:: warp._src.lang.tile_zeros(shape: int32, dtype: Any = float, storage: str = "register") -> Tile[Any, tuple[int, ...]]
@@ -27,3 +53,7 @@
       :differentiable: false
 
    Allocate a tile of zero-initialized items.
+   
+   Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
+   ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument for usage
+   details and an example.

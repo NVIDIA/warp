@@ -10,30 +10,44 @@
 
    Generate a tile of random integers.
    
-   :param shape: Shape of the output tile
-   :param rng: Random number generator state, typically from :func:`~warp._src.lang.rand_init`
-   :param storage: The storage location for the tile: ``"register"`` for registers or
-                   ``"shared"`` for shared memory.
+   Each element is drawn with :func:`~warp.randi` using ``rng``. Values are deterministic
+   for a fixed kernel, device, and ``block_dim`` given the same ``rng``, but are not
+   portable across ``block_dim`` values or between CPU and GPU (see
+   :ref:`CPU Tile Semantics <cpu_tile_semantics>`).
    
-   :returns: A tile of random integers with the specified shape.
+   The call leaves ``rng`` unchanged, so two calls with the same ``rng`` in the same
+   thread produce identical tiles. Pass a different ``rng`` (for example a
+   :func:`~warp.rand_init` offset that is unique per block) to get different values.
+   
+   :param shape: Shape of the output tile. Must be a compile-time constant.
+   :param rng: Random number generator state, typically from :func:`~warp.rand_init`.
+   :param storage: The storage location for the tile: ``"register"`` for registers or
+                   ``"shared"`` for shared memory. Must be a compile-time constant.
+   
+   :returns: A tile of ``int32`` elements with the requested shape, each in the range
+             ``[-2^31, 2^31)`` as for :func:`~warp.randi`.
    
    .. rubric:: Example
    
    .. testcode::
+       :skipif: wp.get_device() == "cpu" or wp.get_cuda_device_count() == 0
    
        TILE_M, TILE_N = 2, 2
        M, N = 2, 2
        seed = 42
    
        @wp.kernel
-       def rand_kernel(seed: int, x: wp.array2d[int]):
+       def generate_random_integers(seed: int, x: wp.array2d[int]):
            i, j = wp.tid()
-           rng = wp.rand_init(seed, i * TILE_M + j)
+           # one distinct RNG offset per block
+           rng = wp.rand_init(seed, i * N + j)
            t = wp.tile_randi(shape=(TILE_M, TILE_N), rng=rng)
            wp.tile_store(x, t, offset=(i * TILE_M, j * TILE_N))
    
        x = wp.zeros(shape=(M * TILE_M, N * TILE_N), dtype=int)
-       wp.launch_tiled(rand_kernel, dim=[M, N], inputs=[seed, x], block_dim=32)
+   
+       wp.launch_tiled(generate_random_integers, dim=[M, N], inputs=[seed], outputs=[x], block_dim=8)
+   
        print(x.numpy())
    
    .. testoutput::
@@ -42,6 +56,9 @@
         [ 1788185933  1320194893  2073257406 -2009156320]
         [ -257534450 -1138585923  1145322783  -321794125]
         [-2096177388 -1835610841  1159339128  -652221052]]
+   
+   The values above are those produced on a CUDA device; a CPU launch of the same
+   kernel generates a different sequence.
    
 
 .. function:: warp._src.lang.tile_randi(shape: int32, rng: uint32, storage: str = "register") -> Tile[Any, tuple[int, ...]]
@@ -53,6 +70,10 @@
       :differentiable: false
 
    Generate a tile of random integers.
+   
+   Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
+   ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument for usage
+   details and an example.
 
 .. function:: warp._src.lang.tile_randi(shape: tuple[int, ...], rng: uint32, min: int32, max: int32, storage: str = "register") -> Tile[Any, tuple[int, ...]]
    :noindex:
@@ -62,44 +83,22 @@
       :python: false
       :differentiable: false
 
-   Generate a tile of random integers.
+   Generate a tile of random integers in the range ``[min, max)``.
    
-   Sample values in the range [min, max).
+   See the overload without ``min`` and ``max`` for reproducibility details and a usage
+   example.
    
-   :param shape: Shape of the output tile
-   :param rng: Random number generator state, typically from :func:`~warp._src.lang.rand_init`
-   :param min: Minimum value (inclusive) for random integers
-   :param max: Maximum value (exclusive) for random integers
+   :param shape: Shape of the output tile. Must be a compile-time constant.
+   :param rng: Random number generator state, typically from :func:`~warp.rand_init`.
+   :param min: Minimum value (inclusive). Must be a compile-time integer constant
+               representable as ``int32``.
+   :param max: Maximum value (exclusive). Must be a compile-time integer constant
+               representable as ``int32`` and strictly greater than ``min``.
    :param storage: The storage location for the tile: ``"register"`` for registers or
-                   ``"shared"`` for shared memory.
+                   ``"shared"`` for shared memory. Must be a compile-time constant.
    
-   :returns: A tile of random integers in the range [min, max) with the specified shape.
-   
-   .. rubric:: Example
-   
-   .. testcode::
-   
-       TILE_M, TILE_N = 2, 2
-       M, N = 2, 2
-       seed = 42
-   
-       @wp.kernel
-       def rand_range_kernel(seed: int, x: wp.array2d[int]):
-           i, j = wp.tid()
-           rng = wp.rand_init(seed, i * TILE_M + j)
-           t = wp.tile_randi(shape=(TILE_M, TILE_N), rng=rng, min=-5, max=5)
-           wp.tile_store(x, t, offset=(i * TILE_M, j * TILE_N))
-   
-       x = wp.zeros(shape=(M * TILE_M, N * TILE_N), dtype=int)
-       wp.launch_tiled(rand_range_kernel, dim=[M, N], inputs=[seed, x], block_dim=32)
-       print(x.numpy())
-   
-   .. testoutput::
-   
-       [[ 1  4  3  1]
-        [-2 -2  1  1]
-        [ 1 -2 -2 -4]
-        [ 3  0  3 -1]]
+   :returns: A tile of ``int32`` elements with the requested shape, each in
+             ``[min, max)``.
    
 
 .. function:: warp._src.lang.tile_randi(shape: int32, rng: uint32, min: int32, max: int32, storage: str = "register") -> Tile[Any, tuple[int, ...]]
@@ -110,6 +109,8 @@
       :python: false
       :differentiable: false
 
-   Generate a tile of random integers.
+   Generate a tile of random integers in the range ``[min, max)``.
    
-   Sample values in the range [min, max).
+   Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
+   ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument with ``min``
+   and ``max`` for usage details and an example.

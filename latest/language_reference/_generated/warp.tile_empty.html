@@ -565,28 +565,45 @@
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tile</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#warp._src.lang.tile_empty" title="Link to this definition">#</a></dt>
 <dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="differentiable" data-wp-value="false"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li></ul><p>Allocate a tile of uninitialized items.</p>
-<p>The tile’s contents are undefined; the caller is responsible for overwriting
-every element before any read. This matches the semantics of <code class="docutils literal notranslate"><span class="pre">numpy.empty</span></code>.</p>
+<p>The tile’s contents are undefined; overwrite every element before any read. This
+matches the semantics of <code class="docutils literal notranslate"><span class="pre">numpy.empty</span></code>.</p>
 <p>Because it skips initialization, <code class="docutils literal notranslate"><span class="pre">tile_empty</span></code> can avoid unnecessary stores
-when every element will be overwritten, especially for <code class="docutils literal notranslate"><span class="pre">&quot;shared&quot;</span></code> tiles.</p>
-<p>For accumulator patterns (<code class="docutils literal notranslate"><span class="pre">a</span> <span class="pre">+=</span> <span class="pre">...</span></code>), use <a class="reference internal" href="warp.tile_zeros.html#warp._src.lang.tile_zeros" title="warp._src.lang.tile_zeros"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_zeros()</span></code></a> instead -
-accumulation reads the prior value and would propagate uninitialized data.
-Use <code class="docutils literal notranslate"><span class="pre">tile_empty</span></code> only when the first operation after construction is a
-full overwrite (a <code class="docutils literal notranslate"><span class="pre">tile_load</span></code>, a tile-typed assignment, or a complete
-element-wise fill).</p>
+when every element will be overwritten, especially for <code class="docutils literal notranslate"><span class="pre">&quot;shared&quot;</span></code> tiles. For
+accumulator patterns (<code class="docutils literal notranslate"><span class="pre">a</span> <span class="pre">+=</span> <span class="pre">...</span></code>), use <a class="reference internal" href="warp.tile_zeros.html#warp._src.lang.tile_zeros" title="warp._src.lang.tile_zeros"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_zeros()</span></code></a> instead.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>shape</strong> – Shape of the output tile</p></li>
-<li><p><strong>dtype</strong> – Data type of output tile’s elements</p></li>
+<li><p><strong>shape</strong> – Shape of the output tile. Must be a compile-time constant.</p></li>
+<li><p><strong>dtype</strong> – Data type of output tile’s elements. Must be a compile-time constant.</p></li>
 <li><p><strong>storage</strong> – The storage location for the tile: <code class="docutils literal notranslate"><span class="pre">&quot;register&quot;</span></code> for registers or
-<code class="docutils literal notranslate"><span class="pre">&quot;shared&quot;</span></code> for shared memory.</p></li>
+<code class="docutils literal notranslate"><span class="pre">&quot;shared&quot;</span></code> for shared memory. Must be a compile-time constant.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>An uninitialized tile with the requested shape and data type.</p>
 </dd>
 </dl>
+<p class="rubric">Example</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">concatenate</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">b</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+    <span class="c1"># every element is written below, so skipping initialization is safe</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_empty</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">storage</span><span class="o">=</span><span class="s2">"shared"</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_assign</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,)),</span> <span class="n">offset</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,))</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_assign</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,)),</span> <span class="n">offset</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,))</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>
+
+<span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+<span class="n">b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">10.0</span><span class="p">,</span> <span class="mf">20.0</span><span class="p">,</span> <span class="mf">30.0</span><span class="p">,</span> <span class="mf">40.0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+<span class="n">out</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch_tiled</span><span class="p">(</span><span class="n">concatenate</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">],</span> <span class="n">block_dim</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[ 1.  2.  3.  4. 10. 20. 30. 40.]
+</pre></div>
+</div>
 </dd></dl>
 
 <dl class="py function">
@@ -601,6 +618,9 @@ element-wise fill).</p>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tile</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span></dt>
 <dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="differentiable" data-wp-value="false"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li></ul><p>Allocate a tile of uninitialized items.</p>
+<p>Overload for 1D tiles: <code class="docutils literal notranslate"><span class="pre">shape</span></code> is the number of elements, equivalent to passing
+<code class="docutils literal notranslate"><span class="pre">(shape,)</span></code>. See the overload taking a tuple-valued <code class="docutils literal notranslate"><span class="pre">shape</span></code> argument for usage
+details and an example.</p>
 </dd></dl>
 
 </section>

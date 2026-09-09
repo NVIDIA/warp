@@ -564,37 +564,55 @@
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tile</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#warp._src.lang.tile" title="Link to this definition">#</a></dt>
 <dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Construct a new tile from per-thread kernel values.</p>
-<p>This function converts values computed using scalar kernel code to a tile representation for input into collective operations.</p>
+<p>This function converts values computed using scalar kernel code to a tile
+representation for input into collective operations. Each thread of the block
+contributes one value, so the tile’s trailing dimension is always <code class="docutils literal notranslate"><span class="pre">block_dim</span></code>:</p>
 <ul class="simple">
 <li><p>If the input value is a scalar, then the resulting tile has <code class="docutils literal notranslate"><span class="pre">shape=(block_dim,)</span></code></p></li>
-<li><p>If the input value is a vector, then the resulting tile has <code class="docutils literal notranslate"><span class="pre">shape=(length(vector),</span> <span class="pre">block_dim)</span></code></p></li>
-<li><p>If the input value is a vector, and <code class="docutils literal notranslate"><span class="pre">preserve_type=True</span></code>, then the resulting tile has <code class="docutils literal notranslate"><span class="pre">dtype=vector</span></code> and <code class="docutils literal notranslate"><span class="pre">shape=(block_dim,)</span></code></p></li>
-<li><p>If the input value is a matrix, then the resulting tile has <code class="docutils literal notranslate"><span class="pre">shape=(rows,</span> <span class="pre">cols,</span> <span class="pre">block_dim)</span></code></p></li>
-<li><p>If the input value is a matrix, and <code class="docutils literal notranslate"><span class="pre">preserve_type=True</span></code>, then the resulting tile has <code class="docutils literal notranslate"><span class="pre">dtype=matrix</span></code> and <code class="docutils literal notranslate"><span class="pre">shape=(block_dim,)</span></code></p></li>
+<li><p>If the input value is a vector, then the resulting tile has
+<code class="docutils literal notranslate"><span class="pre">shape=(length(vector),</span> <span class="pre">block_dim)</span></code></p></li>
+<li><p>If the input value is a vector, and <code class="docutils literal notranslate"><span class="pre">preserve_type=True</span></code>, then the resulting
+tile has <code class="docutils literal notranslate"><span class="pre">dtype=vector</span></code> and <code class="docutils literal notranslate"><span class="pre">shape=(block_dim,)</span></code></p></li>
+<li><p>If the input value is a matrix, then the resulting tile has
+<code class="docutils literal notranslate"><span class="pre">shape=(rows,</span> <span class="pre">cols,</span> <span class="pre">block_dim)</span></code></p></li>
+<li><p>If the input value is a matrix, and <code class="docutils literal notranslate"><span class="pre">preserve_type=True</span></code>, then the resulting
+tile has <code class="docutils literal notranslate"><span class="pre">dtype=matrix</span></code> and <code class="docutils literal notranslate"><span class="pre">shape=(block_dim,)</span></code></p></li>
 </ul>
+<p>Quaternion values are supported with <code class="docutils literal notranslate"><span class="pre">preserve_type=True</span></code>. Use
+<a class="reference internal" href="warp.untile.html#warp._src.lang.untile" title="warp._src.lang.untile"><code class="xref py py-func docutils literal notranslate"><span class="pre">untile()</span></code></a> to convert the tile back to per-thread values.</p>
+<p>Every thread of the block must reach this call. On CPU the effective block width is
+<code class="docutils literal notranslate"><span class="pre">1</span></code>, so the tile has a single element regardless of the requested <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> -
+see <a class="reference internal" href="../../user_guide/programming_model/tiles.html#cpu-tile-semantics"><span class="std std-ref">CPU Tile Semantics</span></a>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>x</strong> – A per-thread local value, e.g. scalar, vector, or matrix.</p></li>
-<li><p><strong>preserve_type</strong> – If true, the tile will have the same data type as the input value.</p></li>
+<li><p><strong>preserve_type</strong> – If true, the tile will have the same data type as the input value.
+Must be a compile-time constant.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>If <code class="docutils literal notranslate"><span class="pre">preserve_type=True</span></code>, a tile of type <code class="docutils literal notranslate"><span class="pre">x.type</span></code> of length <code class="docutils literal notranslate"><span class="pre">block_dim</span></code>. Otherwise, an N-dimensional tile such that the first N-1 dimensions match the shape of <code class="docutils literal notranslate"><span class="pre">x</span></code> and the final dimension is of size <code class="docutils literal notranslate"><span class="pre">block_dim</span></code>.</p>
+<dd class="field-even"><p>If <code class="docutils literal notranslate"><span class="pre">preserve_type=True</span></code>, a tile of type <code class="docutils literal notranslate"><span class="pre">x.type</span></code> of length <code class="docutils literal notranslate"><span class="pre">block_dim</span></code>.
+Otherwise, an N-dimensional tile such that the first N-1 dimensions match the
+shape of <code class="docutils literal notranslate"><span class="pre">x</span></code> and the final dimension is of size <code class="docutils literal notranslate"><span class="pre">block_dim</span></code>.</p>
 </dd>
 </dl>
 <p class="rubric">Example</p>
 <p>This example shows how to create a linear sequence from thread variables.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">compute</span><span class="p">():</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">store_doubled_thread_indices</span><span class="p">(</span><span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">int</span><span class="p">]):</span>
     <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
-    <span class="n">t</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">i</span><span class="o">*</span><span class="mi">2</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">i</span> <span class="o">*</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>
 
-<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">compute</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[],</span> <span class="n">block_dim</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span>
+<span class="n">out</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">store_doubled_thread_indices</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">],</span> <span class="n">block_dim</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
 </pre></div>
 </div>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>[0 2 4 6 8 10 12 14 16 18 20 22 24 26 28 30] = tile(shape=(16), storage=register)
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[ 0  2  4  6  8 10 12 14 16 18 20 22 24 26 28 30]
 </pre></div>
 </div>
 </dd></dl>

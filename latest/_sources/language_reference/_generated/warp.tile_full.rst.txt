@@ -1,7 +1,7 @@
 ﻿warp.tile\_full
 ===============
 
-.. function:: warp._src.lang.tile_full(shape: tuple[int, ...], value: Any, dtype: Any, storage: str = "register") -> Tile[Any, tuple[int, ...]]
+.. function:: warp._src.lang.tile_full(shape: tuple[int, ...], value: Any, dtype: Any = ..., storage: str = "register") -> Tile[Any, tuple[int, ...]]
 
    .. wp-builtin-tags::
       :kernel: true
@@ -10,16 +10,41 @@
 
    Allocate a tile filled with the specified value.
    
-   :param shape: Shape of the output tile
-   :param value: Value to fill the tile with
-   :param dtype: Data type of output tile's elements
-   :param storage: The storage location for the tile: ``"register"`` for registers or
-                   ``"shared"`` for shared memory.
+   Every element is initialized with ``value``. Omitting ``dtype`` gives a tile whose
+   element type is the type of ``value``. When ``dtype`` is provided, a scalar ``value``
+   is converted to it; a composite or Warp struct ``value`` must already have that type.
    
-   :returns: A tile filled with the specified value.
+   :param shape: Shape of the output tile. Must be a compile-time constant.
+   :param value: Value to fill the tile with.
+   :param dtype: Data type of output tile's elements. Must be a compile-time constant.
+   :param storage: The storage location for the tile: ``"register"`` for registers or
+                   ``"shared"`` for shared memory. Must be a compile-time constant.
+   
+   :returns: A tile with the requested shape and data type filled with ``value``.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def clamp_below(x: wp.array[float], out: wp.array[float]):
+           lo = wp.tile_full(shape=(4,), value=2.0, dtype=float)
+           t = wp.tile_load(x, shape=(4,))
+           wp.tile_store(out, wp.tile_map(wp.max, t, lo))
+   
+       x = wp.array([1.0, 2.0, 3.0, 4.0], dtype=float)
+       out = wp.zeros(4, dtype=float)
+   
+       wp.launch_tiled(clamp_below, dim=1, inputs=[x], outputs=[out], block_dim=2)
+   
+       print(out.numpy())
+   
+   .. testoutput::
+   
+       [2. 2. 3. 4.]
    
 
-.. function:: warp._src.lang.tile_full(shape: int32, value: Any, dtype: Any, storage: str = "register") -> Tile[Any, tuple[int, ...]]
+.. function:: warp._src.lang.tile_full(shape: int32, value: Any, dtype: Any = ..., storage: str = "register") -> Tile[Any, tuple[int, ...]]
    :noindex:
 
    .. wp-builtin-tags::
@@ -28,3 +53,7 @@
       :differentiable: false
 
    Allocate a tile filled with the specified value.
+   
+   Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
+   ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument for usage
+   details and an example.
