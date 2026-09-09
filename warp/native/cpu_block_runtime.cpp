@@ -277,6 +277,15 @@ extern "C" WP_API const char* wp_cpu_block_error_take()
     return error;
 }
 
+extern "C" WP_API const wp_cpu_block_runtime_api* wp_cpu_block_runtime_get_api()
+{
+    static const wp_cpu_block_runtime_api api = {
+        &wp_cpu_get_thread_idx, &wp_cpu_get_active_count, &wp_cpu_get_first_active_lane,
+        &wp_cpu_tile_sync,      &wp_cpu_run_block,
+    };
+    return &api;
+}
+
 extern "C" WP_API void wp_cpu_test_fail_next_worker_allocation() { g_fail_next_worker_allocation = true; }
 
 extern "C" WP_API int wp_cpu_run_block(

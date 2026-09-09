@@ -11,6 +11,16 @@ extern "C" {
 
 typedef void (*wp_cpu_block_lane_fn)(void* dim, size_t block_id, int lane, void* args);
 
+typedef struct wp_cpu_block_runtime_api {
+    int (*get_thread_idx)();
+    int (*get_active_count)();
+    int (*get_first_active_lane)();
+    void (*tile_sync)();
+    int (*run_block)(
+        int block_dim, int active_count, wp_cpu_block_lane_fn kernel_fn, void* dim, size_t block_id, void* args
+    );
+} wp_cpu_block_runtime_api;
+
 // Fiber-only lane state. Generated one-lane kernels never reference these
 // functions, allowing their accesses and barriers to disappear completely.
 WP_API int wp_cpu_get_thread_idx();
@@ -31,6 +41,11 @@ WP_API int wp_cpu_run_block(
 // Native/Python launch bridges use these around the generated void kernel ABI.
 WP_API void wp_cpu_block_error_clear();
 WP_API const char* wp_cpu_block_error_take();
+
+// Return the core runtime entry points that warp-clang binds into JIT-compiled
+// cooperative kernels. Keeping the scheduler in one library also keeps its
+// thread-local lane, fiber-pool, and error state in one place.
+WP_API const wp_cpu_block_runtime_api* wp_cpu_block_runtime_get_api();
 
 // Return the number of reusable worker fibers allocated by this thread.
 // This is an internal diagnostic used by the CPU block runtime tests.

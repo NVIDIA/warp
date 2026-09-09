@@ -21,6 +21,10 @@ using wp_tile_lane_mask_bits_t = decltype(WP_TILE_LANE_MASK_ALL);
 
 #include "rand.h"
 
+#if !defined(__CUDA_ARCH__)
+#include "cpu_block_runtime.h"
+#endif
+
 #ifdef __clang__
 // disable warnings related to C++17 extensions on CPU JIT builds
 #pragma clang diagnostic push
@@ -48,7 +52,14 @@ struct alignas(16) float4 {
 #if defined(__CUDA_ARCH__)
 #define WP_TILE_SYNC __syncthreads
 #else
-#define WP_TILE_SYNC void
+namespace wp {
+template <int BlockDim> inline void tile_sync()
+{
+    if constexpr (BlockDim > 1)
+        ::wp_cpu_tile_sync();
+}
+}  // namespace wp
+#define WP_TILE_SYNC ::wp::tile_sync<WP_TILE_BLOCK_DIM>
 #endif
 
 #if defined(__CUDA_ARCH__) && !defined(__INTELLISENSE__)
@@ -78,10 +89,19 @@ template <> struct wp_is_null_func<int> {
     static constexpr bool value = true;
 };
 
-#if defined(__CUDACC_RTC__) || (defined(__clang__) && defined(__CUDA__))
+#if defined(__CUDA_ARCH__) || defined(__CUDACC_RTC__) || (defined(__clang__) && defined(__CUDA__))
 #define WP_TILE_THREAD_IDX threadIdx.x
 #else
-#define WP_TILE_THREAD_IDX 0
+namespace wp {
+template <int BlockDim> inline int tile_thread_idx()
+{
+    if constexpr (BlockDim == 1)
+        return 0;
+    else
+        return ::wp_cpu_get_thread_idx();
+}
+}  // namespace wp
+#define WP_TILE_THREAD_IDX (::wp::tile_thread_idx<WP_TILE_BLOCK_DIM>())
 #endif
 
 
@@ -1213,6 +1233,15 @@ private:
     }
 
 public:
+    static inline void bind(tile_shared_storage_t* storage)
+    {
+#if !defined(__CUDA_ARCH__) && defined(WP_ENABLE_TILES_IN_STACK_MEMORY)
+        shared_tile_storage = storage;
+#else
+        (void)storage;
+#endif
+    }
+
     // cppcheck-suppress uninitMemberVar
     inline CUDA_CALLABLE tile_shared_storage_t()
     {

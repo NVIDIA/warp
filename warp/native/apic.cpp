@@ -18,6 +18,7 @@
 
 #include "apic.h"
 #include "apic_internal.h"
+#include "cpu_block_runtime.h"
 #include "error.h"
 #include "hashgrid.h"
 #include "mesh.h"
@@ -2218,7 +2219,12 @@ static bool apic_cpu_replay_stream(
             // apic_info=nullptr is safe: g_apic_state is null during replay, so
             // the recording branch in wp_cpu_launch_kernel is a no-op and the
             // execute branch fires.
+            wp_cpu_block_error_clear();
             wp_cpu_launch_kernel(func, bounds_buf, fwd_buf, adj_buf, /*apic_info=*/nullptr);
+            if (const char* block_error = wp_cpu_block_error_take()) {
+                wp::set_error_string("%s", block_error);
+                return false;
+            }
             break;
         }
 

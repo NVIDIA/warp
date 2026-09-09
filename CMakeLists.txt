@@ -377,8 +377,6 @@ if(WARP_BUILD_CLANG)
         SHARED
         warp/native/clang/clang.cpp
         warp/native/crt.cpp
-        warp/native/cpu_block_runtime.cpp
-        warp/native/cpu_fiber.cpp
     )
     add_dependencies(warp-clang warp_generated_headers)
     warp_set_shared_target_output(warp-clang warp-clang)

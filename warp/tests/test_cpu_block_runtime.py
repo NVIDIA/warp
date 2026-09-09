@@ -8,9 +8,15 @@ import itertools
 import os
 import subprocess
 import sys
+import tempfile
 import unittest
 
 import warp as wp
+
+
+@wp.kernel(module="unique")
+def _allocation_failure_kernel(output: wp.array[wp.int32]):
+    output[wp.tid()] = wp.block_dim()
 
 
 def _warp_lib_path():
@@ -35,6 +41,8 @@ def _setup_runtime():
     ]
     lib.wp_cpu_test_schedule.restype = ctypes.c_int
     lib.wp_cpu_block_pool_size.restype = ctypes.c_size_t
+    lib.wp_cpu_test_fail_next_worker_allocation.argtypes = []
+    lib.wp_cpu_test_fail_next_worker_allocation.restype = None
     return lib
 
 
@@ -124,6 +132,99 @@ def _check_pool_reuse():
     print("CPU block fiber pool reuse probe passed")
 
 
+def _check_allocation_failure():
+    lib = _setup_runtime()
+    cpu = wp.get_device("cpu")
+    previous = wp.config.enable_cpu_blocks
+    wp.config.enable_cpu_blocks = True
+    try:
+        output = wp.zeros(3, dtype=wp.int32, device=cpu)
+        message = "Warp failed to allocate a reusable CPU block fiber"
+
+        lib.wp_cpu_test_fail_next_worker_allocation()
+        try:
+            wp.launch(_allocation_failure_kernel, dim=2, outputs=[output], block_dim=2, device=cpu)
+        except RuntimeError as error:
+            if message not in str(error):
+                raise RuntimeError(f"unexpected direct-launch error: {error}") from error
+        else:
+            raise RuntimeError("worker allocation failure did not reach the direct CPU launch")
+
+        command = wp.launch(
+            _allocation_failure_kernel,
+            dim=2,
+            outputs=[output],
+            block_dim=2,
+            device=cpu,
+            record_cmd=True,
+        )
+        lib.wp_cpu_test_fail_next_worker_allocation()
+        try:
+            command.launch()
+        except RuntimeError as error:
+            if message not in str(error):
+                raise RuntimeError(f"unexpected recorded-launch error: {error}") from error
+        else:
+            raise RuntimeError("worker allocation failure did not reach the recorded CPU launch")
+
+        # The error is catchable and consumed: retrying the same command grows
+        # the pool normally and executes the kernel.
+        command.launch()
+        if output.numpy()[:2].tolist() != [2, 2]:
+            raise RuntimeError("recorded CPU launch did not recover after the injected allocation failure")
+
+        # APIC replay uses the same native launch bridge and must propagate the
+        # failure rather than silently completing a partially executed graph.
+        _allocation_failure_kernel.module.load(cpu, block_dim=3)
+        output.zero_()
+        with wp.ScopedCapture(device=cpu, apic=True, force_module_load=False) as capture:
+            wp.launch(_allocation_failure_kernel, dim=3, outputs=[output], block_dim=3, device=cpu)
+
+        lib.wp_cpu_test_fail_next_worker_allocation()
+        try:
+            wp.capture_launch(capture.graph)
+        except RuntimeError as error:
+            if message not in str(error):
+                raise RuntimeError(f"unexpected APIC replay error: {error}") from error
+        else:
+            raise RuntimeError("worker allocation failure did not reach CPU APIC replay")
+
+        wp.capture_launch(capture.graph)
+        if output.numpy().tolist() != [3, 3, 3]:
+            raise RuntimeError("CPU APIC replay did not recover after the injected allocation failure")
+
+        # A saved graph loads its kernel from a copied object file. Confirm that
+        # this independently loaded code also reports through the core runtime.
+        saved_output = wp.zeros(4, dtype=wp.int32, device=cpu)
+        _allocation_failure_kernel.module.load(cpu, block_dim=4)
+        with wp.ScopedCapture(device=cpu, apic=True, force_module_load=False) as saved_capture:
+            wp.launch(_allocation_failure_kernel, dim=4, outputs=[saved_output], block_dim=4, device=cpu)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "cpu_block_allocation_failure")
+            wp.capture_save(saved_capture.graph, path, outputs={"output": saved_output})
+            loaded = wp.capture_load(path, device=cpu)
+
+            lib.wp_cpu_test_fail_next_worker_allocation()
+            try:
+                wp.capture_launch(loaded)
+            except RuntimeError as error:
+                if message not in str(error):
+                    raise RuntimeError(f"unexpected loaded APIC replay error: {error}") from error
+            else:
+                raise RuntimeError("worker allocation failure did not reach loaded CPU APIC replay")
+
+            wp.capture_launch(loaded)
+            loaded_output = wp.empty_like(saved_output)
+            loaded.get_param("output", loaded_output)
+            if loaded_output.numpy().tolist() != [4, 4, 4, 4]:
+                raise RuntimeError("loaded CPU APIC replay did not recover after the injected allocation failure")
+    finally:
+        wp.config.enable_cpu_blocks = previous
+
+    print("CPU block allocation failure probe passed")
+
+
 class TestCpuBlockRuntime(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -207,9 +308,21 @@ class TestCpuBlockRuntime(unittest.TestCase):
         self.assertEqual(result.returncode, 0, msg=f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}")
         self.assertIn("CPU block fiber pool reuse probe passed", result.stdout)
 
+    def test_worker_pool_allocation_failure_is_catchable(self):
+        result = subprocess.run(
+            [sys.executable, __file__, "--allocation-failure-probe"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(result.returncode, 0, msg=f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}")
+        self.assertIn("CPU block allocation failure probe passed", result.stdout)
+
 
 if __name__ == "__main__":
     if "--pool-reuse-probe" in sys.argv:
         _check_pool_reuse()
+    elif "--allocation-failure-probe" in sys.argv:
+        _check_allocation_failure()
     else:
         unittest.main(verbosity=2, failfast=True)

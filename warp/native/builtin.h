@@ -1975,7 +1975,7 @@ inline CUDA_CALLABLE int block_dim()
 #if defined(__CUDA_ARCH__)
     return blockDim.x;
 #else
-    return 1;
+    return WP_TILE_BLOCK_DIM;
 #endif
 }
 

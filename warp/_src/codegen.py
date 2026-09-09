@@ -7024,6 +7024,8 @@ void {name}_cpu_kernel_backward(
 
 cpu_module_template_forward = """
 
+#if WP_TILE_BLOCK_DIM == 1
+
 extern "C" {{
 
 // Python CPU entry points
@@ -7044,9 +7046,59 @@ WP_API void {name}_cpu_forward(
 
 }} // extern C
 
+#else
+
+struct {name}_cpu_block_payload_forward
+{{
+    wp_args_{name}* args;
+    wp::tile_shared_storage_t* tile_mem;
+    size_t block_first;
+}};
+
+static void {name}_cpu_block_thunk_forward(
+    void* dim_ptr, size_t, int lane, void* payload_ptr)
+{{
+    wp::launch_bounds_t<{launch_ndim}>* dim = (wp::launch_bounds_t<{launch_ndim}>*)dim_ptr;
+    {name}_cpu_block_payload_forward* payload = ({name}_cpu_block_payload_forward*)payload_ptr;
+    wp::tile_shared_storage_t::bind(payload->tile_mem);
+    const size_t task_index = payload->block_first + (size_t)lane;
+    {name}_cpu_kernel_forward(*dim, task_index, payload->args);
+}}
+
+extern "C" {{
+
+WP_API void {name}_cpu_forward(
+    wp::launch_bounds_t<{launch_ndim}> *dim,
+    wp_args_{name} *_wp_args)
+{{
+    constexpr size_t block_dim = (size_t)WP_TILE_BLOCK_DIM;
+    const size_t total = dim->size;
+    size_t block_first = 0;
+    size_t block_id = 0;
+
+    while (block_first < total)
+    {{
+        const size_t remaining = total - block_first;
+        const int active_count = (int)(remaining < block_dim ? remaining : block_dim);
+        wp::tile_shared_storage_t tile_mem;
+        {name}_cpu_block_payload_forward payload = {{ _wp_args, &tile_mem, block_first }};
+        if (!wp_cpu_run_block(
+                WP_TILE_BLOCK_DIM, active_count, &{name}_cpu_block_thunk_forward, dim, block_id, &payload))
+            return;
+        block_first += (size_t)active_count;
+        ++block_id;
+    }}
+}}
+
+}} // extern C
+
+#endif // WP_TILE_BLOCK_DIM == 1
+
 """
 
 cpu_module_template_backward = """
+
+#if WP_TILE_BLOCK_DIM == 1
 
 extern "C" {{
 
@@ -7067,6 +7119,56 @@ WP_API void {name}_cpu_backward(
 }}
 
 }} // extern C
+
+#else
+
+struct {name}_cpu_block_payload_backward
+{{
+    wp_args_{name}* args;
+    wp_args_{name}* adj_args;
+    wp::tile_shared_storage_t* tile_mem;
+    size_t block_first;
+}};
+
+static void {name}_cpu_block_thunk_backward(
+    void* dim_ptr, size_t, int lane, void* payload_ptr)
+{{
+    wp::launch_bounds_t<{launch_ndim}>* dim = (wp::launch_bounds_t<{launch_ndim}>*)dim_ptr;
+    {name}_cpu_block_payload_backward* payload = ({name}_cpu_block_payload_backward*)payload_ptr;
+    wp::tile_shared_storage_t::bind(payload->tile_mem);
+    const size_t task_index = payload->block_first + (size_t)lane;
+    {name}_cpu_kernel_backward(*dim, task_index, payload->args, payload->adj_args);
+}}
+
+extern "C" {{
+
+WP_API void {name}_cpu_backward(
+    wp::launch_bounds_t<{launch_ndim}> *dim,
+    wp_args_{name} *_wp_args,
+    wp_args_{name} *_wp_adj_args)
+{{
+    constexpr size_t block_dim = (size_t)WP_TILE_BLOCK_DIM;
+    const size_t total = dim->size;
+    size_t block_first = 0;
+    size_t block_id = 0;
+
+    while (block_first < total)
+    {{
+        const size_t remaining = total - block_first;
+        const int active_count = (int)(remaining < block_dim ? remaining : block_dim);
+        wp::tile_shared_storage_t tile_mem;
+        {name}_cpu_block_payload_backward payload = {{ _wp_args, _wp_adj_args, &tile_mem, block_first }};
+        if (!wp_cpu_run_block(
+                WP_TILE_BLOCK_DIM, active_count, &{name}_cpu_block_thunk_backward, dim, block_id, &payload))
+            return;
+        block_first += (size_t)active_count;
+        ++block_id;
+    }}
+}}
+
+}} // extern C
+
+#endif // WP_TILE_BLOCK_DIM == 1
 
 """
 
