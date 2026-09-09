@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   build:
-    name: Build CUDA 13.0.2
+    name: Build CUDA 13.4.1
     if: github.repository == 'NVIDIA/warp'
     runs-on: ubuntu-latest
     permissions:
@@ -44,7 +44,7 @@ jobs:
       - name: Generate image metadata
         id: meta
         run: |
-          CUDA_VERSION="13.0.2"
+          CUDA_VERSION="13.4.1"
           UBUNTU_VERSION="24.04"
           CUDA_MAJOR="${CUDA_VERSION%%.*}"
           DATE_TAG=$(date -u +%Y%m%d)

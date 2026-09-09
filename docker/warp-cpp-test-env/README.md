@@ -39,7 +39,7 @@ docker push your-registry.com/project/warp-cpp-test-env:12.9.1-ubuntu24.04
 
 ### Custom versions
 ```bash
-./build.sh --cuda 13.0.0 --ubuntu 22.04
+./build.sh --cuda 13.4.1 --ubuntu 22.04
 ```
 
 ### Build and push to registry
