@@ -25,7 +25,6 @@
 
 #include "cpu_fiber.h"
 
-#include <cfenv>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -88,7 +87,7 @@ extern "C" void wp_fiber_entry_trampoline();
 // Goes through `wp_fiber_switch` (not raw SwitchToFiber) so `g_active_fiber`
 // stays consistent with whoever is actually running. The POSIX entry
 // trampoline uses the same idiom for the same reason.
-extern "C" WP_API void wp_fiber_switch(wp_fiber_t* to);
+extern "C" void wp_fiber_switch(wp_fiber_t* to);
 static VOID CALLBACK win_fiber_entry(PVOID raw)
 {
     wp_fiber_t* self = (wp_fiber_t*)raw;
@@ -345,7 +344,7 @@ void* init_fiber_stack(void* stack_top, size_t* slots_used)
 }  // namespace
 #endif  // !_WIN32
 
-extern "C" WP_API wp_fiber_t* wp_fiber_create(void (*entry)(void*), void* arg, size_t stack_size)
+extern "C" wp_fiber_t* wp_fiber_create(void (*entry)(void*), void* arg, size_t stack_size)
 {
     if (!entry)
         return nullptr;
@@ -403,7 +402,7 @@ extern "C" WP_API wp_fiber_t* wp_fiber_create(void (*entry)(void*), void* arg, s
 #endif
 }
 
-extern "C" WP_API void wp_fiber_destroy(wp_fiber_t* f)
+extern "C" void wp_fiber_destroy(wp_fiber_t* f)
 {
     // The main fiber is thread-local storage rather than a heap allocation,
     // and unmapping the currently executing stack is never safe. Enforce
@@ -424,7 +423,7 @@ extern "C" WP_API void wp_fiber_destroy(wp_fiber_t* f)
     delete f;
 }
 
-extern "C" WP_API wp_fiber_t* wp_fiber_active(void)
+extern "C" wp_fiber_t* wp_fiber_active(void)
 {
     if (!g_active_fiber) {
         g_main_fiber = wp_fiber_t {};
@@ -447,7 +446,7 @@ extern "C" WP_API wp_fiber_t* wp_fiber_active(void)
     return g_active_fiber;
 }
 
-extern "C" WP_API void wp_fiber_switch(wp_fiber_t* to)
+extern "C" void wp_fiber_switch(wp_fiber_t* to)
 {
     if (!to)
         return;
@@ -469,124 +468,4 @@ extern "C" WP_API void wp_fiber_switch(wp_fiber_t* to)
     // Resumed: g_active_fiber has been reset by whoever switched back to us.
 }
 
-extern "C" WP_API int wp_fiber_finished(wp_fiber_t* f) { return f ? f->finished : 1; }
-
-namespace {
-
-struct fiber_test_state {
-    wp_fiber_t* main_fiber;
-    int result;
-    int expected_rounding;
-};
-
-#if defined(_MSC_VER)
-#define WP_FIBER_NOINLINE __declspec(noinline)
-#else
-#define WP_FIBER_NOINLINE __attribute__((noinline))
-#endif
-
-WP_FIBER_NOINLINE int fiber_test_deep_call(int depth, uintptr_t seed)
-{
-    volatile uintptr_t values[32];
-    for (int i = 0; i < 32; ++i)
-        values[i] = seed + (uintptr_t)i;
-    if (depth == 0)
-        return values[17] == seed + 17;
-    return fiber_test_deep_call(depth - 1, seed + 37) && values[9] == seed + 9;
-}
-
-void fiber_test_abi_entry(void* raw)
-{
-    fiber_test_state* state = static_cast<fiber_test_state*>(raw);
-    alignas(16) volatile uint8_t aligned_value[16] {};
-    volatile uint64_t integer_values[] = {
-        0x0123456789abcdefull,
-        0xfedcba9876543210ull,
-        0x55aa55aa55aa55aaull,
-    };
-    volatile double floating_values[] = { 1.25, -8.5, 1024.125, 0.03125 };
-
-    std::fesetround(FE_DOWNWARD);
-    state->expected_rounding = std::fegetround();
-    wp_fiber_switch(state->main_fiber);
-
-    const bool aligned = (reinterpret_cast<uintptr_t>(&aligned_value) & 15u) == 0;
-    const bool integers_ok = integer_values[0] == 0x0123456789abcdefull && integer_values[1] == 0xfedcba9876543210ull
-        && integer_values[2] == 0x55aa55aa55aa55aaull;
-    const bool floating_ok = floating_values[0] == 1.25 && floating_values[1] == -8.5 && floating_values[2] == 1024.125
-        && floating_values[3] == 0.03125;
-    state->result = aligned && integers_ok && floating_ok && std::fegetround() == state->expected_rounding;
-}
-
-struct deep_call_state {
-    int depth;
-    int result;
-};
-
-void fiber_test_deep_entry(void* raw)
-{
-    deep_call_state* state = static_cast<deep_call_state*>(raw);
-    state->result = fiber_test_deep_call(state->depth, 0x13579bdu);
-}
-
-WP_FIBER_NOINLINE uintptr_t fiber_test_overflow_call(uintptr_t depth)
-{
-    // Keep each frame smaller than a guard page so successive frames cannot
-    // skip over it. Reading the volatile frame after the recursive call also
-    // prevents the optimizer from converting the recursion into a loop.
-    volatile uintptr_t values[32];
-    for (int i = 0; i < 32; ++i)
-        values[i] = depth + (uintptr_t)i;
-    if (depth == UINTPTR_MAX)
-        return values[0];
-    const uintptr_t nested = fiber_test_overflow_call(depth + 1);
-    return values[depth & 31u] + nested;
-}
-
-void fiber_test_overflow_entry(void*) { (void)fiber_test_overflow_call(0); }
-
-}  // namespace
-
-extern "C" WP_API int wp_fiber_test_abi()
-{
-    const int saved_rounding = std::fegetround();
-    std::fesetround(FE_TONEAREST);
-
-    fiber_test_state state { wp_fiber_active(), 0, FE_TONEAREST };
-    wp_fiber_t* fiber = wp_fiber_create(&fiber_test_abi_entry, &state, 64 * 1024);
-    if (!fiber) {
-        std::fesetround(saved_rounding);
-        return 0;
-    }
-
-    wp_fiber_switch(fiber);
-    const bool main_state_ok = std::fegetround() == FE_TONEAREST;
-    std::fesetround(FE_UPWARD);
-    wp_fiber_switch(fiber);
-    const bool resumed_main_state_ok = std::fegetround() == FE_UPWARD;
-    const bool finished = wp_fiber_finished(fiber) != 0;
-    wp_fiber_destroy(fiber);
-    std::fesetround(saved_rounding);
-    return state.result && main_state_ok && resumed_main_state_ok && finished;
-}
-
-extern "C" WP_API int wp_fiber_test_deep_calls(size_t stack_size, int depth)
-{
-    deep_call_state state { depth, 0 };
-    wp_fiber_t* fiber = wp_fiber_create(&fiber_test_deep_entry, &state, stack_size);
-    if (!fiber)
-        return 0;
-    wp_fiber_switch(fiber);
-    const bool finished = wp_fiber_finished(fiber) != 0;
-    wp_fiber_destroy(fiber);
-    return state.result && finished;
-}
-
-extern "C" WP_API void wp_fiber_test_overflow(size_t stack_size)
-{
-    wp_fiber_t* fiber = wp_fiber_create(&fiber_test_overflow_entry, nullptr, stack_size);
-    if (!fiber)
-        return;
-    wp_fiber_switch(fiber);
-    wp_fiber_destroy(fiber);
-}
+extern "C" int wp_fiber_finished(wp_fiber_t* f) { return f ? f->finished : 1; }

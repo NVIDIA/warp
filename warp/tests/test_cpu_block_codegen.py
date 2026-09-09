@@ -102,7 +102,6 @@ class TestCpuBlockCodegen(unittest.TestCase):
             b"wp_cpu_get_thread_idx",
             b"wp_cpu_get_active_count",
             b"wp_cpu_tile_sync",
-            b"wp_cpu_block_pool_size",
             b"wp_fiber_",
         ):
             with self.subTest(symbol=symbol.decode()):

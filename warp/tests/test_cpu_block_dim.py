@@ -67,6 +67,35 @@ def _mapped_block_dim(_value: float):
     return float(wp.block_dim())
 
 
+@wp.func
+def _nested_block_value(value: int):
+    return wp.block_dim() * 100000 + value
+
+
+@wp.kernel
+def _tid_1d_kernel(output: wp.array[wp.int32]):
+    i = wp.tid()
+    output[i] = _nested_block_value(i)
+
+
+@wp.kernel
+def _tid_2d_kernel(output: wp.array2d[wp.int32]):
+    i, j = wp.tid()
+    output[i, j] = _nested_block_value(i * 1000 + j)
+
+
+@wp.kernel
+def _tid_3d_kernel(output: wp.array3d[wp.int32]):
+    i, j, k = wp.tid()
+    output[i, j, k] = _nested_block_value(i * 10000 + j * 100 + k)
+
+
+@wp.kernel
+def _tid_4d_kernel(output: wp.array4d[wp.int32]):
+    i, j, k, ell = wp.tid()
+    output[i, j, k, ell] = _nested_block_value(i * 10000000 + j * 10000 + k * 100 + ell)
+
+
 class TestCpuBlockDim(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -167,6 +196,73 @@ class TestCpuBlockDim(unittest.TestCase):
             wp.force_load(device=self.cpu, modules=[module], max_workers=0)
         self.assertIn((self.cpu.context, 4), module.execs)
         self.assertNotIn((self.cpu.context, 1), module.execs)
+
+    def test_all_valid_block_dimensions_with_full_blocks_and_tails(self):
+        block_dims = (1, 2, 8, 31, 32, 63, 64, 65, 255, 256, 257, 511, 512, 1023, 1024)
+        with _cpu_blocks(True):
+            for block_dim in block_dims:
+                with self.subTest(block_dim=block_dim):
+                    count = block_dim + 1
+                    indices = wp.empty(count, dtype=wp.int32, device=self.cpu)
+                    actual_block_dims = wp.empty_like(indices)
+
+                    # Repeating the same full-block-plus-one-tail launch also
+                    # exercises warm worker reuse for every supported size.
+                    for _ in range(2):
+                        wp.launch(
+                            _block_info_kernel,
+                            dim=count,
+                            inputs=[indices, actual_block_dims],
+                            device=self.cpu,
+                            block_dim=block_dim,
+                        )
+
+                    np.testing.assert_array_equal(indices.numpy(), np.arange(count, dtype=np.int32))
+                    np.testing.assert_array_equal(actual_block_dims.numpy(), np.full(count, block_dim, dtype=np.int32))
+
+    def test_empty_launch_and_arbitrary_partial_prefix(self):
+        output = wp.zeros(1, dtype=wp.int32, device=self.cpu)
+        with _cpu_blocks(True):
+            for block_dim in (1, 32, 1024):
+                with self.subTest(empty_block_dim=block_dim):
+                    wp.launch(_no_tid_counter, dim=0, inputs=[output], device=self.cpu, block_dim=block_dim)
+            self.assertEqual(output.numpy()[0], 0)
+
+            block_dim = 65
+            count = block_dim + 17
+            indices = wp.empty(count, dtype=wp.int32, device=self.cpu)
+            actual_block_dims = wp.empty_like(indices)
+            wp.launch(
+                _block_info_kernel,
+                dim=count,
+                inputs=[indices, actual_block_dims],
+                device=self.cpu,
+                block_dim=block_dim,
+            )
+            np.testing.assert_array_equal(indices.numpy(), np.arange(count, dtype=np.int32))
+            np.testing.assert_array_equal(actual_block_dims.numpy(), np.full(count, block_dim, dtype=np.int32))
+
+    def test_multidimensional_tid_and_nested_function(self):
+        block_dim = 8
+        cases = (
+            (_tid_1d_kernel, (5,), lambda i: i[0]),
+            (_tid_2d_kernel, (2, 3), lambda i: i[0] * 1000 + i[1]),
+            (_tid_3d_kernel, (2, 3, 4), lambda i: i[0] * 10000 + i[1] * 100 + i[2]),
+            (
+                _tid_4d_kernel,
+                (2, 2, 3, 2),
+                lambda i: i[0] * 10000000 + i[1] * 10000 + i[2] * 100 + i[3],
+            ),
+        )
+        with _cpu_blocks(True):
+            for kernel, shape, encode in cases:
+                with self.subTest(shape=shape):
+                    output = wp.empty(shape=shape, dtype=wp.int32, device=self.cpu)
+                    wp.launch(kernel, dim=shape, outputs=[output], device=self.cpu, block_dim=block_dim)
+                    expected = np.empty(shape, dtype=np.int32)
+                    for index in np.ndindex(shape):
+                        expected[index] = block_dim * 100000 + encode(index)
+                    np.testing.assert_array_equal(output.numpy(), expected)
 
     def test_launch_tiled_uses_effective_dimension(self):
         for enabled, expected in ((False, 2), (True, 8)):

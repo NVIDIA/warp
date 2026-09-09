@@ -40,7 +40,6 @@ struct block_context {
 thread_local block_context* g_block_context = nullptr;
 thread_local int g_lane = 0;
 thread_local const char* g_block_error = nullptr;
-thread_local bool g_fail_next_worker_allocation = false;
 
 int report_block_error(const char* message)
 {
@@ -164,11 +163,6 @@ void lane_entry(void* raw_worker)
 bool grow_worker_pool(size_t required_size)
 {
     while (g_worker_pool.workers.size() < required_size) {
-        if (g_fail_next_worker_allocation) {
-            g_fail_next_worker_allocation = false;
-            return false;
-        }
-
         worker_slot* worker = new (std::nothrow) worker_slot;
         if (!worker)
             return false;
@@ -190,36 +184,11 @@ bool grow_worker_pool(size_t required_size)
     return true;
 }
 
-struct schedule_probe {
-    const uint32_t* barrier_counts;
-    int active_count;
-    int* events;
-    size_t event_capacity;
-    size_t event_count;
-};
-
-void append_schedule_event(schedule_probe& probe, int event)
-{
-    if (probe.event_count < probe.event_capacity)
-        probe.events[probe.event_count] = event;
-    ++probe.event_count;
-}
-
-void schedule_probe_lane(void*, size_t, int lane, void* raw_probe)
-{
-    schedule_probe& probe = *static_cast<schedule_probe*>(raw_probe);
-    for (uint32_t generation = 0; generation < probe.barrier_counts[lane]; ++generation) {
-        append_schedule_event(probe, lane);
-        wp_cpu_tile_sync();
-    }
-    append_schedule_event(probe, probe.active_count + lane);
-}
-
 }  // namespace
 
-extern "C" WP_API int wp_cpu_get_thread_idx() { return g_lane; }
+extern "C" int wp_cpu_get_thread_idx() { return g_lane; }
 
-extern "C" WP_API int wp_cpu_get_active_count()
+extern "C" int wp_cpu_get_active_count()
 {
     block_context* context = g_block_context;
     if (!context)
@@ -231,7 +200,7 @@ extern "C" WP_API int wp_cpu_get_active_count()
     return count;
 }
 
-extern "C" WP_API int wp_cpu_get_first_active_lane()
+extern "C" int wp_cpu_get_first_active_lane()
 {
     block_context* context = g_block_context;
     if (!context)
@@ -240,7 +209,7 @@ extern "C" WP_API int wp_cpu_get_first_active_lane()
     return first_lane(context->behind, context->front, context->word_count);
 }
 
-extern "C" WP_API void wp_cpu_tile_sync()
+extern "C" void wp_cpu_tile_sync()
 {
     block_context* context = g_block_context;
     if (!context)
@@ -266,8 +235,6 @@ extern "C" WP_API void wp_cpu_tile_sync()
     }
 }
 
-extern "C" WP_API size_t wp_cpu_block_pool_size() { return g_worker_pool.workers.size(); }
-
 extern "C" WP_API void wp_cpu_block_error_clear() { g_block_error = nullptr; }
 
 extern "C" WP_API const char* wp_cpu_block_error_take()
@@ -286,9 +253,7 @@ extern "C" WP_API const wp_cpu_block_runtime_api* wp_cpu_block_runtime_get_api()
     return &api;
 }
 
-extern "C" WP_API void wp_cpu_test_fail_next_worker_allocation() { g_fail_next_worker_allocation = true; }
-
-extern "C" WP_API int wp_cpu_run_block(
+extern "C" int wp_cpu_run_block(
     int block_dim, int active_count, wp_cpu_block_lane_fn kernel_fn, void* dim, size_t block_id, void* args
 )
 {
@@ -380,23 +345,4 @@ extern "C" WP_API int wp_cpu_run_block(
     g_block_context = saved_context;
     g_lane = saved_lane;
     return 1;
-}
-
-extern "C" WP_API int wp_cpu_test_schedule(
-    int block_dim,
-    int active_count,
-    const uint32_t* barrier_counts,
-    int* events,
-    size_t event_capacity,
-    size_t* event_count
-)
-{
-    wp_cpu_block_error_clear();
-    if (!barrier_counts || !event_count || (event_capacity && !events))
-        return 0;
-
-    schedule_probe probe { barrier_counts, active_count, events, event_capacity, 0 };
-    const int result = wp_cpu_run_block(block_dim, active_count, &schedule_probe_lane, nullptr, 0, &probe);
-    *event_count = probe.event_count;
-    return result && probe.event_count <= event_capacity;
 }

@@ -34,11 +34,11 @@ typedef struct wp_fiber wp_fiber_t;
 // `stack_size` is rounded up to a page; a leading guard page (PROT_NONE) is
 // added so stack overflow segfaults loudly instead of corrupting an adjacent
 // fiber. Returns NULL on allocation failure.
-WP_API wp_fiber_t* wp_fiber_create(void (*entry)(void* arg), void* arg, size_t stack_size);
+wp_fiber_t* wp_fiber_create(void (*entry)(void* arg), void* arg, size_t stack_size);
 
 // Free a fiber's stack and bookkeeping. Passing the currently-running fiber
 // or the OS thread's implicit main fiber is invalid and has no effect.
-WP_API void wp_fiber_destroy(wp_fiber_t* f);
+void wp_fiber_destroy(wp_fiber_t* f);
 
 // Save the calling context to the active fiber, switch to `to`. The caller is
 // resumed when some other fiber switches back to it.
@@ -47,24 +47,17 @@ WP_API void wp_fiber_destroy(wp_fiber_t* f);
 // fiber has been switched in) is fine ? the implementation lazily allocates a
 // "main fiber" for the OS thread on first switch. On Windows, the switch has
 // no effect if converting the calling thread to a fiber fails.
-WP_API void wp_fiber_switch(wp_fiber_t* to);
+void wp_fiber_switch(wp_fiber_t* to);
 
 // Returns the currently-running fiber. On first call from an OS thread that
 // has never switched, returns the lazily-allocated "main" fiber for that
 // thread. Returns NULL on Windows if converting the calling thread to a fiber
 // fails.
-WP_API wp_fiber_t* wp_fiber_active(void);
+wp_fiber_t* wp_fiber_active(void);
 
 // Returns 1 if the fiber's `entry` has returned (it's been "consumed"), else 0.
 // Useful for the scheduler to know when to stop scheduling a fiber.
-WP_API int wp_fiber_finished(wp_fiber_t* f);
-
-// Native ABI probes used by ``warp/tests/test_cpu_fiber.py``. Keeping the
-// suspended portions in native code avoids parking a CPython callback frame on
-// a worker stack.
-WP_API int wp_fiber_test_abi();
-WP_API int wp_fiber_test_deep_calls(size_t stack_size, int depth);
-WP_API void wp_fiber_test_overflow(size_t stack_size);
+int wp_fiber_finished(wp_fiber_t* f);
 
 #ifdef __cplusplus
 }  // extern "C"
