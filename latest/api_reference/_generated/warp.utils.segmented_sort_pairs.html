@@ -519,31 +519,69 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">segment_end_indices</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/utils.py#L262-L374"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.utils.segmented_sort_pairs" title="Link to this definition">#</a></dt>
-<dd><p>Sort key-value pairs within segments.</p>
-<p>This function performs a segmented sort of key-value pairs, where the sorting is done independently within each segment.
-The segments are defined by their start and optionally end indices.
-The <cite>keys</cite> and <cite>values</cite> arrays must be large enough to accommodate 2*`count` elements.</p>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/utils.py#L262-L458"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.utils.segmented_sort_pairs" title="Link to this definition">#</a></dt>
+<dd><p>Sort key-value pairs in place within each segment in ascending key order.</p>
+<p>The sort is stable within each segment. Pairs with identical keys retain
+their original relative order. Elements in <code class="docutils literal notranslate"><span class="pre">keys[:count]</span></code> and
+<code class="docutils literal notranslate"><span class="pre">values[:count]</span></code> outside the segment ranges are not modified.</p>
+<p>Segments are half-open ranges defined by <code class="docutils literal notranslate"><span class="pre">segment_start_indices</span></code> and
+optionally <code class="docutils literal notranslate"><span class="pre">segment_end_indices</span></code>. Every range must satisfy
+<code class="docutils literal notranslate"><span class="pre">0</span> <span class="pre">&lt;=</span> <span class="pre">start</span> <span class="pre">&lt;=</span> <span class="pre">end</span> <span class="pre">&lt;=</span> <span class="pre">count</span></code>.</p>
+<p>During direct CPU execution, Warp raises a <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ValueError</span></code></a> for invalid
+segment bounds. If invalid bounds are encountered during CPU graph replay,
+<a class="reference internal" href="warp.capture_launch.html#warp.capture_launch" title="warp.capture_launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.capture_launch()</span></code></a> raises a <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">RuntimeError</span></code></a>. For execution
+on a CUDA device, Warp does not currently report invalid segment bounds, so
+callers must validate segment ranges before calling this function.</p>
+<p>All provided arrays must be contiguous and reside on the same device. The
+segment-index arrays must be one-dimensional.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">keys</span></code> and <code class="docutils literal notranslate"><span class="pre">values</span></code> arrays must each contain at least
+<code class="docutils literal notranslate"><span class="pre">2</span> <span class="pre">*</span> <span class="pre">count</span></code> elements. The <code class="docutils literal notranslate"><span class="pre">keys[count:2</span> <span class="pre">*</span> <span class="pre">count]</span></code> and
+<code class="docutils literal notranslate"><span class="pre">values[count:2</span> <span class="pre">*</span> <span class="pre">count]</span></code> regions are scratch storage and may be
+overwritten.</p>
+<p>Segment ranges must not overlap one another, and neither
+<code class="docutils literal notranslate"><span class="pre">segment_start_indices</span></code> nor <code class="docutils literal notranslate"><span class="pre">segment_end_indices</span></code> may overlap the
+storage used by <code class="docutils literal notranslate"><span class="pre">keys</span></code> or <code class="docutils literal notranslate"><span class="pre">values</span></code>. Warp does not currently detect
+either type of overlap. Violating either restriction results in undefined
+behavior.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>keys</strong> – Array of keys to sort. Must be of type int32 or float32.</p></li>
-<li><p><strong>values</strong> – Array of values to sort along with keys. Must be of type int32.</p></li>
-<li><p><strong>count</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of elements to sort.</p></li>
-<li><p><strong>segment_start_indices</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>warp.array</em></a><em>[</em><a class="reference internal" href="warp.int32.html#warp.int32" title="warp.int32"><em>warp.int32</em></a><em>]</em>) – Array containing start index of each segment. Must be of type int32.
-If segment_end_indices is None, this array must have length at least num_segments + 1,
-and segment_end_indices will be inferred as segment_start_indices[1:].
-If segment_end_indices is provided, this array must have length at least num_segments.</p></li>
-<li><p><strong>segment_end_indices</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>warp.array</em></a><em>[</em><a class="reference internal" href="warp.int32.html#warp.int32" title="warp.int32"><em>warp.int32</em></a><em>]</em>) – Optional array containing end index of each segment. Must be of type int32 if provided.
-If None, segment_end_indices will be inferred from segment_start_indices[1:].
-If provided, must have length at least num_segments.</p></li>
+<li><p><strong>keys</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>warp.array</em></a><em>[</em><a class="reference internal" href="warp.int32.html#warp.int32" title="warp.int32"><em>warp.int32</em></a><em>] </em><em>| </em><a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>warp.array</em></a><em>[</em><a class="reference internal" href="warp.float32.html#warp.float32" title="warp.float32"><em>warp.float32</em></a><em>]</em>) – Array of keys to sort. Its dtype must be <code class="docutils literal notranslate"><span class="pre">int32</span></code> or <code class="docutils literal notranslate"><span class="pre">float32</span></code>.</p></li>
+<li><p><strong>values</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>warp.array</em></a><em>[</em><a class="reference internal" href="warp.int32.html#warp.int32" title="warp.int32"><em>warp.int32</em></a><em>]</em>) – Array of values to reorder with their corresponding keys. Its dtype must be <code class="docutils literal notranslate"><span class="pre">int32</span></code>.</p></li>
+<li><p><strong>count</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of elements available to the segment ranges at the start of <code class="docutils literal notranslate"><span class="pre">keys</span></code> and <code class="docutils literal notranslate"><span class="pre">values</span></code>. Must satisfy
+<code class="docutils literal notranslate"><span class="pre">0</span> <span class="pre">&lt;=</span> <span class="pre">count</span> <span class="pre">&lt;=</span> <span class="pre">2**31</span> <span class="pre">-</span> <span class="pre">1</span></code>.</p></li>
+<li><p><strong>segment_start_indices</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>warp.array</em></a><em>[</em><a class="reference internal" href="warp.int32.html#warp.int32" title="warp.int32"><em>warp.int32</em></a><em>]</em>) – Start index of each segment.
+When <code class="docutils literal notranslate"><span class="pre">segment_end_indices</span></code> is <code class="docutils literal notranslate"><span class="pre">None</span></code>, adjacent entries define
+each segment, so an array of length N defines N - 1 segments.</p></li>
+<li><p><strong>segment_end_indices</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>warp.array</em></a><em>[</em><a class="reference internal" href="warp.int32.html#warp.int32" title="warp.int32"><em>warp.int32</em></a><em>] </em><em>| </em><em>None</em>) – End index of each segment.
+When provided, it must have the same length as <code class="docutils literal notranslate"><span class="pre">segment_start_indices</span></code>.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If array storage devices don’t match, if storage size is insufficient,
-    if segment_start_indices is not of type int32, or if data types are unsupported.</p>
+<dd class="field-even"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.14)"><strong>TypeError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">count</span></code> is not an integer.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">count</span></code> is outside the signed 32-bit non-negative integer range or a segment range is invalid
+    during direct CPU execution.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If the arrays reside on different devices, <code class="docutils literal notranslate"><span class="pre">keys</span></code> or <code class="docutils literal notranslate"><span class="pre">values</span></code> has insufficient storage, an
+    array is not contiguous, a segment-index array is not one-dimensional, the segment-index arrays have
+    different lengths, or a dtype is unsupported.</p></li>
+</ul>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
 </dd>
 </dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">keys</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">values</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">30</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">40</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">offsets</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">wp</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">segmented_sort_pairs</span><span class="p">(</span><span class="n">keys</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="n">offsets</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">keys</span><span class="o">.</span><span class="n">numpy</span><span class="p">()[:</span><span class="mi">4</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+<span class="go">[1, 3, 2, 4]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">values</span><span class="o">.</span><span class="n">numpy</span><span class="p">()[:</span><span class="mi">4</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+<span class="go">[10, 30, 20, 40]</span>
+</pre></div>
+</div>
 </dd></dl>
 
 </section>
