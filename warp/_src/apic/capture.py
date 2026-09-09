@@ -523,6 +523,8 @@ class APICapture:
         kernel_key = kernel.key
         kernel_id = (module_hash, kernel_key)
         if kernel_id not in self.collected_kernels:
+            # Another block-size variant may have changed the kernel's current hash.
+            # Save this executable's symbol, not kernel.get_mangled_name().
             name = module_exec.get_kernel_mangled_name(kernel)
             options = kernel.module.options | kernel.options
 

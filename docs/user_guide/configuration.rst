@@ -218,12 +218,6 @@ Kernel-level settings can be passed as arguments to the :func:`@wp.kernel <warp.
         tid = wp.tid()
         b[tid] = a[tid] + 1.0
 
-Unique modules compute their identity when the kernel is decorated. Deferred
-``wp.static()`` expressions in the kernel or its helper functions may require
-code generation at that point. Define all transitively called helper functions
-before decorating such a kernel; code-generation errors can be raised during
-decoration rather than on the first launch.
-
 CUDA shared-memory register spilling uses otherwise available shared memory to
 reduce local-memory spill traffic. Warp evaluates forward and backward entry
 points independently and enables the optimization only when the corresponding

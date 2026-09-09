@@ -2932,14 +2932,10 @@ def _verify_library_version(lib, library_name: str, version_symbol: str, expecte
 # duplicate kernels for codegen (see get_unique_kernels()).
 class ModuleHasher:
     def __init__(self, kernels, options):
-        # Include deferred statics in the entire referenced function graph,
-        # even when the kernels themselves contain no static expressions.
-        self.has_unresolved_static_expressions = False
-
-        # Deferred statics such as tile lengths can depend on block_dim, so a
-        # kernel's content hash can legitimately differ between variants.
-        # Freeze each live kernel's content hash for this variant without
-        # retaining duplicate kernel objects that would otherwise be collected.
+        # Hashing another block-size variant can change the shared Kernel.hash
+        # (e.g. when deferred statics depend on tile lengths). Preserve this
+        # variant's hashes so executables can resolve their own compiled symbols.
+        # Weak keys avoid keeping otherwise-unused duplicate kernels alive.
         self.kernel_hashes = weakref.WeakKeyDictionary()
 
         # cache function hashes to avoid hashing multiple times
@@ -3134,8 +3130,6 @@ class ModuleHasher:
         # Even instances of generic kernels and functions have unique adjoints with
         # different argument types.
 
-        self.has_unresolved_static_expressions |= adj.has_unresolved_static_expressions
-
         ch = hashlib.sha256()
 
         # source
@@ -3219,7 +3213,7 @@ class ModuleHasher:
 
 
 class ModuleBuilder:
-    def __init__(self, module, options, hasher=None, *, kernels=None):
+    def __init__(self, module, options, hasher=None):
         self.functions = {}
         self.structs = {}
         self.native_types = {}
@@ -3231,18 +3225,16 @@ class ModuleBuilder:
         self.ltoirs_decl = {}  # map from lto symbol to lto forward declaration
         self.shared_memory_bytes = {}  # map from lto symbol to shared memory requirements
 
-        if kernels is None:
-            if hasher is None:
-                hasher = ModuleHasher(module._get_live_kernels(), options)
-            kernels = hasher.get_unique_kernels()
-            # A different block-size variant may have changed the shared
-            # Kernel.hash since this hasher was cached. Emit this variant's symbols.
-            for kernel_hash, kernel in hasher.unique_kernels.items():
-                kernel.hash = kernel_hash
+        if hasher is None:
+            hasher = ModuleHasher(module._get_live_kernels(), options)
 
-        # Hash preparation supplies all concrete roots: their preliminary
-        # hashes can collide until deferred static expressions are resolved.
-        self.kernels = kernels
+        # A different block-size variant may have changed the shared
+        # Kernel.hash since this hasher was cached. Emit this variant's symbols.
+        for kernel_hash, kernel in hasher.unique_kernels.items():
+            kernel.hash = kernel_hash
+
+        # build all unique kernels
+        self.kernels = hasher.get_unique_kernels()
         for kernel in self.kernels:
             self.build_kernel(kernel)
 
@@ -3719,7 +3711,9 @@ class ModuleExec:
         name = self.kernel_names.get(kernel)
         if name is None:
             # An equivalent kernel can be registered after this executable was
-            # loaded. Its current hash may belong to another block-size variant.
+            # loaded, invalidating module hashers. Resolve this variant's hash;
+            # the kernel's current hash may belong to another block size.
+            kernel.module.get_module_hash(self.block_dim)
             kernel_hash = kernel.module.hashers[self.block_dim].kernel_hashes[kernel]
             name = kernel.get_mangled_name(kernel_hash=kernel_hash)
             self.kernel_names[kernel] = name
@@ -4290,12 +4284,13 @@ class Module:
     def hash_module(self) -> bytes:
         """Get the hash of the module for the current block_dim.
 
-        This function always creates a new ``ModuleHasher`` and computes the hash,
-        running code generation when needed to resolve deferred static expressions.
+        This function always creates a new ``ModuleHasher`` and computes the hash.
         """
         block_dim = self.options["block_dim"]
-        self.hashers.pop(block_dim, None)
-        return self.get_module_hash(block_dim)
+        options = self.resolve_options(warp.config)
+        self.hashers[block_dim] = ModuleHasher(self._get_live_kernels(), options)
+        self.resolved_options[block_dim] = options
+        return self.hashers[block_dim].get_hash()
 
     @synchronized(_codegen_lock)
     def get_module_hash(self, block_dim: int | None = None) -> bytes:
@@ -4307,25 +4302,27 @@ class Module:
         if block_dim is None:
             block_dim = self.options["block_dim"]
 
-        # Keep discovery, deferred-static resolution, and final hashing under
-        # the same codegen lock: other modules can rebuild shared helpers.
+        # Both branches below mutate shared ``@wp.func`` adjoint state
+        # (``ModuleBuilder`` runs ``adj.build`` to resolve deferred
+        # ``wp.static`` expressions; ``ModuleHasher`` reads the
+        # resulting adjoint blocks via ``hash_adjoint``). The two
+        # operations are stages of one logical "compute module hash"
+        # critical section, so they live in a single ``_codegen_lock``
+        # block. Splitting the lock per stage opens a window where
+        # another thread can re-run ``adj.build`` on a shared helper
+        # and clobber the state this thread is about to hash.
         if self.has_unresolved_static_expressions or block_dim not in self.hashers:
-            options = self.resolve_options(warp.config, block_dim=block_dim)
-            kernels = self._get_live_kernels()
-            hasher = ModuleHasher(kernels, options)
-            if self.has_unresolved_static_expressions or hasher.has_unresolved_static_expressions:
-                builder_options = options | {"output_arch": None}
-                concrete_kernels = [
-                    root
-                    for kernel in kernels
-                    for root in (kernel.overloads.values() if kernel.is_generic else (kernel,))
-                ]
-                ModuleBuilder(self, builder_options, kernels=concrete_kernels)
-                hasher = ModuleHasher(kernels, options)
-                self.has_unresolved_static_expressions = False
+            with _codegen_lock:
+                if self.has_unresolved_static_expressions:
+                    options = self.resolve_options(warp.config, block_dim=block_dim)
+                    builder_options = options | {"output_arch": None, "block_dim": block_dim}
+                    _ = ModuleBuilder(self, builder_options)
+                    self.has_unresolved_static_expressions = False
 
-            self.hashers[block_dim] = hasher
-            self.resolved_options[block_dim] = options
+                if block_dim not in self.hashers:
+                    options = self.resolve_options(warp.config, block_dim=block_dim)
+                    self.hashers[block_dim] = ModuleHasher(self._get_live_kernels(), options)
+                    self.resolved_options[block_dim] = options
 
         return self.hashers[block_dim].get_hash()
 

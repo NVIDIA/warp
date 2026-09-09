@@ -224,6 +224,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestModuleParallelLoad,
         TestParallelLoadSharedHelper,
     )
+    from warp.tests.test_module_variants import TestModuleVariants
     from warp.tests.test_modules_lite import TestModuleLite
     from warp.tests.test_noise import TestNoise
     from warp.tests.test_operators import TestOperators
@@ -407,6 +408,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestModuleHashing,
         TestModuleLite,
         TestModuleParallelLoad,
+        TestModuleVariants,
         TestMultiGPU,
         TestNoise,
         TestOccupancy,
@@ -665,6 +667,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestOptionResolution,
     )
     from warp.tests.test_module_parallel_load import TestModuleParallelLoad, TestParallelLoadSharedHelper
+    from warp.tests.test_module_variants import TestModuleVariants
     from warp.tests.test_modules_lite import TestModuleLite
     from warp.tests.test_noise import TestNoise
     from warp.tests.test_operators import TestOperators
@@ -898,6 +901,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestModuleParallelLoad,
         TestParallelLoadSharedHelper,
         TestModuleLite,
+        TestModuleVariants,
         TestNoise,
         TestOverwrite,
         TestPrint,
