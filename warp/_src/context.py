@@ -652,8 +652,7 @@ class Function:
         return None
 
     def get_builtin(self, *args, **kwargs) -> BuiltinCallDesc:
-        # Preserve the primary signature as a fast path and as a keyword alias
-        # for compatible overloads that use different parameter names.
+        # Preserve the primary signature as a fast path for matching overloads.
         try:
             bound_args = self.signature.bind(*args, **kwargs)
         except TypeError:
@@ -671,6 +670,9 @@ class Function:
 
             for overload in self.overloads:
                 if overload.generic:
+                    continue
+
+                if kwargs and overload._call_shape != self._call_shape:
                     continue
 
                 desc = get_builtin_call_desc(overload, bound_arg_types)

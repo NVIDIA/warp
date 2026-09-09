@@ -189,8 +189,7 @@ class TestBuiltinsResolution(unittest.TestCase):
 
         cases = (
             ("primary default", {"value": wp.vec2f(1.0, 1.0)}, (2.0, 2.0)),
-            ("primary alias", {"value": wp.vec3f(1.0, 1.0, 1.0)}, (3.0, 3.0, 3.0)),
-            ("overload alias", {"vector": wp.vec3f(1.0, 1.0, 1.0)}, (3.0, 3.0, 3.0)),
+            ("overload default", {"vector": wp.vec3f(1.0, 1.0, 1.0)}, (3.0, 3.0, 3.0)),
             ("explicit override", {"vector": wp.vec3f(1.0, 1.0, 1.0), "scale": 4.0}, (4.0, 4.0, 4.0)),
         )
 
@@ -198,6 +197,12 @@ class TestBuiltinsResolution(unittest.TestCase):
             with self.subTest(name=name):
                 result = overload_group(**kwargs)
                 np.testing.assert_allclose(result, expected)
+
+        with self.assertRaisesRegex(
+            RuntimeError,
+            r"Couldn't find a function 'mul' compatible with the arguments 'vec3f'$",
+        ):
+            overload_group(value=wp.vec3f(1.0, 1.0, 1.0))
 
     def test_builtin_overload_required_parameter(self):
         """Reject calls missing a parameter required by the selected Python-scope overload."""
@@ -233,20 +238,34 @@ class TestBuiltinsResolution(unittest.TestCase):
     def test_builtin_overload_with_different_parameter_names(self):
         """Verify Python-scope built-in overloads accept shared and distinct parameter names."""
         # fmt: off
-        transform = wp.mat44f(
+        matrix = wp.mat44f(
             1.0, 0.0, 0.0, 0.0,
             0.0, 1.0, 0.0, 0.0,
             0.0, 0.0, 1.0, 0.0,
             0.0, 0.0, 0.0, 1.0,
         )
         # fmt: on
+        transform = wp.transformf()
         point = wp.vec3f(1.0, 2.0, 3.0)
 
-        shared_name_result = wp.transform_point(point=point, xform=transform)
-        distinct_name_result = wp.transform_point(point=point, mat=transform)
+        transform_result = wp.transform_point(point=point, xform=transform)
+        matrix_result = wp.transform_point(point=point, mat=matrix)
 
-        np.testing.assert_allclose(shared_name_result, point)
-        np.testing.assert_allclose(distinct_name_result, point)
+        np.testing.assert_allclose(transform_result, point)
+        np.testing.assert_allclose(matrix_result, point)
+
+        # Reject keywords from incompatible overloads.
+        with self.assertRaisesRegex(
+            RuntimeError,
+            r"Couldn't find a function 'transform_point' compatible with the arguments 'vec3f, mat44f'$",
+        ):
+            wp.transform_point(point=point, xform=matrix)
+
+        with self.assertRaisesRegex(
+            RuntimeError,
+            r"Couldn't find a function 'transform_point' compatible with the arguments 'vec3f, transformf'$",
+        ):
+            wp.transform_point(point=point, mat=transform)
 
     def test_builtin_overload_with_defaults(self):
         """Verify Python-scope built-in overloads apply their own default values."""
@@ -257,6 +276,15 @@ class TestBuiltinsResolution(unittest.TestCase):
         expected = wp.curlnoise(state, position, wp.uint32(1), 2.0, 0.5)
 
         np.testing.assert_allclose(result, expected)
+
+    def test_builtin_rejects_keywords_from_other_overload(self):
+        """Reject keyword arguments belonging to another overload."""
+        state = wp.rand_init(42)
+        with self.assertRaisesRegex(
+            RuntimeError,
+            r"Couldn't find a function 'curlnoise' compatible with the arguments 'uint32, vec3f'$",
+        ):
+            wp.curlnoise(state=state, xy=wp.vec3f(0.5, 0.5, 0.5))
 
     def test_int_arg_overflow(self):
         value = -1234567890123456789
