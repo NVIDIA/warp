@@ -180,6 +180,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_context import TestContext
     from warp.tests.test_copy import TestCopy
     from warp.tests.test_core_library_binary import TestCoreLibraryBinary
+    from warp.tests.test_cpu_fiber import TestCpuFiber
     from warp.tests.test_cpu_precompiled_headers import TestCpuPrecompiledHeaders
     from warp.tests.test_ctypes import TestCTypes
     from warp.tests.test_cuda_profiler import TestCudaProfiler
@@ -331,6 +332,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestContext,
         TestCopy,
         TestCoreLibraryBinary,
+        TestCpuFiber,
         TestCpuPrecompiledHeaders,
         TestCTypes,
         TestCudaArchSuffix,

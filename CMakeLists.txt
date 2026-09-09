@@ -205,6 +205,7 @@ set(WARP_CPP_SOURCES
     warp/native/scan.cpp
     warp/native/apic.cpp
     warp/native/alloc_tracker.cpp
+    warp/native/cpu_fiber.cpp
     warp/native/crt.cpp
     warp/native/error.cpp
     warp/native/cuda_util.cpp
@@ -375,6 +376,7 @@ if(WARP_BUILD_CLANG)
         SHARED
         warp/native/clang/clang.cpp
         warp/native/crt.cpp
+        warp/native/cpu_fiber.cpp
     )
     add_dependencies(warp-clang warp_generated_headers)
     warp_set_shared_target_output(warp-clang warp-clang)
