@@ -260,36 +260,89 @@ def radix_sort_pairs(
 
 
 def segmented_sort_pairs(
-    keys,
-    values,
+    keys: wp.array[wp.int32] | wp.array[wp.float32],
+    values: wp.array[wp.int32],
     count: int,
     segment_start_indices: wp.array[wp.int32],
-    segment_end_indices: wp.array[wp.int32] = None,
-):
-    """Sort key-value pairs within segments.
+    segment_end_indices: wp.array[wp.int32] | None = None,
+) -> None:
+    """Sort key-value pairs in place within each segment in ascending key order.
 
-    This function performs a segmented sort of key-value pairs, where the sorting is done independently within each segment.
-    The segments are defined by their start and optionally end indices.
-    The `keys` and `values` arrays must be large enough to accommodate 2*`count` elements.
+    The sort is stable within each segment. Pairs with identical keys retain
+    their original relative order. Elements in ``keys[:count]`` and
+    ``values[:count]`` outside the segment ranges are not modified.
+
+    Segments are half-open ranges defined by ``segment_start_indices`` and
+    optionally ``segment_end_indices``. Every range must satisfy
+    ``0 <= start <= end <= count``.
+
+    During direct CPU execution, Warp raises a :class:`ValueError` for invalid
+    segment bounds. If invalid bounds are encountered during CPU graph replay,
+    :func:`warp.capture_launch` raises a :class:`RuntimeError`. For execution
+    on a CUDA device, Warp does not currently report invalid segment bounds, so
+    callers must validate segment ranges before calling this function.
+
+    All provided arrays must be contiguous and reside on the same device. The
+    segment-index arrays must be one-dimensional.
+
+    The ``keys`` and ``values`` arrays must each contain at least
+    ``2 * count`` elements. The ``keys[count:2 * count]`` and
+    ``values[count:2 * count]`` regions are scratch storage and may be
+    overwritten.
+
+    Segment ranges must not overlap one another, and neither
+    ``segment_start_indices`` nor ``segment_end_indices`` may overlap the
+    storage used by ``keys`` or ``values``. Warp does not currently detect
+    either type of overlap. Violating either restriction results in undefined
+    behavior.
 
     Args:
-        keys: Array of keys to sort. Must be of type int32 or float32.
-        values: Array of values to sort along with keys. Must be of type int32.
-        count: Number of elements to sort.
-        segment_start_indices: Array containing start index of each segment. Must be of type int32.
-            If segment_end_indices is None, this array must have length at least num_segments + 1,
-            and segment_end_indices will be inferred as segment_start_indices[1:].
-            If segment_end_indices is provided, this array must have length at least num_segments.
-        segment_end_indices: Optional array containing end index of each segment. Must be of type int32 if provided.
-            If None, segment_end_indices will be inferred from segment_start_indices[1:].
-            If provided, must have length at least num_segments.
+        keys: Array of keys to sort. Its dtype must be ``int32`` or ``float32``.
+        values: Array of values to reorder with their corresponding keys. Its dtype must be ``int32``.
+        count: Number of elements available to the segment ranges at the start of ``keys`` and ``values``. Must satisfy
+            ``0 <= count <= 2**31 - 1``.
+        segment_start_indices: Start index of each segment.
+            When ``segment_end_indices`` is ``None``, adjacent entries define
+            each segment, so an array of length N defines N - 1 segments.
+        segment_end_indices: End index of each segment.
+            When provided, it must have the same length as ``segment_start_indices``.
 
     Raises:
-        RuntimeError: If array storage devices don't match, if storage size is insufficient,
-                     if segment_start_indices is not of type int32, or if data types are unsupported.
+        TypeError: If ``count`` is not an integer.
+        ValueError: If ``count`` is outside the signed 32-bit non-negative integer range or a segment range is invalid
+            during direct CPU execution.
+        RuntimeError: If the arrays reside on different devices, ``keys`` or ``values`` has insufficient storage, an
+            array is not contiguous, a segment-index array is not one-dimensional, the segment-index arrays have
+            different lengths, or a dtype is unsupported.
+
+    Example:
+        >>> keys = wp.array([3, 1, 4, 2, 0, 0, 0, 0], dtype=wp.int32)
+        >>> values = wp.array([30, 10, 40, 20, 0, 0, 0, 0], dtype=wp.int32)
+        >>> offsets = wp.array([0, 2, 4], dtype=wp.int32)
+        >>> wp.utils.segmented_sort_pairs(keys, values, 4, offsets)
+        >>> keys.numpy()[:4].tolist()
+        [1, 3, 2, 4]
+        >>> values.numpy()[:4].tolist()
+        [10, 30, 20, 40]
     """
-    if keys.device != values.device:
-        raise RuntimeError(f"Array storage devices do not match ({keys.device} vs {values.device})")
+    if isinstance(count, bool):
+        raise TypeError("count must be an integer")
+
+    try:
+        count = operator.index(count)
+    except TypeError as e:
+        raise TypeError("count must be an integer") from e
+
+    if count < 0:
+        raise ValueError(f"count must be non-negative, got {count}")
+    if count > (1 << 31) - 1:
+        raise ValueError(f"count must not exceed {(1 << 31) - 1}, got {count}")
+
+    segment_devices_match = segment_start_indices.device == keys.device
+    if segment_end_indices is not None:
+        segment_devices_match = segment_devices_match and segment_end_indices.device == keys.device
+    if keys.device != values.device or not segment_devices_match:
+        raise RuntimeError("Keys, values, and segment index array storage devices must match")
 
     if count == 0:
         return
@@ -297,14 +350,28 @@ def segmented_sort_pairs(
     if keys.size < 2 * count or values.size < 2 * count:
         raise RuntimeError("Array storage must be large enough to contain 2*count elements")
 
+    if not keys.is_contiguous:
+        raise RuntimeError("segmented_sort_pairs() requires a contiguous keys array")
+
+    if not values.is_contiguous:
+        raise RuntimeError("segmented_sort_pairs() requires a contiguous values array")
+
     from warp._src.context import _get_apic_capture_for_device, runtime  # noqa: PLC0415
 
     if segment_start_indices.dtype != wp.int32:
         raise RuntimeError("segment_start_indices array must be of type int32")
 
+    if segment_start_indices.ndim != 1:
+        raise RuntimeError("segment_start_indices must be one-dimensional")
+
+    if not segment_start_indices.is_contiguous:
+        raise RuntimeError("segmented_sort_pairs() requires a contiguous segment_start_indices array")
+
     # Handle case where segment_end_indices is not provided
     if segment_end_indices is None:
         num_segments = max(0, segment_start_indices.size - 1)
+        if num_segments == 0:
+            return
 
         segment_end_indices = segment_start_indices[1:]
         segment_end_indices_ptr = segment_end_indices.ptr
@@ -313,10 +380,25 @@ def segmented_sort_pairs(
         if segment_end_indices.dtype != wp.int32:
             raise RuntimeError("segment_end_indices array must be of type int32")
 
+        if segment_end_indices.ndim != 1:
+            raise RuntimeError("segment_end_indices must be one-dimensional")
+
+        if not segment_end_indices.is_contiguous:
+            raise RuntimeError("segmented_sort_pairs() requires a contiguous segment_end_indices array")
+
+        if segment_start_indices.size != segment_end_indices.size:
+            raise RuntimeError(
+                "segment_start_indices and segment_end_indices must have the same size "
+                f"({segment_start_indices.size} vs {segment_end_indices.size})"
+            )
+
         num_segments = segment_start_indices.size
 
         segment_end_indices_ptr = segment_end_indices.ptr
         segment_start_indices_ptr = segment_start_indices.ptr
+
+    if num_segments == 0:
+        return
 
     # Both CPU (record-only) and CUDA (record-and-execute) APIC captures record an
     # APIC_OP_SEGMENTED_SORT op. Track the keys/values/segment base regions first
@@ -331,7 +413,7 @@ def segmented_sort_pairs(
 
     if keys.device.is_cpu:
         if keys.dtype == wp.int32 and values.dtype == wp.int32:
-            runtime.core.wp_segmented_sort_pairs_int_host(
+            success = runtime.core.wp_segmented_sort_pairs_int_host(
                 keys.ptr,
                 values.ptr,
                 count,
@@ -340,7 +422,7 @@ def segmented_sort_pairs(
                 num_segments,
             )
         elif keys.dtype == wp.float32 and values.dtype == wp.int32:
-            runtime.core.wp_segmented_sort_pairs_float_host(
+            success = runtime.core.wp_segmented_sort_pairs_float_host(
                 keys.ptr,
                 values.ptr,
                 count,
@@ -350,6 +432,8 @@ def segmented_sort_pairs(
             )
         else:
             raise RuntimeError(f"Unsupported data type: {type_repr(keys.dtype)}")
+        if not success:
+            raise ValueError(runtime.get_error_string())
     elif keys.device.is_cuda:
         if keys.dtype == wp.int32 and values.dtype == wp.int32:
             runtime.core.wp_segmented_sort_pairs_int_device(
