@@ -267,6 +267,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_version import TestVersion
     from warp.tests.tile.test_tile import TestTile
     from warp.tests.tile.test_tile_atomic_bitwise import TestTileAtomicBitwise
+    from warp.tests.tile.test_tile_block_dim_mismatch import TestTileBlockDimMismatch
     from warp.tests.tile.test_tile_cholesky import TestTileCholesky
     from warp.tests.tile.test_tile_cholesky_no_mathdx import TestTileCholeskyNoMathDx
     from warp.tests.tile.test_tile_composite_row import TestTileCompositeRow
@@ -452,6 +453,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestTextureCompiler,
         TestTile,
         TestTileAtomicBitwise,
+        TestTileBlockDimMismatch,
         TestTileCholesky,
         TestTileCholeskyNoMathDx,
         TestTileCompositeRow,

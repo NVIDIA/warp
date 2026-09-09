@@ -377,18 +377,24 @@ def assert_np_equal(result: np.ndarray, expect: np.ndarray, tol=0.0):
 
 
 # if check_output is True any output to stdout will be treated as an error
-def create_test_func(func, device, check_output, device_check=None, **kwargs):
+def create_test_func(func, device, check_output, device_check=None, enable_cpu_blocks=False, **kwargs):
     # pass args to func
     @functools.wraps(func)
     def test_func(self):
-        if device_check is not None:
-            device_check(self, device)
+        previous_enable_cpu_blocks = wp.config.enable_cpu_blocks
+        if enable_cpu_blocks:
+            wp.config.enable_cpu_blocks = True
+        try:
+            if device_check is not None:
+                device_check(self, device)
 
-        if check_output:
-            with CheckOutput(self):
+            if check_output:
+                with CheckOutput(self):
+                    func(self, device, **kwargs)
+            else:
                 func(self, device, **kwargs)
-        else:
-            func(self, device, **kwargs)
+        finally:
+            wp.config.enable_cpu_blocks = previous_enable_cpu_blocks
 
     return test_func
 

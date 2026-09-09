@@ -674,6 +674,13 @@ class TestTileFusedOps(unittest.TestCase):
     pass
 
 
+add_function_test(
+    TestTileFusedOps,
+    "test_tile_axpy_shared_register_cpu_blocks",
+    test_tile_axpy_shared_register,
+    devices=["cpu"],
+    enable_cpu_blocks=True,
+)
 add_function_test(TestTileFusedOps, "test_tile_axpy_broadcast_dest", test_tile_axpy_broadcast_dest, devices=devices)
 add_function_test(TestTileFusedOps, "test_tile_axpy_shared_register", test_tile_axpy_shared_register, devices=devices)
 add_function_test(TestTileFusedOps, "test_tile_axpy_shared_shared", test_tile_axpy_shared_shared, devices=devices)

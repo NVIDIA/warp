@@ -737,6 +737,33 @@ def test_tile_map_custom_struct(test, device):
     assert_np_equal(input_grad_np["y"], np.full((TILE_M, 3), 2.0, dtype=np.float32))
 
 
+def test_tile_map_custom_struct_forward(test, device):
+    """Map a struct tile without depending on collective reductions."""
+    data = []
+    for i in range(TILE_M):
+        value = TileMapStruct()
+        value.x = float(i)
+        value.y = wp.vec3(float(i), float(i + 1), float(i + 2))
+        data.append(value)
+
+    input_wp = wp.array(data, dtype=TileMapStruct, device=device)
+    output_wp = wp.empty(TILE_M, dtype=TileMapStruct, device=device)
+    wp.launch_tiled(
+        tile_map_custom_struct_kernel,
+        dim=[1],
+        inputs=[input_wp],
+        outputs=[output_wp],
+        block_dim=TILE_DIM,
+        device=device,
+    )
+
+    expected_i = np.arange(TILE_M, dtype=np.float32)
+    expected_y = np.stack((2.0 * expected_i + 1.0, 2.0 * expected_i + 4.0, 2.0 * expected_i + 7.0), axis=1)
+    output_np = output_wp.numpy()
+    assert_np_equal(output_np["x"], expected_i + 11.0)
+    assert_np_equal(output_np["y"], expected_y)
+
+
 def test_tile_nested_struct_ops(test, device):
     """Recurse through nested structs in forward and adjoint tile operations."""
     data = make_tile_map_nested_struct_data()
@@ -1860,6 +1887,13 @@ class TestTileStruct(unittest.TestCase):
     pass
 
 
+add_function_test(
+    TestTileStruct,
+    "test_tile_map_custom_struct_forward_cpu_blocks",
+    test_tile_map_custom_struct_forward,
+    devices=["cpu"],
+    enable_cpu_blocks=True,
+)
 add_function_test(TestTileStruct, "test_tile_map_custom_struct", test_tile_map_custom_struct, devices=devices)
 add_function_test(TestTileStruct, "test_tile_nested_struct_ops", test_tile_nested_struct_ops, devices=devices)
 add_function_test(

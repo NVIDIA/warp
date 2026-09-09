@@ -4,6 +4,8 @@
 import contextlib
 import io
 import re
+import subprocess
+import sys
 import unittest
 import warnings
 from unittest import mock
@@ -21,6 +23,41 @@ from warp.tests.unittest_utils import *
 # as static_query_kernel does, so they share one module and compile together. The shared memory message tests
 # cannot, because their tile size comes from device.max_shared_memory_per_block, which is only known once a
 # test is running.
+
+CPU_SHARED_ARENA_OVERSIZE = 65537
+
+
+@wp.kernel
+def tile_shared_mem_oversize_kernel(out: wp.array[float]):
+    tile = wp.tile_zeros(shape=CPU_SHARED_ARENA_OVERSIZE, dtype=float, storage="shared")
+    out[0] = tile[0]
+
+
+def _run_oversize_cpu_shared_memory():
+    out = wp.empty(1, dtype=float, device="cpu")
+    wp.launch_tiled(
+        tile_shared_mem_oversize_kernel,
+        dim=1,
+        outputs=[out],
+        block_dim=1,
+        device="cpu",
+    )
+
+
+def test_tile_shared_mem_cpu_limit(test, device):
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import warp.tests.tile.test_tile_shared_memory as m; m._run_oversize_cpu_shared_memory()",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    test.assertNotEqual(result.returncode, 0, "oversized CPU tile shared-memory allocation unexpectedly succeeded")
+    test.assertIn("exceeds the 256 KiB arena", result.stderr)
 
 
 # checks that we can configure shared memory to the expected size
@@ -1296,6 +1333,26 @@ class TestTileSharedMemory(unittest.TestCase):
     pass
 
 
+add_function_test(
+    TestTileSharedMemory,
+    "test_tile_shared_mem_cpu_limit",
+    test_tile_shared_mem_cpu_limit,
+    devices=["cpu"],
+)
+add_function_test(
+    TestTileSharedMemory,
+    "test_tile_register_from_shared_reassign_cpu_blocks",
+    test_tile_register_from_shared_reassign,
+    devices=["cpu"],
+    enable_cpu_blocks=True,
+)
+add_function_test(
+    TestTileSharedMemory,
+    "test_tile_scatter_masked_cross_thread_cpu_blocks",
+    test_tile_scatter_masked_cross_thread,
+    devices=["cpu"],
+    enable_cpu_blocks=True,
+)
 add_function_test(
     TestTileSharedMemory, "test_tile_shared_mem_size", test_tile_shared_mem_size, devices=devices, check_output=False
 )
