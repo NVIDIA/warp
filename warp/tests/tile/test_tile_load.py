@@ -33,6 +33,118 @@ TILE_NPOT_3D = wp.constant(7)
 
 
 @wp.kernel(enable_backward=False)
+def tile_negative_offset_1d_register_kernel(
+    input: wp.array1d[float],
+    load_output: wp.array1d[float],
+    store_output: wp.array1d[float],
+):
+    loaded = wp.tile_load(input, shape=4, offset=-2, storage="register")
+    wp.tile_store(load_output, loaded)
+
+    stored = wp.tile_arange(9.0, 5.0, -1.0, dtype=float, storage="register")
+    wp.tile_store(store_output, stored, offset=-2)
+
+
+@wp.kernel(enable_backward=False)
+def tile_negative_offset_1d_shared_kernel(
+    input: wp.array1d[float],
+    load_output: wp.array1d[float],
+    store_output: wp.array1d[float],
+):
+    loaded = wp.tile_load(input, shape=4, offset=-2, storage="shared")
+    wp.tile_store(load_output, loaded)
+
+    stored = wp.tile_arange(9.0, 5.0, -1.0, dtype=float, storage="shared")
+    wp.tile_store(store_output, stored, offset=-2)
+
+
+def test_tile_negative_offset_1d(kernel):
+    def test(test, device):
+        backing_values = np.array([101, 102, 0, 1, 2, 3, 103, 104], dtype=np.float32)
+        load_backing = wp.array(backing_values, dtype=float, device=device)
+        store_backing = wp.array(backing_values, dtype=float, device=device)
+        load_output = wp.zeros(4, dtype=float, device=device)
+
+        wp.launch_tiled(
+            kernel,
+            dim=1,
+            inputs=[load_backing[2:6], load_output, store_backing[2:6]],
+            block_dim=4,
+            device=device,
+        )
+
+        assert_np_equal(load_output.numpy(), np.array([0, 0, 0, 1], dtype=np.float32))
+        assert_np_equal(
+            store_backing.numpy(),
+            np.array([101, 102, 7, 6, 2, 3, 103, 104], dtype=np.float32),
+        )
+
+    return test
+
+
+@wp.kernel(enable_backward=False)
+def tile_negative_offset_2d_register_kernel(
+    input: wp.array2d[float],
+    load_output: wp.array2d[float],
+    store_values: wp.array2d[float],
+    store_output: wp.array2d[float],
+):
+    loaded = wp.tile_load(input, shape=(2, 4), offset=(-1, 0), storage="register")
+    wp.tile_store(load_output, loaded)
+
+    stored = wp.tile_load(store_values, shape=(2, 4), storage="register")
+    wp.tile_store(store_output, stored, offset=(-1, 0))
+
+
+# The four-float inner dimension is otherwise eligible for vectorized shared
+# copies, so CUDA exercises the optimized-path fallback for a negative offset.
+@wp.kernel(enable_backward=False)
+def tile_negative_offset_2d_shared_kernel(
+    input: wp.array2d[float],
+    load_output: wp.array2d[float],
+    store_values: wp.array2d[float],
+    store_output: wp.array2d[float],
+):
+    loaded = wp.tile_load(input, shape=(2, 4), offset=(-1, 0), storage="shared")
+    wp.tile_store(load_output, loaded)
+
+    stored = wp.tile_load(store_values, shape=(2, 4), storage="shared")
+    wp.tile_store(store_output, stored, offset=(-1, 0))
+
+
+def test_tile_negative_offset_2d(kernel):
+    def test(test, device):
+        backing_values = np.array(
+            [
+                [101, 102, 103, 104],
+                [1, 2, 3, 4],
+                [5, 6, 7, 8],
+                [105, 106, 107, 108],
+            ],
+            dtype=np.float32,
+        )
+        load_backing = wp.array(backing_values, dtype=float, device=device)
+        store_backing = wp.array(backing_values, dtype=float, device=device)
+        store_values = wp.array([[9, 8, 7, 6], [5, 4, 3, 2]], dtype=float, device=device)
+        load_output = wp.zeros((2, 4), dtype=float, device=device)
+
+        wp.launch_tiled(
+            kernel,
+            dim=1,
+            inputs=[load_backing[1:3], load_output, store_values, store_backing[1:3]],
+            block_dim=8,
+            device=device,
+        )
+
+        assert_np_equal(load_output.numpy(), np.array([[0, 0, 0, 0], [1, 2, 3, 4]], dtype=np.float32))
+        expected_store = backing_values.copy()
+        expected_store[1] = [5, 4, 3, 2]
+        assert_np_equal(store_backing.numpy(), expected_store)
+
+    return test
+
+
+@wp.kernel(enable_backward=False)
 def tile_load_1d_sliced_scalar_kernel(
     input: wp.array1d[float],
     out_full: wp.array1d[float],
@@ -523,6 +635,30 @@ class TestTileLoad(unittest.TestCase):
     pass
 
 
+add_function_test(
+    TestTileLoad,
+    "test_tile_negative_offset_1d_register",
+    test_tile_negative_offset_1d(tile_negative_offset_1d_register_kernel),
+    devices=devices,
+)
+add_function_test(
+    TestTileLoad,
+    "test_tile_negative_offset_1d_shared",
+    test_tile_negative_offset_1d(tile_negative_offset_1d_shared_kernel),
+    devices=devices,
+)
+add_function_test(
+    TestTileLoad,
+    "test_tile_negative_offset_2d_register",
+    test_tile_negative_offset_2d(tile_negative_offset_2d_register_kernel),
+    devices=devices,
+)
+add_function_test(
+    TestTileLoad,
+    "test_tile_negative_offset_2d_shared",
+    test_tile_negative_offset_2d(tile_negative_offset_2d_shared_kernel),
+    devices=devices,
+)
 add_function_test(
     TestTileLoad,
     "test_tile_load_1d_sliced_scalar",
