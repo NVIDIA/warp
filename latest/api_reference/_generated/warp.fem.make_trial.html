@@ -518,7 +518,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/field/__init__.py#L73-L106"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.make_trial" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/field/__init__.py#L73-L107"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.make_trial" title="Link to this definition">#</a></dt>
 <dd><p>Constructs a trial field over a function space or partition</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -527,6 +527,7 @@
 <li><p><strong>space_restriction</strong> (<a class="reference internal" href="warp.fem.SpaceRestriction.html#warp.fem.SpaceRestriction" title="warp._src.fem.space.restriction.SpaceRestriction"><em>SpaceRestriction</em></a><em> | </em><em>None</em>) – restriction of the space topology to a domain</p></li>
 <li><p><strong>space_partition</strong> (<a class="reference internal" href="warp.fem.SpacePartition.html#warp.fem.SpacePartition" title="warp._src.fem.space.partition.SpacePartition"><em>SpacePartition</em></a><em> | </em><em>None</em>) – if <cite>space_restriction</cite> is <code class="docutils literal notranslate"><span class="pre">None</span></code>, the optional subset of node indices to consider</p></li>
 <li><p><strong>domain</strong> (<a class="reference internal" href="warp.fem.GeometryDomain.html#warp.fem.GeometryDomain" title="warp._src.fem.domain.GeometryDomain"><em>GeometryDomain</em></a><em> | </em><em>None</em>) – if <cite>space_restriction</cite> is <code class="docutils literal notranslate"><span class="pre">None</span></code>, optional subset of elements to consider</p></li>
+<li><p><strong>device</strong> – Warp device on which to perform and store computations</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
