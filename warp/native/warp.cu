@@ -4718,7 +4718,14 @@ size_t wp_cuda_compile_program(
     // --Ofast-compile works inversely to normal -O optimization levels
     switch (optimization_level) {
     case 0:
+#if CUDA_VERSION >= 13010
+        // CUDA 13.1+ corrupts process-wide NVRTC compiler state after a
+        // --Ofast-compile=max build. Later builds can then emit invalid parameter
+        // addressing, so use the next-fastest setting until NVIDIA fixes NVRTC.
+        opts.push_back("--Ofast-compile=mid");
+#else
         opts.push_back("--Ofast-compile=max");
+#endif
         break;
     case 1:
         opts.push_back("--Ofast-compile=mid");
