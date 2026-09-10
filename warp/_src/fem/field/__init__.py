@@ -84,6 +84,7 @@ def make_trial(
         space_restriction: restriction of the space topology to a domain
         space_partition: if `space_restriction` is ``None``, the optional subset of node indices to consider
         domain: if `space_restriction` is ``None``, optional subset of elements to consider
+        device: Warp device on which to perform and store computations
 
     Returns:
         the trial field

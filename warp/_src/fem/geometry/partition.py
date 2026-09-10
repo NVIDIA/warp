@@ -257,7 +257,7 @@ class CellBasedGeometryPartition(GeometryPartition):
             cell_inclusion_test_func: Device function deciding whether a cell is in the partition.
             device: Warp device to run the computation on.
             max_side_count: Optional cap on the number of sides to allocate.
-            temporary_store: Temporary storage for intermediate arrays.
+            temporary_store: Optional temporary storage for intermediate arrays.
         """
         self.side_arg_value.invalidate(self)
 
@@ -387,7 +387,7 @@ class LinearGeometryPartition(CellBasedGeometryPartition):
             partition_rank: The index of the partition being created (0 to partition_count-1).
             partition_count: The total number of partitions over the geometry.
             device: Warp device on which to perform and store computations.
-            temporary_store: Temporary storage for intermediate arrays.
+            temporary_store: Optional temporary storage for intermediate arrays.
         """
         super().__init__(geometry)
 
@@ -465,7 +465,7 @@ class ExplicitGeometryPartition(CellBasedGeometryPartition):
                 synchronization.
             max_side_count: If positive, limits the number of sides to avoid device/host
                 synchronization.
-            temporary_store: Temporary storage for intermediate arrays.
+            temporary_store: Optional temporary storage for intermediate arrays.
         """
 
         super().__init__(geometry)
@@ -486,8 +486,10 @@ class ExplicitGeometryPartition(CellBasedGeometryPartition):
         """Rebuild the geometry partition from a new active cell mask.
 
         Args:
+            geometry: the geometry to partition
             cell_mask: warp array of length ``geometry.cell_count()`` indicating which cells are selected. Array values must be either ``1`` (selected) or ``0`` (not selected).
-            temporary_store: Temporary storage for intermediate arrays.
+            max_cell_count: if positive, will be used to limit the number of cells to avoid device/host synchronization
+            max_side_count: if positive, will be used to limit the number of sides to avoid device/host synchronization
         """
         self.cell_arg_value.invalidate(self)
 

@@ -828,6 +828,7 @@ class UsdRenderer:
         Args:
             vertices: The vertices of the line-strip
             color: The color of the line
+            time: The time to update at
         """
 
         from pxr import Gf, UsdGeom  # noqa: PLC0415

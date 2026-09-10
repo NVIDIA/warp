@@ -162,7 +162,7 @@ def make_collocated_function_space(
     Constructs a function space from a scalar-valued basis space and a value type, such that all degrees of freedom of the value type are stored at each of the basis nodes.
 
     Args:
-        basis_space: the scalar-valued basis space on which to build the function space
+        geo: the Geometry on which to build the space
         dtype: value type the function space. If ``dof_mapper`` is provided, the value type from the DofMapper will be used instead.
         dof_mapper: mapping from node degrees of freedom to function values, defaults to Identity. Useful for reduced coordinates, e.g. :py:class:`SymmetricTensorMapper` maps 2x2 (resp 3x3) symmetric tensors to 3 (resp 6) degrees of freedom.
 
