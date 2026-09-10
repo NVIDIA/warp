@@ -1,1 +1,1 @@
-Prevent CUDA 13.1 and newer NVRTC state corruption by using Warp optimization level 1 when level 0 is requested and, in debug mode, retaining assertions and line information without enabling CUDA device debugging.
+Avoid invalid CUDA kernels from NVRTC in CUDA 13.1 and newer by warning and using Warp optimization level 1 when level 0 is requested.

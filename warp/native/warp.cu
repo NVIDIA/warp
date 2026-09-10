@@ -4764,11 +4764,7 @@ size_t wp_cuda_compile_program(
         opts.push_back("--define-macro=_DEBUG");
         opts.push_back("--generate-line-info");
 #ifndef _WIN32
-        // CUDA 13.1+ retains process-wide debug compiler state and can
-        // miscompile later release kernels, so keep line info but omit -G.
-#if CUDA_VERSION < 13010
         opts.push_back("--device-debug");  // -G
-#endif
 #endif
     } else {
         opts.push_back("--define-macro=NDEBUG");

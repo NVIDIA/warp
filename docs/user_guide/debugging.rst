@@ -167,11 +167,9 @@ debug mode can be enabled on a per-module basis by setting
 
 .. warning::
 
-    On Linux with CUDA Toolkit 13.1 and newer, Warp omits full CUDA device
-    debug information because an NVRTC compiler issue can corrupt later
-    release-mode kernels in the same process. Debug assertions and line-number
-    information remain enabled. Use CUDA Toolkit 13.0 or earlier when full
-    CUDA device debugging is required.
+    On Linux with CUDA Toolkit 13.1 and newer, an NVRTC compiler issue can
+    corrupt release-mode kernels compiled after a debug-mode kernel in the same
+    process. Run debug-mode and release-mode compilation in separate processes.
 
 Assertions
 ----------
@@ -216,8 +214,8 @@ Users should first compile the kernels in debug mode by setting::
 
     wp.config.mode = "debug"
 
-This setting generates line-number information and, where supported as described above, full debug symbols. After
-launching the Python process, the debugger should be attached, and a breakpoint inserted into the generated code.
+This setting generates line-number information and full debug symbols. After launching the Python process, the
+debugger should be attached, and a breakpoint inserted into the generated code.
 
 .. note:: Generated kernel code is not a 1:1 correspondence with the original Python code, but individual operations can still be replayed and variables inspected.
 

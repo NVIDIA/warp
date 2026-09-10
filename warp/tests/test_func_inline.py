@@ -10,7 +10,7 @@ import numpy as np
 import warp as wp
 import warp._src.codegen as codegen
 from warp._src.context import ModuleBuilder
-from warp.tests.unittest_utils import add_function_test, assert_np_equal, get_test_devices
+from warp.tests.unittest_utils import add_function_test, assert_np_equal, get_test_devices, run_test_in_subprocess
 
 
 def module_source(kernel, device: str) -> str:
@@ -188,6 +188,9 @@ class TestFuncInline(unittest.TestCase):
         compiler would leave the helper out of line unless the attribute is honored. In release
         mode it inlines small helpers anyway and the assertion would hold either way.
         """
+        if run_test_in_subprocess(self):
+            return
+
         ptx = self._compile_ptx("debug")
         defined, called = self._out_of_line(ptx, "forced_inline")
         self.assertFalse(defined, "inline=True helper was left out of line")

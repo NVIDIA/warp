@@ -48,7 +48,7 @@ import warp as wp
 # but it's generally more convenient to use wp.breakpoint(). See the example below.
 wp.init()
 
-# Enable CPU kernels to be compiled with debug info and disable optimizations
+# Enable kernels to be compiled with debug info and disable optimizations
 wp.config.mode = "debug"
 
 # Make sure Warp was built with `build_lib.py --mode=debug`

@@ -4,6 +4,7 @@
 """Tests for kernel compilation and linking configuration."""
 
 import ctypes
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -183,6 +184,16 @@ class TestCompilation(unittest.TestCase):
             wp.config.cache_kernels = False
 
             device = devices[0]
+            if (
+                sys.platform != "win32"
+                and wp._src.context.runtime.toolkit_version is not None
+                and wp._src.context.runtime.toolkit_version >= (13, 1)
+                and device.arch >= 100
+            ):
+                self.skipTest(
+                    "CUDA Toolkit 13.1 and newer can corrupt release NVRTC compilations after device debugging"
+                )
+
             warmup_output = wp.zeros(1, dtype=int, device=device)
             wp.launch(_make_debug_warmup_kernel(), dim=1, outputs=[warmup_output], device=device)
             np.testing.assert_array_equal(warmup_output.numpy(), [1])
