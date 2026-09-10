@@ -2458,7 +2458,9 @@ def get_interpolate_jacobian_at_nodes_kernel(
             )
 
             if wp.static(reduction == "first"):
-                block_offset = local_node_index * max_nodes_per_element + trial_node
+                # COO storage is restriction-ordered; direct BSR writes use partition rows.
+                row = local_node_index if triplet_rows else partition_node_index
+                block_offset = row * max_nodes_per_element + trial_node
             else:
                 if wp.static(reduction == "weighted_average"):
                     vol = domain.element_measure(domain_arg, sample)
@@ -2940,35 +2942,33 @@ def _launch_interpolate_kernel(
                 space_restriction.node_count() if reduction == "first" else space_restriction.total_node_element_count()
             )
 
-            if row_compress_bsr and reduction == "first":
-                if construction_policy == _BSR_CONSTRUCTION_AUTO:
-                    row_compress_bsr = False
-                else:
-                    raise RuntimeError(
-                        "fem.interpolate() with bsr_options['construction']='row_compress' does not support "
-                        "reduction='first' with a space restriction"
-                    )
-
             if row_compress_bsr:
                 _validate_interpolate_jacobian_dest(
                     point_index_count=space_restriction.space_partition.node_count(),
                     trial=trial,
                     dest=dest,
                 )
-                capacity_nnz = evaluation_point_count * max_nodes_per_element
-                bsr_set_zero(dest, topology="padded")
-                wp.launch(
-                    _fill_integrate_bsr_offsets_from_row_groups,
-                    dim=dest.nrow + 1,
-                    device=dest.device,
-                    inputs=[
-                        dest.nrow,
-                        space_restriction.partition_element_offsets(),
-                        max_nodes_per_element,
-                        dest.offsets,
-                        dest.row_counts,
-                    ],
-                )
+                if reduction == "first":
+                    capacity_nnz = dest.nrow * max_nodes_per_element
+                    if capacity_policy == _BSR_CAPACITY_REUSE:
+                        _require_bsr_capacity(dest, capacity_nnz, "fem.interpolate()")
+                    bsr_set_zero(dest, topology="padded", row_capacity=max_nodes_per_element)
+                    dest.row_counts.fill_(max_nodes_per_element)
+                else:
+                    capacity_nnz = evaluation_point_count * max_nodes_per_element
+                    bsr_set_zero(dest, topology="padded")
+                    wp.launch(
+                        _fill_integrate_bsr_offsets_from_row_groups,
+                        dim=dest.nrow + 1,
+                        device=dest.device,
+                        inputs=[
+                            dest.nrow,
+                            space_restriction.partition_element_offsets(),
+                            max_nodes_per_element,
+                            dest.offsets,
+                            dest.row_counts,
+                        ],
+                    )
                 triplet_rows, triplet_cols, triplet_values = _interpolate_jacobian_row_compress_storage(
                     dest=dest,
                     capacity_nnz=capacity_nnz,
@@ -3230,7 +3230,9 @@ def interpolate(
           ``construction="triplets"`` forces temporary COO triplet construction, while
           ``construction="row_compress"`` forces row-ordered candidate writes followed by
           :func:`warp.sparse.bsr_compress()`. Non-differentiable outputs use in-place compression for the
-          lowest memory overhead. Row compression for quadrature interpolation requires matching evaluation and
+          lowest memory overhead. At nodes, ``reduction="first"`` evaluates the same owning element as triplet
+          construction and reserves one trial-element stencil per destination partition node, including inactive rows.
+          Row compression for quadrature interpolation requires matching evaluation and
           indexed point counts.
     """
 
