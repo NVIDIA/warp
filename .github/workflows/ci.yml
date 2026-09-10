@@ -683,12 +683,7 @@ jobs:
         run: uv run --extra dev --extra ${{ matrix.torch-extra }} --with "${{ matrix.jax-extra }}" ${{ matrix.rmm-args }} python -c "import warp as wp; wp.print_diagnostics(); assert wp.get_cuda_devices(), 'No CUDA device visible to Warp'"
 
       - name: Run Tests
-        shell: bash
-        run: |
-          if [[ "${{ matrix.gpu-name }}" == "rtxpro6000" ]]; then
-            export WARP_DEBUG=1
-          fi
-          uv run --extra dev --extra ${{ matrix.torch-extra }} --with "${{ matrix.jax-extra }}" ${{ matrix.rmm-args }} -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
+        run: uv run --extra dev --extra ${{ matrix.torch-extra }} --with "${{ matrix.jax-extra }}" ${{ matrix.rmm-args }} -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
 
       - name: Test Summary
         uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86  # v2.4
@@ -719,7 +714,7 @@ jobs:
               fi
             done
             echo "NVRTC PCH files:"
-            find /tmp -maxdepth 1 -type f -name '__nvrtc_auto_pch_*' -printf '%f\t%s bytes\n' | sort
+            find /tmp -maxdepth 2 -type f -path '/tmp/__nvrtc_auto_pch_*/*.pch' -printf '%p\t%s bytes\n' | sort
           } > "$output_dir/cuda-cache-after.txt"
 
           if [[ -d "$WARP_CACHE_PATH" ]]; then
@@ -1011,6 +1006,24 @@ jobs:
           name: build-artifact-ubuntu-x86_64-cuda13
           path: warp/bin/
 
+      - name: Snapshot CUDA cache before tests
+        shell: bash
+        run: |
+          output_dir="$WARP_TEST_DIAGNOSTICS_DIR/cuda-compiler"
+          mkdir -p "$output_dir"
+          {
+            echo "HOME=$HOME"
+            echo "CUDA_CACHE_PATH=${CUDA_CACHE_PATH:-<unset>}"
+            for cache_dir in "$HOME/.nv/ComputeCache" "/root/.nv/ComputeCache"; do
+              echo "cache_dir=$cache_dir"
+              if [[ -d "$cache_dir" ]]; then
+                find "$cache_dir" -type f -printf '%P\t%s bytes\n' | sort
+              else
+                echo "<absent>"
+              fi
+            done
+          } > "$output_dir/cuda-cache-before.txt"
+
       - name: Report Warp diagnostics
         # See the note in test-warp-gpu-linux; the Warp counterpart to nvidia-smi.
         run: uv run --extra dev python -c "import warp as wp; wp.print_diagnostics(); assert wp.get_cuda_devices(), 'No CUDA device visible to Warp'"
@@ -1026,6 +1039,47 @@ jobs:
           paths: "rspec.xml"
           show: "fail"
         if: always()
+
+      - name: Collect CUDA compiler diagnostics
+        if: always()
+        shell: bash
+        run: |
+          output_dir="$WARP_TEST_DIAGNOSTICS_DIR/cuda-compiler"
+          artifact_dir="$output_dir/test-struct"
+          manifest="$output_dir/test-struct-sha256.txt"
+          mkdir -p "$artifact_dir"
+          : > "$manifest"
+
+          {
+            echo "HOME=$HOME"
+            echo "CUDA_CACHE_PATH=${CUDA_CACHE_PATH:-<unset>}"
+            for cache_dir in "$HOME/.nv/ComputeCache" "/root/.nv/ComputeCache"; do
+              echo "cache_dir=$cache_dir"
+              if [[ -d "$cache_dir" ]]; then
+                find "$cache_dir" -type f -printf '%P\t%s bytes\n' | sort
+              else
+                echo "<absent>"
+              fi
+            done
+            echo "NVRTC PCH files:"
+            find /tmp -maxdepth 2 -type f -path '/tmp/__nvrtc_auto_pch_*/*.pch' -printf '%p\t%s bytes\n' | sort
+          } > "$output_dir/cuda-cache-after.txt"
+
+          if [[ -d "$WARP_CACHE_PATH" ]]; then
+            while IFS= read -r -d '' source_path; do
+              relative_path="${source_path#"$WARP_CACHE_PATH"/}"
+              destination="$artifact_dir/$relative_path"
+              mkdir -p "$(dirname "$destination")"
+              cp "$source_path" "$destination"
+              read -r digest _ < <(sha256sum "$source_path")
+              printf '%s  %s\n' "$digest" "$relative_path" >> "$manifest"
+            done < <(
+              find "$WARP_CACHE_PATH" -type f -path '*/wp_warp.tests.test_struct_*/*' \
+                \( -name '*.cu' -o -name '*.meta' -o -name '*.cubin' -o -name '*.ptx' \) -print0
+            )
+          else
+            echo "Warp cache directory is absent: $WARP_CACHE_PATH" >> "$manifest"
+          fi
 
       - name: Upload test diagnostics
         if: always()
