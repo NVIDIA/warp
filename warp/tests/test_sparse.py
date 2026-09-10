@@ -739,8 +739,8 @@ def make_test_bsr_transpose(block_shape, scalar_type):
     def test_bsr_transpose(test, device):
         rng = np.random.default_rng(123)
 
-        nrow = 4
-        ncol = 5
+        nrow = 65
+        ncol = 67
         nnz = 6
 
         rows = wp.array([0, 1, 2, 3, 2, 1], dtype=int, device=device)
@@ -753,10 +753,16 @@ def make_test_bsr_transpose(block_shape, scalar_type):
         bsr_set_from_triplets(bsr, rows, cols, vals)
         ref = 2.0 * np.transpose(_bsr_to_dense(bsr))
 
-        bsr_transposed = (2.0 * bsr).transpose().eval()
+        bsr.values.requires_grad = True
+        with wp.Tape() as tape:
+            bsr_transposed = (2.0 * bsr).transpose().eval()
 
         res = _bsr_to_dense(bsr_transposed)
         assert_np_equal(res, ref, 0.0001)
+
+        seed = wp.array(np.ones_like(bsr_transposed.values.numpy()), dtype=bsr_transposed.values.dtype, device=device)
+        tape.backward(grads={bsr_transposed.values: seed})
+        assert_np_equal(bsr.values.grad.numpy(), np.full_like(bsr.values.numpy(), 2.0))
 
         if block_shape[0] != block_shape[-1]:
             # test incompatible block shape
@@ -779,7 +785,77 @@ def make_test_bsr_transpose(block_shape, scalar_type):
         bsr_set_transpose(bsr_transposed, bsr, topology="masked")
         assert _bsr_pruned(bsr_transposed).nnz_sync() == 2
 
+        if block_shape == (1, 1):
+            diagonal = np.arange(1, nrow + 1, dtype=np.float32)
+            aliased = bsr_diag(wp.array(diagonal, dtype=scalar_type, device=device))
+            bsr_set_transpose(aliased, 2.0 * aliased)
+            test.assertEqual(aliased.nnz_sync(), nrow)
+            assert_np_equal(aliased.values.numpy(), 2.0 * diagonal)
+
     return test_bsr_transpose
+
+
+def make_test_bsr_transpose_rebuild(block_shape, scalar_type):
+    def test_bsr_transpose_rebuild(test, device):
+        rng = np.random.default_rng(17)
+        nrow, ncol = 1025, 257
+        block_type = wp.types.matrix(shape=block_shape, dtype=scalar_type)
+        transpose_type = wp.types.matrix(shape=block_shape[::-1], dtype=scalar_type)
+        numpy_type = wp.dtype_to_numpy(scalar_type)
+        capacity = nrow * 16
+
+        for padded in (False, True):
+            with test.subTest(padded=padded), wp.ScopedDevice(device):
+                src = bsr_zeros(nrow, ncol, block_type, row_capacity=16 if padded else None)
+                src.notify_nnz_changed(nnz=capacity)
+                dest = bsr_zeros(ncol, nrow, transpose_type)
+                bsr_set_transpose(dest, src)
+                graph = None
+                if wp.get_device(device).is_cuda:
+                    with wp.ScopedCapture() as capture:
+                        bsr_set_transpose(dest, src)
+                    graph = capture.graph
+
+                for count in (1, 600, 0, 31, 32, 33, 255, 256, 257, nrow, 120):
+                    # Include a long output row, changing topology, and poisoned padding.
+                    positions = (
+                        np.arange(count) * ncol
+                        if count in (31, 32, 33, 255, 256, 257, nrow)
+                        else np.sort(rng.choice(nrow * ncol, count, replace=False))
+                    )
+                    rows, columns = np.divmod(positions, ncol)
+                    counts = np.bincount(rows, minlength=nrow).astype(np.int32)
+                    offsets = np.concatenate(([0], np.cumsum(counts))).astype(np.int32)
+                    column_storage = np.full(capacity, -1, dtype=np.int32)
+                    values = rng.standard_normal((count, *block_shape)).astype(numpy_type)
+                    if count:
+                        values[0] = -0.0
+                    value_storage = np.full((capacity, *block_shape), np.nan, dtype=numpy_type)
+                    for row in range(nrow):
+                        begin, end = offsets[row : row + 2]
+                        start = row * 16 if padded else begin
+                        column_storage[start : start + end - begin] = columns[begin:end]
+                        value_storage[start : start + end - begin] = values[begin:end]
+                    if padded:
+                        wp.copy(src.row_counts, wp.array(counts, dtype=int))
+                    else:
+                        wp.copy(src.offsets, wp.array(offsets, dtype=int))
+                    wp.copy(src.columns, wp.array(column_storage, dtype=int))
+                    wp.copy(src.values, wp.array(value_storage, dtype=block_type))
+                    if graph is None:
+                        bsr_set_transpose(dest, src)
+                    else:
+                        wp.capture_launch(graph)
+
+                    order = np.lexsort((rows, columns))
+                    expected_offsets = np.concatenate(([0], np.cumsum(np.bincount(columns, minlength=ncol))))
+                    assert_np_equal(dest.offsets.numpy(), expected_offsets.astype(np.int32))
+                    assert_np_equal(dest.columns.numpy()[:count], rows[order].astype(np.int32))
+                    expected_values = values[order].transpose(0, 2, 1).copy()
+                    test.assertEqual(dest.values.numpy()[:count].tobytes(), expected_values.tobytes())
+                    test.assertEqual(dest.nnz_sync(), count)
+
+    return test_bsr_transpose_rebuild
 
 
 def make_test_bsr_axpy(block_shape, scalar_type):
@@ -1578,6 +1654,15 @@ add_function_test(TestSparse, "test_bsr_compress_gradient", test_bsr_compress_gr
 add_function_test(TestSparse, "test_csr_transpose", make_test_bsr_transpose((1, 1), wp.float32), devices=devices)
 add_function_test(TestSparse, "test_bsr_transpose_1_3", make_test_bsr_transpose((1, 3), wp.float32), devices=devices)
 add_function_test(TestSparse, "test_bsr_transpose_3_3", make_test_bsr_transpose((3, 3), wp.float64), devices=devices)
+add_function_test(
+    TestSparse, "test_bsr_transpose_rebuild_1_1", make_test_bsr_transpose_rebuild((1, 1), wp.float32), devices=devices
+)
+add_function_test(
+    TestSparse, "test_bsr_transpose_rebuild_2_3", make_test_bsr_transpose_rebuild((2, 3), wp.float32), devices=devices
+)
+add_function_test(
+    TestSparse, "test_bsr_transpose_rebuild_3_3", make_test_bsr_transpose_rebuild((3, 3), wp.float64), devices=devices
+)
 
 add_function_test(TestSparse, "test_csr_axpy", make_test_bsr_axpy((1, 1), wp.float32), devices=devices)
 add_function_test(TestSparse, "test_bsr_axpy_1_3", make_test_bsr_axpy((1, 3), wp.float32), devices=devices)

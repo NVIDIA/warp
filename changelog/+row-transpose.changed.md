@@ -1,0 +1,1 @@
+Added an active-entry counting and deterministic row-sorting path for compact CUDA BSR transposes of sparse stencils and overallocated matrices, while retaining the global sort for dense or narrow matrices, padded destinations, and shared topology.

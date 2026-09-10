@@ -2692,7 +2692,7 @@ def test_save_load_bsr_mm_reuse_topology_cuda(test, device):
 
 
 def test_capture_with_bsr_transpose(test, device):
-    """Recompute BSR transpose topology during CPU APIC replay.
+    """Recompute compact BSR transpose topology during APIC replay and reload.
 
     Regression: wp.sparse.bsr_transposed on CPU computes the transposed topology
     via a host function (wp_bsr_transpose_host) that was invisible to the APIC byte
@@ -2701,13 +2701,16 @@ def test_capture_with_bsr_transpose(test, device):
     topology."""
     from warp.sparse import bsr_set_from_triplets, bsr_set_transpose, bsr_zeros  # noqa: PLC0415
 
-    n = 6
+    n = 65
     rows = wp.zeros(n, dtype=wp.int32, device=device)
     columns = wp.zeros(n, dtype=wp.int32, device=device)
     values = wp.zeros(n, dtype=wp.float32, device=device)
     A = bsr_zeros(n, n, block_type=wp.float32, device=device)
     At = bsr_zeros(n, n, block_type=wp.float32, device=device)
 
+    if device.is_cuda:
+        bsr_set_from_triplets(A, rows, columns, values)
+        bsr_set_transpose(At, A)
     wp.load_module(device=device)
     with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
         wp.launch(fill_diag_triplets_kernel, dim=n, inputs=[rows, columns, values], device=device)
@@ -2721,10 +2724,27 @@ def test_capture_with_bsr_transpose(test, device):
     wp.capture_launch(capture.graph)
     wp.synchronize_device(device)
 
-    # Diagonal matrix transposes to itself: nnz=6, columns=[0..5], values=[1..6].
+    # The diagonal matrix transposes to itself.
     test.assertEqual(int(At.offsets.numpy()[n]), n)
     np.testing.assert_array_equal(At.columns.numpy()[:n], np.arange(n, dtype=np.int32))
     np.testing.assert_allclose(At.values.numpy()[:n], np.arange(1, n + 1, dtype=np.float32))
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "bsr_transpose")
+        wp.capture_save(
+            capture.graph, path, outputs={"offsets": At.offsets, "columns": At.columns, "values": At.values}
+        )
+        loaded = wp.capture_load(path, device=device)
+        wp.capture_launch(loaded)
+        offsets_out = wp.zeros_like(At.offsets)
+        columns_out = wp.zeros_like(At.columns)
+        values_out = wp.zeros_like(At.values)
+        loaded.get_param("offsets", offsets_out)
+        loaded.get_param("columns", columns_out)
+        loaded.get_param("values", values_out)
+        np.testing.assert_array_equal(offsets_out.numpy(), np.arange(n + 1, dtype=np.int32))
+        np.testing.assert_array_equal(columns_out.numpy()[:n], np.arange(n, dtype=np.int32))
+        np.testing.assert_array_equal(values_out.numpy()[:n], np.arange(1, n + 1, dtype=np.float32))
 
 
 def test_capture_with_padded_bsr_transpose(test, device):
@@ -3750,7 +3770,7 @@ add_function_test(
     TestApic,
     "test_capture_with_bsr_transpose",
     test_capture_with_bsr_transpose,
-    devices=[d for d in devices if d.is_cpu],
+    devices=devices,
 )
 add_function_test(
     TestApic,
