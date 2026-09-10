@@ -498,10 +498,12 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
 def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     """Focused test suite for validating warp.config.mode = "debug".
 
-    Debug mode compiles kernels without optimizations and with full debug info,
-    which is significantly slower. This suite targets tests most likely to break
-    specifically in debug mode: codegen, gradients, generics, tile operations,
-    and complex kernel compilation patterns.
+    Debug mode enables additional checks and debug information, which is
+    significantly slower. CUDA Toolkit 13.1 and newer NVRTC builds omit full
+    device debug information to avoid process-wide compiler-state corruption.
+    This suite targets tests most likely to break specifically in debug mode:
+    codegen, gradients, generics, tile operations, and complex kernel
+    compilation patterns.
 
     Usage:
         python -m warp.tests --suite debug --warp-debug

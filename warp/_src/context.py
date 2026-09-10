@@ -4618,6 +4618,20 @@ class Module:
             log_warning("Optimization level other than 3 has no effect on CUDA versions prior to 12.9.", once=True)
 
         if (
+            mode == "debug"
+            and not is_cpu
+            and not options["llvm_cuda"]
+            and sys.platform != "win32"
+            and runtime.toolkit_version is not None
+            and runtime.toolkit_version >= (13, 1)
+        ):
+            log_warning(
+                "CUDA Toolkit 13.1 and newer have an NVRTC compiler issue that makes CUDA device debugging "
+                "unsafe; compiling with assertions and line information but without device debug information.",
+                once=True,
+            )
+
+        if (
             opt == 0
             and not is_cpu
             and not options["llvm_cuda"]
