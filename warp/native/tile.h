@@ -1067,6 +1067,7 @@ template <typename T, typename L> struct tile_register_t {
         }
     }
 
+    inline CUDA_CALLABLE void print_from_shared(T* smem) const;
     inline CUDA_CALLABLE void print() const;
 
 
@@ -2359,15 +2360,8 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
 };
 
 
-template <typename T, typename L> CUDA_CALLABLE void tile_register_t<T, L>::print() const
+template <typename T, typename L> inline CUDA_CALLABLE void tile_register_t<T, L>::print_from_shared(T* smem) const
 {
-    // create a temporary shared tile so that
-    // we can print it deterministically
-#if defined(__CUDA_ARCH__)
-    __shared__ T smem[L::Size];
-#else
-    T smem[L::Size];
-#endif
     tile_shared_t<T, tile_layout_strided_t<typename L::Shape>, false> scratch(smem, nullptr);
 
     scratch.assign(*this);
@@ -2388,6 +2382,26 @@ template <typename T, typename L> CUDA_CALLABLE void tile_register_t<T, L>::prin
     }
 
     WP_TILE_SYNC();
+}
+
+template <typename T, typename L> CUDA_CALLABLE void tile_register_t<T, L>::print() const
+{
+    // Create a temporary shared tile so that we can print it deterministically.
+#if defined(__CUDA_ARCH__)
+    __shared__ T smem[L::Size];
+    print_from_shared(smem);
+#else
+    if constexpr (WP_TILE_BLOCK_DIM == 1) {
+        // Preserve the legacy one-lane path without using the shared allocator.
+        T smem[L::Size];
+        print_from_shared(smem);
+    } else {
+        // Register-tile elements are distributed across fibers, so all lanes
+        // must populate the same temporary tile before lane 0 prints it.
+        wp_block_shared<T[L::Size]> smem_holder;
+        print_from_shared(*smem_holder);
+    }
+#endif
 }
 
 // print entry points
