@@ -1031,7 +1031,68 @@ jobs:
       - name: Run Tests
         # Keep this minimum-Python lane focused on core Warp multi-GPU coverage;
         # current JAX and PyTorch interoperability is covered by the standard Python GPU jobs.
-        run: uv run --extra dev -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
+        shell: bash
+        run: |
+          test_patterns=(
+            '*.TestArrayFillCapture.*'
+            '*.TestCudaMaxRegisters.*'
+            '*.TestKernelAttributes.*'
+            '*.TestPeer.*'
+            '*.TestPinned.*'
+            '*.TestStreams.*'
+            '*.TestFemGeometry.*'
+            '*.TestMesh.*'
+            '*.TestMeshQueryRay.*'
+            '*.TestVolumeValidation.*'
+            '*.TestJax.*'
+            '*.TestMatAssignCopy.*'
+            '*.TestMatBasics.*'
+            '*.TestMatLite.*'
+            '*.TestAdam.*'
+            '*.TestAllocTracker.*'
+            '*.TestApicSegmentedSort.*'
+            '*.TestArithmetic.*'
+            '*.TestFastMath.*'
+            '*.TestFp16.*'
+            '*.TestFunc.*'
+            '*.TestGradDebug.*'
+            '*.TestGraph.*'
+            '*.TestLogger.*'
+            '*.TestLValue.*'
+            '*.TestMapDebug.*'
+            '*.TestMath.*'
+            '*.TestOptions.*'
+            '*.TestQuatAssignCopy.*'
+            '*.TestRef.*'
+            '*.TestStruct.*'
+          )
+          selection_args=()
+          for pattern in "${test_patterns[@]}"; do
+            selection_args+=(-k "$pattern")
+          done
+
+          set +e
+          uv run --extra dev -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect -j 1 "${selection_args[@]}"
+          suite_status=$?
+
+          snapshot_dir="$WARP_TEST_DIAGNOSTICS_DIR/cuda-compiler/pre-reload-test-struct"
+          mkdir -p "$snapshot_dir"
+          while IFS= read -r -d '' source_path; do
+            relative_path="${source_path#"$WARP_CACHE_PATH"/}"
+            destination="$snapshot_dir/$relative_path"
+            mkdir -p "$(dirname "$destination")"
+            cp "$source_path" "$destination"
+          done < <(find "$WARP_CACHE_PATH" -type f -path '*/wp_warp.tests.test_struct_*/*' -print0)
+
+          uv run --extra dev -m unittest -v warp.tests.test_struct.TestStruct
+          reload_status=$?
+          printf 'suite_status=%s\nreload_status=%s\n' "$suite_status" "$reload_status" \
+            > "$WARP_TEST_DIAGNOSTICS_DIR/cuda-compiler/reload-status.txt"
+
+          if ((suite_status != 0)); then
+            exit "$suite_status"
+          fi
+          exit "$reload_status"
 
       - name: Test Summary
         uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86  # v2.4
