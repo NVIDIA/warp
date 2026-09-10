@@ -7007,8 +7007,6 @@ void {name}_cpu_kernel_backward(
 
 cpu_module_template_forward = """
 
-#if WP_TILE_BLOCK_DIM == 1
-
 extern "C" {{
 
 // Python CPU entry points
@@ -7029,7 +7027,9 @@ WP_API void {name}_cpu_forward(
 
 }} // extern C
 
-#else
+"""
+
+cpu_block_module_template_forward = """
 
 struct {name}_cpu_block_payload_forward
 {{
@@ -7075,13 +7075,9 @@ WP_API void {name}_cpu_forward(
 
 }} // extern C
 
-#endif // WP_TILE_BLOCK_DIM == 1
-
 """
 
 cpu_module_template_backward = """
-
-#if WP_TILE_BLOCK_DIM == 1
 
 extern "C" {{
 
@@ -7103,7 +7099,9 @@ WP_API void {name}_cpu_backward(
 
 }} // extern C
 
-#else
+"""
+
+cpu_block_module_template_backward = """
 
 struct {name}_cpu_block_payload_backward
 {{
@@ -7150,8 +7148,6 @@ WP_API void {name}_cpu_backward(
 }}
 
 }} // extern C
-
-#endif // WP_TILE_BLOCK_DIM == 1
 
 """
 
@@ -8082,10 +8078,14 @@ def codegen_module(kernel, device, options):
         "launch_ndim": kernel.adj.kernel_dim,
     }
 
-    template += cpu_module_template_forward
-
-    if options["enable_backward"]:
-        template += cpu_module_template_backward
+    if options["block_dim"] == 1:
+        template += cpu_module_template_forward
+        if options["enable_backward"]:
+            template += cpu_module_template_backward
+    else:
+        template += cpu_block_module_template_forward
+        if options["enable_backward"]:
+            template += cpu_block_module_template_backward
 
     s = template.format(**template_fmt_args)
     return s

@@ -50,19 +50,25 @@ class TestCpuBlockCodegen(unittest.TestCase):
     def setUpClass(cls):
         wp.init()
 
-    def test_source_contains_separate_one_and_many_lane_paths(self):
+    def test_source_contains_only_active_cpu_path(self):
         name = cpu_block_codegen_kernel.get_mangled_name()
-        for block_dim in (1, 4):
-            with self.subTest(block_dim=block_dim):
-                source = _generate_source(block_dim)
-                self.assertIn(f"#define WP_TILE_BLOCK_DIM {block_dim}", source)
-                self.assertIn("#if WP_TILE_BLOCK_DIM == 1", source)
-                self.assertIn("for (size_t task_index = 0; task_index < dim->size; ++task_index)", source)
-                self.assertIn(f"{name}_cpu_block_thunk_forward", source)
-                self.assertIn(f"{name}_cpu_block_thunk_backward", source)
-                self.assertIn("const size_t remaining = total - block_first", source)
-                self.assertIn("block_first += (size_t)active_count", source)
-                self.assertIn("wp::tile_shared_storage_t::bind(payload->tile_mem)", source)
+        one_lane_source = _generate_source(1)
+        self.assertIn("#define WP_TILE_BLOCK_DIM 1", one_lane_source)
+        self.assertNotIn("#if WP_TILE_BLOCK_DIM == 1", one_lane_source)
+        self.assertIn("for (size_t task_index = 0; task_index < dim->size; ++task_index)", one_lane_source)
+        self.assertNotIn(f"{name}_cpu_block_thunk_forward", one_lane_source)
+        self.assertNotIn(f"{name}_cpu_block_thunk_backward", one_lane_source)
+        self.assertNotIn("wp_cpu_run_block", one_lane_source)
+
+        cooperative_source = _generate_source(4)
+        self.assertIn("#define WP_TILE_BLOCK_DIM 4", cooperative_source)
+        self.assertNotIn("#if WP_TILE_BLOCK_DIM == 1", cooperative_source)
+        self.assertNotIn("for (size_t task_index = 0; task_index < dim->size; ++task_index)", cooperative_source)
+        self.assertIn(f"{name}_cpu_block_thunk_forward", cooperative_source)
+        self.assertIn(f"{name}_cpu_block_thunk_backward", cooperative_source)
+        self.assertIn("const size_t remaining = total - block_first", cooperative_source)
+        self.assertIn("block_first += (size_t)active_count", cooperative_source)
+        self.assertIn("wp::tile_shared_storage_t::bind(payload->tile_mem)", cooperative_source)
 
     def test_forward_and_backward_specializations(self):
         for block_dim in (1, 4):
