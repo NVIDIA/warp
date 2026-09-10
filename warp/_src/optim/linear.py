@@ -246,43 +246,18 @@ def preconditioner(A: _Matrix, ptype: str = "diag") -> LinearOperator:
          - ``"block_jacobi_direct"``: Block-Jacobi preconditioner that inverts each diagonal block
            via a dense Householder-QR-based inverse. Zero-safe: a numerically singular block
            falls back to the identity for that block instead of producing NaNs, mirroring the
-           zero-safe convention of ``"diag"``. Supports any Warp floating scalar type, including
-           ``float16``. **Not a performance-optimized choice**: benchmarking showed
-           ``"block_jacobi_tile"`` applies faster at every block size measured (2 through 16),
-           so pick this strategy for its ``float16`` support or zero-safe fallback behavior, not
-           for speed. Its QR-based kernel also has a steep one-time (per-process) compile-time
-           cost that grows sharply with block size (empirically, roughly 9 seconds at block size
-           8 and roughly 7 minutes at block size 16 on first use in a fresh process; cached
-           reruns are fast). To avoid that cliff, requesting this strategy for a block size
-           larger than 8 automatically falls back to ``"block_jacobi_tile"`` instead, with a
-           warning -- unless ``A``'s scalar type isn't ``float32``/``float64`` (e.g.
-           ``float16``), in which case ``"block_jacobi_tile"`` can't be used and this strategy
-           is kept despite the compile-time cost, to avoid silently breaking its documented
-           ``float16`` support.
+           zero-safe convention of ``"diag"``.
          - ``"block_jacobi_sequential"``: Block-Jacobi preconditioner that factorizes each
            diagonal block via a scalar LDL^T factorization. Requires the block to be symmetric
-           positive-definite, but is zero-safe like ``"block_jacobi_direct"``: a non-SPD block
-           falls back to the identity rather than producing NaNs. Supports any Warp floating
-           scalar type, including ``float16``. As with ``"block_jacobi_direct"``, benchmarking
-           showed ``"block_jacobi_tile"`` applies faster at every block size measured, so prefer
-           this strategy for ``float16``/zero-safe-fallback support rather than for speed.
+           positive-definite, but is zero-safe (a non-SPD block becomes identity). Supports any Warp floating
+           scalar type.
          - ``"block_jacobi_tile"``: Block-Jacobi preconditioner that factorizes each diagonal
-           block via GPU-tile-parallel Cholesky. Applied fastest of the three strategies at every
-           block size benchmarked (2 through 16) and is the default target of
-           ``"block_jacobi_auto"`` for blocks above the ``"block_jacobi_direct"`` size cap.
-           Unlike ``"block_jacobi_direct"``/``"block_jacobi_sequential"``, blocks must genuinely
-           be symmetric positive-definite (no identity fallback), and ``A``'s scalar type must be
-           ``float32`` or ``float64`` (the types supported by :func:`warp.tile_cholesky`).
+           block via GPU-tile-parallel Cholesky. Blocks must be symmetric positive-definite, and ``A``'s scalar type must be
+           ``float32`` or ``float64``.
          - ``"block_jacobi_auto"``: Dispatches to ``"block_jacobi_direct"`` for block sizes 2-6,
            ``"block_jacobi_sequential"`` for 7-11, or ``"block_jacobi_tile"`` for 12 and up --
            except when ``A``'s scalar type isn't ``float32``/``float64`` (e.g. ``float16``), in
-           which case block sizes 7 and up use ``"block_jacobi_sequential"`` instead of
-           ``"block_jacobi_tile"``, since the tile strategy can't accept that dtype. These
-           thresholds pick a strategy that supports the input scalar type and stays zero-safe by
-           default; they are not a performance recommendation (see ``"block_jacobi_tile"``
-           above) and may change in the future.
-         - ``"block_jacobi"``: Alias for ``"block_jacobi_auto"``, kept for backward
-           compatibility.
+           which case block sizes 7 and up use ``"block_jacobi_sequential"``
 
            All ``"block_jacobi*"`` variants require ``A`` to be a :class:`warp.sparse.BsrMatrix`
            with square blocks, and fall back to ``"diag"`` for 1x1-block (CSR) matrices.
@@ -300,7 +275,6 @@ def preconditioner(A: _Matrix, ptype: str = "diag") -> LinearOperator:
 
 
 _BLOCK_JACOBI_STRATEGIES = {
-    "block_jacobi": "auto",
     "block_jacobi_auto": "auto",
     "block_jacobi_direct": "direct",
     "block_jacobi_sequential": "sequential",
