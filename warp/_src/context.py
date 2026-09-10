@@ -6411,10 +6411,8 @@ class Runtime:
         try:
             self.core.wp_get_error_string.argtypes = []
             self.core.wp_get_error_string.restype = ctypes.c_char_p
-            self.core.wp_cpu_block_error_clear.argtypes = []
-            self.core.wp_cpu_block_error_clear.restype = None
-            self.core.wp_cpu_block_error_take.argtypes = []
-            self.core.wp_cpu_block_error_take.restype = ctypes.c_char_p
+            self.core.wp_take_cpu_block_error.argtypes = []
+            self.core.wp_take_cpu_block_error.restype = ctypes.c_char_p
             self.core.wp_set_error_output_enabled.argtypes = [ctypes.c_int]
             self.core.wp_set_error_output_enabled.restype = None
             self.core.wp_is_error_output_enabled.argtypes = []
@@ -10705,13 +10703,13 @@ def invoke(kernel, hooks, params: Sequence[Any], adjoint: bool):
 def invoke_cpu_blocks(kernel, hooks, params: Sequence[Any], adjoint: bool):
     """Invoke a cooperative CPU kernel and surface recoverable dispatcher errors."""
     args, adj_args = _build_cpu_args_structs(kernel, hooks, params, adjoint)
-    runtime.core.wp_cpu_block_error_clear()
+    runtime.core.wp_take_cpu_block_error()
     if adjoint:
         hooks.backward(ctypes.byref(params[0]), ctypes.byref(args), ctypes.byref(adj_args))
     else:
         hooks.forward(ctypes.byref(params[0]), ctypes.byref(args))
 
-    block_error = runtime.core.wp_cpu_block_error_take()
+    block_error = runtime.core.wp_take_cpu_block_error()
     if block_error:
         message = block_error.decode("utf-8", errors="replace")
         raise RuntimeError(f"Error launching kernel '{kernel.key}' on device 'cpu': {message}")

@@ -37,10 +37,10 @@ int wp_cpu_run_block(
     int block_dim, int active_count, wp_cpu_block_lane_fn kernel_fn, void* dim, size_t block_id, void* args
 );
 
-// Clear or consume the calling thread's recoverable block-dispatch error.
-// Native/Python launch bridges use these around the generated void kernel ABI.
-WP_API void wp_cpu_block_error_clear();
-WP_API const char* wp_cpu_block_error_take();
+// Consume the calling thread's recoverable block-dispatch error.
+// Native/Python launch bridges call this before and after invoking the
+// generated void kernel ABI.
+WP_API const char* wp_take_cpu_block_error();
 
 // Return the core runtime entry points that warp-clang binds into JIT-compiled
 // cooperative kernels. Keeping the scheduler in one library also keeps its

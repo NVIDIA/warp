@@ -235,9 +235,7 @@ extern "C" void wp_cpu_tile_sync()
     }
 }
 
-extern "C" WP_API void wp_cpu_block_error_clear() { g_block_error = nullptr; }
-
-extern "C" WP_API const char* wp_cpu_block_error_take()
+extern "C" WP_API const char* wp_take_cpu_block_error()
 {
     const char* error = g_block_error;
     g_block_error = nullptr;
