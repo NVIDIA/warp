@@ -6696,16 +6696,6 @@ cpu_module_header = """
 
 #define builtin_block_dim() wp::block_dim()
 
-// Inline control for @wp.func(inline=...). __forceinline implies inline on MSVC; elsewhere
-// always_inline needs the inline specifier spelled out alongside it.
-#if defined(_MSC_VER)
-#define WP_NOINLINE __declspec(noinline)
-#define WP_FORCEINLINE __forceinline
-#else
-#define WP_NOINLINE __attribute__((noinline))
-#define WP_FORCEINLINE inline __attribute__((always_inline))
-#endif
-
 """
 
 cuda_module_header = """
@@ -6750,13 +6740,6 @@ cuda_module_header = """
 #else
 #define WP_ENABLE_SMEM_SPILLING()
 #endif
-
-// Inline control for @wp.func(inline=...). Warp compiles device code with WP_NO_CRT, so
-// host_defines.h, which normally defines __noinline__ and __forceinline__, is not included.
-// Spell them out as it does: always_inline needs the inline specifier alongside it, or the
-// compiler is free to ignore the attribute and emit an out-of-line call.
-#define WP_NOINLINE __attribute__((noinline))
-#define WP_FORCEINLINE inline __attribute__((always_inline))
 
 """
 
@@ -6906,7 +6889,7 @@ cuda_reverse_function_template = """
 """
 
 # Fills the {inline_attr} slot in the four function templates above. Both macros are defined
-# in both module headers, so a hinted @wp.func stays valid for CPU and CUDA alike.
+# by builtin.h, so a hinted @wp.func stays valid for CPU and CUDA alike.
 _INLINE_ATTRS = {"noinline": "WP_NOINLINE ", "forceinline": "WP_FORCEINLINE "}
 
 # Lean (grid_stride=False) templates: 3D grid with a per-thread early return, no grid-stride loop.

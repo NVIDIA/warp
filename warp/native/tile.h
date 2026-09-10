@@ -95,8 +95,9 @@ template <> struct wp_is_null_func<int> {
 #if defined(__CUDA_ARCH__) || defined(__CUDACC_RTC__) || (defined(__clang__) && defined(__CUDA__))
 #define WP_TILE_THREAD_IDX threadIdx.x
 #else
+// Preserve the literal-zero specialization in unoptimized CPU debug builds.
 namespace wp {
-template <int BlockDim> inline int tile_thread_idx()
+template <int BlockDim> WP_FORCEINLINE int tile_thread_idx()
 {
     if constexpr (BlockDim == 1)
         return 0;

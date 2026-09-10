@@ -21,6 +21,20 @@
 #define CUDA_CALLABLE_DEVICE __device__
 #endif
 
+// Cross-compiler inline control for generated functions and native helpers.
+// CUDA compilation uses Clang-style attributes because Warp's JIT omits the
+// toolkit header that normally defines __noinline__ and __forceinline__.
+#if defined(__CUDA_ARCH__) || defined(__CUDACC_RTC__) || (defined(__clang__) && defined(__CUDA__))
+#define WP_NOINLINE __attribute__((noinline))
+#define WP_FORCEINLINE inline __attribute__((always_inline))
+#elif defined(_MSC_VER)
+#define WP_NOINLINE __declspec(noinline)
+#define WP_FORCEINLINE __forceinline
+#else
+#define WP_NOINLINE __attribute__((noinline))
+#define WP_FORCEINLINE inline __attribute__((always_inline))
+#endif
+
 // Tile block dimension used while building the warp core library
 #ifndef WP_TILE_BLOCK_DIM
 #define WP_TILE_BLOCK_DIM 256
