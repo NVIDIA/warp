@@ -1151,15 +1151,89 @@ def test_block_jacobi_preconditioner_singular_block(test, device):
     assert_np_equal(z_np[:3], x.numpy()[:3], tol=0.0)
 
 
+def test_block_jacobi_preconditioner_rank_deficient_block(test, device):
+    """Verify a rank-deficient (but not exactly-zero) block falls back to the identity.
+
+    ``[[1, 2], [2, 4]]`` is exactly rank-1: QR factorization leaves a tiny nonzero pivot on
+    ``R``'s diagonal instead of an exact zero, which an exact-zero singularity check misses and
+    then divides by. "block_jacobi_direct" is also what "block_jacobi_auto"/"block_jacobi"
+    selects for 2x2 blocks, so this covers the default dispatch too.
+    """
+    mat22 = wp.types.matrix(shape=(2, 2), dtype=wp.float64)
+    rows = wp.array(np.array([0], dtype=np.int32), dtype=int, device=device)
+    cols = wp.array(np.array([0], dtype=np.int32), dtype=int, device=device)
+    blocks = np.array([[[1.0, 2.0], [2.0, 4.0]]])
+
+    for dtype in (wp.float16, wp.float32, wp.float64):
+        mat22_t = wp.types.matrix(shape=(2, 2), dtype=dtype)
+        A = bsr_zeros(1, 1, mat22_t, device=device)
+        bsr_set_from_triplets(A, rows, cols, wp.array(blocks, dtype=mat22_t, device=device))
+
+        x = wp.array(np.array([1.0, 1.0]), dtype=dtype, device=device)
+        for ptype in ("block_jacobi_direct", "block_jacobi_auto"):
+            z = wp.zeros_like(x)
+            preconditioner(A, ptype).matvec(x, z, z, alpha=1.0, beta=0.0)
+            z_np = z.numpy().astype(np.float64)
+            test.assertTrue(
+                np.all(np.isfinite(z_np)), msg=f"{ptype}/{dtype.__name__}: non-finite output on rank-deficient block"
+            )
+            assert_np_equal(z_np, x.numpy().astype(np.float64), tol=0.0)
+
+
+def test_block_jacobi_preconditioner_rank_deficient_ldlt_block(test, device):
+    """Verify a rank-deficient (but not exactly non-positive) block falls back to the identity.
+
+    Under "block_jacobi_sequential"'s LDL^T factorization: ``[[9, 21], [21, 49]]`` is exactly rank-1 (PSD, singular): LDL^T roundoff leaves a tiny
+    positive residual pivot instead of an exact non-positive value, which a ``<= 0`` singularity
+    check misses and then divides by. Also covers a size-7 rank-1 block (an outer product, same
+    singularity pattern) through "block_jacobi_auto"/"block_jacobi", which dispatches block
+    sizes 7-11 to "block_jacobi_sequential".
+    """
+    mat22 = wp.types.matrix(shape=(2, 2), dtype=wp.float64)
+    rows2 = wp.array(np.array([0], dtype=np.int32), dtype=int, device=device)
+    cols2 = wp.array(np.array([0], dtype=np.int32), dtype=int, device=device)
+    blocks2 = np.array([[[9.0, 21.0], [21.0, 49.0]]])
+
+    for dtype in (wp.float16, wp.float32, wp.float64):
+        mat22_t = wp.types.matrix(shape=(2, 2), dtype=dtype)
+        A = bsr_zeros(1, 1, mat22_t, device=device)
+        bsr_set_from_triplets(A, rows2, cols2, wp.array(blocks2, dtype=mat22_t, device=device))
+
+        x = wp.array(np.array([1.0, 1.0]), dtype=dtype, device=device)
+        z = wp.zeros_like(x)
+        preconditioner(A, "block_jacobi_sequential").matvec(x, z, z, alpha=1.0, beta=0.0)
+        z_np = z.numpy().astype(np.float64)
+        test.assertTrue(
+            np.all(np.isfinite(z_np)), msg=f"sequential/{dtype.__name__}: non-finite output on rank-1 block"
+        )
+        assert_np_equal(z_np, x.numpy().astype(np.float64), tol=0.0)
+
+    # A size-7 rank-1 (outer product) block, to confirm "block_jacobi_auto"'s default dispatch
+    # (block sizes 7-11 use "sequential") also benefits from the fix.
+    block_size = 7
+    v = np.array([3.0, 7.0, 1.0, 2.0, 0.5, 4.0, 6.0])
+    block7 = np.outer(v, v)
+    mat7 = wp.types.matrix(shape=(block_size, block_size), dtype=wp.float32)
+    rows7 = wp.array(np.array([0], dtype=np.int32), dtype=int, device=device)
+    cols7 = wp.array(np.array([0], dtype=np.int32), dtype=int, device=device)
+    A7 = bsr_zeros(1, 1, mat7, device=device)
+    bsr_set_from_triplets(A7, rows7, cols7, wp.array(block7[None, ...], dtype=mat7, device=device))
+
+    x7 = wp.array(np.ones(block_size), dtype=wp.float32, device=device)
+    z7 = wp.zeros_like(x7)
+    preconditioner(A7, "block_jacobi_auto").matvec(x7, z7, z7, alpha=1.0, beta=0.0)
+    z7_np = z7.numpy()
+    test.assertTrue(np.all(np.isfinite(z7_np)), msg="auto/size-7: non-finite output on rank-1 block")
+    assert_np_equal(z7_np, x7.numpy(), tol=0.0)
+
+
 def test_block_jacobi_preconditioner_concurrent_streams(test, device):
     """Verify a preconditioner reused across concurrent CUDA streams never corrupts an output.
 
-    Regression test adapted from the exact repro that caught the data race in the tile solve
-    kernel: two priority streams apply the same preconditioner to different inputs with no host
-    synchronization between the launches. Before the fix, the tile solve wrote into a scratch
-    buffer shared across all `matvec` calls, so one stream's launch could overwrite another's
-    intermediate result before it was read back into `z`. The direct/sequential strategies never
-    had a shared scratch buffer, but are included here too for regression coverage.
+    Two priority streams apply the same preconditioner to different inputs with no host
+    synchronization between the launches; reusing a preconditioner this way must not share
+    mutable scratch state or corrupt either output. Covers all three explicit strategies plus
+    "auto".
     """
     num_blocks = 50_000
     block_size = 12
@@ -1440,6 +1514,18 @@ add_function_test(
     TestLinearSolvers,
     "test_block_jacobi_preconditioner_singular_block",
     test_block_jacobi_preconditioner_singular_block,
+    devices=devices,
+)
+add_function_test(
+    TestLinearSolvers,
+    "test_block_jacobi_preconditioner_rank_deficient_block",
+    test_block_jacobi_preconditioner_rank_deficient_block,
+    devices=devices,
+)
+add_function_test(
+    TestLinearSolvers,
+    "test_block_jacobi_preconditioner_rank_deficient_ldlt_block",
+    test_block_jacobi_preconditioner_rank_deficient_ldlt_block,
     devices=devices,
 )
 add_function_test(

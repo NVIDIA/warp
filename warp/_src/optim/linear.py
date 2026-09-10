@@ -252,7 +252,7 @@ def preconditioner(A: _Matrix, ptype: str = "diag") -> LinearOperator:
            positive-definite, but is zero-safe (a non-SPD block becomes identity). Supports any Warp floating
            scalar type.
          - ``"block_jacobi_tile"``: Block-Jacobi preconditioner that factorizes each diagonal
-           block via GPU-tile-parallel Cholesky. Blocks must be symmetric positive-definite, and ``A``'s scalar type must be
+           block via tile-parallel Cholesky (runs on both CPU and GPU). Blocks must be symmetric positive-definite, and ``A``'s scalar type must be
            ``float32`` or ``float64``.
          - ``"block_jacobi_auto"``: Dispatches to ``"block_jacobi_direct"`` for block sizes 2-6,
            ``"block_jacobi_sequential"`` for 7-11, or ``"block_jacobi_tile"`` for 12 and up --
@@ -292,9 +292,9 @@ _BLOCK_JACOBI_STRATEGIES = {
 
 # Block-size thresholds used by the "auto" block-Jacobi strategy: blocks of size
 # [2, _BLOCK_JACOBI_AUTO_DIRECT_MAX] use "direct", (..., _BLOCK_JACOBI_AUTO_SEQUENTIAL_MAX] use
-# "sequential", and anything larger uses "tile". Matches the ranges suggested in review, adjusted
-# to be non-overlapping. These are chosen for dtype/robustness coverage, not measured performance:
-# benchmarking found "tile" fastest to apply at every block size tested (2 through 16).
+# "sequential", and anything larger uses "tile". These thresholds are chosen heuristically for
+# dtype/robustness coverage, not measured performance: benchmarking found "tile" fastest to
+# apply at every block size tested (2 through 16).
 _BLOCK_JACOBI_AUTO_DIRECT_MAX = 6
 _BLOCK_JACOBI_AUTO_SEQUENTIAL_MAX = 11
 
@@ -433,7 +433,8 @@ def _make_block_jacobi_sequential(A: _Matrix, block_size: int) -> LinearOperator
 
 
 def _make_block_jacobi_tile(A: _Matrix, block_size: int) -> LinearOperator:
-    """Build a block-Jacobi preconditioner via GPU-tile-parallel Cholesky factorization.
+    """Build a block-Jacobi preconditioner via tile-parallel Cholesky factorization (runs on
+    both CPU and GPU).
 
     Best suited to large blocks. Requires blocks to be genuinely symmetric positive-definite (no
     identity fallback, unlike the ``"direct"``/``"sequential"`` strategies), and ``A``'s scalar
@@ -537,9 +538,9 @@ def _create_block_jacobi_tile_kernels(block_size: int):
 # --- Direct (QR) and sequential (LDL^T) block-Jacobi helpers -----------------
 #
 # Local re-implementations of QR-based dense inversion and LDL^T factorization for small,
-# fixed-size blocks, adapted from a prototype by a Warp maintainer (gdaviet). Kept as plain
-# wp.funcs operating on fixed-size wp.matrix/wp.vector types (no wp.tile_* involved), so they
-# work for any Warp floating scalar type and don't require tile hardware.
+# fixed-size blocks. Kept as plain wp.funcs operating on fixed-size wp.matrix/wp.vector types
+# (no wp.tile_* involved), so they work for any Warp floating scalar type and don't require
+# tile hardware.
 
 
 @wp.func
@@ -584,17 +585,28 @@ def _solve_upper(R: Any, b: Any):
 def _block_inverse_qr(A: Any):
     """Invert a square fixed-size matrix via Householder QR.
 
-    Falls back to the identity when the block is numerically singular (any zero on the ``R``
-    diagonal), mirroring the zero-safe convention of the scalar Jacobi preconditioner, so the
-    result stays well-defined for non-invertible blocks.
+    Falls back to the identity when the block is numerically singular, mirroring the zero-safe
+    convention of the scalar Jacobi preconditioner, so the result stays well-defined for
+    non-invertible blocks. A pivot is treated as singular when it is non-finite or small
+    relative to the largest pivot magnitude in the block, rather than only when it is exactly
+    zero: for a genuinely rank-deficient block, roundoff during the QR factorization typically
+    leaves a tiny but nonzero diagonal entry on ``R`` rather than an exact zero, which an
+    exact-zero check misses and then divides by in the triangular solve below.
     """
     Q, R = _qr_decomposition(A)
     row = type(A[0])()
     zero = A.dtype(0)
     one = A.dtype(1)
+    rel_tol = A.dtype(1.0e-3)
+
+    max_pivot = zero
+    for j in range(row.length):
+        max_pivot = wp.max(max_pivot, wp.abs(R[j, j]))
+
     singular = wp.bool(False)
     for j in range(row.length):
-        singular = singular or (R[j, j] == zero)
+        pivot = R[j, j]
+        singular = singular or (not wp.isfinite(pivot)) or (wp.abs(pivot) <= rel_tol * max_pivot)
 
     A_inv = type(A)()
     for i in range(row.length):
@@ -615,10 +627,19 @@ def _block_ldlt(A: Any):
     matrix ``M`` with ``M[i, i] = D[i]`` and ``M[i, j] = L[i, j]`` for ``i > j`` (``L``'s implicit
     unit diagonal is not stored). Falls back to the identity on non-SPD input, so
     :func:`_apply_ldlt` becomes a pass-through on that block and the preconditioner stays
-    well-defined.
+    well-defined. A pivot is treated as non-SPD when it is non-finite or small relative to the
+    block's diagonal scale, rather than only when it is ``<= 0``: for a genuinely rank-deficient
+    block, LDL^T roundoff can leave a tiny positive residual pivot instead of an exact
+    non-positive value, which a ``<= 0`` check misses and then divides by.
     """
     row = type(A[0])()
     zero = A.dtype(0.0)
+    rel_tol = A.dtype(1.0e-3)
+
+    max_diag = zero
+    for j in range(row.length):
+        max_diag = wp.max(max_diag, wp.abs(A[j, j]))
+
     M = type(A)(zero)
     spd = wp.bool(True)
     for j in range(row.length):
@@ -626,7 +647,7 @@ def _block_ldlt(A: Any):
         for k in range(j):
             d -= M[j, k] * M[j, k] * M[k, k]
 
-        if d <= zero:
+        if (not wp.isfinite(d)) or (d <= rel_tol * max_diag):
             spd = False
             break
 
