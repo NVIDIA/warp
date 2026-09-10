@@ -257,11 +257,20 @@ def preconditioner(A: _Matrix, ptype: str = "diag") -> LinearOperator:
          - ``"block_jacobi_auto"``: Dispatches to ``"block_jacobi_direct"`` for block sizes 2-6,
            ``"block_jacobi_sequential"`` for 7-11, or ``"block_jacobi_tile"`` for 12 and up --
            except when ``A``'s scalar type isn't ``float32``/``float64`` (e.g. ``float16``), in
-           which case block sizes 7 and up use ``"block_jacobi_sequential"``
-
-           All ``"block_jacobi*"`` variants require ``A`` to be a :class:`warp.sparse.BsrMatrix`
-           with square blocks, and fall back to ``"diag"`` for 1x1-block (CSR) matrices.
+           which case block sizes 7 and up use ``"block_jacobi_sequential"`` instead.
          - ``"id"``: Identity (null) preconditioner
+
+        All ``"block_jacobi*"`` variants require ``A`` to be a :class:`warp.sparse.BsrMatrix`
+        with square blocks, and fall back to ``"diag"`` for 1x1-block (CSR) matrices.
+
+    Returns:
+        A :class:`LinearOperator` applying the requested preconditioner, or ``None`` for
+        ``ptype="id"``.
+
+    Raises:
+        ValueError: ``ptype`` is not one of the supported values, or a ``"block_jacobi*"``
+            ``ptype`` is requested with a non-\\ :class:`warp.sparse.BsrMatrix` ``A`` or one
+            whose blocks aren't square.
     """
 
     if ptype == "id":

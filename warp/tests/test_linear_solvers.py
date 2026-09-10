@@ -989,11 +989,10 @@ def _make_block_spd_system(num_blocks, block_size, seed, dtype, device, coupling
     return A, b, diag_blocks
 
 
-# All ptype strings that build a block-Jacobi preconditioner: the three explicit strategies,
-# "auto" (which dispatches to one of them by block size), and "block_jacobi" (an alias for
-# "auto" kept for backward compatibility).
+# All ptype strings that build a block-Jacobi preconditioner: the three explicit strategies, and
+# "auto" (which dispatches to one of them by block size).
 _BLOCK_JACOBI_EXPLICIT_PTYPES = ("block_jacobi_direct", "block_jacobi_sequential", "block_jacobi_tile")
-_BLOCK_JACOBI_ALL_PTYPES = (*_BLOCK_JACOBI_EXPLICIT_PTYPES, "block_jacobi_auto", "block_jacobi")
+_BLOCK_JACOBI_ALL_PTYPES = (*_BLOCK_JACOBI_EXPLICIT_PTYPES, "block_jacobi_auto")
 
 
 def test_block_jacobi_preconditioner_correctness(test, device):
