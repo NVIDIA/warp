@@ -8,13 +8,13 @@ SPDX-License-Identifier: Apache-2.0
 The Acknowledgments section thanks **non-NVIDIA contributors** who have made
 non-trivial contributions to the release. The script
 `scripts/list_contributors.py` classifies each contributor as `nvidia` (no
-acknowledgment) or `external` (acknowledged), using two positive-internal
+acknowledgment) or `external` (acknowledged), using two NVIDIA-affiliation
 signals: NVIDIA email domains and NVIDIA GitHub org membership.
 
 ## Classification rules (applied in order, first match wins)
 
-1. **`nvidia` (definitively internal)** — any one of:
-   - Author email matches `*@nvidia.com` or `*@exchange.nvidia.com`. Free,
+1. **`nvidia` (NVIDIA-affiliated)** — any one of:
+   - The author's email domain is `nvidia.com` or any of its subdomains. Free,
      deterministic, no API call.
    - Author's resolved GitHub login is a member of the NVIDIA GitHub
      organization. The script calls `gh api /orgs/NVIDIA/members/<login>` and
@@ -77,10 +77,11 @@ The script tries two strategies in order:
 
 If both strategies fail (no `gh`, no auth, no GitHub user record for the
 commit), the contributor record carries `gh_login: null`. The org-membership
-check is skipped (it requires a login), and the contributor is classified
-as `external` based on email alone. Such records still surface in the
-rendered acknowledgments but with no `@`-handle to mention; the release
-manager should spot-check or drop them by hand.
+check is skipped (it requires a login), and classification falls back to the
+email domain: NVIDIA domains remain `nvidia`, while all others are `external`.
+External records still surface in the rendered acknowledgments but with no
+`@`-handle to mention; the release manager should spot-check or drop them by
+hand.
 
 ## Two reasons to acknowledge a contributor classified as `nvidia`
 
