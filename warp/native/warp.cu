@@ -4839,6 +4839,18 @@ size_t wp_cuda_compile_program(
             printf("%s\n", o);
         }
     }
+
+    if (const char* trace_path = std::getenv("WARP_NVRTC_TRACE_PATH")) {
+        static std::mutex trace_mutex;
+        const std::lock_guard<std::mutex> lock(trace_mutex);
+        std::ofstream trace(trace_path, std::ios::app);
+        trace << "program=" << program_name << " output=" << output_path << " optimization_level=" << optimization_level
+              << '\n';
+        for (const char* option : opts) {
+            trace << "  " << option << '\n';
+        }
+    }
+
     res = nvrtcCompileProgram(prog, int(opts.size()), opts.data());
 
     if (!check_nvrtc(res) || verbose) {

@@ -967,8 +967,10 @@ jobs:
       env:
         NVIDIA_VISIBLE_DEVICES: ${{ env.NVIDIA_VISIBLE_DEVICES }}
     env:
+      CUDA_CACHE_DISABLE: "1"
       UV_PYTHON: "3.10"
       WARP_CACHE_PATH: /tmp/warp-cache-${{ github.run_id }}-${{ github.run_attempt }}-mgpu-python310
+      WARP_NVRTC_TRACE_PATH: test-diagnostics/cuda-compiler/nvrtc-options.log
     timeout-minutes: 60
     steps:
       - name: Display GPU information
@@ -1013,6 +1015,7 @@ jobs:
           mkdir -p "$output_dir"
           {
             echo "HOME=$HOME"
+            echo "CUDA_CACHE_DISABLE=${CUDA_CACHE_DISABLE:-<unset>}"
             echo "CUDA_CACHE_PATH=${CUDA_CACHE_PATH:-<unset>}"
             for cache_dir in "$HOME/.nv/ComputeCache" "/root/.nv/ComputeCache"; do
               echo "cache_dir=$cache_dir"
@@ -1113,6 +1116,7 @@ jobs:
 
           {
             echo "HOME=$HOME"
+            echo "CUDA_CACHE_DISABLE=${CUDA_CACHE_DISABLE:-<unset>}"
             echo "CUDA_CACHE_PATH=${CUDA_CACHE_PATH:-<unset>}"
             for cache_dir in "$HOME/.nv/ComputeCache" "/root/.nv/ComputeCache"; do
               echo "cache_dir=$cache_dir"
