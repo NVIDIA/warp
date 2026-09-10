@@ -4626,7 +4626,7 @@ class Module:
         ):
             log_warning(
                 "CUDA Toolkit 13.1 and newer have an NVRTC compiler issue that makes Warp optimization level 0 "
-                "unsafe; using optimization level 1 instead.",
+                "unsafe; using optimization level 3 instead.",
                 once=True,
             )
 

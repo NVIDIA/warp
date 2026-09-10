@@ -4715,17 +4715,15 @@ size_t wp_cuda_compile_program(
 
     // CUDA 12.9+ supports --Ofast-compile
 #if CUDA_VERSION >= 12090
+#if CUDA_VERSION >= 13010
+    // Diagnostic: eliminate optimization-level transitions while isolating
+    // the CUDA 13.1+ process-wide NVRTC compiler-state corruption.
+    opts.push_back("--Ofast-compile=0");
+#else
     // --Ofast-compile works inversely to normal -O optimization levels
     switch (optimization_level) {
     case 0:
-#if CUDA_VERSION >= 13010
-        // CUDA 13.1+ corrupts process-wide NVRTC compiler state after a
-        // --Ofast-compile=max build. Later builds can then emit invalid parameter
-        // addressing, so use the next-fastest setting until NVIDIA fixes NVRTC.
-        opts.push_back("--Ofast-compile=mid");
-#else
         opts.push_back("--Ofast-compile=max");
-#endif
         break;
     case 1:
         opts.push_back("--Ofast-compile=mid");
@@ -4737,6 +4735,7 @@ size_t wp_cuda_compile_program(
         opts.push_back("--Ofast-compile=0");
         break;  // 3 and up
     }
+#endif
 #endif
 
     // Vector to store dynamically created option strings
