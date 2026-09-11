@@ -60,7 +60,6 @@ The user guide documents the public API and its current limitations. This docume
 
 - Stabilizing the Python APIC surface, ``.wrp`` format, and native ``wp_apic_*`` API.
 - Supporting multiple devices in one APIC graph.
-- Recording compilation or source code needed to compile a missing module.
 
 Deferred CUDA graphs ([GH-1659](https://github.com/NVIDIA/warp/issues/1659)) are separate in-flight work rather than a non-goal; this document describes the current driver-capture path.
 
@@ -88,7 +87,7 @@ flowchart TD
     H -->|capture_save| K
 
     K -->|capture_load CPU| L["Loaded APICGraph<br/>Allocate regions, load .o files,<br/>resolve CPU kernel functions"]
-    K -->|capture_load CUDA| M["Loaded APICGraph<br/>Allocate regions, load PTX/CUBIN"]
+    K -->|capture_load CUDA| M["Loaded APICGraph<br/>Resolve packaged/cache/source modules,<br/>then allocate regions"]
 
     L -->|capture_launch| N["Interpret loaded operation stream"]
     M -->|first capture_launch| O["Replay APIC operations into<br/>a fresh CUDA stream capture"]
@@ -142,7 +141,7 @@ On CPU, capture hooks append a record and skip the live operation. On CUDA, the 
 | Live CUDA, ``apic=False`` | Driver-captured ``cudaGraph_t`` | Native graph and lazy executable; module executions; CUDA allocations transferred to graph ownership by the capture allocator | Pre-existing arrays and external resources referenced by graph nodes must remain alive |
 | Live CUDA, ``apic=True`` | Native graph for launch, ``APICState`` for save | Everything in a live CUDA graph, plus the APIC state, metadata, and tracked base-array references | Untracked external pointers and non-serializable object resources remain caller-owned |
 | Loaded CPU | ``APICGraph`` byte stream | Fresh host allocation for every region; recreated meshes; loaded LLVM object handles; resolved CPU kernel functions | Keep the ``Graph`` alive while using binding pointers; keep the companion modules available through load |
-| Loaded CUDA | Lazily reconstructed native graph owned by ``APICGraph`` | Fresh device allocation for every region; loaded PTX/CUBIN modules; recreated meshes; lazy CUDA graph and executable | Keep the ``Graph`` alive while using binding pointers |
+| Loaded CUDA | Lazily reconstructed native graph owned by ``APICGraph`` | Fresh device allocation for every region; packaged, cached, or guest-compiled CUDA modules; recreated meshes; lazy CUDA graph and executable | Keep the ``Graph`` alive while using binding pointers |
 
 Tracked arrays are retained through their base objects, so aliases do not need independent lifetime management. This guarantee cannot extend the lifetime of memory that Warp does not own. For example, retaining a ``wp.array(ptr=...)`` wrapper without a deleter does not prevent its external owner from freeing or reusing the address.
 
@@ -301,7 +300,10 @@ The sibling ``<stem>_modules/`` directory contains the exact compiled modules re
 
 - CPU graphs use ``.o`` files.
 - CUDA graphs use ``.cubin`` or ``.ptx`` files according to the module's compilation output.
-- ``.meta`` files are copied when present for CUDA shared-memory metadata.
+- CUDA graphs also retain variant-specific ``.cu`` source when its build does not
+  depend on unsupported external includes, compiler backends, or link inputs.
+- Successful guest compilations are cached under content-addressed
+  ``apic_guest_*`` names in this directory when it is writable.
 
 The ``.wrp`` file and modules directory are one artifact. Moving, copying, or shipping one without the other does not produce a loadable kernel graph.
 
@@ -311,7 +313,15 @@ The common loader checks the minimum header size, magic, and supported format ra
 
 For CPU it allocates host regions and initializes their snapshots. Python then loads every recorded object file through the warp-clang backend, resolves forward and backward symbols, and registers the function pointers with the ``APICGraph``.
 
-For CUDA it loads every recorded PTX/CUBIN module and allocates device regions. The native CUDA graph is deliberately lazy. The first request for its graph or executable opens a Warp-managed CUDA capture and reissues the operation stream. Later launches reuse the cached executable.
+For CUDA, one native resolver first validates and tries every recorded
+PTX/CUBIN module. If the driver rejects a packaged object, it tries a matching
+guest-cache entry and can compile validated retained source for the current GPU
+with NVRTC. Python supplies the installed Warp header directory through
+``wp_apic_load_graph_ex()``; standalone C++ callers use the same entry point and
+resolver. All modules are resolved before device regions are allocated. The
+native CUDA graph is deliberately lazy. The first request for its graph or
+executable opens a Warp-managed CUDA capture and reissues the operation stream.
+Later launches reuse the cached executable.
 
 Meshes are recreated after region allocation. The loader builds a mapping from captured mesh IDs to new process-local IDs and applies it both to launch relocations and to registered handle fields stored inside memory regions.
 
@@ -319,20 +329,31 @@ Meshes are recreated after region allocation. The loader builds a mapping from c
 
 A CPU ``.wrp`` graph must be loaded as CPU, and a CUDA graph as CUDA. This is a file contract, not a conversion mechanism.
 
-CUDA module portability depends on the companion binary:
+CUDA module loading prefers the companion binary:
 
 - A CUBIN is tied to its compiled CUDA architecture.
 - PTX may be JIT-compiled on architectures supported by that PTX target and the installed driver, but it is not an unconditional cross-architecture guarantee.
 
-CPU object files are tied to the platform, architecture, compiler ABI, and Warp runtime they were built against. No cross-platform CPU object portability is promised. Standalone applications must link a compatible Warp native library and, for CPU kernel replay, provide the warp-clang loading backend used to resolve the companion objects.
+When neither binary path works, a CUDA graph may be replayed on a different
+supported GPU by compiling its retained generated source. The source fallback
+preserves capture-time semantic compiler options while choosing output
+architecture and kind for the guest. It is intentionally binary-only for
+modules that used caller-provided CUDA include directories, LLVM-CUDA, or
+LTO-IR/fatbin link inputs. See
+[``portable-apic-cuda-replay.md``](portable-apic-cuda-replay.md) for the full
+artifact and resolver contract.
 
-Deferred compilation is not part of the stream. Missing or incompatible module binaries cannot be regenerated from a ``.wrp`` file.
+CPU object files are tied to the platform, architecture, compiler ABI, and Warp runtime they were built against. No cross-platform CPU object portability is promised. Standalone applications must link a compatible Warp native library and, for CPU kernel replay, provide the warp-clang loading backend used to resolve the companion objects.
 
 ### Compatibility policy
 
 #### ``.wrp`` format
 
-The feature is experimental. The current constants in ``warp/native/apic_types.h`` define writer version 15 and a readable range of versions 13 through 15. These numbers describe the operation and metadata wire format, not the Python package version.
+The feature is experimental. The current constants in
+``warp/native/apic_types.h`` define writer and reader version 16. The metadata
+also records the producer Warp version, and the loader requires both versions
+to match exactly before loading modules or allocating resources. These numbers
+describe the operation and metadata wire format, not the Python package version.
 
 Contributors must follow these rules:
 
@@ -349,7 +370,7 @@ While APIC remains experimental, preserving a read window is an implementation c
 
 The exported ``wp_apic_*`` functions in ``warp/native/apic.h`` are also experimental. There is currently no independent APIC C ABI version negotiation. ``APICState`` and ``APICGraph`` are opaque and must stay opaque to callers.
 
-Source or binary compatibility of the APIC C API is not guaranteed across Warp releases. A native application should compile and link against the same Warp release family used to produce and load its artifact. An incompatible signature, ownership, enum, or struct-layout change requires coordinated updates to:
+Source or binary compatibility of the APIC C API is not guaranteed across Warp releases. A native application should compile and link against the exact Warp version used to produce and load its artifact. An incompatible signature, ownership, enum, or struct-layout change requires coordinated updates to:
 
 - the exported declaration and implementation;
 - Python ctypes registrations;
@@ -422,10 +443,13 @@ These are limitations, not implied future commitments:
 - Loaded replay does not reject a handle relocation that is absent from ``handle_ptr_remap``. It preserves the captured integer, which may be stale when mesh metadata is missing or the handle belongs to an unsupported object type.
 - BVH refit/rebuild is recordable for live CPU replay but causes ``capture_save()`` to fail. HashGrid update is also live CPU only and is rejected when attempted in a saveable capture. CUDA APIC has no corresponding spatial-update records.
 - APIC control-flow bodies cannot reference already captured ``Graph`` objects; use callbacks.
-- A ``.wrp`` graph contains compiled modules, not source or compilation steps. Deferred compilation is not implemented.
-- The file header records the captured device family and target architecture, but load currently trusts the caller's requested device and does not reject a mismatch at the file boundary. A mismatch may fail later during module or graph setup with a less targeted diagnostic, or remain undetected when the graph does not exercise device-specific resources.
-- Operation-stream validation is substantially stronger than section-table, metadata, and memory-section bounds checking. The current loader should not be treated as hardened for untrusted ``.wrp`` files.
-- One APIC graph cannot span multiple GPUs. Cross-architecture CUDA use depends on PTX/CUBIN compatibility and is not guaranteed.
+- CUDA source fallback cannot reproduce caller-provided include directories,
+  LLVM-CUDA compilation, or LTO-IR/fatbin link inputs; these modules require a
+  compatible packaged binary.
+- The loader validates the section table, metadata, memory records, operation
+  stream, filenames, and artifact digests, but ``.wrp`` artifacts still contain
+  executable native or GPU code and must come from a trusted source.
+- One APIC graph cannot span multiple GPUs.
 - CPU loading requires warp-clang and compatible companion ``.o`` files.
 
 ## Testing strategy
