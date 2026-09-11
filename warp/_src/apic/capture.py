@@ -501,16 +501,13 @@ class APICapture:
         """Collect module and kernel metadata for later serialization."""
         import os  # noqa: PLC0415
 
-        import warp  # noqa: PLC0415
-
         module_hash = self._hash_to_str(module_exec.module_hash)
         if module_hash not in self.collected_modules:
-            # Compute the binary path in the kernel cache (same logic as Module.load)
-            module = kernel.module
-            output_name = module._get_compile_output_name(self.device, block_dim=module_exec.block_dim)
-            module_id = module.get_module_identifier(block_dim=module_exec.block_dim)
-            module_dir = os.path.join(warp.config.kernel_cache_dir, module_id)
-            binary_path = os.path.join(module_dir, output_name)
+            # ModuleExec retains the exact artifact selected by Module.load().
+            # Recomputing paths or recipes here from mutable module/global
+            # configuration can pair the capture with a different variant.
+            binary_path = module_exec.binary_path
+            output_name = os.path.basename(binary_path) if binary_path else ""
 
             self.collected_modules[module_hash] = {
                 "module_hash": module_hash,
@@ -518,6 +515,7 @@ class APICapture:
                 "module_exec": module_exec,
                 "binary_path": binary_path,
                 "binary_filename": output_name,
+                "cuda_compile_artifact": module_exec.cuda_compile_artifact,
             }
 
         kernel_key = kernel.key
