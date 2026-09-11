@@ -18,6 +18,14 @@ import numpy as np
 import warp as wp
 import warp._src.context as wp_context
 from warp._src.apic.capture import APICapture
+from warp._src.apic.types import (
+    APIC_CUDA_ARCH_SUFFIX_A,
+    APIC_CUDA_BINARY_CUBIN,
+    APIC_CUDA_BINARY_PTX,
+    APIC_CUDA_FALLBACK_AVAILABLE,
+    APIC_CUDA_FALLBACK_SOURCE_UNAVAILABLE,
+    APICCudaCompileRecipe,
+)
 from warp.sparse import (
     BSR_STATUS_ROW_CAPACITY_EXCEEDED,
     bsr_assign,
@@ -81,13 +89,95 @@ def bvh_query_aabb_hits(bvh: wp.uint64, lower: wp.vec3, upper: wp.vec3, hits: wp
 
 
 class TestApic(unittest.TestCase):
-    pass
+    def test_native_save_validates_cuda_module_metadata(self):
+        """Reject CUDA module metadata that the matching reader cannot load."""
+
+        valid_digest = b"0" * 64
+        module_hash = b"module_hash"
+
+        cases = (
+            ("missing registration", {"artifact_module_hash": b"missing_module"}),
+            ("invalid binary digest", {"binary_digest": b"invalid"}),
+            (
+                "incomplete source fields",
+                {"source_filename": b"module.cu", "source_digest": b""},
+            ),
+            ("binary kind mismatch", {"binary_kind": APIC_CUDA_BINARY_CUBIN}),
+            ("available fallback without source", {"fallback_reason": APIC_CUDA_FALLBACK_AVAILABLE}),
+            ("invalid recipe", {"recipe_updates": {"optimization_level": 4}}),
+            ("invalid architecture suffix", {"recipe_updates": {"arch_suffix": APIC_CUDA_ARCH_SUFFIX_A}}),
+        )
+
+        for name, changes in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmpdir:
+                state = wp_context.runtime.core.wp_apic_create_state()
+                self.assertTrue(state)
+                try:
+                    wp_context.runtime.core.wp_apic_register_module(
+                        state,
+                        module_hash,
+                        b"test.module",
+                        b"module.ptx",
+                        80,
+                    )
+
+                    recipe = APICCudaCompileRecipe()
+                    for field, value in changes.get("recipe_updates", {}).items():
+                        setattr(recipe, field, value)
+                    wp_context.runtime.core.wp_apic_register_cuda_module_artifacts(
+                        state,
+                        changes.get("artifact_module_hash", module_hash),
+                        changes.get("binary_digest", valid_digest),
+                        changes.get("source_filename", b""),
+                        changes.get("source_digest", b""),
+                        changes.get("binary_kind", APIC_CUDA_BINARY_PTX),
+                        changes.get("fallback_reason", APIC_CUDA_FALLBACK_SOURCE_UNAVAILABLE),
+                        ctypes.byref(recipe),
+                    )
+
+                    path = os.path.join(tmpdir, "invalid.wrp")
+                    result = wp_context.runtime.core.wp_apic_state_save(state, path.encode(), 80, None)
+                    self.assertFalse(result)
+                    self.assertIn("Cannot save invalid APIC module", wp_context.runtime.get_error_string())
+                    self.assertFalse(os.path.exists(path))
+                finally:
+                    wp_context.runtime.core.wp_apic_destroy_state(state)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state = wp_context.runtime.core.wp_apic_create_state()
+            self.assertTrue(state)
+            try:
+                wp_context.runtime.core.wp_apic_register_module(
+                    state,
+                    module_hash,
+                    b"test.module",
+                    b"module.ptx",
+                    80,
+                )
+                recipe = APICCudaCompileRecipe()
+                wp_context.runtime.core.wp_apic_register_cuda_module_artifacts(
+                    state,
+                    module_hash,
+                    valid_digest,
+                    b"",
+                    b"",
+                    APIC_CUDA_BINARY_PTX,
+                    APIC_CUDA_FALLBACK_SOURCE_UNAVAILABLE,
+                    ctypes.byref(recipe),
+                )
+
+                path = os.path.join(tmpdir, "binary_only.wrp")
+                result = wp_context.runtime.core.wp_apic_state_save(state, path.encode(), 80, None)
+                self.assertTrue(result, wp_context.runtime.get_error_string())
+                self.assertTrue(os.path.exists(path))
+            finally:
+                wp_context.runtime.core.wp_apic_destroy_state(state)
 
 
 # Must match APICSectionType in warp/native/apic_types.h.
 _APIC_SECTION_MEMORY = 2
 _APIC_SECTION_OPERATIONS = 3
-_APIC_FORMAT_VERSION = 16
+_APIC_FORMAT_VERSION = 17
 
 # These layouts mirror the packed structs in warp/native/apic_types.h. "<"
 # selects little-endian standard sizes without implicit alignment; "4s", "i",
@@ -510,7 +600,7 @@ def test_save_single_kernel(test, device):
 
 
 def test_load_rejects_legacy_overflowed_launch_shape(test, device):
-    """Reject ambiguous signed launch extents on every active axis in a version 15 WRP file."""
+    """Reject a previous APIC format before interpreting its launch shapes."""
     a = wp.ones((1, 1), dtype=float, device=device)
     b = wp.zeros((1, 1), dtype=float, device=device)
 
@@ -526,17 +616,17 @@ def test_load_rejects_legacy_overflowed_launch_shape(test, device):
             _replace_first_apic_kernel_shape(wrp_path, 2**31, axis)
 
             with test.subTest(axis=axis):
-                _set_apic_file_version(wrp_path, 15)
+                _set_apic_file_version(wrp_path, _APIC_FORMAT_VERSION - 1)
                 _assert_apic_load_rejected(
                     test,
                     wrp_path,
                     device,
-                    r"operation stream failed validation",
+                    r"Unsupported WRP version",
                 )
 
 
 def test_load_accepts_current_oversized_no_tid_launch_shape(test, device):
-    """Accept version 16 oversized extents when the kernel does not use ``wp.tid()``."""
+    """Accept current-format oversized extents when the kernel does not use ``wp.tid()``."""
     wp.load_module(device=device)
     with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
         wp.launch(no_tid_kernel, dim=2**31 + 1, device=device)
