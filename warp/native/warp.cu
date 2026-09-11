@@ -4619,6 +4619,110 @@ bool check_nvjitlink_result(nvJitLinkHandle handle, nvJitLinkResult result, cons
 }
 #endif
 
+// Append every NVRTC option shared by Warp's normal module compiler and APIC's
+// portable source-recompile path. Keep path-specific options (include paths,
+// precompiled headers, link inputs, and compile-time tracing) in the callers.
+// In particular, CUDA-version workarounds belong here so a source-recompiled
+// APIC module cannot silently drift from the module used during capture.
+static void append_common_nvrtc_compile_options(
+    std::vector<const char*>& options,
+    bool use_ptx,
+    int arch,
+    bool debug,
+    int optimization_level,
+    bool verify_fp,
+    bool fast_math,
+    bool fuse_fp,
+    bool lineinfo
+)
+{
+    options.push_back("--std=c++17");
+
+#if CUDA_VERSION >= 12080 && CUDA_VERSION < 13000
+    // CUDA 12 miscompiles optimized CUBIN texture sampling when texture handles
+    // vary across lanes on sm_90 and newer targets. CUDA 12.8 is covered as a
+    // precaution because it is not exercised in CI.
+    const bool is_affected_texture_cubin_target = arch >= 90;
+#else
+    // CUDA 13 CUBIN has not reproduced the miscompile on any target tested so far.
+    const bool is_affected_texture_cubin_target = false;
+#endif
+
+#if CUDA_VERSION >= 12080 && CUDA_VERSION < 12090
+    // Precaution, untested: CUDA 12.8 is not expected to honor optimization
+    // levels here, so even level 0 may trigger the miscompile.
+    const bool optimizations_may_trigger_texture_bug = true;
+#else
+    const bool optimizations_may_trigger_texture_bug = optimization_level > 0;
+#endif
+
+    if (!use_ptx && is_affected_texture_cubin_target && optimizations_may_trigger_texture_bug)
+        options.push_back("--define-macro=WP_WORKAROUND_CUDA_TEXTURE_CUBIN");
+
+    // CUDA 12.9+ supports --Ofast-compile, which works inversely to normal -O
+    // optimization levels.
+#if CUDA_VERSION >= 12090
+    switch (optimization_level) {
+    case 0:
+#if CUDA_VERSION >= 13010
+        // CUDA 13.1+ corrupts process-wide NVRTC compiler state after a
+        // --Ofast-compile=max build. Later builds can then emit invalid parameter
+        // addressing, so use the next-fastest setting until NVIDIA fixes NVRTC.
+        options.push_back("--Ofast-compile=mid");
+#else
+        options.push_back("--Ofast-compile=max");
+#endif
+        break;
+    case 1:
+        options.push_back("--Ofast-compile=mid");
+        break;
+    case 2:
+        options.push_back("--Ofast-compile=min");
+        break;
+    default:
+        options.push_back("--Ofast-compile=0");
+        break;  // 3 and up
+    }
+#endif
+
+    if (debug) {
+        options.push_back("--define-macro=_DEBUG");
+        options.push_back("--generate-line-info");
+#ifndef _WIN32
+        options.push_back("--device-debug");  // -G
+#endif
+    } else {
+        options.push_back("--define-macro=NDEBUG");
+
+        if (lineinfo)
+            options.push_back("--generate-line-info");
+    }
+
+    if (verify_fp)
+        options.push_back("--define-macro=WP_VERIFY_FP");
+    else
+        options.push_back("--undefine-macro=WP_VERIFY_FP");
+
+#if WP_ENABLE_MATHDX
+    options.push_back("--define-macro=WP_ENABLE_MATHDX=1");
+#else
+    options.push_back("--define-macro=WP_ENABLE_MATHDX=0");
+#endif
+
+    if (fast_math)
+        options.push_back("--use_fast_math");
+
+    if (fuse_fp)
+        options.push_back("--fmad=true");
+    else
+        options.push_back("--fmad=false");
+
+    options.push_back("--device-as-default-execution-space");
+    options.push_back("--extra-device-vectorization");
+    options.push_back("--restrict");
+    options.push_back("--diag-suppress=177,550");  // "was declared but never referenced", "was set but never used"
+}
+
 size_t wp_cuda_compile_program(
     const char* cuda_src,
     const char* program_name,
@@ -4690,57 +4794,10 @@ size_t wp_cuda_compile_program(
     std::vector<const char*> opts;
     opts.push_back(arch_opt);
     opts.push_back(include_opt);
-    opts.push_back("--std=c++17");
-
-#if CUDA_VERSION >= 12080 && CUDA_VERSION < 13000
-    // CUDA 12 miscompiles optimized CUBIN texture sampling when texture handles
-    // vary across lanes on sm_90 and newer targets. CUDA 12.8 is covered as a
-    // precaution because it is not exercised in CI.
-    const bool is_affected_texture_cubin_target = arch >= 90;
-#else
-    // CUDA 13 CUBIN has not reproduced the miscompile on any target tested so far.
-    const bool is_affected_texture_cubin_target = false;
-#endif
-
-#if CUDA_VERSION >= 12080 && CUDA_VERSION < 12090
-    // Precaution, untested: CUDA 12.8 is not expected to honor optimization
-    // levels here, so even level 0 may trigger the miscompile.
-    const bool optimizations_may_trigger_texture_bug = true;
-#else
-    const bool optimizations_may_trigger_texture_bug = optimization_level > 0;
-#endif
-
-    if (!use_ptx && is_affected_texture_cubin_target && optimizations_may_trigger_texture_bug)
-        opts.push_back("--define-macro=WP_WORKAROUND_CUDA_TEXTURE_CUBIN");
-
-    // CUDA 12.9+ supports --Ofast-compile
-#if CUDA_VERSION >= 12090
-    // --Ofast-compile works inversely to normal -O optimization levels
-    switch (optimization_level) {
-    case 0:
-#if CUDA_VERSION >= 13010
-        // CUDA 13.1+ corrupts process-wide NVRTC compiler state after a
-        // --Ofast-compile=max build. Later builds can then emit invalid parameter
-        // addressing, so use the next-fastest setting until NVIDIA fixes NVRTC.
-        opts.push_back("--Ofast-compile=mid");
-#else
-        opts.push_back("--Ofast-compile=max");
-#endif
-        break;
-    case 1:
-        opts.push_back("--Ofast-compile=mid");
-        break;
-    case 2:
-        opts.push_back("--Ofast-compile=min");
-        break;
-    default:
-        opts.push_back("--Ofast-compile=0");
-        break;  // 3 and up
-    }
-#endif
 
     // Vector to store dynamically created option strings
     std::vector<std::string> stored_options;
+    stored_options.reserve(static_cast<size_t>(num_cuda_include_dirs) + 2);
 
     if (precompiled_headers) {
         // CUDA 12.8+ supports precompiled headers
@@ -4760,47 +4817,14 @@ size_t wp_cuda_compile_program(
 #endif
     }
 
-    if (debug) {
-        opts.push_back("--define-macro=_DEBUG");
-        opts.push_back("--generate-line-info");
-#ifndef _WIN32
-        opts.push_back("--device-debug");  // -G
-#endif
-    } else {
-        opts.push_back("--define-macro=NDEBUG");
-
-        if (lineinfo)
-            opts.push_back("--generate-line-info");
-    }
-
-    if (verify_fp)
-        opts.push_back("--define-macro=WP_VERIFY_FP");
-    else
-        opts.push_back("--undefine-macro=WP_VERIFY_FP");
-
-#if WP_ENABLE_MATHDX
-    opts.push_back("--define-macro=WP_ENABLE_MATHDX=1");
-#else
-    opts.push_back("--define-macro=WP_ENABLE_MATHDX=0");
-#endif
-
-    if (fast_math)
-        opts.push_back("--use_fast_math");
-
-    if (fuse_fp)
-        opts.push_back("--fmad=true");
-    else
-        opts.push_back("--fmad=false");
+    append_common_nvrtc_compile_options(
+        opts, use_ptx, arch, debug, optimization_level, verify_fp, fast_math, fuse_fp, lineinfo
+    );
 
     for (int i = 0; i < num_cuda_include_dirs; i++) {
         stored_options.push_back(std::string("--include-path=") + cuda_include_dirs[i]);
         opts.push_back(stored_options.back().c_str());
     }
-
-    opts.push_back("--device-as-default-execution-space");
-    opts.push_back("--extra-device-vectorization");
-    opts.push_back("--restrict");
-    opts.push_back("--diag-suppress=177,550");  // "was declared but never referenced", "was set but never used"
 
     if (num_ltoirs > 0) {
         opts.push_back("-dlto");
