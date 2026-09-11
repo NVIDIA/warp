@@ -205,6 +205,8 @@ set(WARP_CPP_SOURCES
     warp/native/scan.cpp
     warp/native/apic.cpp
     warp/native/alloc_tracker.cpp
+    warp/native/cpu_block_runtime.cpp
+    warp/native/cpu_fiber.cpp
     warp/native/crt.cpp
     warp/native/error.cpp
     warp/native/cuda_util.cpp

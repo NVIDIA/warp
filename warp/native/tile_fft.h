@@ -314,8 +314,14 @@ inline CUDA_CALLABLE void tile_fft_entry(Fwd fun_forward, int shared_bytes, int 
 {
     if constexpr (wp_is_null_func<Fwd>::value) {
 #if !defined(__CUDA_ARCH__)
-        // CPU sequential — block_dim==1 makes Xinout.data row-major contiguous.
-        tile_fft_cpu_impl<DirectionSign, Complex>(batch, Ept, Xinout.data);
+        // Select the sequential or cooperative CPU path at compile time.
+        if constexpr (WP_TILE_BLOCK_DIM == 1) {
+            tile_fft_cpu_impl<DirectionSign, Complex>(batch, Ept, Xinout.data);
+        } else {
+            // Register tiles are distributed across CPU fibers, so scatter to
+            // one shared buffer and use the cooperative butterfly path.
+            tile_fft_gpu_impl<DirectionSign, Complex>(batch, Ept, shared_bytes, Xinout);
+        }
 #else
         // GPU cooperative on a shared-memory scratch.
         tile_fft_gpu_impl<DirectionSign, Complex>(batch, Ept, shared_bytes, Xinout);

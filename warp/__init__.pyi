@@ -3587,10 +3587,14 @@ def tile_from_thread(
     ``thread_idx``, and it must satisfy ``0 <= thread_idx < wp.block_dim()``. The
     resulting tile's data type is the type of ``value``.
 
-    On CPU the effective block width is ``1``, so the tile is always filled with the
-    calling invocation's own ``value`` and ``thread_idx`` is ignored. In particular
-    the common ``thread_idx=wp.block_dim() - 1`` idiom selects thread ``0`` on CPU;
-    see :ref:`CPU Tile Semantics <cpu_tile_semantics>` for the portability rules.
+    On CPU the effective block width is ``1`` unless
+    ``wp.config.enable_cpu_blocks`` is enabled. When enabled, the requested block
+    width is honored and this function broadcasts from the selected CPU lane.
+
+    On a partial CPU block, ``thread_idx`` must identify an active lane. If the
+    selected lane is inactive, no producer executes and the result is undefined.
+    See :ref:`CPU Tile Semantics <cpu_tile_semantics>` for definitions of partial
+    CPU blocks and active lanes.
 
     Args:
         shape: Shape of the output tile. Must be a compile-time constant.
@@ -3653,7 +3657,12 @@ def tile_from_thread(
 
     Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
     ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument for usage
-    details and an example."""
+    details and an example.
+
+    On a partial CPU block, ``thread_idx`` must identify an active lane. If the
+    selected lane is inactive, no producer executes and the result is undefined.
+    See :ref:`CPU Tile Semantics <cpu_tile_semantics>` for definitions of partial
+    CPU blocks and active lanes."""
     ...
 
 @over
@@ -5291,6 +5300,12 @@ def tile_reduce(op: Callable, a: Tile[Scalar, tuple[int, ...]], axis: int32 | in
 
     Returns:
         A tile with the same shape as the input tile less the axis dimension and the same data type as the input tile.
+
+    On a partial CPU block, a slice with no active values returns the operation's identity for
+    ``wp.add``, ``wp.mul``, ``wp.min``, and ``wp.max``. Other operators have no declared
+    identity, so an empty slice triggers an assertion instead of returning an arbitrary value.
+    See :ref:`CPU Tile Semantics <cpu_tile_semantics>` for definitions of partial
+    CPU blocks and active lanes.
 
     Example:
 

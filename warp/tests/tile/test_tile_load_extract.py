@@ -92,6 +92,13 @@ class TestTileLoadExtract(unittest.TestCase):
 
 add_function_test(
     TestTileLoadExtract,
+    "test_tile_extract_2d_cpu_blocks",
+    test_tile_extract(tile_extract_2d_kernel, 2),
+    devices=["cpu"],
+    enable_cpu_blocks=True,
+)
+add_function_test(
+    TestTileLoadExtract,
     "test_tile_extract_1d",
     test_tile_extract(tile_extract_1d_kernel, 1),
     devices=devices,

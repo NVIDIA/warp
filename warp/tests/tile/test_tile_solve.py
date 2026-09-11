@@ -694,6 +694,27 @@ add_function_test(
     check_output=False,
 )
 
+cpu_block_tests = (
+    ("test_tile_solve_forward_substitution", test_tile_solve_forward_substitution),
+    ("test_tile_solve_back_substitution", test_tile_solve_back_substitution),
+    ("test_tile_solve_forward_substitution_multiple_rhs", test_tile_solve_forward_substitution_multiple_rhs),
+    ("test_tile_solve_back_substitution_multiple_rhs", test_tile_solve_back_substitution_multiple_rhs),
+    ("test_tile_solve_lower_backward", test_tile_solve_lower_backward),
+    ("test_tile_solve_lower_backward_transposed", test_tile_solve_lower_backward_transposed),
+    ("test_tile_solve_lower_backward_multiple_rhs", test_tile_solve_lower_backward_multiple_rhs),
+    ("test_tile_solve_lower_backward_multiple_rhs_colmajor", test_tile_solve_lower_backward_multiple_rhs_colmajor),
+    ("test_tile_solve_lower_backward_multiple_rhs_float32", test_tile_solve_lower_backward_multiple_rhs_float32),
+)
+for name, func in cpu_block_tests:
+    add_function_test(
+        TestTileSolve,
+        f"{name}_cpu_blocks",
+        func,
+        devices=["cpu"] if wp.is_cpu_available() else [],
+        check_output=False,
+        enable_cpu_blocks=True,
+    )
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2, failfast=True)

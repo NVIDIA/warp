@@ -1000,7 +1000,6 @@ def test_ffi_jax_kernel_launch_dims_custom(test, device):
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
 def test_ffi_jax_kernel_block_dim_tile(test, device):
     jax = _import_jax()
-    test.assertTrue(device.is_cuda)
 
     thread_count = 256
     for block_dim in (JAX_TILE_BLOCK_DIM, 2 * JAX_TILE_BLOCK_DIM):
@@ -1817,7 +1816,7 @@ def test_ffi_jax_kernel_block_dim_autodiff(test, device):
     input_data = np.arange(thread_count, dtype=np.float32)
 
     with jax.default_device(wp.device_to_jax(device)):
-        for block_dim in (64, 128):
+        for block_dim in (None, 64, 128):
             with test.subTest(block_dim=block_dim):
                 wrapper = wp.jax_kernel(
                     block_dim_scale_kernel,
@@ -1831,7 +1830,10 @@ def test_ffi_jax_kernel_block_dim_autodiff(test, device):
                 gradient = jax.grad(lambda x, wrapper=wrapper: jnp.sum(wrapper(x)[0]))(values)
                 jax.block_until_ready((output, gradient))
 
-                multiplier = 1.0 if device.is_cpu else float(block_dim)
+                if block_dim is None:
+                    multiplier = 1.0 if device.is_cpu else 256.0
+                else:
+                    multiplier = float(block_dim) if device.is_cuda or wp.config.enable_cpu_blocks else 1.0
                 np.testing.assert_allclose(np.asarray(output), input_data * multiplier)
                 np.testing.assert_allclose(
                     np.asarray(gradient),
@@ -2935,7 +2937,7 @@ class TestJax(unittest.TestCase):
 
     @unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
     def test_ffi_module_preload_all_devices_block_dim(self):
-        """Keep CPU preloads at one thread and pass the configured block width to CUDA."""
+        """Resolve preload block dimensions consistently for CPU and CUDA."""
         from warp._src.jax import ffi as ffi_module  # noqa: PLC0415
 
         jax_cpu = object()
@@ -2966,6 +2968,27 @@ class TestJax(unittest.TestCase):
         self.assertEqual(
             module.load_calls,
             [(warp_cpu, 1), (warp_cuda, JAX_TILE_BLOCK_DIM)],
+        )
+
+        module = _RecordingFfiModule()
+        with (
+            mock.patch.object(ffi_module, "_get_jax", return_value=fake_jax),
+            mock.patch.object(
+                ffi_module.wp,
+                "device_from_jax",
+                side_effect=warp_devices_by_jax_device.__getitem__,
+            ),
+            mock.patch.object(wp.config, "enable_cpu_blocks", True),
+        ):
+            ffi_module._preload_ffi_module(
+                module,
+                wp.JaxModulePreloadMode.ALL_DEVICES,
+                block_dim=JAX_TILE_BLOCK_DIM,
+            )
+
+        self.assertEqual(
+            module.load_calls,
+            [(warp_cpu, JAX_TILE_BLOCK_DIM), (warp_cuda, JAX_TILE_BLOCK_DIM)],
         )
 
     @unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
@@ -3151,6 +3174,25 @@ else:
                     device_check=_check_jax_device,
                 )
 
+            add_function_test(
+                TestJax,
+                test_ffi_jax_kernel_block_dim_tile.__name__,
+                test_ffi_jax_kernel_block_dim_tile,
+                devices=jax_candidate_devices,
+                device_check=_check_jax_device,
+                enable_cpu_blocks=True,
+            )
+
+            if jax_cpu_candidate_devices:
+                add_function_test(
+                    TestJax,
+                    f"{test_ffi_jax_kernel_block_dim_autodiff.__name__}_cpu_blocks",
+                    test_ffi_jax_kernel_block_dim_autodiff,
+                    devices=jax_cpu_candidate_devices,
+                    device_check=_check_jax_device,
+                    enable_cpu_blocks=True,
+                )
+
             for vmap_method in ["broadcast_all", "sequential"]:
                 add_function_test(
                     TestJax,
@@ -3205,7 +3247,6 @@ else:
             test_ffi_jax_callable_graph_cache,
             test_ffi_jax_callable_graph_replay_skips_module_load,
             test_ffi_jax_cuda_requires_cuda_support,
-            test_ffi_jax_kernel_block_dim_tile,
             test_ffi_callback,
         )
         for test_func in cuda_only_jax_tests:

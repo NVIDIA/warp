@@ -6,7 +6,7 @@
 Setting ``enable_mathdx_solver=False`` at module scope routes
 ``tile_cholesky`` and ``tile_cholesky_inplace`` (and after Stage 4, the
 Cholesky adjoint) through the cooperative scalar implementation in
-``tile_cholesky.h`` on GPU (or the CPU sequential branch on CPU),
+``tile_cholesky.h`` on GPU and cooperative CPU blocks,
 exercising the path that runs whenever Warp is built without libmathdx or
 when a user disables the option per-module.
 
@@ -294,7 +294,7 @@ class TestTileCholeskyNoMathDx(unittest.TestCase):
 
 _devices = get_test_devices()
 
-for name, func in [
+cholesky_tests = [
     ("test_cholesky_lower", test_cholesky_lower),
     ("test_cholesky_lower_inplace", test_cholesky_lower_inplace),
     ("test_cholesky_upper", test_cholesky_upper),
@@ -303,8 +303,22 @@ for name, func in [
     ("test_cholesky_upper_backward", test_cholesky_upper_backward),
     ("test_cholesky_lower_backward_n32", test_cholesky_lower_backward_n32),
     ("test_cholesky_lower_block_dim_1", test_cholesky_lower_block_dim_1),
-]:
+]
+
+for name, func in cholesky_tests:
     add_function_test(TestTileCholeskyNoMathDx, name, func, devices=_devices, check_output=False)
+
+for name, func in cholesky_tests:
+    if name.endswith("block_dim_1"):
+        continue
+    add_function_test(
+        TestTileCholeskyNoMathDx,
+        f"{name}_cpu_blocks",
+        func,
+        devices=["cpu"] if wp.is_cpu_available() else [],
+        check_output=False,
+        enable_cpu_blocks=True,
+    )
 
 
 if __name__ == "__main__":

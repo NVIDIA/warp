@@ -375,7 +375,9 @@ CUDA_CALLABLE inline bvh_query_thread_block_t tile_bvh_query_ray(uint64_t id, co
 
 #else
 
-// CPU implementation: falls back to single-threaded query, returns index only in first element
+// Each CPU fiber advances an identical private query, but only the register
+// slot owned by logical lane 0 reports a result. This prevents untile() users
+// from observing one externally visible hit per fiber.
 template <int Length> inline auto tile_bvh_query_next_impl(bvh_query_thread_block_t& query)
 {
     // On CPU, bvh_query_thread_block_t is aliased to bvh_query_t and is shared by the AABB
@@ -389,18 +391,15 @@ template <int Length> inline auto tile_bvh_query_next_impl(bvh_query_thread_bloc
     auto result = tile_register<int, Length>();
     using ResultLayout = typename decltype(result)::Layout;
     for (int i = 0; i < ResultLayout::NumRegs; ++i) {
-        result.data[i] = (i == 0) ? index : -1;
+        const int linear = ResultLayout::linear_from_register(i);
+        result.data[i] = (linear == 0) ? index : -1;
     }
     return result;
 }
 
-// Wrapper - on CPU this needs an explicit block_dim parameter since WP_TILE_BLOCK_DIM is not defined
-// However, for consistency we'll use a default value
 inline auto tile_bvh_query_next(bvh_query_thread_block_t& query)
 {
-    // On CPU, just return a single element tile with the query result
-    // Using Length=1 since we don't have block_dim available
-    return tile_bvh_query_next_impl<1>(query);
+    return tile_bvh_query_next_impl<WP_TILE_BLOCK_DIM>(query);
 }
 
 inline bool tile_query_valid(const bvh_query_thread_block_t& query) { return query.last_query_valid; }

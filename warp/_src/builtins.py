@@ -3407,10 +3407,14 @@ add_builtin(
     ``thread_idx``, and it must satisfy ``0 <= thread_idx < wp.block_dim()``. The
     resulting tile's data type is the type of ``value``.
 
-    On CPU the effective block width is ``1``, so the tile is always filled with the
-    calling invocation's own ``value`` and ``thread_idx`` is ignored. In particular
-    the common ``thread_idx=wp.block_dim() - 1`` idiom selects thread ``0`` on CPU;
-    see :ref:`CPU Tile Semantics <cpu_tile_semantics>` for the portability rules.
+    On CPU the effective block width is ``1`` unless
+    ``wp.config.enable_cpu_blocks`` is enabled. When enabled, the requested block
+    width is honored and this function broadcasts from the selected CPU lane.
+
+    On a partial CPU block, ``thread_idx`` must identify an active lane. If the
+    selected lane is inactive, no producer executes and the result is undefined.
+    See :ref:`CPU Tile Semantics <cpu_tile_semantics>` for definitions of partial
+    CPU blocks and active lanes.
 
     Args:
         shape: Shape of the output tile. Must be a compile-time constant.
@@ -3477,7 +3481,12 @@ add_builtin(
 
     Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
     ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument for usage
-    details and an example.""",
+    details and an example.
+
+    On a partial CPU block, ``thread_idx`` must identify an active lane. If the
+    selected lane is inactive, no producer executes and the result is undefined.
+    See :ref:`CPU Tile Semantics <cpu_tile_semantics>` for definitions of partial
+    CPU blocks and active lanes.""",
     group="Tile Primitives",
     export=False,
 )
@@ -7453,10 +7462,62 @@ def tile_reduce_axis_value_func(arg_types, arg_values):
     return tile(dtype=a.dtype, shape=new_shape)
 
 
+def tile_reduce_axis_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
+    op = arg_values["op"]
+    tile_arg = arg_values["a"]
+    axis_var = arg_values["axis"]
+    if not hasattr(axis_var, "constant") or axis_var.constant is None:
+        raise ValueError("tile_reduce() axis must be a compile-time constant")
+
+    dtype = tile_arg.type.dtype
+    op_name = op.native_func if op.module is None else None
+    has_identity = op_name in ("add", "mul", "min", "max")
+
+    if op_name == "mul":
+        identity_value = 1
+    elif op_name == "min":
+        if dtype in float_types:
+            identity_value = math.inf
+        else:
+            identity_value = {
+                int8: 127,
+                uint8: 255,
+                int16: 32767,
+                uint16: 65535,
+                int32: 2147483647,
+                uint32: 4294967295,
+                int64: 9223372036854775807,
+                uint64: 18446744073709551615,
+            }[dtype]
+    elif op_name == "max":
+        if dtype in float_types:
+            identity_value = -math.inf
+        else:
+            identity_value = {
+                int8: -128,
+                uint8: 0,
+                int16: -32768,
+                uint16: 0,
+                int32: -2147483648,
+                uint32: 0,
+                int64: -9223372036854775808,
+                uint64: 0,
+            }[dtype]
+    else:
+        # Addition and unknown custom operations use zero as the transported
+        # value. Native code rejects an empty slice for custom operators.
+        identity_value = 0
+
+    identity = Var(None, type=dtype, constant=dtype(identity_value))
+    identity_is_valid = Var(None, type=bool, constant=has_identity)
+    return ((op, tile_arg, axis_var, identity, identity_is_valid), ())
+
+
 add_builtin(
     "tile_reduce",
     input_types={"op": Callable, "a": tile(dtype=Scalar, shape=tuple[int, ...]), "axis": int},
     value_func=tile_reduce_axis_value_func,
+    dispatch_func=tile_reduce_axis_dispatch_func,
     native_func="tile_reduce_axis",
     doc="""Apply a custom reduction operator across a tile.
 
@@ -7469,6 +7530,12 @@ add_builtin(
 
     Returns:
         A tile with the same shape as the input tile less the axis dimension and the same data type as the input tile.
+
+    On a partial CPU block, a slice with no active values returns the operation's identity for
+    ``wp.add``, ``wp.mul``, ``wp.min``, and ``wp.max``. Other operators have no declared
+    identity, so an empty slice triggers an assertion instead of returning an arbitrary value.
+    See :ref:`CPU Tile Semantics <cpu_tile_semantics>` for definitions of partial
+    CPU blocks and active lanes.
 
     Example:
 
@@ -17405,15 +17472,36 @@ def tile_fft_generic_lto_dispatch_func(
             # across batches inside `tile_fft_gpu_impl`.
             dtype_size = 2 * (4 if precision == 5 else 8)
             shared_memory_bytes = size * dtype_size
-        else:
-            # CPU path: non-power-of-two sizes use an O(n^2) DFT with fixed
-            # stack buffers capped at WP_FFT_CPU_MAX_DFT_SIZE (4096).
+        elif num_threads == 1:
+            # The sequential CPU path supports a direct-DFT fallback for
+            # non-power-of-two transforms.
             if (size & (size - 1)) != 0 and size > 4096:
                 raise ValueError(
                     f"{func_name}() on CPU with a non-power-of-two FFT size is limited to "
                     f"4096 elements, got {size}. Use a power-of-two size for larger transforms."
                 )
             shared_memory_bytes = 0
+        else:
+            # Cooperative CPU fibers use the same scalar butterfly path and
+            # shared scratch constraints as a GPU build without libmathdx.
+            if size <= 0 or (size & (size - 1)) != 0:
+                raise ValueError(
+                    f"{func_name}() on CPU with block_dim={num_threads} (>1) requires a "
+                    f"power-of-two FFT size, got {size}. Use block_dim=1 for arbitrary sizes "
+                    f"up to 4096."
+                )
+            if size % num_threads != 0:
+                raise ValueError(
+                    f"{func_name}() on CPU requires fft_size to be divisible by block_dim "
+                    f"(got fft_size={size}, block_dim={num_threads})."
+                )
+            if size // num_threads < 1:
+                raise ValueError(
+                    f"{func_name}() on CPU requires block_dim <= fft_size "
+                    f"(got fft_size={size}, block_dim={num_threads})."
+                )
+            dtype_size = 2 * (4 if precision == 5 else 8)
+            shared_memory_bytes = size * dtype_size
 
         lto_placeholder = "/* scalar */ 0"
         return (

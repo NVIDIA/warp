@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+#include "../native/cpu_block_runtime.h"
 #include "../native/crt.h"
 #include "../version.h"
 #include <clang/Basic/DiagnosticOptions.h>
@@ -761,6 +762,22 @@ static llvm::orc::LLJIT* jit_legacy = nullptr;
 // every successfully loaded module remains reachable for lookup and unloading.
 static std::mutex jit_mutex;
 
+// JIT-compiled cooperative kernels execute against the CPU block runtime in
+// the core Warp library. Python installs this table after loading both shared
+// libraries and before loading any CPU object files.
+static wp_cpu_block_runtime_api cpu_block_runtime = {};
+
+WP_API int wp_llvm_set_cpu_block_runtime(const wp_cpu_block_runtime_api* api)
+{
+    if (!api || !api->get_thread_idx || !api->get_active_count || !api->get_first_active_lane || !api->tile_sync
+        || !api->run_block)
+        return 0;
+
+    std::lock_guard<std::mutex> lock(jit_mutex);
+    cpu_block_runtime = *api;
+    return 1;
+}
+
 // Return the JIT instance for the given linker mode, creating it if needed.
 // The caller must hold jit_mutex.
 static llvm::orc::LLJIT* get_or_create_jit(bool use_legacy_linker)
@@ -927,6 +944,11 @@ WP_API int wp_load_obj(const char* object_file, const char* module_name, bool us
 
     std::lock_guard<std::mutex> lock(jit_mutex);
 
+    if (!cpu_block_runtime.run_block) {
+        std::cerr << "The Warp CPU block runtime has not been bound" << std::endl;
+        return -1;
+    }
+
     auto* jit = get_or_create_jit(use_legacy_linker);
     if (!jit)
         return -1;
@@ -950,11 +972,13 @@ WP_API int wp_load_obj(const char* object_file, const char* module_name, bool us
 #if LLVM_VERSION_MAJOR >= 18
 #define SYMBOL(sym) { jit->getExecutionSession().intern(MANGLING_PREFIX #sym), { llvm::orc::ExecutorAddr::fromPtr(&::sym), flags} }
 #define SYMBOL_T(sym, T) { jit->getExecutionSession().intern(MANGLING_PREFIX #sym), { llvm::orc::ExecutorAddr::fromPtr(static_cast<T>(&::sym)), flags} }
+#define SYMBOL_PTR(sym, ptr) { jit->getExecutionSession().intern(MANGLING_PREFIX #sym), { llvm::orc::ExecutorAddr::fromPtr(ptr), flags} }
 
         auto error = dll->define(llvm::orc::absoluteSymbols(llvm::orc::SymbolMap({
 #else
 #define SYMBOL(sym) { jit->getExecutionSession().intern(MANGLING_PREFIX #sym), { llvm::pointerToJITTargetAddress(&::sym), flags} }
 #define SYMBOL_T(sym, T) { jit->getExecutionSession().intern(MANGLING_PREFIX #sym), { llvm::pointerToJITTargetAddress(static_cast<T>(&::sym)), flags} }
+#define SYMBOL_PTR(sym, ptr) { jit->getExecutionSession().intern(MANGLING_PREFIX #sym), { llvm::pointerToJITTargetAddress(ptr), flags} }
 
         auto error = dll->define(llvm::orc::absoluteSymbols({
 #endif
@@ -982,8 +1006,13 @@ WP_API int wp_load_obj(const char* object_file, const char* module_name, bool us
                 SYMBOL(fmaf), SYMBOL_T(fma, double (*)(double, double, double)), SYMBOL(erff),
                 SYMBOL_T(erf, double (*)(double)), SYMBOL(erfcf), SYMBOL_T(erfc, double (*)(double)), SYMBOL(erfinvf),
                 SYMBOL_T(erfinv, double (*)(double)), SYMBOL(erfcinvf), SYMBOL_T(erfcinv, double (*)(double)),
-                SYMBOL(memcpy), SYMBOL(memset), SYMBOL(memmove), SYMBOL(_wp_assert), SYMBOL(_wp_isfinite),
-                SYMBOL(_wp_isnan), SYMBOL(_wp_isinf),
+                SYMBOL(memcpy), SYMBOL(memset), SYMBOL(memmove), SYMBOL(malloc), SYMBOL(calloc), SYMBOL(free),
+                SYMBOL(_wp_assert), SYMBOL(_wp_isfinite), SYMBOL(_wp_isnan), SYMBOL(_wp_isinf),
+                SYMBOL_PTR(wp_cpu_get_thread_idx, cpu_block_runtime.get_thread_idx),
+                SYMBOL_PTR(wp_cpu_get_active_count, cpu_block_runtime.get_active_count),
+                SYMBOL_PTR(wp_cpu_get_first_active_lane, cpu_block_runtime.get_first_active_lane),
+                SYMBOL_PTR(wp_cpu_tile_sync, cpu_block_runtime.tile_sync),
+                SYMBOL_PTR(wp_cpu_run_block, cpu_block_runtime.run_block),
 #if defined(_WIN64)
                 // For functions with large stack frames the compiler will emit a call to
                 // __chkstk() to linearly touch each memory page. This grows the stack without

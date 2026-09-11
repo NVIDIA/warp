@@ -1083,7 +1083,7 @@ def map(
     *inputs: Array[DType] | Any,
     out: Array[DType] | list[Array[DType]] | None = None,
     return_kernel: bool = False,
-    block_dim: int = 256,
+    block_dim: int | None = None,
     device: DeviceLike = None,
 ) -> Array[DType] | list[Array[DType]] | wp.Kernel:
     """Map a function over the elements of one or more arrays.
@@ -1161,7 +1161,7 @@ def map(
         *inputs: The input arrays or values to pass to the function.
         out: Optional output array(s) to store the result(s). If None, the output array(s) will be created automatically.
         return_kernel: If True, only return the generated kernel without performing the mapping operation.
-        block_dim: The number of threads per block for the kernel launch.
+        block_dim: The requested number of threads per block. Defaults to 1 on CPU and 256 on CUDA.
         device: The device on which to run the kernel.
 
     Returns:

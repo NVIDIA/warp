@@ -1,0 +1,346 @@
+// SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
+#include "cpu_block_runtime.h"
+#include "cpu_fiber.h"
+
+#include <cstdint>
+#include <cstring>
+#include <new>
+#include <vector>
+
+#if defined(_MSC_VER)
+#include <intrin.h>
+#endif
+
+namespace {
+
+constexpr int kMaxBlockDim = 1024;
+constexpr int kBitsetWords = kMaxBlockDim / 64;
+constexpr size_t kFiberStackSize = 1024 * 1024;
+
+struct lane_set {
+    uint64_t generation = 0;
+    uint64_t words[kBitsetWords] {};
+};
+
+struct block_context {
+    int block_dim = 1;
+    int active_count = 1;
+    int word_count = 1;
+    uint64_t frontier_generation = 0;
+    wp_fiber_t* main_fiber = nullptr;
+    wp_fiber_t** fibers = nullptr;
+    uint64_t* lane_generations = nullptr;
+    uint8_t* lane_finished = nullptr;
+    lane_set behind;
+    lane_set front;
+};
+
+thread_local block_context* g_block_context = nullptr;
+thread_local int g_lane = 0;
+thread_local const char* g_block_error = nullptr;
+
+int report_block_error(const char* message)
+{
+    g_block_error = message;
+    return 0;
+}
+
+inline void bit_set(lane_set& set, int lane) { set.words[lane >> 6] |= 1ull << (lane & 63); }
+
+inline void bit_clear(lane_set& set, int lane) { set.words[lane >> 6] &= ~(1ull << (lane & 63)); }
+
+inline int first_set_bit(uint64_t word)
+{
+#if defined(_MSC_VER) && defined(_M_X64)
+    unsigned long bit;
+    _BitScanForward64(&bit, word);
+    return static_cast<int>(bit);
+#elif defined(_MSC_VER)
+    unsigned long bit;
+    const uint32_t low = static_cast<uint32_t>(word);
+    if (low) {
+        _BitScanForward(&bit, low);
+        return static_cast<int>(bit);
+    }
+    _BitScanForward(&bit, static_cast<uint32_t>(word >> 32));
+    return static_cast<int>(bit + 32);
+#else
+    return __builtin_ctzll(word);
+#endif
+}
+
+int first_lane(const lane_set& set, int word_count)
+{
+    for (int word_index = 0; word_index < word_count; ++word_index) {
+        const uint64_t word = set.words[word_index];
+        if (word)
+            return word_index * 64 + first_set_bit(word);
+    }
+    return -1;
+}
+
+int first_lane(const lane_set& a, const lane_set& b, int word_count)
+{
+    for (int word_index = 0; word_index < word_count; ++word_index) {
+        const uint64_t word = a.words[word_index] | b.words[word_index];
+        if (word)
+            return word_index * 64 + first_set_bit(word);
+    }
+    return -1;
+}
+
+void move_to_front(block_context& context, int lane, uint64_t generation)
+{
+    if (generation > context.frontier_generation) {
+        context.behind = context.front;
+        context.front = lane_set {};
+        context.front.generation = generation;
+        context.frontier_generation = generation;
+    }
+
+    bit_clear(context.behind, lane);
+    bit_set(context.front, lane);
+}
+
+int finish_lane(block_context& context, int lane)
+{
+    context.lane_finished[lane] = 1;
+    bit_clear(context.behind, lane);
+    bit_clear(context.front, lane);
+    return first_lane(context.behind, context.front, context.word_count);
+}
+
+struct lane_task {
+    block_context* context;
+    int lane;
+    wp_cpu_block_lane_fn kernel_fn;
+    void* dim;
+    size_t block_id;
+    void* args;
+};
+
+struct worker_slot {
+    wp_fiber_t* fiber = nullptr;
+    lane_task* task = nullptr;
+    bool available = true;
+};
+
+struct worker_pool {
+    std::vector<worker_slot*> workers;
+
+    ~worker_pool()
+    {
+        for (worker_slot* worker : workers) {
+            wp_fiber_destroy(worker->fiber);
+            delete worker;
+        }
+    }
+};
+
+thread_local worker_pool g_worker_pool;
+
+void lane_entry(void* raw_worker)
+{
+    worker_slot* worker = static_cast<worker_slot*>(raw_worker);
+
+    for (;;) {
+        lane_task* task = worker->task;
+        if (!task)
+            return;
+
+        g_block_context = task->context;
+        g_lane = task->lane;
+        task->kernel_fn(task->dim, task->block_id, task->lane, task->args);
+
+        const int next = finish_lane(*task->context, task->lane);
+        worker->available = true;
+        wp_fiber_switch(next < 0 ? task->context->main_fiber : task->context->fibers[next]);
+    }
+}
+
+bool grow_worker_pool(size_t required_size)
+{
+    while (g_worker_pool.workers.size() < required_size) {
+        worker_slot* worker = new (std::nothrow) worker_slot;
+        if (!worker)
+            return false;
+
+        worker->fiber = wp_fiber_create(&lane_entry, worker, kFiberStackSize);
+        if (!worker->fiber) {
+            delete worker;
+            return false;
+        }
+
+        try {
+            g_worker_pool.workers.push_back(worker);
+        } catch (...) {
+            wp_fiber_destroy(worker->fiber);
+            delete worker;
+            return false;
+        }
+    }
+    return true;
+}
+
+}  // namespace
+
+extern "C" int wp_cpu_get_thread_idx() { return g_lane; }
+
+extern "C" int wp_cpu_get_active_count()
+{
+    block_context* context = g_block_context;
+    if (!context)
+        return 1;
+
+    int count = 0;
+    for (int lane = 0; lane < context->active_count; ++lane)
+        count += context->lane_finished[lane] == 0;
+    return count;
+}
+
+extern "C" int wp_cpu_get_first_active_lane()
+{
+    block_context* context = g_block_context;
+    if (!context)
+        return 0;
+
+    return first_lane(context->behind, context->front, context->word_count);
+}
+
+extern "C" void wp_cpu_tile_sync()
+{
+    block_context* context = g_block_context;
+    if (!context)
+        return;
+
+    const int lane = g_lane;
+    const uint64_t own_generation = ++context->lane_generations[lane];
+    move_to_front(*context, lane, own_generation);
+
+    while (true) {
+        // Compare the waiter's absolute generation before consulting the set
+        // that may already have rotated to represent a later generation.
+        if (context->frontier_generation > own_generation)
+            return;
+
+        const int laggard = first_lane(context->behind, context->word_count);
+        if (laggard < 0)
+            return;
+
+        wp_fiber_switch(context->fibers[laggard]);
+        g_block_context = context;
+        g_lane = lane;
+    }
+}
+
+extern "C" WP_API const char* wp_take_cpu_block_error()
+{
+    const char* error = g_block_error;
+    g_block_error = nullptr;
+    return error;
+}
+
+extern "C" WP_API const wp_cpu_block_runtime_api* wp_cpu_block_runtime_get_api()
+{
+    static const wp_cpu_block_runtime_api api = {
+        &wp_cpu_get_thread_idx, &wp_cpu_get_active_count, &wp_cpu_get_first_active_lane,
+        &wp_cpu_tile_sync,      &wp_cpu_run_block,
+    };
+    return &api;
+}
+
+extern "C" int wp_cpu_run_block(
+    int block_dim, int active_count, wp_cpu_block_lane_fn kernel_fn, void* dim, size_t block_id, void* args
+)
+{
+    if (!kernel_fn || block_dim < 1 || block_dim > kMaxBlockDim || active_count < 1 || active_count > block_dim) {
+        _wp_assert("Invalid Warp CPU block runtime dimensions", __FILE__, static_cast<unsigned int>(__LINE__));
+        return 0;
+    }
+
+    block_context* saved_context = g_block_context;
+    const int saved_lane = g_lane;
+
+    if (active_count == 1) {
+        g_block_context = nullptr;
+        g_lane = 0;
+        kernel_fn(dim, block_id, 0, args);
+        g_block_context = saved_context;
+        g_lane = saved_lane;
+        return 1;
+    }
+
+    block_context context = {};
+    context.block_dim = block_dim;
+    context.active_count = active_count;
+    context.word_count = (active_count + 63) / 64;
+    context.main_fiber = wp_fiber_active();
+    context.front.generation = 0;
+
+    if (!context.main_fiber) {
+        return report_block_error("Warp failed to initialize the main CPU fiber context");
+    }
+
+    if (!grow_worker_pool(static_cast<size_t>(active_count))) {
+        g_block_context = saved_context;
+        g_lane = saved_lane;
+        return report_block_error("Warp failed to allocate a reusable CPU block fiber with a 1 MiB usable stack");
+    }
+
+    std::vector<wp_fiber_t*> fibers;
+    std::vector<uint64_t> generations;
+    std::vector<uint8_t> finished;
+    std::vector<lane_task> tasks;
+    try {
+        fibers.resize(active_count);
+        generations.resize(active_count, 0);
+        finished.resize(active_count, 0);
+        tasks.resize(active_count);
+    } catch (...) {
+        g_block_context = saved_context;
+        g_lane = saved_lane;
+        return report_block_error("Warp failed to allocate CPU block scheduler state");
+    }
+    context.fibers = fibers.data();
+    context.lane_generations = generations.data();
+    context.lane_finished = finished.data();
+
+    for (int lane = 0; lane < active_count; ++lane)
+        bit_set(context.front, lane);
+
+    for (int lane = 0; lane < active_count; ++lane) {
+        if (!g_worker_pool.workers[lane]->available) {
+            _wp_assert("A reusable CPU block fiber is already active", __FILE__, static_cast<unsigned int>(__LINE__));
+            g_block_context = saved_context;
+            g_lane = saved_lane;
+            return 0;
+        }
+    }
+
+    for (int lane = 0; lane < active_count; ++lane) {
+        worker_slot* worker = g_worker_pool.workers[lane];
+        tasks[lane] = lane_task { &context, lane, kernel_fn, dim, block_id, args };
+        worker->task = &tasks[lane];
+        worker->available = false;
+        fibers[lane] = worker->fiber;
+    }
+
+    g_block_context = &context;
+    g_lane = 0;
+    wp_fiber_switch(fibers[0]);
+
+    for (int lane = 0; lane < active_count; ++lane) {
+        if (!g_worker_pool.workers[lane]->available) {
+            _wp_assert("A reusable CPU block fiber did not complete", __FILE__, static_cast<unsigned int>(__LINE__));
+            g_block_context = saved_context;
+            g_lane = saved_lane;
+            return 0;
+        }
+    }
+
+    g_block_context = saved_context;
+    g_lane = saved_lane;
+    return 1;
+}

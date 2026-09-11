@@ -7,7 +7,8 @@ This file mirrors the kernel definitions and test logic from test_tile_fft.py
 so that the no-MathDx variants compile as a separate Warp module. Setting
 ``enable_mathdx_fft=False`` at the module level routes ``tile_fft`` /
 ``tile_ifft`` and their adjoints through ``wp::tile_fft_entry``'s cooperative
-shared-memory branch on GPU (or the CPU sequential branch on CPU). This is
+shared-memory branch on GPU and cooperative CPU blocks, while one-lane CPU
+launches retain the sequential branch. This is
 the fallback path used when ``enable_mathdx_fft=False``, which is also the
 path selected when Warp is built without libmathdx.
 """
@@ -266,6 +267,90 @@ add_function_test(
     devices=test_devices,
     check_output=False,
 )
+
+cpu_block_fft_tests = (
+    (
+        "test_tile_fft_2d_vec2f_cpu_blocks",
+        functools.partial(
+            test_tile_fft,
+            wp_dtype=wp.vec2f,
+            kernel=tile_fft_kernel_vec2f,
+            data_shape=(FFT_SIZE_FP32, 2 * FFT_SIZE_FP32),
+        ),
+    ),
+    (
+        "test_tile_fft_2d_vec2d_cpu_blocks",
+        functools.partial(
+            test_tile_fft,
+            wp_dtype=wp.vec2d,
+            kernel=tile_fft_kernel_vec2d,
+            data_shape=(FFT_SIZE_FP64, 2 * FFT_SIZE_FP64),
+        ),
+    ),
+    (
+        "test_tile_ifft_2d_vec2f_cpu_blocks",
+        functools.partial(
+            test_tile_ifft,
+            wp_dtype=wp.vec2f,
+            kernel=tile_ifft_kernel_vec2f,
+            data_shape=(FFT_SIZE_FP32, 2 * FFT_SIZE_FP32),
+        ),
+    ),
+    (
+        "test_tile_ifft_2d_vec2d_cpu_blocks",
+        functools.partial(
+            test_tile_ifft,
+            wp_dtype=wp.vec2d,
+            kernel=tile_ifft_kernel_vec2d,
+            data_shape=(FFT_SIZE_FP64, 2 * FFT_SIZE_FP64),
+        ),
+    ),
+    (
+        "test_tile_fft_3d_vec2f_cpu_blocks",
+        functools.partial(
+            test_tile_fft,
+            wp_dtype=wp.vec2f,
+            kernel=tile_fft_3d_kernel_vec2f,
+            data_shape=(FFT_3D_DIM0, FFT_3D_DIM1, 2 * FFT_SIZE_FP32),
+        ),
+    ),
+    (
+        "test_tile_fft_3d_vec2d_cpu_blocks",
+        functools.partial(
+            test_tile_fft,
+            wp_dtype=wp.vec2d,
+            kernel=tile_fft_3d_kernel_vec2d,
+            data_shape=(FFT_3D_DIM0, FFT_3D_DIM1, 2 * FFT_SIZE_FP64),
+        ),
+    ),
+    (
+        "test_tile_ifft_3d_vec2f_cpu_blocks",
+        functools.partial(
+            test_tile_ifft,
+            wp_dtype=wp.vec2f,
+            kernel=tile_ifft_3d_kernel_vec2f,
+            data_shape=(FFT_3D_DIM0, FFT_3D_DIM1, 2 * FFT_SIZE_FP32),
+        ),
+    ),
+    (
+        "test_tile_ifft_3d_vec2d_cpu_blocks",
+        functools.partial(
+            test_tile_ifft,
+            wp_dtype=wp.vec2d,
+            kernel=tile_ifft_3d_kernel_vec2d,
+            data_shape=(FFT_3D_DIM0, FFT_3D_DIM1, 2 * FFT_SIZE_FP64),
+        ),
+    ),
+)
+for name, func in cpu_block_fft_tests:
+    add_function_test(
+        TestTileFFTNoMathDx,
+        name,
+        func,
+        devices=["cpu"] if wp.is_cpu_available() else [],
+        check_output=False,
+        enable_cpu_blocks=True,
+    )
 
 
 if __name__ == "__main__":

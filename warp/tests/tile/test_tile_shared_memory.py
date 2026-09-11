@@ -4,6 +4,8 @@
 import contextlib
 import io
 import re
+import subprocess
+import sys
 import unittest
 import warnings
 from unittest import mock
@@ -21,6 +23,41 @@ from warp.tests.unittest_utils import *
 # as static_query_kernel does, so they share one module and compile together. The shared memory message tests
 # cannot, because their tile size comes from device.max_shared_memory_per_block, which is only known once a
 # test is running.
+
+CPU_SHARED_ARENA_OVERSIZE = 65537
+
+
+@wp.kernel
+def tile_shared_mem_oversize_kernel(out: wp.array[float]):
+    tile = wp.tile_zeros(shape=CPU_SHARED_ARENA_OVERSIZE, dtype=float, storage="shared")
+    out[0] = tile[0]
+
+
+def _run_oversize_cpu_shared_memory():
+    out = wp.empty(1, dtype=float, device="cpu")
+    wp.launch_tiled(
+        tile_shared_mem_oversize_kernel,
+        dim=1,
+        outputs=[out],
+        block_dim=1,
+        device="cpu",
+    )
+
+
+def test_tile_shared_mem_cpu_limit(test, device):
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import warp.tests.tile.test_tile_shared_memory as m; m._run_oversize_cpu_shared_memory()",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    test.assertNotEqual(result.returncode, 0, "oversized CPU tile shared-memory allocation unexpectedly succeeded")
+    test.assertIn("exceeds the 256 KiB arena", result.stderr)
 
 
 # checks that we can configure shared memory to the expected size
@@ -404,7 +441,7 @@ def test_tile_shared_mem_deterministic_launch_message(test, device):
     test.assertNotIn("invalid argument", message)
 
 
-# checks that we can configure dynamic shared memory during graph capture
+# checks shared tile state during graph replay and CUDA dynamic shared memory configuration
 def test_tile_shared_mem_graph(test, device):
     DIM_M = 32
     DIM_N = 32
@@ -416,6 +453,10 @@ def test_tile_shared_mem_graph(test, device):
         a = wp.tile_ones(shape=(DIM_M, DIM_N), dtype=float, storage="shared")
         b = wp.tile_ones(shape=(DIM_M, DIM_N), dtype=float, storage="shared") * 2.0
 
+        # Every lane contributes to the same shared element, so replaying the
+        # graph correctly requires preserving the captured block dimension and
+        # synchronizing the lanes around the shared tile operation.
+        wp.tile_scatter_add(a, 0, 0, 1.0, True)
         c = a + b
         wp.tile_store(out, c)
 
@@ -430,18 +471,21 @@ def test_tile_shared_mem_graph(test, device):
     wp.capture_launch(capture.graph)
 
     # check output
-    assert_np_equal(out.numpy(), np.ones((DIM_M, DIM_N)) * 3.0)
+    expected = np.ones((DIM_M, DIM_N), dtype=np.float32) * 3.0
+    expected[0, 0] += BLOCK_DIM
+    assert_np_equal(out.numpy(), expected)
 
-    # check required shared memory
-    expected_forward_bytes = DIM_M * DIM_N * 4 * 2
-    expected_backward_bytes = expected_forward_bytes * 2
+    if wp.get_device(device).is_cuda:
+        # check required dynamic shared memory
+        expected_forward_bytes = DIM_M * DIM_N * 4 * 2
+        expected_backward_bytes = expected_forward_bytes * 2
 
-    # check shared memory for kernel on the device
-    module_exec = compute.module.load(device, BLOCK_DIM)
-    hooks = module_exec.get_kernel_hooks(compute)
+        # check shared memory for kernel on the device
+        module_exec = compute.module.load(device, BLOCK_DIM)
+        hooks = module_exec.get_kernel_hooks(compute)
 
-    assert hooks.forward_smem_bytes == expected_forward_bytes
-    assert hooks.backward_smem_bytes == expected_backward_bytes
+        assert hooks.forward_smem_bytes == expected_forward_bytes
+        assert hooks.backward_smem_bytes == expected_backward_bytes
 
 
 # checks that stack allocations work for user functions
@@ -1297,6 +1341,26 @@ class TestTileSharedMemory(unittest.TestCase):
 
 
 add_function_test(
+    TestTileSharedMemory,
+    "test_tile_shared_mem_cpu_limit",
+    test_tile_shared_mem_cpu_limit,
+    devices=["cpu"],
+)
+add_function_test(
+    TestTileSharedMemory,
+    "test_tile_register_from_shared_reassign_cpu_blocks",
+    test_tile_register_from_shared_reassign,
+    devices=["cpu"],
+    enable_cpu_blocks=True,
+)
+add_function_test(
+    TestTileSharedMemory,
+    "test_tile_scatter_masked_cross_thread_cpu_blocks",
+    test_tile_scatter_masked_cross_thread,
+    devices=["cpu"],
+    enable_cpu_blocks=True,
+)
+add_function_test(
     TestTileSharedMemory, "test_tile_shared_mem_size", test_tile_shared_mem_size, devices=devices, check_output=False
 )
 add_function_test(
@@ -1309,6 +1373,13 @@ add_function_test(
     devices=devices,
 )
 add_function_test(TestTileSharedMemory, "test_tile_shared_mem_graph", test_tile_shared_mem_graph, devices=devices)
+add_function_test(
+    TestTileSharedMemory,
+    "test_tile_shared_mem_graph_cpu_blocks",
+    test_tile_shared_mem_graph,
+    devices=["cpu"],
+    enable_cpu_blocks=True,
+)
 add_function_test(TestTileSharedMemory, "test_tile_shared_mem_func", test_tile_shared_mem_func, devices=devices)
 add_function_test(TestTileSharedMemory, "test_tile_shared_non_aligned", test_tile_shared_non_aligned, devices=devices)
 add_function_test(
@@ -1330,6 +1401,13 @@ add_function_test(TestTileSharedMemory, "test_tile_scatter_add_basic", test_tile
 add_function_test(
     TestTileSharedMemory, "test_tile_scatter_add_conflicting", test_tile_scatter_add_conflicting, devices=devices
 )
+add_function_test(
+    TestTileSharedMemory,
+    "test_tile_scatter_add_conflicting_cpu_blocks",
+    test_tile_scatter_add_conflicting,
+    devices=["cpu"],
+    enable_cpu_blocks=True,
+)
 add_function_test(TestTileSharedMemory, "test_tile_scatter_add_partial", test_tile_scatter_add_partial, devices=devices)
 add_function_test(TestTileSharedMemory, "test_tile_scatter_add_2d", test_tile_scatter_add_2d, devices=devices)
 add_function_test(
@@ -1343,6 +1421,13 @@ add_function_test(
     "test_tile_scatter_add_grad_conflicting",
     test_tile_scatter_add_grad_conflicting,
     devices=devices,
+)
+add_function_test(
+    TestTileSharedMemory,
+    "test_tile_scatter_add_grad_conflicting_cpu_blocks",
+    test_tile_scatter_add_grad_conflicting,
+    devices=["cpu"],
+    enable_cpu_blocks=True,
 )
 add_function_test(
     TestTileSharedMemory,

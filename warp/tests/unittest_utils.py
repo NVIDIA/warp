@@ -410,18 +410,24 @@ def run_test_in_subprocess(test: unittest.TestCase, timeout: int = 600) -> bool:
 
 
 # if check_output is True any output to stdout will be treated as an error
-def create_test_func(func, device, check_output, device_check=None, **kwargs):
+def create_test_func(func, device, check_output, device_check=None, enable_cpu_blocks=False, **kwargs):
     # pass args to func
     @functools.wraps(func)
     def test_func(self):
-        if device_check is not None:
-            device_check(self, device)
+        previous_enable_cpu_blocks = wp.config.enable_cpu_blocks
+        if enable_cpu_blocks:
+            wp.config.enable_cpu_blocks = True
+        try:
+            if device_check is not None:
+                device_check(self, device)
 
-        if check_output:
-            with CheckOutput(self):
+            if check_output:
+                with CheckOutput(self):
+                    func(self, device, **kwargs)
+            else:
                 func(self, device, **kwargs)
-        else:
-            func(self, device, **kwargs)
+        finally:
+            wp.config.enable_cpu_blocks = previous_enable_cpu_blocks
 
     return test_func
 

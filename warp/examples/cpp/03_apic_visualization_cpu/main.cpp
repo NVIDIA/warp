@@ -25,6 +25,7 @@
 #include <GLFW/glfw3.h>
 
 #include "apic.h"  // APIC graph loading and execution
+#include "cpu_block_runtime.h"
 #include "warp.h"  // Warp C API
 
 #include <cmath>
@@ -247,9 +248,11 @@ void update_vertices(float* vertices, const float* heights, int width, int heigh
 // Function pointers loaded from warp-clang shared library
 typedef int (*wp_load_obj_fn)(const char* object_file, const char* module_name, bool use_legacy_linker);
 typedef uint64_t (*wp_lookup_fn)(const char* dll_name, const char* function_name);
+typedef int (*wp_llvm_set_cpu_block_runtime_fn)(const wp_cpu_block_runtime_api* api);
 
 static wp_load_obj_fn g_wp_load_obj = nullptr;
 static wp_lookup_fn g_wp_lookup = nullptr;
+static wp_llvm_set_cpu_block_runtime_fn g_wp_llvm_set_cpu_block_runtime = nullptr;
 
 bool load_warp_clang()
 {
@@ -261,6 +264,8 @@ bool load_warp_clang()
     }
     g_wp_load_obj = (wp_load_obj_fn)GetProcAddress(lib, "wp_load_obj");
     g_wp_lookup = (wp_lookup_fn)GetProcAddress(lib, "wp_lookup");
+    g_wp_llvm_set_cpu_block_runtime
+        = (wp_llvm_set_cpu_block_runtime_fn)GetProcAddress(lib, "wp_llvm_set_cpu_block_runtime");
 #else
     const char* lib_name = "warp-clang.so";
 #ifdef __APPLE__
@@ -273,8 +278,10 @@ bool load_warp_clang()
     }
     g_wp_load_obj = (wp_load_obj_fn)dlsym(lib, "wp_load_obj");
     g_wp_lookup = (wp_lookup_fn)dlsym(lib, "wp_lookup");
+    g_wp_llvm_set_cpu_block_runtime = (wp_llvm_set_cpu_block_runtime_fn)dlsym(lib, "wp_llvm_set_cpu_block_runtime");
 #endif
-    return g_wp_load_obj && g_wp_lookup;
+    return g_wp_load_obj && g_wp_lookup && g_wp_llvm_set_cpu_block_runtime
+        && g_wp_llvm_set_cpu_block_runtime(wp_cpu_block_runtime_get_api());
 }
 
 bool load_cpu_modules(APICGraph* graph, const char* modules_dir)

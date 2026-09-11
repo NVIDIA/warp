@@ -1064,6 +1064,20 @@ class TestTileView(unittest.TestCase):
     pass
 
 
+add_function_test(
+    TestTileView,
+    "test_tile_view_cpu_blocks",
+    test_tile_view,
+    devices=["cpu"],
+    enable_cpu_blocks=True,
+)
+add_function_test(
+    TestTileView,
+    "test_tile_assign_2d_cpu_blocks",
+    test_tile_assign_2d,
+    devices=["cpu"],
+    enable_cpu_blocks=True,
+)
 add_function_test(TestTileView, "test_tile_view", test_tile_view, devices=devices)
 add_function_test(TestTileView, "test_tile_view_offset", test_tile_view_offset, devices=devices)
 add_function_test(TestTileView, "test_tile_assign_1d", test_tile_assign_1d, devices=devices)

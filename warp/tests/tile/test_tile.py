@@ -1393,6 +1393,43 @@ def test_tile_assign_mat_kernel(x: wp.array[float], y: wp.array[wp.mat33]):
     wp.tile_atomic_add(y, a, offset=(0,))
 
 
+@wp.kernel(module="unique")
+def test_tile_component_assign_then_store_kernel(vec_out: wp.array[wp.vec3], mat_out: wp.array[wp.mat33]):
+    i = wp.tid()
+
+    vec_tile = wp.tile_zeros(shape=(TILE_M,), dtype=wp.vec3)
+    mat_tile = wp.tile_zeros(shape=(TILE_M,), dtype=wp.mat33)
+
+    vec_tile[i][1] = 17.0 + float(i)
+    mat_tile[i][1, 1] = 17.0 + float(i)
+
+    wp.tile_store(vec_out, vec_tile)
+    wp.tile_store(mat_out, mat_tile)
+
+
+def test_tile_component_assign_then_store(test, device):
+    """Partial composite writes followed by a tile store preserve every lane."""
+    vec_out = wp.full(TILE_M, wp.vec3(-1.0, -1.0, -1.0), dtype=wp.vec3, device=device)
+    mat_out = wp.full(TILE_M, wp.mat33(-1.0), dtype=wp.mat33, device=device)
+
+    wp.launch(
+        test_tile_component_assign_then_store_kernel,
+        dim=TILE_M,
+        outputs=[vec_out, mat_out],
+        block_dim=TILE_M,
+        device=device,
+    )
+
+    lane_values = 17.0 + np.arange(TILE_M, dtype=np.float32)
+    expected_vec = np.zeros((TILE_M, 3), dtype=np.float32)
+    expected_vec[:, 1] = lane_values
+    expected_mat = np.zeros((TILE_M, 3, 3), dtype=np.float32)
+    expected_mat[:, 1, 1] = lane_values
+
+    assert_np_equal(vec_out.numpy(), expected_vec)
+    assert_np_equal(mat_out.numpy(), expected_mat)
+
+
 def test_tile_assign(test, device):
     x = wp.full(TILE_M, 2.0, dtype=float, device=device, requires_grad=True)
     y = wp.zeros(TILE_M, dtype=float, device=device, requires_grad=True)
@@ -1974,7 +2011,7 @@ def test_tile_rand(test, device):
 
     wp.launch_tiled(test_rand_kernel, dim=[M, N], inputs=[seed, x, y], block_dim=TILE_DIM, device=device)
 
-    if device.is_cuda:
+    if wp.get_device(device).is_cuda or wp.config.enable_cpu_blocks:
         x_true = np.array(
             [
                 [798497746, 1803297529, -955788638, 17806966],
@@ -2021,7 +2058,7 @@ def test_tile_rand(test, device):
 
     wp.launch_tiled(test_rand_range_kernel, dim=[M, N], inputs=[seed, x, y], block_dim=TILE_DIM, device=device)
 
-    if device.is_cuda:
+    if wp.get_device(device).is_cuda or wp.config.enable_cpu_blocks:
         x_true = np.array([[1, 4, 3, 1], [-2, -2, 1, 1], [1, -2, -2, -4], [3, 0, 3, -1]], dtype=int)
         y_true = np.array(
             [
@@ -3276,6 +3313,34 @@ add_function_test(TestTile, "test_tile_sum_launch", test_tile_sum_launch, device
 add_function_test(TestTile, "test_tile_extract", test_tile_extract, devices=devices)
 add_function_test(TestTile, "test_tile_extract_repeated", test_tile_extract_repeated, devices=devices)
 add_function_test(TestTile, "test_tile_assign", test_tile_assign, devices=devices)
+add_function_test(
+    TestTile,
+    "test_tile_untile_cpu_blocks",
+    test_tile_untile,
+    devices=["cpu"],
+    enable_cpu_blocks=True,
+)
+add_function_test(
+    TestTile,
+    "test_tile_extract_cpu_blocks",
+    test_tile_extract,
+    devices=["cpu"],
+    enable_cpu_blocks=True,
+)
+add_function_test(
+    TestTile,
+    "test_tile_assign_cpu_blocks",
+    test_tile_assign,
+    devices=["cpu"],
+    enable_cpu_blocks=True,
+)
+add_function_test(
+    TestTile,
+    "test_tile_component_assign_then_store",
+    test_tile_component_assign_then_store,
+    devices=devices,
+    enable_cpu_blocks=True,
+)
 add_function_test(TestTile, "test_tile_where", test_tile_where, devices=devices)
 add_function_test(TestTile, "test_tile_broadcast_add_1d", test_tile_broadcast_add_1d, devices=devices)
 add_function_test(TestTile, "test_tile_broadcast_add_2d", test_tile_broadcast_add_2d, devices=devices)
@@ -3295,7 +3360,13 @@ add_function_test(TestTile, "test_tile_reshape", test_tile_reshape, devices=devi
 add_function_test(TestTile, "test_tile_len", test_tile_len, devices=devices)
 add_function_test(TestTile, "test_tile_construction", test_tile_construction, devices=devices)
 add_function_test(TestTile, "test_tile_rand", test_tile_rand, devices=devices)
-add_function_test(TestTile, "test_tile_from_thread", test_tile_from_thread, devices=get_cuda_test_devices())
+add_function_test(
+    TestTile,
+    "test_tile_from_thread",
+    test_tile_from_thread,
+    devices=devices,
+    enable_cpu_blocks=True,
+)
 add_function_test(TestTile, "test_tile_mul_elementwise", test_tile_mul_elementwise, devices=devices)
 add_function_test(TestTile, "test_tile_mat_mul_scalar", test_tile_mat_mul_scalar, devices=devices)
 add_function_test(TestTile, "test_tile_scalar_mul_mat", test_tile_scalar_mul_mat, devices=devices)
@@ -3330,6 +3401,39 @@ add_function_test(TestTile, "test_tile_scalar_div_tile_vec", test_tile_scalar_di
 # add_function_test(TestTile, "test_tile_inplace", test_tile_inplace, devices=devices)
 # add_function_test(TestTile, "test_tile_astype", test_tile_astype, devices=devices)
 # add_function_test(TestTile, "test_tile_func_return", test_tile_func_return, devices=devices)
+
+cpu_block_equivalence_tests = (
+    ("test_tile_copy_1d", test_tile_copy_1d),
+    ("test_tile_copy_2d", test_tile_copy_2d),
+    ("test_tile_unary_map", test_tile_unary_map),
+    ("test_tile_binary_map", test_tile_binary_map),
+    ("test_tile_n_map", test_tile_n_map),
+    ("test_tile_transpose", test_tile_transpose),
+    ("test_tile_operators", test_tile_operators),
+    ("test_tile_map_custom_vec_variadic", test_tile_map_custom_vec_variadic),
+    ("test_tile_where", test_tile_where),
+    ("test_tile_broadcast_add_1d", test_tile_broadcast_add_1d),
+    ("test_tile_broadcast_add_4d", test_tile_broadcast_add_4d),
+    ("test_tile_broadcast_grad", test_tile_broadcast_grad),
+    ("test_tile_squeeze", test_tile_squeeze),
+    ("test_tile_reshape", test_tile_reshape),
+    ("test_tile_len", test_tile_len),
+    ("test_tile_construction", test_tile_construction),
+    ("test_tile_rand", test_tile_rand),
+    ("test_tile_mul_elementwise", test_tile_mul_elementwise),
+    ("test_tile_mat_mul_scalar", test_tile_mat_mul_scalar),
+    ("test_tile_vec_mul_tile_scalar", test_tile_vec_mul_tile_scalar),
+    ("test_tile_div_elementwise", test_tile_div_elementwise),
+    ("test_tile_scalar_div_tile_vec", test_tile_scalar_div_tile_vec),
+)
+for name, func in cpu_block_equivalence_tests:
+    add_function_test(
+        TestTile,
+        f"{name}_cpu_blocks",
+        func,
+        devices=["cpu"] if wp.is_cpu_available() else [],
+        enable_cpu_blocks=True,
+    )
 
 
 if __name__ == "__main__":

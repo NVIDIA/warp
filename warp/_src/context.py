@@ -6451,6 +6451,13 @@ class Runtime:
             self.llvm.wp_get_host_cpu_features.argtypes = []
             self.llvm.wp_get_host_cpu_features.restype = ctypes.c_char_p
 
+            self.core.wp_cpu_block_runtime_get_api.argtypes = []
+            self.core.wp_cpu_block_runtime_get_api.restype = ctypes.c_void_p
+            self.llvm.wp_llvm_set_cpu_block_runtime.argtypes = [ctypes.c_void_p]
+            self.llvm.wp_llvm_set_cpu_block_runtime.restype = ctypes.c_int
+            if not self.llvm.wp_llvm_set_cpu_block_runtime(self.core.wp_cpu_block_runtime_get_api()):
+                raise RuntimeError("Failed to bind the Warp CPU block runtime to warp-clang")
+
             # The clang_sanitizer property calls wp_warp_clang_sanitizer on demand.
             self.llvm.wp_warp_clang_sanitizer.argtypes = []
             self.llvm.wp_warp_clang_sanitizer.restype = ctypes.c_char_p
@@ -6468,6 +6475,8 @@ class Runtime:
         try:
             self.core.wp_get_error_string.argtypes = []
             self.core.wp_get_error_string.restype = ctypes.c_char_p
+            self.core.wp_take_cpu_block_error.argtypes = []
+            self.core.wp_take_cpu_block_error.restype = ctypes.c_char_p
             self.core.wp_set_error_output_enabled.argtypes = [ctypes.c_int]
             self.core.wp_set_error_output_enabled.restype = None
             self.core.wp_is_error_output_enabled.argtypes = []
@@ -10758,6 +10767,21 @@ def invoke(kernel, hooks, params: Sequence[Any], adjoint: bool):
         hooks.backward(ctypes.byref(params[0]), ctypes.byref(args), ctypes.byref(adj_args))
 
 
+def invoke_cpu_blocks(kernel, hooks, params: Sequence[Any], adjoint: bool):
+    """Invoke a cooperative CPU kernel and surface recoverable dispatcher errors."""
+    args, adj_args = _build_cpu_args_structs(kernel, hooks, params, adjoint)
+    runtime.core.wp_take_cpu_block_error()
+    if adjoint:
+        hooks.backward(ctypes.byref(params[0]), ctypes.byref(args), ctypes.byref(adj_args))
+    else:
+        hooks.forward(ctypes.byref(params[0]), ctypes.byref(args))
+
+    block_error = runtime.core.wp_take_cpu_block_error()
+    if block_error:
+        message = block_error.decode("utf-8", errors="replace")
+        raise RuntimeError(f"Error launching kernel '{kernel.key}' on device 'cpu': {message}")
+
+
 def _build_cuda_kernel_params(params: Sequence[Any]):
     kernel_args = [ctypes.c_void_p(ctypes.addressof(x)) for x in params]
     return (ctypes.c_void_p * len(kernel_args))(*kernel_args)
@@ -10803,11 +10827,13 @@ class Launch:
         params_addr: Sequence[ctypes.c_void_p] | None = None,
         bounds: LaunchBounds | None = None,
         max_blocks: int = 0,
-        block_dim: int = 256,
+        block_dim: int | None = None,
         adjoint: bool = False,
         fwd_args: list[Any] | None = None,
         adj_args: list[Any] | None = None,
     ):
+        block_dim = _resolve_launch_block_dim(device, block_dim)
+
         # retain the module executable so it doesn't get unloaded
         self.module_exec = kernel.module.load(device, block_dim)
         if not self.module_exec:
@@ -11120,6 +11146,8 @@ class Launch:
                         "Use wp.launch() to create a capturable launch command."
                     )
                 self._apic_record_cpu()
+            elif self.block_dim > 1:
+                invoke_cpu_blocks(self.kernel, self.hooks, self.params, self.adjoint)
             else:
                 invoke(self.kernel, self.hooks, self.params, self.adjoint)
         else:
@@ -11330,6 +11358,42 @@ def _build_kernel_launch_bounds(
     return _build_launch_bounds_from_tuple(dim, kernel.adj.kernel_dim, scalar_tid_extent_limit)
 
 
+class _ResolvedBlockDim(int):
+    """Mark an already-resolved block dimension passed through internal replay paths."""
+
+
+def _resolve_launch_block_dim(device: Device, block_dim: int | None) -> int:
+    """Resolve a requested launch block dimension for ``device``.
+
+    CPU block dimensions greater than one are opt-in and capped at the CUDA
+    architectural maximum used by the cooperative scheduler. CUDA resolution
+    retains its existing default and non-positive-value behavior.
+    """
+    if isinstance(block_dim, _ResolvedBlockDim):
+        return int(block_dim)
+
+    default = 1 if device.is_cpu else 256
+    if block_dim is None or block_dim <= 0:
+        return default
+
+    if not device.is_cpu:
+        return block_dim
+
+    if block_dim > 1024:
+        raise ValueError(f"block_dim must be at most 1024 on CPU, got {block_dim}")
+
+    if block_dim == 1 or not warp.config.enable_cpu_blocks:
+        return 1
+
+    if getattr(runtime, "clang_sanitizer", "") == "address":
+        raise NotImplementedError(
+            "Cooperative CPU fibers do not support AddressSanitizer builds. "
+            "Use block_dim=1 or rebuild Warp without AddressSanitizer."
+        )
+
+    return block_dim
+
+
 def launch(
     kernel,
     dim: int | Sequence[int],
@@ -11343,7 +11407,7 @@ def launch(
     record_tape: bool = True,
     record_cmd: bool = False,
     max_blocks: int = 0,
-    block_dim: int = 256,
+    block_dim: int | None = None,
 ):
     """Launch a Warp kernel on the target device
 
@@ -11382,7 +11446,11 @@ def launch(
           kernel that opted into the lean launch path with
           ``@wp.kernel(grid_stride=False)`` and ``max_blocks > 0`` raises
           a ``RuntimeError``.
-        block_dim: The number of threads per block (always 1 for "cpu" devices).
+        block_dim: The requested number of threads per block. An omitted or
+          non-positive value defaults to 1 on CPU and 256 on CUDA. Explicit CPU
+          values from 2 through 1024 are honored when
+          :attr:`warp.config.enable_cpu_blocks` is ``True`` and otherwise
+          resolve to 1.
     """
 
     init()
@@ -11393,10 +11461,7 @@ def launch(
     else:
         device = runtime.get_device(device)
 
-    if device == "cpu":
-        block_dim = 1
-    elif block_dim <= 0:
-        block_dim = 256
+    block_dim = _resolve_launch_block_dim(device, block_dim)
 
     # check function is a Kernel
     if not isinstance(kernel, Kernel):
@@ -11601,6 +11666,8 @@ def launch(
                     ctypes.byref(adj_args_struct) if adj_args_struct is not None else None,
                     ctypes.byref(apic_info),
                 )
+            elif block_dim > 1:
+                invoke_cpu_blocks(kernel, hooks, params, adjoint)
             else:
                 invoke(kernel, hooks, params, adjoint)
 
@@ -11774,6 +11841,11 @@ def launch_tiled(*args, **kwargs):
             i, j = wp.tid()
 
             ...
+
+    The required ``block_dim`` argument is appended to the launch dimensions.
+    On CPU, values from 2 through 1024 are effective only when
+    :attr:`warp.config.enable_cpu_blocks` is ``True``; otherwise they resolve
+    to 1. ``None`` and non-positive values select the per-device default.
     """
 
     # promote dim to a list in case it was passed as a scalar or tuple
@@ -11785,17 +11857,15 @@ def launch_tiled(*args, **kwargs):
             "Launch block dimension 'block_dim' argument should be passed via. keyword args for wp.launch_tiled()"
         )
 
-    if "device" in kwargs:
-        device = kwargs["device"]
+    stream = kwargs.get("stream", args[7] if len(args) > 7 else None)
+    if stream is not None:
+        device = stream.device
     else:
-        # todo: this doesn't consider the case where device
-        # is passed through positional args
-        device = None
+        device = runtime.get_device(kwargs.get("device", args[6] if len(args) > 6 else None))
 
-    # force the block_dim to 1 if running on "cpu"
-    device = runtime.get_device(device)
-    if device.is_cpu:
-        kwargs["block_dim"] = 1
+    # Resolve before adding the trailing lane dimension. In particular, a
+    # non-positive CPU request must append 1 rather than making the launch empty.
+    kwargs["block_dim"] = _resolve_launch_block_dim(device, kwargs["block_dim"])
 
     dim = _canonicalize_dim(kwargs["dim"])
 
@@ -12189,7 +12259,10 @@ def force_load(
             load on all devices.
         modules: List of Warp :class:`Module` objects to load. If ``None``,
             load all imported modules that contain Warp code.
-        block_dim: The number of threads per block (always 1 for ``"cpu"`` devices).
+        block_dim: The requested number of threads per block. CPU values follow
+            :attr:`warp.config.enable_cpu_blocks` and the CPU launch limit. If
+            omitted, reuse variants already loaded on each device; otherwise,
+            use the CPU launch default or the CUDA module default.
         max_workers: The maximum number of parallel threads to use for loading modules. ``0`` means serial loading.
             If ``None``, ```warp.config.load_module_max_workers`` determines the default.
     """
@@ -12226,9 +12299,16 @@ def force_load(
         # Filtering by context keeps this device-scoped (a CPU block_dim never
         # leaks into a CUDA preload).
         if block_dim is not None:
-            return [block_dim]
+            return [_resolve_launch_block_dim(d, block_dim)]
         loaded = [dim for (ctx, dim) in loaded_variants[m] if ctx == d.context]
-        return loaded or [None]
+        if loaded:
+            return loaded
+
+        # A fresh CPU preload must match an ordinary launch, whose omitted
+        # block_dim defaults to one. CUDA retains the module-level default;
+        # compile-only clients use it to select a non-default specialization.
+        default = None if d.is_cpu else m.options["block_dim"]
+        return [_resolve_launch_block_dim(d, default)]
 
     # Always restore the caller's CUDA context, even if module loading fails.
     try:
@@ -12354,7 +12434,10 @@ def load_module(
             ``warp.optim``, this also loads every registered ``warp.optim.*``
             submodule containing ``@wp.kernel``, ``@wp.func``, or ``@wp.struct``
             definitions.
-        block_dim: The number of threads per block (always 1 for ``"cpu"`` devices).
+        block_dim: The requested number of threads per block. CPU values follow
+            :attr:`warp.config.enable_cpu_blocks` and the CPU launch limit. If
+            omitted, reuse variants already loaded on each device; otherwise,
+            use the CPU launch default or the CUDA module default.
         max_workers: The maximum number of parallel threads to use for loading modules. ``0`` means serial loading.
             If ``None``, ```warp.config.load_module_max_workers`` determines the default.
 

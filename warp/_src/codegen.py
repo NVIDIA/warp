@@ -6705,16 +6705,6 @@ cpu_module_header = """
 
 #define builtin_block_dim() wp::block_dim()
 
-// Inline control for @wp.func(inline=...). __forceinline implies inline on MSVC; elsewhere
-// always_inline needs the inline specifier spelled out alongside it.
-#if defined(_MSC_VER)
-#define WP_NOINLINE __declspec(noinline)
-#define WP_FORCEINLINE __forceinline
-#else
-#define WP_NOINLINE __attribute__((noinline))
-#define WP_FORCEINLINE inline __attribute__((always_inline))
-#endif
-
 """
 
 cuda_module_header = """
@@ -6759,13 +6749,6 @@ cuda_module_header = """
 #else
 #define WP_ENABLE_SMEM_SPILLING()
 #endif
-
-// Inline control for @wp.func(inline=...). Warp compiles device code with WP_NO_CRT, so
-// host_defines.h, which normally defines __noinline__ and __forceinline__, is not included.
-// Spell them out as it does: always_inline needs the inline specifier alongside it, or the
-// compiler is free to ignore the attribute and emit an out-of-line call.
-#define WP_NOINLINE __attribute__((noinline))
-#define WP_FORCEINLINE inline __attribute__((always_inline))
 
 """
 
@@ -6915,7 +6898,7 @@ cuda_reverse_function_template = """
 """
 
 # Fills the {inline_attr} slot in the four function templates above. Both macros are defined
-# in both module headers, so a hinted @wp.func stays valid for CPU and CUDA alike.
+# by builtin.h, so a hinted @wp.func stays valid for CPU and CUDA alike.
 _INLINE_ATTRS = {"noinline": "WP_NOINLINE ", "forceinline": "WP_FORCEINLINE "}
 
 # Lean (grid_stride=False) templates: 3D grid with a per-thread early return, no grid-stride loop.
@@ -7058,6 +7041,54 @@ WP_API void {name}_cpu_forward(
 
 """
 
+cpu_block_module_template_forward = """
+
+struct {name}_cpu_block_payload_forward
+{{
+    wp_args_{name}* args;
+    wp::tile_shared_storage_t* tile_mem;
+    size_t block_first;
+}};
+
+static void {name}_cpu_block_thunk_forward(
+    void* dim_ptr, size_t, int lane, void* payload_ptr)
+{{
+    wp::launch_bounds_t<{launch_ndim}>* dim = (wp::launch_bounds_t<{launch_ndim}>*)dim_ptr;
+    {name}_cpu_block_payload_forward* payload = ({name}_cpu_block_payload_forward*)payload_ptr;
+    wp::tile_shared_storage_t::bind(payload->tile_mem);
+    const size_t task_index = payload->block_first + (size_t)lane;
+    {name}_cpu_kernel_forward(*dim, task_index, payload->args);
+}}
+
+extern "C" {{
+
+WP_API void {name}_cpu_forward(
+    wp::launch_bounds_t<{launch_ndim}> *dim,
+    wp_args_{name} *_wp_args)
+{{
+    constexpr size_t block_dim = (size_t)WP_TILE_BLOCK_DIM;
+    const size_t total = dim->size;
+    size_t block_first = 0;
+    size_t block_id = 0;
+
+    while (block_first < total)
+    {{
+        const size_t remaining = total - block_first;
+        const int active_count = (int)(remaining < block_dim ? remaining : block_dim);
+        wp::tile_shared_storage_t tile_mem;
+        {name}_cpu_block_payload_forward payload = {{ _wp_args, &tile_mem, block_first }};
+        if (!wp_cpu_run_block(
+                WP_TILE_BLOCK_DIM, active_count, &{name}_cpu_block_thunk_forward, dim, block_id, &payload))
+            return;
+        block_first += (size_t)active_count;
+        ++block_id;
+    }}
+}}
+
+}} // extern C
+
+"""
+
 cpu_module_template_backward = """
 
 extern "C" {{
@@ -7075,6 +7106,56 @@ WP_API void {name}_cpu_backward(
     for (size_t task_index = 0; task_index < dim->size; ++task_index)
     {{
         {name}_cpu_kernel_backward(*dim, task_index, _wp_args, _wp_adj_args);
+    }}
+}}
+
+}} // extern C
+
+"""
+
+cpu_block_module_template_backward = """
+
+struct {name}_cpu_block_payload_backward
+{{
+    wp_args_{name}* args;
+    wp_args_{name}* adj_args;
+    wp::tile_shared_storage_t* tile_mem;
+    size_t block_first;
+}};
+
+static void {name}_cpu_block_thunk_backward(
+    void* dim_ptr, size_t, int lane, void* payload_ptr)
+{{
+    wp::launch_bounds_t<{launch_ndim}>* dim = (wp::launch_bounds_t<{launch_ndim}>*)dim_ptr;
+    {name}_cpu_block_payload_backward* payload = ({name}_cpu_block_payload_backward*)payload_ptr;
+    wp::tile_shared_storage_t::bind(payload->tile_mem);
+    const size_t task_index = payload->block_first + (size_t)lane;
+    {name}_cpu_kernel_backward(*dim, task_index, payload->args, payload->adj_args);
+}}
+
+extern "C" {{
+
+WP_API void {name}_cpu_backward(
+    wp::launch_bounds_t<{launch_ndim}> *dim,
+    wp_args_{name} *_wp_args,
+    wp_args_{name} *_wp_adj_args)
+{{
+    constexpr size_t block_dim = (size_t)WP_TILE_BLOCK_DIM;
+    const size_t total = dim->size;
+    size_t block_first = 0;
+    size_t block_id = 0;
+
+    while (block_first < total)
+    {{
+        const size_t remaining = total - block_first;
+        const int active_count = (int)(remaining < block_dim ? remaining : block_dim);
+        wp::tile_shared_storage_t tile_mem;
+        {name}_cpu_block_payload_backward payload = {{ _wp_args, _wp_adj_args, &tile_mem, block_first }};
+        if (!wp_cpu_run_block(
+                WP_TILE_BLOCK_DIM, active_count, &{name}_cpu_block_thunk_backward, dim, block_id, &payload))
+            return;
+        block_first += (size_t)active_count;
+        ++block_id;
     }}
 }}
 
@@ -8009,10 +8090,14 @@ def codegen_module(kernel, device, options):
         "launch_ndim": kernel.adj.kernel_dim,
     }
 
-    template += cpu_module_template_forward
-
-    if options["enable_backward"]:
-        template += cpu_module_template_backward
+    if options["block_dim"] == 1:
+        template += cpu_module_template_forward
+        if options["enable_backward"]:
+            template += cpu_module_template_backward
+    else:
+        template += cpu_block_module_template_forward
+        if options["enable_backward"]:
+            template += cpu_block_module_template_backward
 
     s = template.format(**template_fmt_args)
     return s
