@@ -384,7 +384,7 @@ we recommend using PyTorch version 2.3.0+, which has improvements that address t
 Using PyTorch Custom Operators (PyTorch >= 2.4.0)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-PyTorch 2.4+ introduced `custom operators <https://pytorch.org/tutorials/advanced/python_custom_ops.html#python-custom-ops-tutorial>`_ to replace
+PyTorch 2.4+ introduced `custom operators <https://docs.pytorch.org/tutorials/advanced/python_custom_ops.html>`_ to replace
 PyTorch autograd functions. These treat arbitrary Python functions (including Warp calls) as opaque callables, which prevents
 :func:`torch.compile()` from tracing into them. This means that forward PyTorch graph evaluations that include Warp kernel launches can be safely accelerated with
 :func:`torch.compile()`. We can re-write the previous example using custom operators as follows:

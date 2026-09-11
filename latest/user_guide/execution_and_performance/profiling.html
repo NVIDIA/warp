@@ -612,7 +612,7 @@ The color can be customized using the <code class="docutils literal notranslate"
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">nvtx</span>
 </pre></div>
 </div>
-<p>The package allows you to insert custom NVTX ranges into your code (<code class="docutils literal notranslate"><span class="pre">nvtx.annotate</span></code>) and customize the <a class="reference external" href="https://github.com/NVIDIA/NVTX/blob/release-v3/python/nvtx/colors.py">colors</a>.</p>
+<p>The package allows you to insert custom NVTX ranges into your code (<code class="docutils literal notranslate"><span class="pre">nvtx.annotate</span></code>) and customize the <a class="reference external" href="https://nvidia.github.io/NVTX/python/reference.html#nvtx.annotate">colors</a>.</p>
 <p>Here is what the demo code looks like in Nsight Systems (click to enlarge the image):</p>
 <a class="reference internal image-reference" href="../../_images/profiling_nosync.png"><img alt="../../_images/profiling_nosync.png" class="align-center" src="../../_images/profiling_nosync.png" style="width: 95%;" />
 </a>
@@ -925,7 +925,7 @@ e.g. <code class="docutils literal notranslate"><span class="pre">wp.set_module_
 This allows Nsight Compute to correlate assembly (SASS) with high-level Python or CUDA-C code at the expense of
 larger files in the kernel cache (approximately double the file size without line information).</p>
 <p>Elevated application privileges may be required to access the necessary hardware counters to profile kernels
-with Nsight Compute (<a class="reference external" href="https://developer.nvidia.com/ERR_NVGPUCTRPERM">Instructions</a>)</p>
+with Nsight Compute (<a class="reference external" href="https://developer.nvidia.com/nvidia-development-tools-solutions-err_nvgpuctrperm-permission-issue-performance-counters">Instructions</a>)</p>
 <p>Nsight Compute can be run as an interactive profiler and as a command-line profiler. The command-line profiler can store
 reports in a file that can be opened later with the UI executable (<code class="docutils literal notranslate"><span class="pre">ncu-ui</span></code>).</p>
 <section id="source-code-correlation-options">

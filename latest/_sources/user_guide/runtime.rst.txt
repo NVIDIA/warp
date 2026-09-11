@@ -1288,7 +1288,7 @@ Users should use type constructors such as ``float()``, ``int()``, :class:`wp.in
 to the correct type.
 
 The multiplication expression ``a * b`` can also be used to perform matrix multiplication
-between `matrix types <Matrices>`_.
+between :ref:`matrix types <mat>`.
 
 Mapping Functions
 #################
@@ -2721,7 +2721,7 @@ NanoVDB grids may also contain embedded *blind* data arrays; those can be access
 :func:`feature_array() <warp.Volume.feature_array>` function.
 
 
-.. seealso:: `Built-Ins <../language_reference/builtins.html#volumes>`__ for the volume functions available in kernels.
+.. seealso:: :ref:`Built-Ins <builtins-volumes>` for the volume functions available in kernels.
 
 
 Textures
@@ -2773,7 +2773,7 @@ Supported data types include ``wp.uint8``, ``wp.uint16``, ``wp.uint32``, ``wp.in
 normalized to the [0, 1] range when sampled; signed integer textures are normalized to [-1, 1];
 float types are returned as-is.
 
-.. seealso:: `Reference <../language_reference/builtins.html#textures>`__ for the texture sampling functions available in kernels.
+.. seealso:: :ref:`Reference <builtins-textures>` for the texture sampling functions available in kernels.
 
 
 Bounding Volume Hierarchies (BVH)

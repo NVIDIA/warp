@@ -1836,7 +1836,7 @@ non-functional.</p></li>
 <h3>Changed<a class="headerlink" href="#id48" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Extend <code class="docutils literal notranslate"><span class="pre">wp.tile_map()</span></code> to support user-defined functions with up to 8 input tiles, beyond the previous unary and binary
-operations (<a class="reference external" href="https://github.com/NVIDIA/warp/pull/1077">GH-1077</a>).</p></li>
+operations (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1077">GH-1077</a>).</p></li>
 <li><p>Improve <code class="docutils literal notranslate"><span class="pre">wp.map()</span></code> performance by caching kernels for repeated calls with the same function and similar input arguments
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1108">GH-1108</a>).</p></li>
 <li><p>Support converting between vector, matrix, and scalar types in <code class="docutils literal notranslate"><span class="pre">array.view()</span></code>
@@ -1971,7 +1971,7 @@ Version mismatches trigger warnings but allow execution to continue
 <ul class="simple">
 <li><p>Remove <code class="docutils literal notranslate"><span class="pre">warp.sim</span></code> module and related examples. This module has been superseded by the Newton library, a separate
 package with a new API. For migration guidance, see the
-<a class="reference external" href="https://newton-physics.github.io/newton/migration.html">Newton migration guide</a> and the original GitHub announcement
+<a class="reference external" href="https://newton-physics.github.io/newton/latest/migration.html">Newton migration guide</a> and the original GitHub announcement
 (<a class="reference external" href="https://github.com/NVIDIA/warp/discussions/735">GH-735</a>).</p></li>
 <li><p>Remove support for passing lists, tuples, and other non-Warp array arguments when calling built-ins at the Python
 scope (deprecated since v0.11.0). Use explicit type constructors instead (e.g., <code class="docutils literal notranslate"><span class="pre">wp.normalize([1.0,</span> <span class="pre">2.0,</span> <span class="pre">3.0])</span></code>
@@ -2316,7 +2316,7 @@ Use the <code class="docutils literal notranslate"><span class="pre">function</s
 <ul class="simple">
 <li><p>Deprecate the <code class="docutils literal notranslate"><span class="pre">warp.sim</span></code> module (planned for removal in v1.10). It will be superseded by the upcoming Newton library,
 a separate package with a new API. Migrating will require code changes; a future guide will be provided
-(<a class="reference external" href="https://newton-physics.github.io/newton/migration.html">current draft</a>). See the GitHub announcement for details
+(<a class="reference external" href="https://newton-physics.github.io/newton/latest/migration.html">current draft</a>). See the GitHub announcement for details
 (<a class="reference external" href="https://github.com/NVIDIA/warp/discussions/735">GH-735</a>).</p></li>
 <li><p>Deprecate the <code class="docutils literal notranslate"><span class="pre">wp.matrix(pos,</span> <span class="pre">quat,</span> <span class="pre">scale)</span></code> built-in function. Use <code class="docutils literal notranslate"><span class="pre">wp.transform_compose()</span></code> instead
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/576">GH-576</a>).</p></li>
@@ -2480,7 +2480,7 @@ with literal values and an explicit <code class="docutils literal notranslate"><
 <h3>Added<a class="headerlink" href="#id86" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Support JAX foreign function interface (FFI)
-(<a class="reference external" href="https://nvidia.github.io/warp/stable/user_guide/interoperability/jax.html#generic-ffi-callbacks">docs</a>,
+(<a class="reference external" href="https://nvidia.github.io/warp/v1.13/user_guide/interoperability_jax.html#generic-ffi-callbacks">docs</a>,
 <a class="reference external" href="https://github.com/NVIDIA/warp/issues/511">GH-511</a>).</p></li>
 <li><p>Support Python/SASS correlation in Nsight Compute reports by emitting <code class="docutils literal notranslate"><span class="pre">#line</span></code> directives in CUDA-C code.
 This setting is controlled by <code class="docutils literal notranslate"><span class="pre">wp.config.line_directives</span></code> and is <code class="docutils literal notranslate"><span class="pre">True</span></code> by default.
@@ -2644,7 +2644,7 @@ e.g.: <code class="docutils literal notranslate"><span class="pre">wp.tile_load(
 <li><p>Add an implicit tile synchronization whenever a shared memory tile’s data is reinitialized (e.g. in dynamic loops).
 This could result in lower performance.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">wp.Bvh</span></code> constructor now supports various construction algorithms via the <code class="docutils literal notranslate"><span class="pre">constructor</span></code> argument, including
-<code class="docutils literal notranslate"><span class="pre">&quot;sah&quot;</span></code> (Surface Area Heuristics), <code class="docutils literal notranslate"><span class="pre">&quot;median&quot;</span></code>, and <code class="docutils literal notranslate"><span class="pre">&quot;lbvh&quot;</span></code> (<a class="reference external" href="https://nvidia.github.io/warp/stable/api_reference/_generated/warp.Bvh.html#warp.Bvh.__init__">docs</a>)</p></li>
+<code class="docutils literal notranslate"><span class="pre">&quot;sah&quot;</span></code> (Surface Area Heuristics), <code class="docutils literal notranslate"><span class="pre">&quot;median&quot;</span></code>, and <code class="docutils literal notranslate"><span class="pre">&quot;lbvh&quot;</span></code> (<a class="reference external" href="https://nvidia.github.io/warp/stable/api_reference/_generated/warp.Bvh.html#warp.Bvh">docs</a>)</p></li>
 <li><p>Improve the query efficiency of <code class="docutils literal notranslate"><span class="pre">wp.Bvh</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.Mesh</span></code>.</p></li>
 <li><p>Improve memory consumption, compilation and runtime performance when using in-place vector/matrix assignments in
 kernels that have <code class="docutils literal notranslate"><span class="pre">enable_backward</span></code> set to <code class="docutils literal notranslate"><span class="pre">False</span></code> (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/332">GH-332</a>).</p></li>
@@ -2871,7 +2871,7 @@ in high-priority streams over pending work in low-priority streams when possible
 <li><p>Fix a bug in which Python docstrings would be created as local function variables in generated code.</p></li>
 <li><p>Fix a bug with autograd array access validation in functions from different modules.</p></li>
 <li><p>Fix a rare crash during error reporting on some systems due to glibc mismatches.</p></li>
-<li><p>Handle <code class="docutils literal notranslate"><span class="pre">--num_tiles</span> <span class="pre">1</span></code> in <code class="docutils literal notranslate"><span class="pre">example_render_opengl.py</span></code> (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/306">GH-306</a>).</p></li>
+<li><p>Handle <code class="docutils literal notranslate"><span class="pre">--num_tiles</span> <span class="pre">1</span></code> in <code class="docutils literal notranslate"><span class="pre">example_render_opengl.py</span></code> (<a class="reference external" href="https://github.com/NVIDIA/warp/pull/306">GH-306</a>).</p></li>
 <li><p>Fix the computation of body contact forces in <code class="docutils literal notranslate"><span class="pre">FeatherstoneIntegrator</span></code> when bodies and particles collide.</p></li>
 <li><p>Fix bug in <code class="docutils literal notranslate"><span class="pre">FeatherstoneIntegrator</span></code> where <code class="docutils literal notranslate"><span class="pre">eval_rigid_jacobian</span></code> could give incorrect results or reach an infinite
 loop when the body and joint indices were not in the same order. Added <code class="docutils literal notranslate"><span class="pre">Model.joint_ancestor</span></code> to fix the indexing
@@ -2900,7 +2900,7 @@ from a joint to its parent joint in the articulation.</p></li>
 <li><p>Bug fixes</p>
 <ul>
 <li><p>Fix an aliasing issue with zero-copy array initialization from NumPy introduced in Warp 1.3.0.</p></li>
-<li><p>Fix <code class="docutils literal notranslate"><span class="pre">wp.Volume.load_from_numpy()</span></code> behavior when <code class="docutils literal notranslate"><span class="pre">bg_value</span></code> is a sequence of values (<a class="reference external" href="https://github.com/NVIDIA/warp/pull/312">GH-312</a>).</p></li>
+<li><p>Fix <code class="docutils literal notranslate"><span class="pre">wp.Volume.load_from_numpy()</span></code> behavior when <code class="docutils literal notranslate"><span class="pre">bg_value</span></code> is a sequence of values (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/312">GH-312</a>).</p></li>
 </ul>
 </li>
 </ul>
@@ -3425,7 +3425,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 <li><p>Fix for incorrect lower-case when setting USD stage “up_axis” in examples</p></li>
 <li><p>Fix for incompatible gradient types when wrapping PyTorch tensor as a vector or matrix type</p></li>
 <li><p>Fix for adding open edges when building cloth constraints from meshes in <code class="docutils literal notranslate"><span class="pre">wp.sim.ModelBuilder.add_cloth_mesh()</span></code></p></li>
-<li><p>Add support for <code class="docutils literal notranslate"><span class="pre">wp.fabricarray</span></code> to directly access Fabric data from Warp kernels, see <a class="reference external" href="https://docs.omniverse.nvidia.com/kit/docs/usdrt/latest/docs/usdrt_prim_selection.html">https://docs.omniverse.nvidia.com/kit/docs/usdrt/latest/docs/usdrt_prim_selection.html</a> for examples</p></li>
+<li><p>Add support for <code class="docutils literal notranslate"><span class="pre">wp.fabricarray</span></code> to directly access Fabric data from Warp kernels, see <a class="reference external" href="https://docs.omniverse.nvidia.com/kit/docs/usdrt.scenegraph/latest/usdrt_prim_selection.html">https://docs.omniverse.nvidia.com/kit/docs/usdrt.scenegraph/latest/usdrt_prim_selection.html</a> for examples</p></li>
 <li><p>Add support for user defined gradient functions, see <code class="docutils literal notranslate"><span class="pre">&#64;wp.func_replay</span></code>, and <code class="docutils literal notranslate"><span class="pre">&#64;wp.func_grad</span></code> decorators</p></li>
 <li><p>Add support for more OG attribute types in <code class="docutils literal notranslate"><span class="pre">omni.warp.from_omni_graph()</span></code></p></li>
 <li><p>Add support for creating NanoVDB <code class="docutils literal notranslate"><span class="pre">wp.Volume</span></code> objects from dense NumPy arrays</p></li>

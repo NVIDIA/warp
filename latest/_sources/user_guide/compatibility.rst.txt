@@ -68,7 +68,7 @@ The following requirements apply when running Warp:
     | CUDA 13.x                  | Turing              | 7.5 (``sm_75``)        | GeForce RTX 20xx series                  |
     +----------------------------+---------------------+------------------------+------------------------------------------+
 
-To determine your GPU's compute capability, see `NVIDIA CUDA GPUs <https://developer.nvidia.com/cuda-gpus>`__.
+To determine your GPU's compute capability, see `NVIDIA CUDA GPUs <https://developer.nvidia.com/cuda/gpus>`__.
 
 * **Driver Requirements**: The driver requirements are determined by the CUDA Toolkit version used to build the Warp
   library, not the version installed on the system when running Warp.
@@ -369,7 +369,7 @@ We follow NVIDIA's driver compatibility policies:
   associated with your driver during initialization.
 
 For the most up-to-date driver compatibility information, consult the 
-`CUDA Compatibility Guide <https://docs.nvidia.com/deploy/cuda-compatibility/>`__.
+`CUDA Compatibility Guide <https://docs.nvidia.com/deploy/cuda-compatibility/latest/>`__.
 
 GPU architectures
 ~~~~~~~~~~~~~~~~~

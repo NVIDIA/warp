@@ -915,7 +915,7 @@ we recommend using PyTorch version 2.3.0+, which has improvements that address t
 </section>
 <section id="using-pytorch-custom-operators-pytorch-2-4-0">
 <span id="pytorch-custom-operators"></span><span id="pytorch-custom-ops-example"></span><h3>Using PyTorch Custom Operators (PyTorch &gt;= 2.4.0)<a class="headerlink" href="#using-pytorch-custom-operators-pytorch-2-4-0" title="Link to this heading">#</a></h3>
-<p>PyTorch 2.4+ introduced <a class="reference external" href="https://pytorch.org/tutorials/advanced/python_custom_ops.html#python-custom-ops-tutorial">custom operators</a> to replace
+<p>PyTorch 2.4+ introduced <a class="reference external" href="https://docs.pytorch.org/tutorials/advanced/python_custom_ops.html">custom operators</a> to replace
 PyTorch autograd functions. These treat arbitrary Python functions (including Warp calls) as opaque callables, which prevents
 <a class="reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.compile.html#torch.compile" title="(in PyTorch v2.14)"><code class="xref py py-func docutils literal notranslate"><span class="pre">torch.compile()</span></code></a> from tracing into them. This means that forward PyTorch graph evaluations that include Warp kernel launches can be safely accelerated with
 <a class="reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.compile.html#torch.compile" title="(in PyTorch v2.14)"><code class="xref py py-func docutils literal notranslate"><span class="pre">torch.compile()</span></code></a>. We can re-write the previous example using custom operators as follows:</p>

@@ -663,11 +663,11 @@ On Linux aarch64 systems where <code class="docutils literal notranslate"><span 
 <a class="reference external" href="https://pypi.org/project/usd-exchange">usd-exchange</a> can be installed as a drop-in replacement.
 The <code class="docutils literal notranslate"><span class="pre">[examples]</span></code> extra handles this automatically.</p></li>
 <li><p><a class="reference external" href="https://pyglet.org/">pyglet</a>: Required for some Warp examples and the <a class="reference internal" href="../api_reference/_generated/warp.render.OpenGLRenderer.html#warp.render.OpenGLRenderer" title="warp.render.OpenGLRenderer"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.render.OpenGLRenderer</span></code></a>.</p></li>
-<li><p><a class="reference external" href="https://jax.readthedocs.io/en/latest/installation.html">JAX</a>: Required for JAX interoperability (see <a class="reference internal" href="interoperability/jax.html#jax-interop"><span class="std std-ref">JAX Interoperability</span></a>).</p></li>
+<li><p><a class="reference external" href="https://docs.jax.dev/en/latest/installation.html">JAX</a>: Required for JAX interoperability (see <a class="reference internal" href="interoperability/jax.html#jax-interop"><span class="std std-ref">JAX Interoperability</span></a>).</p></li>
 <li><p><a class="reference external" href="https://pytorch.org/get-started/locally/">PyTorch</a>: Required for PyTorch interoperability (see <a class="reference internal" href="interoperability/pytorch.html#pytorch-interop"><span class="std std-ref">PyTorch Interoperability</span></a>).</p></li>
 <li><p><a class="reference external" href="https://github.com/PaddlePaddle/Paddle">Paddle</a>: Required for Paddle interoperability (see <a class="reference internal" href="interoperability.html#paddle-interop"><span class="std std-ref">Paddle</span></a>).</p></li>
 <li><p><a class="reference external" href="https://github.com/NVIDIA/NVTX#python">NVTX for Python</a>: Required to use <a class="reference internal" href="../api_reference/_generated/warp.ScopedTimer.html#warp.ScopedTimer" title="warp.ScopedTimer"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedTimer(use_nvtx=True)</span></code></a>.</p></li>
-<li><p><a class="reference external" href="https://psutil.readthedocs.io/en/latest/">psutil</a>: Required to query CPU memory info (<cite>get_device(“cpu”).total_memory</cite>, <cite>get_device(“cpu”).free_memory</cite>).</p></li>
+<li><p><a class="reference external" href="https://psutil.io/">psutil</a>: Required to query CPU memory info (<cite>get_device(“cpu”).total_memory</cite>, <cite>get_device(“cpu”).free_memory</cite>).</p></li>
 </ul>
 </section>
 <section id="building-from-source">
@@ -680,7 +680,7 @@ The <code class="docutils literal notranslate"><span class="pre">[examples]</spa
 <li><p><a class="reference external" href="https://git-lfs.com">Git Large File Storage</a></p></li>
 </ul>
 <p>A CUDA Toolkit is not required for a CPU-only build. CUDA-enabled builds on Windows and Linux require
-<a class="reference external" href="https://developer.nvidia.com/cuda-toolkit">CUDA Toolkit</a> 12.0 or newer.</p>
+<a class="reference external" href="https://developer.nvidia.com/cuda/toolkit">CUDA Toolkit</a> 12.0 or newer.</p>
 <p>After cloning the repository, users should run:</p>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>python<span class="w"> </span>build_lib.py
 </pre></div>
@@ -780,7 +780,7 @@ Python package build backend used for wheels.</p>
 <p>Some modules, such as <code class="docutils literal notranslate"><span class="pre">usd-core</span></code>, don’t support the latest Python version.
 To manage running Warp and other projects on different Python versions one can
 make use of an environment management system such as
-<a class="reference external" href="https://docs.conda.io/">Conda</a>.</p>
+<a class="reference external" href="https://docs.conda.io/en/latest/">Conda</a>.</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
 <p>When building and running Warp in a different environment, make sure

@@ -286,6 +286,8 @@ Geometry
    mesh_query_ray_count_intersections
    mesh_query_sphere
 
+.. _builtins-volumes:
+
 Volumes
 -------
 
@@ -316,6 +318,8 @@ Volumes
    volume_voxel_count
    volume_world_to_index
    volume_world_to_index_dir
+
+.. _builtins-textures:
 
 Textures
 --------

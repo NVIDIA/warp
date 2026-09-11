@@ -1276,10 +1276,10 @@ callback loads the module for the device on which it runs. Warp still raises any
 </section>
 <section id="distributed-computation-with-shard-map">
 <span id="jax-shard-map"></span><h2>Distributed Computation with <code class="docutils literal notranslate"><span class="pre">shard_map</span></code><a class="headerlink" href="#distributed-computation-with-shard-map" title="Link to this heading">#</a></h2>
-<p>Warp can be used in conjunction with JAX’s <a class="reference external" href="https://jax.readthedocs.io/en/latest/jep/14273-shard-map.html">shard_map</a>
+<p>Warp can be used in conjunction with JAX’s <a class="reference external" href="https://docs.jax.dev/en/latest/jep/14273-shard-map.html">shard_map</a>
 to perform distributed multi-GPU computations.</p>
 <p>To achieve this, the JAX distributed environment must be initialized
-(see <a class="reference external" href="https://jax.readthedocs.io/en/latest/notebooks/Distributed_arrays_and_automatic_parallelization.html">Distributed Arrays and Automatic Parallelization</a>
+(see <a class="reference external" href="https://docs.jax.dev/en/latest/notebooks/Distributed_arrays_and_automatic_parallelization.html">Distributed Arrays and Automatic Parallelization</a>
 for more details):</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">jax</span>
 <span class="n">jax</span><span class="o">.</span><span class="n">distributed</span><span class="o">.</span><span class="n">initialize</span><span class="p">()</span>

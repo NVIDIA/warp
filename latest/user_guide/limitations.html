@@ -610,7 +610,7 @@ within these limits. Use 64-bit arithmetic when flattening such coordinates into
 <a class="reference internal" href="basics.html#large-launch-indexing"><span class="std std-ref">large-array launch indexing</span></a> for an example.</p>
 <p>By default, Warp will try to process one element from the Warp grid in one CUDA thread.
 This is not always possible for kernels launched with multi-dimensional grid bounds, as there are
-<a class="reference external" href="https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#features-and-technical-specifications-technical-specifications-per-compute-capability">hardware limitations</a>
+<a class="reference external" href="https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/compute-capabilities.html#features-and-technical-specifications">hardware limitations</a>
 on CUDA block dimensions.</p>
 <p>Warp will automatically fall back to using
 <a class="reference external" href="https://developer.nvidia.com/blog/cuda-pro-tip-write-flexible-kernels-grid-stride-loops/">grid-stride loops</a> when
