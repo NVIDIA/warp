@@ -57,13 +57,15 @@ CXX_FLAGS := -std=c++17 \
              -Wall
 
 # Platform-specific linker flags
+STAGED_RUNTIME_LIBS :=
 ifeq ($(UNAME_S),Linux)
-    LDFLAGS := -ldl -lGL -lglfw -L$(WARP_LIB) -l:warp.so -Wl,-rpath,$(WARP_LIB)
+    LDFLAGS := -lGL -lglfw -L$(WARP_LIB) -l:warp.so -l:warp-clang.so -Wl,-rpath,$(WARP_LIB)
 else ifeq ($(UNAME_S),Darwin)
-    LDFLAGS := -ldl -framework OpenGL -lglfw -L$(WARP_LIB) -lwarp -Wl,-rpath,$(WARP_LIB)
+    LDFLAGS := -framework OpenGL -lglfw -L$(WARP_LIB) -lwarp -lwarp-clang -Wl,-rpath,$(WARP_LIB)
 else
     # Windows (MinGW/Cygwin)
-    LDFLAGS := -lopengl32 -lglfw3 -L$(WARP_LIB) -lwarp
+    LDFLAGS := -lopengl32 -lglfw3 $(WARP_LIB)/warp.lib $(WARP_LIB)/warp-clang.lib
+    STAGED_RUNTIME_LIBS := warp.dll warp-clang.dll
 endif
 
 # Sentinel file to track graph generation
@@ -71,7 +73,14 @@ GRAPH_SENTINEL := generated/.graph_captured
 
 # Default target - build everything
 .PHONY: all
-all: $(TARGET)
+all: $(TARGET) $(STAGED_RUNTIME_LIBS)
+
+# Keep Windows runtime libraries beside the executable and refresh them when
+# the corresponding Warp build outputs change.
+ifneq ($(STAGED_RUNTIME_LIBS),)
+$(STAGED_RUNTIME_LIBS): %: $(WARP_LIB)/%
+	cp "$<" "$@"
+endif
 
 # Generate APIC graph (dependency for target)
 $(GRAPH_SENTINEL): capture_wave.py
@@ -134,7 +143,7 @@ check-glfw:
 
 # Build only the C++ program (assumes graph and glad already exist)
 .PHONY: cpp
-cpp: $(SOURCES)
+cpp: $(SOURCES) $(STAGED_RUNTIME_LIBS)
 	@if [ ! -d "$(WARP_INCLUDE)" ]; then \
 		echo "Error: Warp native directory not found at: $(WARP_INCLUDE)"; \
 		exit 1; \
@@ -166,7 +175,7 @@ capture:
 # Clean build artifacts
 .PHONY: clean
 clean:
-	rm -f $(TARGET)
+	rm -f $(TARGET) $(STAGED_RUNTIME_LIBS)
 	@echo "Cleaned build artifacts"
 
 # Clean everything including generated files

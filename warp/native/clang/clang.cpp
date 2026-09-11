@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "../native/crt.h"
-#include "../version.h"
+#include "../warp_clang.h"
 #include <clang/Basic/DiagnosticOptions.h>
 #include <clang/Frontend/CompilerInstance.h>
 #include <clang/Frontend/TextDiagnosticPrinter.h>

@@ -389,6 +389,7 @@ cppcheck:
     - cppcheck_exit_code=0
     - >-
       cppcheck
+      -UWP_API
       --inline-suppr
       --cppcheck-build-dir=_build/.cppcheck
       --enable=warning
@@ -403,6 +404,7 @@ cppcheck:
     # Pass 2: For the Code Quality report.
     - >-
       cppcheck
+      -UWP_API
       --inline-suppr
       --cppcheck-build-dir=_build/.cppcheck
       --enable=warning
