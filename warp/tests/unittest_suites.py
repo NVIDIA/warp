@@ -135,6 +135,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.geometry.test_mesh_query_aabb import TestMeshQueryAABBMethods
     from warp.tests.geometry.test_mesh_query_point import TestMeshQueryPoint
     from warp.tests.geometry.test_mesh_query_ray import TestMeshQueryRay
+    from warp.tests.geometry.test_sparse_marching_cubes import TestSparseMarchingCubes
     from warp.tests.geometry.test_swept_volume import TestSweptVolume
     from warp.tests.geometry.test_volume import TestVolume
     from warp.tests.geometry.test_volume_validation import TestVolumeValidation
@@ -393,6 +394,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestLogger,
         TestLValue,
         TestMarchingCubes,
+        TestSparseMarchingCubes,
         TestMat,
         TestMatConstructors,
         TestMatLite,

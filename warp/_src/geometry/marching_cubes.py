@@ -6,6 +6,7 @@ from __future__ import annotations
 from typing import Final
 
 import warp as wp
+from warp._src.geometry.iso_surface import IsoSurfaceBase, resolve_domain_bounds, validate_field
 from warp._src.logger import log_warning
 
 # =============================================================================
@@ -34,9 +35,9 @@ MC_EDGE_TO_CORNERS: Final[tuple[tuple[int, int], ...]] = (
 
 
 def marching_cubes_extract_vertices(
-    field: wp.array3d(dtype=wp.float32),
+    field: wp.array3d[wp.float32],
     threshold: float,
-    domain_bounds_lower_corner: wp.vec3,
+    lower: wp.vec3,
     grid_pos_delta: wp.vec3,
 ):
     """Invoke kernels to extract vertices and indices to uniquely identify them."""
@@ -51,7 +52,7 @@ def marching_cubes_extract_vertices(
         inputs=[
             field,
             threshold,
-            domain_bounds_lower_corner,
+            lower,
             grid_pos_delta,
             None,
             True,  # count only == True : just count the vertices
@@ -83,7 +84,7 @@ def marching_cubes_extract_vertices(
         inputs=[
             field,
             threshold,
-            domain_bounds_lower_corner,
+            lower,
             grid_pos_delta,
             vertex_result_ind,
             False,  # count only == False : actually write out the vertices
@@ -102,16 +103,16 @@ def marching_cubes_extract_vertices(
 
 @wp.kernel
 def extract_vertices_kernel(
-    values: wp.array3d(dtype=wp.float32),
+    values: wp.array3d[wp.float32],
     threshold: wp.float32,
-    domain_bounds_lower_corner: wp.vec3,
+    lower: wp.vec3,
     grid_pos_delta: wp.vec3,
-    vertex_result_ind: wp.array(dtype=wp.int32),
+    vertex_result_ind: wp.array[wp.int32],
     count_only: bool,
-    thread_output_count: wp.array(dtype=wp.int32),
-    verts_pos_out: wp.array(dtype=wp.vec3),
-    verts_is_boundary_out: wp.array(dtype=wp.bool),
-    edge_generated_vert_ind: wp.array(dtype=wp.int32, ndim=4),
+    thread_output_count: wp.array[wp.int32],
+    verts_pos_out: wp.array[wp.vec3],
+    verts_is_boundary_out: wp.array[wp.bool],
+    edge_generated_vert_ind: wp.array4d[wp.int32],
 ):
     """Kernel for vertex extraction.
 
@@ -152,12 +153,12 @@ def extract_vertices_kernel(
             # generated vertex along the edge
             t_interp = (threshold - this_val) / (opp_val - this_val)
             t_interp = wp.clamp(t_interp, 0.0, 1.0)
-            this_pos = domain_bounds_lower_corner + wp.vec3(
+            this_pos = lower + wp.vec3(
                 wp.float32(ti) * grid_pos_delta.x,
                 wp.float32(tj) * grid_pos_delta.y,
                 wp.float32(tk) * grid_pos_delta.z,
             )
-            opp_pos = domain_bounds_lower_corner + wp.vec3(
+            opp_pos = lower + wp.vec3(
                 wp.float32(i_opp) * grid_pos_delta.x,
                 wp.float32(j_opp) * grid_pos_delta.y,
                 wp.float32(k_opp) * grid_pos_delta.z,
@@ -185,9 +186,9 @@ def extract_vertices_kernel(
 
 
 def marching_cubes_extract_faces(
-    values: wp.array3d(dtype=wp.float32),
+    values: wp.array3d[wp.float32],
     threshold: wp.float32,
-    edge_generated_vert_ind: wp.array(dtype=wp.int32, ndim=4),
+    edge_generated_vert_ind: wp.array4d[wp.int32],
 ):
     """Invoke kernels to extract faces and index the appropriate vertices."""
     device = values.device
@@ -254,16 +255,16 @@ def marching_cubes_extract_faces(
 # Warp issues warnings if we set enable_backward=False
 @wp.kernel
 def extract_faces_kernel(
-    values: wp.array3d(dtype=wp.float32),
+    values: wp.array3d[wp.float32],
     threshold: wp.float32,
-    edge_generated_vert_ind: wp.array(dtype=wp.int32, ndim=4),
-    face_result_ind: wp.array(dtype=wp.int32),
-    mc_case_to_tri_range_table: wp.array(dtype=wp.int32),
-    mc_tri_local_inds_table: wp.array(dtype=wp.int32),
-    mc_edge_offset_table: wp.array(dtype=wp.int32, ndim=2),
+    edge_generated_vert_ind: wp.array4d[wp.int32],
+    face_result_ind: wp.array[wp.int32],
+    mc_case_to_tri_range_table: wp.array[wp.int32],
+    mc_tri_local_inds_table: wp.array[wp.int32],
+    mc_edge_offset_table: wp.array2d[wp.int32],
     count_only: bool,
-    thread_output_count: wp.array(dtype=wp.int32),
-    faces_out: wp.array(dtype=wp.int32),
+    thread_output_count: wp.array[wp.int32],
+    faces_out: wp.array[wp.int32],
 ):
     """
     Kernel for face extraction
@@ -465,7 +466,7 @@ _mc_edge_offset_cache: dict[str, wp.array] = {}
 
 
 def _get_mc_case_to_tri_range_table(device) -> wp.array:
-    """Lazily creates and caches the case-to-tri-range table on the target device."""
+    """Lazily create and cache the case-to-tri-range table on the target device."""
     device = str(device)
     if device not in _mc_case_to_tri_range_cache:
         _mc_case_to_tri_range_cache[device] = wp.array(MC_CASE_TO_TRI_RANGE, dtype=wp.int32, device=device)
@@ -473,7 +474,7 @@ def _get_mc_case_to_tri_range_table(device) -> wp.array:
 
 
 def _get_mc_tri_local_inds_table(device) -> wp.array:
-    """Lazily creates and caches the tri-local-indices table on the target device."""
+    """Lazily create and cache the tri-local-indices table on the target device."""
     device = str(device)
     if device not in _mc_tri_local_inds_cache:
         _mc_tri_local_inds_cache[device] = wp.array(MC_TRI_LOCAL_INDICES, dtype=wp.int32, device=device)
@@ -481,7 +482,7 @@ def _get_mc_tri_local_inds_table(device) -> wp.array:
 
 
 def _get_mc_edge_offset_table(device) -> wp.array:
-    """Lazily creates and caches the edge offset table on the target device."""
+    """Lazily create and cache the edge offset table on the target device."""
     device = str(device)
     if device not in _mc_edge_offset_cache:
         _mc_edge_offset_cache[device] = wp.array(_MC_EDGE_OFFSETS, dtype=wp.int32, device=device)
@@ -512,22 +513,29 @@ def _warn_deprecated_argument(call: str, argument: str, guidance: str) -> None:
 
 def _warn_deprecated_attribute(attribute: str, guidance: str) -> None:
     log_warning(
-        f"MarchingCubes.{attribute} is deprecated and will be removed in Warp 1.19. {guidance}",
+        f"IsoSurfaceMarchingCubes.{attribute} is deprecated and will be removed in Warp 1.19. {guidance}",
         category=DeprecationWarning,
         stacklevel=3,
     )
 
 
-class MarchingCubes:
+class IsoSurfaceMarchingCubes(IsoSurfaceBase):
     """A reusable context for marching cubes surface extraction.
 
     This class provides a stateful interface for isosurface extraction. You
     can initialize it with a specific grid configuration and then call the
-    :meth:`~.surface` method multiple times, which is efficient for processing
-    fields of the same size.
+    :meth:`~.surface` method multiple times, which is convenient for
+    processing fields of the same size.
 
-    For a simpler, stateless operation, use the static method
-    :meth:`~.extract_surface_marching_cubes`.
+    For a simpler, stateless operation, use the :meth:`~.extract` class
+    method.
+
+    Both :meth:`~.surface` and :meth:`~.extract` support backward-mode
+    automatic differentiation: if ``field`` has ``requires_grad=True`` and
+    the call is wrapped in a ``wp.Tape()``, gradient flows from the output
+    ``verts`` positions back to ``field`` through the ``wp.lerp`` edge
+    interpolation. Cell classification and the resulting ``indices`` are
+    discrete and carry no gradient.
 
     Args:
         nx: Number of grid nodes in the x-direction.
@@ -542,21 +550,19 @@ class MarchingCubes:
         device: Deprecated since Warp 1.9 and scheduled for removal in Warp
           1.19. The input field determines where extraction runs; remove this
           argument from calls.
-        domain_bounds_lower_corner: See the documentation in
-          :meth:`~.extract_surface_marching_cubes`.
-        domain_bounds_upper_corner: See the documentation in
-          :meth:`~.extract_surface_marching_cubes`.
+        lower: See the documentation in :meth:`~.extract`.
+        upper: See the documentation in :meth:`~.extract`.
 
     Attributes:
         nx (int): The number of grid nodes in the x-direction.
         ny (int): The number of grid nodes in the y-direction.
         nz (int): The number of grid nodes in the z-direction.
-        domain_bounds_lower_corner (warp.vec3f | tuple | None): The lower bound
-          for the mesh coordinate scaling. See the documentation in
-          :meth:`~.extract_surface_marching_cubes` for more details.
-        domain_bounds_upper_corner (warp.vec3f | tuple | None): The upper bound
-          for the mesh coordinate scaling. See the documentation in
-          :meth:`~.extract_surface_marching_cubes` for more details.
+        lower (warp.vec3f | tuple | None): The lower bound for the mesh
+          coordinate scaling. See the documentation in :meth:`~.extract`
+          for more details.
+        upper (warp.vec3f | tuple | None): The upper bound for the mesh
+          coordinate scaling. See the documentation in :meth:`~.extract`
+          for more details.
         verts (warp.array | None): An array of vertex positions of type
           :class:`warp.vec3f` for the output mesh.
           This is populated by calling the :meth:`~.surface` method.
@@ -603,14 +609,14 @@ class MarchingCubes:
         max_verts: int = _DEFAULT_ZERO,
         max_tris: int = _DEFAULT_ZERO,
         device: wp.DeviceLike = _DEFAULT_NONE,
-        domain_bounds_lower_corner=None,
-        domain_bounds_upper_corner=None,
+        lower=None,
+        upper=None,
     ):
         if max_verts is _DEFAULT_ZERO:
             max_verts = 0
         else:
             _warn_deprecated_argument(
-                "MarchingCubes()",
+                "IsoSurfaceMarchingCubes()",
                 "max_verts",
                 "Output arrays are sized dynamically; remove this argument from calls.",
             )
@@ -619,7 +625,7 @@ class MarchingCubes:
             max_tris = 0
         else:
             _warn_deprecated_argument(
-                "MarchingCubes()",
+                "IsoSurfaceMarchingCubes()",
                 "max_tris",
                 "Output arrays are sized dynamically; remove this argument from calls.",
             )
@@ -628,30 +634,22 @@ class MarchingCubes:
             device = None
         else:
             _warn_deprecated_argument(
-                "MarchingCubes()",
+                "IsoSurfaceMarchingCubes()",
                 "device",
                 "The input field determines where extraction runs; remove this argument from calls.",
             )
 
-        # Input domain sizes, as number of nodes in the grid (note this is 1 more than the number of cubes)
-        self.nx = nx
-        self.ny = ny
-        self.nz = nz
-
-        # Geometry of the extraction domain
-        # (or None, to implicitly use a domain with integer-coordinate nodes)
-        self.domain_bounds_lower_corner = domain_bounds_lower_corner
-        self.domain_bounds_upper_corner = domain_bounds_upper_corner
+        super().__init__(
+            nx,
+            ny,
+            nz,
+            lower=lower,
+            upper=upper,
+        )
 
         # These are unused, but retained for backwards compatibility during the deprecation period.
         self._max_verts = max_verts
         self._max_tris = max_tris
-
-        # Output arrays
-        self.verts: wp.array(dtype=wp.vec3f) | None = None
-        self.indices: wp.array(dtype=wp.int32) | None = None
-
-        # These are unused, but retained for backwards compatibility during the deprecation period.
         self._id = 0
         self._device = wp.get_device(device)
         self._runtime = wp._src.context.runtime
@@ -762,29 +760,27 @@ class MarchingCubes:
         """
         if max_verts is not _DEFAULT_ZERO:
             _warn_deprecated_argument(
-                "MarchingCubes.resize()",
+                "IsoSurfaceMarchingCubes.resize()",
                 "max_verts",
                 "Output arrays are sized dynamically; remove this argument from calls.",
             )
             self._max_verts = max_verts
         if max_tris is not _DEFAULT_ZERO:
             _warn_deprecated_argument(
-                "MarchingCubes.resize()",
+                "IsoSurfaceMarchingCubes.resize()",
                 "max_tris",
                 "Output arrays are sized dynamically; remove this argument from calls.",
             )
             self._max_tris = max_tris
 
-        self.nx = nx
-        self.ny = ny
-        self.nz = nz
+        super().resize(nx, ny, nz)
 
-    def surface(self, field: wp.array(dtype=float, ndim=3), threshold: float) -> None:
+    def surface(self, field: wp.array3d[float], threshold: float) -> None:
         """Compute a 2D surface mesh of a given isosurface from a 3D scalar field.
 
-        This method is a convenience wrapper that calls the core static method
-        and stores the resulting mesh data in the :attr:`verts` and
-        :attr:`indices` attributes.
+        This method is a convenience wrapper that calls the :meth:`~.extract`
+        class method and stores the resulting mesh data in the :attr:`verts`
+        and :attr:`indices` attributes.
 
         Args:
           field: A 3D scalar field whose shape must match the grid dimensions
@@ -795,29 +791,27 @@ class MarchingCubes:
           ValueError: If the shape of ``field`` does not match the configured
             grid dimensions of the instance.
         """
-        # nx, ny, nz is the number of nodes, which should agree with the size of the field
-        if field.shape != (self.nx, self.ny, self.nz):
-            raise ValueError(
-                f"Field shape {field.shape} does not match context grid dimensions {(self.nx, self.ny, self.nz)}."
-            )
+        self._check_field_shape(field)
 
-        verts, faces = self.extract_surface_marching_cubes(
+        verts, faces = self.extract(
             field=field,
             threshold=wp.float32(threshold),
-            domain_bounds_lower_corner=self.domain_bounds_lower_corner,
-            domain_bounds_upper_corner=self.domain_bounds_upper_corner,
+            lower=self.lower,
+            upper=self.upper,
         )
 
         self.verts = verts
         self.indices = faces
 
-    @staticmethod
-    def extract_surface_marching_cubes(
-        field: wp.array3d(dtype=wp.float32),
+    @classmethod
+    def extract(
+        cls,
+        field: wp.array3d[wp.float32],
         threshold: float = 0.0,
-        domain_bounds_lower_corner: wp.vec3 | tuple[float, float, float] | None = None,
-        domain_bounds_upper_corner: wp.vec3 | tuple[float, float, float] | None = None,
-    ) -> tuple[wp.array(dtype=wp.vec3), wp.array(dtype=wp.int32)]:
+        *,
+        lower: wp.vec3 | tuple[float, float, float] | None = None,
+        upper: wp.vec3 | tuple[float, float, float] | None = None,
+    ) -> tuple[wp.array[wp.vec3], wp.array[wp.int32]]:
         """Extract a triangular mesh from a 3D scalar field.
 
         This function generates an isosurface by processing the entire input ``field``.
@@ -825,8 +819,8 @@ class MarchingCubes:
         array and may differ along each dimension.
 
         The coordinates of the mesh can be scaled to a specific bounding box
-        using the ``domain_bounds_lower_corner`` and
-        ``domain_bounds_upper_corner`` parameters. If a bound is not provided
+        using the ``lower`` and
+        ``upper`` parameters. If a bound is not provided
         (i.e., left as ``None``), it will be assigned a default value that
         aligns the mesh with the integer indices of the input grid.
 
@@ -837,11 +831,11 @@ class MarchingCubes:
         Args:
             field: A 3D array representing the scalar values on a regular grid.
             threshold: The field value defining the isosurface to extract.
-            domain_bounds_lower_corner: The 3D coordinate that the grid's corner
-                at index (0,0,0) maps to. Defaults to ``(0.0, 0.0, 0.0)``
-                if ``None``.
-            domain_bounds_upper_corner: The 3D coordinate that the grid's corner
-                at index (nx-1, ny-1, nz-1) maps to. Defaults to align with the
+            lower: The 3D coordinate that the grid's corner at index
+                (0,0,0) maps to. Defaults to ``(0.0, 0.0, 0.0)`` if
+                ``None``.
+            upper: The 3D coordinate that the grid's corner at index
+                (nx-1, ny-1, nz-1) maps to. Defaults to align with the
                 grid's maximal indices if ``None``.
 
         Returns:
@@ -851,49 +845,47 @@ class MarchingCubes:
             ``vertices`` array.
 
         Raises:
-            ValueError: If ``field`` is not a 3D array or is empty.
+            ValueError: If ``field`` is not a 3D array, or has fewer than
+                two nodes on any axis.
             TypeError: If the ``field`` data type is not ``wp.float32``.
         """
         # Do some validation
-        if len(field.shape) != 3:
-            raise ValueError(f"Expected a 3D array for 'field', but got an array with shape {field.shape}.")
+        validate_field(field)
 
-        if field.size == 0:
-            raise ValueError("The 'field' array cannot be empty.")
-
-        if field.dtype != wp.float32:
-            raise TypeError(f"Expected a dtype of wp.float32 for 'field', but got {field.dtype}.")
-
-        # Parse out dimensions, being careful to distinguish between nodes and cells
-        nnode_x, nnode_y, nnode_z = field.shape[0], field.shape[1], field.shape[2]
-        ncell_x, ncell_y, ncell_z = nnode_x - 1, nnode_y - 1, nnode_z - 1
-
-        # Apply default policies for bounds
-        if domain_bounds_lower_corner is None:
-            domain_bounds_lower_corner = wp.vec3((0.0, 0.0, 0.0))
-        if domain_bounds_upper_corner is None:
-            # The default convention is to treat the nodes of the grid as having integer coordinates at 0,1,2,...
-            # This means the upper-rightmost node of the grid has coordinates (nnode_x-1, nnode_y-1, nnode_z-1)
-            # (which happens to be the same as the number cells, although it may be more confusing to think of it that way)
-            domain_bounds_upper_corner = wp.vec3((float(nnode_x - 1), float(nnode_y - 1), float(nnode_z - 1)))
-
-        # quietly allow tuples as input too, although this technically violates
-        # the type hinting
-        domain_bounds_lower_corner = wp.vec3(domain_bounds_lower_corner)
-        domain_bounds_upper_corner = wp.vec3(domain_bounds_upper_corner)
-
-        # Compute the grid spacing
-        domain_width = domain_bounds_upper_corner - domain_bounds_lower_corner
-        grid_delta = wp.cw_div(domain_width, wp.vec3(ncell_x, ncell_y, ncell_z))
+        # Apply default policies for bounds and compute the grid spacing
+        lower, grid_delta = resolve_domain_bounds(field.shape, lower, upper)
 
         # Extract the vertices
         # The second output of this kernel is an is-boundary flag for each vertex, which
         # we currently do not expose. (maybe this should be exposed in the future)
-        verts, _, edge_generated_vert_ind = marching_cubes_extract_vertices(
-            field, threshold, domain_bounds_lower_corner, grid_delta
-        )
+        verts, _, edge_generated_vert_ind = marching_cubes_extract_vertices(field, threshold, lower, grid_delta)
 
         # Extract faces between those vertices
         tris = marching_cubes_extract_faces(field, threshold, edge_generated_vert_ind)
 
         return verts, tris
+
+    @staticmethod
+    def extract_surface_marching_cubes(
+        field: wp.array3d[wp.float32],
+        threshold: float = 0.0,
+        domain_bounds_lower_corner: wp.vec3 | tuple[float, float, float] | None = None,
+        domain_bounds_upper_corner: wp.vec3 | tuple[float, float, float] | None = None,
+    ) -> tuple[wp.array[wp.vec3], wp.array[wp.int32]]:
+        """Extract a triangular mesh from a 3D scalar field.
+
+        .. deprecated:: 1.18
+            Use :meth:`~.extract` instead. This alias will be removed in a future version of Warp.
+        """
+        log_warning(
+            "IsoSurfaceMarchingCubes.extract_surface_marching_cubes() is deprecated and will be removed in "
+            "a future version of Warp. Use IsoSurfaceMarchingCubes.extract() instead.",
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
+        return IsoSurfaceMarchingCubes.extract(
+            field,
+            threshold,
+            lower=domain_bounds_lower_corner,
+            upper=domain_bounds_upper_corner,
+        )

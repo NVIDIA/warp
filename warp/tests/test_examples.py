@@ -211,7 +211,6 @@ add_example_test(
     test_options={"headless": True},
     test_options_cpu={"num_frames": 100},
 )
-add_example_test(TestCoreExamples, name="core.example_marching_cubes", devices=cuda_test_devices)
 add_example_test(TestCoreExamples, name="core.example_mesh", devices=test_devices, test_options={"usd_required": True})
 add_example_test(
     TestCoreExamples, name="core.example_mesh_intersect", devices=test_devices, test_options={"usd_required": True}
@@ -277,6 +276,13 @@ class TestGeometryExamples(unittest.TestCase):
     pass
 
 
+add_example_test(TestGeometryExamples, name="geometry.example_isosurface", devices=cuda_test_devices)
+add_example_test(
+    TestGeometryExamples,
+    name="geometry.example_sparse_marching_cubes",
+    devices=cuda_test_devices,
+    test_options={"num_frames": 3, "usd_required": True},
+)
 add_example_test(
     TestGeometryExamples,
     name="geometry.example_swept_volume",

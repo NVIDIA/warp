@@ -2,16 +2,18 @@
 # SPDX-License-Identifier: Apache-2.0
 
 ###########################################################################
-# Example Marching Cubes
+# Example Isosurface
 #
-# Shows how use the built-in marching cubes functionality to extract
-# the iso-surface from a density field.
+# Shows how to use the built-in isosurface extraction functionality to
+# extract a mesh from a density field, via the wp.geometry.IsoSurfaceBase
+# interface implemented by wp.geometry.IsoSurfaceMarchingCubes.
 #
 # Note: requires a CUDA-capable device
 ###########################################################################
 
 
 import warp as wp
+import warp.geometry
 import warp.render
 
 
@@ -98,7 +100,7 @@ def make_field(
 
 
 class Example:
-    def __init__(self, stage_path="example_marching_cubes.usd", verbose=False):
+    def __init__(self, stage_path="example_isosurface.usd", verbose=False):
         self.verbose = verbose
 
         self.dim = 64
@@ -112,7 +114,10 @@ class Example:
         self.frame = 0
 
         self.field = wp.zeros((self.dim, self.dim, self.dim), dtype=float)
-        self.mc = wp.MarchingCubes(self.dim, self.dim, self.dim)
+
+        # The rest of the example only relies on the wp.geometry.IsoSurfaceBase
+        # interface, so extraction methods can be swapped freely.
+        self.iso = wp.geometry.IsoSurfaceMarchingCubes(self.dim, self.dim, self.dim)
 
         self.renderer = None
         if stage_path:
@@ -136,7 +141,7 @@ class Example:
                 )
 
             with wp.ScopedTimer("Surface Extraction", active=self.verbose):
-                self.mc.surface(self.field, 0.0)
+                self.iso.surface(self.field, 0.0)
 
     def render(self):
         if self.renderer is None:
@@ -146,8 +151,8 @@ class Example:
             self.renderer.begin_frame(self.frame / self.fps)
             self.renderer.render_mesh(
                 "surface",
-                self.mc.verts.numpy(),
-                self.mc.indices.numpy(),
+                self.iso.verts.numpy(),
+                self.iso.indices.numpy(),
                 colors=(0.35, 0.55, 0.9),
                 update_topology=True,
             )
@@ -162,7 +167,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--stage-path",
         type=lambda x: None if x == "None" else str(x),
-        default="example_marching_cubes.usd",
+        default="example_isosurface.usd",
         help="Path to the output USD file.",
     )
     parser.add_argument("--num-frames", type=int, default=240, help="Total number of frames.")

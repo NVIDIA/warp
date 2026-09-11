@@ -30,7 +30,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 import warp as wp
-from warp._src.marching_cubes import MarchingCubes
+from warp._src.geometry.marching_cubes import IsoSurfaceMarchingCubes
 from warp._src.types import type_repr, types_equal
 from warp._src.utils import array_scan
 
@@ -1052,7 +1052,7 @@ def swept_volume_field(
             not both. The spacing follows from the extent, so it is anisotropic
             unless the node counts match the domain's aspect ratio.
         lower: World coordinate that node ``(0, 0, 0)`` maps
-            to, as in :meth:`warp.MarchingCubes.extract_surface_marching_cubes`.
+            to, as in :meth:`warp.geometry.IsoSurfaceMarchingCubes.extract`.
             Defaults to the swept bounds padded so the surface is not clipped.
             Pass both corners or neither; see :func:`swept_volume_bounds` to size
             a domain that several fields share.
@@ -1238,9 +1238,9 @@ def swept_volume_mesh(
         device=device,
     )
 
-    return MarchingCubes.extract_surface_marching_cubes(
+    return IsoSurfaceMarchingCubes.extract(
         field,
         threshold=threshold,
-        domain_bounds_lower_corner=lower,
-        domain_bounds_upper_corner=upper,
+        lower=lower,
+        upper=upper,
     )

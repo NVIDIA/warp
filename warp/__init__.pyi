@@ -264,8 +264,8 @@ from . import types as types
 from . import utils as utils
 from warp.config import DeterministicMode as DeterministicMode
 from warp._src.math import *
-from warp._src.marching_cubes import MarchingCubes as MarchingCubes
 from warp._src.context import RegisteredGLBuffer as RegisteredGLBuffer
+from typing import TYPE_CHECKING as _TYPE_CHECKING
 Length = TypeVar("Length", bound=int)
 Rows = TypeVar("Rows", bound=int)
 Cols = TypeVar("Cols", bound=int)
@@ -305,6 +305,11 @@ element methods, and :mod:`warp.sparse` for sparse linear algebra.
 # Skipped: from warp._src.types import tile_stack as tile_stack (kernel builtin stubs preferred)
 
 # Skipped: from warp._src.context import zeros as zeros (merged stubs generated below)
+
+if _TYPE_CHECKING:
+    from warp._src.geometry.marching_cubes import IsoSurfaceMarchingCubes as _IsoSurfaceMarchingCubes
+
+    MarchingCubes = _IsoSurfaceMarchingCubes
 
 __version__ = config.version
 

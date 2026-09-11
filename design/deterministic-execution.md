@@ -156,7 +156,7 @@ The kernel runs twice:
    back to the user's counter arrays.
 
 This mirrors the well-established count-scan-write pattern already used by
-``warp/_src/marching_cubes.py`` and the FEM geometry code, but applied
+``warp/_src/geometry/marching_cubes.py`` and the FEM geometry code, but applied
 automatically.
 
 ### Alternatives Considered
