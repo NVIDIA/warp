@@ -438,6 +438,33 @@ def test_save_load_round_trip(test, device):
         np.testing.assert_allclose(result.numpy(), expected)
 
 
+def test_save_load_block_dependent_static_kernel(test, device):
+    """Serialize the selected executable's symbols after switching block sizes."""
+
+    @wp.func
+    def write_tile_length(tile_length_out: wp.array[int]):
+        tile = wp.tile(1)
+        tile_length_out[0] = wp.static(len(tile))
+
+    @wp.kernel(module="unique", enable_backward=False)
+    def tile_length_kernel(tile_length_out: wp.array[int]):
+        write_tile_length(tile_length_out)
+
+    tile_length_out = wp.zeros(1, dtype=int, device=device)
+    wp.launch(tile_length_kernel, dim=1, inputs=[tile_length_out], block_dim=256, device=device)
+    wp.launch(tile_length_kernel, dim=1, inputs=[tile_length_out], block_dim=64, device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.launch(tile_length_kernel, dim=1, inputs=[tile_length_out], block_dim=256, device=device)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        capture_path = os.path.join(tmpdir, "block_dependent_static")
+        wp.capture_save(capture.graph, capture_path, outputs={"tile_length": tile_length_out})
+        loaded_graph = wp.capture_load(capture_path, device=device)
+        wp.capture_launch(loaded_graph)
+        loaded_graph.get_param("tile_length", tile_length_out)
+        np.testing.assert_array_equal(tile_length_out.numpy(), [256])
+
+
 def test_save_load_capture_time_scratch_cuda(test, device):
     """Treat capture-time CUDA allocations as graph-scoped scratch buffers.
 
@@ -3931,6 +3958,14 @@ add_function_test(
     "test_capture_save_aborts_on_region_snapshot_failure",
     test_capture_save_aborts_on_region_snapshot_failure,
     devices=devices_with_cuda_graph_module_load,
+)
+
+
+add_function_test(
+    TestApic,
+    "test_save_load_block_dependent_static_kernel",
+    test_save_load_block_dependent_static_kernel,
+    devices=get_cuda_test_devices(),
 )
 
 

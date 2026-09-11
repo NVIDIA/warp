@@ -6990,15 +6990,18 @@ cuda_external_constant_params_kernel_template_forward = """
 """
 
 
-def cuda_kernel_forward_name(kernel):
-    name = kernel.get_mangled_name()
+def cuda_kernel_forward_name(kernel, name=None):
+    if name is None:
+        name = kernel.get_mangled_name()
     if kernel.options.get("entry_point_abi") == "external_constant_params":
         return name
     return f"{name}_cuda_kernel_forward"
 
 
-def cuda_kernel_backward_name(kernel):
-    return f"{kernel.get_mangled_name()}_cuda_kernel_backward"
+def cuda_kernel_backward_name(kernel, name=None):
+    if name is None:
+        name = kernel.get_mangled_name()
+    return f"{name}_cuda_kernel_backward"
 
 
 cpu_kernel_template_forward = """
