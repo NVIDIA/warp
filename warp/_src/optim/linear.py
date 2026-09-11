@@ -10,7 +10,7 @@ from typing import Any
 import warp as wp
 import warp.sparse as sparse
 from warp._src.logger import log_warning
-from warp._src.types import type_is_matrix, type_is_vector, type_length, type_scalar_type
+from warp._src.types import type_is_matrix, type_is_vector, type_length, type_scalar_type, type_size_in_bytes
 
 __all__ = [
     "CG",
@@ -292,16 +292,14 @@ _BLOCK_JACOBI_STRATEGIES = {
 
 # Block-size thresholds used by the "auto" block-Jacobi strategy: blocks of size
 # [2, _BLOCK_JACOBI_AUTO_DIRECT_MAX] use "direct", (..., _BLOCK_JACOBI_AUTO_SEQUENTIAL_MAX] use
-# "sequential", and anything larger uses "tile". These thresholds are chosen heuristically for
-# dtype/robustness coverage, not measured performance: benchmarking found "tile" fastest to
-# apply at every block size tested (2 through 16).
+# "sequential", and anything larger uses "tile". These thresholds are chosen heuristically, for
+# dtype/robustness coverage rather than measured performance.
 _BLOCK_JACOBI_AUTO_DIRECT_MAX = 6
 _BLOCK_JACOBI_AUTO_SEQUENTIAL_MAX = 11
 
 # "block_jacobi_direct"'s QR-based kernel has a one-time (per-process) compile cost that grows
-# sharply with block size: empirically roughly 9 seconds at block size 8 and roughly 7 minutes at
-# block size 16 on first use in a fresh process (cached reruns are fast). Requesting "direct"
-# above this size instead falls back to "tile", with a warning.
+# sharply with block size. Requesting "direct" above this size instead falls back to "tile",
+# with a warning.
 _BLOCK_JACOBI_DIRECT_MAX_BLOCK_SIZE = 8
 
 
@@ -375,7 +373,8 @@ def _make_block_jacobi_direct(A: _Matrix, block_size: int) -> LinearOperator:
     A_diag = sparse.bsr_get_diag(A)
     dim = A_diag.shape[0]
     inv_diag = wp.empty_like(A_diag)
-    wp.launch(_invert_diagonal_blocks_qr, dim=dim, device=device, inputs=[A_diag, inv_diag])
+    rel_tol = scalar_type(_get_dtype_epsilon(scalar_type) ** 0.75)
+    wp.launch(_invert_diagonal_blocks_qr, dim=dim, device=device, inputs=[A_diag, rel_tol, inv_diag])
 
     def block_jacobi_direct_mv(x, y, z, alpha, beta):
         """Compute ``z = alpha * (blockdiag(A)^-1 @ x) + beta * y`` via the QR block inverse."""
@@ -411,7 +410,8 @@ def _make_block_jacobi_sequential(A: _Matrix, block_size: int) -> LinearOperator
     A_diag = sparse.bsr_get_diag(A)
     dim = A_diag.shape[0]
     ldlt_diag = wp.empty_like(A_diag)
-    wp.launch(_ldlt_diagonal_blocks, dim=dim, device=device, inputs=[A_diag, ldlt_diag])
+    rel_tol = scalar_type(_get_dtype_epsilon(scalar_type) ** 0.75)
+    wp.launch(_ldlt_diagonal_blocks, dim=dim, device=device, inputs=[A_diag, rel_tol, ldlt_diag])
 
     def block_jacobi_sequential_mv(x, y, z, alpha, beta):
         """Compute ``z = alpha * (blockdiag(A)^-1 @ x) + beta * y`` via the packed LDL^T solve."""
@@ -523,11 +523,14 @@ def _create_block_jacobi_tile_kernels(block_size: int):
         i = wp.tid()
         off = i * block_size
         L_tile = wp.tile_load(L_flat, shape=(block_size, block_size), offset=(off, 0))
-        rhs = wp.tile_load(x, shape=(block_size,), offset=(off,))
-        wp.tile_cholesky_solve_inplace(L_tile, rhs)
-
         zero = type(alpha)(0.0)
-        out = rhs * alpha
+        if alpha == zero:
+            out = wp.tile_zeros(shape=(block_size,), dtype=x.dtype)
+        else:
+            rhs = wp.tile_load(x, shape=(block_size,), offset=(off,))
+            wp.tile_cholesky_solve_inplace(L_tile, rhs)
+            out = rhs * alpha
+
         if beta != zero:
             out += wp.tile_load(y, shape=(block_size,), offset=(off,)) * beta
         wp.tile_store(z, out, offset=(off,))
@@ -582,7 +585,7 @@ def _solve_upper(R: Any, b: Any):
 
 
 @wp.func
-def _block_inverse_qr(A: Any):
+def _block_inverse_qr(A: Any, rel_tol: Any):
     """Invert a square fixed-size matrix via Householder QR.
 
     Falls back to the identity when the block is numerically singular, mirroring the zero-safe
@@ -592,12 +595,17 @@ def _block_inverse_qr(A: Any):
     zero: for a genuinely rank-deficient block, roundoff during the QR factorization typically
     leaves a tiny but nonzero diagonal entry on ``R`` rather than an exact zero, which an
     exact-zero check misses and then divides by in the triangular solve below.
+
+    ``rel_tol`` is a dtype-scale-aware relative tolerance (see :func:`_get_dtype_epsilon`,
+    computed host-side and passed in rather than re-derived here, since a fixed constant across
+    all dtypes is either too loose for ``float16`` or -- as flagged by review -- far too
+    aggressive for ``float32``/``float64``, incorrectly rejecting well-conditioned, merely
+    differently-scaled blocks (e.g. ``diag(1, 1e-4)``) as singular.
     """
     Q, R = _qr_decomposition(A)
     row = type(A[0])()
     zero = A.dtype(0)
     one = A.dtype(1)
-    rel_tol = A.dtype(1.0e-3)
 
     max_pivot = zero
     for j in range(row.length):
@@ -620,7 +628,7 @@ def _block_inverse_qr(A: Any):
 
 
 @wp.func
-def _block_ldlt(A: Any):
+def _block_ldlt(A: Any, rel_tol: Any):
     """Factorize a symmetric fixed-size matrix as ``A = L D L^T``.
 
     ``L`` is unit lower triangular and ``D`` is diagonal; both are packed into a single returned
@@ -631,10 +639,12 @@ def _block_ldlt(A: Any):
     block's diagonal scale, rather than only when it is ``<= 0``: for a genuinely rank-deficient
     block, LDL^T roundoff can leave a tiny positive residual pivot instead of an exact
     non-positive value, which a ``<= 0`` check misses and then divides by.
+
+    ``rel_tol`` is a dtype-scale-aware relative tolerance -- see :func:`_block_inverse_qr`'s
+    docstring for why this can't be a fixed per-dtype constant baked in here.
     """
     row = type(A[0])()
     zero = A.dtype(0.0)
-    rel_tol = A.dtype(1.0e-3)
 
     max_diag = zero
     for j in range(row.length):
@@ -690,21 +700,23 @@ def _apply_ldlt(M: Any, x: Any):
 @wp.kernel(module="unique")
 def _invert_diagonal_blocks_qr(
     diag: wp.array[Any],
+    rel_tol: Any,
     inv_diag: wp.array[Any],
 ):
     """Invert one diagonal block per thread via Householder QR."""
     i = wp.tid()
-    inv_diag[i] = _block_inverse_qr(diag[i])
+    inv_diag[i] = _block_inverse_qr(diag[i], rel_tol)
 
 
 @wp.kernel(module="unique")
 def _ldlt_diagonal_blocks(
     diag: wp.array[Any],
+    rel_tol: Any,
     ldlt_diag: wp.array[Any],
 ):
     """Factorize one diagonal block per thread into packed LDL^T form."""
     i = wp.tid()
-    ldlt_diag[i] = _block_ldlt(diag[i])
+    ldlt_diag[i] = _block_ldlt(diag[i], rel_tol)
 
 
 @wp.kernel(module="unique")
@@ -800,6 +812,8 @@ def _as_vector_array(x: wp.array, length: int):
     """
     if length == 1:
         return x
+    if x.strides[-1] != type_size_in_bytes(x.dtype):
+        raise ValueError("Array is not contiguous along its last dimension")
     if x.shape[-1] % length != 0:
         raise ValueError(f"Array length {x.shape[-1]} is not divisible by block size {length}")
 
