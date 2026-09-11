@@ -712,7 +712,16 @@ def test_dlpack_bf16_round_trip(test, device):
 
 
 class TestDLPack(unittest.TestCase):
-    pass
+    def test_invalid_capsule_error(self):
+        class InvalidDLPackSource:
+            def __dlpack_device__(self):
+                return (1, 0)
+
+            def __dlpack__(self, stream=None):
+                return object()
+
+        with self.assertRaisesRegex(TypeError, "Expected a valid DLPack capsule, got object"):
+            wp.from_dlpack(InvalidDLPackSource())
 
 
 devices = get_test_devices()

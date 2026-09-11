@@ -331,6 +331,12 @@ class TestSubscriptTypes(unittest.TestCase):
         mat_type2 = Matrix[wp.float64, Literal[2], Literal[4]]
         self.assertEqual(mat_type2._shape_, (2, 4))
 
+    def test_matrix_factory_rejects_invalid_rank(self):
+        with self.assertRaisesRegex(
+            ValueError, r"Matrix shape must have exactly two dimensions, got 1 dimension in shape \(2,\)"
+        ):
+            wp.types.matrix((2,), wp.float32)
+
     def test_quaternion_subscript_syntax(self):
         """Test Quaternion subscript syntax."""
         quat_type = Quaternion[wp.float32]

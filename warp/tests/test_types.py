@@ -734,6 +734,16 @@ class TestTypes(unittest.TestCase):
             # Expected to fail for non-Warp types, but should be a clean TypeError
             self.assertIn("Unrecognized type", str(e))
 
+    def test_types_equal_generic_rejects_invalid_ellipsis_pattern(self):
+        with self.assertRaisesRegex(
+            TypeError,
+            r"An ellipsis sequence pattern must contain one type followed by Ellipsis, got .*",
+        ):
+            wp._src.types.types_equal_generic(
+                (wp.float32, wp.float64, Ellipsis),
+                (wp.float32, wp.float32),
+            )
+
     def test_composite_types_repr(self):
         """Test that repr() works on Warp composite types (vectors, matrices, quaternions, transforms) without errors.
 

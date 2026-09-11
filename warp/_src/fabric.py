@@ -126,7 +126,10 @@ def fabric_to_warp_dtype(type_info, attrib_name):
         elif role in ("matrix", "transform", "frame"):
             # only square matrices are currently supported
             mat_size = int(math.sqrt(elem_count))
-            assert mat_size * mat_size == elem_count
+            if mat_size * mat_size != elem_count:
+                raise ValueError(
+                    f"Fabric attribute '{attrib_name}' matrix metadata must have a square element count, got {elem_count}"
+                )
             return matrix((mat_size, mat_size), base_dtype)
         else:
             return vector(elem_count, base_dtype)
@@ -213,7 +216,11 @@ class fabricarray(noncontiguous_array_base[DType, NDim]):
                 raise ValueError(f"Failed to get attribute '{attrib}'")
 
             type_info = attrib_info["type"]
-            assert len(type_info) == 5
+            if len(type_info) != 5:
+                raise ValueError(
+                    f"Fabric attribute '{attrib}' type metadata must contain five elements, "
+                    f"got {len(type_info)}: {type_info!r}"
+                )
 
             self.dtype = fabric_to_warp_dtype(type_info, attrib)
 

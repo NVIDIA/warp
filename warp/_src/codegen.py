@@ -948,7 +948,10 @@ class _LValueOrigin:
 
     @staticmethod
     def _emit_indices(step: _LValueStep) -> str:
-        assert isinstance(step.payload, tuple)
+        if not isinstance(step.payload, tuple):
+            raise WarpCodegenError(
+                f"An indexed lvalue step must contain a tuple payload, got {type(step.payload).__name__}"
+            )
         return ", ".join(x.emit() for x in step.payload)
 
     @classmethod
@@ -1847,7 +1850,8 @@ class Adjoint:
             adj.source = textwrap.dedent(source)
             adj.tree = ast.parse(adj.source)
 
-        assert adj.source is not None, f"Failed to extract source code for function {func.__name__}"
+        if adj.source is None:
+            raise WarpCodegenError(f"Expected source code for function '{func.__name__}', got None")
 
         # Indicates where the function definition starts (excludes decorators)
         adj.fun_def_lineno = None
@@ -6287,7 +6291,12 @@ class Adjoint:
             # so reparse it to get the correct column info.
             len_value_locs: list[tuple[int, int, int]] = []
             expr_tree = ast.parse(static_code)
-            assert len(expr_tree.body) == 1 and isinstance(expr_tree.body[0], ast.Expr)
+            if len(expr_tree.body) != 1 or not isinstance(expr_tree.body[0], ast.Expr):
+                node_types = [type(node).__name__ for node in expr_tree.body]
+                raise WarpCodegenError(
+                    f"Expected wp.static() source to contain one expression, got {len(expr_tree.body)} "
+                    f"statements with node types {node_types}"
+                )
             expr_root = expr_tree.body[0].value
             for expr_node in ast.walk(expr_root):
                 if (

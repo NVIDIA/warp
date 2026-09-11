@@ -1519,8 +1519,11 @@ class OpenGLRenderer:
     @tiled_rendering.setter
     def tiled_rendering(self, value):
         """Enable or disable tiled rendering."""
-        if value:
-            assert self._tile_instances is not None, "Tiled rendering is not set up. Call setup_tiled_rendering first."
+        if value and self._tile_instances is None:
+            raise RuntimeError(
+                "Tiled rendering must be configured with setup_tiled_rendering() before it can be enabled, "
+                "got no tile instances"
+            )
         self._tiled_rendering = value
 
     def setup_tiled_rendering(
@@ -1568,7 +1571,13 @@ class OpenGLRenderer:
                 updated when the camera is moved.
         """
 
-        assert len(instances) > 0 and all(isinstance(i, list) for i in instances), "Invalid tile instances."
+        if not isinstance(instances, list):
+            raise TypeError(f"instances must be a list of lists, got {type(instances).__name__}")
+        if not instances:
+            raise ValueError(f"instances must be non-empty, got {instances!r}")
+        for index, item in enumerate(instances):
+            if not isinstance(item, list):
+                raise TypeError(f"instances elements must be lists, got {type(item).__name__} at index {index}")
 
         self._tile_instances = instances
         n = len(self._tile_instances)
@@ -1591,9 +1600,11 @@ class OpenGLRenderer:
             if rescale_window:
                 self.window.set_size(self._tile_width * self._tile_ncols, self._tile_height * self._tile_nrows)
         else:
-            assert len(tile_positions) == n and len(tile_sizes) == n, (
-                "Number of tiles does not match number of instances."
-            )
+            if len(tile_positions) != n or len(tile_sizes) != n:
+                raise ValueError(
+                    f"tile_positions and tile_sizes must each contain {n} entries to match instances, "
+                    f"got {len(tile_positions)} positions and {len(tile_sizes)} sizes"
+                )
             self._tile_ncols = None
             self._tile_nrows = None
             self._tile_width = None
@@ -1649,8 +1660,14 @@ class OpenGLRenderer:
             tile_position: A (x, y) tuple specifying the position of the tile in pixels (optional).
         """
 
-        assert self._tile_instances is not None, "Tiled rendering is not set up. Call setup_tiled_rendering first."
-        assert tile_id < len(self._tile_instances), "Invalid tile id."
+        if self._tile_instances is None:
+            raise RuntimeError(
+                "update_tile() requires setup_tiled_rendering() to be called first, got no tile instances"
+            )
+        tile_count = len(self._tile_instances)
+        if tile_id < 0 or tile_id >= tile_count:
+            tile_label = "tile" if tile_count == 1 else "tiles"
+            raise IndexError(f"tile_id {tile_id} is out of bounds for {tile_count} {tile_label}")
 
         if instances is not None:
             self._tile_instances[tile_id] = instances
@@ -2793,29 +2810,39 @@ Instances: {len(self._instances)}"""
         channels = 3 if mode == "rgb" else 1
 
         if split_up_tiles:
-            assert self._tile_width is not None and self._tile_height is not None, (
-                "Tile width and height are not set, tiles must all have the same size"
-            )
-            assert all(vp[2] == self._tile_width for vp in self._tile_viewports), (
-                "Tile widths do not all equal global tile_width, use `get_tile_pixels` instead to retrieve pixels for a single tile"
-            )
-            assert all(vp[3] == self._tile_height for vp in self._tile_viewports), (
-                "Tile heights do not all equal global tile_height, use `get_tile_pixels` instead to retrieve pixels for a single tile"
-            )
-            assert target_image.shape == (
+            if self._tile_viewports is None:
+                raise RuntimeError(
+                    "get_pixels() requires setup_tiled_rendering() when split_up_tiles=True, got no tile viewports"
+                )
+            if self._tile_width is None or self._tile_height is None:
+                raise RuntimeError(
+                    "Uniform tile width and height must be configured when split_up_tiles=True, "
+                    f"got tile_width={self._tile_width} and tile_height={self._tile_height}"
+                )
+            if not all(vp[2] == self._tile_width for vp in self._tile_viewports):
+                actual_widths = sorted({vp[2] for vp in self._tile_viewports})
+                raise RuntimeError(
+                    f"All tile widths must equal the configured tile width {self._tile_width}, "
+                    f"got {actual_widths}. Use get_tile_pixels() to retrieve pixels for a single tile"
+                )
+            if not all(vp[3] == self._tile_height for vp in self._tile_viewports):
+                actual_heights = sorted({vp[3] for vp in self._tile_viewports})
+                raise RuntimeError(
+                    f"All tile heights must equal the configured tile height {self._tile_height}, "
+                    f"got {actual_heights}. Use get_tile_pixels() to retrieve pixels for a single tile"
+                )
+            expected_shape = (
                 self.num_tiles,
                 self._tile_height,
                 self._tile_width,
                 channels,
-            ), (
-                f"Shape of `target_image` array does not match {self.num_tiles} x {self._tile_height} x {self._tile_width} x {channels}"
             )
+            if target_image.shape != expected_shape:
+                raise ValueError(f"target_image shape must be {expected_shape}, got {target_image.shape}")
         else:
-            assert target_image.shape == (
-                self.screen_height,
-                self.screen_width,
-                channels,
-            ), f"Shape of `target_image` array does not match {self.screen_height} x {self.screen_width} x {channels}"
+            expected_shape = (self.screen_height, self.screen_width, channels)
+            if target_image.shape != expected_shape:
+                raise ValueError(f"target_image shape must be {expected_shape}, got {target_image.shape}")
 
         gl.glBindBuffer(gl.GL_PIXEL_PACK_BUFFER, self._frame_pbo)
         if mode == "rgb":

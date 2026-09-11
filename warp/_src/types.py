@@ -1090,7 +1090,11 @@ def vector(length, dtype):
 @functools.cache
 def matrix(shape, dtype):
     """Create a matrix type with the given shape and data type."""
-    assert len(shape) == 2
+    if len(shape) != 2:
+        dimension_label = "dimension" if len(shape) == 1 else "dimensions"
+        raise ValueError(
+            f"Matrix shape must have exactly two dimensions, got {len(shape)} {dimension_label} in shape {shape!r}"
+        )
 
     # canonicalize dtype
     if dtype is int:
@@ -1389,7 +1393,6 @@ def matrix(shape, dtype):
                         values = tuple(col_vec[x] for x in rows)
                         return vector(len(values), self._wp_scalar_type_)(*values)
 
-                assert ndim == 2
                 rows = range(*key[0].indices(self._shape_[1]))
                 cols = range(*key[1].indices(self._shape_[0]))
                 row_vecs = tuple(self.get_row(i) for i in rows)
@@ -1474,8 +1477,6 @@ def matrix(shape, dtype):
                             super().__setitem__(idx, mat_t.scalar_import(value[i] if v_shape else value))
 
                         return
-
-                assert ndim == 2
 
                 _, v_shape = flatten(value)
 
@@ -2954,7 +2955,8 @@ def scalars_equal_generic(a, b, match_generic=True):
 
 
 def seq_match_ellipsis(a, b) -> bool:
-    assert a and a[-1] is Ellipsis and len(a) == 2
+    if not a or a[-1] is not Ellipsis or len(a) != 2:
+        raise TypeError(f"An ellipsis sequence pattern must contain one type followed by Ellipsis, got {a!r}")
 
     # Compare the args against the type being repeated through the ellipsis.
     repeated_arg = a[0]

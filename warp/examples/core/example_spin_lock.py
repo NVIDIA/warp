@@ -66,12 +66,18 @@ def test_spinlock(device):
     wp.launch(test_spinlock_counter, dim=n, inputs=[counter, atomic_counter, lock], device=device)
 
     # Verify results
-    assert atomic_counter.numpy()[0] == n, f"Atomic counter should be {n}, got {atomic_counter.numpy()[0]}"
-    assert counter.numpy()[0] == n, f"Counter should be {n}, got {counter.numpy()[0]}"
-    assert lock.numpy()[0] == 0, "Lock was not properly released"
+    atomic_counter_value = atomic_counter.numpy()[0]
+    counter_value = counter.numpy()[0]
+    lock_value = lock.numpy()[0]
+    if atomic_counter_value != n:
+        raise RuntimeError(f"Atomic counter must equal the thread count {n}, got {atomic_counter_value}")
+    if counter_value != n:
+        raise RuntimeError(f"Spin-lock counter must equal the thread count {n}, got {counter_value}")
+    if lock_value != 0:
+        raise RuntimeError(f"Lock must be released with value 0, got {lock_value}")
 
-    print(f"Final counter value: {counter.numpy()[0]}")
-    print(f"Final atomic counter value: {atomic_counter.numpy()[0]}")
+    print(f"Final counter value: {counter_value}")
+    print(f"Final atomic counter value: {atomic_counter_value}")
 
 
 if __name__ == "__main__":

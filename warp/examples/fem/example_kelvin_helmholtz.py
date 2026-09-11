@@ -631,7 +631,11 @@ class Example:
         state_np = self.state_field.dof_values.numpy()
 
         # All values must be finite
-        assert np.all(np.isfinite(state_np)), "Non-finite values in state"
+        if not np.all(np.isfinite(state_np)):
+            non_finite_count = np.count_nonzero(~np.isfinite(state_np))
+            raise RuntimeError(
+                f"All state values must be finite, got {non_finite_count} non-finite values out of {state_np.size}"
+            )
 
         rho = state_np[:, 0]
         rhou = state_np[:, 1]
@@ -639,22 +643,26 @@ class Example:
         E = state_np[:, 3]
 
         # Density must be positive
-        assert np.all(rho > 0), f"Non-positive density: min rho = {rho.min()}"
+        if not np.all(rho > 0):
+            raise RuntimeError(f"Density must be greater than 0, got minimum density {rho.min()}")
 
         # Pressure must be positive: p = (gamma-1)(E - 1/2(rhou^2 + rhov^2)/rho)
         rho_safe = np.maximum(rho, 1e-10)
         ke = 0.5 * (rhou**2 + rhov**2) / rho_safe
         pressure = 0.4 * (E - ke)
-        assert np.all(pressure > -1e-6), f"Negative pressure: min p = {pressure.min()}"
+        if not np.all(pressure > -1e-6):
+            raise RuntimeError(f"Pressure must be greater than -1e-6, got minimum pressure {pressure.min()}")
 
         # Mass conservation (periodic + reflective BCs form a nearly closed
         # system; small errors from positivity limiter and periodic lookup offset)
         current_mass = fem.integrate(density_field, domain=self._domain, fields={"U": self.state_field})
         rel_mass_err = abs(current_mass - self._initial_mass) / self._initial_mass
-        assert rel_mass_err < 0.05, f"Mass not conserved: relative error = {rel_mass_err:.2e}"
+        if rel_mass_err >= 0.05:
+            raise RuntimeError(f"Relative mass error must be less than 5e-2, got {rel_mass_err:.2e}")
 
         # Density should remain bounded (initial range is [1, 2])
-        assert rho.max() < 5.0, f"Density too large: max rho = {rho.max()}"
+        if rho.max() >= 5.0:
+            raise RuntimeError(f"Maximum density must be less than 5, got {rho.max()}")
 
         # Get DOF positions and check shear-layer structure
         pos_space = fem.make_collocated_function_space(self._basis_space, dtype=wp.vec2)
@@ -670,9 +678,13 @@ class Example:
         edge_mask = (py < 0.15 * ds) | (py > 0.85 * ds)
 
         if mid_mask.sum() > 10 and edge_mask.sum() > 10:
-            assert rho[mid_mask].mean() > rho[edge_mask].mean(), (
-                f"Middle strip should be denser: mid rho={rho[mid_mask].mean():.3f}, edge rho={rho[edge_mask].mean():.3f}"
-            )
+            middle_density = rho[mid_mask].mean()
+            edge_density = rho[edge_mask].mean()
+            if middle_density <= edge_density:
+                raise RuntimeError(
+                    f"Mean middle-strip density must exceed mean edge density, "
+                    f"got {middle_density:.3f} and {edge_density:.3f}, respectively"
+                )
 
 
 if __name__ == "__main__":

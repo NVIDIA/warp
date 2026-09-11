@@ -1650,6 +1650,21 @@ def test_tile_broadcast_grad(test, device):
     assert_np_equal(a.grad.numpy(), np.ones(5) * 5.0)
 
 
+def test_tile_broadcast_rejects_invalid_rank(test, device):
+    """Test that tile_broadcast() rejects output ranks unsupported by native tiles."""
+
+    @wp.kernel(module="unique")
+    def five_dimensional_shape_kernel(values: wp.array[float]):
+        tile = wp.tile_load(values, shape=1)
+        wp.tile_broadcast(tile, shape=(1, 1, 1, 1, 1))
+
+    values = wp.zeros(1, dtype=float, device=device)
+    with test.assertRaisesRegex(
+        ValueError, r"tile_broadcast\(\) output must have between one and four dimensions, got 5"
+    ):
+        wp.launch_tiled(five_dimensional_shape_kernel, dim=1, inputs=[values], block_dim=TILE_DIM, device=device)
+
+
 @wp.kernel
 def test_tile_squeeze_kernel(x: wp.array3d[float], y: wp.array[float]):
     a = wp.tile_load(x, shape=(1, TILE_M, 1), offset=(0, 0, 0))
@@ -3267,6 +3282,12 @@ add_function_test(TestTile, "test_tile_broadcast_add_2d", test_tile_broadcast_ad
 add_function_test(TestTile, "test_tile_broadcast_add_3d", test_tile_broadcast_add_3d, devices=devices)
 add_function_test(TestTile, "test_tile_broadcast_add_4d", test_tile_broadcast_add_4d, devices=devices)
 add_function_test(TestTile, "test_tile_broadcast_grad", test_tile_broadcast_grad, devices=devices)
+add_function_test(
+    TestTile,
+    "test_tile_broadcast_rejects_invalid_rank",
+    test_tile_broadcast_rejects_invalid_rank,
+    devices=devices,
+)
 add_function_test(TestTile, "test_tile_squeeze", test_tile_squeeze, devices=devices)
 add_function_test(TestTile, "test_tile_squeeze_negative_axis", test_tile_squeeze_negative_axis, devices=devices)
 add_function_test(TestTile, "test_tile_squeeze_axis_bounds", test_tile_squeeze_axis_bounds, devices=devices)

@@ -1205,6 +1205,20 @@ class TestFabricArray(unittest.TestCase):
         instance = wp.fabricarray.__new__(wp.fabricarray)
         instance.__del__()
 
+    def test_fabricarray_rejects_malformed_type_metadata(self):
+        data = wp.zeros(1, dtype=wp.float32, device="cpu")
+        invalid_types = (
+            ((True, "f4", 1, 0), r"must contain five elements, got 4: \(True, 'f4', 1, 0\)"),
+            ((True, "f4", 6, 0, "matrix"), "must have a square element count, got 6"),
+        )
+
+        for type_info, error in invalid_types:
+            with self.subTest(type_info=type_info):
+                interface = _create_fabric_array_interface(data, "values", bucket_sizes=[1])
+                interface["attribs"]["values"]["type"] = type_info
+                with self.assertRaisesRegex(ValueError, error):
+                    wp.fabricarray(data=interface, attrib="values")
+
     def test_fabricarray_struct_field_declaration(self):
         """Verify structs accept subscript and factory-style Fabric array fields."""
 

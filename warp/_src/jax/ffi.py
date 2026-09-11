@@ -276,7 +276,7 @@ class FfiKernel:
         in_out_argnames_list = in_out_argnames or []
         in_out_argnames = set(in_out_argnames_list)
         if len(in_out_argnames_list) != len(in_out_argnames):
-            raise AssertionError("in_out_argnames must not contain duplicate names")
+            raise ValueError("in_out_argnames must not contain duplicate names")
 
         self.num_kernel_args = len(kernel.adj.args)
         self.num_in_out = len(in_out_argnames)
@@ -306,7 +306,7 @@ class FfiKernel:
         for i in range(self.num_inputs, self.num_kernel_args):
             arg_name = kernel.adj.args[i].label
             if arg_name in in_out_argnames:
-                raise AssertionError(
+                raise ValueError(
                     f"Expected an output-only argument for argument {arg_name}."
                     " in_out arguments should be placed before output-only arguments."
                 )
@@ -474,8 +474,16 @@ class FfiKernel:
                 num_outputs = call_frame.contents.rets.size
                 outputs = ctypes.cast(call_frame.contents.rets.rets, ctypes.POINTER(ctypes.POINTER(XLA_FFI_Buffer)))
 
-                assert num_inputs == self.num_inputs
-                assert num_outputs == self.num_outputs
+                if num_inputs != self.num_inputs:
+                    return create_invalid_argument_ffi_error(
+                        call_frame.contents.api,
+                        f"Expected {self.num_inputs} JAX FFI input buffers, got {num_inputs}",
+                    )
+                if num_outputs != self.num_outputs:
+                    return create_invalid_argument_ffi_error(
+                        call_frame.contents.api,
+                        f"Expected {self.num_outputs} JAX FFI output buffers, got {num_outputs}",
+                    )
 
                 arg_refs = []
                 batch_size = None
@@ -672,7 +680,7 @@ class FfiCallable:
         in_out_argnames_list = in_out_argnames or []
         in_out_argnames = set(in_out_argnames_list)
         if len(in_out_argnames_list) != len(in_out_argnames):
-            raise AssertionError("in_out_argnames must not contain duplicate names")
+            raise ValueError("in_out_argnames must not contain duplicate names")
 
         # get arguments and annotations
         argspec = get_full_arg_spec(func)
@@ -711,7 +719,7 @@ class FfiCallable:
                 self.args.append(arg)
 
             if arg.in_out and arg_idx >= self.num_inputs:
-                raise AssertionError(
+                raise ValueError(
                     f"Expected an output-only argument for argument {arg_name}."
                     " in_out arguments should be placed before output-only arguments."
                 )
@@ -898,8 +906,16 @@ class FfiCallable:
                 num_outputs = call_frame.contents.rets.size
                 outputs = ctypes.cast(call_frame.contents.rets.rets, ctypes.POINTER(ctypes.POINTER(XLA_FFI_Buffer)))
 
-                assert num_inputs == self.num_inputs
-                assert num_outputs == self.num_outputs
+                if num_inputs != self.num_inputs:
+                    return create_invalid_argument_ffi_error(
+                        call_frame.contents.api,
+                        f"Expected {self.num_inputs} JAX FFI input buffers, got {num_inputs}",
+                    )
+                if num_outputs != self.num_outputs:
+                    return create_invalid_argument_ffi_error(
+                        call_frame.contents.api,
+                        f"Expected {self.num_outputs} JAX FFI output buffers, got {num_outputs}",
+                    )
 
                 if platform == _FFI_PLATFORM_CPU:
                     if self.graph_mode not in (JaxCallableGraphMode.NONE, JaxCallableGraphMode.JAX):

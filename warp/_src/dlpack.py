@@ -188,7 +188,10 @@ def dtype_from_dlpack(dl_dtype):
 
 
 def device_from_dlpack(dl_device):
-    assert warp._src.context.runtime is not None, "Warp not initialized, call wp.init() before use"
+    if warp._src.context.runtime is None:
+        raise RuntimeError(
+            "DLPack device conversion requires an initialized Warp runtime, got runtime=None. Call wp.init() first"
+        )
 
     if dl_device.device_type.value == DLDeviceType.kDLCPU or dl_device.device_type.value == DLDeviceType.kDLCUDAHost:
         return warp._src.context.runtime.cpu_device
@@ -259,7 +262,10 @@ def to_dlpack(wp_array: warp.array):
     shape_size = target_ndim * 8
     mem_size = managed_tensor_size + padding + 2 * shape_size
     mem_ptr = PyMem_RawMalloc(mem_size)
-    assert mem_ptr, "Failed to allocate memory for DLManagedTensor"
+    if not mem_ptr:
+        raise MemoryError(
+            f"DLManagedTensor allocation requires {mem_size} bytes, got a null pointer from PyMem_RawMalloc()"
+        )
 
     # set managed tensor attributes
     managed_tensor = DLManagedTensor.from_address(mem_ptr)
@@ -432,7 +438,8 @@ def _from_dlpack(capsule, dtype=None, hint=None) -> warp.array | warp.Texture:
         A new Warp array or texture that uses the same underlying memory as the input capsule.
     """
 
-    assert PyCapsule_IsValid(capsule, _c_str_dltensor), "Invalid capsule"
+    if not PyCapsule_IsValid(capsule, _c_str_dltensor):
+        raise TypeError(f"Expected a valid DLPack capsule, got {type(capsule).__name__}")
     mem_ptr = PyCapsule_GetPointer(capsule, _c_str_dltensor)
     managed_tensor = DLManagedTensor.from_address(mem_ptr)
 

@@ -201,7 +201,21 @@ devices = get_test_devices()
 
 
 class TestAdam(unittest.TestCase):
-    pass
+    def test_step_requires_parameters(self):
+        opt = warp.optim.Adam()
+
+        with self.assertRaisesRegex(RuntimeError, r"Adam parameters must be set before calling step\(\), got None"):
+            opt.step([])
+
+    def test_step_rejects_mismatched_gradient(self):
+        params = wp.zeros(2, dtype=wp.float32, device="cpu")
+        opt = warp.optim.Adam([params])
+
+        with self.assertRaisesRegex(TypeError, "Adam gradient dtype must match parameter dtype float32, got int32"):
+            opt.step([wp.zeros(2, dtype=wp.int32, device="cpu")])
+
+        with self.assertRaisesRegex(ValueError, r"Adam gradient shape must match parameter shape \(2,\), got \(2, 1\)"):
+            opt.step([wp.zeros((2, 1), dtype=wp.float32, device="cpu")])
 
 
 add_function_test(TestAdam, "test_adam_solve_float", test_adam_solve_float, devices=devices)

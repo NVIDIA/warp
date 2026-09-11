@@ -162,6 +162,52 @@ class TestOpenGLRenderer(unittest.TestCase):
 
                 self.assertEqual(shape, 0)
 
+    def test_setup_tiled_rendering_requires_list(self):
+        """Verify that tiled rendering rejects a non-list instances container."""
+        renderer = OpenGLRenderer.__new__(OpenGLRenderer)
+
+        with self.assertRaisesRegex(TypeError, r"instances must be a list of lists, got tuple"):
+            renderer.setup_tiled_rendering(([0],))
+
+    def test_setup_tiled_rendering_requires_nonempty_instances(self):
+        """Verify that tiled rendering rejects an empty instances list."""
+        renderer = OpenGLRenderer.__new__(OpenGLRenderer)
+
+        with self.assertRaisesRegex(ValueError, r"instances must be non-empty, got \[\]"):
+            renderer.setup_tiled_rendering([])
+
+    def test_setup_tiled_rendering_requires_list_elements(self):
+        """Verify that tiled rendering rejects non-list instance entries."""
+        renderer = OpenGLRenderer.__new__(OpenGLRenderer)
+
+        with self.assertRaisesRegex(TypeError, r"instances elements must be lists, got tuple at index 1"):
+            renderer.setup_tiled_rendering([[0], (1,)])
+
+    def test_get_pixels_requires_tiled_rendering_setup(self):
+        """Verify that tiled pixel reads require configured viewports."""
+        renderer = OpenGLRenderer.__new__(OpenGLRenderer)
+        renderer._switch_context = mock.Mock()
+        renderer._tile_instances = None
+        renderer._tile_viewports = None
+        renderer._tile_width = 0
+        renderer._tile_height = 0
+
+        with self.assertRaisesRegex(
+            RuntimeError,
+            r"get_pixels\(\) requires setup_tiled_rendering\(\) when split_up_tiles=True",
+        ):
+            renderer.get_pixels(object())
+
+    def test_update_tile_reports_out_of_bounds_index(self):
+        """Verify that updating an invalid tile reports an indexing error."""
+        renderer = OpenGLRenderer.__new__(OpenGLRenderer)
+        renderer._tile_instances = [[0]]
+
+        for tile_id in (-1, 1):
+            with self.subTest(tile_id=tile_id):
+                with self.assertRaisesRegex(IndexError, rf"tile_id {tile_id} is out of bounds for 1 tile"):
+                    renderer.update_tile(tile_id)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

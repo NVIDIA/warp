@@ -554,18 +554,25 @@ class Example:
         state_np = self.state_field.dof_values.numpy()
 
         # All values must be finite
-        assert np.all(np.isfinite(state_np)), "Non-finite values in state"
+        if not np.all(np.isfinite(state_np)):
+            non_finite_count = np.count_nonzero(~np.isfinite(state_np))
+            raise RuntimeError(
+                f"All state values must be finite, got {non_finite_count} non-finite values out of {state_np.size}"
+            )
 
         h_all = state_np[:, 0]
 
         # Height must be positive and bounded
-        assert np.all(h_all > 0), f"Non-positive height: min h = {h_all.min()}"
-        assert h_all.max() < 3.0, f"Height too large: max h = {h_all.max()}"
+        if not np.all(h_all > 0):
+            raise RuntimeError(f"Water height must be greater than 0, got minimum height {h_all.min()}")
+        if h_all.max() >= 3.0:
+            raise RuntimeError(f"Maximum water height must be less than 3, got {h_all.max()}")
 
         # Mass conservation (integral of h over domain)
         current_mass = fem.integrate(water_height, domain=self._domain, fields={"U": self.state_field})
         rel_mass_err = abs(current_mass - self._initial_mass) / self._initial_mass
-        assert rel_mass_err < 1e-4, f"Mass not conserved: relative error = {rel_mass_err:.2e}"
+        if rel_mass_err >= 1e-4:
+            raise RuntimeError(f"Relative mass error must be less than 1e-4, got {rel_mass_err:.2e}")
 
         # Get DOF positions for radial analysis
         pos_space = fem.make_collocated_function_space(self._basis_space, dtype=wp.vec2)
@@ -585,7 +592,11 @@ class Example:
         far_mask = r_all > shock_radius + 0.05
         if far_mask.sum() > 0:
             h_far = h_all[far_mask]
-            assert abs(h_far.mean() - 1.0) < 0.05, f"Undisturbed outer region h = {h_far.mean():.4f}, expected ~1.0"
+            mean_far_height = h_far.mean()
+            if abs(mean_far_height - 1.0) >= 0.05:
+                raise RuntimeError(
+                    f"Mean undisturbed outer-region height must be within 0.05 of 1, got {mean_far_height:.4f}"
+                )
 
         # Radial velocity should be outward (positive) in the active region
         h_safe = np.maximum(h_all, 1e-6)
@@ -595,9 +606,11 @@ class Example:
 
         active_mask = (r_all > 0.20) & (r_all < shock_radius - 0.02)
         if active_mask.sum() > 10:
-            assert ur_all[active_mask].mean() > 0, (
-                f"Mean radial velocity in active region is negative: {ur_all[active_mask].mean():.4f}"
-            )
+            mean_radial_velocity = ur_all[active_mask].mean()
+            if mean_radial_velocity <= 0:
+                raise RuntimeError(
+                    f"Mean radial velocity in the active region must exceed 0, got {mean_radial_velocity:.4f}"
+                )
 
 
 if __name__ == "__main__":

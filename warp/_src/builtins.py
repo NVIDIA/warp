@@ -5125,7 +5125,11 @@ def tile_view_value_func(arg_types, arg_values):
         shape = parent_shape[len(offset) :]
         strides = parent_strides[len(offset) :]
 
-    assert len(shape) == len(strides)
+    if len(shape) != len(strides):
+        raise RuntimeError(
+            f"tile_view() shape and strides must have the same rank, got shape rank {len(shape)} "
+            f"and stride rank {len(strides)}"
+        )
 
     output = tile(
         dtype=tile_type.dtype,
@@ -6681,6 +6685,8 @@ def tile_broadcast_value_func(arg_types, arg_values):
 
     if None in target_shape:
         raise ValueError("Tile functions require shape to be a compile time constant.")
+    if not 1 <= len(target_shape) <= 4:
+        raise ValueError(f"tile_broadcast() output must have between one and four dimensions, got {len(target_shape)}")
 
     target_strides = [0] * len(target_shape)
 
@@ -6712,8 +6718,15 @@ def tile_broadcast_value_func(arg_types, arg_values):
 def tile_broadcast_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
     tile = arg_values["a"]
 
-    assert len(return_type.shape) == len(return_type.strides)
-    assert 1 <= len(return_type.shape) <= 4
+    if len(return_type.shape) != len(return_type.strides):
+        raise RuntimeError(
+            f"tile_broadcast() shape and strides must have the same rank, got shape rank {len(return_type.shape)} "
+            f"and stride rank {len(return_type.strides)}"
+        )
+    if not 1 <= len(return_type.shape) <= 4:
+        raise RuntimeError(
+            f"tile_broadcast() output must have between one and four dimensions, got {len(return_type.shape)}"
+        )
     template_args = [*return_type.shape, *return_type.strides]
 
     return ((tile,), template_args)
@@ -8045,9 +8058,6 @@ def tile_n_map_value_func(arg_types, arg_values):
     if overload.value_func is None:
         overload.build(None)
 
-    assert len(dtypes) == len(overload.input_types), (
-        f"Overload parameter count mismatch: expected {len(dtypes)}, got {len(overload.input_types)}"
-    )
     arg_type_map = dict(zip(overload.input_types, dtypes, strict=True))
     value_type = overload.value_func(arg_type_map, None)
 
@@ -13713,7 +13723,6 @@ def view_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]
         # Each integer index collapses one dimension.
         int_count = sum(type_is_int(x) for x in idx_types)
         ndim = arr_type.ndim - int_count
-        assert ndim > 0
     else:
         if idx_count == arr_type.ndim:
             raise RuntimeError("Expected to call `address()` instead of `view()`")
@@ -13727,7 +13736,6 @@ def view_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]
 
         # create an array view with leading dimensions removed
         ndim = arr_type.ndim - idx_count
-        assert ndim > 0
 
     dtype = arr_type.dtype
     if (
@@ -14567,13 +14575,9 @@ def matrix_extract_value_func(arg_types: Mapping[str, type], arg_values: Mapping
     if ndim == 0:
         return mat_type._wp_scalar_type_
 
-    assert shape[0] != -1 or shape[1] != -1
-
     if ndim == 1:
         length = shape[0] if shape[0] != -1 else shape[1]
         return vector(length=length, dtype=mat_type._wp_scalar_type_)
-
-    assert ndim == 2
 
     # When a matrix dimension is 0, all other dimensions are also expected to be 0.
     if any(x == 0 for x in shape):
@@ -15093,7 +15097,6 @@ def matrix_assign_dispatch_func(input_types: Mapping[str, type], return_type: An
 
         # Count how many dimensions the output value will have.
         ndim = sum(1 for x in shape if x >= 0)
-        assert ndim > 0
 
         if ndim == 1:
             length = shape[0] if shape[0] != -1 else shape[1]
@@ -15116,8 +15119,6 @@ def matrix_assign_dispatch_func(input_types: Mapping[str, type], return_type: An
                     f"The provided value is expected to be a vector of length {length}, with dtype {type_repr(mat._wp_scalar_type_)}."
                 )
         else:
-            assert ndim == 2
-
             # When a matrix dimension is 0, all other dimensions are also expected to be 0.
             if any(x == 0 for x in shape):
                 shape = (0,) * len(shape)
@@ -15159,7 +15160,7 @@ def matrix_assign_dispatch_func(input_types: Mapping[str, type], return_type: An
 
         template_args = ()
     else:
-        raise AssertionError
+        raise RuntimeError(f"Matrix assignment expects one or two indices, got {len(idxs)}")
 
     func_args = tuple(args.values())
     return (func_args, template_args)
@@ -17661,7 +17662,8 @@ def _tile_cholesky_generic_lto_dispatch_func(
                 req_smem_bytes += 2 * M * M * type_size_in_bytes(a.type.dtype)
 
         # generate the forward LTO
-        assert M == N
+        if M != N:
+            raise RuntimeError(f"tile_cholesky() input must be square after validation, got shape ({M}, {N})")
         lto_symbol, lto_code_data = warp._src.build.build_lto_solver(
             M,
             N,
@@ -18158,7 +18160,8 @@ def _tile_lower_solve_generic_lto_dispatch_func(
                 req_smem_bytes += M * NRHS * type_size_in_bytes(L.type.dtype)
 
         # generate the forward LTO
-        assert M == N
+        if M != N:
+            raise RuntimeError(f"tile_lower_solve() input must be square after validation, got shape ({M}, {N})")
         lto_symbol, lto_code_data = warp._src.build.build_lto_solver(
             M,
             NRHS,
@@ -18402,7 +18405,8 @@ def _tile_upper_solve_generic_lto_dispatch_func(
             req_smem_bytes += x.type.size * type_size_in_bytes(U.type.dtype)
 
         # generate the LTO
-        assert M == N
+        if M != N:
+            raise RuntimeError(f"tile_upper_solve() input must be square after validation, got shape ({M}, {N})")
         lto_symbol, lto_code_data = warp._src.build.build_lto_solver(
             M,
             NRHS,

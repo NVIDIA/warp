@@ -108,6 +108,11 @@ def kernel_cmd(params: Params, i: int, f: float, v: wp.vec3, m: wp.mat33, out: w
     out[tid] = tid + i
 
 
+@wp.kernel
+def kernel_struct_param(params: Params):
+    pass
+
+
 def test_launch_cmd(test, device):
     """Test recording and executing a kernel launch command.
 
@@ -581,6 +586,10 @@ cuda_devices = get_cuda_test_devices()
 
 
 class TestLaunch(unittest.TestCase):
+    def test_launch_rejects_none_struct_param(self):
+        with self.assertRaisesRegex(RuntimeError, "argument 'params' expects Params but got None"):
+            wp.launch(kernel_struct_param, dim=1, inputs=[None])
+
     def test_launch_scalar_to_composite_param_rejected(self):
         """Verify that a single value passed where a composite kernel parameter is expected must be rejected."""
         kernels = (

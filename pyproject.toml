@@ -108,6 +108,7 @@ select = [
     "F",   # pyflakes
     "W",   # pycodestyle warnings
     "B",   # flake8-bugbear
+    "S101", # flake8-bandit: assert
     "C4",  # flake8-comprehensions
     "NPY", # NumPy-specific rules
     "PLC", # pylint convention
@@ -145,6 +146,7 @@ ignore = [
 "warp/__init__.py" = ["E402"]
 "warp/*.py" = ["PLC0414"]
 "warp/tests/*.py" = ["F841"]
+"warp/tests/**/*.py" = ["S101"]
 # Skill evaluation fixtures intentionally contain the defects agents must
 # find (e.g. a computed-but-never-consumed adjoint), so unused-variable
 # lints are expected there.

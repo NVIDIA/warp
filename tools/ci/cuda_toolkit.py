@@ -568,7 +568,6 @@ def download_archive(
                     f"Could not download CUDA Toolkit archive {record.relative_path!r}: {error}"
                 ) from error
             sleep(2**attempt)
-    raise AssertionError("unreachable download retry state")
 
 
 def extract_archive(archive: Path, destination: Path) -> Path:

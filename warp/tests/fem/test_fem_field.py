@@ -725,7 +725,12 @@ devices = get_test_devices()
 
 
 class TestFemField(unittest.TestCase):
-    pass
+    def test_uniform_field_rejects_value_type_change(self):
+        domain = fem.Cells(fem.Grid2D(res=wp.vec2i(1, 1)))
+        field = fem.UniformField(domain, 1.0)
+
+        with self.assertRaisesRegex(TypeError, "UniformField value type must remain float32, got vec2f"):
+            field.value = wp.vec2(1.0)
 
 
 add_function_test(TestFemField, "test_vector_spaces", test_vector_spaces, devices=devices)

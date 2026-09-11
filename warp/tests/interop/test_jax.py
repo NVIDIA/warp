@@ -849,11 +849,18 @@ def test_ffi_jax_kernel_cache_argnames(test, device):
 
         # A valid cached wrapper must not hide validation errors in later
         # configurations.
-        with test.assertRaisesRegex(AssertionError, "must not contain duplicate names"):
+        with test.assertRaisesRegex(ValueError, "must not contain duplicate names"):
             wp.jax_kernel(
                 triple_kernel,
                 num_outputs=1,
                 in_out_argnames=["output", "output"],
+            )
+
+        with test.assertRaisesRegex(ValueError, "in_out arguments should be placed before output-only arguments"):
+            wp.jax_kernel(
+                multiarg_kernel,
+                num_outputs=2,
+                in_out_argnames=["bc"],
             )
 
         with test.assertRaisesRegex(ValueError, "did not match any function argument names"):
@@ -1155,11 +1162,18 @@ def test_ffi_jax_callable_cache_argnames(test, device):
 
         # A valid cached wrapper must not hide validation errors in later
         # configurations.
-        with test.assertRaisesRegex(AssertionError, "must not contain duplicate names"):
+        with test.assertRaisesRegex(ValueError, "must not contain duplicate names"):
             wp.jax_callable(
                 cache_key_output_first_func,
                 num_outputs=1,
                 in_out_argnames=["output", "output"],
+            )
+
+        with test.assertRaisesRegex(ValueError, "in_out arguments should be placed before output-only arguments"):
+            wp.jax_callable(
+                cache_key_staging_func,
+                num_outputs=2,
+                in_out_argnames=["d"],
             )
 
         with test.assertRaisesRegex(ValueError, "did not match any function argument names"):
