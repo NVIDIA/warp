@@ -4707,13 +4707,10 @@ class Module:
                 once=True,
             )
 
-        # CUDA codegen may depend on the output architecture. Keep the exact
-        # generated source paired with its PTX/CUBIN variant instead of sharing
-        # one architecture-neutral .cu filename across builds.
-        if is_cpu:
-            source_basename = f"{module_name_short}.{source_code_ext}"
-        else:
-            source_basename = f"{os.path.splitext(output_name)[0]}.{source_code_ext}"
+        # Keep the documented architecture-neutral source filename used by AOT
+        # workflows. CUDA builds create a separate per-target snapshot below
+        # for APIC so its source cannot be overwritten by another variant.
+        source_basename = f"{module_name_short}.{source_code_ext}"
         source_code_path = os.path.join(build_dir, source_basename)
         try:
             with open(source_code_path, "w") as source_file:
@@ -4798,9 +4795,14 @@ class Module:
 
         self._write_meta(output_meta_path, meta)
 
+        cuda_apic_source_path = None
         cuda_apic_artifact_path = None
         if not is_cpu:
             try:
+                cuda_apic_source_basename = f"{os.path.splitext(output_name)[0]}.{source_code_ext}"
+                cuda_apic_source_path = os.path.join(build_dir, cuda_apic_source_basename)
+                shutil.copy2(source_code_path, cuda_apic_source_path)
+
                 fallback_reason = "available"
                 if options["extra_cuda_include_dirs"]:
                     fallback_reason = "external_includes"
@@ -4811,8 +4813,8 @@ class Module:
 
                 cuda_apic_artifact = {
                     "version": 1,
-                    "source_filename": source_basename,
-                    "source_digest": hashlib.sha256(Path(source_code_path).read_bytes()).hexdigest(),
+                    "source_filename": cuda_apic_source_basename,
+                    "source_digest": hashlib.sha256(Path(cuda_apic_source_path).read_bytes()).hexdigest(),
                     "binary_kind": "ptx" if output_name.endswith(".ptx") else "cubin",
                     "target_arch": output_arch,
                     "arch_suffix": arch_suffix,
@@ -4832,6 +4834,7 @@ class Module:
                 # APIC source fallback is optional for ordinary module builds.
                 # capture_save() reports the missing recipe if this artifact is
                 # later needed.
+                cuda_apic_source_path = None
                 cuda_apic_artifact_path = None
 
         # -----------------------------------------------------------
@@ -4874,6 +4877,15 @@ class Module:
             except Exception as e:
                 # We don't need source_code_path to be copied successfully to proceed, so warn and keep running
                 log_warning(f"Exception when renaming {source_code_path}: {e}")
+
+            if cuda_apic_source_path is not None:
+                try:
+                    final_apic_source_path = os.path.join(output_dir, os.path.basename(cuda_apic_source_path))
+                    if not os.path.exists(final_apic_source_path) or self.options["strip_hash"]:
+                        os.replace(cuda_apic_source_path, final_apic_source_path)
+                except OSError:
+                    # Optional APIC source must not make module compilation fail.
+                    pass
 
             if cuda_apic_artifact_path is not None:
                 try:

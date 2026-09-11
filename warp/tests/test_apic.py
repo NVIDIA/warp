@@ -744,6 +744,10 @@ def test_cuda_source_fallback_and_guest_cache(test, device):
         module_info = next(iter(capture.graph._apic_capture.collected_modules.values()))
         artifact = module_info["cuda_compile_artifact"]
         test.assertIsNotNone(artifact)
+        test.assertEqual(
+            artifact["source_filename"],
+            os.path.splitext(module_info["binary_filename"])[0] + ".cu",
+        )
         modules_dir = path + "_modules"
         packaged_binary = os.path.join(modules_dir, module_info["binary_filename"])
         source_path = os.path.join(modules_dir, artifact["source_filename"])
