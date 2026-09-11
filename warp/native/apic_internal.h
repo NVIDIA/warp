@@ -637,6 +637,11 @@ bool apic_get_param_cuda(APICGraph* graph, void* dst, const void* src, size_t si
 // initial data from the .wrp file into device memory. Returns false on
 // failure; the caller is responsible for deleting the graph.
 bool apic_load_graph_cuda_setup(
-    APICGraph* graph, void* context, const std::string& modules_dir, const uint8_t* memory_ptr, size_t memory_size
+    APICGraph* graph,
+    void* context,
+    const std::string& modules_dir,
+    const char* warp_include_dir,
+    const uint8_t* memory_ptr,
+    size_t memory_size
 );
 #endif

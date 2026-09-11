@@ -15,8 +15,20 @@
 #include "apic.h"
 #include "apic_internal.h"
 #include "mesh.h"
+#include "version.h"
 
 #include <algorithm>
+#include <atomic>
+#include <chrono>
+#include <filesystem>
+#include <sstream>
+#include <thread>
+
+#ifdef _WIN32
+#include <process.h>
+#else
+#include <unistd.h>
+#endif
 
 // Register a memory region, copying data from device memory to host for serialization.
 // Returns false (with an error string set) if the device-to-host copy fails, so the
@@ -1014,11 +1026,11 @@ static bool apic_rebuild_cuda_graph(APICGraph* graph, CUstream stream)
     void* prev_current_stream = wp_cuda_context_get_stream(graph->cuda_context);
     wp_cuda_context_set_stream(graph->cuda_context, (void*)stream, 0);
 
-    // use_ptx is only consulted for IF/WHILE conditional kernels; loaded .wrp
-    // graphs use the cubin path for the JIT-compiled set-condition kernels.
+    // The target policy is selected for the guest during load and is consulted
+    // only for IF/WHILE conditional helper kernels.
     bool success = apic_replay_ops_into_cuda_capture(
         graph, stream, graph->operation_stream.data(), graph->operation_stream.size(), graph->operation_count,
-        graph->target_arch, false
+        graph->target_arch, graph->cuda_use_ptx
     );
 
     wp_cuda_context_set_stream(graph->cuda_context, prev_current_stream, 0);
@@ -1043,23 +1055,337 @@ static bool apic_rebuild_cuda_graph(APICGraph* graph, CUstream stream)
 // CUDA-side graph load setup (called from wp_apic_load_graph in apic.cpp)
 // ============================================================================
 
-bool apic_load_graph_cuda_setup(
-    APICGraph* graph, void* context, const std::string& modules_dir, const uint8_t* memory_ptr, size_t memory_size
+static const char* apic_cuda_fallback_reason_string(APICCudaFallbackReason reason)
+{
+    switch (reason) {
+    case APIC_CUDA_FALLBACK_SOURCE_UNAVAILABLE:
+        return "generated source is unavailable";
+    case APIC_CUDA_FALLBACK_EXTERNAL_INCLUDES:
+        return "the module requires external CUDA include directories that are not packaged";
+    case APIC_CUDA_FALLBACK_LLVM_CUDA:
+        return "the module was built with the unsupported LLVM CUDA backend";
+    case APIC_CUDA_FALLBACK_LINK_INPUTS:
+        return "the module requires LTO-IR or fatbin link inputs that are not packaged";
+    case APIC_CUDA_FALLBACK_EXPORT_FAILED:
+        return "capture_save could not export the generated source";
+    case APIC_CUDA_FALLBACK_RECIPE_UNAVAILABLE:
+        return "the exact CUDA compile recipe is unavailable";
+    default:
+        return "source fallback is unavailable";
+    }
+}
+
+static std::string apic_join_diagnostics(const std::vector<std::string>& diagnostics)
+{
+    std::ostringstream message;
+    for (size_t i = 0; i < diagnostics.size(); ++i) {
+        if (i)
+            message << "; ";
+        message << diagnostics[i];
+    }
+    return message.str();
+}
+
+static bool apic_cuda_select_compile_target(
+    int device_arch, APICCudaArchSuffix suffix, int& target_arch, bool& use_ptx, std::string& diagnostic
 )
 {
-    for (auto& pair : graph->modules) {
-        std::string cubin_path = modules_dir + "/" + pair.second.cubin_filename;
-#ifdef _WIN32
-        std::replace(cubin_path.begin(), cubin_path.end(), '/', '\\');
-#endif
-        CUmodule cuda_module = (CUmodule)wp_cuda_load_module(context, cubin_path.c_str());
-        if (!cuda_module) {
-            wp::set_error_string("Warp APIC error: Failed to load module %s", cubin_path.c_str());
+    int count = 0;
+    nvrtcResult result = nvrtcGetNumSupportedArchs(&count);
+    if (result != NVRTC_SUCCESS || count <= 0) {
+        diagnostic = std::string("NVRTC architecture query failed: ") + nvrtcGetErrorString(result);
+        return false;
+    }
+    std::vector<int> supported(count);
+    result = nvrtcGetSupportedArchs(supported.data());
+    if (result != NVRTC_SUCCESS) {
+        diagnostic = std::string("NVRTC architecture query failed: ") + nvrtcGetErrorString(result);
+        return false;
+    }
+    std::sort(supported.begin(), supported.end());
+
+    const bool exact_supported = std::binary_search(supported.begin(), supported.end(), device_arch);
+    if (suffix == APIC_CUDA_ARCH_SUFFIX_A) {
+        if (device_arch < 90 || !exact_supported) {
+            diagnostic = "the architecture-specific recipe requires NVRTC support for the exact guest architecture sm_"
+                + std::to_string(device_arch) + "a";
             return false;
         }
-        pair.second.cuda_module = cuda_module;
+        target_arch = device_arch;
+        use_ptx = false;
+        return true;
     }
 
+    if (suffix == APIC_CUDA_ARCH_SUFFIX_F) {
+#if CUDA_VERSION < 12090
+        diagnostic = "the family-specific recipe requires CUDA 12.9 or newer";
+        return false;
+#else
+        if (device_arch < 100) {
+            diagnostic
+                = "the family-specific recipe cannot target guest architecture sm_" + std::to_string(device_arch);
+            return false;
+        }
+        target_arch = 0;
+        for (int candidate : supported) {
+            if (candidate <= device_arch && candidate / 10 == device_arch / 10)
+                target_arch = candidate;
+        }
+        if (!target_arch) {
+            diagnostic = "NVRTC has no target in the guest GPU family for sm_" + std::to_string(device_arch) + "f";
+            return false;
+        }
+        use_ptx = target_arch != device_arch;
+        return true;
+#endif
+    }
+
+    if (exact_supported) {
+        target_arch = device_arch;
+        use_ptx = false;
+        return true;
+    }
+    target_arch = 0;
+    for (int candidate : supported) {
+        if (candidate <= device_arch)
+            target_arch = candidate;
+    }
+    if (!target_arch) {
+        diagnostic = "NVRTC has no target compatible with guest architecture sm_" + std::to_string(device_arch);
+        return false;
+    }
+    use_ptx = true;
+    return true;
+}
+
+static std::string
+apic_cuda_cache_path(const std::string& modules_dir, const APICModule& module, int target_arch, bool use_ptx)
+{
+    int nvrtc_major = 0;
+    int nvrtc_minor = 0;
+    nvrtcVersion(&nvrtc_major, &nvrtc_minor);
+    std::string key = module.module_hash;
+    key.push_back('\0');
+    key += module.binary_digest;
+    key.push_back('\0');
+    key += module.source_digest;
+    key.push_back('\0');
+    key += WP_VERSION_STRING;
+    key.push_back('\0');
+    key += std::to_string(nvrtc_major) + "." + std::to_string(nvrtc_minor);
+    key.push_back('\0');
+    key += std::to_string(target_arch);
+    key.push_back(static_cast<char>(module.compile_recipe.arch_suffix));
+    key.push_back(use_ptx ? 'p' : 'c');
+    key.append(
+        reinterpret_cast<const char*>(&module.compile_recipe),
+        reinterpret_cast<const char*>(&module.compile_recipe) + sizeof(module.compile_recipe)
+    );
+    const std::string digest = apic_sha256_hex(reinterpret_cast<const uint8_t*>(key.data()), key.size());
+    const char* suffix = module.compile_recipe.arch_suffix == APIC_CUDA_ARCH_SUFFIX_A
+        ? "a"
+        : (module.compile_recipe.arch_suffix == APIC_CUDA_ARCH_SUFFIX_F ? "f" : "");
+    std::filesystem::path path(modules_dir);
+    path /= "apic_guest_" + digest + ".sm" + std::to_string(target_arch) + suffix + (use_ptx ? ".ptx" : ".cubin");
+    return path.string();
+}
+
+static bool apic_publish_cuda_cache(const std::string& path, const std::vector<uint8_t>& data)
+{
+    static std::atomic<uint64_t> sequence { 0 };
+#ifdef _WIN32
+    const int process_id = _getpid();
+#else
+    const int process_id = getpid();
+#endif
+    const uint64_t thread_id = std::hash<std::thread::id> {}(std::this_thread::get_id());
+    const uint64_t nonce = static_cast<uint64_t>(std::chrono::steady_clock::now().time_since_epoch().count());
+    const std::string temporary_path = path + ".tmp." + std::to_string(process_id) + "." + std::to_string(thread_id)
+        + "." + std::to_string(nonce) + "." + std::to_string(sequence.fetch_add(1));
+
+    FILE* file = fopen(temporary_path.c_str(), "wb");
+    if (!file)
+        return false;
+    const bool wrote = data.empty() || fwrite(data.data(), 1, data.size(), file) == data.size();
+    const bool closed = fclose(file) == 0;
+    if (!wrote || !closed) {
+        std::error_code ignored;
+        std::filesystem::remove(temporary_path, ignored);
+        return false;
+    }
+
+    std::error_code error;
+    std::filesystem::rename(temporary_path, path, error);
+    if (error) {
+        // A concurrent loader may have won publication. Keep its usable entry;
+        // replace only an unloadable file on the next load.
+        std::filesystem::remove(temporary_path, error);
+        return std::filesystem::is_regular_file(path, error);
+    }
+    return true;
+}
+
+static bool apic_load_cuda_module(
+    void* context, const std::string& modules_dir, const char* warp_include_dir, APICModule& module, int device_arch
+)
+{
+    std::vector<std::string> diagnostics;
+    std::filesystem::path packaged_path(modules_dir);
+    packaged_path /= module.cubin_filename;
+    std::vector<uint8_t> packaged_data;
+    if (!apic_read_file(packaged_path.string().c_str(), packaged_data)) {
+        diagnostics.push_back("packaged binary " + packaged_path.string() + " was not found");
+    } else if (apic_sha256_hex(packaged_data.data(), packaged_data.size()) != module.binary_digest) {
+        diagnostics.push_back("packaged binary " + packaged_path.string() + " failed its SHA-256 check");
+    } else {
+        std::string load_diagnostic;
+        if (apic_cuda_load_module_data(
+                context, packaged_data.data(), packaged_data.size(), module.binary_kind == APIC_CUDA_BINARY_PTX,
+                &module.cuda_module, load_diagnostic
+            )) {
+            return true;
+        }
+        diagnostics.push_back("packaged binary was rejected: " + load_diagnostic);
+    }
+
+    if (module.fallback_reason != APIC_CUDA_FALLBACK_AVAILABLE) {
+        diagnostics.push_back(apic_cuda_fallback_reason_string(module.fallback_reason));
+        wp::set_error_string(
+            "Warp APIC error: APIC failed to resolve CUDA module %s: %s", module.module_name.c_str(),
+            apic_join_diagnostics(diagnostics).c_str()
+        );
+        return false;
+    }
+
+    int target_arch = 0;
+    bool use_ptx = false;
+    std::string target_diagnostic;
+    if (!apic_cuda_select_compile_target(
+            device_arch, static_cast<APICCudaArchSuffix>(module.compile_recipe.arch_suffix), target_arch, use_ptx,
+            target_diagnostic
+        )) {
+        diagnostics.push_back(target_diagnostic);
+        wp::set_error_string(
+            "Warp APIC error: APIC failed to resolve CUDA module %s: %s", module.module_name.c_str(),
+            apic_join_diagnostics(diagnostics).c_str()
+        );
+        return false;
+    }
+
+    const std::string cache_path = apic_cuda_cache_path(modules_dir, module, target_arch, use_ptx);
+    std::vector<uint8_t> cache_data;
+    bool cache_was_unloadable = false;
+    if (apic_read_file(cache_path.c_str(), cache_data)) {
+        std::string load_diagnostic;
+        if (apic_cuda_load_module_data(
+                context, cache_data.data(), cache_data.size(), use_ptx, &module.cuda_module, load_diagnostic
+            )) {
+            return true;
+        }
+        cache_was_unloadable = true;
+        diagnostics.push_back("cached guest binary was rejected: " + load_diagnostic);
+    }
+
+    if (!warp_include_dir || !warp_include_dir[0]) {
+        diagnostics.push_back(
+            "source fallback is available, but wp_apic_load_graph_ex() was not given the Warp native include directory"
+        );
+        wp::set_error_string(
+            "Warp APIC error: APIC failed to resolve CUDA module %s: %s", module.module_name.c_str(),
+            apic_join_diagnostics(diagnostics).c_str()
+        );
+        return false;
+    }
+
+    std::filesystem::path source_path(modules_dir);
+    source_path /= module.source_filename;
+    std::vector<uint8_t> source_data;
+    if (!apic_read_file(source_path.string().c_str(), source_data)) {
+        diagnostics.push_back("generated source " + source_path.string() + " was not found");
+        wp::set_error_string(
+            "Warp APIC error: APIC failed to resolve CUDA module %s: %s", module.module_name.c_str(),
+            apic_join_diagnostics(diagnostics).c_str()
+        );
+        return false;
+    }
+    if (apic_sha256_hex(source_data.data(), source_data.size()) != module.source_digest) {
+        diagnostics.push_back("generated source " + source_path.string() + " failed its SHA-256 check");
+        wp::set_error_string(
+            "Warp APIC error: APIC failed to resolve CUDA module %s: %s", module.module_name.c_str(),
+            apic_join_diagnostics(diagnostics).c_str()
+        );
+        return false;
+    }
+
+    std::string source(source_data.begin(), source_data.end());
+    std::vector<uint8_t> compiled_data;
+    std::string compile_diagnostic;
+    const char* arch_suffix = module.compile_recipe.arch_suffix == APIC_CUDA_ARCH_SUFFIX_A
+        ? "a"
+        : (module.compile_recipe.arch_suffix == APIC_CUDA_ARCH_SUFFIX_F ? "f" : "");
+    if (!apic_cuda_compile_program_to_memory(
+            source, module.source_filename.c_str(), target_arch, arch_suffix, warp_include_dir, use_ptx,
+            module.compile_recipe, compiled_data, compile_diagnostic
+        )) {
+        diagnostics.push_back("source compilation failed: " + compile_diagnostic);
+        wp::set_error_string(
+            "Warp APIC error: APIC failed to resolve CUDA module %s: %s", module.module_name.c_str(),
+            apic_join_diagnostics(diagnostics).c_str()
+        );
+        return false;
+    }
+
+    std::string load_diagnostic;
+    if (!apic_cuda_load_module_data(
+            context, compiled_data.data(), compiled_data.size(), use_ptx, &module.cuda_module, load_diagnostic
+        )) {
+        diagnostics.push_back("freshly compiled guest binary was rejected: " + load_diagnostic);
+        wp::set_error_string(
+            "Warp APIC error: APIC failed to resolve CUDA module %s: %s", module.module_name.c_str(),
+            apic_join_diagnostics(diagnostics).c_str()
+        );
+        return false;
+    }
+
+    if (cache_was_unloadable) {
+        std::error_code ignored;
+        std::filesystem::remove(cache_path, ignored);
+    }
+    if (!apic_publish_cuda_cache(cache_path, compiled_data)) {
+        fprintf(stderr, "Warp APIC warning: could not publish compiled module cache '%s'\n", cache_path.c_str());
+    }
+    return true;
+}
+
+bool apic_load_graph_cuda_setup(
+    APICGraph* graph,
+    void* context,
+    const std::string& modules_dir,
+    const char* warp_include_dir,
+    const uint8_t* memory_ptr,
+    size_t memory_size
+)
+{
+    ContextInfo* context_info = get_context_info(static_cast<CUcontext>(context));
+    if (!context_info || !context_info->device_info) {
+        wp::set_error_string("Warp APIC error: could not determine the guest CUDA device architecture");
+        return false;
+    }
+    const int device_arch = context_info->device_info->arch;
+
+    std::string target_diagnostic;
+    if (!apic_cuda_select_compile_target(
+            device_arch, APIC_CUDA_ARCH_SUFFIX_NONE, graph->target_arch, graph->cuda_use_ptx, target_diagnostic
+        )) {
+        wp::set_error_string("Warp APIC error: could not select the guest CUDA target: %s", target_diagnostic.c_str());
+        return false;
+    }
+
+    for (auto& pair : graph->modules) {
+        if (!apic_load_cuda_module(context, modules_dir, warp_include_dir, pair.second, device_arch)) {
+            return false;
+        }
+    }
     ContextGuard guard(context);
 
     for (auto& pair : graph->regions) {

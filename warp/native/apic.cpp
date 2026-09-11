@@ -1361,24 +1361,27 @@ bool apic_parse_metadata(const uint8_t* data, size_t size, APICGraph* graph)
     if (!reader.read(version) || !reader.read_string(graph->producer_version) || !reader.read(target_arch)
         || !reader.read(num_modules) || !reader.read(num_kernels) || !reader.read(num_params)
         || !reader.read(num_meshes) || !reader.read(num_ptr_locations)) {
-        wp::set_error_string("Invalid APIC metadata header");
+        wp::set_error_string("Warp APIC error: Invalid APIC metadata header");
         return false;
     }
     if (version != APIC_FORMAT_VERSION) {
-        wp::set_error_string("APIC metadata version %u does not match loader version %u", version, APIC_FORMAT_VERSION);
+        wp::set_error_string(
+            "Warp APIC error: APIC metadata version %u does not match loader version %u", version, APIC_FORMAT_VERSION
+        );
         return false;
     }
     if (graph->producer_version != WP_VERSION_STRING) {
         wp::set_error_string(
-            "APIC capture was produced by Warp %s, but this loader is Warp %s", graph->producer_version.c_str(),
-            WP_VERSION_STRING
+            "Warp APIC error: APIC capture was produced by Warp %s, but this loader is Warp %s",
+            graph->producer_version.c_str(), WP_VERSION_STRING
         );
         return false;
     }
     if (graph->target_arch != static_cast<int>(target_arch)) {
         wp::set_error_string(
-            "APIC metadata target architecture %u does not match the WRP header target architecture %d", target_arch,
-            graph->target_arch
+            "Warp APIC error: APIC metadata target architecture %u does not match the WRP header target architecture "
+            "%d",
+            target_arch, graph->target_arch
         );
         return false;
     }
@@ -1393,58 +1396,68 @@ bool apic_parse_metadata(const uint8_t* data, size_t size, APICGraph* graph)
             || !reader.read_string(mod.binary_digest) || !reader.read_string(mod.source_filename)
             || !reader.read_string(mod.source_digest) || !reader.read(binary_kind) || !reader.read(fallback_reason)
             || !reader.read(mod.compile_recipe)) {
-            wp::set_error_string("Invalid APIC module record %u", i);
+            wp::set_error_string("Warp APIC error: Invalid APIC module record %u", i);
             return false;
         }
         if (module_arch > INT_MAX) {
-            wp::set_error_string("Invalid APIC module architecture in record %u", i);
+            wp::set_error_string("Warp APIC error: Invalid APIC module architecture in record %u", i);
             return false;
         }
         mod.target_arch = static_cast<int>(module_arch);
         mod.binary_kind = static_cast<APICCudaBinaryKind>(binary_kind);
         mod.fallback_reason = static_cast<APICCudaFallbackReason>(fallback_reason);
         if (mod.module_hash.empty() || !apic_is_relative_basename(mod.cubin_filename)) {
-            wp::set_error_string("Invalid APIC module name or binary filename in record %u", i);
+            wp::set_error_string("Warp APIC error: Invalid APIC module name or binary filename in record %u", i);
             return false;
         }
         if ((graph->device_type == APIC_DEVICE_CUDA && mod.target_arch == 0)
             || (graph->device_type == APIC_DEVICE_CPU && mod.target_arch != 0)) {
-            wp::set_error_string("APIC module %s has the wrong device target", mod.module_name.c_str());
+            wp::set_error_string(
+                "Warp APIC error: APIC module %s has the wrong device target", mod.module_name.c_str()
+            );
             return false;
         }
         if (graph->device_type == APIC_DEVICE_CUDA) {
             if (!apic_is_sha256(mod.binary_digest) || !apic_validate_cuda_recipe(mod)) {
-                wp::set_error_string("Invalid CUDA artifact metadata for module %s", mod.module_name.c_str());
+                wp::set_error_string(
+                    "Warp APIC error: Invalid CUDA artifact metadata for module %s", mod.module_name.c_str()
+                );
                 return false;
             }
             const bool binary_kind_matches = mod.binary_kind == APIC_CUDA_BINARY_PTX
                 ? apic_has_suffix(mod.cubin_filename, ".ptx")
                 : apic_has_suffix(mod.cubin_filename, ".cubin");
             if (!binary_kind_matches) {
-                wp::set_error_string("CUDA binary kind does not match filename for module %s", mod.module_name.c_str());
+                wp::set_error_string(
+                    "Warp APIC error: CUDA binary kind does not match filename for module %s", mod.module_name.c_str()
+                );
                 return false;
             }
             if (mod.source_filename.empty() != mod.source_digest.empty()
                 || (!mod.source_filename.empty()
                     && (!apic_is_relative_basename(mod.source_filename) || !apic_is_sha256(mod.source_digest)
                         || !apic_has_suffix(mod.source_filename, ".cu")))) {
-                wp::set_error_string("Invalid CUDA source metadata for module %s", mod.module_name.c_str());
+                wp::set_error_string(
+                    "Warp APIC error: Invalid CUDA source metadata for module %s", mod.module_name.c_str()
+                );
                 return false;
             }
             if ((mod.compile_recipe.arch_suffix == APIC_CUDA_ARCH_SUFFIX_A && mod.target_arch < 90)
                 || (mod.compile_recipe.arch_suffix == APIC_CUDA_ARCH_SUFFIX_F && mod.target_arch < 100)) {
-                wp::set_error_string("Invalid CUDA architecture suffix for module %s", mod.module_name.c_str());
+                wp::set_error_string(
+                    "Warp APIC error: Invalid CUDA architecture suffix for module %s", mod.module_name.c_str()
+                );
                 return false;
             }
             if (mod.fallback_reason == APIC_CUDA_FALLBACK_AVAILABLE && mod.source_filename.empty()) {
                 wp::set_error_string(
-                    "CUDA module %s has no source for its available fallback", mod.module_name.c_str()
+                    "Warp APIC error: CUDA module %s has no source for its available fallback", mod.module_name.c_str()
                 );
                 return false;
             }
         }
         if (!graph->modules.emplace(mod.module_hash, std::move(mod)).second) {
-            wp::set_error_string("Duplicate APIC module hash in record %u", i);
+            wp::set_error_string("Warp APIC error: Duplicate APIC module hash in record %u", i);
             return false;
         }
     }
@@ -1457,7 +1470,7 @@ bool apic_parse_metadata(const uint8_t* data, size_t size, APICGraph* graph)
         if (!reader.read_string(info.kernel_key) || !reader.read_string(info.module_hash)
             || !reader.read_string(info.forward_name) || !reader.read_string(info.backward_name)
             || !reader.read(forward_smem_bytes) || !reader.read(backward_smem_bytes) || !reader.read(block_dim)) {
-            wp::set_error_string("Invalid APIC kernel record %u", i);
+            wp::set_error_string("Warp APIC error: Invalid APIC kernel record %u", i);
             return false;
         }
         info.forward_smem_bytes = static_cast<int>(forward_smem_bytes);
@@ -1465,7 +1478,7 @@ bool apic_parse_metadata(const uint8_t* data, size_t size, APICGraph* graph)
         info.block_dim = static_cast<int>(block_dim);
         std::string key = apic_kernel_map_key(info.module_hash, info.kernel_key);
         if (!graph->kernels.emplace(key, std::move(info)).second) {
-            wp::set_error_string("Duplicate APIC kernel record %u", i);
+            wp::set_error_string("Warp APIC error: Duplicate APIC kernel record %u", i);
             return false;
         }
     }
@@ -1474,7 +1487,7 @@ bool apic_parse_metadata(const uint8_t* data, size_t size, APICGraph* graph)
         std::string name;
         uint32_t region_id = 0;
         if (!reader.read_string(name) || !reader.read(region_id)) {
-            wp::set_error_string("Invalid APIC binding record %u", i);
+            wp::set_error_string("Warp APIC error: Invalid APIC binding record %u", i);
             return false;
         }
         graph->bindings[name] = region_id;
@@ -1484,7 +1497,7 @@ bool apic_parse_metadata(const uint8_t* data, size_t size, APICGraph* graph)
     for (uint32_t i = 0; i < num_meshes; i++) {
         APICMeshRecord rec;
         if (!reader.read_bytes(&rec, sizeof(rec))) {
-            wp::set_error_string("Invalid APIC mesh record %u", i);
+            wp::set_error_string("Warp APIC error: Invalid APIC mesh record %u", i);
             return false;
         }
         graph->mesh_records.push_back(rec);
@@ -1493,14 +1506,16 @@ bool apic_parse_metadata(const uint8_t* data, size_t size, APICGraph* graph)
     for (uint32_t i = 0; i < num_ptr_locations; i++) {
         APICMemoryPtrLocation loc;
         if (!reader.read(loc.region_id) || !reader.read(loc.offset) || !reader.read(loc.stride)) {
-            wp::set_error_string("Invalid APIC pointer-location record %u", i);
+            wp::set_error_string("Warp APIC error: Invalid APIC pointer-location record %u", i);
             return false;
         }
         graph->ptr_locations.push_back(loc);
     }
 
     if (reader.remaining() != 0) {
-        wp::set_error_string("APIC metadata has %llu trailing bytes", (unsigned long long)reader.remaining());
+        wp::set_error_string(
+            "Warp APIC error: APIC metadata has %llu trailing bytes", (unsigned long long)reader.remaining()
+        );
         return false;
     }
     return true;
@@ -3501,10 +3516,14 @@ bool wp_apic_get_param(APICGraph* graph, const char* name, void* data, size_t si
 // Graph load dispatcher
 // ============================================================================
 
-APICGraph* wp_apic_load_graph(void* context, const char* path, int device_type)
+static APICGraph* apic_load_graph_impl(void* context, const char* path, int device_type, const char* warp_include_dir)
 {
     if (!path) {
         wp::set_error_string("Warp APIC error: Path is null");
+        return nullptr;
+    }
+    if (device_type != APIC_DEVICE_CUDA && device_type != APIC_DEVICE_CPU) {
+        wp::set_error_string("Warp APIC error: Unknown requested APIC device type: %d", device_type);
         return nullptr;
     }
 
@@ -3554,6 +3573,30 @@ APICGraph* wp_apic_load_graph(void* context, const char* path, int device_type)
         return nullptr;
     }
 
+    if (header->device_type != APIC_DEVICE_CUDA && header->device_type != APIC_DEVICE_CPU) {
+        wp::set_error_string(
+            "Warp APIC error: Invalid WRP file: unknown device type %u", (unsigned)header->device_type
+        );
+        return nullptr;
+    }
+    if (header->device_type != static_cast<uint8_t>(device_type)) {
+        wp::set_error_string(
+            "Warp APIC error: WRP device type %u does not match requested device type %u",
+            (unsigned)header->device_type, (unsigned)device_type
+        );
+        return nullptr;
+    }
+    if ((header->device_type == APIC_DEVICE_CUDA && header->target_arch == 0)
+        || (header->device_type == APIC_DEVICE_CPU && header->target_arch != 0) || header->target_arch > INT_MAX) {
+        wp::set_error_string("Warp APIC error: Invalid WRP file: device type and target architecture disagree");
+        return nullptr;
+    }
+    if (header->num_sections == 0 || header->num_sections > 64 || header->section_table_offset > file_data.size()
+        || header->num_sections > (file_data.size() - header->section_table_offset) / sizeof(APICSectionEntry)) {
+        wp::set_error_string("Warp APIC error: Invalid WRP file: section table is out of bounds");
+        return nullptr;
+    }
+
     const APICSectionEntry* sections
         = reinterpret_cast<const APICSectionEntry*>(file_data.data() + header->section_table_offset);
 
@@ -3565,16 +3608,40 @@ APICGraph* wp_apic_load_graph(void* context, const char* path, int device_type)
     size_t operations_size = 0;
 
     for (uint32_t i = 0; i < header->num_sections; i++) {
+        const APICSectionEntry& section = sections[i];
+        if (section.offset > file_data.size() || section.size > file_data.size() - section.offset
+            || section.uncompressed_size != section.size) {
+            wp::set_error_string("Warp APIC error: Invalid WRP file: section %u is out of bounds or compressed", i);
+            return nullptr;
+        }
         if (sections[i].type == APIC_SECTION_METADATA) {
+            if (metadata_ptr) {
+                wp::set_error_string("Warp APIC error: Invalid WRP file: duplicate metadata section");
+                return nullptr;
+            }
             metadata_ptr = file_data.data() + sections[i].offset;
             metadata_size = sections[i].size;
         } else if (sections[i].type == APIC_SECTION_MEMORY) {
+            if (memory_ptr) {
+                wp::set_error_string("Warp APIC error: Invalid WRP file: duplicate memory section");
+                return nullptr;
+            }
             memory_ptr = file_data.data() + sections[i].offset;
             memory_size = sections[i].size;
         } else if (sections[i].type == APIC_SECTION_OPERATIONS) {
+            if (operations_ptr) {
+                wp::set_error_string("Warp APIC error: Invalid WRP file: duplicate operations section");
+                return nullptr;
+            }
             operations_ptr = file_data.data() + sections[i].offset;
             operations_size = sections[i].size;
         }
+    }
+
+    if (!metadata_ptr || metadata_size == 0 || !memory_ptr || memory_size == 0 || !operations_ptr
+        || operations_size == 0) {
+        wp::set_error_string("Warp APIC error: Invalid WRP file: required section is missing");
+        return nullptr;
     }
 
     // Validate operations before allocating or reconstructing graph resources.
@@ -3621,7 +3688,6 @@ APICGraph* wp_apic_load_graph(void* context, const char* path, int device_type)
 
     if (metadata_ptr && metadata_size > 0) {
         if (!apic_parse_metadata(metadata_ptr, metadata_size, graph)) {
-            wp::set_error_string("Warp APIC error: Failed to parse metadata");
             delete graph;
             return nullptr;
         }
@@ -3641,7 +3707,7 @@ APICGraph* wp_apic_load_graph(void* context, const char* path, int device_type)
         }
     } else {
 #if WP_ENABLE_CUDA
-        if (!apic_load_graph_cuda_setup(graph, context, modules_dir, memory_ptr, memory_size)) {
+        if (!apic_load_graph_cuda_setup(graph, context, modules_dir, warp_include_dir, memory_ptr, memory_size)) {
             delete graph;
             return nullptr;
         }
@@ -3668,6 +3734,16 @@ APICGraph* wp_apic_load_graph(void* context, const char* path, int device_type)
     graph->operations_validated = true;
 
     return graph;
+}
+
+APICGraph* wp_apic_load_graph(void* context, const char* path, int device_type)
+{
+    return apic_load_graph_impl(context, path, device_type, nullptr);
+}
+
+APICGraph* wp_apic_load_graph_ex(void* context, const char* path, int device_type, const char* warp_include_dir)
+{
+    return apic_load_graph_impl(context, path, device_type, warp_include_dir);
 }
 
 // ============================================================================

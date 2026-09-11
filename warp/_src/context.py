@@ -6839,6 +6839,13 @@ class Runtime:
             # APIC loading bindings
             self.core.wp_apic_load_graph.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_int]
             self.core.wp_apic_load_graph.restype = ctypes.c_void_p
+            self.core.wp_apic_load_graph_ex.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_char_p,
+                ctypes.c_int,
+                ctypes.c_char_p,
+            ]
+            self.core.wp_apic_load_graph_ex.restype = ctypes.c_void_p
             self.core.wp_apic_destroy_graph.argtypes = [ctypes.c_void_p]
             self.core.wp_apic_destroy_graph.restype = None
             self.core.wp_apic_register_loaded_cpu_kernel.argtypes = [
@@ -14151,7 +14158,8 @@ def capture_load(path: str, device: DeviceLike = None) -> Graph:
     For graphs containing recorded kernels, the companion
     ``<stem>_modules/`` directory created by :func:`capture_save` must remain
     next to the file. ``device`` must have the same device family (CPU or CUDA)
-    as the saved graph.
+    as the saved graph. CUDA loading prefers a compatible packaged or cached
+    module, then compiles retained generated source for the selected device.
 
     Args:
         path: Path to the ``.wrp`` file (extension added automatically if missing).
@@ -14166,7 +14174,15 @@ def capture_load(path: str, device: DeviceLike = None) -> Graph:
     device_type = 1 if device.is_cpu else 0
     context = device.context if device.is_cuda else None
 
-    native_graph = runtime.core.wp_apic_load_graph(context, wrp_path.encode("utf-8"), device_type)
+    if device.is_cuda:
+        native_graph = runtime.core.wp_apic_load_graph_ex(
+            context,
+            wrp_path.encode("utf-8"),
+            device_type,
+            os.path.join(warp_home, "native").encode("utf-8"),
+        )
+    else:
+        native_graph = runtime.core.wp_apic_load_graph(context, wrp_path.encode("utf-8"), device_type)
     if not native_graph:
         raise RuntimeError(f"Failed to load APIC graph from {wrp_path}: {runtime.get_error_string()}")
 
