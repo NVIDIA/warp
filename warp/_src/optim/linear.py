@@ -302,6 +302,12 @@ _BLOCK_JACOBI_AUTO_SEQUENTIAL_MAX = 11
 # with a warning.
 _BLOCK_JACOBI_DIRECT_MAX_BLOCK_SIZE = 8
 
+# Relative pivot tolerance below which a diagonal block is treated as singular, per dtype
+# (~eps**0.75). float16's is already ~1 ulp (eps 9.8e-4) and cannot go lower without missing
+# genuinely rank-deficient blocks, so a float16 block scaled below ~1e-3 falls back to the
+# identity -- see test_block_jacobi_preconditioner_well_conditioned_scaled_block.
+_BLOCK_JACOBI_PIVOT_REL_TOL = {wp.float16: 1.0e-3, wp.float32: 1.0e-6, wp.float64: 1.0e-12}
+
 
 def _make_block_jacobi_preconditioner(A: _Matrix, strategy: str) -> LinearOperator:
     """Build a block-Jacobi preconditioner from the diagonal blocks of a BsrMatrix.
@@ -373,7 +379,7 @@ def _make_block_jacobi_direct(A: _Matrix, block_size: int) -> LinearOperator:
     A_diag = sparse.bsr_get_diag(A)
     dim = A_diag.shape[0]
     inv_diag = wp.empty_like(A_diag)
-    rel_tol = scalar_type(_get_dtype_epsilon(scalar_type) ** 0.75)
+    rel_tol = scalar_type(_BLOCK_JACOBI_PIVOT_REL_TOL.get(scalar_type, 1.0e-6))
     wp.launch(_invert_diagonal_blocks_qr, dim=dim, device=device, inputs=[A_diag, rel_tol, inv_diag])
 
     def block_jacobi_direct_mv(x, y, z, alpha, beta):
@@ -410,7 +416,7 @@ def _make_block_jacobi_sequential(A: _Matrix, block_size: int) -> LinearOperator
     A_diag = sparse.bsr_get_diag(A)
     dim = A_diag.shape[0]
     ldlt_diag = wp.empty_like(A_diag)
-    rel_tol = scalar_type(_get_dtype_epsilon(scalar_type) ** 0.75)
+    rel_tol = scalar_type(_BLOCK_JACOBI_PIVOT_REL_TOL.get(scalar_type, 1.0e-6))
     wp.launch(_ldlt_diagonal_blocks, dim=dim, device=device, inputs=[A_diag, rel_tol, ldlt_diag])
 
     def block_jacobi_sequential_mv(x, y, z, alpha, beta):
@@ -596,11 +602,9 @@ def _block_inverse_qr(A: Any, rel_tol: Any):
     leaves a tiny but nonzero diagonal entry on ``R`` rather than an exact zero, which an
     exact-zero check misses and then divides by in the triangular solve below.
 
-    ``rel_tol`` is a dtype-scale-aware relative tolerance (see :func:`_get_dtype_epsilon`,
-    computed host-side and passed in rather than re-derived here, since a fixed constant across
-    all dtypes is either too loose for ``float16`` or -- as flagged by review -- far too
-    aggressive for ``float32``/``float64``, incorrectly rejecting well-conditioned, merely
-    differently-scaled blocks (e.g. ``diag(1, 1e-4)``) as singular.
+    ``rel_tol`` is the dtype's relative pivot tolerance (``_BLOCK_JACOBI_PIVOT_REL_TOL``); a
+    single constant across dtypes would reject well-conditioned, merely differently-scaled
+    blocks such as ``diag(1, 1e-4)``.
     """
     Q, R = _qr_decomposition(A)
     row = type(A[0])()
@@ -640,8 +644,7 @@ def _block_ldlt(A: Any, rel_tol: Any):
     block, LDL^T roundoff can leave a tiny positive residual pivot instead of an exact
     non-positive value, which a ``<= 0`` check misses and then divides by.
 
-    ``rel_tol`` is a dtype-scale-aware relative tolerance -- see :func:`_block_inverse_qr`'s
-    docstring for why this can't be a fixed per-dtype constant baked in here.
+    ``rel_tol`` is the dtype's relative pivot tolerance -- see :func:`_block_inverse_qr`.
     """
     row = type(A[0])()
     zero = A.dtype(0.0)

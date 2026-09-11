@@ -1228,23 +1228,21 @@ def test_block_jacobi_preconditioner_rank_deficient_ldlt_block(test, device):
 
 
 def test_block_jacobi_preconditioner_well_conditioned_scaled_block(test, device):
-    """Verify a well-conditioned but differently-scaled block is genuinely inverted, not mistaken for singular.
+    """Verify a well-conditioned but differently-scaled block is inverted, not mistaken for singular.
 
-    ``diag(1, 1e-4)`` is invertible and SPD (condition number 1e4) -- trivial to invert
-    accurately in float32/float64. A relative-pivot-tolerance check that isn't dtype-aware (e.g.
-    a single fixed ``1e-3`` for every dtype, as an earlier version of the rank-deficient-block
-    fix in this file used) incorrectly rejects it as singular and silently falls back to the
-    identity instead of applying the real inverse, disabling preconditioning for any
-    legitimately-scaled block. Covers both the QR ("direct") and LDL^T ("sequential") strategies.
+    A relative-pivot tolerance that isn't dtype-aware rejects invertible, merely differently
+    scaled blocks as singular and silently falls back to the identity. The scale each dtype can
+    resolve differs: float16's tolerance is already ~1 ulp, so ``diag(1, 1e-4)`` is genuinely
+    below its noise floor and ``diag(1, 1e-2)`` is used there instead. Covers both the QR
+    ("direct") and LDL^T ("sequential") strategies.
     """
-    block = np.array([[1.0, 0.0], [0.0, 1.0e-4]])
-    expected_inv = np.diag(1.0 / np.diag(block))
-
     rows = wp.array(np.array([0], dtype=np.int32), dtype=int, device=device)
     cols = wp.array(np.array([0], dtype=np.int32), dtype=int, device=device)
 
     for ptype in ("block_jacobi_direct", "block_jacobi_sequential"):
-        for dtype in (wp.float32, wp.float64):
+        for dtype, scale in ((wp.float16, 1.0e-2), (wp.float32, 1.0e-4), (wp.float64, 1.0e-4)):
+            block = np.array([[1.0, 0.0], [0.0, scale]])
+            expected_inv = np.diag(1.0 / np.diag(block))
             mat22_t = wp.types.matrix(shape=(2, 2), dtype=dtype)
             A = bsr_zeros(1, 1, mat22_t, device=device)
             bsr_set_from_triplets(A, rows, cols, wp.array(block[None, ...], dtype=mat22_t, device=device))
@@ -1259,9 +1257,10 @@ def test_block_jacobi_preconditioner_well_conditioned_scaled_block(test, device)
                 np.allclose(z_np, [1.0, 1.0]),
                 msg=f"{ptype}/{dtype.__name__}: well-conditioned scaled block was treated as singular",
             )
-            # atol scaled for the 1e4-magnitude second component: float32 carries ~7 decimal
-            # digits, so an absolute error of a few 1e-3 there is expected roundoff, not a bug.
-            assert_np_equal(z_np, expected, tol=1.0e-2 if dtype == wp.float32 else 1.0e-8)
+            # atol scaled to the inverse's magnitude and the dtype's precision: float32 carries
+            # ~7 decimal digits, so a few 1e-3 of absolute error at 1e4 is roundoff, not a bug.
+            tol = {wp.float16: 1.0e-2, wp.float32: 1.0e-2, wp.float64: 1.0e-8}[dtype]
+            assert_np_equal(z_np, expected, tol=tol)
 
 
 def test_block_jacobi_preconditioner_concurrent_streams(test, device):
