@@ -10,8 +10,8 @@
 // APIC Format Constants
 // =============================================================================
 
-#define APIC_FORMAT_VERSION 15
-#define APIC_MIN_SUPPORTED_FORMAT_VERSION 13
+#define APIC_FORMAT_VERSION 16
+#define APIC_MIN_SUPPORTED_FORMAT_VERSION 16
 #define APIC_MAGIC "WRP1"
 #define APIC_MAGIC_VALUE 0x31505257  // "WRP1" as little-endian uint32
 
@@ -73,6 +73,28 @@ enum APICRelocKind : uint8_t {
     APIC_RELOC_NULL = 3,  // Explicit zero (null array data/grad, absent indexedarray dim).
 };
 
+enum APICCudaBinaryKind : uint8_t {
+    APIC_CUDA_BINARY_NONE = 0,
+    APIC_CUDA_BINARY_PTX = 1,
+    APIC_CUDA_BINARY_CUBIN = 2,
+};
+
+enum APICCudaArchSuffix : uint8_t {
+    APIC_CUDA_ARCH_SUFFIX_NONE = 0,
+    APIC_CUDA_ARCH_SUFFIX_A = 1,
+    APIC_CUDA_ARCH_SUFFIX_F = 2,
+};
+
+enum APICCudaFallbackReason : uint8_t {
+    APIC_CUDA_FALLBACK_AVAILABLE = 0,
+    APIC_CUDA_FALLBACK_SOURCE_UNAVAILABLE = 1,
+    APIC_CUDA_FALLBACK_EXTERNAL_INCLUDES = 2,
+    APIC_CUDA_FALLBACK_LLVM_CUDA = 3,
+    APIC_CUDA_FALLBACK_LINK_INPUTS = 4,
+    APIC_CUDA_FALLBACK_EXPORT_FAILED = 5,
+    APIC_CUDA_FALLBACK_RECIPE_UNAVAILABLE = 6,
+};
+
 // =============================================================================
 // WRP File Header
 // =============================================================================
@@ -113,6 +135,21 @@ struct APICSectionEntry {
     uint64_t size;  // Section size (compressed)
     uint64_t uncompressed_size;  // Uncompressed size
 };  // 32 bytes
+
+// Semantic NVRTC options needed to reproduce generated CUDA source on a guest.
+// Target architecture and output kind are selected by the guest; PCH and
+// tracing are guest-owned policy and intentionally omitted.
+struct APICCudaCompileRecipe {
+    uint8_t debug;
+    uint8_t optimization_level;
+    uint8_t verify_fp;
+    uint8_t fast_math;
+    uint8_t fuse_fp;
+    uint8_t lineinfo;
+    uint8_t arch_suffix;  // APICCudaArchSuffix
+    uint8_t _reserved[9];
+};  // 16 bytes
+static_assert(sizeof(APICCudaCompileRecipe) == 16, "APICCudaCompileRecipe must remain 16 bytes");
 
 // =============================================================================
 // Mesh Serialization Records

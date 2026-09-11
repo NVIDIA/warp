@@ -4619,6 +4619,110 @@ bool check_nvjitlink_result(nvJitLinkHandle handle, nvJitLinkResult result, cons
 }
 #endif
 
+// Append every NVRTC option shared by Warp's normal module compiler and APIC's
+// portable source-recompile path. Keep path-specific options (include paths,
+// precompiled headers, link inputs, and compile-time tracing) in the callers.
+// In particular, CUDA-version workarounds belong here so a source-recompiled
+// APIC module cannot silently drift from the module used during capture.
+static void append_common_nvrtc_compile_options(
+    std::vector<const char*>& options,
+    bool use_ptx,
+    int arch,
+    bool debug,
+    int optimization_level,
+    bool verify_fp,
+    bool fast_math,
+    bool fuse_fp,
+    bool lineinfo
+)
+{
+    options.push_back("--std=c++17");
+
+#if CUDA_VERSION >= 12080 && CUDA_VERSION < 13000
+    // CUDA 12 miscompiles optimized CUBIN texture sampling when texture handles
+    // vary across lanes on sm_90 and newer targets. CUDA 12.8 is covered as a
+    // precaution because it is not exercised in CI.
+    const bool is_affected_texture_cubin_target = arch >= 90;
+#else
+    // CUDA 13 CUBIN has not reproduced the miscompile on any target tested so far.
+    const bool is_affected_texture_cubin_target = false;
+#endif
+
+#if CUDA_VERSION >= 12080 && CUDA_VERSION < 12090
+    // Precaution, untested: CUDA 12.8 is not expected to honor optimization
+    // levels here, so even level 0 may trigger the miscompile.
+    const bool optimizations_may_trigger_texture_bug = true;
+#else
+    const bool optimizations_may_trigger_texture_bug = optimization_level > 0;
+#endif
+
+    if (!use_ptx && is_affected_texture_cubin_target && optimizations_may_trigger_texture_bug)
+        options.push_back("--define-macro=WP_WORKAROUND_CUDA_TEXTURE_CUBIN");
+
+    // CUDA 12.9+ supports --Ofast-compile, which works inversely to normal -O
+    // optimization levels.
+#if CUDA_VERSION >= 12090
+    switch (optimization_level) {
+    case 0:
+#if CUDA_VERSION >= 13010
+        // CUDA 13.1+ corrupts process-wide NVRTC compiler state after a
+        // --Ofast-compile=max build. Later builds can then emit invalid parameter
+        // addressing, so use the next-fastest setting until NVIDIA fixes NVRTC.
+        options.push_back("--Ofast-compile=mid");
+#else
+        options.push_back("--Ofast-compile=max");
+#endif
+        break;
+    case 1:
+        options.push_back("--Ofast-compile=mid");
+        break;
+    case 2:
+        options.push_back("--Ofast-compile=min");
+        break;
+    default:
+        options.push_back("--Ofast-compile=0");
+        break;  // 3 and up
+    }
+#endif
+
+    if (debug) {
+        options.push_back("--define-macro=_DEBUG");
+        options.push_back("--generate-line-info");
+#ifndef _WIN32
+        options.push_back("--device-debug");  // -G
+#endif
+    } else {
+        options.push_back("--define-macro=NDEBUG");
+
+        if (lineinfo)
+            options.push_back("--generate-line-info");
+    }
+
+    if (verify_fp)
+        options.push_back("--define-macro=WP_VERIFY_FP");
+    else
+        options.push_back("--undefine-macro=WP_VERIFY_FP");
+
+#if WP_ENABLE_MATHDX
+    options.push_back("--define-macro=WP_ENABLE_MATHDX=1");
+#else
+    options.push_back("--define-macro=WP_ENABLE_MATHDX=0");
+#endif
+
+    if (fast_math)
+        options.push_back("--use_fast_math");
+
+    if (fuse_fp)
+        options.push_back("--fmad=true");
+    else
+        options.push_back("--fmad=false");
+
+    options.push_back("--device-as-default-execution-space");
+    options.push_back("--extra-device-vectorization");
+    options.push_back("--restrict");
+    options.push_back("--diag-suppress=177,550");  // "was declared but never referenced", "was set but never used"
+}
+
 size_t wp_cuda_compile_program(
     const char* cuda_src,
     const char* program_name,
@@ -4690,57 +4794,10 @@ size_t wp_cuda_compile_program(
     std::vector<const char*> opts;
     opts.push_back(arch_opt);
     opts.push_back(include_opt);
-    opts.push_back("--std=c++17");
-
-#if CUDA_VERSION >= 12080 && CUDA_VERSION < 13000
-    // CUDA 12 miscompiles optimized CUBIN texture sampling when texture handles
-    // vary across lanes on sm_90 and newer targets. CUDA 12.8 is covered as a
-    // precaution because it is not exercised in CI.
-    const bool is_affected_texture_cubin_target = arch >= 90;
-#else
-    // CUDA 13 CUBIN has not reproduced the miscompile on any target tested so far.
-    const bool is_affected_texture_cubin_target = false;
-#endif
-
-#if CUDA_VERSION >= 12080 && CUDA_VERSION < 12090
-    // Precaution, untested: CUDA 12.8 is not expected to honor optimization
-    // levels here, so even level 0 may trigger the miscompile.
-    const bool optimizations_may_trigger_texture_bug = true;
-#else
-    const bool optimizations_may_trigger_texture_bug = optimization_level > 0;
-#endif
-
-    if (!use_ptx && is_affected_texture_cubin_target && optimizations_may_trigger_texture_bug)
-        opts.push_back("--define-macro=WP_WORKAROUND_CUDA_TEXTURE_CUBIN");
-
-    // CUDA 12.9+ supports --Ofast-compile
-#if CUDA_VERSION >= 12090
-    // --Ofast-compile works inversely to normal -O optimization levels
-    switch (optimization_level) {
-    case 0:
-#if CUDA_VERSION >= 13010
-        // CUDA 13.1+ corrupts process-wide NVRTC compiler state after a
-        // --Ofast-compile=max build. Later builds can then emit invalid parameter
-        // addressing, so use the next-fastest setting until NVIDIA fixes NVRTC.
-        opts.push_back("--Ofast-compile=mid");
-#else
-        opts.push_back("--Ofast-compile=max");
-#endif
-        break;
-    case 1:
-        opts.push_back("--Ofast-compile=mid");
-        break;
-    case 2:
-        opts.push_back("--Ofast-compile=min");
-        break;
-    default:
-        opts.push_back("--Ofast-compile=0");
-        break;  // 3 and up
-    }
-#endif
 
     // Vector to store dynamically created option strings
     std::vector<std::string> stored_options;
+    stored_options.reserve(static_cast<size_t>(num_cuda_include_dirs) + 2);
 
     if (precompiled_headers) {
         // CUDA 12.8+ supports precompiled headers
@@ -4760,47 +4817,14 @@ size_t wp_cuda_compile_program(
 #endif
     }
 
-    if (debug) {
-        opts.push_back("--define-macro=_DEBUG");
-        opts.push_back("--generate-line-info");
-#ifndef _WIN32
-        opts.push_back("--device-debug");  // -G
-#endif
-    } else {
-        opts.push_back("--define-macro=NDEBUG");
-
-        if (lineinfo)
-            opts.push_back("--generate-line-info");
-    }
-
-    if (verify_fp)
-        opts.push_back("--define-macro=WP_VERIFY_FP");
-    else
-        opts.push_back("--undefine-macro=WP_VERIFY_FP");
-
-#if WP_ENABLE_MATHDX
-    opts.push_back("--define-macro=WP_ENABLE_MATHDX=1");
-#else
-    opts.push_back("--define-macro=WP_ENABLE_MATHDX=0");
-#endif
-
-    if (fast_math)
-        opts.push_back("--use_fast_math");
-
-    if (fuse_fp)
-        opts.push_back("--fmad=true");
-    else
-        opts.push_back("--fmad=false");
+    append_common_nvrtc_compile_options(
+        opts, use_ptx, arch, debug, optimization_level, verify_fp, fast_math, fuse_fp, lineinfo
+    );
 
     for (int i = 0; i < num_cuda_include_dirs; i++) {
         stored_options.push_back(std::string("--include-path=") + cuda_include_dirs[i]);
         opts.push_back(stored_options.back().c_str());
     }
-
-    opts.push_back("--device-as-default-execution-space");
-    opts.push_back("--extra-device-vectorization");
-    opts.push_back("--restrict");
-    opts.push_back("--diag-suppress=177,550");  // "was declared but never referenced", "was set but never used"
 
     if (num_ltoirs > 0) {
         opts.push_back("-dlto");
@@ -5281,110 +5305,241 @@ bool wp_cuda_compile_solver(
 
 #endif
 
+static const char* apic_nvptx_error_string(nvPTXCompileResult result)
+{
+    switch (result) {
+    case NVPTXCOMPILE_SUCCESS:
+        return "success";
+    case NVPTXCOMPILE_ERROR_INVALID_COMPILER_HANDLE:
+        return "invalid compiler handle";
+    case NVPTXCOMPILE_ERROR_INVALID_INPUT:
+        return "invalid input";
+    case NVPTXCOMPILE_ERROR_COMPILATION_FAILURE:
+        return "compilation failure";
+    case NVPTXCOMPILE_ERROR_INTERNAL:
+        return "internal error";
+    case NVPTXCOMPILE_ERROR_OUT_OF_MEMORY:
+        return "out of memory";
+    case NVPTXCOMPILE_ERROR_COMPILER_INVOCATION_INCOMPLETE:
+        return "incomplete compiler invocation";
+    case NVPTXCOMPILE_ERROR_UNSUPPORTED_PTX_VERSION:
+        return "unsupported PTX version";
+    default:
+        return "unknown error";
+    }
+}
+
+static std::string apic_cuda_error_string(CUresult result)
+{
+    const char* name = nullptr;
+    const char* description = nullptr;
+    cuGetErrorName_f(result, &name);
+    cuGetErrorString_f(result, &description);
+    std::string message = name ? name : "CUDA_ERROR_UNKNOWN";
+    if (description) {
+        message += ": ";
+        message += description;
+    }
+    return message;
+}
+
+// Load PTX or CUBIN bytes without printing. APIC uses this primitive to try
+// packaged and cached candidates before reporting one combined diagnostic.
+static bool apic_cuda_load_module_data(
+    void* context, const uint8_t* data, size_t size, bool load_ptx, CUmodule* module, std::string& diagnostic
+)
+{
+    if (!data || size == 0 || !module) {
+        diagnostic = "module data is empty";
+        return false;
+    }
+
+    ContextGuard guard(context);
+    *module = nullptr;
+
+    std::vector<uint8_t> terminated_input;
+    const void* input = data;
+    size_t input_size = size;
+    if (load_ptx && data[size - 1] != 0) {
+        terminated_input.assign(data, data + size);
+        terminated_input.push_back(0);
+        input = terminated_input.data();
+        input_size = terminated_input.size();
+    }
+
+    if (load_ptx) {
+        int driver_cuda_version = 0;
+        CUresult driver_version_result = cuDriverGetVersion_f(&driver_cuda_version);
+        if (driver_version_result == CUDA_SUCCESS && driver_cuda_version >= CUDA_VERSION) {
+            CUjit_option options[2];
+            void* option_values[2];
+            char error_log[8192] = "";
+            options[0] = CU_JIT_ERROR_LOG_BUFFER;
+            option_values[0] = error_log;
+            options[1] = CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES;
+            option_values[1] = reinterpret_cast<void*>(sizeof(error_log));
+            CUresult result = cuModuleLoadDataEx_f(module, input, 2, options, option_values);
+            if (result != CUDA_SUCCESS) {
+                diagnostic = apic_cuda_error_string(result);
+                if (error_log[0]) {
+                    diagnostic += "\n";
+                    diagnostic += error_log;
+                }
+                return false;
+            }
+            return true;
+        }
+
+        ContextInfo* context_info = get_context_info(static_cast<CUcontext>(context));
+        if (!context_info || !context_info->device_info) {
+            diagnostic = "could not determine the CUDA device architecture";
+            return false;
+        }
+
+        char arch_option[64];
+        snprintf(arch_option, sizeof(arch_option), "--gpu-name=sm_%d", context_info->device_info->arch);
+        const char* compiler_options[] = { arch_option };
+        nvPTXCompilerHandle compiler = nullptr;
+        nvPTXCompileResult result = nvPTXCompilerCreate(&compiler, input_size, reinterpret_cast<const char*>(input));
+        if (result == NVPTXCOMPILE_SUCCESS) {
+            result = nvPTXCompilerCompile(compiler, 1, compiler_options);
+        }
+        if (result != NVPTXCOMPILE_SUCCESS) {
+            diagnostic = std::string("nvPTXCompiler: ") + apic_nvptx_error_string(result);
+            if (compiler) {
+                size_t log_size = 0;
+                if (nvPTXCompilerGetErrorLogSize(compiler, &log_size) == NVPTXCOMPILE_SUCCESS && log_size > 1) {
+                    std::vector<char> log(log_size);
+                    if (nvPTXCompilerGetErrorLog(compiler, log.data()) == NVPTXCOMPILE_SUCCESS) {
+                        diagnostic += "\n";
+                        diagnostic += log.data();
+                    }
+                }
+                nvPTXCompilerDestroy(&compiler);
+            }
+            return false;
+        }
+
+        size_t cubin_size = 0;
+        result = nvPTXCompilerGetCompiledProgramSize(compiler, &cubin_size);
+        std::vector<uint8_t> cubin(cubin_size);
+        if (result == NVPTXCOMPILE_SUCCESS) {
+            result = nvPTXCompilerGetCompiledProgram(compiler, reinterpret_cast<char*>(cubin.data()));
+        }
+        nvPTXCompilerDestroy(&compiler);
+        if (result != NVPTXCOMPILE_SUCCESS) {
+            diagnostic = std::string("nvPTXCompiler output: ") + apic_nvptx_error_string(result);
+            return false;
+        }
+
+        CUresult load_result = cuModuleLoadDataEx_f(module, cubin.data(), 0, nullptr, nullptr);
+        if (load_result != CUDA_SUCCESS) {
+            diagnostic = apic_cuda_error_string(load_result);
+            return false;
+        }
+        return true;
+    }
+
+    CUresult result = cuModuleLoadDataEx_f(module, input, 0, nullptr, nullptr);
+    if (result != CUDA_SUCCESS) {
+        diagnostic = apic_cuda_error_string(result);
+        return false;
+    }
+    return true;
+}
+
+// Compile generated Warp CUDA source to memory with the semantic options
+// captured in the .wrp. External includes, link inputs, PCH, and tracing are
+// intentionally excluded from the portable fallback contract.
+static bool apic_cuda_compile_program_to_memory(
+    const std::string& cuda_source,
+    const char* program_name,
+    int arch,
+    const char* arch_suffix,
+    const char* include_dir,
+    bool use_ptx,
+    const APICCudaCompileRecipe& recipe,
+    std::vector<uint8_t>& output,
+    std::string& diagnostic
+)
+{
+    if (!include_dir || !include_dir[0]) {
+        diagnostic = "the Warp native include directory was not provided";
+        return false;
+    }
+    if (strlen(include_dir) > 4096) {
+        diagnostic = "the Warp native include path is too long";
+        return false;
+    }
+
+    std::string arch_option = std::string("--gpu-architecture=") + (use_ptx ? "compute_" : "sm_") + std::to_string(arch)
+        + (arch_suffix ? arch_suffix : "");
+    std::string include_option = std::string("--include-path=") + include_dir;
+    std::vector<std::string> stored_options = { arch_option, include_option };
+    std::vector<const char*> options;
+    options.push_back(stored_options[0].c_str());
+    options.push_back(stored_options[1].c_str());
+    append_common_nvrtc_compile_options(
+        options, use_ptx, arch, recipe.debug, recipe.optimization_level, recipe.verify_fp, recipe.fast_math,
+        recipe.fuse_fp, recipe.lineinfo
+    );
+
+    nvrtcProgram program = nullptr;
+    nvrtcResult result = nvrtcCreateProgram(
+        &program, cuda_source.c_str(), program_name ? program_name : "apic_module.cu", 0, nullptr, nullptr
+    );
+    if (result == NVRTC_SUCCESS) {
+        result = nvrtcCompileProgram(program, static_cast<int>(options.size()), options.data());
+    }
+    if (result != NVRTC_SUCCESS) {
+        diagnostic = std::string("NVRTC: ") + nvrtcGetErrorString(result);
+        if (program) {
+            size_t log_size = 0;
+            if (nvrtcGetProgramLogSize(program, &log_size) == NVRTC_SUCCESS && log_size > 1) {
+                std::vector<char> log(log_size);
+                if (nvrtcGetProgramLog(program, log.data()) == NVRTC_SUCCESS) {
+                    diagnostic += "\n";
+                    diagnostic += log.data();
+                }
+            }
+            nvrtcDestroyProgram(&program);
+        }
+        return false;
+    }
+
+    size_t output_size = 0;
+    result = use_ptx ? nvrtcGetPTXSize(program, &output_size) : nvrtcGetCUBINSize(program, &output_size);
+    if (result == NVRTC_SUCCESS) {
+        output.resize(output_size);
+        result = use_ptx ? nvrtcGetPTX(program, reinterpret_cast<char*>(output.data()))
+                         : nvrtcGetCUBIN(program, reinterpret_cast<char*>(output.data()));
+    }
+    nvrtcDestroyProgram(&program);
+    if (result != NVRTC_SUCCESS) {
+        output.clear();
+        diagnostic = std::string("NVRTC output: ") + nvrtcGetErrorString(result);
+        return false;
+    }
+    return true;
+}
+
 void* wp_cuda_load_module(void* context, const char* path)
 {
-    ContextGuard guard(context);
-
     // use file extension to determine whether to load PTX or CUBIN
     const char* input_ext = strrchr(path, '.');
     bool load_ptx = input_ext && strcmp(input_ext + 1, "ptx") == 0;
 
-    std::vector<char> input;
-
-    FILE* file = fopen(path, "rb");
-    if (file) {
-        fseek(file, 0, SEEK_END);
-        size_t length = ftell(file);
-        fseek(file, 0, SEEK_SET);
-
-        input.resize(length + 1);
-        if (fread(input.data(), 1, length, file) != length) {
-            fprintf(stderr, "Warp error: Failed to read input file '%s'\n", path);
-            fclose(file);
-            return NULL;
-        }
-        fclose(file);
-
-        input[length] = '\0';
-    } else {
+    std::vector<uint8_t> input;
+    if (!apic_read_file(path, input)) {
         fprintf(stderr, "Warp error: Failed to open input file '%s'\n", path);
         return NULL;
     }
-
-    int driver_cuda_version = 0;
-    CUmodule module = NULL;
-
-    if (load_ptx) {
-        if (check_cu(cuDriverGetVersion_f(&driver_cuda_version)) && driver_cuda_version >= CUDA_VERSION) {
-            // let the driver compile the PTX
-
-            CUjit_option options[2];
-            void* option_vals[2];
-            char error_log[8192] = "";
-            unsigned int log_size = 8192;
-            // Set up loader options
-            // Pass a buffer for error message
-            options[0] = CU_JIT_ERROR_LOG_BUFFER;
-            option_vals[0] = (void*)error_log;
-            // Pass the size of the error buffer
-            options[1] = CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES;
-            option_vals[1] = (void*)(size_t)log_size;
-
-            if (!check_cu(cuModuleLoadDataEx_f(&module, input.data(), 2, options, option_vals))) {
-                fprintf(stderr, "Warp error: Loading PTX module failed\n");
-                // print error log if not empty
-                if (*error_log)
-                    fprintf(stderr, "PTX loader error:\n%s\n", error_log);
-                return NULL;
-            }
-        } else {
-            // manually compile the PTX and load as CUBIN
-
-            ContextInfo* context_info = get_context_info(static_cast<CUcontext>(context));
-            if (!context_info || !context_info->device_info) {
-                fprintf(stderr, "Warp error: Failed to determine target architecture\n");
-                return NULL;
-            }
-
-            int arch = context_info->device_info->arch;
-
-            char arch_opt[128];
-            sprintf(arch_opt, "--gpu-name=sm_%d", arch);
-
-            const char* compiler_options[] = { arch_opt };
-
-            nvPTXCompilerHandle compiler = NULL;
-            if (!check_nvptx(nvPTXCompilerCreate(&compiler, input.size(), input.data())))
-                return NULL;
-
-            if (!check_nvptx(nvPTXCompilerCompile(
-                    compiler, sizeof(compiler_options) / sizeof(*compiler_options), compiler_options
-                )))
-                return NULL;
-
-            size_t cubin_size = 0;
-            if (!check_nvptx(nvPTXCompilerGetCompiledProgramSize(compiler, &cubin_size)))
-                return NULL;
-
-            std::vector<char> cubin(cubin_size);
-            if (!check_nvptx(nvPTXCompilerGetCompiledProgram(compiler, cubin.data())))
-                return NULL;
-
-            check_nvptx(nvPTXCompilerDestroy(&compiler));
-
-            if (!check_cu(cuModuleLoadDataEx_f(&module, cubin.data(), 0, NULL, NULL))) {
-                fprintf(stderr, "Warp CUDA error: Loading module failed\n");
-                return NULL;
-            }
-        }
-    } else {
-        // load CUBIN
-        if (!check_cu(cuModuleLoadDataEx_f(&module, input.data(), 0, NULL, NULL))) {
-            fprintf(stderr, "Warp CUDA error: Loading module failed\n");
-            return NULL;
-        }
+    CUmodule module = nullptr;
+    std::string diagnostic;
+    if (!apic_cuda_load_module_data(context, input.data(), input.size(), load_ptx, &module, diagnostic)) {
+        fprintf(stderr, "Warp error: Failed to load CUDA module '%s': %s\n", path, diagnostic.c_str());
+        return nullptr;
     }
-
     return module;
 }
 

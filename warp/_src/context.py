@@ -3677,6 +3677,8 @@ class ModuleExec:
         compile_arch: int | None = None,
         det_launch_meta_map: dict[str, DeterministicMeta] | None = None,
         kernel_hashes: Mapping[Kernel, bytes] | None = None,
+        binary_path: str | None = None,
+        cuda_compile_artifact: dict | None = None,
     ):
         self.handle = handle
         self.module_hash = module_hash
@@ -3693,6 +3695,11 @@ class ModuleExec:
         # CPU). Cluster classification must use this frozen target, not the current
         # global config, which can change after the module is loaded.
         self.compile_arch = compile_arch
+        # Exact artifact selected by Module.load(). APIC capture must not
+        # reconstruct this path or its compile recipe from mutable module or
+        # global configuration after the executable has been retained.
+        self.binary_path = binary_path
+        self.cuda_compile_artifact = cuda_compile_artifact
 
     # release the loaded module
     def __del__(self):
@@ -4474,6 +4481,42 @@ class Module:
         return f"{self.get_module_identifier(block_dim=block_dim)}.meta"
 
     @staticmethod
+    def _get_cuda_apic_artifact_name(output_name: str) -> str:
+        """Return the private kernel-cache metadata name for an exact CUDA variant."""
+        return output_name + ".apic.json"
+
+    @staticmethod
+    def _write_cuda_apic_artifact(path: str | os.PathLike, artifact: dict) -> None:
+        """Write private per-variant metadata used by APIC export.
+
+        This file is an internal kernel-cache detail. The portable ``.wrp``
+        format uses native fixed-width fields and does not depend on JSON.
+        """
+        with open(path, "w") as artifact_file:
+            json.dump(artifact, artifact_file, sort_keys=True)
+
+    @staticmethod
+    def _read_cuda_apic_artifact(module_dir: str | os.PathLike, output_name: str) -> dict | None:
+        """Read private per-variant APIC metadata, returning ``None`` if unavailable."""
+        artifact_path = os.path.join(module_dir, Module._get_cuda_apic_artifact_name(output_name))
+        try:
+            with open(artifact_path) as artifact_file:
+                artifact = json.load(artifact_file)
+        except (OSError, ValueError):
+            return None
+
+        if not isinstance(artifact, dict) or artifact.get("version") != 1:
+            return None
+        source_filename = artifact.get("source_filename")
+        if not isinstance(source_filename, str) or os.path.basename(source_filename) != source_filename:
+            return None
+        source_path = os.path.join(module_dir, source_filename)
+        if not os.path.isfile(source_path):
+            return None
+        artifact["source_path"] = source_path
+        return artifact
+
+    @staticmethod
     def _write_meta(output_meta_path: str | os.PathLike, meta: dict) -> None:
         """Write deterministic module metadata."""
         with open(output_meta_path, "w") as meta_file:
@@ -4664,7 +4707,14 @@ class Module:
                 once=True,
             )
 
-        source_code_path = os.path.join(build_dir, f"{module_name_short}.{source_code_ext}")
+        # CUDA codegen may depend on the output architecture. Keep the exact
+        # generated source paired with its PTX/CUBIN variant instead of sharing
+        # one architecture-neutral .cu filename across builds.
+        if is_cpu:
+            source_basename = f"{module_name_short}.{source_code_ext}"
+        else:
+            source_basename = f"{os.path.splitext(output_name)[0]}.{source_code_ext}"
+        source_code_path = os.path.join(build_dir, source_basename)
         try:
             with open(source_code_path, "w") as source_file:
                 source_file.write(source_str)
@@ -4748,6 +4798,42 @@ class Module:
 
         self._write_meta(output_meta_path, meta)
 
+        cuda_apic_artifact_path = None
+        if not is_cpu:
+            try:
+                fallback_reason = "available"
+                if options["extra_cuda_include_dirs"]:
+                    fallback_reason = "external_includes"
+                elif options["llvm_cuda"]:
+                    fallback_reason = "llvm_cuda"
+                elif ltoir_values or fatbin_values:
+                    fallback_reason = "link_inputs"
+
+                cuda_apic_artifact = {
+                    "version": 1,
+                    "source_filename": source_basename,
+                    "source_digest": hashlib.sha256(Path(source_code_path).read_bytes()).hexdigest(),
+                    "binary_kind": "ptx" if output_name.endswith(".ptx") else "cubin",
+                    "target_arch": output_arch,
+                    "arch_suffix": arch_suffix,
+                    "fallback_reason": fallback_reason,
+                    "recipe": {
+                        "debug": mode == "debug",
+                        "optimization_level": opt,
+                        "verify_fp": options["verify_fp"],
+                        "fast_math": options["fast_math"],
+                        "fuse_fp": options["fuse_fp"],
+                        "lineinfo": options["lineinfo"],
+                    },
+                }
+                cuda_apic_artifact_path = os.path.join(build_dir, self._get_cuda_apic_artifact_name(output_name))
+                self._write_cuda_apic_artifact(cuda_apic_artifact_path, cuda_apic_artifact)
+            except OSError:
+                # APIC source fallback is optional for ordinary module builds.
+                # capture_save() reports the missing recipe if this artifact is
+                # later needed.
+                cuda_apic_artifact_path = None
+
         # -----------------------------------------------------------
         # update cache
 
@@ -4788,6 +4874,17 @@ class Module:
             except Exception as e:
                 # We don't need source_code_path to be copied successfully to proceed, so warn and keep running
                 log_warning(f"Exception when renaming {source_code_path}: {e}")
+
+            if cuda_apic_artifact_path is not None:
+                try:
+                    final_artifact_path = os.path.join(output_dir, self._get_cuda_apic_artifact_name(output_name))
+                    if not os.path.exists(final_artifact_path) or self.options["strip_hash"]:
+                        os.replace(cuda_apic_artifact_path, final_artifact_path)
+                except OSError:
+                    # Optional APIC metadata must not make module compilation
+                    # fail. capture_save() will export this module as
+                    # binary-only if the metadata is unavailable.
+                    pass
 
             # clean up build_dir used for this process regardless
             shutil.rmtree(build_dir, ignore_errors=True)
@@ -4858,6 +4955,8 @@ class Module:
             if binary_path:
                 # We will never re-codegen or re-compile in this situation
                 # The expected files must already exist
+                binary_path = os.fspath(binary_path)
+                output_name = os.path.basename(binary_path)
 
                 if device.is_cuda and output_arch is None:
                     raise ValueError("'output_arch' must be provided if a 'binary_path' is provided")
@@ -4897,6 +4996,17 @@ class Module:
             else:
                 raise FileNotFoundError(f"Module metadata file {meta_path} was not found in the cache")
 
+            cuda_compile_artifact = None
+            if device.is_cuda:
+                cuda_compile_artifact = self._read_cuda_apic_artifact(os.path.dirname(binary_path), output_name)
+                if cuda_compile_artifact is not None:
+                    expected_kind = "ptx" if output_name.endswith(".ptx") else "cubin"
+                    if (
+                        cuda_compile_artifact.get("binary_kind") != expected_kind
+                        or cuda_compile_artifact.get("target_arch") != output_arch
+                    ):
+                        cuda_compile_artifact = None
+
             if device.is_cpu:
                 # LLVM modules are identified using strings, so we need to ensure uniqueness
                 id = self.increment_id()
@@ -4919,6 +5029,7 @@ class Module:
                     output_arch,
                     det_launch_meta_map,
                     self.hashers[active_block_dim].kernel_hashes,
+                    binary_path=binary_path,
                 )
                 self.execs[(None, active_block_dim)] = module_exec
 
@@ -4934,6 +5045,8 @@ class Module:
                         output_arch,
                         det_launch_meta_map,
                         self.hashers[active_block_dim].kernel_hashes,
+                        binary_path=binary_path,
+                        cuda_compile_artifact=cuda_compile_artifact,
                     )
                     self.execs[(device.context, active_block_dim)] = module_exec
                 else:
@@ -6611,7 +6724,7 @@ class Runtime:
             self.core.wp_memcpy_batch.restype = ctypes.c_bool
 
             # ---- APIC (API Capture) bindings ----
-            from warp._src.apic.types import APICLaunchInfo  # noqa: PLC0415
+            from warp._src.apic.types import APICCudaCompileRecipe, APICLaunchInfo  # noqa: PLC0415
 
             self.core.wp_apic_create_state.argtypes = []
             self.core.wp_apic_create_state.restype = ctypes.c_void_p
@@ -6679,6 +6792,17 @@ class Runtime:
                 ctypes.c_int,
             ]
             self.core.wp_apic_register_module.restype = None
+            self.core.wp_apic_register_cuda_module_artifacts.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_char_p,
+                ctypes.c_char_p,
+                ctypes.c_char_p,
+                ctypes.c_char_p,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.POINTER(APICCudaCompileRecipe),
+            ]
+            self.core.wp_apic_register_cuda_module_artifacts.restype = None
             self.core.wp_apic_register_kernel.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_char_p,
@@ -6715,6 +6839,13 @@ class Runtime:
             # APIC loading bindings
             self.core.wp_apic_load_graph.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_int]
             self.core.wp_apic_load_graph.restype = ctypes.c_void_p
+            self.core.wp_apic_load_graph_ex.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_char_p,
+                ctypes.c_int,
+                ctypes.c_char_p,
+            ]
+            self.core.wp_apic_load_graph_ex.restype = ctypes.c_void_p
             self.core.wp_apic_destroy_graph.argtypes = [ctypes.c_void_p]
             self.core.wp_apic_destroy_graph.restype = None
             self.core.wp_apic_register_loaded_cpu_kernel.argtypes = [
@@ -13744,7 +13875,9 @@ def capture_save(graph: Graph, path: str, inputs: dict | None = None, outputs: d
 
     The graph must have been captured with ``apic=True``. For graphs containing
     recorded kernels, the ``.wrp`` file and its companion ``_modules`` directory
-    must be kept together.
+    must be kept together. CUDA captures retain reproducible generated source
+    so a loader on a different supported GPU can compile a local module when
+    the packaged PTX or CUBIN is incompatible.
 
     Args:
         graph: A :class:`Graph` captured with ``apic=True``.
@@ -13762,6 +13895,21 @@ def capture_save(graph: Graph, path: str, inputs: dict | None = None, outputs: d
     """
     import os  # noqa: PLC0415
     import shutil  # noqa: PLC0415
+
+    from warp._src.apic.types import (  # noqa: PLC0415
+        APIC_CUDA_ARCH_SUFFIX_A,
+        APIC_CUDA_ARCH_SUFFIX_F,
+        APIC_CUDA_ARCH_SUFFIX_NONE,
+        APIC_CUDA_BINARY_CUBIN,
+        APIC_CUDA_BINARY_PTX,
+        APIC_CUDA_FALLBACK_AVAILABLE,
+        APIC_CUDA_FALLBACK_EXPORT_FAILED,
+        APIC_CUDA_FALLBACK_EXTERNAL_INCLUDES,
+        APIC_CUDA_FALLBACK_LINK_INPUTS,
+        APIC_CUDA_FALLBACK_LLVM_CUDA,
+        APIC_CUDA_FALLBACK_RECIPE_UNAVAILABLE,
+        APICCudaCompileRecipe,
+    )
 
     if not graph.apic:
         raise RuntimeError(
@@ -13790,7 +13938,7 @@ def capture_save(graph: Graph, path: str, inputs: dict | None = None, outputs: d
             _enc(module_hash),
             _enc(module_name),
             _enc(binary_filename),
-            graph.device.get_cuda_compile_arch() if graph.device.is_cuda else 0,
+            info["module_exec"].compile_arch if graph.device.is_cuda else 0,
         )
 
     # Register kernel metadata
@@ -13864,18 +14012,36 @@ def capture_save(graph: Graph, path: str, inputs: dict | None = None, outputs: d
                 ctypes.c_void_p(base_ptr),
             )
 
-    # Export CUBIN files to {path}_modules/
+    # Export compiled modules and portable CUDA source fallback to {path}_modules/.
     wrp_path = path if path.endswith(".wrp") else path + ".wrp"
     base_name = wrp_path[:-4]
     modules_dir = base_name + "_modules"
     os.makedirs(modules_dir, exist_ok=True)
 
-    for info in apic_capture.collected_modules.values():
+    cuda_fallback_warnings = {}
+
+    fallback_reasons = {
+        "available": APIC_CUDA_FALLBACK_AVAILABLE,
+        "external_includes": APIC_CUDA_FALLBACK_EXTERNAL_INCLUDES,
+        "llvm_cuda": APIC_CUDA_FALLBACK_LLVM_CUDA,
+        "link_inputs": APIC_CUDA_FALLBACK_LINK_INPUTS,
+    }
+    fallback_reason_labels = {
+        APIC_CUDA_FALLBACK_EXPORT_FAILED: "source export failed",
+        APIC_CUDA_FALLBACK_EXTERNAL_INCLUDES: "external CUDA includes are required",
+        APIC_CUDA_FALLBACK_LINK_INPUTS: "external link inputs are required",
+        APIC_CUDA_FALLBACK_LLVM_CUDA: "the module used the LLVM CUDA backend",
+        APIC_CUDA_FALLBACK_RECIPE_UNAVAILABLE: "the exact source compile recipe is unavailable",
+    }
+
+    for module_hash, info in apic_capture.collected_modules.items():
         binary_path = info.get("binary_path")
         binary_filename = info["binary_filename"]
 
         if binary_path and os.path.exists(binary_path):
-            shutil.copy2(binary_path, os.path.join(modules_dir, binary_filename))
+            exported_binary_path = os.path.join(modules_dir, binary_filename)
+            if os.path.abspath(binary_path) != os.path.abspath(exported_binary_path):
+                shutil.copy2(binary_path, exported_binary_path)
             # Also copy the .meta file. CUDA modules require .meta at load time
             # to resolve kernel shared-memory metadata. For CPU (APIC) modules,
             # _apic_load_cpu_modules resolves kernel names directly from the
@@ -13890,6 +14056,88 @@ def capture_save(graph: Graph, path: str, inputs: dict | None = None, outputs: d
                 f"APIC: Could not find compiled binary for module {info['module_name']} "
                 f"at {binary_path}. Ensure modules are compiled before calling capture_save()."
             )
+
+        if not graph.device.is_cuda:
+            continue
+
+        with open(exported_binary_path, "rb") as binary_file:
+            binary_digest = hashlib.sha256(binary_file.read()).hexdigest()
+
+        binary_kind = APIC_CUDA_BINARY_PTX if binary_filename.endswith(".ptx") else APIC_CUDA_BINARY_CUBIN
+        source_filename = ""
+        source_digest = ""
+        fallback_reason = APIC_CUDA_FALLBACK_RECIPE_UNAVAILABLE
+        recipe = APICCudaCompileRecipe()
+        artifact = info.get("cuda_compile_artifact")
+
+        if artifact is not None:
+            fallback_reason = fallback_reasons.get(
+                artifact.get("fallback_reason"), APIC_CUDA_FALLBACK_RECIPE_UNAVAILABLE
+            )
+            recipe_info = artifact.get("recipe")
+            source_path = artifact.get("source_path")
+            expected_source_digest = artifact.get("source_digest")
+            candidate_source_filename = artifact.get("source_filename")
+
+            try:
+                if not isinstance(recipe_info, dict):
+                    raise ValueError("missing recipe")
+                recipe.debug = bool(recipe_info["debug"])
+                recipe.optimization_level = int(recipe_info["optimization_level"])
+                recipe.verify_fp = bool(recipe_info["verify_fp"])
+                recipe.fast_math = bool(recipe_info["fast_math"])
+                recipe.fuse_fp = bool(recipe_info["fuse_fp"])
+                recipe.lineinfo = bool(recipe_info["lineinfo"])
+                recipe.arch_suffix = {
+                    "": APIC_CUDA_ARCH_SUFFIX_NONE,
+                    "a": APIC_CUDA_ARCH_SUFFIX_A,
+                    "f": APIC_CUDA_ARCH_SUFFIX_F,
+                }[artifact.get("arch_suffix")]
+                if recipe.optimization_level not in range(4):
+                    raise ValueError("invalid optimization level")
+
+                if not source_path or not os.path.isfile(source_path):
+                    raise OSError("source file is unavailable")
+                with open(source_path, "rb") as source_file:
+                    source_data = source_file.read()
+                if hashlib.sha256(source_data).hexdigest() != expected_source_digest:
+                    raise ValueError("source digest does not match its compile artifact")
+                if os.path.basename(candidate_source_filename) != candidate_source_filename:
+                    raise ValueError("invalid source filename")
+
+                source_filename = candidate_source_filename
+                exported_source_path = os.path.join(modules_dir, source_filename)
+                if os.path.abspath(source_path) != os.path.abspath(exported_source_path):
+                    shutil.copy2(source_path, exported_source_path)
+                source_digest = hashlib.sha256(source_data).hexdigest()
+            except (KeyError, OSError, TypeError, ValueError):
+                source_filename = ""
+                source_digest = ""
+                fallback_reason = APIC_CUDA_FALLBACK_EXPORT_FAILED
+
+        runtime.core.wp_apic_register_cuda_module_artifacts(
+            state,
+            _enc(module_hash),
+            _enc(binary_digest),
+            _enc(source_filename),
+            _enc(source_digest),
+            binary_kind,
+            fallback_reason,
+            ctypes.byref(recipe),
+        )
+
+        if fallback_reason != APIC_CUDA_FALLBACK_AVAILABLE:
+            cuda_fallback_warnings.setdefault(fallback_reason_labels[fallback_reason], []).append(info["module_name"])
+
+    if cuda_fallback_warnings:
+        details = "; ".join(
+            f"{reason}: {', '.join(sorted(module_names))}"
+            for reason, module_names in sorted(cuda_fallback_warnings.items())
+        )
+        log_warning(
+            "APIC saved the graph with its compiled CUDA binaries, but source recompilation is unavailable for "
+            f"some modules ({details}). Replay remains possible wherever those packaged binaries are compatible."
+        )
 
     # Register meshes used during capture
     for mesh_id in apic_capture.collected_mesh_ids:
@@ -13910,7 +14158,8 @@ def capture_load(path: str, device: DeviceLike = None) -> Graph:
     For graphs containing recorded kernels, the companion
     ``<stem>_modules/`` directory created by :func:`capture_save` must remain
     next to the file. ``device`` must have the same device family (CPU or CUDA)
-    as the saved graph.
+    as the saved graph. CUDA loading prefers a compatible packaged or cached
+    module, then compiles retained generated source for the selected device.
 
     Args:
         path: Path to the ``.wrp`` file (extension added automatically if missing).
@@ -13925,7 +14174,15 @@ def capture_load(path: str, device: DeviceLike = None) -> Graph:
     device_type = 1 if device.is_cpu else 0
     context = device.context if device.is_cuda else None
 
-    native_graph = runtime.core.wp_apic_load_graph(context, wrp_path.encode("utf-8"), device_type)
+    if device.is_cuda:
+        native_graph = runtime.core.wp_apic_load_graph_ex(
+            context,
+            wrp_path.encode("utf-8"),
+            device_type,
+            os.path.join(warp_home, "native").encode("utf-8"),
+        )
+    else:
+        native_graph = runtime.core.wp_apic_load_graph(context, wrp_path.encode("utf-8"), device_type)
     if not native_graph:
         raise RuntimeError(f"Failed to load APIC graph from {wrp_path}: {runtime.get_error_string()}")
 

@@ -150,7 +150,13 @@ struct APICModule {
     std::string module_hash;
     std::string module_name;
     std::string cubin_filename;
+    std::string binary_digest;
+    std::string source_filename;
+    std::string source_digest;
     int target_arch = 0;
+    APICCudaBinaryKind binary_kind = APIC_CUDA_BINARY_NONE;
+    APICCudaFallbackReason fallback_reason = APIC_CUDA_FALLBACK_SOURCE_UNAVAILABLE;
+    APICCudaCompileRecipe compile_recipe = {};
 #ifdef __CUDACC__
     CUmodule cuda_module = nullptr;  // Set after loading
 #else
@@ -517,7 +523,9 @@ APICAddress apic_resolve_host_ptr(APICState* state, uint64_t ptr, uint64_t acces
 struct APICGraph {
     void* cuda_context = nullptr;
     int target_arch = 0;
+    bool cuda_use_ptx = false;
     APICDeviceType device_type = APIC_DEVICE_CUDA;
+    std::string producer_version;
 
     std::unordered_map<std::string, APICModule> modules;
     std::unordered_map<std::string, APICKernel> kernels;
@@ -566,6 +574,7 @@ bool apic_validate_operation_stream(const uint8_t* data, size_t size, uint32_t o
 // ============================================================================
 
 bool apic_read_file(const char* path, std::vector<uint8_t>& data);
+std::string apic_sha256_hex(const uint8_t* data, size_t size);
 
 // .wrp parsing — pure C++ (defined in apic.cpp). Populate fields on `graph`.
 bool apic_parse_metadata(const uint8_t* data, size_t size, APICGraph* graph);
@@ -628,6 +637,11 @@ bool apic_get_param_cuda(APICGraph* graph, void* dst, const void* src, size_t si
 // initial data from the .wrp file into device memory. Returns false on
 // failure; the caller is responsible for deleting the graph.
 bool apic_load_graph_cuda_setup(
-    APICGraph* graph, void* context, const std::string& modules_dir, const uint8_t* memory_ptr, size_t memory_size
+    APICGraph* graph,
+    void* context,
+    const std::string& modules_dir,
+    const char* warp_include_dir,
+    const uint8_t* memory_ptr,
+    size_t memory_size
 );
 #endif
