@@ -532,7 +532,6 @@ APICAddress apic_resolve_host_ptr(APICState* state, uint64_t ptr, uint64_t acces
 struct APICGraph {
     void* cuda_context = nullptr;
     int target_arch = 0;
-    bool cuda_use_ptx = false;
     APICDeviceType device_type = APIC_DEVICE_CUDA;
     std::string producer_version;
 
@@ -652,6 +651,11 @@ bool apic_get_param_cuda(APICGraph* graph, void* dst, const void* src, size_t si
 // initial data from the .wrp file into device memory. Returns false on
 // failure; the caller is responsible for deleting the graph.
 bool apic_load_graph_cuda_setup(
-    APICGraph* graph, void* context, const std::string& modules_dir, const uint8_t* memory_ptr, size_t memory_size
+    APICGraph* graph,
+    void* context,
+    const std::string& modules_dir,
+    const char* warp_include_dir,
+    const uint8_t* memory_ptr,
+    size_t memory_size
 );
 #endif
