@@ -3,7 +3,7 @@
 
 #include "../native/cpu_block_runtime.h"
 #include "../native/crt.h"
-#include "../version.h"
+#include "../warp_clang.h"
 #include <clang/Basic/DiagnosticOptions.h>
 #include <clang/Frontend/CompilerInstance.h>
 #include <clang/Frontend/TextDiagnosticPrinter.h>

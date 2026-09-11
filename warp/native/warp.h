@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "api.h"
+
 // defines all crt + builtin types
 #include "builtin.h"
 

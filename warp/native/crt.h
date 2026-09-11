@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "api.h"
+
 // This file declares a subset of the C runtime (CRT) functions and macros for
 // use by compute kernel modules. There are three environments in which this
 // file gets included:
@@ -14,18 +16,6 @@
 //   the compiler library instead (clang.dll).
 // - Warp runtime (!WP_NO_CRT). When building warp.dll it's fine to include the
 //   standard C library headers, and it avoids mismatched redefinitions.
-
-#ifndef WP_API
-#if !defined(__CUDA_ARCH__)
-#if defined(_WIN32)
-#define WP_API __declspec(dllexport)
-#else
-#define WP_API __attribute__ ((visibility ("default")))
-#endif
-#else
-#define WP_API
-#endif
-#endif  // WP_API
 
 #if !defined(__CUDA_ARCH__)
 

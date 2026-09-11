@@ -2214,6 +2214,9 @@ declared in `warp/native/apic.h <https://github.com/NVIDIA/warp/blob/main/warp/n
     // Release the loaded graph and its associated allocations.
     void wp_apic_destroy_graph(APICGraph* graph);
 
+For native library headers, build-system setup, platform-specific linking,
+deployment, and version compatibility, see :ref:`native_library_linking`.
+
 Two reference C++ examples ship with Warp under ``warp/examples/cpp/``. Both
 implement the same interactive 2-D wave simulation visualized with GLFW/OpenGL,
 and both take their captured ``.wrp`` file from a Python ``capture_wave.py``
@@ -2301,14 +2304,23 @@ CPU device. ``main.cpp`` does not link against CUDA at all. Replay goes through
     wp_apic_destroy_graph(graph);
 
 CPU graph replay needs function pointers for each recorded kernel. These are
-resolved from the ``.o`` files in the companion ``_modules/`` directory by
-loading the ``warp-clang`` library at runtime and calling its ``wp_load_obj`` /
-``wp_lookup`` entry points, then registering each pointer with the loaded graph
-via ``wp_apic_register_loaded_cpu_kernel``. The example walks every kernel
-returned by ``wp_apic_get_num_kernels`` and does this resolution once at
-startup. Kernel metadata includes both the kernel key and module hash so
-same-key kernels from distinct ``module="unique"`` modules resolve to the
-correct object file and function pointer. The C API surface for this lookup is:
+resolved from the ``.o`` files in the companion ``_modules/`` directory. The
+CPU example links against ``warp-clang`` at build time, loads each object with
+``wp_load_obj()``, resolves its functions with ``wp_lookup()``, and registers
+each pointer with the loaded graph via
+``wp_apic_register_loaded_cpu_kernel()``.
+
+Before the first call to ``wp_load_obj()``, a standalone native consumer must
+pass the core runtime table returned by ``wp_cpu_block_runtime_get_api()`` to
+``wp_llvm_set_cpu_block_runtime()``. This lets JIT-loaded kernels resolve the
+cooperative CPU block entry points implemented by the core Warp library. Warp's
+Python runtime performs the same binding during initialization.
+
+The example walks every kernel returned by ``wp_apic_get_num_kernels()`` and
+does this resolution once at startup. Kernel metadata includes both the kernel
+key and module hash so same-key kernels from distinct ``module="unique"``
+modules resolve to the correct object file and function pointer. The C API
+surface for this lookup is:
 
 .. code:: c
 
