@@ -3677,6 +3677,8 @@ class ModuleExec:
         compile_arch: int | None = None,
         det_launch_meta_map: dict[str, DeterministicMeta] | None = None,
         kernel_hashes: Mapping[Kernel, bytes] | None = None,
+        binary_path: str | None = None,
+        cuda_compile_artifact: dict | None = None,
     ):
         self.handle = handle
         self.module_hash = module_hash
@@ -3693,6 +3695,11 @@ class ModuleExec:
         # CPU). Cluster classification must use this frozen target, not the current
         # global config, which can change after the module is loaded.
         self.compile_arch = compile_arch
+        # Exact artifact selected by Module.load(). APIC capture must not
+        # reconstruct this path or its compile recipe from mutable module or
+        # global configuration after the executable has been retained.
+        self.binary_path = binary_path
+        self.cuda_compile_artifact = cuda_compile_artifact
 
     # release the loaded module
     def __del__(self):
@@ -4474,6 +4481,42 @@ class Module:
         return f"{self.get_module_identifier(block_dim=block_dim)}.meta"
 
     @staticmethod
+    def _get_cuda_apic_artifact_name(output_name: str) -> str:
+        """Return the private kernel-cache metadata name for an exact CUDA variant."""
+        return output_name + ".apic.json"
+
+    @staticmethod
+    def _write_cuda_apic_artifact(path: str | os.PathLike, artifact: dict) -> None:
+        """Write private per-variant metadata used by APIC export.
+
+        This file is an internal kernel-cache detail. The portable ``.wrp``
+        format uses native fixed-width fields and does not depend on JSON.
+        """
+        with open(path, "w") as artifact_file:
+            json.dump(artifact, artifact_file, sort_keys=True)
+
+    @staticmethod
+    def _read_cuda_apic_artifact(module_dir: str | os.PathLike, output_name: str) -> dict | None:
+        """Read private per-variant APIC metadata, returning ``None`` if unavailable."""
+        artifact_path = os.path.join(module_dir, Module._get_cuda_apic_artifact_name(output_name))
+        try:
+            with open(artifact_path) as artifact_file:
+                artifact = json.load(artifact_file)
+        except (OSError, ValueError):
+            return None
+
+        if not isinstance(artifact, dict) or artifact.get("version") != 1:
+            return None
+        source_filename = artifact.get("source_filename")
+        if not isinstance(source_filename, str) or os.path.basename(source_filename) != source_filename:
+            return None
+        source_path = os.path.join(module_dir, source_filename)
+        if not os.path.isfile(source_path):
+            return None
+        artifact["source_path"] = source_path
+        return artifact
+
+    @staticmethod
     def _write_meta(output_meta_path: str | os.PathLike, meta: dict) -> None:
         """Write deterministic module metadata."""
         with open(output_meta_path, "w") as meta_file:
@@ -4664,7 +4707,14 @@ class Module:
                 once=True,
             )
 
-        source_code_path = os.path.join(build_dir, f"{module_name_short}.{source_code_ext}")
+        # CUDA codegen may depend on the output architecture. Keep the exact
+        # generated source paired with its PTX/CUBIN variant instead of sharing
+        # one architecture-neutral .cu filename across builds.
+        if is_cpu:
+            source_basename = f"{module_name_short}.{source_code_ext}"
+        else:
+            source_basename = f"{os.path.splitext(output_name)[0]}.{source_code_ext}"
+        source_code_path = os.path.join(build_dir, source_basename)
         try:
             with open(source_code_path, "w") as source_file:
                 source_file.write(source_str)
@@ -4748,6 +4798,42 @@ class Module:
 
         self._write_meta(output_meta_path, meta)
 
+        cuda_apic_artifact_path = None
+        if not is_cpu:
+            try:
+                fallback_reason = "available"
+                if options["extra_cuda_include_dirs"]:
+                    fallback_reason = "external_includes"
+                elif options["llvm_cuda"]:
+                    fallback_reason = "llvm_cuda"
+                elif ltoir_values or fatbin_values:
+                    fallback_reason = "link_inputs"
+
+                cuda_apic_artifact = {
+                    "version": 1,
+                    "source_filename": source_basename,
+                    "source_digest": hashlib.sha256(Path(source_code_path).read_bytes()).hexdigest(),
+                    "binary_kind": "ptx" if output_name.endswith(".ptx") else "cubin",
+                    "target_arch": output_arch,
+                    "arch_suffix": arch_suffix,
+                    "fallback_reason": fallback_reason,
+                    "recipe": {
+                        "debug": mode == "debug",
+                        "optimization_level": opt,
+                        "verify_fp": options["verify_fp"],
+                        "fast_math": options["fast_math"],
+                        "fuse_fp": options["fuse_fp"],
+                        "lineinfo": options["lineinfo"],
+                    },
+                }
+                cuda_apic_artifact_path = os.path.join(build_dir, self._get_cuda_apic_artifact_name(output_name))
+                self._write_cuda_apic_artifact(cuda_apic_artifact_path, cuda_apic_artifact)
+            except OSError:
+                # APIC source fallback is optional for ordinary module builds.
+                # capture_save() reports the missing recipe if this artifact is
+                # later needed.
+                cuda_apic_artifact_path = None
+
         # -----------------------------------------------------------
         # update cache
 
@@ -4788,6 +4874,17 @@ class Module:
             except Exception as e:
                 # We don't need source_code_path to be copied successfully to proceed, so warn and keep running
                 log_warning(f"Exception when renaming {source_code_path}: {e}")
+
+            if cuda_apic_artifact_path is not None:
+                try:
+                    final_artifact_path = os.path.join(output_dir, self._get_cuda_apic_artifact_name(output_name))
+                    if not os.path.exists(final_artifact_path) or self.options["strip_hash"]:
+                        os.replace(cuda_apic_artifact_path, final_artifact_path)
+                except OSError:
+                    # Optional APIC metadata must not make module compilation
+                    # fail. capture_save() will export this module as
+                    # binary-only if the metadata is unavailable.
+                    pass
 
             # clean up build_dir used for this process regardless
             shutil.rmtree(build_dir, ignore_errors=True)
@@ -4858,6 +4955,8 @@ class Module:
             if binary_path:
                 # We will never re-codegen or re-compile in this situation
                 # The expected files must already exist
+                binary_path = os.fspath(binary_path)
+                output_name = os.path.basename(binary_path)
 
                 if device.is_cuda and output_arch is None:
                     raise ValueError("'output_arch' must be provided if a 'binary_path' is provided")
@@ -4897,6 +4996,17 @@ class Module:
             else:
                 raise FileNotFoundError(f"Module metadata file {meta_path} was not found in the cache")
 
+            cuda_compile_artifact = None
+            if device.is_cuda:
+                cuda_compile_artifact = self._read_cuda_apic_artifact(os.path.dirname(binary_path), output_name)
+                if cuda_compile_artifact is not None:
+                    expected_kind = "ptx" if output_name.endswith(".ptx") else "cubin"
+                    if (
+                        cuda_compile_artifact.get("binary_kind") != expected_kind
+                        or cuda_compile_artifact.get("target_arch") != output_arch
+                    ):
+                        cuda_compile_artifact = None
+
             if device.is_cpu:
                 # LLVM modules are identified using strings, so we need to ensure uniqueness
                 id = self.increment_id()
@@ -4919,6 +5029,7 @@ class Module:
                     output_arch,
                     det_launch_meta_map,
                     self.hashers[active_block_dim].kernel_hashes,
+                    binary_path=binary_path,
                 )
                 self.execs[(None, active_block_dim)] = module_exec
 
@@ -4934,6 +5045,8 @@ class Module:
                         output_arch,
                         det_launch_meta_map,
                         self.hashers[active_block_dim].kernel_hashes,
+                        binary_path=binary_path,
+                        cuda_compile_artifact=cuda_compile_artifact,
                     )
                     self.execs[(device.context, active_block_dim)] = module_exec
                 else:
