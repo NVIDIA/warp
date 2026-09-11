@@ -524,10 +524,10 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">record_tape</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">record_cmd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">max_blocks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">block_dim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">256</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">block_dim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L11333-L11750"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.launch" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L11397-L11817"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.launch" title="Link to this definition">#</a></dt>
 <dd><p>Launch a Warp kernel on the target device</p>
 <p>Kernel launches are asynchronous with respect to the calling Python thread.</p>
 <p>The default <code class="docutils literal notranslate"><span class="pre">warp.config.LaunchArrayAccessMode.RELAXED</span></code> mode does not check
@@ -564,7 +564,11 @@ Requires a grid-stride loop, which is the default. Launching a
 kernel that opted into the lean launch path with
 <code class="docutils literal notranslate"><span class="pre">&#64;warp.kernel(grid_stride=False)</span></code> and <code class="docutils literal notranslate"><span class="pre">max_blocks</span> <span class="pre">&gt;</span> <span class="pre">0</span></code> raises
 a <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code>.</p></li>
-<li><p><strong>block_dim</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – The number of threads per block (always 1 for “cpu” devices).</p></li>
+<li><p><strong>block_dim</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – The requested number of threads per block. An omitted or
+non-positive value defaults to 1 on CPU and 256 on CUDA. Explicit CPU
+values from 2 through 1024 are honored when
+<a class="reference internal" href="warp.config.enable_cpu_blocks.html#warp.config.enable_cpu_blocks" title="warp.config.enable_cpu_blocks"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.enable_cpu_blocks</span></code></a> is <code class="docutils literal notranslate"><span class="pre">True</span></code> and otherwise
+resolve to 1.</p></li>
 </ul>
 </dd>
 </dl>

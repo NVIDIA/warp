@@ -618,6 +618,11 @@
 <dd class="field-even"><p>A tile with the same shape as the input tile less the axis dimension and the same data type as the input tile.</p>
 </dd>
 </dl>
+<p>On a partial CPU block, a slice with no active values returns the operation’s identity for
+<code class="docutils literal notranslate"><span class="pre">wp.add</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.mul</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.min</span></code>, and <code class="docutils literal notranslate"><span class="pre">wp.max</span></code>. Other operators have no declared
+identity, so an empty slice triggers an assertion instead of returning an arbitrary value.
+See <a class="reference internal" href="../../user_guide/programming_model/tiles.html#cpu-tile-semantics"><span class="std std-ref">CPU Tile Semantics</span></a> for definitions of partial
+CPU blocks and active lanes.</p>
 <p class="rubric">Example</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">TILE_M</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
 <span class="n">TILE_N</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>

@@ -573,6 +573,33 @@ though some settings only take effect if set prior to initialization.</p>
 <p>See <a class="reference internal" href="../api_reference/warp_config.html"><span class="doc">warp.config</span></a> for a complete list of global settings.
 See <a class="reference internal" href="execution_and_performance/reducing_compilation_and_startup_time.html"><span class="doc">Reducing Compilation and Startup Time</span></a> for
 guidance on settings that affect compilation and startup.</p>
+<section id="experimental-cpu-block-execution">
+<h3>Experimental CPU Block Execution<a class="headerlink" href="#experimental-cpu-block-execution" title="Link to this heading">#</a></h3>
+<div class="versionadded">
+<p><span class="versionmodified added">Added in version 1.18.0.</span></p>
+</div>
+<p>By default, an omitted or non-positive <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> selects one logical thread
+per block on CPU and 256 threads per block on CUDA. CPU launches also preserve
+the historical effective <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> of <code class="docutils literal notranslate"><span class="pre">1</span></code> when a larger value is
+requested. To honor an explicit CPU <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> from 2 through 1024, enable
+the experimental cooperative-block path:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">enable_cpu_blocks</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">count</span><span class="p">,</span> <span class="n">block_dim</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cpu"</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The setting applies to <a class="reference internal" href="../api_reference/_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch()</span></code></a> and
+<a class="reference internal" href="../api_reference/_generated/warp.launch_tiled.html#warp.launch_tiled" title="warp.launch_tiled"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch_tiled()</span></code></a>. Warp resolves the effective block
+dimension when the launch is created, so recorded commands and captured launches
+retain that value if the setting later changes. An explicit CPU value greater
+than 1024 raises <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> even when the feature is disabled.</p>
+<p>CPU block execution currently targets correctness testing and CPU/CUDA semantic
+equivalence; it does not provide SIMD or multi-core acceleration.</p>
+<p>AddressSanitizer fiber switching is not yet supported. In an AddressSanitizer
+build, an enabled CPU launch with <code class="docutils literal notranslate"><span class="pre">block_dim</span> <span class="pre">&gt;</span> <span class="pre">1</span></code> raises
+<code class="docutils literal notranslate"><span class="pre">NotImplementedError</span></code>; one-lane CPU launches remain available. See
+<a class="reference internal" href="programming_model/tiles.html#cpu-tile-semantics"><span class="std std-ref">CPU Tile Semantics</span></a> for how the option affects tile
+kernels.</p>
+</section>
 </section>
 <section id="module-settings">
 <span id="id3"></span><h2>Module Settings<a class="headerlink" href="#module-settings" title="Link to this heading">#</a></h2>
@@ -970,7 +997,10 @@ backend, so the same function remains valid for CPU and CUDA.</p>
   </div>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#global-settings">Global Settings</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#global-settings">Global Settings</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#experimental-cpu-block-execution">Experimental CPU Block Execution</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-settings">Module Settings</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#kernel-settings">Kernel Settings</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#cuda-thread-block-clusters">CUDA Thread Block Clusters</a></li>

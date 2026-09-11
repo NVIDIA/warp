@@ -846,9 +846,11 @@ launches run many threads in parallel and are generally asynchronous with
 respect to Python. Both devices use the same kernel language, but they have
 different performance and concurrency characteristics.</p>
 <p>Tile kernels need additional care on the CPU backend because its effective
-<code class="docutils literal notranslate"><span class="pre">block_dim</span></code> is one. Consult <a class="reference internal" href="programming_model/tiles.html#cpu-tile-semantics"><span class="std std-ref">CPU Tile Semantics</span></a>
-when the same tile kernel must run on both backends. Other device differences
-are covered in <a class="reference internal" href="runtime.html#devices"><span class="std std-ref">Devices</span></a>.</p>
+<code class="docutils literal notranslate"><span class="pre">block_dim</span></code> is one by default. The experimental
+<a class="reference internal" href="../api_reference/_generated/warp.config.enable_cpu_blocks.html#warp.config.enable_cpu_blocks" title="warp.config.enable_cpu_blocks"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.enable_cpu_blocks</span></code></a> option honors explicit CPU block dimensions
+through 1024 with cooperative fibers on one host thread. Consult
+<a class="reference internal" href="programming_model/tiles.html#cpu-tile-semantics"><span class="std std-ref">CPU Tile Semantics</span></a> when the same tile kernel must run
+on both backends. Other device differences are covered in <a class="reference internal" href="runtime.html#devices"><span class="std std-ref">Devices</span></a>.</p>
 </section>
 <section id="when-do-i-need-to-synchronize-explicitly">
 <h3>When do I need to synchronize explicitly?<a class="headerlink" href="#when-do-i-need-to-synchronize-explicitly" title="Link to this heading">#</a></h3>

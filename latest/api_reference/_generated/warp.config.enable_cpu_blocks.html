@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.tile_from_thread &#8212; Warp 1.18.0.dev4</title>
+    <title>warp.config.enable_cpu_blocks &#8212; Warp 1.18.0.dev4</title>
   
   
   
@@ -49,7 +49,7 @@
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'language_reference/_generated/warp.tile_from_thread';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.config.enable_cpu_blocks';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.21.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
@@ -64,8 +64,8 @@
 
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="warp.tile_full" href="warp.tile_full.html" />
-    <link rel="prev" title="warp.tile_fft" href="warp.tile_fft.html" />
+    <link rel="next" title="warp.config.enable_graph_capture_module_load_by_default" href="warp.config.enable_graph_capture_module_load_by_default.html" />
+    <link rel="prev" title="warp.config.enable_backward" href="warp.config.enable_backward.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -424,21 +424,21 @@
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Language Reference</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../builtins.html">Built-Ins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../language_reference/builtins.html">Built-Ins</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp.html">warp</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_autograd.html">warp.autograd</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_build_experimental.html">warp.build_experimental</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_config.html">warp.config</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_fem.html">warp.fem</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_geometry.html">warp.geometry</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_optim.html">warp.optim</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_render.html">warp.render</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_sparse.html">warp.sparse</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_types.html">warp.types</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_utils.html">warp.utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp.html">warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_autograd.html">warp.autograd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_build_experimental.html">warp.build_experimental</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_config.html">warp.config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_fem.html">warp.fem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_geometry.html">warp.geometry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_optim.html">warp.optim</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_render.html">warp.render</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_sparse.html">warp.sparse</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_types.html">warp.types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_utils.html">warp.utils</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Domain Modules</span></p>
 <ul class="nav bd-sidenav">
@@ -486,61 +486,15 @@
       </a>
     </li>
     
-    <li class="breadcrumb-item"><a href="../builtins.html" class="nav-link">Built-Ins</a></li>
+    <li class="breadcrumb-item"><a href="../warp_config.html" class="nav-link">warp.config</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.tile_from_thread</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.config.enable_cpu_blocks</span></li>
   </ul>
 </nav>
 </div>
       
     </div>
   
-  
-    <div class="header-article-items__end">
-      
-        <div class="header-article-item">
-
-
-
-<div class="d-flex justify-content-end w-100">
-  <div class="btn-group copy-page-source pst-js-only" data-page-source-control role="group" aria-label="Page source">
-    <button
-      type="button"
-      class="btn btn-sm btn-outline-secondary"
-      data-copy-page-source
-      data-page-source-url="../../_sources/language_reference/_generated/warp.tile_from_thread.rst.txt"
-      disabled
-    >
-      <i class="fa-solid fa-copy" aria-hidden="true"></i>
-      <span data-copy-page-source-label>Copy source</span>
-    </button>
-    <button
-      type="button"
-      class="btn btn-sm btn-outline-secondary dropdown-toggle dropdown-toggle-split"
-      data-bs-toggle="dropdown"
-      aria-expanded="false"
-    >
-      <span class="visually-hidden">Page source options</span>
-    </button>
-    <ul class="dropdown-menu dropdown-menu-end">
-      <li>
-        <a class="dropdown-item" href="../../_sources/language_reference/_generated/warp.tile_from_thread.rst.txt">
-          <i class="fa-solid fa-file-code" aria-hidden="true"></i>
-          View source
-        </a>
-      </li>
-    </ul>
-    <span class="visually-hidden" role="status" aria-live="polite" data-copy-page-source-status></span>
-  </div>
-  <noscript>
-    <a href="../../_sources/language_reference/_generated/warp.tile_from_thread.rst.txt">
-      <i class="fa-solid fa-file-code" aria-hidden="true"></i> View source
-    </a>
-  </noscript>
-</div>
-</div>
-      
-    </div>
   
 </div>
 </div>
@@ -551,106 +505,15 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="warp-tile-from-thread">
-<h1>warp.tile_from_thread<a class="headerlink" href="#warp-tile-from-thread" title="Link to this heading">#</a></h1>
-<dl class="py function">
-<dt class="sig sig-object py" id="warp._src.lang.tile_from_thread">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">tile_from_thread</span></span><span class="sig-paren">(</span>
-
-<dl>
-<dd><em class="sig-param"><span class="n"><span class="pre">shape</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">thread_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">storage</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'register'</span></span></em>,</dd>
-</dl>
-
-<span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tile</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#warp._src.lang.tile_from_thread" title="Link to this definition">#</a></dt>
-<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="differentiable" data-wp-value="false"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li></ul><p>Allocate a tile filled with a value from a specific thread.</p>
-<p>This function broadcasts one thread’s value to all threads in the block, then
-creates a tile filled with that broadcast value. It is useful for sharing a
-computed result (e.g. from an atomic operation) with the whole block. Every thread
-in the block must call this function.</p>
-<p><code class="docutils literal notranslate"><span class="pre">thread_idx</span></code> is block-local: each block broadcasts from its own lane
-<code class="docutils literal notranslate"><span class="pre">thread_idx</span></code>, and it must satisfy <code class="docutils literal notranslate"><span class="pre">0</span> <span class="pre">&lt;=</span> <span class="pre">thread_idx</span> <span class="pre">&lt;</span> <span class="pre">wp.block_dim()</span></code>. The
-resulting tile’s data type is the type of <code class="docutils literal notranslate"><span class="pre">value</span></code>.</p>
-<p>On CPU the effective block width is <code class="docutils literal notranslate"><span class="pre">1</span></code> unless
-<code class="docutils literal notranslate"><span class="pre">wp.config.enable_cpu_blocks</span></code> is enabled. When enabled, the requested block
-width is honored and this function broadcasts from the selected CPU lane.</p>
-<p>On a partial CPU block, <code class="docutils literal notranslate"><span class="pre">thread_idx</span></code> must identify an active lane. If the
-selected lane is inactive, no producer executes and the result is undefined.
-See <a class="reference internal" href="../../user_guide/programming_model/tiles.html#cpu-tile-semantics"><span class="std std-ref">CPU Tile Semantics</span></a> for definitions of partial
-CPU blocks and active lanes.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>shape</strong> – Shape of the output tile. Must be a compile-time constant.</p></li>
-<li><p><strong>value</strong> – Per-thread value; only the value from <code class="docutils literal notranslate"><span class="pre">thread_idx</span></code> is used.</p></li>
-<li><p><strong>thread_idx</strong> – Block-local index of the thread whose value should fill the tile.
-Must have the same value in every thread of the block.</p></li>
-<li><p><strong>storage</strong> – The storage location for the tile: <code class="docutils literal notranslate"><span class="pre">&quot;register&quot;</span></code> for registers or
-<code class="docutils literal notranslate"><span class="pre">&quot;shared&quot;</span></code> for shared memory. Must be a compile-time constant.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>A tile with the requested shape, with the data type of <code class="docutils literal notranslate"><span class="pre">value</span></code>, in which
-every element holds the value broadcast from <code class="docutils literal notranslate"><span class="pre">thread_idx</span></code>.</p>
-</dd>
-</dl>
-<p class="rubric">Example</p>
-<p>Broadcasting a per-block scale factor read by a single thread. Because the
-value is read by thread <code class="docutils literal notranslate"><span class="pre">0</span></code>, this kernel produces the same result on CPU
-and GPU.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">TILE_SIZE</span> <span class="o">=</span> <span class="mi">4</span>
-<span class="n">TILE_THREADS</span> <span class="o">=</span> <span class="mi">2</span>
-
-<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">scale_block</span><span class="p">(</span><span class="n">scales</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
-    <span class="n">block</span><span class="p">,</span> <span class="n">lane</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
-
-    <span class="c1"># only thread 0 reads the per-block scale factor</span>
-    <span class="n">s</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">lane</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="n">s</span> <span class="o">=</span> <span class="n">scales</span><span class="p">[</span><span class="n">block</span><span class="p">]</span>
-
-    <span class="c1"># broadcast thread 0's value to the whole block</span>
-    <span class="n">scale</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_from_thread</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">TILE_SIZE</span><span class="p">,),</span> <span class="n">value</span><span class="o">=</span><span class="n">s</span><span class="p">,</span> <span class="n">thread_idx</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-    <span class="n">t</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_arange</span><span class="p">(</span><span class="n">TILE_SIZE</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
-
-    <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">scale</span> <span class="o">*</span> <span class="n">t</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="p">(</span><span class="n">block</span> <span class="o">*</span> <span class="n">TILE_SIZE</span><span class="p">,))</span>
-
-<span class="n">scales</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
-<span class="n">out</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
-
-<span class="n">wp</span><span class="o">.</span><span class="n">launch_tiled</span><span class="p">(</span><span class="n">scale_block</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">scales</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">],</span> <span class="n">block_dim</span><span class="o">=</span><span class="n">TILE_THREADS</span><span class="p">)</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
-</pre></div>
-</div>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[ 0.  1.  2.  3.  0. 10. 20. 30.]
-</pre></div>
-</div>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">tile_from_thread</span></span><span class="sig-paren">(</span>
-
-<dl>
-<dd><em class="sig-param"><span class="n"><span class="pre">shape</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">thread_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">storage</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'register'</span></span></em>,</dd>
-</dl>
-
-<span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tile</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span></dt>
-<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="differentiable" data-wp-value="false"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li></ul><p>Allocate a tile filled with a value from a specific thread.</p>
-<p>Overload for 1D tiles: <code class="docutils literal notranslate"><span class="pre">shape</span></code> is the number of elements, equivalent to passing
-<code class="docutils literal notranslate"><span class="pre">(shape,)</span></code>. See the overload taking a tuple-valued <code class="docutils literal notranslate"><span class="pre">shape</span></code> argument for usage
-details and an example.</p>
-<p>On a partial CPU block, <code class="docutils literal notranslate"><span class="pre">thread_idx</span></code> must identify an active lane. If the
-selected lane is inactive, no producer executes and the result is undefined.
-See <a class="reference internal" href="../../user_guide/programming_model/tiles.html#cpu-tile-semantics"><span class="std std-ref">CPU Tile Semantics</span></a> for definitions of partial
-CPU blocks and active lanes.</p>
+  <section id="warp-config-enable-cpu-blocks">
+<h1>warp.config.enable_cpu_blocks<a class="headerlink" href="#warp-config-enable-cpu-blocks" title="Link to this heading">#</a></h1>
+<dl class="py data">
+<dt class="sig sig-object py" id="warp.config.enable_cpu_blocks">
+<span class="sig-prename descclassname"><span class="pre">warp.config.</span></span><span class="sig-name descname"><span class="pre">enable_cpu_blocks</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></span><a class="headerlink" href="#warp.config.enable_cpu_blocks" title="Link to this definition">#</a></dt>
+<dd><p>Enable experimental CPU kernel launches with more than one logical thread per block.</p>
+<p>When <code class="docutils literal notranslate"><span class="pre">False</span></code>, CPU launch block dimensions greater than one resolve to one,
+preserving the historical CPU execution model. When <code class="docutils literal notranslate"><span class="pre">True</span></code>, explicit CPU
+block dimensions from 2 through 1024 run with cooperative fibers.</p>
 </dd></dl>
 
 </section>
@@ -666,20 +529,20 @@ CPU blocks and active lanes.</p>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.tile_fft.html"
+       href="warp.config.enable_backward.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.tile_fft</p>
+        <p class="prev-next-title">warp.config.enable_backward</p>
       </div>
     </a>
     <a class="right-next"
-       href="warp.tile_full.html"
+       href="warp.config.enable_graph_capture_module_load_by_default.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.tile_full</p>
+        <p class="prev-next-title">warp.config.enable_graph_capture_module_load_by_default</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -704,25 +567,9 @@ CPU blocks and active lanes.</p>
   </div>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp._src.lang.tile_from_thread"><code class="docutils literal notranslate"><span class="pre">tile_from_thread()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.config.enable_cpu_blocks"><code class="docutils literal notranslate"><span class="pre">enable_cpu_blocks</span></code></a></li>
 </ul>
   </nav></div>
-
-  <div class="sidebar-secondary-item">
-
-  
-  <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/main/docs/language_reference/_generated/warp.tile_from_thread.rst">
-      <i class="fa-solid fa-pencil"></i>
-      
-      
-        
-          Edit on GitHub
-        
-      
-    </a>
-  </div>
-</div>
 
 </div></div>
               

@@ -1565,10 +1565,10 @@ relatively unaffected.</p>
 <section id="cpu-tile-semantics">
 <span id="id2"></span><h2>CPU Tile Semantics<a class="headerlink" href="#cpu-tile-semantics" title="Link to this heading">#</a></h2>
 <p>Tile operations are block-cooperative on the GPU: the <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> threads of a block
-share tile storage and cooperate on reductions, scans, scatters, and stores. The CPU
-backend is currently single-threaded, so it executes tiled kernels with an effective <code class="docutils literal notranslate"><span class="pre">block_dim</span></code>
-of <code class="docutils literal notranslate"><span class="pre">1</span></code>, regardless of the value you pass to <a class="reference internal" href="../../api_reference/_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch()</span></code></a> or
-<a class="reference internal" href="../../api_reference/_generated/warp.launch_tiled.html#warp.launch_tiled" title="warp.launch_tiled"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch_tiled()</span></code></a>. The consequences are:</p>
+share tile storage and cooperate on reductions, scans, scatters, and stores. By default,
+the CPU backend preserves its historical effective <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> of <code class="docutils literal notranslate"><span class="pre">1</span></code>, regardless of
+the value passed to <a class="reference internal" href="../../api_reference/_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch()</span></code></a> or
+<a class="reference internal" href="../../api_reference/_generated/warp.launch_tiled.html#warp.launch_tiled" title="warp.launch_tiled"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch_tiled()</span></code></a>. In that default mode:</p>
 <ul class="simple">
 <li><p><a class="reference internal" href="../../language_reference/_generated/warp.block_dim.html#warp._src.lang.block_dim" title="warp._src.lang.block_dim"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.block_dim()</span></code></a> returns <code class="docutils literal notranslate"><span class="pre">1</span></code>.</p></li>
 <li><p>For <a class="reference internal" href="../../api_reference/_generated/warp.launch_tiled.html#warp.launch_tiled" title="warp.launch_tiled"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch_tiled()</span></code></a>, the trailing lane index added to
@@ -1579,6 +1579,19 @@ launch requested <code class="docutils literal notranslate"><span class="pre">bl
 lanes <code class="docutils literal notranslate"><span class="pre">0</span></code> through <code class="docutils literal notranslate"><span class="pre">block_dim</span> <span class="pre">-</span> <span class="pre">1</span></code> can each contribute values to the same block tile.
 On CPU the effective lane count is <code class="docutils literal notranslate"><span class="pre">1</span></code>, so only lane <code class="docutils literal notranslate"><span class="pre">0</span></code> participates.</p></li>
 </ul>
+<p>Set <a class="reference internal" href="../../api_reference/_generated/warp.config.enable_cpu_blocks.html#warp.config.enable_cpu_blocks" title="warp.config.enable_cpu_blocks"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.enable_cpu_blocks</span></code></a> to <code class="docutils literal notranslate"><span class="pre">True</span></code> to opt into explicit CPU
+block dimensions from 2 through 1024. Warp then executes the logical lanes as
+cooperative stackful fibers on one host thread, so <code class="docutils literal notranslate"><span class="pre">wp.block_dim()</span></code>, the trailing
+lane index, barriers, and shared tile state follow the requested block shape. This
+path is initially intended for correctness testing and CPU/CUDA equivalence; it is
+not SIMD or multi-core acceleration. See <a class="reference internal" href="../configuration.html#configuration"><span class="std std-ref">Configuration</span></a> for
+its resource limits and AddressSanitizer restriction.</p>
+<p>A <strong>partial CPU block</strong> has fewer currently participating lanes than its requested
+<code class="docutils literal notranslate"><span class="pre">block_dim</span></code>. This occurs initially when the final logical block contains only an
+in-bounds prefix and can also occur later when lanes return from the kernel. An
+<strong>active lane</strong> entered the block and has not returned before the cooperative
+operation in question. Finished and out-of-bounds lanes do not participate in later
+CPU barriers or tile operations.</p>
 <p>This does not make all tile code non-portable. Whole-tile cooperative
 operations on explicitly shaped tiles still produce the same result on CPU and GPU. A
 pattern such as <a class="reference internal" href="../../language_reference/_generated/warp.tile_load.html#warp._src.lang.tile_load" title="warp._src.lang.tile_load"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_load()</span></code></a>, then
@@ -1590,9 +1603,12 @@ kernel uses <code class="docutils literal notranslate"><span class="pre">block_d
 cases detailed below.</p>
 <section id="patterns-that-do-not-produce-identical-cpu-gpu-results">
 <h3>Patterns that do not produce identical CPU/GPU results<a class="headerlink" href="#patterns-that-do-not-produce-identical-cpu-gpu-results" title="Link to this heading">#</a></h3>
-<p>Every divergence below traces to one fact: a CPU block has a single lane. A kernel’s
-result differs across devices only when it depends on a block having <em>more than one</em> lane.
-That dependence enters in three ways. The CPU and GPU outputs are shown as comments.</p>
+<p>With the default CPU setting, every divergence below traces to one fact: the
+effective CPU block has a single lane. A kernel’s result differs across devices
+only when it depends on a block having <em>more than one</em> lane. That dependence
+enters in three ways. The CPU and GPU outputs are shown as comments. Enabling CPU
+blocks with the same explicit dimension exercises the cooperative behavior, but
+portable applications should not assume that the experimental option is enabled.</p>
 <p><strong>Problem 1: arithmetic that uses</strong> <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> <strong>or the lane index.</strong> On CPU,
 <a class="reference internal" href="../../language_reference/_generated/warp.block_dim.html#warp._src.lang.block_dim" title="warp._src.lang.block_dim"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.block_dim()</span></code></a> returns <code class="docutils literal notranslate"><span class="pre">1</span></code> and the lane index (the
 trailing value of <a class="reference internal" href="../../language_reference/_generated/warp.tid.html#warp._src.lang.tid" title="warp._src.lang.tid"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tid()</span></code></a> in a tiled launch) is always <code class="docutils literal notranslate"><span class="pre">0</span></code>.
@@ -2095,15 +2111,17 @@ the two programming models.</p>
 <p>Tile operations (<a class="reference internal" href="../../language_reference/_generated/warp.tile_load.html#warp._src.lang.tile_load" title="warp._src.lang.tile_load"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_load()</span></code></a>,
 <a class="reference internal" href="../../language_reference/_generated/warp.tile_store.html#warp._src.lang.tile_store" title="warp._src.lang.tile_store"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_store()</span></code></a>,
 <a class="reference internal" href="../../language_reference/_generated/warp.tile_matmul.html#warp._src.lang.tile_matmul" title="warp._src.lang.tile_matmul"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_matmul()</span></code></a>, etc.) work with either launch
-function. On CPU, Warp always forces <code class="docutils literal notranslate"><span class="pre">block_dim=1</span></code>; see the next question for
-CPU-specific caveats.</p>
+function. By default, Warp resolves CPU launches to <code class="docutils literal notranslate"><span class="pre">block_dim=1</span></code>; see the
+next question for CPU-specific behavior and the experimental opt-in.</p>
 </section>
 <section id="cpu-vs-gpu-behavior-differences">
 <span id="tiles-cpu-gpu-behavior-differences"></span><h3>CPU vs. GPU behavior differences<a class="headerlink" href="#cpu-vs-gpu-behavior-differences" title="Link to this heading">#</a></h3>
 <p><em>Why does my kernel using tiles behave differently depending on whether I run it on a CPU or GPU?</em></p>
-<p>On CPU, Warp forces <code class="docutils literal notranslate"><span class="pre">block_dim=1</span></code>, which collapses the logical block to a single lane.
-See <a class="reference internal" href="#cpu-tile-semantics"><span class="std std-ref">CPU Tile Semantics</span></a> for the affected patterns
-and the workarounds that produce identical results on both devices.</p>
+<p>By default, Warp resolves CPU launches to <code class="docutils literal notranslate"><span class="pre">block_dim=1</span></code>, which collapses the
+logical block to a single lane. The experimental
+<a class="reference internal" href="../../api_reference/_generated/warp.config.enable_cpu_blocks.html#warp.config.enable_cpu_blocks" title="warp.config.enable_cpu_blocks"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.enable_cpu_blocks</span></code></a> option instead honors explicit CPU block
+dimensions through 1024. See <a class="reference internal" href="#cpu-tile-semantics"><span class="std std-ref">CPU Tile Semantics</span></a> for
+the affected patterns, resource limits, and portable workarounds.</p>
 </section>
 <section id="tile-operations-in-divergent-branches">
 <h3>Tile operations in divergent branches<a class="headerlink" href="#tile-operations-in-divergent-branches" title="Link to this heading">#</a></h3>

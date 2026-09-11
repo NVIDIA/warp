@@ -24,6 +24,7 @@ API
    deterministic_debug
    deterministic_max_records
    enable_backward
+   enable_cpu_blocks
    enable_graph_capture_module_load_by_default
    enable_mathdx_fft
    enable_mathdx_gemm

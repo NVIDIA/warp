@@ -518,7 +518,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">max_workers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L12169-L12255"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.force_load" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L12239-L12335"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.force_load" title="Link to this definition">#</a></dt>
 <dd><p>Force user-defined kernels to be compiled and loaded (low-level API).</p>
 <p>This is a lower-level function that accepts an explicit list of Warp <a class="reference internal" href="warp.Module.html#warp.Module" title="warp.Module"><code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></a>
 objects. For most use cases, prefer <a class="reference internal" href="warp.load_module.html#warp.load_module" title="warp.load_module"><code class="xref py py-func docutils literal notranslate"><span class="pre">load_module()</span></code></a>, which provides a more
@@ -536,7 +536,10 @@ convenient interface for loading modules by name or Python module reference.</p>
 load on all devices.</p></li>
 <li><p><strong>modules</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference internal" href="warp.Module.html#warp.Module" title="warp._src.context.Module"><em>Module</em></a><em>] </em><em>| </em><em>None</em>) – List of Warp <a class="reference internal" href="warp.Module.html#warp.Module" title="warp.Module"><code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></a> objects to load. If <code class="docutils literal notranslate"><span class="pre">None</span></code>,
 load all imported modules that contain Warp code.</p></li>
-<li><p><strong>block_dim</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – The number of threads per block (always 1 for <code class="docutils literal notranslate"><span class="pre">&quot;cpu&quot;</span></code> devices).</p></li>
+<li><p><strong>block_dim</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – The requested number of threads per block. CPU values follow
+<a class="reference internal" href="warp.config.enable_cpu_blocks.html#warp.config.enable_cpu_blocks" title="warp.config.enable_cpu_blocks"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.enable_cpu_blocks</span></code></a> and the CPU launch limit. If
+omitted, reuse variants already loaded on each device; otherwise,
+use the CPU launch default or the CUDA module default.</p></li>
 <li><p><strong>max_workers</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – The maximum number of parallel threads to use for loading modules. <code class="docutils literal notranslate"><span class="pre">0</span></code> means serial loading.
 If <code class="docutils literal notranslate"><span class="pre">None</span></code>, <code class="docutils literal notranslate"><span class="pre">`warp.config.load_module_max_workers</span></code> determines the default.</p></li>
 </ul>
