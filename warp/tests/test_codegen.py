@@ -20,6 +20,7 @@ from unittest import mock
 
 import warp as wp
 from warp._src import codegen
+from warp.tests import aux_test_array_slot_operators as slot_operators
 from warp.tests import aux_test_extract_source_patterns as patterns
 from warp.tests.aux_test_extract_source_patterns import contains_truncating_string
 from warp.tests.unittest_utils import *
@@ -1706,6 +1707,44 @@ def test_augassign_slot_target_before_rhs(test, device):
     assert_np_equal(dst.numpy(), expected)
 
 
+def test_array_slot_augassign_uses_user_operator(test, device):
+    """Preserve user operator dispatch for attribute and indexed array slots."""
+    values = wp.array([wp.vec3(3.0)], dtype=wp.vec3, device=device)
+
+    wp.launch(slot_operators.overloaded_slot_augassign, dim=1, inputs=[values, 2.0], device=device)
+
+    np.testing.assert_array_equal(values.numpy(), np.array([[1.0, 1.0, 6.0]], dtype=np.float32))
+
+
+def test_overloaded_slot_update_backward_rejected(test, device):
+    """Reject overloaded slot updates that cannot preserve gradients through an overwrite."""
+    for update in (
+        slot_operators.overloaded_slot_add_backward,
+        slot_operators.overloaded_slot_sub_backward,
+        slot_operators.update_shared_component_backward,
+    ):
+        with test.subTest(update=update.key):
+            values = wp.array([wp.vec3(3.0)], dtype=wp.vec3, requires_grad=True, device=device)
+            rhs = wp.array([2.0], dtype=wp.float32, requires_grad=True, device=device)
+            with test.assertRaisesRegex(
+                codegen.WarpCodegenError, "Differentiable composite slot augmented assignments"
+            ):
+                wp.launch(update, dim=1, inputs=[values, rhs], device=device)
+
+
+def test_slot_updates_ignore_nonmatching_operator_overloads(test, device):
+    """Use builtin updates and adjoints when user operators have different argument types."""
+    values = wp.full(1, wp.vec3d(3.0), dtype=wp.vec3d, device=device, requires_grad=True)
+    rhs = wp.array([2.0], dtype=wp.float64, device=device, requires_grad=True)
+    with wp.Tape() as tape:
+        wp.launch(slot_operators.update_double_components_with_float_overloads, 1, [values, rhs], device=device)
+
+    np.testing.assert_array_equal(values.numpy(), [[5.0, 5.0, 1.0]])
+    tape.backward(grads={values: wp.full_like(values, wp.vec3d(1.0))})
+    np.testing.assert_array_equal(values.grad.numpy(), [[1.0, 1.0, 1.0]])
+    np.testing.assert_array_equal(rhs.grad.numpy(), [1.0])
+
+
 @wp.func
 def func_to_local_double(a: float):
     return a * 2.0
@@ -2901,6 +2940,24 @@ add_function_test(
     TestCodeGen,
     "test_augassign_slot_target_before_rhs",
     test_augassign_slot_target_before_rhs,
+    devices=devices,
+)
+add_function_test(
+    TestCodeGen,
+    "test_array_slot_augassign_uses_user_operator",
+    test_array_slot_augassign_uses_user_operator,
+    devices=devices,
+)
+add_function_test(
+    TestCodeGen,
+    "test_overloaded_slot_update_backward_rejected",
+    test_overloaded_slot_update_backward_rejected,
+    devices=devices,
+)
+add_function_test(
+    TestCodeGen,
+    "test_slot_updates_ignore_nonmatching_operator_overloads",
+    test_slot_updates_ignore_nonmatching_operator_overloads,
     devices=devices,
 )
 add_function_test(TestCodeGen, "test_assign_function_to_local", test_assign_function_to_local, devices=devices)

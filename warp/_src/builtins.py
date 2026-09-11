@@ -14812,6 +14812,7 @@ def matrix_index_row_value_func(arg_types: Mapping[str, type], arg_values: Mappi
 
 
 def matrix_index_row_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    """Return native arguments for matrix row-reference indexing."""
     func_args = (Reference(args["a"]), args["i"])
     template_args = ()
     return (func_args, template_args)
@@ -15292,8 +15293,6 @@ add_builtin(
     export=False,
     group="Utility",
 )
-
-
 # implements bool_matrix[i] = bool_row (bool is not part of Scalar)
 add_builtin(
     "assign_inplace",
@@ -15306,7 +15305,6 @@ add_builtin(
     group="Utility",
 )
 
-
 # implements matrix[i,j] = value
 add_builtin(
     "assign_inplace",
@@ -15317,8 +15315,6 @@ add_builtin(
     export=False,
     group="Utility",
 )
-
-
 # implements bool_matrix[i,j] = bool (bool is not part of Scalar)
 add_builtin(
     "assign_inplace",
@@ -15346,8 +15342,6 @@ add_builtin(
     export=False,
     group="Utility",
 )
-
-
 # implements bool_matrix[i] = bool_row (bool is not part of Scalar)
 add_builtin(
     "assign_copy",
@@ -15359,7 +15353,6 @@ add_builtin(
     group="Utility",
 )
 
-
 # implements matrix[i,j] = value
 add_builtin(
     "assign_copy",
@@ -15370,8 +15363,6 @@ add_builtin(
     export=False,
     group="Utility",
 )
-
-
 # implements bool_matrix[i,j] = bool (bool is not part of Scalar)
 add_builtin(
     "assign_copy",
@@ -15382,7 +15373,6 @@ add_builtin(
     export=False,
     group="Utility",
 )
-
 
 # implements matrix[i] += value
 add_builtin(

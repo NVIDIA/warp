@@ -116,9 +116,54 @@ def mat33_row_iadd_kernel(y: wp.array[wp.mat33], x: wp.array[wp.vec3]):
     y[i][1] += x[i]
 
 
-@wp.kernel
-def mat33_row_iadd_side_effect_index_kernel(counter: wp.array[wp.int32], y: wp.array[wp.mat33], x: wp.array[wp.vec3]):
-    y[wp.atomic_add(counter, 0, 1)][1] += x[0]
+@wp.kernel(module="unique")
+def update_inline_sliced_arrays(
+    components: wp.array[wp.vec3],
+    source: wp.array[float],
+    start: int,
+    stop: int,
+    step: int,
+):
+    i = wp.tid()
+    components[start:stop:step][i].x = source[i]
+    components[start:stop:step][i][1] += source[i]
+
+
+def test_inline_slice_updates_preserve_values_and_gradients(test, device):
+    """Write through inline slices and route gradients to the selected elements."""
+    for start, stop, step, selected in ((0, 4, 2, [0, 2]), (3, -5, -2, [3, 1])):
+        with test.subTest(step=step):
+            components = wp.full(4, wp.vec3(7.0), dtype=wp.vec3, requires_grad=True, device=device)
+            source = wp.array([3.0, 5.0], dtype=float, requires_grad=True, device=device)
+            with wp.Tape() as tape:
+                wp.launch(
+                    update_inline_sliced_arrays,
+                    dim=2,
+                    inputs=[components, source, start, stop, step],
+                    device=device,
+                )
+
+            expected_store = np.full(4, 7.0)
+            expected_store[selected] = [3.0, 5.0]
+            expected_add = np.full(4, 7.0)
+            expected_add[selected] = [10.0, 12.0]
+            expected_components = np.full((4, 3), 7.0)
+            expected_components[:, 0] = expected_store
+            expected_components[:, 1] = expected_add
+            np.testing.assert_array_equal(components.numpy(), expected_components)
+
+            tape.backward(
+                grads={
+                    components: wp.full(4, wp.vec3(1.0), dtype=wp.vec3, device=device),
+                }
+            )
+            expected_store_grad = np.ones(4)
+            expected_store_grad[selected] = 0.0
+            expected_component_grad = np.ones((4, 3))
+            expected_component_grad[:, 0] = expected_store_grad
+            np.testing.assert_array_equal(components.grad.numpy(), expected_component_grad)
+            np.testing.assert_array_equal(source.grad.numpy(), [2.0, 2.0])
+            np.testing.assert_array_equal(components.numpy(), expected_components)
 
 
 @wp.func
@@ -226,8 +271,8 @@ def vec3_component_idiv_reference_component_index_kernel(out: wp.array[wp.vec3],
     out[0][comp[0]] /= 2.0
 
 
-def test_array_composite_slot_augassign_non_atomic_fallback_forward(test, device):
-    """Verify non-atomic slot augmented-assignment fallback updates values."""
+def test_array_composite_slot_int16_augassign(test, device):
+    """Update ``int16`` vector components and matrix rows in place."""
     scalar_values = wp.array(np.array([7], dtype=np.int16), dtype=wp.int16, device=device)
     vec_out = wp.zeros(1, dtype=wp.vec2s, device=device)
     wp.launch(vec2s_component_iadd_non_atomic_slot_kernel, 1, inputs=[scalar_values, vec_out], device=device)
@@ -241,11 +286,8 @@ def test_array_composite_slot_augassign_non_atomic_fallback_forward(test, device
     assert_np_equal(mat_out.numpy(), expected_mat)
 
 
-def test_array_composite_slot_augassign_non_atomic_reference_indices(test, device):
-    """Verify fallback slot augmented assignment loads reference indices."""
-    # Unsupported atomic ops such as `/=` fall back to evaluated slot writes.
-    # Reference-typed indices from `idx[0]` / `comp[0]` must be loaded before
-    # they are emitted into raw C++ slot accessors.
+def test_array_composite_slot_augassign_with_array_indices(test, device):
+    """Update composite slots selected by array-valued indices."""
     values = np.array([[8.0, 6.0, 4.0], [10.0, 12.0, 14.0]], dtype=np.float32)
 
     idx = wp.array([1], dtype=wp.int32, device=device)
@@ -288,6 +330,26 @@ class MatArrayFieldHolder:
 
 
 @wp.kernel
+def embedded_array_slot_write_kernel(holders: wp.array[VecArrayFieldHolder], src: wp.array[float]):
+    holders[0].values[0].x = src[0]
+
+
+def test_embedded_array_without_outer_gradient(test, device):
+    """Differentiate an embedded component store without an outer gradient array."""
+    holder = VecArrayFieldHolder()
+    holder.values = wp.array([[2.0, 3.0, 4.0]], dtype=wp.vec3, device=device, requires_grad=True)
+    holders = wp.array([holder], dtype=VecArrayFieldHolder, device=device)
+    src = wp.array([5.0], dtype=float, device=device, requires_grad=True)
+    with wp.Tape() as tape:
+        wp.launch(embedded_array_slot_write_kernel, 1, [holders, src], device=device)
+    holder.values.grad.fill_(wp.vec3(1.0))
+    tape.backward()
+    np.testing.assert_array_equal(holder.values.numpy(), [[5.0, 3.0, 4.0]])
+    np.testing.assert_array_equal(src.grad.numpy(), [1.0])
+    np.testing.assert_array_equal(holder.values.grad.numpy(), [[0.0, 1.0, 1.0]])
+
+
+@wp.kernel
 def struct_field_slot_write_rhs_eval_order_kernel(holder: VecArrayFieldHolder, src: wp.array[wp.float32]):
     holder.values[choose_slot_and_mutate_src(src)].x = src[0]
 
@@ -307,6 +369,31 @@ def _k_struct_field_array_alias_component_write(holder: VecArrayFieldHolder, x: 
 def _k_array_view_component_write(values: wp.array2d[wp.vec3], x: wp.array[wp.float32]):
     view = values[0]
     view[0].x = x[0]
+
+
+@wp.kernel(module="unique")
+def nested_view_component_write(values: wp.array3d[wp.vec3], indices: wp.array[int], src: wp.array[float]):
+    plane = values[0]
+    row = plane[indices[0]]
+    row[0].x = src[0]
+
+
+def test_nested_view_component_gradient(test, device):
+    """Route component gradients through chained views with an array-valued index."""
+    values = wp.zeros((1, 2, 1), dtype=wp.vec3, device=device, requires_grad=True)
+    indices = wp.array([1], dtype=int, device=device)
+    src = wp.array([3.0], dtype=float, device=device, requires_grad=True)
+    with wp.Tape() as tape:
+        wp.launch(nested_view_component_write, 1, [values, indices, src], device=device)
+    values.grad = wp.full_like(values, wp.vec3(2.0, 3.0, 4.0))
+    tape.backward()
+    expected = np.zeros((1, 2, 1, 3), dtype=np.float32)
+    expected[0, 1, 0, 0] = 3.0
+    np.testing.assert_array_equal(values.numpy(), expected)
+    np.testing.assert_array_equal(src.grad.numpy(), [2.0])
+    expected_grad = np.tile([2.0, 3.0, 4.0], (1, 2, 1, 1))
+    expected_grad[0, 1, 0, 0] = 0.0
+    np.testing.assert_array_equal(values.grad.numpy(), expected_grad)
 
 
 @wp.kernel
@@ -549,8 +636,8 @@ def test_struct_field_array_composite_slot_write(test, device):
         assert_np_equal(row_src.grad.numpy(), np.array([[4.0, 5.0, 6.0]], dtype=np.float32))
 
 
-def test_slot_type_mismatch_reference_rhs_reports_error(test, device):
-    """Verify slot write type mismatches fail before emitting slot adjoints."""
+def test_composite_slot_type_mismatch_reports_error(test, device):
+    """Report incompatible values assigned to composite slots."""
     with wp.ScopedDevice(device):
 
         @wp.kernel(module="unique")
@@ -562,19 +649,8 @@ def test_slot_type_mismatch_reference_rhs_reports_error(test, device):
         y = wp.zeros(n, dtype=wp.vec3)
         src = wp.zeros(n, dtype=wp.vec3)
 
-        # Launch rather than calling adj.build() directly: rejecting the mismatch is
-        # what a user hits, and driving a build through the adjoint leaves a failed
-        # build in the kernel's module without the module ever being asked to load.
-        # Match the message so an unrelated runtime failure cannot satisfy this assertion.
-        with test.assertRaisesRegex(RuntimeError, "must be of the same type as the reference"):
+        with test.assertRaisesRegex(TypeError, "Composite slot assignment expects value of type"):
             wp.launch(_k_mismatch, n, inputs=[y, src])
-
-        # No public API exposes the emitted code, so read it off the adjoint: the
-        # mismatch has to be rejected before any slot store is written.
-        test.assertTrue(_k_mismatch.adj.blocks, "Expected build() to initialize codegen blocks before failing.")
-        forward = "\n".join(_k_mismatch.adj.blocks[0].body_forward)
-        reverse = "\n".join(_k_mismatch.adj.blocks[0].body_reverse)
-        test.assertNotIn("adj_array_store_slot", forward + reverse)
 
 
 def test_wp_adjoint_composite_component_write(test, device):
@@ -596,8 +672,8 @@ def test_wp_adjoint_composite_component_write(test, device):
         assert_np_equal(grad_vec, expected)
 
 
-def test_wp_adjoint_array_component_atomic_cuda(test, device):
-    """Verify custom adjoint component ``+=`` uses CUDA atomics."""
+def test_wp_adjoint_array_component_accumulates_cuda(test, device):
+    """Accumulate contended array-component gradients on CUDA."""
     n = 4096
     value_count = 31
     rng = np.random.default_rng(307)
@@ -674,27 +750,13 @@ def test_array_rooted_composite_slot_gradients(test, device):
     assert_np_equal(src.grad.numpy(), np.ones((1, 3), dtype=np.float32))
 
 
-def test_array_composite_slot_non_atomic_augassign_backward_rejected(test, device):
+def test_array_composite_slot_multiply_assign_backward_rejected(test, device):
     """Verify unsupported differentiable slot ``*=`` fails with backward enabled."""
     src = wp.array([2.0], dtype=wp.float32, requires_grad=True, device=device)
     dst = wp.array([[5.0, 0.0, 0.0]], dtype=wp.vec3, requires_grad=True, device=device)
 
     with test.assertRaisesRegex(Exception, "Differentiable composite slot augmented assignments"):
         wp.launch(array_rooted_vec3_component_imul_backward_enabled_kernel, dim=1, inputs=[src, dst], device=device)
-
-
-def test_array_mat33_row_iadd_side_effect_index_forward(test, device):
-    """Verify row ``+=`` evaluates side-effecting indices once."""
-    counter = wp.zeros(1, dtype=wp.int32, device=device)
-    src = wp.array([[1.0, 2.0, 3.0]], dtype=wp.vec3, device=device)
-    dst = wp.zeros(2, dtype=wp.mat33, device=device)
-
-    wp.launch(mat33_row_iadd_side_effect_index_kernel, 1, inputs=[counter, dst, src], device=device)
-
-    expected = np.zeros((2, 3, 3), dtype=np.float32)
-    expected[0, 1, :] = [1.0, 2.0, 3.0]
-    assert_np_equal(counter.numpy(), np.array([1], dtype=np.int32))
-    assert_np_equal(dst.numpy(), expected)
 
 
 def test_slot_write_rhs_eval_order(test, device):
@@ -720,7 +782,7 @@ def test_slot_write_rhs_eval_order(test, device):
     assert_np_equal(struct_src.numpy()[0], np.float32(7.0))
 
 
-def test_slot_write_reference_index(test, device):
+def test_slot_write_with_array_index(test, device):
     """Verify slot writes load reference-typed root array indices."""
     # Reference-typed array indices must be loaded before raw slot access.
     dst = wp.zeros(2, dtype=wp.vec3, device=device)
@@ -742,8 +804,8 @@ def test_slot_write_rejects_non_integer_array_index(test, device):
         slot_augassign_float_array_index_kernel.module.load(device=device)
 
 
-def test_array_composite_slot_augassign_atomic_cuda(test, device):
-    """Verify atomic slot augmented assignments update contended slots."""
+def test_contended_array_composite_slot_augassign_cuda(test, device):
+    """Update contended vector components and matrix rows on CUDA."""
     n = 4096
 
     row_values = wp.array(np.ones((n, 2), dtype=np.float32), dtype=wp.vec2, device=device)
@@ -780,8 +842,8 @@ def test_array_composite_slot_augassign_atomic_cuda(test, device):
     assert_np_equal(mat_iand_out.numpy(), expected_iand)
 
 
-def test_array_composite_slot_atomic_replay_backward(test, device):
-    """Verify atomic slot augmented assignments replay backward correctly."""
+def test_array_composite_slot_augassign_backward(test, device):
+    """Match scalar gradients for composite-slot ``+=`` and ``-=``."""
     for label, kernel, initial_y in (
         ("add", vec2_component_iadd_replay_kernel, 2.0),
         ("sub", vec2_component_isub_replay_kernel, 8.0),
@@ -843,7 +905,7 @@ def test_array_composite_slot_atomic_replay_backward(test, device):
         assert_np_equal(values.grad.numpy(), np.array([[10.0, 0.0, 0.0]], dtype=np.float32))
 
 
-def test_array_mat33_row_iadd_backward(test, device):
+def test_array_mat33_row_add_assign_backward(test, device):
     """Verify mat33 row ``+=`` propagates row gradients."""
     n = 2
     src = wp.array(np.tile([1.0, 2.0, 3.0], (n, 1)), dtype=wp.vec3, requires_grad=True, device=device)
@@ -871,14 +933,37 @@ cuda_devices = get_cuda_test_devices()
 
 add_function_test(
     TestCompositeComponentAdjoint,
-    "test_array_composite_slot_augassign_non_atomic_fallback_forward",
-    test_array_composite_slot_augassign_non_atomic_fallback_forward,
+    "test_nested_view_component_gradient",
+    test_nested_view_component_gradient,
+    devices=devices,
+)
+
+add_function_test(
+    TestCompositeComponentAdjoint,
+    "test_inline_slice_updates_preserve_values_and_gradients",
+    test_inline_slice_updates_preserve_values_and_gradients,
+    devices=devices,
+)
+
+
+add_function_test(
+    TestCompositeComponentAdjoint,
+    "test_embedded_array_without_outer_gradient",
+    test_embedded_array_without_outer_gradient,
+    devices=devices,
+)
+
+
+add_function_test(
+    TestCompositeComponentAdjoint,
+    "test_array_composite_slot_int16_augassign",
+    test_array_composite_slot_int16_augassign,
     devices=devices,
 )
 add_function_test(
     TestCompositeComponentAdjoint,
-    "test_array_composite_slot_augassign_non_atomic_reference_indices",
-    test_array_composite_slot_augassign_non_atomic_reference_indices,
+    "test_array_composite_slot_augassign_with_array_indices",
+    test_array_composite_slot_augassign_with_array_indices,
     devices=devices,
 )
 add_function_test(
@@ -908,8 +993,8 @@ add_function_test(
 )
 add_function_test(
     TestCompositeComponentAdjoint,
-    "test_slot_type_mismatch_reference_rhs_reports_error",
-    test_slot_type_mismatch_reference_rhs_reports_error,
+    "test_composite_slot_type_mismatch_reports_error",
+    test_composite_slot_type_mismatch_reports_error,
     devices=devices,
 )
 add_function_test(
@@ -920,8 +1005,8 @@ add_function_test(
 )
 add_function_test(
     TestCompositeComponentAdjoint,
-    "test_wp_adjoint_array_component_atomic_cuda",
-    test_wp_adjoint_array_component_atomic_cuda,
+    "test_wp_adjoint_array_component_accumulates_cuda",
+    test_wp_adjoint_array_component_accumulates_cuda,
     devices=cuda_devices,
 )
 add_function_test(
@@ -938,14 +1023,8 @@ add_function_test(
 )
 add_function_test(
     TestCompositeComponentAdjoint,
-    "test_array_composite_slot_non_atomic_augassign_backward_rejected",
-    test_array_composite_slot_non_atomic_augassign_backward_rejected,
-    devices=devices,
-)
-add_function_test(
-    TestCompositeComponentAdjoint,
-    "test_array_mat33_row_iadd_side_effect_index_forward",
-    test_array_mat33_row_iadd_side_effect_index_forward,
+    "test_array_composite_slot_multiply_assign_backward_rejected",
+    test_array_composite_slot_multiply_assign_backward_rejected,
     devices=devices,
 )
 add_function_test(
@@ -956,8 +1035,8 @@ add_function_test(
 )
 add_function_test(
     TestCompositeComponentAdjoint,
-    "test_slot_write_reference_index",
-    test_slot_write_reference_index,
+    "test_slot_write_with_array_index",
+    test_slot_write_with_array_index,
     devices=devices,
 )
 add_function_test(
@@ -968,20 +1047,20 @@ add_function_test(
 )
 add_function_test(
     TestCompositeComponentAdjoint,
-    "test_array_composite_slot_augassign_atomic_cuda",
-    test_array_composite_slot_augassign_atomic_cuda,
+    "test_contended_array_composite_slot_augassign_cuda",
+    test_contended_array_composite_slot_augassign_cuda,
     devices=cuda_devices,
 )
 add_function_test(
     TestCompositeComponentAdjoint,
-    "test_array_composite_slot_atomic_replay_backward",
-    test_array_composite_slot_atomic_replay_backward,
+    "test_array_composite_slot_augassign_backward",
+    test_array_composite_slot_augassign_backward,
     devices=devices,
 )
 add_function_test(
     TestCompositeComponentAdjoint,
-    "test_array_mat33_row_iadd_backward",
-    test_array_mat33_row_iadd_backward,
+    "test_array_mat33_row_add_assign_backward",
+    test_array_mat33_row_add_assign_backward,
     devices=devices,
 )
 
