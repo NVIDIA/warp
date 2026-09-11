@@ -75,7 +75,7 @@ To use NVTX integration, you will need to install the `NVIDIA NVTX Python packag
 
     pip install nvtx
 
-The package allows you to insert custom NVTX ranges into your code (``nvtx.annotate``) and customize the `colors <https://github.com/NVIDIA/NVTX/blob/release-v3/python/nvtx/colors.py>`_.
+The package allows you to insert custom NVTX ranges into your code (``nvtx.annotate``) and customize the `colors <https://nvidia.github.io/NVTX/python/reference.html#nvtx.annotate>`_.
 
 Here is what the demo code looks like in Nsight Systems (click to enlarge the image):
 
@@ -435,7 +435,7 @@ This allows Nsight Compute to correlate assembly (SASS) with high-level Python o
 larger files in the kernel cache (approximately double the file size without line information).
 
 Elevated application privileges may be required to access the necessary hardware counters to profile kernels
-with Nsight Compute (`Instructions <https://developer.nvidia.com/ERR_NVGPUCTRPERM>`__)
+with Nsight Compute (`Instructions <https://developer.nvidia.com/nvidia-development-tools-solutions-err_nvgpuctrperm-permission-issue-performance-counters>`__)
 
 Nsight Compute can be run as an interactive profiler and as a command-line profiler. The command-line profiler can store
 reports in a file that can be opened later with the UI executable (``ncu-ui``).

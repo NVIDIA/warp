@@ -43,7 +43,7 @@ class SGD:
     Nesterov accelerated gradient, and weight decay (L2 regularization).
 
     The interface is similar to `PyTorch's torch.optim.SGD
-    <https://pytorch.org/docs/stable/generated/torch.optim.SGD.html>`_.
+    <https://docs.pytorch.org/docs/stable/generated/torch.optim.SGD.html>`_.
 
     Args:
         params: List of :class:`warp.array` objects to optimize. Can be ``None``

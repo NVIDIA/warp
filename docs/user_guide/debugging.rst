@@ -226,7 +226,7 @@ Breakpoints can also be inserted into Warp kernels running on GPU devices on Lin
 or the `NVIDIA Nsight Visual Studio Code Edition (VSCE) <https://developer.nvidia.com/nsight-visual-studio-code-edition>`__
 extension.
 
-An example `launch configuration <https://code.visualstudio.com/docs/debugtest/debugging#_launch-configurations>`__
+An example `launch configuration <https://code.visualstudio.com/docs/debugtest/debugging-configuration#_launch-configurations>`__
 for Visual Studio Code is shown below:
 
 .. code-block:: json
@@ -348,7 +348,7 @@ be used to detect subtle memory-access issues in Warp applications, e.g.
 
     compute-sanitizer --tool initcheck python sim.py
 
-The Compute Sanitizer suite is available through the `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`__.
+The Compute Sanitizer suite is available through the `CUDA Toolkit <https://developer.nvidia.com/cuda/toolkit>`__.
 
 CPU Memory Error Detection with AddressSanitizer
 ------------------------------------------------

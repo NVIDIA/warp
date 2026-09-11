@@ -774,11 +774,11 @@ See `example_jax_callable.py <https://github.com/NVIDIA/warp/blob/main/warp/exam
 Distributed Computation with ``shard_map``
 ------------------------------------------
 
-Warp can be used in conjunction with JAX's `shard_map <https://jax.readthedocs.io/en/latest/jep/14273-shard-map.html>`__
+Warp can be used in conjunction with JAX's `shard_map <https://docs.jax.dev/en/latest/jep/14273-shard-map.html>`__
 to perform distributed multi-GPU computations.
 
 To achieve this, the JAX distributed environment must be initialized
-(see `Distributed Arrays and Automatic Parallelization <https://jax.readthedocs.io/en/latest/notebooks/Distributed_arrays_and_automatic_parallelization.html>`__
+(see `Distributed Arrays and Automatic Parallelization <https://docs.jax.dev/en/latest/notebooks/Distributed_arrays_and_automatic_parallelization.html>`__
 for more details):
 
 .. code-block:: python

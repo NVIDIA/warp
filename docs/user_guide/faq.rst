@@ -174,7 +174,7 @@ with MuJoCo Warp as its primary backend.
 Applications that need a ready-made simulation stack can start with Newton.
 Applications that need custom kernels or lower-level computation can use Warp
 directly, including alongside Newton. See Newton's `migration guide
-<https://newton-physics.github.io/newton/migration.html>`__ and Warp's
+<https://newton-physics.github.io/newton/latest/migration.html>`__ and Warp's
 :doc:`/project/publications` page for examples.
 
 Installation and Compatibility

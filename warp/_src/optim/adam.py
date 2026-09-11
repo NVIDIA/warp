@@ -79,7 +79,7 @@ class Adam:
     account for their initialization at zero.
 
     The interface is similar to `PyTorch's torch.optim.Adam
-    <https://pytorch.org/docs/stable/generated/torch.optim.Adam.html>`_.
+    <https://docs.pytorch.org/docs/stable/generated/torch.optim.Adam.html>`_.
 
     Args:
         params: List of :class:`warp.array` objects to optimize. Can be ``None``

@@ -1190,7 +1190,7 @@
 ### Changed
 
 - Extend `wp.tile_map()` to support user-defined functions with up to 8 input tiles, beyond the previous unary and binary
-  operations ([GH-1077](https://github.com/NVIDIA/warp/pull/1077)).
+  operations ([GH-1077](https://github.com/NVIDIA/warp/issues/1077)).
 - Improve `wp.map()` performance by caching kernels for repeated calls with the same function and similar input arguments
   ([GH-1108](https://github.com/NVIDIA/warp/issues/1108)).
 - Support converting between vector, matrix, and scalar types in `array.view()`
@@ -1310,7 +1310,7 @@
 
 - Remove `warp.sim` module and related examples. This module has been superseded by the Newton library, a separate
   package with a new API. For migration guidance, see the
-  [Newton migration guide](https://newton-physics.github.io/newton/migration.html) and the original GitHub announcement
+  [Newton migration guide](https://newton-physics.github.io/newton/latest/migration.html) and the original GitHub announcement
   ([GH-735](https://github.com/NVIDIA/warp/discussions/735)).
 - Remove support for passing lists, tuples, and other non-Warp array arguments when calling built-ins at the Python
   scope (deprecated since v0.11.0). Use explicit type constructors instead (e.g., `wp.normalize([1.0, 2.0, 3.0])`
@@ -1619,7 +1619,7 @@
 
 - Deprecate the `warp.sim` module (planned for removal in v1.10). It will be superseded by the upcoming Newton library,
   a separate package with a new API. Migrating will require code changes; a future guide will be provided
-  ([current draft](https://newton-physics.github.io/newton/migration.html)). See the GitHub announcement for details
+  ([current draft](https://newton-physics.github.io/newton/latest/migration.html)). See the GitHub announcement for details
   ([GH-735](https://github.com/NVIDIA/warp/discussions/735)).
 - Deprecate the `wp.matrix(pos, quat, scale)` built-in function. Use `wp.transform_compose()` instead
   ([GH-576](https://github.com/NVIDIA/warp/issues/576)).
@@ -1764,7 +1764,7 @@
 ### Added
 
 - Support JAX foreign function interface (FFI)
-  ([docs](https://nvidia.github.io/warp/stable/user_guide/interoperability/jax.html#generic-ffi-callbacks),
+  ([docs](https://nvidia.github.io/warp/v1.13/user_guide/interoperability_jax.html#generic-ffi-callbacks),
   [GH-511](https://github.com/NVIDIA/warp/issues/511)).
 - Support Python/SASS correlation in Nsight Compute reports by emitting `#line` directives in CUDA-C code.
   This setting is controlled by `wp.config.line_directives` and is `True` by default.
@@ -1911,7 +1911,7 @@
 - Add an implicit tile synchronization whenever a shared memory tile's data is reinitialized (e.g. in dynamic loops).
   This could result in lower performance.
 - `wp.Bvh` constructor now supports various construction algorithms via the `constructor` argument, including
-  `"sah"` (Surface Area Heuristics), `"median"`, and `"lbvh"` ([docs](https://nvidia.github.io/warp/stable/api_reference/_generated/warp.Bvh.html#warp.Bvh.__init__))
+  `"sah"` (Surface Area Heuristics), `"median"`, and `"lbvh"` ([docs](https://nvidia.github.io/warp/stable/api_reference/_generated/warp.Bvh.html#warp.Bvh))
 - Improve the query efficiency of `wp.Bvh` and `wp.Mesh`.
 - Improve memory consumption, compilation and runtime performance when using in-place vector/matrix assignments in
   kernels that have `enable_backward` set to `False` ([GH-332](https://github.com/NVIDIA/warp/issues/332)).
@@ -2109,7 +2109,7 @@
 - Fix a bug in which Python docstrings would be created as local function variables in generated code.
 - Fix a bug with autograd array access validation in functions from different modules.
 - Fix a rare crash during error reporting on some systems due to glibc mismatches.
-- Handle `--num_tiles 1` in `example_render_opengl.py` ([GH-306](https://github.com/NVIDIA/warp/issues/306)).
+- Handle `--num_tiles 1` in `example_render_opengl.py` ([GH-306](https://github.com/NVIDIA/warp/pull/306)).
 - Fix the computation of body contact forces in `FeatherstoneIntegrator` when bodies and particles collide.
 - Fix bug in `FeatherstoneIntegrator` where `eval_rigid_jacobian` could give incorrect results or reach an infinite
   loop when the body and joint indices were not in the same order. Added `Model.joint_ancestor` to fix the indexing
@@ -2134,7 +2134,7 @@
 
 - Bug fixes
   - Fix an aliasing issue with zero-copy array initialization from NumPy introduced in Warp 1.3.0.
-  - Fix `wp.Volume.load_from_numpy()` behavior when `bg_value` is a sequence of values ([GH-312](https://github.com/NVIDIA/warp/pull/312)).
+  - Fix `wp.Volume.load_from_numpy()` behavior when `bg_value` is a sequence of values ([GH-312](https://github.com/NVIDIA/warp/issues/312)).
 
 ## [1.3.2] - 2024-08-30
 
@@ -2565,7 +2565,7 @@
 - Fix for incorrect lower-case when setting USD stage "up_axis" in examples
 - Fix for incompatible gradient types when wrapping PyTorch tensor as a vector or matrix type
 - Fix for adding open edges when building cloth constraints from meshes in `wp.sim.ModelBuilder.add_cloth_mesh()`
-- Add support for `wp.fabricarray` to directly access Fabric data from Warp kernels, see <https://docs.omniverse.nvidia.com/kit/docs/usdrt/latest/docs/usdrt_prim_selection.html> for examples
+- Add support for `wp.fabricarray` to directly access Fabric data from Warp kernels, see <https://docs.omniverse.nvidia.com/kit/docs/usdrt.scenegraph/latest/usdrt_prim_selection.html> for examples
 - Add support for user defined gradient functions, see `@wp.func_replay`, and `@wp.func_grad` decorators
 - Add support for more OG attribute types in `omni.warp.from_omni_graph()`
 - Add support for creating NanoVDB `wp.Volume` objects from dense NumPy arrays

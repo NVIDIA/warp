@@ -498,6 +498,12 @@ _intersphinx_mapping = {
 # timeout (seconds).
 intersphinx_timeout = 2
 
+# PyTorch's ``stable`` documentation URLs are client-side redirect stubs that
+# preserve fragments in browsers. The linkcheck builder cannot follow those
+# redirects before validating anchors, so only skip anchor checks for them;
+# URL availability is still checked.
+linkcheck_anchors_ignore_for_url = [r"https://docs\.pytorch\.org/docs/stable/.*"]
+
 _sphinx_logger = sphinx.util.logging.getLogger(__name__)
 # WARP_DOCS_OFFLINE=1 skips external resolution entirely for known-offline builds.
 if os.environ.get("WARP_DOCS_OFFLINE") == "1":
