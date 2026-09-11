@@ -1,0 +1,6 @@
+﻿warp.geometry.swept\_volume\_field
+==================================
+
+.. currentmodule:: warp.geometry
+
+.. autofunction:: swept_volume_field

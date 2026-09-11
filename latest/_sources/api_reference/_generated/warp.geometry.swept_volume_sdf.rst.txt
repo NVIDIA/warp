@@ -1,0 +1,6 @@
+﻿warp.geometry.swept\_volume\_sdf
+================================
+
+.. currentmodule:: warp.geometry
+
+.. autodata:: swept_volume_sdf

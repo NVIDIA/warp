@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.MeshQueryRay &#8212; Warp 1.18.0.dev3</title>
+    <title>warp.geometry.SweptVolumeSignMode &#8212; Warp 1.18.0.dev3</title>
   
   
   
@@ -49,7 +49,7 @@
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.MeshQueryRay';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.geometry.SweptVolumeSignMode';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.21.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
@@ -64,8 +64,8 @@
 
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="warp.Volume" href="warp.Volume.html" />
-    <link rel="prev" title="warp.MeshQueryPoint" href="warp.MeshQueryPoint.html" />
+    <link rel="next" title="warp.geometry.delaunay_edge_flip" href="warp.geometry.delaunay_edge_flip.html" />
+    <link rel="prev" title="warp.geometry" href="../warp_geometry.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -486,9 +486,9 @@
       </a>
     </li>
     
-    <li class="breadcrumb-item"><a href="../warp.html" class="nav-link">warp</a></li>
+    <li class="breadcrumb-item"><a href="../warp_geometry.html" class="nav-link">warp.geometry</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.MeshQueryRay</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.geometry.SweptVolumeSignMode</span></li>
   </ul>
 </nav>
 </div>
@@ -505,106 +505,99 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="warp-meshqueryray">
-<h1>warp.MeshQueryRay<a class="headerlink" href="#warp-meshqueryray" title="Link to this heading">#</a></h1>
+  <section id="warp-geometry-sweptvolumesignmode">
+<h1>warp.geometry.SweptVolumeSignMode<a class="headerlink" href="#warp-geometry-sweptvolumesignmode" title="Link to this heading">#</a></h1>
 <dl class="py class">
-<dt class="sig sig-object py" id="warp.MeshQueryRay">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">MeshQueryRay</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L7874-L7903"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.MeshQueryRay" title="Link to this definition">#</a></dt>
-<dd><p>Output for the mesh query ray functions.</p>
-<dl class="py attribute">
-<dt class="sig sig-object py" id="warp.MeshQueryRay.result">
-<span class="sig-name descname"><span class="pre">result</span></span><a class="headerlink" href="#warp.MeshQueryRay.result" title="Link to this definition">#</a></dt>
-<dd><p>Whether a hit is found within the given constraints.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool">bool</a></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="warp.MeshQueryRay.sign">
-<span class="sig-name descname"><span class="pre">sign</span></span><a class="headerlink" href="#warp.MeshQueryRay.sign" title="Link to this definition">#</a></dt>
-<dd><p>A value &gt; 0 if the ray hit in front of the face, returns &lt; 0 otherwise.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="warp.float32.html#warp.float32" title="warp.float32">float32</a></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="warp.MeshQueryRay.face">
-<span class="sig-name descname"><span class="pre">face</span></span><a class="headerlink" href="#warp.MeshQueryRay.face" title="Link to this definition">#</a></dt>
-<dd><p>Index of the closest face.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="warp.int32.html#warp.int32" title="warp.int32">int32</a></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="warp.MeshQueryRay.t">
-<span class="sig-name descname"><span class="pre">t</span></span><a class="headerlink" href="#warp.MeshQueryRay.t" title="Link to this definition">#</a></dt>
-<dd><p>Distance of the closest hit along the ray.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="warp.float32.html#warp.float32" title="warp.float32">float32</a></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="warp.MeshQueryRay.u">
-<span class="sig-name descname"><span class="pre">u</span></span><a class="headerlink" href="#warp.MeshQueryRay.u" title="Link to this definition">#</a></dt>
-<dd><p>Barycentric u coordinate of the closest hit.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="warp.float32.html#warp.float32" title="warp.float32">float32</a></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="warp.MeshQueryRay.v">
-<span class="sig-name descname"><span class="pre">v</span></span><a class="headerlink" href="#warp.MeshQueryRay.v" title="Link to this definition">#</a></dt>
-<dd><p>Barycentric v coordinate of the closest hit.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="warp.float32.html#warp.float32" title="warp.float32">float32</a></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="warp.MeshQueryRay.normal">
-<span class="sig-name descname"><span class="pre">normal</span></span><a class="headerlink" href="#warp.MeshQueryRay.normal" title="Link to this definition">#</a></dt>
-<dd><p>Face normal.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="warp.vec3f.html#warp.vec3f" title="warp.vec3f">vec3f</a></p>
-</dd>
-</dl>
-</dd></dl>
-
-<div class="admonition seealso">
-<p class="admonition-title">See also</p>
-<p><a class="reference internal" href="../../language_reference/_generated/warp.mesh_query_ray.html#warp._src.lang.mesh_query_ray" title="warp._src.lang.mesh_query_ray"><code class="xref py py-func docutils literal notranslate"><span class="pre">mesh_query_ray()</span></code></a>.</p>
+<dt class="sig sig-object py" id="warp.geometry.SweptVolumeSignMode">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.geometry.</span></span><span class="sig-name descname"><span class="pre">SweptVolumeSignMode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry.py#L691-L714"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.SweptVolumeSignMode" title="Link to this definition">#</a></dt>
+<dd><p>Method used to classify inside/outside when evaluating the per-mesh SDF.</p>
+<p><code class="docutils literal notranslate"><span class="pre">IntEnum</span></code> members are integers, so a value can be passed straight into a
+kernel and compared against.</p>
+<p class="rubric">Methods</p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">conjugate</span></code></p></td>
+<td><p>Returns self, the complex conjugate of any int.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">bit_length</span></code>()</p></td>
+<td><p>Number of bits necessary to represent self in binary.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">bit_count</span></code>()</p></td>
+<td><p>Number of ones in the binary representation of the absolute value of self.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_bytes</span></code>([length, byteorder, signed])</p></td>
+<td><p>Return an array of bytes representing an integer.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_bytes</span></code>(bytes[, byteorder, signed])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">as_integer_ratio</span></code>()</p></td>
+<td><p>Return a pair of integers, whose ratio is equal to the original int.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_integer</span></code>()</p></td>
+<td><p>Returns True.</p></td>
+</tr>
+</tbody>
+</table>
 </div>
 <p class="rubric">Attributes</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.MeshQueryRay.vars" title="warp.MeshQueryRay.vars"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vars</span></code></a></p></td>
-<td><p></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">real</span></code></p></td>
+<td><p>the real part of a complex number</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">imag</span></code></p></td>
+<td><p>the imaginary part of a complex number</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">numerator</span></code></p></td>
+<td><p>the numerator of a rational number in lowest terms</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">denominator</span></code></p></td>
+<td><p>the denominator of a rational number in lowest terms</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.geometry.SweptVolumeSignMode.NORMAL" title="warp.geometry.SweptVolumeSignMode.NORMAL"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NORMAL</span></code></a></p></td>
+<td><p>Sign from <a class="reference internal" href="../../language_reference/_generated/warp.mesh_query_point_sign_normal.html#warp._src.lang.mesh_query_point_sign_normal" title="warp._src.lang.mesh_query_point_sign_normal"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.mesh_query_point_sign_normal()</span></code></a>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.geometry.SweptVolumeSignMode.WINDING_NUMBER" title="warp.geometry.SweptVolumeSignMode.WINDING_NUMBER"><code class="xref py py-obj docutils literal notranslate"><span class="pre">WINDING_NUMBER</span></code></a></p></td>
+<td><p>Sign from <a class="reference internal" href="../../language_reference/_generated/warp.mesh_query_point_sign_winding_number.html#warp._src.lang.mesh_query_point_sign_winding_number" title="warp._src.lang.mesh_query_point_sign_winding_number"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.mesh_query_point_sign_winding_number()</span></code></a>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.geometry.SweptVolumeSignMode.PARITY" title="warp.geometry.SweptVolumeSignMode.PARITY"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PARITY</span></code></a></p></td>
+<td><p>Sign from <a class="reference internal" href="../../language_reference/_generated/warp.mesh_query_point_sign_parity.html#warp._src.lang.mesh_query_point_sign_parity" title="warp._src.lang.mesh_query_point_sign_parity"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.mesh_query_point_sign_parity()</span></code></a>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.geometry.SweptVolumeSignMode.NO_SIGN" title="warp.geometry.SweptVolumeSignMode.NO_SIGN"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NO_SIGN</span></code></a></p></td>
+<td><p>Unsigned distance, from <a class="reference internal" href="../../language_reference/_generated/warp.mesh_query_point_no_sign.html#warp._src.lang.mesh_query_point_no_sign" title="warp._src.lang.mesh_query_point_no_sign"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.mesh_query_point_no_sign()</span></code></a>.</p></td>
 </tr>
 </tbody>
 </table>
 </div>
 <dl class="py attribute">
-<dt class="sig sig-object py" id="warp.MeshQueryRay.vars">
-<span class="sig-name descname"><span class="pre">vars</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">_Var</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'face':</span> <span class="pre">&lt;warp._src.codegen.Var</span> <span class="pre">object&gt;,</span> <span class="pre">'normal':</span> <span class="pre">&lt;warp._src.codegen.Var</span> <span class="pre">object&gt;,</span> <span class="pre">'result':</span> <span class="pre">&lt;warp._src.codegen.Var</span> <span class="pre">object&gt;,</span> <span class="pre">'sign':</span> <span class="pre">&lt;warp._src.codegen.Var</span> <span class="pre">object&gt;,</span> <span class="pre">'t':</span> <span class="pre">&lt;warp._src.codegen.Var</span> <span class="pre">object&gt;,</span> <span class="pre">'u':</span> <span class="pre">&lt;warp._src.codegen.Var</span> <span class="pre">object&gt;,</span> <span class="pre">'v':</span> <span class="pre">&lt;warp._src.codegen.Var</span> <span class="pre">object&gt;}</span></span><a class="headerlink" href="#warp.MeshQueryRay.vars" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
+<dt class="sig sig-object py" id="warp.geometry.SweptVolumeSignMode.NORMAL">
+<span class="sig-name descname"><span class="pre">NORMAL</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></span><a class="headerlink" href="#warp.geometry.SweptVolumeSignMode.NORMAL" title="Link to this definition">#</a></dt>
+<dd><p>Sign from <a class="reference internal" href="../../language_reference/_generated/warp.mesh_query_point_sign_normal.html#warp._src.lang.mesh_query_point_sign_normal" title="warp._src.lang.mesh_query_point_sign_normal"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.mesh_query_point_sign_normal()</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.geometry.SweptVolumeSignMode.WINDING_NUMBER">
+<span class="sig-name descname"><span class="pre">WINDING_NUMBER</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></span><a class="headerlink" href="#warp.geometry.SweptVolumeSignMode.WINDING_NUMBER" title="Link to this definition">#</a></dt>
+<dd><p>Sign from <a class="reference internal" href="../../language_reference/_generated/warp.mesh_query_point_sign_winding_number.html#warp._src.lang.mesh_query_point_sign_winding_number" title="warp._src.lang.mesh_query_point_sign_winding_number"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.mesh_query_point_sign_winding_number()</span></code></a>. Requires
+every input mesh to be built with <code class="docutils literal notranslate"><span class="pre">support_winding_number=True</span></code>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.geometry.SweptVolumeSignMode.PARITY">
+<span class="sig-name descname"><span class="pre">PARITY</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></span><a class="headerlink" href="#warp.geometry.SweptVolumeSignMode.PARITY" title="Link to this definition">#</a></dt>
+<dd><p>Sign from <a class="reference internal" href="../../language_reference/_generated/warp.mesh_query_point_sign_parity.html#warp._src.lang.mesh_query_point_sign_parity" title="warp._src.lang.mesh_query_point_sign_parity"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.mesh_query_point_sign_parity()</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.geometry.SweptVolumeSignMode.NO_SIGN">
+<span class="sig-name descname"><span class="pre">NO_SIGN</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">3</span></span><a class="headerlink" href="#warp.geometry.SweptVolumeSignMode.NO_SIGN" title="Link to this definition">#</a></dt>
+<dd><p>Unsigned distance, from <a class="reference internal" href="../../language_reference/_generated/warp.mesh_query_point_no_sign.html#warp._src.lang.mesh_query_point_no_sign" title="warp._src.lang.mesh_query_point_no_sign"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.mesh_query_point_no_sign()</span></code></a>. The field
+is then positive everywhere, so it is only correct for extracting an
+<code class="docutils literal notranslate"><span class="pre">threshold</span> <span class="pre">&gt;</span> <span class="pre">0</span></code> isosurface of swept volume of a transforming thin shell. If the
+input is a solid then this may result in erroneous interior surfaces in the
+output.</p>
+</dd></dl>
 
 </dd></dl>
 
@@ -621,20 +614,20 @@
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.MeshQueryPoint.html"
+       href="../warp_geometry.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.MeshQueryPoint</p>
+        <p class="prev-next-title">warp.geometry</p>
       </div>
     </a>
     <a class="right-next"
-       href="warp.Volume.html"
+       href="warp.geometry.delaunay_edge_flip.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.Volume</p>
+        <p class="prev-next-title">warp.geometry.delaunay_edge_flip</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -659,15 +652,11 @@
   </div>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.MeshQueryRay"><code class="docutils literal notranslate"><span class="pre">MeshQueryRay</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.MeshQueryRay.result"><code class="docutils literal notranslate"><span class="pre">result</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.MeshQueryRay.sign"><code class="docutils literal notranslate"><span class="pre">sign</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.MeshQueryRay.face"><code class="docutils literal notranslate"><span class="pre">face</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.MeshQueryRay.t"><code class="docutils literal notranslate"><span class="pre">t</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.MeshQueryRay.u"><code class="docutils literal notranslate"><span class="pre">u</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.MeshQueryRay.v"><code class="docutils literal notranslate"><span class="pre">v</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.MeshQueryRay.normal"><code class="docutils literal notranslate"><span class="pre">normal</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.MeshQueryRay.vars"><code class="docutils literal notranslate"><span class="pre">vars</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.geometry.SweptVolumeSignMode"><code class="docutils literal notranslate"><span class="pre">SweptVolumeSignMode</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.geometry.SweptVolumeSignMode.NORMAL"><code class="docutils literal notranslate"><span class="pre">NORMAL</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.geometry.SweptVolumeSignMode.WINDING_NUMBER"><code class="docutils literal notranslate"><span class="pre">WINDING_NUMBER</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.geometry.SweptVolumeSignMode.PARITY"><code class="docutils literal notranslate"><span class="pre">PARITY</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.geometry.SweptVolumeSignMode.NO_SIGN"><code class="docutils literal notranslate"><span class="pre">NO_SIGN</span></code></a></li>
 </ul>
 </li>
 </ul>

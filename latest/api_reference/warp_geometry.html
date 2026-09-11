@@ -64,7 +64,7 @@
 
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="warp.geometry.delaunay_edge_flip" href="_generated/warp.geometry.delaunay_edge_flip.html" />
+    <link rel="next" title="warp.geometry.SweptVolumeSignMode" href="_generated/warp.geometry.SweptVolumeSignMode.html" />
     <link rel="prev" title="warp.fem.utils.grid_to_tris" href="_generated/warp.fem.utils.grid_to_tris.html" />
 
 
@@ -553,6 +553,10 @@
 <p>Geometry processing utilities.</p>
 <p>This module provides functions to process 2D and 3D geometry and their
 associated topological data structures (e.g., meshes).</p>
+<p>Array-level functions such as <a class="reference internal" href="_generated/warp.geometry.swept_volume_mesh.html#warp.geometry.swept_volume_mesh" title="warp.geometry.swept_volume_mesh"><code class="xref py py-func docutils literal notranslate"><span class="pre">swept_volume_mesh()</span></code></a> launch kernels over a whole
+mesh or grid. Device functions such as <a class="reference internal" href="_generated/warp.geometry.swept_volume_sdf.html#warp.geometry.swept_volume_sdf" title="warp.geometry.swept_volume_sdf"><code class="xref py py-func docutils literal notranslate"><span class="pre">swept_volume_sdf()</span></code></a> evaluate a
+single point and may be called from within your own <a class="reference internal" href="_generated/warp.kernel_decorator.html#warp.kernel" title="warp.kernel"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.kernel()</span></code></a>
+definitions.</p>
 <dl>
 <dt>Usage:</dt><dd><p>This module must be explicitly imported:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp.geometry</span>
@@ -564,13 +568,28 @@ associated topological data structures (e.g., meshes).</p>
 <h2>API<a class="headerlink" href="#api" title="Link to this heading">#</a></h2>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.geometry.delaunay_edge_flip.html#warp.geometry.delaunay_edge_flip" title="warp.geometry.delaunay_edge_flip"><code class="xref py py-obj docutils literal notranslate"><span class="pre">delaunay_edge_flip</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.geometry.SweptVolumeSignMode.html#warp.geometry.SweptVolumeSignMode" title="warp.geometry.SweptVolumeSignMode"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SweptVolumeSignMode</span></code></a></p></td>
+<td><p>Method used to classify inside/outside when evaluating the per-mesh SDF.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.geometry.delaunay_edge_flip.html#warp.geometry.delaunay_edge_flip" title="warp.geometry.delaunay_edge_flip"><code class="xref py py-obj docutils literal notranslate"><span class="pre">delaunay_edge_flip</span></code></a></p></td>
 <td><p>Flip non-Delaunay interior edges in place until all are Delaunay or max passes is reached.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.geometry.find_triangle_neighbor_edge_index.html#warp.geometry.find_triangle_neighbor_edge_index" title="warp.geometry.find_triangle_neighbor_edge_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">find_triangle_neighbor_edge_index</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.geometry.find_triangle_neighbor_edge_index.html#warp.geometry.find_triangle_neighbor_edge_index" title="warp.geometry.find_triangle_neighbor_edge_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">find_triangle_neighbor_edge_index</span></code></a></p></td>
 <td><p>Return the local edge of <code class="docutils literal notranslate"><span class="pre">triangle</span></code> shared with <code class="docutils literal notranslate"><span class="pre">neighbor</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.geometry.tri_tri_adjacency.html#warp.geometry.tri_tri_adjacency" title="warp.geometry.tri_tri_adjacency"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tri_tri_adjacency</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.geometry.swept_volume_bounds.html#warp.geometry.swept_volume_bounds" title="warp.geometry.swept_volume_bounds"><code class="xref py py-obj docutils literal notranslate"><span class="pre">swept_volume_bounds</span></code></a></p></td>
+<td><p>Return the world-space axis-aligned bounds of every mesh over every pose.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.geometry.swept_volume_field.html#warp.geometry.swept_volume_field" title="warp.geometry.swept_volume_field"><code class="xref py py-obj docutils literal notranslate"><span class="pre">swept_volume_field</span></code></a></p></td>
+<td><p>Compute a dense regular-grid discretization of the swept-volume pseudo signed-distance function.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.geometry.swept_volume_mesh.html#warp.geometry.swept_volume_mesh" title="warp.geometry.swept_volume_mesh"><code class="xref py py-obj docutils literal notranslate"><span class="pre">swept_volume_mesh</span></code></a></p></td>
+<td><p>Extract the swept volume (motion envelope) of animated rigid meshes.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.geometry.swept_volume_sdf.html#warp.geometry.swept_volume_sdf" title="warp.geometry.swept_volume_sdf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">swept_volume_sdf</span></code></a></p></td>
+<td><p>Evaluate the swept-volume pseudo signed distance at a single point.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.geometry.tri_tri_adjacency.html#warp.geometry.tri_tri_adjacency" title="warp.geometry.tri_tri_adjacency"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tri_tri_adjacency</span></code></a></p></td>
 <td><p>Build triangle-triangle adjacency for a triangle mesh.</p></td>
 </tr>
 </tbody>
@@ -599,11 +618,11 @@ associated topological data structures (e.g., meshes).</p>
       </div>
     </a>
     <a class="right-next"
-       href="_generated/warp.geometry.delaunay_edge_flip.html"
+       href="_generated/warp.geometry.SweptVolumeSignMode.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.geometry.delaunay_edge_flip</p>
+        <p class="prev-next-title">warp.geometry.SweptVolumeSignMode</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
