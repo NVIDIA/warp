@@ -39,7 +39,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # CUDA 12.x and CUDA 13.0 reject the VS 2026 image.
+          # Keep Windows x86_64 builds on the established VS 2022 image.
           - os: windows-2022
             platform: windows
             cuda-version: "12.9.2"
@@ -48,7 +48,7 @@ jobs:
             artifact-name: build-artifact-windows-cuda12
           - os: windows-2022
             platform: windows
-            cuda-version: "13.0.3"
+            cuda-version: "13.4.1"
             cuda-platform: windows-x86_64
             build-args: ""
             artifact-name: build-artifact-windows-cuda13
@@ -67,7 +67,7 @@ jobs:
             artifact-name: build-artifact-ubuntu-x86_64-cuda12
           - os: ubuntu-24.04
             platform: ubuntu-x86_64
-            cuda-version: "13.0.3"
+            cuda-version: "13.4.1"
             cuda-platform: linux-x86_64
             build-args: ""
             artifact-name: build-artifact-ubuntu-x86_64-cuda13
@@ -79,7 +79,7 @@ jobs:
             artifact-name: build-artifact-ubuntu-aarch64-cuda12
           - os: ubuntu-24.04-arm
             platform: ubuntu-aarch64
-            cuda-version: "13.0.3"
+            cuda-version: "13.4.1"
             cuda-platform: linux-sbsa
             build-args: ""
             artifact-name: build-artifact-ubuntu-aarch64-cuda13
@@ -164,13 +164,13 @@ jobs:
           path: warp/bin/
           # Hash only native-binary inputs. VERSION.md changes flow through
           # generated warp/native/version.h, which is covered by native headers.
-          key: build-ubuntu-x86_64-cuda13-python314t-13.0.3-${{ hashFiles('build_lib.py', 'build_llvm.py', 'warp/_src/build_dll.py', 'warp/native/**/*.cpp', 'warp/native/**/*.cu', 'warp/native/**/*.cuh', 'warp/native/**/*.h', 'warp/native/libdevice/*.bc', 'warp/native/warp.map', 'deps/libmathdx-deps.packman.xml', '.github/actions/setup-warp-cuda/action.yml', 'tools/ci/cuda_toolkit.py', 'tools/ci/cuda_toolkit_requirements.json', 'tools/ci/cuda_toolkit_lock.json') }}
+          key: build-ubuntu-x86_64-cuda13-python314t-13.4.1-${{ hashFiles('build_lib.py', 'build_llvm.py', 'warp/_src/build_dll.py', 'warp/native/**/*.cpp', 'warp/native/**/*.cu', 'warp/native/**/*.cuh', 'warp/native/**/*.h', 'warp/native/libdevice/*.bc', 'warp/native/warp.map', 'deps/libmathdx-deps.packman.xml', '.github/actions/setup-warp-cuda/action.yml', 'tools/ci/cuda_toolkit.py', 'tools/ci/cuda_toolkit_requirements.json', 'tools/ci/cuda_toolkit_lock.json') }}
 
       - name: Set up CUDA Toolkit for Warp
         if: steps.cache-build.outputs.cache-hit != 'true'
         uses: ./.github/actions/setup-warp-cuda
         with:
-          version: "13.0.3"
+          version: "13.4.1"
           platform: linux-x86_64
           cache-read: ${{ github.repository == 'NVIDIA/warp' }}
           cache-write: ${{ github.repository == 'NVIDIA/warp' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-') || inputs.allow-ctk-cache-save) }}
@@ -198,10 +198,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # CUDA 12.x and CUDA 13.0 reject the VS 2026 image.
+          # Keep Windows x86_64 builds on the established VS 2022 image.
           - os: windows-2022
             platform: windows
-            cuda-version: "13.0.3"
+            cuda-version: "13.4.1"
             cuda-platform: windows-x86_64
             warp-enable-cuda: "ON"
             msvc-component: Microsoft.VisualStudio.Component.VC.Tools.x86.x64
@@ -220,13 +220,13 @@ jobs:
             warp-cache-path-suffix: '\warp-cache-cmake-windows-aarch64'
           - os: ubuntu-24.04
             platform: ubuntu-x86_64
-            cuda-version: "13.0.3"
+            cuda-version: "13.4.1"
             cuda-platform: linux-x86_64
             warp-enable-cuda: "ON"
             warp-cache-path-suffix: /warp-cache-cmake
           - os: ubuntu-24.04-arm
             platform: ubuntu-aarch64
-            cuda-version: "13.0.3"
+            cuda-version: "13.4.1"
             cuda-platform: linux-sbsa
             warp-enable-cuda: "ON"
             warp-cache-path-suffix: /warp-cache-cmake

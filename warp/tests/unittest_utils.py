@@ -10,6 +10,7 @@ import importlib.util
 import io
 import os
 import re
+import subprocess
 import sys
 import tempfile
 import time
@@ -374,6 +375,38 @@ def assert_np_equal(result: np.ndarray, expect: np.ndarray, tol=0.0):
     else:
         # TODO: Get all tests working with strict=True
         np.testing.assert_array_equal(result, expect)
+
+
+def run_test_in_subprocess(test: unittest.TestCase, timeout: int = 600) -> bool:
+    """Run the current test in a child interpreter.
+
+    Returns ``True`` in the parent after the child passes and ``False`` in the
+    child so the caller can execute the test body there.
+    """
+
+    test_id = test.id()
+    isolation_env = "WARP_ISOLATED_TEST_ID"
+    if os.environ.get(isolation_env) == test_id:
+        return False
+
+    env = os.environ.copy()
+    env[isolation_env] = test_id
+    result = subprocess.run(
+        [sys.executable, "-m", "unittest", test_id],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+        env=env,
+    )
+    if result.returncode != 0:
+        test.fail(
+            f"Isolated test process exited with code {result.returncode}.\n"
+            f"stdout:\n{result.stdout}\n"
+            f"stderr:\n{result.stderr}"
+        )
+
+    return True
 
 
 # if check_output is True any output to stdout will be treated as an error

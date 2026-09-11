@@ -13,13 +13,14 @@ inputs:
   version:
     description: >-
       CUDA Toolkit release defined in
-      tools/ci/cuda_toolkit_requirements.json; currently 12.9.2 or 13.0.3.
+      tools/ci/cuda_toolkit_requirements.json; currently 12.9.2 or 13.4.1.
     required: true
   platform:
     description: >-
       NVIDIA redistributable platform key for the selected release.
       12.9.2 supports windows-x86_64, linux-x86_64, and linux-aarch64;
-      13.0.3 supports windows-x86_64, linux-x86_64, and linux-sbsa.
+      13.4.1 supports windows-x86_64, windows-arm64, linux-x86_64, and
+      linux-sbsa.
     required: true
   cache-read:
     description: >-

@@ -15,6 +15,7 @@ from warp.tests.unittest_utils import (
     assert_np_equal,
     get_cuda_test_devices_with_mempool,
     get_test_devices,
+    run_test_in_subprocess,
 )
 
 
@@ -453,9 +454,9 @@ def test_kernel_creation(test, device):
     kernel = wp.map(lambda a: a + 2.0, a, return_kernel=True)
     test.assertIsInstance(kernel, wp.Kernel)
 
-    b = wp.zeros(20)
+    b = wp.zeros(20, device=device)
     out = wp.empty_like(b)
-    wp.launch(kernel, dim=len(b), inputs=[b], outputs=[out])
+    wp.launch(kernel, dim=len(b), inputs=[b], outputs=[out], device=device)
     expected = np.full(20, 2.0, dtype=np.float32)
     assert_np_equal(out.numpy(), expected)
 
@@ -647,8 +648,23 @@ class TestMapDebug(unittest.TestCase):
         wp.config.mode = cls._saved_mode
 
 
-add_function_test(TestMapDebug, "test_mixed_inputs", test_mixed_inputs, devices=devices)
-add_function_test(TestMapDebug, "test_kernel_creation", test_kernel_creation, devices=devices)
+def _run_debug_map_test(test, device, test_func):
+    if wp.get_device(device).is_cuda and run_test_in_subprocess(test):
+        return
+
+    test_func(test, device)
+
+
+def test_mixed_inputs_debug(test, device):
+    _run_debug_map_test(test, device, test_mixed_inputs)
+
+
+def test_kernel_creation_debug(test, device):
+    _run_debug_map_test(test, device, test_kernel_creation)
+
+
+add_function_test(TestMapDebug, "test_mixed_inputs", test_mixed_inputs_debug, devices=devices)
+add_function_test(TestMapDebug, "test_kernel_creation", test_kernel_creation_debug, devices=devices)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -9,7 +9,7 @@
       "libnvjitlink"
     ],
     "cuda13-warp-build": [
-      "cuda_cccl",
+      "cccl",
       "cuda_crt",
       "cuda_cudart",
       "cuda_nvcc",
@@ -28,10 +28,11 @@
         "linux-aarch64"
       ]
     },
-    "13.0.3": {
+    "13.4.1": {
       "component_set": "cuda13-warp-build",
       "platforms": [
         "windows-x86_64",
+        "windows-arm64",
         "linux-x86_64",
         "linux-sbsa"
       ]

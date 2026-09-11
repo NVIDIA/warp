@@ -9,7 +9,7 @@
 # deps/llvm-deps.packman.xml, so the LLVM version is chosen by the repository being
 # built rather than by whichever image happens to be in use.
 
-ARG CUDA_VERSION=13.0.2
+ARG CUDA_VERSION=13.4.1
 ARG MANYLINUX_IMAGE=quay.io/pypa/manylinux_2_28_x86_64:latest
 FROM ${MANYLINUX_IMAGE} AS base
 
@@ -37,16 +37,19 @@ RUN wget --max-redirect=0 https://raw.githubusercontent.com/NVIDIA/build-system-
 
 # Install CUDA components using redistrib system
 # Note: parse_redist.py requires Python 3 and processes one component at a time
-# Component list differs between CUDA 12.x and 13.x:
+# Component list differs between CUDA releases:
 #   CUDA 12.x: cuda_cccl cuda_cudart cuda_nvcc cuda_nvrtc libnvjitlink
 #              (libnvptxcompiler_static.a and libnvvm.so are bundled with nvrtc)
-#   CUDA 13.x: cuda_cccl cuda_crt cuda_cudart cuda_nvcc cuda_nvrtc libnvvm libnvptxcompiler libnvjitlink
-#              (cuda_crt, libnvvm, libnvptxcompiler are new standalone components)
+#   CUDA 13.0-13.2: cuda_cccl plus the standalone CUDA 13 components
+#   CUDA 13.3+: cccl plus the standalone CUDA 13 components
 RUN CUDA_MAJOR=$(echo ${CUDA_VERSION} | cut -d. -f1) && \
+    CUDA_MINOR=$(echo ${CUDA_VERSION} | cut -d. -f2) && \
     if [ "$CUDA_MAJOR" = "12" ]; then \
     COMPONENTS="cuda_cccl cuda_cudart cuda_nvcc cuda_nvrtc libnvjitlink"; \
-    else \
+    elif [ "$CUDA_MAJOR" = "13" ] && [ "$CUDA_MINOR" -lt 3 ]; then \
     COMPONENTS="cuda_cccl cuda_crt cuda_cudart cuda_nvcc cuda_nvrtc libnvvm libnvptxcompiler libnvjitlink"; \
+    else \
+    COMPONENTS="cccl cuda_crt cuda_cudart cuda_nvcc cuda_nvrtc libnvvm libnvptxcompiler libnvjitlink"; \
     fi && \
     for component in $COMPONENTS; do \
     echo "Installing $component..."; \

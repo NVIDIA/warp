@@ -292,6 +292,7 @@ if(WARP_ENABLE_CUDA)
     target_compile_options(
         warp
         PRIVATE
+            "$<$<AND:$<COMPILE_LANG_AND_ID:CUDA,NVIDIA>,$<PLATFORM_ID:Windows>>:-Xcompiler=/Zc:preprocessor>"
             "$<$<COMPILE_LANGUAGE:CUDA>:--extended-lambda>"
             "$<$<COMPILE_LANGUAGE:CUDA>:-diag-suppress=221>"
             # Intentional: -t0 lets nvcc use all CPUs; use -t1 to constrain threading.
@@ -332,6 +333,9 @@ if(WARP_ENABLE_CUDA)
         warp_require_cuda_target(CUDA::cudart_static)
         warp_require_cuda_target(CUDA::nvrtc_static)
         target_link_libraries(warp PRIVATE CUDA::cudart_static CUDA::nvrtc_static)
+        if(WIN32)
+            target_link_libraries(warp PRIVATE ntdll)
+        endif()
         warp_link_nvptxcompiler(warp)
         if(TARGET CUDA::nvrtc_builtins_static)
             target_link_libraries(warp PRIVATE CUDA::nvrtc_builtins_static)

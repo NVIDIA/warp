@@ -38,7 +38,7 @@ EXAMPLES:
     $0
 
     # Build with different CUDA version
-    $0 --cuda 13.0.0
+    $0 --cuda 13.4.1
 
     # Build and push to registry
     $0 --registry registry.example.com --push

@@ -159,11 +159,17 @@ The easiest way to enable the compilation of Warp kernels in debug mode is to se
     wp.config.mode = "debug"
 
 As an alternative to the previous global setting,
-debug mode can be turned on in a per-module basis by setting
+debug mode can be enabled on a per-module basis by setting
 
 .. code-block:: python
 
     wp.set_module_options({"mode": "debug"})
+
+.. warning::
+
+    On Linux with CUDA Toolkit 13.1 and newer, an NVRTC compiler issue can
+    corrupt release-mode kernels compiled after a debug-mode kernel in the same
+    process. Run debug-mode and release-mode compilation in separate processes.
 
 Assertions
 ----------
@@ -208,8 +214,8 @@ Users should first compile the kernels in debug mode by setting::
 
     wp.config.mode = "debug"
 
-This setting ensures that line numbers, and debug symbols are generated correctly. After launching the Python process,
-the debugger should be attached, and a breakpoint inserted into the generated code.
+This setting generates line-number information and full debug symbols. After launching the Python process, the
+debugger should be attached, and a breakpoint inserted into the generated code.
 
 .. note:: Generated kernel code is not a 1:1 correspondence with the original Python code, but individual operations can still be replayed and variables inspected.
 
