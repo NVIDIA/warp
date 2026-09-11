@@ -1498,7 +1498,7 @@ a matrix tile reduction:</p>
 <p>Prior to the addition of tile support in Warp, array-wide reductions were commonly performed in a single kernel
 using a built-in atomic function like <a class="reference internal" href="../../language_reference/_generated/warp.atomic_add.html#warp._src.lang.atomic_add" title="warp._src.lang.atomic_add"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.atomic_add()</span></code></a>.
 This could be very inefficient when compared to optimized mechanisms like
-<a class="reference external" href="https://nvidia.github.io/cccl/cub/api/classcub_1_1BlockReduce.html">cub::BlockReduce</a>.
+<a class="reference external" href="https://nvidia.github.io/cccl/unstable/cub/api/classcub_1_1BlockReduce.html">cub::BlockReduce</a>.
 Consider the following sum-of-squares reduction on an array:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w">  </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 

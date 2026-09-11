@@ -818,9 +818,9 @@ familiar in NVIDIA libraries:
 These references are useful if you want to understand the lower-level CUDA
 building blocks behind Warp's higher-level switch.
 
-.. _CUB: https://nvidia.github.io/cccl/cub/
+.. _CUB: https://nvidia.github.io/cccl/unstable/cub/
 .. _NVIDIA CCCL: https://nvidia.github.io/cccl/
-.. _CUB DeviceRadixSort: https://nvidia.github.io/cccl/cub/api/structcub_1_1DeviceRadixSort.html
-.. _CUB DeviceReduce: https://nvidia.github.io/cccl/cub/api/structcub_1_1DeviceReduce.html
-.. _CUB DeviceScan: https://nvidia.github.io/cccl/cub/api/structcub_1_1DeviceScan.html
+.. _CUB DeviceRadixSort: https://nvidia.github.io/cccl/unstable/cub/api/structcub_1_1DeviceRadixSort.html
+.. _CUB DeviceReduce: https://nvidia.github.io/cccl/unstable/cub/api/structcub_1_1DeviceReduce.html
+.. _CUB DeviceScan: https://nvidia.github.io/cccl/unstable/cub/api/structcub_1_1DeviceScan.html
 .. _Controlling Floating-Point Determinism in NVIDIA CCCL: https://developer.nvidia.com/blog/controlling-floating-point-determinism-in-nvidia-cccl/

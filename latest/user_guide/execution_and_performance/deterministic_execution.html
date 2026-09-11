@@ -679,8 +679,8 @@ directly.  Instead, each thread writes a temporary record containing:</p>
 <p>After the kernel finishes, Warp sorts those records into a stable order and
 then reduces each group.  This is similar to the “sort then reduce by key”
 pattern used in CUDA programming.  Internally, Warp uses CUB device-wide
-primitives from NVIDIA CCCL, including <a class="reference external" href="https://nvidia.github.io/cccl/cub/api/structcub_1_1DeviceRadixSort.html">CUB DeviceRadixSort</a> and
-<a class="reference external" href="https://nvidia.github.io/cccl/cub/api/structcub_1_1DeviceReduce.html">CUB DeviceReduce</a>, for the fast <code class="docutils literal notranslate"><span class="pre">wp.DeterministicMode.RUN_TO_RUN</span></code> scalar
+primitives from NVIDIA CCCL, including <a class="reference external" href="https://nvidia.github.io/cccl/unstable/cub/api/structcub_1_1DeviceRadixSort.html">CUB DeviceRadixSort</a> and
+<a class="reference external" href="https://nvidia.github.io/cccl/unstable/cub/api/structcub_1_1DeviceReduce.html">CUB DeviceReduce</a>, for the fast <code class="docutils literal notranslate"><span class="pre">wp.DeterministicMode.RUN_TO_RUN</span></code> scalar
 path.  Composite types and the stronger <code class="docutils literal notranslate"><span class="pre">wp.DeterministicMode.GPU_TO_GPU</span></code>
 path use a Warp-controlled segmented reduction so the accumulation order is
 explicit.</p>
@@ -743,7 +743,7 @@ for each reservation and the final total for each touched counter element.</p></
 </ol>
 <p>The prefix scan is the same concept as an exclusive scan in CUDA libraries.
 On CUDA, Warp’s scan utilities are implemented with CUB primitives such as
-<a class="reference external" href="https://nvidia.github.io/cccl/cub/api/structcub_1_1DeviceScan.html">CUB DeviceScan</a>.</p>
+<a class="reference external" href="https://nvidia.github.io/cccl/unstable/cub/api/structcub_1_1DeviceScan.html">CUB DeviceScan</a>.</p>
 <p>This pattern currently supports:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">slot</span> <span class="pre">=</span> <span class="pre">wp.atomic_add(counter,</span> <span class="pre">index,</span> <span class="pre">value)</span></code></p></li>
@@ -892,7 +892,7 @@ internally.  If you also need the final count, it is <code class="docutils liter
 <p>Start with <code class="docutils literal notranslate"><span class="pre">wp.DeterministicMode.RUN_TO_RUN</span></code>.  It gives bit-exact repeated
 runs on the same GPU architecture and is the fastest deterministic mode.  For
 scalar accumulation atomics, Warp writes scatter records, sorts them by
-destination and linear thread index, and then uses <a class="reference external" href="https://nvidia.github.io/cccl/cub/api/structcub_1_1DeviceReduce.html">CUB DeviceReduce</a>
+destination and linear thread index, and then uses <a class="reference external" href="https://nvidia.github.io/cccl/unstable/cub/api/structcub_1_1DeviceReduce.html">CUB DeviceReduce</a>
 reduce-by-key to combine records with the same destination.  This is stable for
 repeated runs on the same GPU architecture, but the internal reduction tree may
 vary across architectures.</p>
@@ -1292,7 +1292,7 @@ limitations described above.</p></li>
 <p>Warp’s implementation is inspired by CUDA and CUB patterns that are already
 familiar in NVIDIA libraries:</p>
 <ul class="simple">
-<li><p><a class="reference external" href="https://nvidia.github.io/cccl/cub/">CUB</a> is part of <a class="reference external" href="https://nvidia.github.io/cccl/">NVIDIA CCCL</a> and provides optimized device-wide building
+<li><p><a class="reference external" href="https://nvidia.github.io/cccl/unstable/cub/">CUB</a> is part of <a class="reference external" href="https://nvidia.github.io/cccl/">NVIDIA CCCL</a> and provides optimized device-wide building
 blocks such as radix sort, reduce-by-key, and scan.</p></li>
 <li><p>Pattern 1 follows the same general shape as CUB sort plus reduce-by-key:
 group equal destinations, then reduce each group.</p></li>
