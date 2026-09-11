@@ -21,6 +21,7 @@
 #include "error.h"
 #include "hashgrid.h"
 #include "mesh.h"
+#include "version.h"
 
 #include <algorithm>
 #include <cassert>
@@ -276,6 +277,32 @@ void wp_apic_register_module(
         mod.target_arch = arch;
         state->modules[hash_str] = mod;
     }
+}
+
+void wp_apic_register_cuda_module_artifacts(
+    APICState* state,
+    const char* module_hash,
+    const char* binary_digest,
+    const char* source_filename,
+    const char* source_digest,
+    int binary_kind,
+    int fallback_reason,
+    const APICCudaCompileRecipe* compile_recipe
+)
+{
+    if (!state || !module_hash)
+        return;
+    auto it = state->modules.find(module_hash);
+    if (it == state->modules.end())
+        return;
+
+    APICModule& mod = it->second;
+    mod.binary_digest = binary_digest ? binary_digest : "";
+    mod.source_filename = source_filename ? source_filename : "";
+    mod.source_digest = source_digest ? source_digest : "";
+    mod.binary_kind = static_cast<APICCudaBinaryKind>(binary_kind);
+    mod.fallback_reason = static_cast<APICCudaFallbackReason>(fallback_reason);
+    mod.compile_recipe = compile_recipe ? *compile_recipe : APICCudaCompileRecipe {};
 }
 
 void wp_apic_register_kernel(
@@ -1133,6 +1160,91 @@ bool apic_read_file(const char* path, std::vector<uint8_t>& data)
     return read == static_cast<size_t>(size);
 }
 
+std::string apic_sha256_hex(const uint8_t* data, size_t size)
+{
+    static const uint32_t constants[64] = {
+        0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+        0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+        0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+        0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+        0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+        0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+        0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+        0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
+    };
+    uint32_t state[8] = {
+        0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19,
+    };
+    auto rotate_right = [](uint32_t value, uint32_t count) { return (value >> count) | (value << (32 - count)); };
+    auto process_block = [&](const uint8_t* block) {
+        uint32_t words[64];
+        for (int i = 0; i < 16; ++i) {
+            words[i] = (uint32_t(block[i * 4]) << 24) | (uint32_t(block[i * 4 + 1]) << 16)
+                | (uint32_t(block[i * 4 + 2]) << 8) | uint32_t(block[i * 4 + 3]);
+        }
+        for (int i = 16; i < 64; ++i) {
+            uint32_t s0 = rotate_right(words[i - 15], 7) ^ rotate_right(words[i - 15], 18) ^ (words[i - 15] >> 3);
+            uint32_t s1 = rotate_right(words[i - 2], 17) ^ rotate_right(words[i - 2], 19) ^ (words[i - 2] >> 10);
+            words[i] = words[i - 16] + s0 + words[i - 7] + s1;
+        }
+        uint32_t a = state[0], b = state[1], c = state[2], d = state[3];
+        uint32_t e = state[4], f = state[5], g = state[6], h = state[7];
+        for (int i = 0; i < 64; ++i) {
+            uint32_t sum1 = rotate_right(e, 6) ^ rotate_right(e, 11) ^ rotate_right(e, 25);
+            uint32_t choice = (e & f) ^ (~e & g);
+            uint32_t temp1 = h + sum1 + choice + constants[i] + words[i];
+            uint32_t sum0 = rotate_right(a, 2) ^ rotate_right(a, 13) ^ rotate_right(a, 22);
+            uint32_t majority = (a & b) ^ (a & c) ^ (b & c);
+            uint32_t temp2 = sum0 + majority;
+            h = g;
+            g = f;
+            f = e;
+            e = d + temp1;
+            d = c;
+            c = b;
+            b = a;
+            a = temp1 + temp2;
+        }
+        state[0] += a;
+        state[1] += b;
+        state[2] += c;
+        state[3] += d;
+        state[4] += e;
+        state[5] += f;
+        state[6] += g;
+        state[7] += h;
+    };
+
+    size_t offset = 0;
+    while (size - offset >= 64) {
+        process_block(data + offset);
+        offset += 64;
+    }
+    uint8_t tail[128] = {};
+    const size_t remainder = size - offset;
+    if (remainder)
+        memcpy(tail, data + offset, remainder);
+    tail[remainder] = 0x80;
+    const size_t padded_size = remainder < 56 ? 64 : 128;
+    const uint64_t bit_size = static_cast<uint64_t>(size) * 8;
+    for (int i = 0; i < 8; ++i)
+        tail[padded_size - 1 - i] = static_cast<uint8_t>(bit_size >> (i * 8));
+    process_block(tail);
+    if (padded_size == 128)
+        process_block(tail + 64);
+
+    static const char hex[] = "0123456789abcdef";
+    std::string digest(64, '0');
+    for (int i = 0; i < 8; ++i) {
+        for (int byte = 0; byte < 4; ++byte) {
+            const uint8_t value = static_cast<uint8_t>(state[i] >> (24 - byte * 8));
+            digest[(i * 4 + byte) * 2] = hex[value >> 4];
+            digest[(i * 4 + byte) * 2 + 1] = hex[value & 0xf];
+        }
+    }
+    return digest;
+}
+
 template <typename T> static T apic_read_value(const uint8_t*& ptr)
 {
     T value;
@@ -1149,63 +1261,248 @@ static std::string apic_read_lp_string(const uint8_t*& ptr)
     return s;
 }
 
+class APICMetadataReader {
+public:
+    APICMetadataReader(const uint8_t* data, size_t size)
+        : m_ptr(data)
+        , m_end(data + size)
+    {
+    }
+
+    template <typename T> bool read(T& value)
+    {
+        if (sizeof(T) > remaining())
+            return false;
+        memcpy(&value, m_ptr, sizeof(T));
+        m_ptr += sizeof(T);
+        return true;
+    }
+
+    bool read_string(std::string& value)
+    {
+        uint32_t size = 0;
+        if (!read(size) || size > remaining())
+            return false;
+        value.assign(reinterpret_cast<const char*>(m_ptr), size);
+        m_ptr += size;
+        return true;
+    }
+
+    bool read_bytes(void* value, size_t size)
+    {
+        if (size > remaining())
+            return false;
+        memcpy(value, m_ptr, size);
+        m_ptr += size;
+        return true;
+    }
+
+    size_t remaining() const { return static_cast<size_t>(m_end - m_ptr); }
+
+private:
+    const uint8_t* m_ptr;
+    const uint8_t* m_end;
+};
+
+static bool apic_is_relative_basename(const std::string& name)
+{
+    return !name.empty() && name != "." && name != ".." && name.find('/') == std::string::npos
+        && name.find('\\') == std::string::npos && name.find(':') == std::string::npos;
+}
+
+static bool apic_is_sha256(const std::string& digest)
+{
+    if (digest.size() != 64)
+        return false;
+    for (char c : digest) {
+        if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')))
+            return false;
+    }
+    return true;
+}
+
+static bool apic_has_suffix(const std::string& value, const char* suffix)
+{
+    const size_t suffix_size = strlen(suffix);
+    return value.size() >= suffix_size && value.compare(value.size() - suffix_size, suffix_size, suffix) == 0;
+}
+
+static bool apic_validate_cuda_recipe(const APICModule& mod)
+{
+    const APICCudaCompileRecipe& recipe = mod.compile_recipe;
+    if (mod.binary_kind != APIC_CUDA_BINARY_PTX && mod.binary_kind != APIC_CUDA_BINARY_CUBIN)
+        return false;
+    if (mod.fallback_reason < APIC_CUDA_FALLBACK_AVAILABLE
+        || mod.fallback_reason > APIC_CUDA_FALLBACK_RECIPE_UNAVAILABLE)
+        return false;
+    if (recipe.debug > 1 || recipe.optimization_level > 3 || recipe.verify_fp > 1 || recipe.fast_math > 1
+        || recipe.fuse_fp > 1 || recipe.lineinfo > 1 || recipe.arch_suffix > APIC_CUDA_ARCH_SUFFIX_F)
+        return false;
+    for (uint8_t value : recipe._reserved) {
+        if (value != 0)
+            return false;
+    }
+    return true;
+}
+
 bool apic_parse_metadata(const uint8_t* data, size_t size, APICGraph* graph)
 {
-    if (!data || size < 28)
+    if (!data || !graph)
         return false;
-    const uint8_t* ptr = data;
 
-    /*uint32_t version =*/apic_read_value<uint32_t>(ptr);
-    graph->target_arch = apic_read_value<uint32_t>(ptr);
-    uint32_t num_modules = apic_read_value<uint32_t>(ptr);
-    uint32_t num_kernels = apic_read_value<uint32_t>(ptr);
-    uint32_t num_params = apic_read_value<uint32_t>(ptr);
-    uint32_t num_meshes = apic_read_value<uint32_t>(ptr);
-    uint32_t num_ptr_locations = apic_read_value<uint32_t>(ptr);
+    APICMetadataReader reader(data, size);
+    uint32_t version = 0;
+    uint32_t target_arch = 0;
+    uint32_t num_modules = 0;
+    uint32_t num_kernels = 0;
+    uint32_t num_params = 0;
+    uint32_t num_meshes = 0;
+    uint32_t num_ptr_locations = 0;
+    if (!reader.read(version) || !reader.read_string(graph->producer_version) || !reader.read(target_arch)
+        || !reader.read(num_modules) || !reader.read(num_kernels) || !reader.read(num_params)
+        || !reader.read(num_meshes) || !reader.read(num_ptr_locations)) {
+        wp::set_error_string("Invalid APIC metadata header");
+        return false;
+    }
+    if (version != APIC_FORMAT_VERSION) {
+        wp::set_error_string("APIC metadata version %u does not match loader version %u", version, APIC_FORMAT_VERSION);
+        return false;
+    }
+    if (graph->producer_version != WP_VERSION_STRING) {
+        wp::set_error_string(
+            "APIC capture was produced by Warp %s, but this loader is Warp %s", graph->producer_version.c_str(),
+            WP_VERSION_STRING
+        );
+        return false;
+    }
+    if (graph->target_arch != static_cast<int>(target_arch)) {
+        wp::set_error_string(
+            "APIC metadata target architecture %u does not match the WRP header target architecture %d", target_arch,
+            graph->target_arch
+        );
+        return false;
+    }
 
     for (uint32_t i = 0; i < num_modules; i++) {
         APICModule mod;
-        mod.module_hash = apic_read_lp_string(ptr);
-        mod.module_name = apic_read_lp_string(ptr);
-        mod.cubin_filename = apic_read_lp_string(ptr);
-        mod.target_arch = apic_read_value<uint32_t>(ptr);
-        graph->modules[mod.module_hash] = mod;
+        uint32_t module_arch = 0;
+        uint8_t binary_kind = 0;
+        uint8_t fallback_reason = 0;
+        if (!reader.read_string(mod.module_hash) || !reader.read_string(mod.module_name)
+            || !reader.read_string(mod.cubin_filename) || !reader.read(module_arch)
+            || !reader.read_string(mod.binary_digest) || !reader.read_string(mod.source_filename)
+            || !reader.read_string(mod.source_digest) || !reader.read(binary_kind) || !reader.read(fallback_reason)
+            || !reader.read(mod.compile_recipe)) {
+            wp::set_error_string("Invalid APIC module record %u", i);
+            return false;
+        }
+        if (module_arch > INT_MAX) {
+            wp::set_error_string("Invalid APIC module architecture in record %u", i);
+            return false;
+        }
+        mod.target_arch = static_cast<int>(module_arch);
+        mod.binary_kind = static_cast<APICCudaBinaryKind>(binary_kind);
+        mod.fallback_reason = static_cast<APICCudaFallbackReason>(fallback_reason);
+        if (mod.module_hash.empty() || !apic_is_relative_basename(mod.cubin_filename)) {
+            wp::set_error_string("Invalid APIC module name or binary filename in record %u", i);
+            return false;
+        }
+        if ((graph->device_type == APIC_DEVICE_CUDA && mod.target_arch == 0)
+            || (graph->device_type == APIC_DEVICE_CPU && mod.target_arch != 0)) {
+            wp::set_error_string("APIC module %s has the wrong device target", mod.module_name.c_str());
+            return false;
+        }
+        if (graph->device_type == APIC_DEVICE_CUDA) {
+            if (!apic_is_sha256(mod.binary_digest) || !apic_validate_cuda_recipe(mod)) {
+                wp::set_error_string("Invalid CUDA artifact metadata for module %s", mod.module_name.c_str());
+                return false;
+            }
+            const bool binary_kind_matches = mod.binary_kind == APIC_CUDA_BINARY_PTX
+                ? apic_has_suffix(mod.cubin_filename, ".ptx")
+                : apic_has_suffix(mod.cubin_filename, ".cubin");
+            if (!binary_kind_matches) {
+                wp::set_error_string("CUDA binary kind does not match filename for module %s", mod.module_name.c_str());
+                return false;
+            }
+            if (mod.source_filename.empty() != mod.source_digest.empty()
+                || (!mod.source_filename.empty()
+                    && (!apic_is_relative_basename(mod.source_filename) || !apic_is_sha256(mod.source_digest)
+                        || !apic_has_suffix(mod.source_filename, ".cu")))) {
+                wp::set_error_string("Invalid CUDA source metadata for module %s", mod.module_name.c_str());
+                return false;
+            }
+            if ((mod.compile_recipe.arch_suffix == APIC_CUDA_ARCH_SUFFIX_A && mod.target_arch < 90)
+                || (mod.compile_recipe.arch_suffix == APIC_CUDA_ARCH_SUFFIX_F && mod.target_arch < 100)) {
+                wp::set_error_string("Invalid CUDA architecture suffix for module %s", mod.module_name.c_str());
+                return false;
+            }
+            if (mod.fallback_reason == APIC_CUDA_FALLBACK_AVAILABLE && mod.source_filename.empty()) {
+                wp::set_error_string(
+                    "CUDA module %s has no source for its available fallback", mod.module_name.c_str()
+                );
+                return false;
+            }
+        }
+        if (!graph->modules.emplace(mod.module_hash, std::move(mod)).second) {
+            wp::set_error_string("Duplicate APIC module hash in record %u", i);
+            return false;
+        }
     }
 
     for (uint32_t i = 0; i < num_kernels; i++) {
         APICKernel info;
-        info.kernel_key = apic_read_lp_string(ptr);
-        info.module_hash = apic_read_lp_string(ptr);
-        info.forward_name = apic_read_lp_string(ptr);
-        info.backward_name = apic_read_lp_string(ptr);
-        info.forward_smem_bytes = apic_read_value<uint32_t>(ptr);
-        info.backward_smem_bytes = apic_read_value<uint32_t>(ptr);
-        info.block_dim = apic_read_value<uint32_t>(ptr);
-        graph->kernels[apic_kernel_map_key(info.module_hash, info.kernel_key)] = info;
+        uint32_t forward_smem_bytes = 0;
+        uint32_t backward_smem_bytes = 0;
+        uint32_t block_dim = 0;
+        if (!reader.read_string(info.kernel_key) || !reader.read_string(info.module_hash)
+            || !reader.read_string(info.forward_name) || !reader.read_string(info.backward_name)
+            || !reader.read(forward_smem_bytes) || !reader.read(backward_smem_bytes) || !reader.read(block_dim)) {
+            wp::set_error_string("Invalid APIC kernel record %u", i);
+            return false;
+        }
+        info.forward_smem_bytes = static_cast<int>(forward_smem_bytes);
+        info.backward_smem_bytes = static_cast<int>(backward_smem_bytes);
+        info.block_dim = static_cast<int>(block_dim);
+        std::string key = apic_kernel_map_key(info.module_hash, info.kernel_key);
+        if (!graph->kernels.emplace(key, std::move(info)).second) {
+            wp::set_error_string("Duplicate APIC kernel record %u", i);
+            return false;
+        }
     }
 
     for (uint32_t i = 0; i < num_params; i++) {
-        std::string name = apic_read_lp_string(ptr);
-        uint32_t region_id = apic_read_value<uint32_t>(ptr);
+        std::string name;
+        uint32_t region_id = 0;
+        if (!reader.read_string(name) || !reader.read(region_id)) {
+            wp::set_error_string("Invalid APIC binding record %u", i);
+            return false;
+        }
         graph->bindings[name] = region_id;
         graph->binding_names.push_back(name);
     }
 
     for (uint32_t i = 0; i < num_meshes; i++) {
         APICMeshRecord rec;
-        memcpy(&rec, ptr, sizeof(APICMeshRecord));
-        ptr += sizeof(APICMeshRecord);
+        if (!reader.read_bytes(&rec, sizeof(rec))) {
+            wp::set_error_string("Invalid APIC mesh record %u", i);
+            return false;
+        }
         graph->mesh_records.push_back(rec);
     }
 
     for (uint32_t i = 0; i < num_ptr_locations; i++) {
         APICMemoryPtrLocation loc;
-        loc.region_id = apic_read_value<uint32_t>(ptr);
-        loc.offset = apic_read_value<uint64_t>(ptr);
-        loc.stride = apic_read_value<uint64_t>(ptr);
+        if (!reader.read(loc.region_id) || !reader.read(loc.offset) || !reader.read(loc.stride)) {
+            wp::set_error_string("Invalid APIC pointer-location record %u", i);
+            return false;
+        }
         graph->ptr_locations.push_back(loc);
     }
 
+    if (reader.remaining() != 0) {
+        wp::set_error_string("APIC metadata has %llu trailing bytes", (unsigned long long)reader.remaining());
+        return false;
+    }
     return true;
 }
 
@@ -2889,6 +3186,7 @@ bool wp_apic_state_save(APICState* state, const char* path, int target_arch, voi
     // Build metadata
     std::vector<uint8_t> metadata_section;
     apic_write_nc<uint32_t>(metadata_section, APIC_FORMAT_VERSION);
+    apic_write_string_nc(metadata_section, WP_VERSION_STRING);
     apic_write_nc<uint32_t>(metadata_section, target_arch);
     apic_write_nc<uint32_t>(metadata_section, static_cast<uint32_t>(state->modules.size()));
     apic_write_nc<uint32_t>(metadata_section, static_cast<uint32_t>(state->kernels.size()));
@@ -2902,6 +3200,12 @@ bool wp_apic_state_save(APICState* state, const char* path, int target_arch, voi
         apic_write_string_nc(metadata_section, m.module_name);
         apic_write_string_nc(metadata_section, m.cubin_filename);
         apic_write_nc<uint32_t>(metadata_section, static_cast<uint32_t>(m.target_arch));
+        apic_write_string_nc(metadata_section, m.binary_digest);
+        apic_write_string_nc(metadata_section, m.source_filename);
+        apic_write_string_nc(metadata_section, m.source_digest);
+        apic_write_nc<uint8_t>(metadata_section, static_cast<uint8_t>(m.binary_kind));
+        apic_write_nc<uint8_t>(metadata_section, static_cast<uint8_t>(m.fallback_reason));
+        apic_write_nc<APICCudaCompileRecipe>(metadata_section, m.compile_recipe);
     }
     for (const auto& kv : state->kernels) {
         const APICKernel& k = kv.second;

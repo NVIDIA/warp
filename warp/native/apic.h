@@ -93,6 +93,20 @@ WP_API void wp_apic_register_module(
     APICState* state, const char* module_hash, const char* module_name, const char* binary_filename, int target_arch
 );
 
+// Attach portable CUDA artifacts to a previously registered module. Digests
+// are lowercase SHA-256 hex strings. Empty source fields make the module
+// binary-only and ``fallback_reason`` explains why.
+WP_API void wp_apic_register_cuda_module_artifacts(
+    APICState* state,
+    const char* module_hash,
+    const char* binary_digest,
+    const char* source_filename,
+    const char* source_digest,
+    int binary_kind,
+    int fallback_reason,
+    const APICCudaCompileRecipe* compile_recipe
+);
+
 WP_API void wp_apic_register_kernel(
     APICState* state,
     const char* kernel_key,
