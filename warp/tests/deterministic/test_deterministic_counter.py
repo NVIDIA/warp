@@ -314,7 +314,7 @@ def counter_with_int_slot_augassign_kernel(
     values: wp.array[wp.vec3i],
     output: wp.array[wp.int32],
 ):
-    """Integer slot atomics in counter kernels must be skipped during phase 0."""
+    """Update an integer component alongside a deterministic counter."""
     slot = wp.atomic_add(counter, 0, 1)
     values[0].x += 1
     output[slot] = slot
@@ -331,7 +331,7 @@ def counter_with_helper_int_slot_augassign_kernel(
     values: wp.array[wp.vec3i],
     output: wp.array[wp.int32],
 ):
-    """Verify helper slot atomics are skipped during phase 0."""
+    """Update an integer component from a counter-kernel helper."""
     slot = wp.atomic_add(counter, 0, 1)
     _det_int_slot_augassign(values)
     output[slot] = slot
@@ -581,8 +581,8 @@ def test_counter_phase0_suppresses_component_stores(test, device):
     test.assertEqual(int(output.numpy()[0]), 0)
 
 
-def test_counter_phase0_suppresses_integer_slot_augassign(test, device):
-    """Verify integer slot atomics do not double-execute in counter mode."""
+def test_deterministic_counter_slot_augassign_runs_once(test, device):
+    """Run integer component updates once in deterministic counter kernels."""
     for kernel in (counter_with_int_slot_augassign_kernel, counter_with_helper_int_slot_augassign_kernel):
         with test.subTest(kernel=kernel.key):
             counter = wp.zeros(1, dtype=wp.int32, device=device)
@@ -596,7 +596,7 @@ def test_counter_phase0_suppresses_integer_slot_augassign(test, device):
             test.assertEqual(int(output.numpy()[0]), 0)
 
 
-def test_float_slot_augassign_deterministic_rejected(test, device):
+def test_deterministic_float_slot_augassign_rejected(test, device):
     """Verify deterministic mode rejects unsupported floating-point slot atomics."""
     values = wp.zeros(1, dtype=wp.vec3, device=device)
     x = wp.ones(1, dtype=wp.float32, device=device)
@@ -1080,8 +1080,8 @@ for _name in (
     "test_counter_function_parameter_unconsumed_atomic",
     "test_counter_consumed_bitwise_atomic_rejected",
     "test_counter_phase0_suppresses_component_stores",
-    "test_counter_phase0_suppresses_integer_slot_augassign",
-    "test_float_slot_augassign_deterministic_rejected",
+    "test_deterministic_counter_slot_augassign_runs_once",
+    "test_deterministic_float_slot_augassign_rejected",
     "test_counter_nonzero_initial_value",
     "test_counter_multi_launch_accumulates",
     "test_counter_variable_total_writeback",

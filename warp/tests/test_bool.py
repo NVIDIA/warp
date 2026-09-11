@@ -200,7 +200,7 @@ def bool_mat_assign_kernel(array_out: wp.array[mat22bool_type], local_out: wp.ar
     local_out[0] = local
 
 
-def test_bool_mat_assign(test, device):
+def test_bool_matrix_row_and_element_assignment(test, device):
     """Verify bool matrix rows and elements can be assigned."""
     array_out = wp.zeros(1, dtype=mat22bool_type, device=device)
     local_out = wp.zeros(1, dtype=mat22bool_type, device=device)
@@ -254,7 +254,12 @@ add_function_test(TestBool, "test_bool_constant_vec", test_bool_constant_vec, de
 add_function_test(TestBool, "test_bool_constant_mat", test_bool_constant_mat, devices=devices)
 add_function_test(TestBool, "test_bool_vec_typing", test_bool_vec_typing, devices=devices)
 add_function_test(TestBool, "test_bool_mat_typing", test_bool_mat_typing, devices=devices)
-add_function_test(TestBool, "test_bool_mat_assign", test_bool_mat_assign, devices=devices)
+add_function_test(
+    TestBool,
+    "test_bool_matrix_row_and_element_assignment",
+    test_bool_matrix_row_and_element_assignment,
+    devices=devices,
+)
 add_function_test(TestBool, "test_bool_vec_assign", test_bool_vec_assign, devices=devices)
 
 

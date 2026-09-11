@@ -1074,14 +1074,18 @@ template <typename T, typename SlotType, typename Accessor, typename... Ints>
 inline CUDA_CALLABLE SlotType
 array_atomic_add_slot(const array_t<T>& buf, SlotType value, Accessor access, Ints... indices)
 {
-    return atomic_add(&access(index(buf, indices...)), value);
+    SlotType old = atomic_add(&access(index(buf, indices...)), value);
+    FP_VERIFY_FWD(old + value)
+    return old;
 }
 
 template <typename T, typename SlotType, typename Accessor, typename... Ints>
 inline CUDA_CALLABLE SlotType
 array_atomic_sub_slot(const array_t<T>& buf, SlotType value, Accessor access, Ints... indices)
 {
-    return atomic_add(&access(index(buf, indices...)), -value);
+    SlotType old = atomic_add(&access(index(buf, indices...)), -value);
+    FP_VERIFY_FWD(old - value)
+    return old;
 }
 
 template <typename T, typename SlotType, typename Accessor, typename... Ints>

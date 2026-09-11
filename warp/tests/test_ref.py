@@ -518,6 +518,49 @@ def test_array_tuple_unpack_preserves_adjoint(test, device):
     np.testing.assert_allclose(b.grad.numpy(), a.numpy())
 
 
+array2d_float_ref = wp.ref[wp.array2d[float]]
+
+
+@wp.func
+def ref_array_view_value(values: array2d_float_ref, row_index: int) -> float:
+    alias = values
+    row = alias[row_index]
+    return row[1]
+
+
+@wp.func_grad(ref_array_view_value)
+def adj_ref_array_view_value(values: array2d_float_ref, row_index: int, adj_ret: float):
+    alias = values
+    row = alias[row_index]
+    wp.adjoint[values][row_index, 1] += adj_ret + row[0] * 0.0
+
+
+@wp.kernel
+def kernel_ref_array_view_value(values: wp.array2d[float], out: wp.array[float]):
+    i = wp.tid()
+    out[i] = ref_array_view_value(values, i)
+
+
+def test_ref_array_view_adjoint(test, device):
+    """Preserve aliases and views of ref array parameters in custom adjoints."""
+    values = wp.array(
+        np.array([[2.0, 3.0], [4.0, 5.0]], dtype=np.float32),
+        dtype=float,
+        ndim=2,
+        device=device,
+        requires_grad=True,
+    )
+    out = wp.zeros(2, dtype=float, device=device, requires_grad=True)
+
+    with wp.Tape() as tape:
+        wp.launch(kernel_ref_array_view_value, dim=2, inputs=[values], outputs=[out], device=device)
+
+    tape.backward(grads={out: wp.ones_like(out)})
+
+    np.testing.assert_array_equal(out.numpy(), [3.0, 5.0])
+    np.testing.assert_array_equal(values.grad.numpy(), [[0.0, 1.0], [0.0, 1.0]])
+
+
 @wp.func_native(
     "x = x + 5;",
 )
@@ -1162,6 +1205,7 @@ add_function_test(
     name="test_array_tuple_unpack_preserves_adjoint",
     devices=devices,
 )
+add_function_test(TestRef, func=test_ref_array_view_adjoint, name="test_ref_array_view_adjoint", devices=devices)
 add_function_test(TestRef, func=test_native_ref_param_alias, name="test_native_ref_param_alias", devices=["cpu"])
 add_function_test(
     TestRef, func=test_native_ref_param_adjoint_local, name="test_native_ref_param_adjoint_local", devices=devices
