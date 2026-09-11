@@ -523,7 +523,7 @@ segmented_sort_temp_size(void* context, int n, int num_segments, int* segment_st
 
 // segment_start_indices and segment_end_indices are arrays of length num_segments, where segment_start_indices[i] is
 // the index of the first element in the i-th segment and segment_end_indices[i] is the index after the last element in
-// the i-th segment https://nvidia.github.io/cccl/cub/api/structcub_1_1DeviceSegmentedRadixSort.html
+// the i-th segment https://nvidia.github.io/cccl/unstable/cub/api/structcub_1_1DeviceSegmentedRadixSort.html
 void segmented_sort_pairs_device(
     void* context,
     float* keys,
@@ -587,7 +587,7 @@ void wp_segmented_sort_pairs_float_device(
 
 // segment_indices is an array of length num_segments + 1, where segment_indices[i] is the index of the first element in
 // the i-th segment The end of a segment is given by segment_indices[i+1]
-// https://nvidia.github.io/cccl/cub/api/structcub_1_1DeviceSegmentedSort.html#a-simple-example
+// https://nvidia.github.io/cccl/unstable/cub/api/structcub_1_1DeviceSegmentedSort.html#a-simple-example
 void segmented_sort_pairs_device(
     void* context, int* keys, int* values, int n, int* segment_start_indices, int* segment_end_indices, int num_segments
 )

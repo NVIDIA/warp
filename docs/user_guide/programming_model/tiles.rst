@@ -1010,7 +1010,7 @@ Example: Using tiles to accelerate array-wide reductions
 Prior to the addition of tile support in Warp, array-wide reductions were commonly performed in a single kernel
 using a built-in atomic function like :func:`wp.atomic_add() <warp._src.lang.atomic_add>`.
 This could be very inefficient when compared to optimized mechanisms like
-`cub::BlockReduce <https://nvidia.github.io/cccl/cub/api/classcub_1_1BlockReduce.html>`__.
+`cub::BlockReduce <https://nvidia.github.io/cccl/unstable/cub/api/classcub_1_1BlockReduce.html>`__.
 Consider the following sum-of-squares reduction on an array:
 
 .. code-block:: python
