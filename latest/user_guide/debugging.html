@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Debugging &#8212; Warp 1.18.0.dev3</title>
+    <title>Debugging &#8212; Warp 1.18.0.dev4</title>
   
   
   
@@ -44,7 +44,7 @@
 
 
 
-    <script src="../_static/documentation_options.js?v=fc46573d"></script>
+    <script src="../_static/documentation_options.js?v=37cfc7f0"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -70,7 +70,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.18.0.dev3" />
+  <meta name="docsearch:version" content="1.18.0.dev4" />
   
     
     <script src="../_static/searchtools.js"></script>
@@ -147,11 +147,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.18.0.dev3 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.18.0.dev3 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.18.0.dev4 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.18.0.dev4 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.18.0.dev3</p>
+    <p class="title logo__title">Warp 1.18.0.dev4</p>
   
 </a></div>
     
@@ -291,11 +291,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.18.0.dev3 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.18.0.dev3 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.18.0.dev4 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.18.0.dev4 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.18.0.dev3</p>
+    <p class="title logo__title">Warp 1.18.0.dev4</p>
   
 </a>
 
@@ -682,9 +682,15 @@ Warp’s built-in default logger.</p>
 </pre></div>
 </div>
 <p>As an alternative to the previous global setting,
-debug mode can be turned on in a per-module basis by setting</p>
+debug mode can be enabled on a per-module basis by setting</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">set_module_options</span><span class="p">({</span><span class="s2">"mode"</span><span class="p">:</span> <span class="s2">"debug"</span><span class="p">})</span>
 </pre></div>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>On Linux with CUDA Toolkit 13.1 and newer, an NVRTC compiler issue can
+corrupt release-mode kernels compiled after a debug-mode kernel in the same
+process. Run debug-mode and release-mode compilation in separate processes.</p>
 </div>
 </section>
 <section id="assertions">
@@ -726,8 +732,8 @@ Users should first compile the kernels in debug mode by setting:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">mode</span> <span class="o">=</span> <span class="s2">"debug"</span>
 </pre></div>
 </div>
-<p>This setting ensures that line numbers, and debug symbols are generated correctly. After launching the Python process,
-the debugger should be attached, and a breakpoint inserted into the generated code.</p>
+<p>This setting generates line-number information and full debug symbols. After launching the Python process, the
+debugger should be attached, and a breakpoint inserted into the generated code.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>Generated kernel code is not a 1:1 correspondence with the original Python code, but individual operations can still be replayed and variables inspected.</p>
