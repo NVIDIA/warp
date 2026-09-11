@@ -65,7 +65,7 @@
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="warp.geometry.swept_volume_field" href="warp.geometry.swept_volume_field.html" />
-    <link rel="prev" title="warp.geometry.find_triangle_neighbor_edge_index" href="warp.geometry.find_triangle_neighbor_edge_index.html" />
+    <link rel="prev" title="warp.geometry.sparse_marching_cubes_from_cells" href="warp.geometry.sparse_marching_cubes_from_cells.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -509,7 +509,7 @@
 <h1>warp.geometry.swept_volume_bounds<a class="headerlink" href="#warp-geometry-swept-volume-bounds" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.geometry.swept_volume_bounds">
-<span class="sig-prename descclassname"><span class="pre">warp.geometry.</span></span><span class="sig-name descname"><span class="pre">swept_volume_bounds</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">meshes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transforms</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">padding</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry.py#L865-L897"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.swept_volume_bounds" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.geometry.</span></span><span class="sig-name descname"><span class="pre">swept_volume_bounds</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">meshes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transforms</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">padding</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/delaunay.py#L865-L897"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.swept_volume_bounds" title="Link to this definition">#</a></dt>
 <dd><p>Return the world-space axis-aligned bounds of every mesh over every pose.</p>
 <p>Reduces each mesh’s rest-pose vertices to an axis-aligned box, then transforms
 the eight box corners by every pose and reduces their union, entirely with
@@ -549,12 +549,12 @@ pass the result to <a class="reference internal" href="warp.geometry.swept_volum
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.geometry.find_triangle_neighbor_edge_index.html"
+       href="warp.geometry.sparse_marching_cubes_from_cells.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.geometry.find_triangle_neighbor_edge_index</p>
+        <p class="prev-next-title">warp.geometry.sparse_marching_cubes_from_cells</p>
       </div>
     </a>
     <a class="right-next"

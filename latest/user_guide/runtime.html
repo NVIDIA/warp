@@ -49,6 +49,7 @@
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../_static/copybutton.js?v=fd10adb8"></script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'user_guide/runtime';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.21.0';
@@ -3315,10 +3316,20 @@ normalized views and their backing allocations.</p>
 </section>
 <section id="marching-cubes">
 <h2>Marching Cubes<a class="headerlink" href="#marching-cubes" title="Link to this heading">#</a></h2>
-<p>The <a class="reference internal" href="../api_reference/_generated/warp.MarchingCubes.html#warp.MarchingCubes" title="warp.MarchingCubes"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.MarchingCubes</span></code></a> class can be used to extract a 2-D mesh approximating an
-isosurface of a 3-D scalar field. The resulting triangle mesh can be saved to a USD
-file using the <a class="reference internal" href="../api_reference/_generated/warp.render.UsdRenderer.html#warp.render.UsdRenderer" title="warp.render.UsdRenderer"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.render.UsdRenderer</span></code></a>.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<p>The <a class="reference internal" href="../api_reference/_generated/warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes" title="warp.geometry.IsoSurfaceMarchingCubes"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.geometry.IsoSurfaceMarchingCubes</span></code></a> class can be used to extract a 2-D mesh
+approximating an isosurface of a 3-D scalar field. The resulting triangle mesh
+can be saved to a USD file using the <a class="reference internal" href="../api_reference/_generated/warp.render.UsdRenderer.html#warp.render.UsdRenderer" title="warp.render.UsdRenderer"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.render.UsdRenderer</span></code></a>.</p>
+<div class="deprecated">
+<p><span class="versionmodified deprecated">Deprecated since version 1.18: </span><code class="docutils literal notranslate"><span class="pre">wp.MarchingCubes</span></code> is a deprecated alias of
+<a class="reference internal" href="../api_reference/_generated/warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes" title="warp.geometry.IsoSurfaceMarchingCubes"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.geometry.IsoSurfaceMarchingCubes</span></code></a> and will be removed in a future
+version of Warp. It is resolved lazily, so the two names refer to the same
+class and accessing it emits a warning. Because it is resolved at runtime
+rather than imported, it does not appear in <code class="docutils literal notranslate"><span class="pre">warp/__init__.pyi</span></code>; annotate
+with <a class="reference internal" href="../api_reference/_generated/warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes" title="warp.geometry.IsoSurfaceMarchingCubes"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.geometry.IsoSurfaceMarchingCubes</span></code></a> instead.</p>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp.geometry</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">make_sphere_sdf</span><span class="p">(</span><span class="n">field</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array3d</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">center</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span> <span class="n">radius</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
     <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">k</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
     <span class="n">p</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">i</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="n">j</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="n">k</span><span class="p">))</span>
@@ -3327,7 +3338,7 @@ file using the <a class="reference internal" href="../api_reference/_generated/w
 <span class="n">dim</span> <span class="o">=</span> <span class="mi">16</span>
 <span class="n">field</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">dim</span><span class="p">,</span> <span class="n">dim</span><span class="p">,</span> <span class="n">dim</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda:0"</span><span class="p">)</span>
 <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">make_sphere_sdf</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">field</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">field</span><span class="p">,</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">8.0</span><span class="p">,</span> <span class="mf">8.0</span><span class="p">,</span> <span class="mf">8.0</span><span class="p">),</span> <span class="mf">4.0</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda:0"</span><span class="p">)</span>
-<span class="n">mc</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">MarchingCubes</span><span class="p">(</span><span class="n">nx</span><span class="o">=</span><span class="n">dim</span><span class="p">,</span> <span class="n">ny</span><span class="o">=</span><span class="n">dim</span><span class="p">,</span> <span class="n">nz</span><span class="o">=</span><span class="n">dim</span><span class="p">)</span>
+<span class="n">mc</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">geometry</span><span class="o">.</span><span class="n">IsoSurfaceMarchingCubes</span><span class="p">(</span><span class="n">nx</span><span class="o">=</span><span class="n">dim</span><span class="p">,</span> <span class="n">ny</span><span class="o">=</span><span class="n">dim</span><span class="p">,</span> <span class="n">nz</span><span class="o">=</span><span class="n">dim</span><span class="p">)</span>
 <span class="n">mc</span><span class="o">.</span><span class="n">surface</span><span class="p">(</span><span class="n">field</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">mc</span><span class="o">.</span><span class="n">verts</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">mc</span><span class="o">.</span><span class="n">indices</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">%</span> <span class="mi">3</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
@@ -3339,17 +3350,179 @@ True
 </div>
 <p>The resulting mesh is stored in <code class="docutils literal notranslate"><span class="pre">mc.verts</span></code> as a <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.array</span></code></a> of
 <a class="reference internal" href="../api_reference/_generated/warp.vec3.html#warp.vec3" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.vec3</span></code></a> vertices and in <code class="docutils literal notranslate"><span class="pre">mc.indices</span></code> as a flat <a class="reference internal" href="../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.int32</span></code></a> index array.</p>
-<p>See <a class="extlink-github reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_marching_cubes.py">warp/examples/core/example_marching_cubes.py</a> for a complete usage example.</p>
+<p>See <a class="extlink-github reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/examples/geometry/example_isosurface.py">warp/examples/geometry/example_isosurface.py</a> for a complete usage example.</p>
+<section id="sparse-marching-cubes">
+<h3>Sparse Marching Cubes<a class="headerlink" href="#sparse-marching-cubes" title="Link to this heading">#</a></h3>
+<p>If we have access to a scalar field as a samplable function, we can extract its
+isosurface without densely sampling an entire volumetric grid. Let us assume
+that the function has a known Lipschitz bound (e.g., a signed distance
+function has a Lipschitz constant of 1 because
+<span class="math notranslate nohighlight">\(|f(x) - f(y)| \le |x - y|\)</span>).</p>
+<p><a class="reference internal" href="../api_reference/_generated/warp.geometry.sparse_marching_cubes.html#warp.geometry.sparse_marching_cubes" title="warp.geometry.sparse_marching_cubes"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.geometry.sparse_marching_cubes</span></code></a> extracts the
+isosurface by efficiently identifying cells near the requested level set using
+an octree and then running marching cubes only on those cells.</p>
+<figure class="align-center" id="id14">
+<a class="reference internal image-reference" href="../_images/geometry_sparse_marching_cubes.gif"><img alt="../_images/geometry_sparse_marching_cubes.gif" src="../_images/geometry_sparse_marching_cubes.gif" style="width: 60%;" />
+</a>
+<figcaption>
+<p><span class="caption-text">A signed distance field to the Stanford bunny, re-meshed as the octree
+depth increases. Only the sparse cells near the surface (blue) are
+instantiated.</span><a class="headerlink" href="#id14" title="Link to this image">#</a></p>
+</figcaption>
+</figure>
+<p>The <em>implied</em> grid is specified the same way as
+<a class="reference internal" href="../api_reference/_generated/warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes.extract" title="warp.geometry.IsoSurfaceMarchingCubes.extract"><code class="xref py py-meth docutils literal notranslate"><span class="pre">warp.geometry.IsoSurfaceMarchingCubes.extract()</span></code></a>: <code class="docutils literal notranslate"><span class="pre">nx,</span> <span class="pre">ny,</span> <span class="pre">nz</span></code> grid
+nodes over a (possibly anisotropic) domain box. Calling this function and
+<code class="docutils literal notranslate"><span class="pre">extract</span></code> with the same grid and bounds produces the same triangulation and
+vertex positions, to floating-point tolerance – only the near-surface cells
+are instantiated here.</p>
+<p>The provided function <code class="docutils literal notranslate"><span class="pre">field</span></code> must be batched callable, <code class="docutils literal notranslate"><span class="pre">evaluate(points:</span>
+<span class="pre">wp.array[wp.vec3])</span> <span class="pre">-&gt;</span> <span class="pre">wp.array[wp.float32]</span></code>. A callable backed by a
+host library (NumPy, PyTorch, …) also works, at the cost of a device/host sync
+per call.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp.geometry</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">sphere_sdf</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">wp</span><span class="o">.</span><span class="n">length</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="o">-</span> <span class="mf">0.5</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">eval_sphere_sdf</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span> <span class="n">values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">]):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">values</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">sphere_sdf</span><span class="p">(</span><span class="n">points</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">sphere_evaluate</span><span class="p">(</span><span class="n">points</span><span class="p">):</span>
+    <span class="n">values</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">points</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">eval_sphere_sdf</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">points</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">values</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">points</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">values</span>
+
+<span class="c1"># A 257^3 grid (octree depth 8) touches only cells near the surface.</span>
+<span class="n">verts</span><span class="p">,</span> <span class="n">indices</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">geometry</span><span class="o">.</span><span class="n">sparse_marching_cubes</span><span class="p">(</span>
+    <span class="n">sphere_evaluate</span><span class="p">,</span>
+    <span class="mi">257</span><span class="p">,</span> <span class="mi">257</span><span class="p">,</span> <span class="mi">257</span><span class="p">,</span>
+    <span class="n">lower</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">),</span>
+    <span class="n">upper</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span>
+    <span class="n">threshold</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="s2">"cuda:0"</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"extracted </span><span class="si">{</span><span class="n">verts</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2"> vertices and </span><span class="si">{</span><span class="n">indices</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="o">//</span><span class="w"> </span><span class="mi">3</span><span class="si">}</span><span class="s2"> triangles"</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>extracted 77094 vertices and 154184 triangles
+</pre></div>
+</div>
+<p>The pruning and extraction stages are also exposed separately:
+<a class="reference internal" href="../api_reference/_generated/warp.geometry.lipschitz_octree.html#warp.geometry.lipschitz_octree" title="warp.geometry.lipschitz_octree"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.geometry.lipschitz_octree</span></code></a>
+returns the leaf cells, and <a class="reference internal" href="../api_reference/_generated/warp.geometry.sparse_marching_cubes_from_cells.html#warp.geometry.sparse_marching_cubes_from_cells" title="warp.geometry.sparse_marching_cubes_from_cells"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.geometry.sparse_marching_cubes_from_cells</span></code></a> runs marching cubes on an
+explicit list of occupied cells and their sampled corner values –
+<code class="docutils literal notranslate"><span class="pre">sparse_marching_cubes</span></code> chains the two using shared
+internals. Calling the extraction stage directly is useful when the occupied
+cells are already known, such as a marked band of voxels from a vision or
+generative model, or a custom sparse data structure that already tracks which
+voxels are near the surface.</p>
+<section id="extracting-from-an-explicit-cell-set">
+<h4>Extracting from an explicit cell set<a class="headerlink" href="#extracting-from-an-explicit-cell-set" title="Link to this heading">#</a></h4>
+<p><a class="reference internal" href="../api_reference/_generated/warp.geometry.sparse_marching_cubes_from_cells.html#warp.geometry.sparse_marching_cubes_from_cells" title="warp.geometry.sparse_marching_cubes_from_cells"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.geometry.sparse_marching_cubes_from_cells</span></code></a> takes the occupied cells as an
+<code class="docutils literal notranslate"><span class="pre">(N,</span> <span class="pre">3)</span></code> array of integer cell subscripts, plus an <code class="docutils literal notranslate"><span class="pre">(N,</span> <span class="pre">8)</span></code> array holding the
+field value at each cell’s 8 corners, ordered by
+<a class="reference internal" href="../api_reference/_generated/warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes.CUBE_CORNER_OFFSETS" title="warp.geometry.IsoSurfaceMarchingCubes.CUBE_CORNER_OFFSETS"><code class="xref py py-attr docutils literal notranslate"><span class="pre">CUBE_CORNER_OFFSETS</span></code></a>. A cell at
+subscript <code class="docutils literal notranslate"><span class="pre">(i,</span> <span class="pre">j,</span> <span class="pre">k)</span></code> covers the box whose minimum corner is
+<code class="docutils literal notranslate"><span class="pre">origin</span> <span class="pre">+</span> <span class="pre">cell_width</span> <span class="pre">*</span> <span class="pre">(i,</span> <span class="pre">j,</span> <span class="pre">k)</span></code>. Subscripts may be negative and need not be
+contiguous, so cells can come straight from a sparse structure without
+renumbering. Corners shared between neighboring cells are de-duplicated
+internally, so the result is watertight even though each cell supplies its own
+eight values.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This subscript convention differs from the VDB-style one used by
+<a class="reference internal" href="../api_reference/_generated/warp.Volume.html#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Volume</span></code></a>, where a subscript names a voxel whose
+<em>center</em> holds the sample. Here a subscript names a cell by its <em>minimum
+corner</em>, and the samples sit at the cell’s corners. A <a class="reference internal" href="../api_reference/_generated/warp.Volume.html#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Volume</span></code></a> voxel subscript therefore lines up with a <em>corner</em>
+subscript here, not a cell subscript: the corners of cell <code class="docutils literal notranslate"><span class="pre">(i,</span> <span class="pre">j,</span> <span class="pre">k)</span></code>
+are the voxels <code class="docutils literal notranslate"><span class="pre">(i,</span> <span class="pre">j,</span> <span class="pre">k)</span></code> through <code class="docutils literal notranslate"><span class="pre">(i+1,</span> <span class="pre">j+1,</span> <span class="pre">k+1)</span></code>.</p>
+</div>
+<p>The cells a closed surface passes through form a face-connected shell, so they
+can be gathered with a breadth-first search from a single seed cell, without
+ever visiting the volume the surface encloses:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">deque</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warp.geometry</span>
+
+<span class="c1"># A sphere of radius 0.5, on cells of width 1/16 with subscript (0, 0, 0) at the origin.</span>
+<span class="n">origin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">((</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">))</span>
+<span class="n">cell_width</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="mi">16</span>
+<span class="n">offsets</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">geometry</span><span class="o">.</span><span class="n">IsoSurfaceMarchingCubes</span><span class="o">.</span><span class="n">CUBE_CORNER_OFFSETS</span><span class="p">)</span>
+<span class="n">neighbors</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)]</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">corner_values</span><span class="p">(</span><span class="n">cell</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Sample the sphere SDF at the 8 corners of one cell."""</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">origin</span> <span class="o">+</span> <span class="n">cell_width</span> <span class="o">*</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span> <span class="o">+</span> <span class="n">offsets</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="mf">0.5</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">straddles</span><span class="p">(</span><span class="n">values</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Report whether the isosurface passes through the cell."""</span>
+    <span class="k">return</span> <span class="n">values</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mf">0.0</span> <span class="o">&lt;=</span> <span class="n">values</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+
+<span class="c1"># Seed the search by stepping out from the sphere's center until a cell crosses it.</span>
+<span class="n">seed</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<span class="k">while</span> <span class="ow">not</span> <span class="n">straddles</span><span class="p">(</span><span class="n">corner_values</span><span class="p">(</span><span class="n">seed</span><span class="p">)):</span>
+    <span class="n">seed</span> <span class="o">=</span> <span class="p">(</span><span class="n">seed</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">seed</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">seed</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+
+<span class="c1"># Flood-fill the shell, expanding only from cells the surface passes through.</span>
+<span class="n">found</span><span class="p">,</span> <span class="n">visited</span><span class="p">,</span> <span class="n">queue</span> <span class="o">=</span> <span class="p">{},</span> <span class="p">{</span><span class="n">seed</span><span class="p">},</span> <span class="n">deque</span><span class="p">([</span><span class="n">seed</span><span class="p">])</span>
+<span class="k">while</span> <span class="n">queue</span><span class="p">:</span>
+    <span class="n">cell</span> <span class="o">=</span> <span class="n">queue</span><span class="o">.</span><span class="n">popleft</span><span class="p">()</span>
+    <span class="n">values</span> <span class="o">=</span> <span class="n">corner_values</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">straddles</span><span class="p">(</span><span class="n">values</span><span class="p">):</span>
+        <span class="k">continue</span>
+    <span class="n">found</span><span class="p">[</span><span class="n">cell</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span>
+    <span class="k">for</span> <span class="n">dx</span><span class="p">,</span> <span class="n">dy</span><span class="p">,</span> <span class="n">dz</span> <span class="ow">in</span> <span class="n">neighbors</span><span class="p">:</span>
+        <span class="n">neighbor</span> <span class="o">=</span> <span class="p">(</span><span class="n">cell</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">dx</span><span class="p">,</span> <span class="n">cell</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">dy</span><span class="p">,</span> <span class="n">cell</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="n">dz</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">neighbor</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">visited</span><span class="p">:</span>
+            <span class="n">visited</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">neighbor</span><span class="p">)</span>
+            <span class="n">queue</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">neighbor</span><span class="p">)</span>
+
+<span class="n">cells</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">found</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+<span class="n">values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">found</span><span class="o">.</span><span class="n">values</span><span class="p">()),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+<span class="n">verts</span><span class="p">,</span> <span class="n">indices</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">geometry</span><span class="o">.</span><span class="n">sparse_marching_cubes_from_cells</span><span class="p">(</span>
+    <span class="n">cells</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="n">origin</span><span class="p">,</span> <span class="n">cell_width</span><span class="o">=</span><span class="n">cell_width</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mf">0.0</span>
+<span class="p">)</span>
+
+<span class="n">radial_error</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">verts</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">)</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"evaluated </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">visited</span><span class="p">)</span><span class="si">}</span><span class="s2"> cells to find the </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">cells</span><span class="p">)</span><span class="si">}</span><span class="s2"> the surface crosses"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"extracted </span><span class="si">{</span><span class="n">indices</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="o">//</span><span class="w"> </span><span class="mi">3</span><span class="si">}</span><span class="s2"> triangles"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"vertices lie on the sphere: </span><span class="si">{</span><span class="n">radial_error</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mf">0.01</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>evaluated 2504 cells to find the 1160 the surface crosses
+extracted 2312 triangles
+vertices lie on the sphere: True
+</pre></div>
+</div>
+<p>A dense grid covering the same sphere (32 cells per axis) would hold 32,768
+cells – more than ten times what the search evaluated – and the gap grows
+with resolution. The subscripts here are also centered on the origin and
+therefore negative on one side, which the extractor handles directly.</p>
+<p>See <a class="extlink-github reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/examples/geometry/example_sparse_marching_cubes.py">warp/examples/geometry/example_sparse_marching_cubes.py</a> for a
+complete usage example, with an interactive rendering mode and a
+<code class="docutils literal notranslate"><span class="pre">--show-cells</span></code> option that draws the octree leaf cells as a voxel cage
+around the surface, and
+<a class="extlink-github reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/examples/benchmarks/benchmark_sparse_marching_cubes.py">warp/examples/benchmarks/benchmark_sparse_marching_cubes.py</a> for a
+sparse-versus-dense performance comparison.</p>
+</section>
+</section>
 <section id="custom-marching-cubes-implementations">
 <h3>Custom Marching Cubes Implementations<a class="headerlink" href="#custom-marching-cubes-implementations" title="Link to this heading">#</a></h3>
 <p>For advanced use cases requiring custom extraction logic (e.g., working with
 sparse volumes, computing additional per-triangle data), the
-<a class="reference internal" href="../api_reference/_generated/warp.MarchingCubes.html#warp.MarchingCubes" title="warp.MarchingCubes"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.MarchingCubes</span></code></a> class exposes the fundamental lookup tables
-that define the marching cubes algorithm as class attributes:
-<a class="reference internal" href="../api_reference/_generated/warp.MarchingCubes.html#warp.MarchingCubes.CUBE_CORNER_OFFSETS" title="warp.MarchingCubes.CUBE_CORNER_OFFSETS"><code class="xref py py-attr docutils literal notranslate"><span class="pre">CUBE_CORNER_OFFSETS</span></code></a>,
-<a class="reference internal" href="../api_reference/_generated/warp.MarchingCubes.html#warp.MarchingCubes.EDGE_TO_CORNERS" title="warp.MarchingCubes.EDGE_TO_CORNERS"><code class="xref py py-attr docutils literal notranslate"><span class="pre">EDGE_TO_CORNERS</span></code></a>,
-<a class="reference internal" href="../api_reference/_generated/warp.MarchingCubes.html#warp.MarchingCubes.CASE_TO_TRI_RANGE" title="warp.MarchingCubes.CASE_TO_TRI_RANGE"><code class="xref py py-attr docutils literal notranslate"><span class="pre">CASE_TO_TRI_RANGE</span></code></a>, and
-<a class="reference internal" href="../api_reference/_generated/warp.MarchingCubes.html#warp.MarchingCubes.TRI_LOCAL_INDICES" title="warp.MarchingCubes.TRI_LOCAL_INDICES"><code class="xref py py-attr docutils literal notranslate"><span class="pre">TRI_LOCAL_INDICES</span></code></a>.</p>
+<a class="reference internal" href="../api_reference/_generated/warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes" title="warp.geometry.IsoSurfaceMarchingCubes"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.geometry.IsoSurfaceMarchingCubes</span></code></a> class exposes the fundamental
+lookup tables that define the marching cubes algorithm as class attributes:
+<a class="reference internal" href="../api_reference/_generated/warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes.CUBE_CORNER_OFFSETS" title="warp.geometry.IsoSurfaceMarchingCubes.CUBE_CORNER_OFFSETS"><code class="xref py py-attr docutils literal notranslate"><span class="pre">CUBE_CORNER_OFFSETS</span></code></a>,
+<a class="reference internal" href="../api_reference/_generated/warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes.EDGE_TO_CORNERS" title="warp.geometry.IsoSurfaceMarchingCubes.EDGE_TO_CORNERS"><code class="xref py py-attr docutils literal notranslate"><span class="pre">EDGE_TO_CORNERS</span></code></a>,
+<a class="reference internal" href="../api_reference/_generated/warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes.CASE_TO_TRI_RANGE" title="warp.geometry.IsoSurfaceMarchingCubes.CASE_TO_TRI_RANGE"><code class="xref py py-attr docutils literal notranslate"><span class="pre">CASE_TO_TRI_RANGE</span></code></a>, and
+<a class="reference internal" href="../api_reference/_generated/warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes.TRI_LOCAL_INDICES" title="warp.geometry.IsoSurfaceMarchingCubes.TRI_LOCAL_INDICES"><code class="xref py py-attr docutils literal notranslate"><span class="pre">TRI_LOCAL_INDICES</span></code></a>.</p>
 <p>The marching cubes algorithm partitions space into cubic cells and classifies
 each cell based on which of its 8 corners are inside/outside the isosurface.</p>
 <p><strong>Corner numbering:</strong></p>
@@ -3748,6 +3921,10 @@ Journal of Computer Graphics Techniques (JCGT), vol. 9, no. 3, 20–38, 2020.</p
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#marching-cubes">Marching Cubes</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sparse-marching-cubes">Sparse Marching Cubes</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#extracting-from-an-explicit-cell-set">Extracting from an explicit cell set</a></li>
+</ul>
+</li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#custom-marching-cubes-implementations">Custom Marching Cubes Implementations</a></li>
 </ul>
 </li>

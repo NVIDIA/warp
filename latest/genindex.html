@@ -1467,7 +1467,7 @@
 </li>
       <li><a href="api_reference/_generated/warp.CaptureMode.html#warp.CaptureMode">CaptureMode (class in warp)</a>
 </li>
-      <li><a href="api_reference/_generated/warp.MarchingCubes.html#warp.MarchingCubes.CASE_TO_TRI_RANGE">CASE_TO_TRI_RANGE (warp.MarchingCubes attribute)</a>
+      <li><a href="api_reference/_generated/warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes.CASE_TO_TRI_RANGE">CASE_TO_TRI_RANGE (warp.geometry.IsoSurfaceMarchingCubes attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.ElementKind.html#warp.fem.ElementKind.CELL">CELL (warp.fem.ElementKind attribute)</a>
 </li>
@@ -1807,7 +1807,7 @@
       </ul></li>
       <li><a href="api_reference/_generated/warp.fem.Element.html#warp.fem.Element.CUBE">CUBE (warp.fem.Element attribute)</a>
 </li>
-      <li><a href="api_reference/_generated/warp.MarchingCubes.html#warp.MarchingCubes.CUBE_CORNER_OFFSETS">CUBE_CORNER_OFFSETS (warp.MarchingCubes attribute)</a>
+      <li><a href="api_reference/_generated/warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes.CUBE_CORNER_OFFSETS">CUBE_CORNER_OFFSETS (warp.geometry.IsoSurfaceMarchingCubes attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.space.shape.CubeBSplineShapeFunctions.html#warp.fem.space.shape.CubeBSplineShapeFunctions">CubeBSplineShapeFunctions (class in warp.fem.space.shape)</a>
 </li>
@@ -1926,11 +1926,11 @@
       <ul>
         <li><a href="api_reference/_generated/warp.Bvh.html#warp.Bvh.device">(warp.Bvh attribute)</a>
 </li>
+        <li><a href="api_reference/_generated/warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes.device">(warp.geometry.IsoSurfaceMarchingCubes property)</a>
+</li>
         <li><a href="api_reference/_generated/warp.HashGrid.html#warp.HashGrid.device">(warp.HashGrid attribute)</a>
 </li>
         <li><a href="api_reference/_generated/warp.Launch.html#warp.Launch.device">(warp.Launch attribute)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.MarchingCubes.html#warp.MarchingCubes.device">(warp.MarchingCubes property)</a>
 </li>
         <li><a href="api_reference/_generated/warp.Mesh.html#warp.Mesh.device">(warp.Mesh attribute)</a>
 </li>
@@ -2051,10 +2051,6 @@
         <li><a href="api_reference/_generated/warp.fem.SpaceRestriction.html#warp.fem.SpaceRestriction.domain">(warp.fem.SpaceRestriction attribute)</a>
 </li>
       </ul></li>
-      <li><a href="api_reference/_generated/warp.MarchingCubes.html#warp.MarchingCubes.domain_bounds_lower_corner">domain_bounds_lower_corner (warp.MarchingCubes attribute)</a>
-</li>
-      <li><a href="api_reference/_generated/warp.MarchingCubes.html#warp.MarchingCubes.domain_bounds_upper_corner">domain_bounds_upper_corner (warp.MarchingCubes attribute)</a>
-</li>
       <li><a href="api_reference/_generated/warp.fem.Cells.html#warp.fem.Cells.domain_cell_arg">domain_cell_arg (warp.fem.Cells property)</a>
 
       <ul>
@@ -2153,7 +2149,7 @@
         <li><a href="api_reference/_generated/warp.fem.space.shape.TriangleShapeFunction.html#warp.fem.space.shape.TriangleShapeFunction.EDGE_NODE_COUNT">(warp.fem.space.shape.TriangleShapeFunction attribute)</a>
 </li>
       </ul></li>
-      <li><a href="api_reference/_generated/warp.MarchingCubes.html#warp.MarchingCubes.EDGE_TO_CORNERS">EDGE_TO_CORNERS (warp.MarchingCubes attribute)</a>
+      <li><a href="api_reference/_generated/warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes.EDGE_TO_CORNERS">EDGE_TO_CORNERS (warp.geometry.IsoSurfaceMarchingCubes attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.space.shape.TetrahedronShapeFunction.html#warp.fem.space.shape.TetrahedronShapeFunction.edge_vidx">edge_vidx (warp.fem.space.shape.TetrahedronShapeFunction attribute)</a>
 </li>
@@ -2321,8 +2317,6 @@
         <li><a href="api_reference/_generated/warp.fem.space.shape.TetrahedronPolynomialShapeFunctions.html#warp.fem.space.shape.TetrahedronPolynomialShapeFunctions.element_node_tets">(warp.fem.space.shape.TetrahedronPolynomialShapeFunctions method)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.fem.space.shape.SquareBipolynomialShapeFunctions.html#warp.fem.space.shape.SquareBipolynomialShapeFunctions.element_node_triangulation">element_node_triangulation() (warp.fem.space.shape.SquareBipolynomialShapeFunctions method)</a>
 
       <ul>
@@ -2333,6 +2327,8 @@
         <li><a href="api_reference/_generated/warp.fem.space.shape.TrianglePolynomialShapeFunctions.html#warp.fem.space.shape.TrianglePolynomialShapeFunctions.element_node_triangulation">(warp.fem.space.shape.TrianglePolynomialShapeFunctions method)</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.fem.Cells.html#warp.fem.Cells.element_normal">element_normal (warp.fem.Cells property)</a>
 
       <ul>
@@ -2515,7 +2511,13 @@
       </ul></li>
       <li><a href="api_reference/_generated/warp.ScopedTimer.html#warp.ScopedTimer.extra_msg">extra_msg (warp.ScopedTimer attribute)</a>
 </li>
-      <li><a href="api_reference/_generated/warp.MarchingCubes.html#warp.MarchingCubes.extract_surface_marching_cubes">extract_surface_marching_cubes() (warp.MarchingCubes static method)</a>
+      <li><a href="api_reference/_generated/warp.geometry.IsoSurfaceBase.html#warp.geometry.IsoSurfaceBase.extract">extract() (warp.geometry.IsoSurfaceBase class method)</a>
+
+      <ul>
+        <li><a href="api_reference/_generated/warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes.extract">(warp.geometry.IsoSurfaceMarchingCubes class method)</a>
+</li>
+      </ul></li>
+      <li><a href="api_reference/_generated/warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes.extract_surface_marching_cubes">extract_surface_marching_cubes() (warp.geometry.IsoSurfaceMarchingCubes static method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -3058,9 +3060,9 @@
       <li><a href="api_reference/_generated/warp.Bvh.html#warp.Bvh.id">id (warp.Bvh attribute)</a>
 
       <ul>
-        <li><a href="api_reference/_generated/warp.HashGrid.html#warp.HashGrid.id">(warp.HashGrid attribute)</a>
+        <li><a href="api_reference/_generated/warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes.id">(warp.geometry.IsoSurfaceMarchingCubes property)</a>
 </li>
-        <li><a href="api_reference/_generated/warp.MarchingCubes.html#warp.MarchingCubes.id">(warp.MarchingCubes property)</a>
+        <li><a href="api_reference/_generated/warp.HashGrid.html#warp.HashGrid.id">(warp.HashGrid attribute)</a>
 </li>
         <li><a href="api_reference/_generated/warp.Mesh.html#warp.Mesh.id">(warp.Mesh attribute)</a>
 </li>
@@ -3085,8 +3087,12 @@
 </li>
       <li><a href="api_reference/_generated/warp.indexedfabricarrayarray.html#warp.indexedfabricarrayarray">indexedfabricarrayarray() (in module warp)</a>
 </li>
-      <li><a href="api_reference/_generated/warp.MarchingCubes.html#warp.MarchingCubes.indices">indices (warp.MarchingCubes attribute)</a>
+      <li><a href="api_reference/_generated/warp.geometry.IsoSurfaceBase.html#warp.geometry.IsoSurfaceBase.indices">indices (warp.geometry.IsoSurfaceBase attribute)</a>
+
+      <ul>
+        <li><a href="api_reference/_generated/warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes.indices">(warp.geometry.IsoSurfaceMarchingCubes attribute)</a>
 </li>
+      </ul></li>
       <li><a href="api_reference/_generated/warp.INF.html#warp.INF">INF (in module warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.inf_constant.html#warp.inf">inf (in module warp)</a>
@@ -3257,6 +3263,10 @@
 </li>
       <li><a href="api_reference/_generated/warp.types.is_vector.html#warp.types.is_vector">is_vector() (in module warp.types)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.geometry.IsoSurfaceBase.html#warp.geometry.IsoSurfaceBase">IsoSurfaceBase (class in warp.geometry)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes">IsoSurfaceMarchingCubes (class in warp.geometry)</a>
+</li>
   </ul></td>
 </tr></table>
 
@@ -3353,6 +3363,8 @@
 </li>
       <li><a href="api_reference/_generated/warp.config.lineinfo.html#warp.config.lineinfo">lineinfo (in module warp.config)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.geometry.lipschitz_octree.html#warp.geometry.lipschitz_octree">lipschitz_octree() (in module warp.geometry)</a>
+</li>
       <li><a href="api_reference/_generated/warp.array.html#warp.array.list">list() (warp.array method)</a>
 </li>
       <li><a href="api_reference/_generated/warp.config.llvm_cuda.html#warp.config.llvm_cuda">llvm_cuda (in module warp.config)</a>
@@ -3435,6 +3447,12 @@
 </li>
       <li><a href="api_reference/_generated/warp.fem.lookup.html#warp.fem.lookup">lookup (in module warp.fem)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.geometry.IsoSurfaceBase.html#warp.geometry.IsoSurfaceBase.lower">lower (warp.geometry.IsoSurfaceBase attribute)</a>
+
+      <ul>
+        <li><a href="api_reference/_generated/warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes.lower">(warp.geometry.IsoSurfaceMarchingCubes attribute)</a>
+</li>
+      </ul></li>
       <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.ActiveStats.lower_node_count">lower_node_count (warp.Volume.ActiveStats attribute)</a>
 </li>
   </ul></td>
@@ -3781,8 +3799,6 @@
 </li>
       <li><a href="api_reference/_generated/warp.fem.SymmetricTensorMapper.html#warp.fem.SymmetricTensorMapper.mapping">mapping (warp.fem.SymmetricTensorMapper attribute)</a>
 </li>
-      <li><a href="api_reference/_generated/warp.MarchingCubes.html#warp.MarchingCubes">MarchingCubes (class in warp)</a>
-</li>
       <li><a href="api_reference/_generated/warp.array.html#warp.array.mark_init">mark_init() (warp.array method)</a>
 </li>
       <li><a href="api_reference/_generated/warp.Module.html#warp.Module.mark_modified">mark_modified() (warp.Module method)</a>
@@ -3847,13 +3863,13 @@
       </ul></li>
       <li><a href="api_reference/_generated/warp.Device.html#warp.Device.max_shared_memory_per_block">max_shared_memory_per_block (warp.Device attribute)</a>
 </li>
-      <li><a href="api_reference/_generated/warp.MarchingCubes.html#warp.MarchingCubes.max_tris">max_tris (warp.MarchingCubes property)</a>
+      <li><a href="api_reference/_generated/warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes.max_tris">max_tris (warp.geometry.IsoSurfaceMarchingCubes property)</a>
 </li>
       <li><a href="api_reference/_generated/warp.config.max_unroll.html#warp.config.max_unroll">max_unroll (in module warp.config)</a>
 </li>
       <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.RebuildInfo.max_upper_node_count">max_upper_node_count (warp.Volume.RebuildInfo attribute)</a>
 </li>
-      <li><a href="api_reference/_generated/warp.MarchingCubes.html#warp.MarchingCubes.max_verts">max_verts (warp.MarchingCubes property)</a>
+      <li><a href="api_reference/_generated/warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes.max_verts">max_verts (warp.geometry.IsoSurfaceMarchingCubes property)</a>
 </li>
       <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.RebuildInfo.max_voxel_count">max_voxel_count (warp.Volume.RebuildInfo attribute)</a>
 </li>
@@ -4076,12 +4092,12 @@
 </li>
       <li><a href="api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.nnz_sync">nnz_sync() (warp.sparse.BsrMatrix method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.geometry.SweptVolumeSignMode.html#warp.geometry.SweptVolumeSignMode.NO_SIGN">NO_SIGN (warp.geometry.SweptVolumeSignMode attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.NodalQuadrature.html#warp.fem.NodalQuadrature">NodalQuadrature (class in warp.fem)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.fem.SpaceRestriction.html#warp.fem.SpaceRestriction.node_arg_value">node_arg_value() (warp.fem.SpaceRestriction method)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.FunctionSpace.html#warp.fem.FunctionSpace.node_basis_element">node_basis_element() (warp.fem.FunctionSpace static method)</a>
@@ -4206,12 +4222,24 @@
 </li>
       <li><a href="api_reference/_generated/warp.array.html#warp.array.numpy">numpy() (warp.array method)</a>
 </li>
-      <li><a href="api_reference/_generated/warp.MarchingCubes.html#warp.MarchingCubes.nx">nx (warp.MarchingCubes attribute)</a>
+      <li><a href="api_reference/_generated/warp.geometry.IsoSurfaceBase.html#warp.geometry.IsoSurfaceBase.nx">nx (warp.geometry.IsoSurfaceBase attribute)</a>
+
+      <ul>
+        <li><a href="api_reference/_generated/warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes.nx">(warp.geometry.IsoSurfaceMarchingCubes attribute)</a>
 </li>
-      <li><a href="api_reference/_generated/warp.MarchingCubes.html#warp.MarchingCubes.ny">ny (warp.MarchingCubes attribute)</a>
+      </ul></li>
+      <li><a href="api_reference/_generated/warp.geometry.IsoSurfaceBase.html#warp.geometry.IsoSurfaceBase.ny">ny (warp.geometry.IsoSurfaceBase attribute)</a>
+
+      <ul>
+        <li><a href="api_reference/_generated/warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes.ny">(warp.geometry.IsoSurfaceMarchingCubes attribute)</a>
 </li>
-      <li><a href="api_reference/_generated/warp.MarchingCubes.html#warp.MarchingCubes.nz">nz (warp.MarchingCubes attribute)</a>
+      </ul></li>
+      <li><a href="api_reference/_generated/warp.geometry.IsoSurfaceBase.html#warp.geometry.IsoSurfaceBase.nz">nz (warp.geometry.IsoSurfaceBase attribute)</a>
+
+      <ul>
+        <li><a href="api_reference/_generated/warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes.nz">(warp.geometry.IsoSurfaceMarchingCubes attribute)</a>
 </li>
+      </ul></li>
   </ul></td>
 </tr></table>
 
@@ -4516,10 +4544,10 @@
 </li>
       <li><a href="api_reference/_generated/warp.RegisteredGLBuffer.html#warp.RegisteredGLBuffer">RegisteredGLBuffer (class in warp)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.fem.RegularQuadrature.html#warp.fem.RegularQuadrature">RegularQuadrature (class in warp.fem)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.fem.RegularQuadrature.html#warp.fem.RegularQuadrature.CachedFormula">RegularQuadrature.CachedFormula (class in warp.fem)</a>
 </li>
       <li><a href="api_reference/_generated/warp.CaptureMode.html#warp.CaptureMode.RELAXED">RELAXED (warp.CaptureMode attribute)</a>
@@ -4634,8 +4662,12 @@
       </ul></li>
       <li><a href="api_reference/_generated/warp.array.html#warp.array.reshape">reshape() (warp.array method)</a>
 </li>
-      <li><a href="api_reference/_generated/warp.MarchingCubes.html#warp.MarchingCubes.resize">resize() (warp.MarchingCubes method)</a>
+      <li><a href="api_reference/_generated/warp.geometry.IsoSurfaceBase.html#warp.geometry.IsoSurfaceBase.resize">resize() (warp.geometry.IsoSurfaceBase method)</a>
+
+      <ul>
+        <li><a href="api_reference/_generated/warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes.resize">(warp.geometry.IsoSurfaceMarchingCubes method)</a>
 </li>
+      </ul></li>
       <li><a href="api_reference/_generated/warp.Module.html#warp.Module.resolve_options">resolve_options() (warp.Module method)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.Operator.html#warp.fem.Operator.resolver">resolver (warp.fem.Operator attribute)</a>
@@ -4656,7 +4688,7 @@
 </li>
       <li><a href="api_reference/_generated/warp.utils.runlength_encode.html#warp.utils.runlength_encode">runlength_encode() (in module warp.utils)</a>
 </li>
-      <li><a href="api_reference/_generated/warp.MarchingCubes.html#warp.MarchingCubes.runtime">runtime (warp.MarchingCubes property)</a>
+      <li><a href="api_reference/_generated/warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes.runtime">runtime (warp.geometry.IsoSurfaceMarchingCubes property)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -4984,8 +5016,6 @@
       </ul></li>
       <li><a href="api_reference/_generated/warp.fem.Geometry.html#warp.fem.Geometry.side_measure">side_measure() (warp.fem.Geometry static method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.fem.AdaptiveNanogrid.html#warp.fem.AdaptiveNanogrid.side_measure_ratio">side_measure_ratio (warp.fem.AdaptiveNanogrid attribute)</a>
 
       <ul>
@@ -4996,6 +5026,8 @@
         <li><a href="api_reference/_generated/warp.fem.Nanogrid.html#warp.fem.Nanogrid.side_measure_ratio">(warp.fem.Nanogrid attribute)</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.fem.Geometry.html#warp.fem.Geometry.side_measure_ratio">side_measure_ratio() (warp.fem.Geometry static method)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.SpaceTopology.html#warp.fem.SpaceTopology.side_neighbor_node_counts">side_neighbor_node_counts() (warp.fem.SpaceTopology static method)</a>
@@ -5160,6 +5192,10 @@
 </li>
       <li><a href="api_reference/_generated/warp.fem.SpaceTopology.html#warp.fem.SpaceTopology">SpaceTopology (class in warp.fem)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.geometry.sparse_marching_cubes.html#warp.geometry.sparse_marching_cubes">sparse_marching_cubes() (in module warp.geometry)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.geometry.sparse_marching_cubes_from_cells.html#warp.geometry.sparse_marching_cubes_from_cells">sparse_marching_cubes_from_cells() (in module warp.geometry)</a>
+</li>
       <li><a href="api_reference/_generated/warp.spatial_matrix.html#warp.spatial_matrix">spatial_matrix (in module warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.spatial_matrixd.html#warp.spatial_matrixd">spatial_matrixd (class in warp)</a>
@@ -5274,8 +5310,12 @@
         <li><a href="api_reference/_generated/warp.fem.Subdomain.html#warp.fem.Subdomain.supports_lookup">(warp.fem.Subdomain method)</a>
 </li>
       </ul></li>
-      <li><a href="api_reference/_generated/warp.MarchingCubes.html#warp.MarchingCubes.surface">surface() (warp.MarchingCubes method)</a>
+      <li><a href="api_reference/_generated/warp.geometry.IsoSurfaceBase.html#warp.geometry.IsoSurfaceBase.surface">surface() (warp.geometry.IsoSurfaceBase method)</a>
+
+      <ul>
+        <li><a href="api_reference/_generated/warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes.surface">(warp.geometry.IsoSurfaceMarchingCubes method)</a>
 </li>
+      </ul></li>
       <li><a href="api_reference/_generated/warp.TextureResourceFlags.html#warp.TextureResourceFlags.SURFACE_LDST">SURFACE_LDST (warp.TextureResourceFlags attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.geometry.swept_volume_bounds.html#warp.geometry.swept_volume_bounds">swept_volume_bounds() (in module warp.geometry)</a>
@@ -5490,7 +5530,7 @@
         <li><a href="api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.transpose">(warp.sparse.BsrMatrix method)</a>
 </li>
       </ul></li>
-      <li><a href="api_reference/_generated/warp.MarchingCubes.html#warp.MarchingCubes.TRI_LOCAL_INDICES">TRI_LOCAL_INDICES (warp.MarchingCubes attribute)</a>
+      <li><a href="api_reference/_generated/warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes.TRI_LOCAL_INDICES">TRI_LOCAL_INDICES (warp.geometry.IsoSurfaceMarchingCubes attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.geometry.tri_tri_adjacency.html#warp.geometry.tri_tri_adjacency">tri_tri_adjacency() (in module warp.geometry)</a>
 </li>
@@ -5594,10 +5634,10 @@
 </li>
       <li><a href="api_reference/_generated/warp.render.OpenGLRenderer.html#warp.render.OpenGLRenderer.update_body_transforms">update_body_transforms() (warp.render.OpenGLRenderer method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.fem.Geometry.html#warp.fem.Geometry.update_bvh">update_bvh() (warp.fem.Geometry method)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.render.OpenGLRenderer.html#warp.render.OpenGLRenderer.update_instance_colors">update_instance_colors() (warp.render.OpenGLRenderer method)</a>
 </li>
       <li><a href="api_reference/_generated/warp.render.OpenGLRenderer.html#warp.render.OpenGLRenderer.update_model_matrix">update_model_matrix() (warp.render.OpenGLRenderer method)</a>
@@ -5614,6 +5654,12 @@
 </li>
       <li><a href="api_reference/_generated/warp.render.OpenGLRenderer.html#warp.render.OpenGLRenderer.update_view_matrix">update_view_matrix() (warp.render.OpenGLRenderer method)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.geometry.IsoSurfaceBase.html#warp.geometry.IsoSurfaceBase.upper">upper (warp.geometry.IsoSurfaceBase attribute)</a>
+
+      <ul>
+        <li><a href="api_reference/_generated/warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes.upper">(warp.geometry.IsoSurfaceMarchingCubes attribute)</a>
+</li>
+      </ul></li>
       <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.ActiveStats.upper_node_count">upper_node_count (warp.Volume.ActiveStats attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.render.UsdRenderer.html#warp.render.UsdRenderer">UsdRenderer (class in warp.render)</a>
@@ -5750,10 +5796,10 @@
 </li>
       <li><a href="api_reference/_generated/warp.vec3.html#warp.vec3">vec3 (in module warp)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.vec3b.html#warp.vec3b">vec3b (class in warp)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.vec3d.html#warp.vec3d">vec3d (class in warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.vec3f.html#warp.vec3f">vec3f (class in warp)</a>
@@ -5846,8 +5892,12 @@
         <li><a href="api_reference/_generated/warp.fem.space.shape.TriangleShapeFunction.html#warp.fem.space.shape.TriangleShapeFunction.VERTEX_NODE_COUNT">(warp.fem.space.shape.TriangleShapeFunction attribute)</a>
 </li>
       </ul></li>
-      <li><a href="api_reference/_generated/warp.MarchingCubes.html#warp.MarchingCubes.verts">verts (warp.MarchingCubes attribute)</a>
+      <li><a href="api_reference/_generated/warp.geometry.IsoSurfaceBase.html#warp.geometry.IsoSurfaceBase.verts">verts (warp.geometry.IsoSurfaceBase attribute)</a>
+
+      <ul>
+        <li><a href="api_reference/_generated/warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes.verts">(warp.geometry.IsoSurfaceMarchingCubes attribute)</a>
 </li>
+      </ul></li>
       <li><a href="api_reference/_generated/warp.array.html#warp.array.view">view() (warp.array method)</a>
 </li>
       <li><a href="api_reference/_generated/warp.Tape.html#warp.Tape.visualize">visualize() (warp.Tape method)</a>

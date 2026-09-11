@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.geometry.delaunay_edge_flip &#8212; Warp 1.18.0.dev4</title>
+    <title>warp.geometry.lipschitz_octree &#8212; Warp 1.18.0.dev4</title>
   
   
   
@@ -49,7 +49,7 @@
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.geometry.delaunay_edge_flip';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.geometry.lipschitz_octree';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.21.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
@@ -64,8 +64,8 @@
 
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="warp.geometry.find_triangle_neighbor_edge_index" href="warp.geometry.find_triangle_neighbor_edge_index.html" />
-    <link rel="prev" title="warp.geometry.SweptVolumeSignMode" href="warp.geometry.SweptVolumeSignMode.html" />
+    <link rel="next" title="warp.geometry.sparse_marching_cubes" href="warp.geometry.sparse_marching_cubes.html" />
+    <link rel="prev" title="warp.geometry.find_triangle_neighbor_edge_index" href="warp.geometry.find_triangle_neighbor_edge_index.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -488,7 +488,7 @@
     
     <li class="breadcrumb-item"><a href="../warp_geometry.html" class="nav-link">warp.geometry</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.geometry.delaunay_edge_flip</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.geometry.lipschitz_octree</span></li>
   </ul>
 </nav>
 </div>
@@ -505,63 +505,67 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="warp-geometry-delaunay-edge-flip">
-<h1>warp.geometry.delaunay_edge_flip<a class="headerlink" href="#warp-geometry-delaunay-edge-flip" title="Link to this heading">#</a></h1>
+  <section id="warp-geometry-lipschitz-octree">
+<h1>warp.geometry.lipschitz_octree<a class="headerlink" href="#warp-geometry-lipschitz-octree" title="Link to this heading">#</a></h1>
 <dl class="py function">
-<dt class="sig sig-object py" id="warp.geometry.delaunay_edge_flip">
-<span class="sig-prename descclassname"><span class="pre">warp.geometry.</span></span><span class="sig-name descname"><span class="pre">delaunay_edge_flip</span></span><span class="sig-paren">(</span>
+<dt class="sig sig-object py" id="warp.geometry.lipschitz_octree">
+<span class="sig-prename descclassname"><span class="pre">warp.geometry.</span></span><span class="sig-name descname"><span class="pre">lipschitz_octree</span></span><span class="sig-paren">(</span>
 
 <dl>
-<dd><em class="sig-param"><span class="n"><span class="pre">positions</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">indices</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">ref_positions</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">max_passes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">area_epsilon</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">ref_area_epsilon</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0e-10</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">field</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">origin</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">root_width</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_depth</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">lipschitz_bound</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/delaunay.py#L575-L684"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.delaunay_edge_flip" title="Link to this definition">#</a></dt>
-<dd><p>Flip non-Delaunay interior edges in place until all are Delaunay or max
-passes is reached.</p>
-<p>The triangulation is modified in place: <code class="docutils literal notranslate"><span class="pre">indices</span></code> is updated with the
-flipped connectivity while <code class="docutils literal notranslate"><span class="pre">positions</span></code> is left unchanged. Each iteration
-flips an independent set of edges in parallel; CUDA graph capture is
-supported.</p>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/sparse_marching_cubes.py#L940-L1009"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.lipschitz_octree" title="Link to this definition">#</a></dt>
+<dd><p>Return max-depth octree cells that may intersect a level set of a Lipschitz-bounded implicit field.</p>
+<p>Builds a sparse octree top-down, keeping only cells whose subtree can still
+reach the <code class="docutils literal notranslate"><span class="pre">threshold</span></code> level set of a 1-Lipschitz field: a cell of width
+<code class="docutils literal notranslate"><span class="pre">h</span></code> centered at <code class="docutils literal notranslate"><span class="pre">c</span></code> survives when <code class="docutils literal notranslate"><span class="pre">|field(c)</span> <span class="pre">-</span> <span class="pre">threshold|</span> <span class="pre">&lt;=</span> <span class="pre">lipschitz_bound</span> <span class="pre">*</span> <span class="pre">(sqrt(3)/2)</span> <span class="pre">*</span> <span class="pre">h</span></code>.
+The surviving leaves at <code class="docutils literal notranslate"><span class="pre">max_depth</span></code> form a thin shell around the surface.</p>
+<p>This mirrors <code class="docutils literal notranslate"><span class="pre">igl::lipschitz_octree</span></code> from libigl. It is the pruning stage
+used by <a class="reference internal" href="warp.geometry.sparse_marching_cubes.html#warp.geometry.sparse_marching_cubes" title="warp.geometry.sparse_marching_cubes"><code class="xref py py-func docutils literal notranslate"><span class="pre">sparse_marching_cubes()</span></code></a>, exposed separately so callers can
+build their own extractors, visualize the adaptive grid, or reuse the cells.</p>
+<p>This function does not support backward-mode automatic differentiation,
+by design: cell selection is a discrete, threshold-based search, not a
+smooth function of <code class="docutils literal notranslate"><span class="pre">field</span></code>’s values, so there is no gradient to carry
+from <code class="docutils literal notranslate"><span class="pre">field</span></code> to the output <code class="docutils literal notranslate"><span class="pre">cells</span></code>. Recording this function on a
+<code class="docutils literal notranslate"><span class="pre">warp.Tape()</span></code> is silent – no warning, no gradient; see
+<a class="reference internal" href="warp.geometry.sparse_marching_cubes_from_cells.html#warp.geometry.sparse_marching_cubes_from_cells" title="warp.geometry.sparse_marching_cubes_from_cells"><code class="xref py py-func docutils literal notranslate"><span class="pre">sparse_marching_cubes_from_cells()</span></code></a> for the differentiable
+extraction stage.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>positions</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>warp.array</em></a><em>[</em><a class="reference internal" href="warp.vec2f.html#warp.vec2f" title="warp.vec2f"><em>warp.vec2f</em></a><em>]</em>) – A <code class="docutils literal notranslate"><span class="pre">(vertex_count,)</span></code> <a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a> of <a class="reference internal" href="warp.vec2.html#warp.vec2" title="warp.vec2"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec2</span></code></a>
-vertex positions.</p></li>
-<li><p><strong>indices</strong> (<a class="reference internal" href="warp.array2d.html#warp.array2d" title="warp.array2d"><em>warp.array2d</em></a><em>[</em><a class="reference internal" href="warp.int32.html#warp.int32" title="warp.int32"><em>warp.int32</em></a><em>]</em>) – A <code class="docutils literal notranslate"><span class="pre">(num_tris,</span> <span class="pre">3)</span></code> <a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a> of <code class="docutils literal notranslate"><span class="pre">int32</span></code> triangle
-vertex indices, assumed counterclockwise. Modified in place.</p></li>
-<li><p><strong>ref_positions</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>warp.array</em></a><em>[</em><a class="reference internal" href="warp.vec2f.html#warp.vec2f" title="warp.vec2f"><em>warp.vec2f</em></a><em>] </em><em>| </em><em>None</em>) – Optional <code class="docutils literal notranslate"><span class="pre">(vertex_count,)</span></code> <a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a> of
-<a class="reference internal" href="warp.vec2.html#warp.vec2" title="warp.vec2"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec2</span></code></a> reference positions. When provided, flips that
-would create a degenerate triangle in the reference configuration
-are rejected. Useful when the working mesh is a deformation of a
-reference mesh that must stay non-degenerate.</p></li>
-<li><p><strong>max_passes</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Maximum number of parallel flip passes before stopping. Must
-be at least 1.</p></li>
-<li><p><strong>area_epsilon</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Minimum signed area required for each triangle produced by
-a flip; guards against creating inverted or sliver triangles. Must be
-finite and non-negative.</p></li>
-<li><p><strong>ref_area_epsilon</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Degeneracy threshold applied to <code class="docutils literal notranslate"><span class="pre">ref_positions</span></code>. Must be
-finite and non-negative.</p></li>
+<li><p><strong>field</strong> (<a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Callable" title="(in Python v3.14)"><em>Callable</em></a><em>[</em><em>[</em><a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em>]</em><em>, </em><a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em>]</em>) – The implicit function, in the batched form accepted by
+<a class="reference internal" href="warp.geometry.sparse_marching_cubes.html#warp.geometry.sparse_marching_cubes" title="warp.geometry.sparse_marching_cubes"><code class="xref py py-func docutils literal notranslate"><span class="pre">sparse_marching_cubes()</span></code></a>.</p></li>
+<li><p><strong>origin</strong> (<a class="reference internal" href="warp.vec3f.html#warp.vec3f" title="warp._src.types.vec3f"><em>vec3f</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>]</em>) – The minimum corner of the cubic root cell. Set <code class="docutils literal notranslate"><span class="pre">origin</span></code> and
+<code class="docutils literal notranslate"><span class="pre">root_width</span></code> so that the box <code class="docutils literal notranslate"><span class="pre">[origin,</span> <span class="pre">origin</span> <span class="pre">+</span> <span class="pre">root_width]</span></code>
+covers the entire level set to be found; cells outside it are never
+visited.</p></li>
+<li><p><strong>root_width</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – The side length of the cubic root cell.</p></li>
+<li><p><strong>max_depth</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – The octree depth. Leaf cells have width <code class="docutils literal notranslate"><span class="pre">root_width</span> <span class="pre">/</span> <span class="pre">2**max_depth</span></code>.</p></li>
+<li><p><strong>threshold</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – The isovalue defining the surface.</p></li>
+<li><p><strong>lipschitz_bound</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – An upper bound on the Lipschitz constant of <code class="docutils literal notranslate"><span class="pre">field</span></code>.</p></li>
+<li><p><strong>device</strong> (<a class="reference internal" href="warp.Device.html#warp.Device" title="warp._src.context.Device"><em>Device</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – The Warp device to run on. Defaults to the current device.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>A (1,) int32 array on indices.device containing the total number of
-edges flipped. Under graph capture, read the value after replaying the
-graph.</p>
+<dd class="field-even"><p>A tuple <code class="docutils literal notranslate"><span class="pre">(cells,</span> <span class="pre">cell_width)</span></code> where <code class="docutils literal notranslate"><span class="pre">cells</span></code> is a
+<code class="docutils literal notranslate"><span class="pre">warp.array[warp.vec3i]</span></code> of the leaf cells’ integer minimum-corner
+subscripts, in the convention <a class="reference internal" href="warp.geometry.sparse_marching_cubes_from_cells.html#warp.geometry.sparse_marching_cubes_from_cells" title="warp.geometry.sparse_marching_cubes_from_cells"><code class="xref py py-func docutils literal notranslate"><span class="pre">sparse_marching_cubes_from_cells()</span></code></a>
+expects (cell <code class="docutils literal notranslate"><span class="pre">(i,</span> <span class="pre">j,</span> <span class="pre">k)</span></code> covers
+<code class="docutils literal notranslate"><span class="pre">[origin</span> <span class="pre">+</span> <span class="pre">cell_width</span> <span class="pre">*</span> <span class="pre">(i,</span> <span class="pre">j,</span> <span class="pre">k),</span> <span class="pre">origin</span> <span class="pre">+</span> <span class="pre">cell_width</span> <span class="pre">*</span> <span class="pre">(i</span> <span class="pre">+</span> <span class="pre">1,</span> <span class="pre">j</span> <span class="pre">+</span> <span class="pre">1,</span> <span class="pre">k</span> <span class="pre">+</span> <span class="pre">1)]</span></code>),
+and <code class="docutils literal notranslate"><span class="pre">cell_width</span></code> is their common side length. <code class="docutils literal notranslate"><span class="pre">cells</span></code> is empty if
+the level set is not bracketed.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="warp.array.html#warp.array" title="warp.array">wp.array</a>[<a class="reference internal" href="warp.int32.html#warp.int32" title="warp.int32">wp.int32</a>]</p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>]</p>
 </dd>
 </dl>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Assumes a manifold mesh with consistent counterclockwise winding
-(positive signed triangle areas).</p>
-</div>
 </dd></dl>
 
 </section>
@@ -577,20 +581,20 @@ graph.</p>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.geometry.SweptVolumeSignMode.html"
+       href="warp.geometry.find_triangle_neighbor_edge_index.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.geometry.SweptVolumeSignMode</p>
+        <p class="prev-next-title">warp.geometry.find_triangle_neighbor_edge_index</p>
       </div>
     </a>
     <a class="right-next"
-       href="warp.geometry.find_triangle_neighbor_edge_index.html"
+       href="warp.geometry.sparse_marching_cubes.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.geometry.find_triangle_neighbor_edge_index</p>
+        <p class="prev-next-title">warp.geometry.sparse_marching_cubes</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -615,7 +619,7 @@ graph.</p>
   </div>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.geometry.delaunay_edge_flip"><code class="docutils literal notranslate"><span class="pre">delaunay_edge_flip()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.geometry.lipschitz_octree"><code class="docutils literal notranslate"><span class="pre">lipschitz_octree()</span></code></a></li>
 </ul>
   </nav></div>
 

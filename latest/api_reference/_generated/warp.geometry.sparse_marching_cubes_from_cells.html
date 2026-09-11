@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.geometry.delaunay_edge_flip &#8212; Warp 1.18.0.dev4</title>
+    <title>warp.geometry.sparse_marching_cubes_from_cells &#8212; Warp 1.18.0.dev4</title>
   
   
   
@@ -49,7 +49,7 @@
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.geometry.delaunay_edge_flip';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.geometry.sparse_marching_cubes_from_cells';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.21.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
@@ -64,8 +64,8 @@
 
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="warp.geometry.find_triangle_neighbor_edge_index" href="warp.geometry.find_triangle_neighbor_edge_index.html" />
-    <link rel="prev" title="warp.geometry.SweptVolumeSignMode" href="warp.geometry.SweptVolumeSignMode.html" />
+    <link rel="next" title="warp.geometry.swept_volume_bounds" href="warp.geometry.swept_volume_bounds.html" />
+    <link rel="prev" title="warp.geometry.sparse_marching_cubes" href="warp.geometry.sparse_marching_cubes.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -488,7 +488,7 @@
     
     <li class="breadcrumb-item"><a href="../warp_geometry.html" class="nav-link">warp.geometry</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.geometry.delaunay_edge_flip</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.geometry.sparse_marching_cubes_from_cells</span></li>
   </ul>
 </nav>
 </div>
@@ -505,63 +505,96 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="warp-geometry-delaunay-edge-flip">
-<h1>warp.geometry.delaunay_edge_flip<a class="headerlink" href="#warp-geometry-delaunay-edge-flip" title="Link to this heading">#</a></h1>
+  <section id="warp-geometry-sparse-marching-cubes-from-cells">
+<h1>warp.geometry.sparse_marching_cubes_from_cells<a class="headerlink" href="#warp-geometry-sparse-marching-cubes-from-cells" title="Link to this heading">#</a></h1>
 <dl class="py function">
-<dt class="sig sig-object py" id="warp.geometry.delaunay_edge_flip">
-<span class="sig-prename descclassname"><span class="pre">warp.geometry.</span></span><span class="sig-name descname"><span class="pre">delaunay_edge_flip</span></span><span class="sig-paren">(</span>
+<dt class="sig sig-object py" id="warp.geometry.sparse_marching_cubes_from_cells">
+<span class="sig-prename descclassname"><span class="pre">warp.geometry.</span></span><span class="sig-name descname"><span class="pre">sparse_marching_cubes_from_cells</span></span><span class="sig-paren">(</span>
 
 <dl>
-<dd><em class="sig-param"><span class="n"><span class="pre">positions</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">indices</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">ref_positions</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">max_passes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">area_epsilon</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">ref_area_epsilon</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0e-10</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">cells</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">corner_values</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">origin</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0.0,</span> <span class="pre">0.0,</span> <span class="pre">0.0)</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">cell_width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/delaunay.py#L575-L684"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.delaunay_edge_flip" title="Link to this definition">#</a></dt>
-<dd><p>Flip non-Delaunay interior edges in place until all are Delaunay or max
-passes is reached.</p>
-<p>The triangulation is modified in place: <code class="docutils literal notranslate"><span class="pre">indices</span></code> is updated with the
-flipped connectivity while <code class="docutils literal notranslate"><span class="pre">positions</span></code> is left unchanged. Each iteration
-flips an independent set of edges in parallel; CUDA graph capture is
-supported.</p>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/sparse_marching_cubes.py#L1011-L1144"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.sparse_marching_cubes_from_cells" title="Link to this definition">#</a></dt>
+<dd><p>Extract an isosurface from an explicit set of occupied cells and corner values.</p>
+<p>This is the sparse marching cubes core: it runs marching cubes on a
+caller-provided list of voxels (rather than cells discovered by a Lipschitz
+octree), sharing vertices between adjacent cells so the output is
+watertight. It is useful when the occupied cells are already known, such as
+a marked band of voxels around an object from a vision or generative model,
+and the implicit field has already been sampled at their corners. <code class="docutils literal notranslate"><span class="pre">cells</span></code>
+are expected to be unique (duplicate cells may result in
+duplicate/intersecting output mesh faces).</p>
+<p><a class="reference internal" href="warp.geometry.lipschitz_octree.html#warp.geometry.lipschitz_octree" title="warp.geometry.lipschitz_octree"><code class="xref py py-func docutils literal notranslate"><span class="pre">lipschitz_octree()</span></code></a> returns cell subscripts in this function’s
+convention, but not sampled corner values, which the caller must supply.</p>
+<p>This function supports backward-mode automatic differentiation: if
+<code class="docutils literal notranslate"><span class="pre">corner_values</span></code> has <code class="docutils literal notranslate"><span class="pre">requires_grad=True</span></code> and the call is wrapped in a
+<code class="docutils literal notranslate"><span class="pre">warp.Tape()</span></code>, gradient flows from the output <code class="docutils literal notranslate"><span class="pre">verts</span></code> back to
+<code class="docutils literal notranslate"><span class="pre">corner_values</span></code> through the marching-cubes vertex interpolation. When a
+corner is shared by several cells, <code class="docutils literal notranslate"><span class="pre">corner_values</span></code> is expected to agree
+at that corner (see above); gradient flows back through exactly one of
+the agreeing entries (a fixed, deterministic choice, not an arbitrary
+one), which is the correct behavior when the redundant entries are
+independent evaluations of the same underlying point function. <code class="docutils literal notranslate"><span class="pre">cells</span></code>
+(and any cell-selection step that produced them, such as
+<a class="reference internal" href="warp.geometry.lipschitz_octree.html#warp.geometry.lipschitz_octree" title="warp.geometry.lipschitz_octree"><code class="xref py py-func docutils literal notranslate"><span class="pre">lipschitz_octree()</span></code></a>) is not differentiated – it is
+integer subscript data with no gradient to carry.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The subscript convention here differs from the VDB-style one used by
+<a class="reference internal" href="warp.Volume.html#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Volume</span></code></a>, so subscripts are not interchangeable between the
+two. In <a class="reference internal" href="warp.Volume.html#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Volume</span></code></a>, a subscript names a <em>voxel</em> and the sample
+lives at that voxel’s center, so voxel <code class="docutils literal notranslate"><span class="pre">(i,</span> <span class="pre">j,</span> <span class="pre">k)</span></code> covers
+<code class="docutils literal notranslate"><span class="pre">[ijk</span> <span class="pre">-</span> <span class="pre">1/2,</span> <span class="pre">ijk</span> <span class="pre">+</span> <span class="pre">1/2]</span></code> in index space. Here a subscript names a
+<em>cell</em> by its minimum corner, so cell <code class="docutils literal notranslate"><span class="pre">(i,</span> <span class="pre">j,</span> <span class="pre">k)</span></code> covers
+<code class="docutils literal notranslate"><span class="pre">[ijk,</span> <span class="pre">ijk</span> <span class="pre">+</span> <span class="pre">1]</span></code> and the samples live at its 8 corners.</p>
+<p>Both place samples on the integer lattice, so what shifts by half a cell
+is the region a subscript refers to, not the data. Concretely, a
+<a class="reference internal" href="warp.Volume.html#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Volume</span></code></a> voxel subscript corresponds to a <em>corner</em> subscript
+here rather than a cell subscript: the corners of cell <code class="docutils literal notranslate"><span class="pre">(i,</span> <span class="pre">j,</span> <span class="pre">k)</span></code> are
+the volume voxels <code class="docutils literal notranslate"><span class="pre">(i,</span> <span class="pre">j,</span> <span class="pre">k)</span></code> through <code class="docutils literal notranslate"><span class="pre">(i</span> <span class="pre">+</span> <span class="pre">1,</span> <span class="pre">j</span> <span class="pre">+</span> <span class="pre">1,</span> <span class="pre">k</span> <span class="pre">+</span> <span class="pre">1)</span></code>.
+<code class="docutils literal notranslate"><span class="pre">origin</span></code> matches <code class="docutils literal notranslate"><span class="pre">min_world</span></code> in
+<a class="reference internal" href="warp.Volume.html#warp.Volume.load_from_numpy" title="warp.Volume.load_from_numpy"><code class="xref py py-meth docutils literal notranslate"><span class="pre">warp.Volume.load_from_numpy()</span></code></a> and <code class="docutils literal notranslate"><span class="pre">cell_width</span></code> matches
+<code class="docutils literal notranslate"><span class="pre">voxel_size</span></code>, since both give the world position of subscript
+<code class="docutils literal notranslate"><span class="pre">(0,</span> <span class="pre">0,</span> <span class="pre">0)</span></code> and the lattice spacing.</p>
+</div>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>positions</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>warp.array</em></a><em>[</em><a class="reference internal" href="warp.vec2f.html#warp.vec2f" title="warp.vec2f"><em>warp.vec2f</em></a><em>]</em>) – A <code class="docutils literal notranslate"><span class="pre">(vertex_count,)</span></code> <a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a> of <a class="reference internal" href="warp.vec2.html#warp.vec2" title="warp.vec2"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec2</span></code></a>
-vertex positions.</p></li>
-<li><p><strong>indices</strong> (<a class="reference internal" href="warp.array2d.html#warp.array2d" title="warp.array2d"><em>warp.array2d</em></a><em>[</em><a class="reference internal" href="warp.int32.html#warp.int32" title="warp.int32"><em>warp.int32</em></a><em>]</em>) – A <code class="docutils literal notranslate"><span class="pre">(num_tris,</span> <span class="pre">3)</span></code> <a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a> of <code class="docutils literal notranslate"><span class="pre">int32</span></code> triangle
-vertex indices, assumed counterclockwise. Modified in place.</p></li>
-<li><p><strong>ref_positions</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>warp.array</em></a><em>[</em><a class="reference internal" href="warp.vec2f.html#warp.vec2f" title="warp.vec2f"><em>warp.vec2f</em></a><em>] </em><em>| </em><em>None</em>) – Optional <code class="docutils literal notranslate"><span class="pre">(vertex_count,)</span></code> <a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a> of
-<a class="reference internal" href="warp.vec2.html#warp.vec2" title="warp.vec2"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec2</span></code></a> reference positions. When provided, flips that
-would create a degenerate triangle in the reference configuration
-are rejected. Useful when the working mesh is a deformation of a
-reference mesh that must stay non-degenerate.</p></li>
-<li><p><strong>max_passes</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Maximum number of parallel flip passes before stopping. Must
-be at least 1.</p></li>
-<li><p><strong>area_epsilon</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Minimum signed area required for each triangle produced by
-a flip; guards against creating inverted or sliver triangles. Must be
-finite and non-negative.</p></li>
-<li><p><strong>ref_area_epsilon</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Degeneracy threshold applied to <code class="docutils literal notranslate"><span class="pre">ref_positions</span></code>. Must be
-finite and non-negative.</p></li>
+<li><p><strong>cells</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>ArrayLike</em>) – An <code class="docutils literal notranslate"><span class="pre">(N,</span> <span class="pre">3)</span></code> array of integer cell minimum-corner subscripts, as a
+<code class="docutils literal notranslate"><span class="pre">warp.array[warp.vec3i]</span></code>, a <code class="docutils literal notranslate"><span class="pre">warp.array[warp.int32]</span></code> of shape
+<code class="docutils literal notranslate"><span class="pre">(N,</span> <span class="pre">3)</span></code>, or any array-like convertible to one. A cell at subscript
+<code class="docutils literal notranslate"><span class="pre">(i,</span> <span class="pre">j,</span> <span class="pre">k)</span></code> occupies the box with minimum corner
+<code class="docutils literal notranslate"><span class="pre">origin</span> <span class="pre">+</span> <span class="pre">cell_width</span> <span class="pre">*</span> <span class="pre">(i,</span> <span class="pre">j,</span> <span class="pre">k)</span></code>. Subscripts may be negative and
+need not be contiguous. A <code class="docutils literal notranslate"><span class="pre">warp.array</span></code> already on <code class="docutils literal notranslate"><span class="pre">device</span></code> is
+consumed in place, without a host round trip.</p></li>
+<li><p><strong>corner_values</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>ArrayLike</em>) – An <code class="docutils literal notranslate"><span class="pre">(N,</span> <span class="pre">8)</span></code> array of the field value at each cell’s 8
+corners, ordered by <a class="reference internal" href="warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes.CUBE_CORNER_OFFSETS" title="warp.geometry.IsoSurfaceMarchingCubes.CUBE_CORNER_OFFSETS"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.geometry.IsoSurfaceMarchingCubes.CUBE_CORNER_OFFSETS</span></code></a>
+(corner <code class="docutils literal notranslate"><span class="pre">c</span></code> is at subscript <code class="docutils literal notranslate"><span class="pre">(i,</span> <span class="pre">j,</span> <span class="pre">k)</span> <span class="pre">+</span> <span class="pre">CUBE_CORNER_OFFSETS[c]</span></code>).
+Values at corners shared between cells are expected to agree.</p></li>
+<li><p><strong>origin</strong> (<a class="reference internal" href="warp.vec3f.html#warp.vec3f" title="warp._src.types.vec3f"><em>vec3f</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>]</em>) – The world-space position of cell subscript <code class="docutils literal notranslate"><span class="pre">(0,</span> <span class="pre">0,</span> <span class="pre">0)</span></code>.</p></li>
+<li><p><strong>cell_width</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – The side length of a cell.</p></li>
+<li><p><strong>threshold</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – The isovalue defining the surface.</p></li>
+<li><p><strong>device</strong> (<a class="reference internal" href="warp.Device.html#warp.Device" title="warp._src.context.Device"><em>Device</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – The Warp device to run on. Defaults to the current device.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>A (1,) int32 array on indices.device containing the total number of
-edges flipped. Under graph capture, read the value after replaying the
-graph.</p>
+<dd class="field-even"><p>A tuple <code class="docutils literal notranslate"><span class="pre">(vertices,</span> <span class="pre">indices)</span></code> as in <a class="reference internal" href="warp.geometry.sparse_marching_cubes.html#warp.geometry.sparse_marching_cubes" title="warp.geometry.sparse_marching_cubes"><code class="xref py py-func docutils literal notranslate"><span class="pre">sparse_marching_cubes()</span></code></a>.</p>
 </dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="warp.array.html#warp.array" title="warp.array">wp.array</a>[<a class="reference internal" href="warp.int32.html#warp.int32" title="warp.int32">wp.int32</a>]</p>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">cell_width</span></code> is not positive, the shapes of <code class="docutils literal notranslate"><span class="pre">cells</span></code> and
+    <code class="docutils literal notranslate"><span class="pre">corner_values</span></code> are inconsistent, or the subscript range is too
+    large to pack into 64-bit corner codes.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>, <a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>]</p>
 </dd>
 </dl>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Assumes a manifold mesh with consistent counterclockwise winding
-(positive signed triangle areas).</p>
-</div>
 </dd></dl>
 
 </section>
@@ -577,20 +610,20 @@ graph.</p>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.geometry.SweptVolumeSignMode.html"
+       href="warp.geometry.sparse_marching_cubes.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.geometry.SweptVolumeSignMode</p>
+        <p class="prev-next-title">warp.geometry.sparse_marching_cubes</p>
       </div>
     </a>
     <a class="right-next"
-       href="warp.geometry.find_triangle_neighbor_edge_index.html"
+       href="warp.geometry.swept_volume_bounds.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.geometry.find_triangle_neighbor_edge_index</p>
+        <p class="prev-next-title">warp.geometry.swept_volume_bounds</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -615,7 +648,7 @@ graph.</p>
   </div>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.geometry.delaunay_edge_flip"><code class="docutils literal notranslate"><span class="pre">delaunay_edge_flip()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.geometry.sparse_marching_cubes_from_cells"><code class="docutils literal notranslate"><span class="pre">sparse_marching_cubes_from_cells()</span></code></a></li>
 </ul>
   </nav></div>
 

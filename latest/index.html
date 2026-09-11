@@ -573,19 +573,16 @@ tile-based GPU programming. Install the optional dependencies with
 <td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_graph_capture.py"><img alt="_images/core_graph_capture.png" src="_images/core_graph_capture.png" />
 </a>
 </td>
-<td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_marching_cubes.py"><img alt="_images/core_marching_cubes.png" src="_images/core_marching_cubes.png" />
+<td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_mesh.py"><img alt="_images/core_mesh.png" src="_images/core_mesh.png" />
 </a>
 </td>
 </tr>
 <tr class="row-even"><td><p>dem</p></td>
 <td><p>fluid</p></td>
 <td><p>graph capture</p></td>
-<td><p>marching cubes</p></td>
+<td><p>mesh</p></td>
 </tr>
-<tr class="row-odd"><td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_mesh.py"><img alt="_images/core_mesh.png" src="_images/core_mesh.png" />
-</a>
-</td>
-<td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_nvdb.py"><img alt="_images/core_nvdb.png" src="_images/core_nvdb.png" />
+<tr class="row-odd"><td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_nvdb.py"><img alt="_images/core_nvdb.png" src="_images/core_nvdb.png" />
 </a>
 </td>
 <td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_raycast.py"><img alt="_images/core_raycast.png" src="_images/core_raycast.png" />
@@ -594,16 +591,16 @@ tile-based GPU programming. Install the optional dependencies with
 <td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_raymarch.py"><img alt="_images/core_raymarch.png" src="_images/core_raymarch.png" />
 </a>
 </td>
-</tr>
-<tr class="row-even"><td><p>mesh</p></td>
-<td><p>nvdb</p></td>
-<td><p>raycast</p></td>
-<td><p>raymarch</p></td>
-</tr>
-<tr class="row-odd"><td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_sample_mesh.py"><img alt="_images/core_sample_mesh.png" src="_images/core_sample_mesh.png" />
+<td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_sample_mesh.py"><img alt="_images/core_sample_mesh.png" src="_images/core_sample_mesh.png" />
 </a>
 </td>
-<td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_sph.py"><img alt="_images/core_sph.png" src="_images/core_sph.png" />
+</tr>
+<tr class="row-even"><td><p>nvdb</p></td>
+<td><p>raycast</p></td>
+<td><p>raymarch</p></td>
+<td><p>sample_mesh</p></td>
+</tr>
+<tr class="row-odd"><td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_sph.py"><img alt="_images/core_sph.png" src="_images/core_sph.png" />
 </a>
 </td>
 <td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_torch.py"><img alt="_images/core_torch.png" src="_images/core_torch.png" />
@@ -612,23 +609,52 @@ tile-based GPU programming. Install the optional dependencies with
 <td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_wave.py"><img alt="_images/core_wave.png" src="_images/core_wave.png" />
 </a>
 </td>
+<td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_fft_poisson_navier_stokes_2d.py"><img alt="_images/core_fft_poisson_navier_stokes_2d.png" src="_images/core_fft_poisson_navier_stokes_2d.png" />
+</a>
+</td>
 </tr>
-<tr class="row-even"><td><p>sample_mesh</p></td>
-<td><p>sph</p></td>
+<tr class="row-even"><td><p>sph</p></td>
 <td><p>torch</p></td>
 <td><p>wave</p></td>
+<td><p>2-D incompressible turbulence in a periodic box</p></td>
 </tr>
-<tr class="row-odd"><td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_fft_poisson_navier_stokes_2d.py"><img alt="_images/core_fft_poisson_navier_stokes_2d.png" src="_images/core_fft_poisson_navier_stokes_2d.png" />
+<tr class="row-odd"><td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_fdtd_3d.py"><img alt="_images/core_fdtd_3d.png" src="_images/core_fdtd_3d.png" />
 </a>
 </td>
-<td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_fdtd_3d.py"><img alt="_images/core_fdtd_3d.png" src="_images/core_fdtd_3d.png" />
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr class="row-even"><td><p>3-D FDTD Luneburg lens</p></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="warp-examples-geometry">
+<h3>warp/examples/geometry<a class="headerlink" href="#warp-examples-geometry" title="Link to this heading">#</a></h3>
+<div class="pst-scrollable-table-container"><table class="gallery table">
+<colgroup>
+<col style="width: 25.0%" />
+<col style="width: 25.0%" />
+<col style="width: 25.0%" />
+<col style="width: 25.0%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/blob/main/warp/examples/geometry/example_isosurface.py"><img alt="_images/geometry_isosurface.png" src="_images/geometry_isosurface.png" />
+</a>
+</td>
+<td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/blob/main/warp/examples/geometry/example_sparse_marching_cubes.py"><img alt="_images/geometry_sparse_marching_cubes.png" src="_images/geometry_sparse_marching_cubes.png" />
 </a>
 </td>
 <td></td>
 <td></td>
 </tr>
-<tr class="row-even"><td><p>2-D incompressible turbulence in a periodic box</p></td>
-<td><p>3-D FDTD Luneburg lens</p></td>
+<tr class="row-even"><td><p>isosurface</p></td>
+<td><p>sparse marching cubes</p></td>
 <td></td>
 <td></td>
 </tr>
@@ -704,8 +730,8 @@ tile-based GPU programming. Install the optional dependencies with
 </table>
 </div>
 </section>
-<section id="warp-examples-geometry">
-<h3>warp/examples/geometry<a class="headerlink" href="#warp-examples-geometry" title="Link to this heading">#</a></h3>
+<section id="id1">
+<h3>warp/examples/geometry<a class="headerlink" href="#id1" title="Link to this heading">#</a></h3>
 <div class="pst-scrollable-table-container"><table class="gallery table">
 <colgroup>
 <col style="width: 25.0%" />
@@ -1040,8 +1066,9 @@ tile-based GPU programming. Install the optional dependencies with
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#quickstart">Quickstart</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#example-gallery">Example Gallery</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp-examples-core">warp/examples/core</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp-examples-fem">warp/examples/fem</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp-examples-geometry">warp/examples/geometry</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp-examples-fem">warp/examples/fem</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">warp/examples/geometry</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp-examples-optim">warp/examples/optim</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp-examples-tile">warp/examples/tile</a><ul class="nav section-nav flex-column">
 </ul>

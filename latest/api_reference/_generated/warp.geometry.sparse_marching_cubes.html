@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.geometry.delaunay_edge_flip &#8212; Warp 1.18.0.dev4</title>
+    <title>warp.geometry.sparse_marching_cubes &#8212; Warp 1.18.0.dev4</title>
   
   
   
@@ -49,7 +49,7 @@
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.geometry.delaunay_edge_flip';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.geometry.sparse_marching_cubes';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.21.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
@@ -64,8 +64,8 @@
 
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="warp.geometry.find_triangle_neighbor_edge_index" href="warp.geometry.find_triangle_neighbor_edge_index.html" />
-    <link rel="prev" title="warp.geometry.SweptVolumeSignMode" href="warp.geometry.SweptVolumeSignMode.html" />
+    <link rel="next" title="warp.geometry.sparse_marching_cubes_from_cells" href="warp.geometry.sparse_marching_cubes_from_cells.html" />
+    <link rel="prev" title="warp.geometry.lipschitz_octree" href="warp.geometry.lipschitz_octree.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -488,7 +488,7 @@
     
     <li class="breadcrumb-item"><a href="../warp_geometry.html" class="nav-link">warp.geometry</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.geometry.delaunay_edge_flip</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.geometry.sparse_marching_cubes</span></li>
   </ul>
 </nav>
 </div>
@@ -505,63 +505,107 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="warp-geometry-delaunay-edge-flip">
-<h1>warp.geometry.delaunay_edge_flip<a class="headerlink" href="#warp-geometry-delaunay-edge-flip" title="Link to this heading">#</a></h1>
+  <section id="warp-geometry-sparse-marching-cubes">
+<h1>warp.geometry.sparse_marching_cubes<a class="headerlink" href="#warp-geometry-sparse-marching-cubes" title="Link to this heading">#</a></h1>
 <dl class="py function">
-<dt class="sig sig-object py" id="warp.geometry.delaunay_edge_flip">
-<span class="sig-prename descclassname"><span class="pre">warp.geometry.</span></span><span class="sig-name descname"><span class="pre">delaunay_edge_flip</span></span><span class="sig-paren">(</span>
+<dt class="sig sig-object py" id="warp.geometry.sparse_marching_cubes">
+<span class="sig-prename descclassname"><span class="pre">warp.geometry.</span></span><span class="sig-name descname"><span class="pre">sparse_marching_cubes</span></span><span class="sig-paren">(</span>
 
 <dl>
-<dd><em class="sig-param"><span class="n"><span class="pre">positions</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">indices</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">ref_positions</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">max_passes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">area_epsilon</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">ref_area_epsilon</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0e-10</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">field</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">nx</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">ny</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">nz</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">lower</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">upper</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">lipschitz_bound</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">return_stats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/delaunay.py#L575-L684"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.delaunay_edge_flip" title="Link to this definition">#</a></dt>
-<dd><p>Flip non-Delaunay interior edges in place until all are Delaunay or max
-passes is reached.</p>
-<p>The triangulation is modified in place: <code class="docutils literal notranslate"><span class="pre">indices</span></code> is updated with the
-flipped connectivity while <code class="docutils literal notranslate"><span class="pre">positions</span></code> is left unchanged. Each iteration
-flips an independent set of edges in parallel; CUDA graph capture is
-supported.</p>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/sparse_marching_cubes.py#L1146-L1310"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.sparse_marching_cubes" title="Link to this definition">#</a></dt>
+<dd><p>Extract an isosurface from an implicit function using a Lipschitz octree.</p>
+<p>Rather than sampling a dense grid, this routine builds a sparse octree that
+provably brackets the level set of a 1-Lipschitz implicit function (such as a
+signed distance function) and runs marching cubes only on the near-surface
+cells, at a cost that scales with the surface area rather than the volume.</p>
+<p>The grid is specified exactly as for
+<a class="reference internal" href="warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes.extract" title="warp.geometry.IsoSurfaceMarchingCubes.extract"><code class="xref py py-meth docutils literal notranslate"><span class="pre">warp.geometry.IsoSurfaceMarchingCubes.extract()</span></code></a>: <code class="docutils literal notranslate"><span class="pre">nx,</span> <span class="pre">ny,</span> <span class="pre">nz</span></code> grid
+nodes over the box <code class="docutils literal notranslate"><span class="pre">[lower,</span> <span class="pre">upper]</span></code>, which may be anisotropic. Calling
+this function and
+<a class="reference internal" href="warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes.extract" title="warp.geometry.IsoSurfaceMarchingCubes.extract"><code class="xref py py-meth docutils literal notranslate"><span class="pre">extract()</span></code></a> with the same
+<code class="docutils literal notranslate"><span class="pre">nx,</span> <span class="pre">ny,</span> <span class="pre">nz</span></code> and bounds produces the same surface.</p>
+<p>Both the pruning pass (at cell centers) and the extraction pass (at cell
+corners) query <code class="docutils literal notranslate"><span class="pre">field</span></code> in batches, never one point at a time. If <code class="docutils literal notranslate"><span class="pre">field</span></code> is
+implemented entirely with Warp (a kernel launch, with no host round trip),
+the whole pipeline stays on the GPU; see
+<code class="docutils literal notranslate"><span class="pre">warp/examples/geometry/example_sparse_marching_cubes.py</span></code> for a mesh-query
+implicit function that does this. A callable that wraps a host library
+(NumPy, PyTorch, …) is equally valid – it just pays a device/host sync
+on every call, since the values it returns must still land back on the
+query points’ device.</p>
+<p>This function supports backward-mode automatic differentiation: if
+<code class="docutils literal notranslate"><span class="pre">field</span></code>’s output array has <code class="docutils literal notranslate"><span class="pre">requires_grad=True</span></code> (the caller’s
+responsibility to allocate) and the call is wrapped in a <code class="docutils literal notranslate"><span class="pre">warp.Tape()</span></code>,
+gradient flows from the output <code class="docutils literal notranslate"><span class="pre">verts</span></code> back through the corner values
+<code class="docutils literal notranslate"><span class="pre">field</span></code> produced. Cell selection (<a class="reference internal" href="warp.geometry.lipschitz_octree.html#warp.geometry.lipschitz_octree" title="warp.geometry.lipschitz_octree"><code class="xref py py-func docutils literal notranslate"><span class="pre">lipschitz_octree()</span></code></a>) is not
+differentiated – it is a discrete, threshold-based search – and does
+not print tape warnings either.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>positions</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>warp.array</em></a><em>[</em><a class="reference internal" href="warp.vec2f.html#warp.vec2f" title="warp.vec2f"><em>warp.vec2f</em></a><em>]</em>) – A <code class="docutils literal notranslate"><span class="pre">(vertex_count,)</span></code> <a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a> of <a class="reference internal" href="warp.vec2.html#warp.vec2" title="warp.vec2"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec2</span></code></a>
-vertex positions.</p></li>
-<li><p><strong>indices</strong> (<a class="reference internal" href="warp.array2d.html#warp.array2d" title="warp.array2d"><em>warp.array2d</em></a><em>[</em><a class="reference internal" href="warp.int32.html#warp.int32" title="warp.int32"><em>warp.int32</em></a><em>]</em>) – A <code class="docutils literal notranslate"><span class="pre">(num_tris,</span> <span class="pre">3)</span></code> <a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a> of <code class="docutils literal notranslate"><span class="pre">int32</span></code> triangle
-vertex indices, assumed counterclockwise. Modified in place.</p></li>
-<li><p><strong>ref_positions</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>warp.array</em></a><em>[</em><a class="reference internal" href="warp.vec2f.html#warp.vec2f" title="warp.vec2f"><em>warp.vec2f</em></a><em>] </em><em>| </em><em>None</em>) – Optional <code class="docutils literal notranslate"><span class="pre">(vertex_count,)</span></code> <a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a> of
-<a class="reference internal" href="warp.vec2.html#warp.vec2" title="warp.vec2"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec2</span></code></a> reference positions. When provided, flips that
-would create a degenerate triangle in the reference configuration
-are rejected. Useful when the working mesh is a deformation of a
-reference mesh that must stay non-degenerate.</p></li>
-<li><p><strong>max_passes</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Maximum number of parallel flip passes before stopping. Must
-be at least 1.</p></li>
-<li><p><strong>area_epsilon</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Minimum signed area required for each triangle produced by
-a flip; guards against creating inverted or sliver triangles. Must be
-finite and non-negative.</p></li>
-<li><p><strong>ref_area_epsilon</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Degeneracy threshold applied to <code class="docutils literal notranslate"><span class="pre">ref_positions</span></code>. Must be
-finite and non-negative.</p></li>
+<li><p><strong>field</strong> (<a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Callable" title="(in Python v3.14)"><em>Callable</em></a><em>[</em><em>[</em><a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em>]</em><em>, </em><a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em>]</em>) – The implicit function, as a batched callable with the contract
+<code class="docutils literal notranslate"><span class="pre">evaluate(points:</span> <span class="pre">warp.array[warp.vec3])</span> <span class="pre">-&gt;</span> <span class="pre">warp.array[warp.float32]</span></code>,
+returning the signed distance (or any 1-Lipschitz field whose
+<code class="docutils literal notranslate"><span class="pre">threshold</span></code> level set is the surface) at each query point. A bare
+single-point <code class="docutils literal notranslate"><span class="pre">&#64;warp.func</span></code> is not accepted directly – wrap it in a
+kernel that evaluates it over the batch (see above), which keeps
+evaluation on the GPU instead of hiding a per-point kernel launch
+behind what looks like a single call.</p></li>
+<li><p><strong>nx</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of grid nodes in the x-direction.</p></li>
+<li><p><strong>ny</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of grid nodes in the y-direction.</p></li>
+<li><p><strong>nz</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of grid nodes in the z-direction.</p></li>
+<li><p><strong>lower</strong> (<a class="reference internal" href="warp.vec3f.html#warp.vec3f" title="warp._src.types.vec3f"><em>vec3f</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>] </em><em>| </em><em>None</em>) – The 3D coordinate that the grid’s corner at index
+<code class="docutils literal notranslate"><span class="pre">(0,</span> <span class="pre">0,</span> <span class="pre">0)</span></code> maps to. Defaults to <code class="docutils literal notranslate"><span class="pre">(0.0,</span> <span class="pre">0.0,</span> <span class="pre">0.0)</span></code> if
+<code class="docutils literal notranslate"><span class="pre">None</span></code>. Anything outside <code class="docutils literal notranslate"><span class="pre">[lower,</span> <span class="pre">upper]</span></code> is never visited,
+so parts of the level set that leave it are simply missing from
+the output, leaving the mesh open where it exits.</p></li>
+<li><p><strong>upper</strong> (<a class="reference internal" href="warp.vec3f.html#warp.vec3f" title="warp._src.types.vec3f"><em>vec3f</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>] </em><em>| </em><em>None</em>) – The 3D coordinate that the grid’s corner at index
+<code class="docutils literal notranslate"><span class="pre">(nx</span> <span class="pre">-</span> <span class="pre">1,</span> <span class="pre">ny</span> <span class="pre">-</span> <span class="pre">1,</span> <span class="pre">nz</span> <span class="pre">-</span> <span class="pre">1)</span></code> maps to. Defaults to align with the
+grid’s maximal indices if <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
+<li><p><strong>threshold</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – The isovalue defining the surface.</p></li>
+<li><p><strong>lipschitz_bound</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – An upper bound on the Lipschitz constant of <code class="docutils literal notranslate"><span class="pre">field</span></code>. Use
+<code class="docutils literal notranslate"><span class="pre">1.0</span></code> for a true signed distance function. Larger values widen the
+retained band, trading speed for a stronger guarantee when the field
+varies faster than unit rate.</p></li>
+<li><p><strong>device</strong> (<a class="reference internal" href="warp.Device.html#warp.Device" title="warp._src.context.Device"><em>Device</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – The Warp device to run on. Defaults to the current device.</p></li>
+<li><p><strong>return_stats</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, also return a dictionary of diagnostics
+(leaf-cell count, unique-corner count, implicit-function evaluation
+count, culled-cell count) useful for benchmarking against a dense
+grid.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>A (1,) int32 array on indices.device containing the total number of
-edges flipped. Under graph capture, read the value after replaying the
-graph.</p>
+<dd class="field-even"><p>A tuple <code class="docutils literal notranslate"><span class="pre">(vertices,</span> <span class="pre">indices)</span></code> where <code class="docutils literal notranslate"><span class="pre">vertices</span></code> is a
+<code class="docutils literal notranslate"><span class="pre">warp.array[warp.vec3]</span></code> and <code class="docutils literal notranslate"><span class="pre">indices</span></code> is a flat
+<code class="docutils literal notranslate"><span class="pre">warp.array[warp.int32]</span></code> with three consecutive entries per triangle.
+If <code class="docutils literal notranslate"><span class="pre">return_stats</span></code> is <code class="docutils literal notranslate"><span class="pre">True</span></code>, returns <code class="docutils literal notranslate"><span class="pre">(vertices,</span> <span class="pre">indices,</span> <span class="pre">stats)</span></code>.</p>
 </dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="warp.array.html#warp.array" title="warp.array">wp.array</a>[<a class="reference internal" href="warp.int32.html#warp.int32" title="warp.int32">wp.int32</a>]</p>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">nx</span></code>, <code class="docutils literal notranslate"><span class="pre">ny</span></code>, or <code class="docutils literal notranslate"><span class="pre">nz</span></code> is less than 2, or
+    <code class="docutils literal notranslate"><span class="pre">lipschitz_bound</span></code> is negative.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.14)"><strong>TypeError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">field</span></code> is not callable (including a bare
+    single-point <code class="docutils literal notranslate"><span class="pre">&#64;warp.func</span></code>, which must be wrapped in a batched
+    kernel first).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>, <a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>] | <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>, <a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a>]</p>
 </dd>
 </dl>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Assumes a manifold mesh with consistent counterclockwise winding
-(positive signed triangle areas).</p>
-</div>
 </dd></dl>
 
 </section>
@@ -577,20 +621,20 @@ graph.</p>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.geometry.SweptVolumeSignMode.html"
+       href="warp.geometry.lipschitz_octree.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.geometry.SweptVolumeSignMode</p>
+        <p class="prev-next-title">warp.geometry.lipschitz_octree</p>
       </div>
     </a>
     <a class="right-next"
-       href="warp.geometry.find_triangle_neighbor_edge_index.html"
+       href="warp.geometry.sparse_marching_cubes_from_cells.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.geometry.find_triangle_neighbor_edge_index</p>
+        <p class="prev-next-title">warp.geometry.sparse_marching_cubes_from_cells</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -615,7 +659,7 @@ graph.</p>
   </div>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.geometry.delaunay_edge_flip"><code class="docutils literal notranslate"><span class="pre">delaunay_edge_flip()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.geometry.sparse_marching_cubes"><code class="docutils literal notranslate"><span class="pre">sparse_marching_cubes()</span></code></a></li>
 </ul>
   </nav></div>
 

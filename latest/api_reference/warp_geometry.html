@@ -64,7 +64,7 @@
 
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="warp.geometry.SweptVolumeSignMode" href="_generated/warp.geometry.SweptVolumeSignMode.html" />
+    <link rel="next" title="warp.geometry.IsoSurfaceBase" href="_generated/warp.geometry.IsoSurfaceBase.html" />
     <link rel="prev" title="warp.fem.utils.grid_to_tris" href="_generated/warp.fem.utils.grid_to_tris.html" />
 
 
@@ -550,9 +550,18 @@
                   
   <section id="module-warp.geometry">
 <span id="warp-geometry"></span><h1>warp.geometry<a class="headerlink" href="#module-warp.geometry" title="Link to this heading">#</a></h1>
-<p>Geometry processing utilities.</p>
+<p>Geometry processing operations.</p>
 <p>This module provides functions to process 2D and 3D geometry and their
-associated topological data structures (e.g., meshes).</p>
+associated topological data structures (e.g., meshes), and GPU-accelerated
+isosurface extraction.</p>
+<p>Dense-grid isosurface backends take a 3-D <code class="docutils literal notranslate"><span class="pre">warp.float32</span></code> field sampled at grid
+nodes and share the <a class="reference internal" href="_generated/warp.geometry.IsoSurfaceBase.html#warp.geometry.IsoSurfaceBase" title="warp.geometry.IsoSurfaceBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">IsoSurfaceBase</span></code></a> interface, so they can be swapped
+without changing calling code: <a class="reference internal" href="_generated/warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes" title="warp.geometry.IsoSurfaceMarchingCubes"><code class="xref py py-class docutils literal notranslate"><span class="pre">IsoSurfaceMarchingCubes</span></code></a> produces
+triangles.</p>
+<p>Sparse extraction skips the dense grid entirely. <a class="reference internal" href="_generated/warp.geometry.sparse_marching_cubes.html#warp.geometry.sparse_marching_cubes" title="warp.geometry.sparse_marching_cubes"><code class="xref py py-func docutils literal notranslate"><span class="pre">sparse_marching_cubes()</span></code></a>
+takes an implicit function and builds a Lipschitz octree around the level set,
+so cost scales with surface area rather than volume. <a class="reference internal" href="_generated/warp.geometry.lipschitz_octree.html#warp.geometry.lipschitz_octree" title="warp.geometry.lipschitz_octree"><code class="xref py py-func docutils literal notranslate"><span class="pre">lipschitz_octree()</span></code></a>
+and <a class="reference internal" href="_generated/warp.geometry.sparse_marching_cubes_from_cells.html#warp.geometry.sparse_marching_cubes_from_cells" title="warp.geometry.sparse_marching_cubes_from_cells"><code class="xref py py-func docutils literal notranslate"><span class="pre">sparse_marching_cubes_from_cells()</span></code></a> expose its two stages separately.</p>
 <p>Array-level functions such as <a class="reference internal" href="_generated/warp.geometry.swept_volume_mesh.html#warp.geometry.swept_volume_mesh" title="warp.geometry.swept_volume_mesh"><code class="xref py py-func docutils literal notranslate"><span class="pre">swept_volume_mesh()</span></code></a> launch kernels over a whole
 mesh or grid. Device functions such as <a class="reference internal" href="_generated/warp.geometry.swept_volume_sdf.html#warp.geometry.swept_volume_sdf" title="warp.geometry.swept_volume_sdf"><code class="xref py py-func docutils literal notranslate"><span class="pre">swept_volume_sdf()</span></code></a> evaluate a
 single point and may be called from within your own <a class="reference internal" href="_generated/warp.kernel_decorator.html#warp.kernel" title="warp.kernel"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.kernel()</span></code></a>
@@ -568,6 +577,12 @@ definitions.</p>
 <h2>API<a class="headerlink" href="#api" title="Link to this heading">#</a></h2>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.geometry.IsoSurfaceBase.html#warp.geometry.IsoSurfaceBase" title="warp.geometry.IsoSurfaceBase"><code class="xref py py-obj docutils literal notranslate"><span class="pre">IsoSurfaceBase</span></code></a></p></td>
+<td><p>Abstract base class for isosurface extraction from dense 3D scalar fields.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes" title="warp.geometry.IsoSurfaceMarchingCubes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">IsoSurfaceMarchingCubes</span></code></a></p></td>
+<td><p>A reusable context for marching cubes surface extraction.</p></td>
+</tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.geometry.SweptVolumeSignMode.html#warp.geometry.SweptVolumeSignMode" title="warp.geometry.SweptVolumeSignMode"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SweptVolumeSignMode</span></code></a></p></td>
 <td><p>Method used to classify inside/outside when evaluating the per-mesh SDF.</p></td>
 </tr>
@@ -577,19 +592,28 @@ definitions.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.geometry.find_triangle_neighbor_edge_index.html#warp.geometry.find_triangle_neighbor_edge_index" title="warp.geometry.find_triangle_neighbor_edge_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">find_triangle_neighbor_edge_index</span></code></a></p></td>
 <td><p>Return the local edge of <code class="docutils literal notranslate"><span class="pre">triangle</span></code> shared with <code class="docutils literal notranslate"><span class="pre">neighbor</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.geometry.swept_volume_bounds.html#warp.geometry.swept_volume_bounds" title="warp.geometry.swept_volume_bounds"><code class="xref py py-obj docutils literal notranslate"><span class="pre">swept_volume_bounds</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.geometry.lipschitz_octree.html#warp.geometry.lipschitz_octree" title="warp.geometry.lipschitz_octree"><code class="xref py py-obj docutils literal notranslate"><span class="pre">lipschitz_octree</span></code></a></p></td>
+<td><p>Return max-depth octree cells that may intersect a level set of a Lipschitz-bounded implicit field.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.geometry.sparse_marching_cubes.html#warp.geometry.sparse_marching_cubes" title="warp.geometry.sparse_marching_cubes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sparse_marching_cubes</span></code></a></p></td>
+<td><p>Extract an isosurface from an implicit function using a Lipschitz octree.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.geometry.sparse_marching_cubes_from_cells.html#warp.geometry.sparse_marching_cubes_from_cells" title="warp.geometry.sparse_marching_cubes_from_cells"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sparse_marching_cubes_from_cells</span></code></a></p></td>
+<td><p>Extract an isosurface from an explicit set of occupied cells and corner values.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.geometry.swept_volume_bounds.html#warp.geometry.swept_volume_bounds" title="warp.geometry.swept_volume_bounds"><code class="xref py py-obj docutils literal notranslate"><span class="pre">swept_volume_bounds</span></code></a></p></td>
 <td><p>Return the world-space axis-aligned bounds of every mesh over every pose.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.geometry.swept_volume_field.html#warp.geometry.swept_volume_field" title="warp.geometry.swept_volume_field"><code class="xref py py-obj docutils literal notranslate"><span class="pre">swept_volume_field</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.geometry.swept_volume_field.html#warp.geometry.swept_volume_field" title="warp.geometry.swept_volume_field"><code class="xref py py-obj docutils literal notranslate"><span class="pre">swept_volume_field</span></code></a></p></td>
 <td><p>Compute a dense regular-grid discretization of the swept-volume pseudo signed-distance function.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.geometry.swept_volume_mesh.html#warp.geometry.swept_volume_mesh" title="warp.geometry.swept_volume_mesh"><code class="xref py py-obj docutils literal notranslate"><span class="pre">swept_volume_mesh</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.geometry.swept_volume_mesh.html#warp.geometry.swept_volume_mesh" title="warp.geometry.swept_volume_mesh"><code class="xref py py-obj docutils literal notranslate"><span class="pre">swept_volume_mesh</span></code></a></p></td>
 <td><p>Extract the swept volume (motion envelope) of animated rigid meshes.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.geometry.swept_volume_sdf.html#warp.geometry.swept_volume_sdf" title="warp.geometry.swept_volume_sdf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">swept_volume_sdf</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.geometry.swept_volume_sdf.html#warp.geometry.swept_volume_sdf" title="warp.geometry.swept_volume_sdf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">swept_volume_sdf</span></code></a></p></td>
 <td><p>Evaluate the swept-volume pseudo signed distance at a single point.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.geometry.tri_tri_adjacency.html#warp.geometry.tri_tri_adjacency" title="warp.geometry.tri_tri_adjacency"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tri_tri_adjacency</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.geometry.tri_tri_adjacency.html#warp.geometry.tri_tri_adjacency" title="warp.geometry.tri_tri_adjacency"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tri_tri_adjacency</span></code></a></p></td>
 <td><p>Build triangle-triangle adjacency for a triangle mesh.</p></td>
 </tr>
 </tbody>
@@ -618,11 +642,11 @@ definitions.</p>
       </div>
     </a>
     <a class="right-next"
-       href="_generated/warp.geometry.SweptVolumeSignMode.html"
+       href="_generated/warp.geometry.IsoSurfaceBase.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.geometry.SweptVolumeSignMode</p>
+        <p class="prev-next-title">warp.geometry.IsoSurfaceBase</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
