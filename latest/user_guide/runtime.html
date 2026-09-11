@@ -2665,6 +2665,8 @@ declared in <a class="reference external" href="https://github.com/NVIDIA/warp/b
 <span class="kt">void</span><span class="w"> </span><span class="nf">wp_apic_destroy_graph</span><span class="p">(</span><span class="n">APICGraph</span><span class="o">*</span><span class="w"> </span><span class="n">graph</span><span class="p">);</span>
 </pre></div>
 </div>
+<p>For native library headers, build-system setup, platform-specific linking,
+deployment, and version compatibility, see <a class="reference internal" href="programming_model/cpp_cuda_workflows.html#native-library-linking"><span class="std std-ref">Native Library Linking and Version Checks</span></a>.</p>
 <p>Two reference C++ examples ship with Warp under <code class="docutils literal notranslate"><span class="pre">warp/examples/cpp/</span></code>. Both
 implement the same interactive 2-D wave simulation visualized with GLFW/OpenGL,
 and both take their captured <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> file from a Python <code class="docutils literal notranslate"><span class="pre">capture_wave.py</span></code>
@@ -2743,14 +2745,21 @@ CPU device. <code class="docutils literal notranslate"><span class="pre">main.cp
 </pre></div>
 </div>
 <p>CPU graph replay needs function pointers for each recorded kernel. These are
-resolved from the <code class="docutils literal notranslate"><span class="pre">.o</span></code> files in the companion <code class="docutils literal notranslate"><span class="pre">_modules/</span></code> directory by
-loading the <code class="docutils literal notranslate"><span class="pre">warp-clang</span></code> library at runtime and calling its <code class="docutils literal notranslate"><span class="pre">wp_load_obj</span></code> /
-<code class="docutils literal notranslate"><span class="pre">wp_lookup</span></code> entry points, then registering each pointer with the loaded graph
-via <code class="docutils literal notranslate"><span class="pre">wp_apic_register_loaded_cpu_kernel</span></code>. The example walks every kernel
-returned by <code class="docutils literal notranslate"><span class="pre">wp_apic_get_num_kernels</span></code> and does this resolution once at
-startup. Kernel metadata includes both the kernel key and module hash so
-same-key kernels from distinct <code class="docutils literal notranslate"><span class="pre">module=&quot;unique&quot;</span></code> modules resolve to the
-correct object file and function pointer. The C API surface for this lookup is:</p>
+resolved from the <code class="docutils literal notranslate"><span class="pre">.o</span></code> files in the companion <code class="docutils literal notranslate"><span class="pre">_modules/</span></code> directory. The
+CPU example links against <code class="docutils literal notranslate"><span class="pre">warp-clang</span></code> at build time, loads each object with
+<code class="docutils literal notranslate"><span class="pre">wp_load_obj()</span></code>, resolves its functions with <code class="docutils literal notranslate"><span class="pre">wp_lookup()</span></code>, and registers
+each pointer with the loaded graph via
+<code class="docutils literal notranslate"><span class="pre">wp_apic_register_loaded_cpu_kernel()</span></code>.</p>
+<p>Before the first call to <code class="docutils literal notranslate"><span class="pre">wp_load_obj()</span></code>, a standalone native consumer must
+pass the core runtime table returned by <code class="docutils literal notranslate"><span class="pre">wp_cpu_block_runtime_get_api()</span></code> to
+<code class="docutils literal notranslate"><span class="pre">wp_llvm_set_cpu_block_runtime()</span></code>. This lets JIT-loaded kernels resolve the
+cooperative CPU block entry points implemented by the core Warp library. Warp’s
+Python runtime performs the same binding during initialization.</p>
+<p>The example walks every kernel returned by <code class="docutils literal notranslate"><span class="pre">wp_apic_get_num_kernels()</span></code> and
+does this resolution once at startup. Kernel metadata includes both the kernel
+key and module hash so same-key kernels from distinct <code class="docutils literal notranslate"><span class="pre">module=&quot;unique&quot;</span></code>
+modules resolve to the correct object file and function pointer. The C API
+surface for this lookup is:</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">int</span><span class="w">         </span><span class="nf">wp_apic_get_num_kernels</span><span class="p">(</span><span class="n">APICGraph</span><span class="o">*</span><span class="w"> </span><span class="n">graph</span><span class="p">);</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="nf">wp_apic_get_kernel_key</span><span class="p">(</span><span class="n">APICGraph</span><span class="o">*</span><span class="w"> </span><span class="n">graph</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">index</span><span class="p">);</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="nf">wp_apic_get_kernel_module_hash</span><span class="p">(</span><span class="n">APICGraph</span><span class="o">*</span><span class="w"> </span><span class="n">graph</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">index</span><span class="p">);</span>

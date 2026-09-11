@@ -1146,12 +1146,88 @@ CUDA. It loads recorded CPU kernel objects and replays the graph with
 Warp’s generated type support.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">warp/native/warp.h</span></code> declares the core Warp C API exported by the native
 library.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">warp/native/warp_clang.h</span></code> declares the experimental CPU block runtime
+binding, module loading, and symbol lookup API exported by <code class="docutils literal notranslate"><span class="pre">warp-clang</span></code>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">warp/native/apic.h</span></code> declares the APIC graph loading and replay API used by
 <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> graph consumers.</p></li>
 </ul>
 <p>Other files in <code class="docutils literal notranslate"><span class="pre">warp/native/</span></code> implement Warp’s runtime and kernel support
 library. They are useful when inspecting generated code, but the examples above
 are the recommended starting points for native host integration.</p>
+</section>
+<section id="native-library-linking-and-version-checks">
+<span id="native-library-linking"></span><h2>Native Library Linking and Version Checks<a class="headerlink" href="#native-library-linking-and-version-checks" title="Link to this heading">#</a></h2>
+<p>Windows wheels include <code class="docutils literal notranslate"><span class="pre">warp.lib</span></code> beside <code class="docutils literal notranslate"><span class="pre">warp.dll</span></code> and
+<code class="docutils literal notranslate"><span class="pre">warp-clang.lib</span></code> beside <code class="docutils literal notranslate"><span class="pre">warp-clang.dll</span></code>. At build time, link against the
+<code class="docutils literal notranslate"><span class="pre">.lib</span></code> import libraries and deploy the corresponding DLLs. This records
+load-time dependencies on the DLLs. On Linux and macOS, link the application
+against the Warp and warp-clang shared libraries at build time.</p>
+<p>Warp does not currently provide an official <code class="docutils literal notranslate"><span class="pre">find_package()</span></code> configuration.
+A consuming CMake project that knows the wheel’s package location can define
+ordinary imported targets. For example, the Windows targets can be defined as:</p>
+<div class="highlight-cmake notranslate"><div class="highlight"><pre><span></span><span class="nb">set</span><span class="p">(</span><span class="s">WARP_PACKAGE_ROOT</span><span class="w"> </span><span class="s2">".../site-packages/warp"</span><span class="p">)</span>
+
+<span class="nb">add_library</span><span class="p">(</span><span class="s">Warp::runtime</span><span class="w"> </span><span class="s">SHARED</span><span class="w"> </span><span class="s">IMPORTED</span><span class="p">)</span>
+<span class="nb">set_target_properties</span><span class="p">(</span><span class="s">Warp::runtime</span><span class="w"> </span><span class="s">PROPERTIES</span>
+<span class="w">    </span><span class="s">IMPORTED_LOCATION</span><span class="w"> </span><span class="s2">"${WARP_PACKAGE_ROOT}/bin/warp.dll"</span>
+<span class="w">    </span><span class="s">IMPORTED_IMPLIB</span><span class="w"> </span><span class="s2">"${WARP_PACKAGE_ROOT}/bin/warp.lib"</span>
+<span class="w">    </span><span class="s">INTERFACE_INCLUDE_DIRECTORIES</span><span class="w"> </span><span class="s2">"${WARP_PACKAGE_ROOT}/native"</span>
+<span class="p">)</span>
+
+<span class="nb">add_library</span><span class="p">(</span><span class="s">Warp::clang</span><span class="w"> </span><span class="s">SHARED</span><span class="w"> </span><span class="s">IMPORTED</span><span class="p">)</span>
+<span class="nb">set_target_properties</span><span class="p">(</span><span class="s">Warp::clang</span><span class="w"> </span><span class="s">PROPERTIES</span>
+<span class="w">    </span><span class="s">IMPORTED_LOCATION</span><span class="w"> </span><span class="s2">"${WARP_PACKAGE_ROOT}/bin/warp-clang.dll"</span>
+<span class="w">    </span><span class="s">IMPORTED_IMPLIB</span><span class="w"> </span><span class="s2">"${WARP_PACKAGE_ROOT}/bin/warp-clang.lib"</span>
+<span class="w">    </span><span class="s">INTERFACE_INCLUDE_DIRECTORIES</span><span class="w"> </span><span class="s2">"${WARP_PACKAGE_ROOT}/native"</span>
+<span class="p">)</span>
+
+<span class="nb">target_link_libraries</span><span class="p">(</span><span class="s">my_app</span><span class="w"> </span><span class="s">PRIVATE</span><span class="w"> </span><span class="s">Warp::runtime</span><span class="w"> </span><span class="s">Warp::clang</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>On Linux and macOS, set <code class="docutils literal notranslate"><span class="pre">IMPORTED_LOCATION</span></code> to the corresponding <code class="docutils literal notranslate"><span class="pre">.so</span></code> or
+<code class="docutils literal notranslate"><span class="pre">.dylib</span></code> file and omit <code class="docutils literal notranslate"><span class="pre">IMPORTED_IMPLIB</span></code>.</p>
+<p>The native C APIs and <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> format do not currently guarantee backward or
+forward compatibility across Warp releases. Build and deploy a native
+application with the headers, DLLs or other shared libraries, Windows import
+libraries, <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> files, and companion module artifacts from the same Warp
+release. Mixing these artifacts across releases is unsupported, even when a
+particular combination happens to work. Check both linked libraries during
+startup before loading a graph or CPU module:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">"warp.h"</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">"warp_clang.h"</span>
+
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstring&gt;</span>
+
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">wp_init</span><span class="p">(</span><span class="n">WP_VERSION_STRING</span><span class="p">)</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">strcmp</span><span class="p">(</span><span class="n">wp_warp_clang_version</span><span class="p">(),</span><span class="w"> </span><span class="n">WP_VERSION_STRING</span><span class="p">)</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span>
+</pre></div>
+</div>
+<p>Applications that load CPU object modules through <code class="docutils literal notranslate"><span class="pre">wp_load_obj()</span></code> must also
+bind the core Warp CPU block runtime after initialization and before loading
+the first object:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">wp_llvm_set_cpu_block_runtime</span><span class="p">(</span><span class="n">wp_cpu_block_runtime_get_api</span><span class="p">()))</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">3</span><span class="p">;</span>
+</pre></div>
+</div>
+<p>These checks detect a library that reports a different Warp release, but they
+do not establish a stable ABI:</p>
+<ul class="simple">
+<li><p>The Windows loader may reject a missing DLL or symbol before <code class="docutils literal notranslate"><span class="pre">main()</span></code>, so
+runtime version checks cannot recover from that failure.</p></li>
+<li><p>An unchanged C symbol with a changed signature remains unsafe despite the
+version checks.</p></li>
+<li><p>Put the matching DLLs beside the executable or configure the DLL search path
+deliberately.</p></li>
+<li><p>Linking <code class="docutils literal notranslate"><span class="pre">warp-clang.lib</span></code> makes <code class="docutils literal notranslate"><span class="pre">warp-clang.dll</span></code> a startup dependency,
+even for a process that later replays only CUDA graphs.</p></li>
+<li><p>Both DLLs are included in the same Warp Windows distribution package, such
+as a wheel or conda package, but remain separate libraries.</p></li>
+<li><p>CPU APIC callers should include <code class="docutils literal notranslate"><span class="pre">warp_clang.h</span></code> for the runtime binding,
+module loading, and symbol lookup declarations instead of copying
+declarations from <code class="docutils literal notranslate"><span class="pre">clang.cpp</span></code>.</p></li>
+</ul>
 </section>
 <section id="related-topics">
 <h2>Related Topics<a class="headerlink" href="#related-topics" title="Link to this heading">#</a></h2>
@@ -1233,6 +1309,7 @@ compilation.</p></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ahead-of-time-c-cuda-workflows">Ahead-of-Time C++/CUDA Workflows</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#api-capture-replay-from-c">API Capture Replay from C++</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#native-library-headers">Native Library Headers</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#native-library-linking-and-version-checks">Native Library Linking and Version Checks</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#related-topics">Related Topics</a></li>
 </ul>
   </nav></div>
