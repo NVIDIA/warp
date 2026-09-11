@@ -92,6 +92,8 @@ nitpicky = True
 nitpick_ignore_regex = [
     # Public type aliases indexed as py:data but referenced as py:class (Sphinx limitation)
     (r"py:class", r"(warp\.|wp\.)?(Scalar|Int|Float|DeviceLike)"),
+    # numpy.typing aliases used in annotations but imported only under TYPE_CHECKING
+    (r"py:class", r"npt\.ArrayLike"),
     # Internal meta-types used in builtin function signatures (not exported)
     (
         r"py:class",

@@ -5,8 +5,10 @@
 
 The public entry points are the topology builder :func:`tri_tri_adjacency`,
 its single-pair counterpart :func:`find_triangle_neighbor_edge_index`, and the
-:func:`delaunay_edge_flip` operation; the predicates :func:`in_circle` and
-:func:`signed_area` are reusable but stay internal until their naming settles.
+:func:`delaunay_edge_flip` operation, plus :func:`swept_volume_mesh`, which extracts
+the motion envelope of animated rigid meshes; the predicates :func:`in_circle`
+and :func:`signed_area` are reusable but stay internal until their naming
+settles.
 Everything runs on the Warp device (CPU or CUDA); the Delaunay convergence loop is
 driven on-device with :func:`warp.capture_while`, so the routines are CUDA-graph
 capturable.
@@ -21,16 +23,34 @@ module namespace.
 
 from __future__ import annotations
 
+import enum
 import math
+from typing import TYPE_CHECKING
+
+import numpy as np
 
 import warp as wp
+from warp._src.marching_cubes import MarchingCubes
+from warp._src.types import type_repr, types_equal
 from warp._src.utils import array_scan
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    import numpy.typing as npt
+
+    from warp._src.context import DeviceLike
+
 __all__ = [
+    "SweptVolumeSignMode",
     "delaunay_edge_flip",
     "find_triangle_neighbor_edge_index",
     "in_circle",
     "signed_area",
+    "swept_volume_bounds",
+    "swept_volume_field",
+    "swept_volume_mesh",
+    "swept_volume_sdf",
     "tri_tri_adjacency",
 ]
 
@@ -661,3 +681,566 @@ def delaunay_edge_flip(
     wp.capture_while(condition, _flip_pass)
 
     return total_flips
+
+
+# ---------------------------------------------------------------------------
+# Swept volume (motion envelope) of animated rigid meshes
+# ---------------------------------------------------------------------------
+
+
+class SweptVolumeSignMode(enum.IntEnum):
+    """Method used to classify inside/outside when evaluating the per-mesh SDF.
+
+    ``IntEnum`` members are integers, so a value can be passed straight into a
+    kernel and compared against.
+    """
+
+    NORMAL = 0
+    """Sign from :func:`warp.mesh_query_point_sign_normal`. """
+
+    WINDING_NUMBER = 1
+    """Sign from :func:`warp.mesh_query_point_sign_winding_number`. Requires
+    every input mesh to be built with ``support_winding_number=True``."""
+
+    PARITY = 2
+    """Sign from :func:`warp.mesh_query_point_sign_parity`."""
+
+    NO_SIGN = 3
+    """Unsigned distance, from :func:`warp.mesh_query_point_no_sign`. The field
+    is then positive everywhere, so it is only correct for extracting an
+    ``threshold > 0`` isosurface of swept volume of a transforming thin shell. If the
+    input is a solid then this may result in erroneous interior surfaces in the
+    output."""
+
+
+@wp.func
+def swept_volume_sdf(
+    point: wp.vec3,
+    mesh_ids: wp.array[wp.uint64],
+    transforms: wp.array2d[wp.transform],
+    max_dist: wp.float32,
+    sign_mode: wp.int32,
+) -> wp.float32:
+    """Evaluate the swept-volume pseudo signed distance at a single point.
+
+    Returns :math:`\\min_m \\min_s \\mathrm{sdf}_m(X_{m,s}^{-1} p)`, the minimum
+    over every mesh :math:`m` and every sampled pose :math:`s`. The motion is
+    rigid, so instead of transforming the geometry the query point is pushed
+    back into each mesh's rest frame, and one closest-point query per
+    (mesh, sample) evaluates one pose. Callable from within your own kernels;
+    not differentiable.
+
+    Args:
+        point: Query point, in world space.
+        mesh_ids: Identifiers of the rest-pose meshes.
+        transforms: Per-mesh, per-sample rigid poses, mapping rest space to
+            world space.
+        max_dist: Bound on the closest-point search. A query that finds nothing
+            within it returns no sign either, so this returns ``+max_dist`` for
+            a point deep inside the union just as it does for one far outside;
+            pass a bound that spans the region of interest, as the array-level
+            entry points do.
+        sign_mode: Inside/outside classification method, as the integer value of
+            a :class:`SweptVolumeSignMode` member.
+
+    Returns:
+        The pseudo signed distance at ``point``.
+    """
+    num_meshes = mesh_ids.shape[0]
+    num_samples = transforms.shape[1]
+
+    best = max_dist
+    for m in range(num_meshes):
+        mesh_id = mesh_ids[m]
+        for s in range(num_samples):
+            # Map the query point into the mesh's rest frame for this pose. The
+            # map is rigid, so distances are preserved between the two frames.
+            p_local = wp.transform_point(wp.transform_inverse(transforms[m, s]), point)
+
+            sign = float(1.0)
+            if sign_mode == wp.int32(SweptVolumeSignMode.WINDING_NUMBER.value):
+                query = wp.mesh_query_point_sign_winding_number(mesh_id, p_local, max_dist)
+                sign = query.sign
+            elif sign_mode == wp.int32(SweptVolumeSignMode.PARITY.value):
+                query = wp.mesh_query_point_sign_parity(mesh_id, p_local, max_dist)
+                sign = query.sign
+            elif sign_mode == wp.int32(SweptVolumeSignMode.NO_SIGN.value):
+                # Unsigned distances cannot be negative, so anything farther than
+                # the running minimum cannot improve it: shrink the search.
+                query = wp.mesh_query_point_no_sign(mesh_id, p_local, best)
+            else:
+                query = wp.mesh_query_point_sign_normal(mesh_id, p_local, max_dist)
+                sign = query.sign
+
+            if query.result:
+                closest = wp.mesh_eval_position(mesh_id, query.face, query.u, query.v)
+                dist = sign * wp.length(p_local - closest)
+                best = wp.min(best, dist)
+
+    return best
+
+
+@wp.kernel(enable_backward=False)
+def swept_volume_field_kernel(
+    mesh_ids: wp.array[wp.uint64],
+    transforms: wp.array2d[wp.transform],
+    origin: wp.vec3,
+    spacing: wp.vec3,
+    max_dist: wp.float32,
+    sign_mode: wp.int32,
+    out_field: wp.array3d[wp.float32],
+):
+    i, j, k = wp.tid()
+    point = origin + wp.cw_mul(spacing, wp.vec3(wp.float32(i), wp.float32(j), wp.float32(k)))
+    out_field[i, j, k] = swept_volume_sdf(point, mesh_ids, transforms, max_dist, sign_mode)
+
+
+def _swept_volume_transforms(transforms, device):
+    """Normalize the ``transforms`` argument into a :class:`warp.array2d`.
+
+    The result has shape ``(num_meshes, num_samples)``, dtype
+    :class:`warp.transform`, and lives on ``device``.
+    """
+    if isinstance(transforms, wp.array):
+        if transforms.ndim != 2:
+            raise ValueError(
+                f"'transforms' must be a 2D array of shape (num_meshes, num_samples), got ndim {transforms.ndim}."
+            )
+        if not types_equal(transforms.dtype, wp.transform):
+            raise TypeError(f"'transforms' must have dtype wp.transform, got {type_repr(transforms.dtype)}.")
+        return transforms.to(device)
+
+    # Accept nested Python sequences / NumPy arrays of shape (M, S, 7).
+    arr = np.asarray(transforms, dtype=np.float32)
+    if arr.ndim != 3 or arr.shape[2] != 7:
+        raise ValueError(
+            "'transforms' must be a wp.array2d(dtype=wp.transform) or an array of "
+            f"shape (num_meshes, num_samples, 7), got shape {arr.shape}."
+        )
+    return wp.array2d(arr, dtype=wp.transform, device=device)
+
+
+@wp.kernel(enable_backward=False)
+def swept_volume_mesh_aabb_kernel(
+    points: wp.array[wp.vec3],
+    slot: int,
+    out_lower: wp.array[wp.vec3],
+    out_upper: wp.array[wp.vec3],
+):
+    # Rest-pose axis-aligned bounds of one mesh, reduced into slot ``slot``.
+    i = wp.tid()
+    p = points[i]
+    wp.atomic_min(out_lower, slot, p)
+    wp.atomic_max(out_upper, slot, p)
+
+
+@wp.kernel(enable_backward=False)
+def swept_volume_bounds_kernel(
+    mesh_lower: wp.array[wp.vec3],
+    mesh_upper: wp.array[wp.vec3],
+    transforms: wp.array2d[wp.transform],
+    out_lower: wp.array[wp.vec3],
+    out_upper: wp.array[wp.vec3],
+):
+    # Union, over every (mesh, sample), of the pose-transformed rest-pose AABB.
+    m, s = wp.tid()
+    lo = mesh_lower[m]
+    hi = mesh_upper[m]
+    if lo[0] > hi[0]:  # empty mesh: nothing was reduced into this slot
+        return
+    xform = transforms[m, s]
+    # A rigid map sends the box to one whose axis-aligned bounds are spanned by
+    # its eight transformed corners, so it suffices to reduce those.
+    for a in range(2):
+        cx = wp.where(a == 0, lo[0], hi[0])
+        for b in range(2):
+            cy = wp.where(b == 0, lo[1], hi[1])
+            for c in range(2):
+                cz = wp.where(c == 0, lo[2], hi[2])
+                p = wp.transform_point(xform, wp.vec3(cx, cy, cz))
+                wp.atomic_min(out_lower, 0, p)
+                wp.atomic_max(out_upper, 0, p)
+
+
+def swept_volume_bounds(
+    meshes: Sequence[wp.Mesh],
+    transforms: wp.array2d[wp.transform] | npt.ArrayLike,
+    padding: float = 0.0,
+    device: DeviceLike | None = None,
+) -> tuple[wp.vec3, wp.vec3]:
+    """Return the world-space axis-aligned bounds of every mesh over every pose.
+
+    Reduces each mesh's rest-pose vertices to an axis-aligned box, then transforms
+    the eight box corners by every pose and reduces their union, entirely with
+    Warp kernels.
+
+    Use this to size a domain that several fields share: union these bounds and
+    pass the result to :func:`swept_volume_field` as
+    ``lower`` and ``upper``.
+
+    Args:
+        meshes: Sequence of rest-pose :class:`warp.Mesh` objects.
+        transforms: Per-mesh, per-sample rigid poses; see
+            :func:`swept_volume_field`.
+        padding: Widening applied on every side, in world units.
+        device: Device on which to run. Defaults to the device of the first mesh.
+
+    Returns:
+        A tuple ``(lower, upper)`` of :class:`warp.vec3` world coordinates.
+    """
+    if len(meshes) == 0:
+        raise ValueError("'meshes' must contain at least one mesh.")
+    device = wp.get_device(device) if device is not None else meshes[0].device
+    transforms = _swept_volume_transforms(transforms, device)
+    _check_transforms(meshes, transforms)
+    return _swept_volume_bounds(meshes, transforms, padding, device)
+
+
+def _check_transforms(meshes, transforms) -> None:
+    """Reject pose arrays the bounds kernels would index out of bounds.
+
+    ``_swept_volume_bounds`` sizes its per-mesh slots from ``transforms`` and
+    fills them by mesh index, so a row count that disagrees with the mesh count
+    has to be caught before any launch.
+    """
+    if transforms.shape[0] != len(meshes):
+        raise ValueError(f"'transforms' has {transforms.shape[0]} rows but there are {len(meshes)} meshes.")
+    if transforms.shape[1] == 0:
+        raise ValueError("'transforms' must contain at least one pose sample.")
+
+
+def _swept_volume_bounds(meshes, transforms, margin, device):
+    """Bounds of the posed meshes, padded by ``margin``, with arguments pre-checked."""
+    num_meshes, num_samples = transforms.shape[0], transforms.shape[1]
+
+    pos_inf = wp.vec3(math.inf, math.inf, math.inf)
+    neg_inf = wp.vec3(-math.inf, -math.inf, -math.inf)
+
+    mesh_lower = wp.full(num_meshes, pos_inf, dtype=wp.vec3, device=device)
+    mesh_upper = wp.full(num_meshes, neg_inf, dtype=wp.vec3, device=device)
+    for m, mesh in enumerate(meshes):
+        if mesh.points.shape[0] > 0:
+            wp.launch(
+                swept_volume_mesh_aabb_kernel,
+                dim=mesh.points.shape[0],
+                inputs=[mesh.points, m],
+                outputs=[mesh_lower, mesh_upper],
+                device=device,
+            )
+
+    out_lower = wp.full(1, pos_inf, dtype=wp.vec3, device=device)
+    out_upper = wp.full(1, neg_inf, dtype=wp.vec3, device=device)
+    wp.launch(
+        swept_volume_bounds_kernel,
+        dim=(num_meshes, num_samples),
+        inputs=[mesh_lower, mesh_upper, transforms],
+        outputs=[out_lower, out_upper],
+        device=device,
+    )
+
+    # Read back the six numbers (as the OBB code does) and pad on the host.
+    lo = out_lower.numpy()[0]
+    hi = out_upper.numpy()[0]
+    if not math.isfinite(float(lo[0])):
+        raise ValueError("Could not compute swept-volume bounds: all input meshes are empty.")
+    lower = wp.vec3(float(lo[0]) - margin, float(lo[1]) - margin, float(lo[2]) - margin)
+    upper = wp.vec3(float(hi[0]) + margin, float(hi[1]) + margin, float(hi[2]) + margin)
+    return lower, upper
+
+
+def _swept_volume_grid(meshes, transforms, voxel_size, resolution, lower, upper, extra_padding, device):
+    """Resolve the sampling domain and node counts.
+
+    Returns ``(lower, upper, dims, tight_lower, tight_upper)``, where the last
+    two are the unpadded bounds of the posed geometry. When the corners are supplied the domain is
+    used verbatim and ``resolution`` sets the node counts. Otherwise the swept
+    bounds are padded by ``extra_padding`` plus roughly two cells, so the level
+    being extracted stays strictly inside the domain, and ``voxel_size`` snaps
+    the extent up to whole cells so the spacing is exactly ``voxel_size``.
+    """
+    if (lower is None) != (upper is None):
+        raise ValueError("Pass both 'lower' and 'upper', or neither.")
+    if voxel_size is not None and resolution is not None:
+        raise ValueError("Pass either 'voxel_size' or 'resolution', not both.")
+    if voxel_size is None and resolution is None:
+        raise ValueError("Provide either 'voxel_size' or 'resolution'.")
+    if voxel_size is not None and voxel_size <= 0.0:
+        raise ValueError(f"'voxel_size' must be positive, got {voxel_size}.")
+
+    dims = None
+    if resolution is not None:
+        dims = tuple(int(n) for n in resolution)
+        if len(dims) != 3:
+            raise ValueError(f"'resolution' must have exactly 3 entries, got {dims}.")
+        if any(n < 2 for n in dims):
+            raise ValueError(f"'resolution' must be at least 2 along each axis, got {dims}.")
+
+    tight_lower, tight_upper = _swept_volume_bounds(meshes, transforms, 0.0, device)
+    tight = tuple(tight_upper[a] - tight_lower[a] for a in range(3))
+
+    if lower is not None:
+        # The caller owns the domain, so the extent cannot be snapped to whole
+        # cells and only an explicit node count is meaningful.
+        if voxel_size is not None:
+            raise ValueError(
+                "'voxel_size' cannot be combined with explicit domain bounds, since the extent would "
+                "have to grow to fit whole cells. Pass 'resolution' instead."
+            )
+        lower = wp.vec3(*(float(c) for c in lower))
+        upper = wp.vec3(*(float(c) for c in upper))
+        if any(upper[a] <= lower[a] for a in range(3)):
+            raise ValueError(f"'upper' {upper} must exceed 'lower' {lower}.")
+        return lower, upper, dims, tight_lower, tight_upper
+
+    if voxel_size is not None:
+        # Pad, then grow the extent to a whole number of cells so the spacing is
+        # exactly voxel_size on every axis.
+        padding = (extra_padding + 2.0 * voxel_size,) * 3
+        padded = tuple(tight[a] + 2.0 * padding[a] for a in range(3))
+        dims = tuple(max(2, int(math.ceil(padded[a] / voxel_size)) + 1) for a in range(3))
+        snapped = tuple((dims[a] - 1) * voxel_size for a in range(3))
+        grow = tuple(0.5 * (snapped[a] - tight[a]) for a in range(3))
+    else:
+        # Measure the two cells of slack against the unpadded spacing, which
+        # keeps the padding above extra_padding for any node count.
+        padding = tuple(extra_padding + 2.0 * tight[a] / (dims[a] - 1) for a in range(3))
+        grow = padding
+
+    lower = wp.vec3(*(tight_lower[a] - grow[a] for a in range(3)))
+    upper = wp.vec3(*(tight_upper[a] + grow[a] for a in range(3)))
+    return lower, upper, dims, tight_lower, tight_upper
+
+
+def swept_volume_field(
+    meshes: Sequence[wp.Mesh],
+    transforms: wp.array2d[wp.transform] | npt.ArrayLike,
+    voxel_size: float | None = None,
+    *,
+    resolution: tuple[int, int, int] | None = None,
+    lower: wp.vec3 | tuple[float, float, float] | None = None,
+    upper: wp.vec3 | tuple[float, float, float] | None = None,
+    sign_mode: SweptVolumeSignMode = SweptVolumeSignMode.WINDING_NUMBER,
+    device: DeviceLike | None = None,
+) -> tuple[wp.array3d[wp.float32], wp.vec3, wp.vec3]:
+    """Compute a dense regular-grid discretization of the swept-volume pseudo signed-distance function.
+
+    Every node is evaluated by :func:`swept_volume_sdf`, by brute force over
+    every (mesh, sample) pair ("dense time stamping"). The result is negative
+    inside the swept volume and positive outside, so extracting its zero
+    isosurface (see :func:`swept_volume_mesh`) yields the motion envelope.
+    With :attr:`SweptVolumeSignMode.NO_SIGN` the field is unsigned and therefore
+    positive everywhere. Autodiff is not supported: the kernels that build the
+    field run forward only.
+
+    Because the poses are the *provided* samples, the field only accounts for the
+    geometry at those instants; motion between consecutive samples is not
+    conservatively bounded. Supply a sufficiently fine time sampling for the
+    desired tolerance.
+
+    Args:
+        meshes: Sequence of rest-pose :class:`warp.Mesh` objects.
+        transforms: Per-mesh, per-sample rigid poses, each mapping its mesh
+            from rest space to world space, with a rotation quaternion of unit
+            length. Either a :class:`warp.array2d` of :class:`warp.transform`
+            with shape ``(num_meshes, num_samples)``, or an array of shape
+            ``(num_meshes, num_samples, 7)`` (translation ``xyz`` followed by
+            quaternion ``xyzw``).
+        voxel_size: Edge length of a grid cell in world units. The domain is
+            grown to a whole number of cells, so the spacing is exactly this on
+            every axis. Cannot be combined with explicit domain bounds.
+        resolution: Node counts ``(nx, ny, nz)``. Pass this or ``voxel_size``,
+            not both. The spacing follows from the extent, so it is anisotropic
+            unless the node counts match the domain's aspect ratio.
+        lower: World coordinate that node ``(0, 0, 0)`` maps
+            to, as in :meth:`warp.MarchingCubes.extract_surface_marching_cubes`.
+            Defaults to the swept bounds padded so the surface is not clipped.
+            Pass both corners or neither; see :func:`swept_volume_bounds` to size
+            a domain that several fields share.
+        upper: World coordinate that node
+            ``(nx-1, ny-1, nz-1)`` maps to.
+        sign_mode: Inside/outside classification method; see
+            :class:`SweptVolumeSignMode`. The default
+            (``SweptVolumeSignMode.WINDING_NUMBER``) requires every mesh to be built
+            with ``support_winding_number=True``.
+        device: Device on which to build the field. Defaults to the device of
+            the first mesh.
+
+    Returns:
+        A tuple ``(field, lower, upper)`` where ``field`` is a
+        ``wp.array3d(dtype=wp.float32)`` of signed distances, and ``lower`` and
+        ``upper`` are the :class:`warp.vec3` world coordinates that grid nodes
+        ``(0, 0, 0)`` and ``(nx-1, ny-1, nz-1)`` map to.
+    """
+    if len(meshes) == 0:
+        raise ValueError("'meshes' must contain at least one mesh.")
+
+    device = wp.get_device(device) if device is not None else meshes[0].device
+
+    # The kernel launches on a single device, so every mesh must already live there.
+    for i, mesh in enumerate(meshes):
+        if mesh.device != device:
+            raise ValueError(f"'meshes[{i}]' is on device '{mesh.device}' but the launch device is '{device}'.")
+        # Querying the winding number of a mesh built without it returns garbage
+        # signs rather than failing, so reject that combination up front.
+        if sign_mode == SweptVolumeSignMode.WINDING_NUMBER and not mesh.support_winding_number:
+            raise ValueError(
+                f"'meshes[{i}]' was not built with support_winding_number=True, which the default "
+                "SweptVolumeSignMode.WINDING_NUMBER requires. Rebuild it with "
+                "wp.Mesh(..., support_winding_number=True), or pass sign_mode=SweptVolumeSignMode.NORMAL."
+            )
+
+    mesh_ids = wp.array([mesh.id for mesh in meshes], dtype=wp.uint64, device=device)
+    transforms_wp = _swept_volume_transforms(transforms, device)
+    _check_transforms(meshes, transforms_wp)
+
+    lower, upper, dims, tight_lower, tight_upper = _swept_volume_grid(
+        meshes,
+        transforms_wp,
+        voxel_size,
+        resolution,
+        lower,
+        upper,
+        0.0,
+        device,
+    )
+    extent = tuple(upper[a] - lower[a] for a in range(3))
+    spacing = tuple(extent[a] / (dims[a] - 1) for a in range(3))
+
+    # A bounded query returns no sign at all when it finds nothing, so the bound
+    # has to let every node reach the surface. The domain alone is not enough:
+    # an explicit one can sit inside the solid, or away from it entirely, and
+    # then its diagonal falls short. Span the domain together with the geometry.
+    span = tuple(max(upper[a], tight_upper[a]) - min(lower[a], tight_lower[a]) for a in range(3))
+    max_dist = math.sqrt(span[0] * span[0] + span[1] * span[1] + span[2] * span[2])
+
+    origin = lower
+    spacing_v = wp.vec3(*spacing)
+
+    field = wp.empty(dims, dtype=wp.float32, device=device)
+    wp.launch(
+        swept_volume_field_kernel,
+        dim=dims,
+        inputs=[mesh_ids, transforms_wp, origin, spacing_v, float(max_dist), int(sign_mode)],
+        outputs=[field],
+        device=device,
+    )
+
+    lower_v = lower
+    upper_v = upper
+    return field, lower_v, upper_v
+
+
+def swept_volume_mesh(
+    meshes: Sequence[wp.Mesh],
+    transforms: wp.array2d[wp.transform] | npt.ArrayLike,
+    voxel_size: float | None = None,
+    *,
+    resolution: tuple[int, int, int] | None = None,
+    lower: wp.vec3 | tuple[float, float, float] | None = None,
+    upper: wp.vec3 | tuple[float, float, float] | None = None,
+    threshold: float = 0.0,
+    sign_mode: SweptVolumeSignMode = SweptVolumeSignMode.WINDING_NUMBER,
+    device: DeviceLike | None = None,
+) -> tuple[wp.array[wp.vec3], wp.array[wp.int32]]:
+    """Extract the swept volume (motion envelope) of animated rigid meshes.
+
+    Samples the swept-volume signed-distance field with
+    :func:`swept_volume_field` and extracts its ``threshold`` isosurface with marching
+    cubes, returning a single triangle mesh in world coordinates that traces the
+    union of every input mesh over every sampled pose.
+
+    The field is evaluated by brute force at the provided pose samples. At low
+    temporal sample rates relative to mesh speeds or thicknesses, the extracted
+    swept volume will exhibit known "stroboscopic" defects.
+
+    Args:
+        meshes: Sequence of rest-pose :class:`warp.Mesh` objects.
+        transforms: Per-mesh, per-sample rigid poses; see
+            :func:`swept_volume_field`.
+        voxel_size: Edge length of a grid cell in world units; see
+            :func:`swept_volume_field`.
+        resolution: Node counts ``(nx, ny, nz)``; see
+            :func:`swept_volume_field`.
+        lower: World coordinate that node ``(0, 0, 0)`` maps
+            to. Defaults to the swept bounds padded by ``threshold`` plus roughly two
+            cells, so the extracted level stays inside the domain. Supplying the
+            corners makes that padding your responsibility.
+        upper: World coordinate that node
+            ``(nx-1, ny-1, nz-1)`` maps to.
+        threshold: Field level to extract. ``threshold = 0.0`` traces the envelope through
+            the sampled poses; a positive value dilates it outward. Due to grid
+            sampling, the extracted marching cubes mesh is only guaranteed to
+            enclose all sampled poses when ``threshold > 0.5 * hypot(hx, hy, hz)``.
+        sign_mode: Inside/outside classification method; see
+            :class:`SweptVolumeSignMode`. :attr:`SweptVolumeSignMode.NO_SIGN` requires a
+            positive ``threshold`` to result in a non-empty surface, since the field
+            is positive everywhere.
+        device: Device on which to run. Defaults to the device of the first mesh.
+
+    Returns:
+        A tuple ``(vertices, indices)`` where ``vertices`` is a
+        ``wp.array(dtype=wp.vec3)`` in world coordinates and ``indices`` is a
+        flat ``wp.array(dtype=wp.int32)`` with three entries per triangle.
+
+    Examples:
+        Sweep a tetrahedron one unit along x. The swept solid spans
+        ``(0, 0, 0)`` to ``(2, 1, 1)``, and extracting at the conservative
+        ``threshold`` guarantees the envelope encloses it.
+
+        >>> import numpy as np
+        >>> import warp as wp
+        >>> import warp.geometry as geo
+        >>> points = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
+        >>> faces = [0, 2, 1, 0, 3, 2, 0, 1, 3, 1, 2, 3]
+        >>> tet = wp.Mesh(wp.array(points, dtype=wp.vec3), wp.array(faces, dtype=wp.int32), support_winding_number=True)
+        >>> xforms = np.zeros((1, 8, 7), dtype=np.float32)  # one mesh, eight poses
+        >>> xforms[..., 6] = 1.0  # identity quaternions
+        >>> xforms[0, :, 0] = np.linspace(0.0, 1.0, 8)  # translate along x
+        >>> voxel_size = 0.05
+        >>> vertices, indices = geo.swept_volume_mesh(
+        ...     [tet], xforms, voxel_size=voxel_size, threshold=0.5 * np.sqrt(3.0) * voxel_size
+        ... )
+        >>> v = vertices.numpy()
+        >>> bool(np.all(v.min(axis=0) <= 0.0) and np.all(v.max(axis=0) >= [2.0, 1.0, 1.0]))
+        True
+    """
+    if sign_mode == SweptVolumeSignMode.NO_SIGN and threshold <= 0.0:
+        raise ValueError(
+            f"'threshold' must be positive when sign_mode is SweptVolumeSignMode.NO_SIGN, got {threshold}. "
+            "An unsigned field is positive everywhere, so its zero isosurface is empty."
+        )
+
+    if len(meshes) == 0:
+        raise ValueError("'meshes' must contain at least one mesh.")
+    device = wp.get_device(device) if device is not None else meshes[0].device
+    transforms = _swept_volume_transforms(transforms, device)
+    _check_transforms(meshes, transforms)
+
+    # Pad for the level being extracted, then sample that exact domain.
+    lower, upper, dims, _, _ = _swept_volume_grid(
+        meshes,
+        transforms,
+        voxel_size,
+        resolution,
+        lower,
+        upper,
+        max(threshold, 0.0),
+        device,
+    )
+
+    field, lower, upper = swept_volume_field(
+        meshes,
+        transforms,
+        resolution=dims,
+        lower=lower,
+        upper=upper,
+        sign_mode=sign_mode,
+        device=device,
+    )
+
+    return MarchingCubes.extract_surface_marching_cubes(
+        field,
+        threshold=threshold,
+        domain_bounds_lower_corner=lower,
+        domain_bounds_upper_corner=upper,
+    )
