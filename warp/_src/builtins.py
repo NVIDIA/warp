@@ -1875,7 +1875,7 @@ add_builtin(
     group="Quaternion Math",
     doc="""Spherically interpolate between two quaternions.
 
-    Follow the shortest arc from ``a`` to ``b``. Both inputs should be unit length.
+    Follow the shortest arc from ``a`` to ``b``. Both inputs should be unit length. ``q`` and ``-q`` denote the same rotation, so the result can differ by sign without changing orientation.
 
     Args:
         a: Start quaternion (unit length).
