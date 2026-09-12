@@ -125,7 +125,7 @@ def build_cuda(
             cuda_include_dirs,
             config == "debug",
             optimization_level,
-            warp.config.verbose or warp.config.log_level <= LOG_DEBUG,
+            warp.config.log_level <= LOG_DEBUG,
             verify_fp,
             fast_math,
             fuse_fp,
@@ -285,9 +285,6 @@ def clear_kernel_cache() -> None:
 
     warp._src.context.init()
 
-    is_initialized = warp._src.context.runtime is not None
-    assert is_initialized, "The kernel cache directory is not configured; wp.init() has not been called yet or failed."
-
     for m in warp._src.context.user_modules.values():
         m.unload()
 
@@ -306,9 +303,6 @@ def clear_lto_cache() -> None:
     """
 
     warp._src.context.init()
-
-    is_initialized = warp._src.context.runtime is not None
-    assert is_initialized, "The kernel cache directory is not configured; wp.init() has not been called yet or failed."
 
     lto_path = os.path.join(warp.config.kernel_cache_dir, "lto")
     if os.path.isdir(lto_path):

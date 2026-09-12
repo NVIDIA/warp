@@ -136,11 +136,11 @@ The following optional dependencies are required to support certain features:
   `usd-exchange <https://pypi.org/project/usd-exchange>`_ can be installed as a drop-in replacement.
   The ``[examples]`` extra handles this automatically.
 * `pyglet <https://pyglet.org/>`_: Required for some Warp examples and the :class:`warp.render.OpenGLRenderer`.
-* `JAX <https://jax.readthedocs.io/en/latest/installation.html>`_: Required for JAX interoperability (see :ref:`jax-interop`).
+* `JAX <https://docs.jax.dev/en/latest/installation.html>`_: Required for JAX interoperability (see :ref:`jax-interop`).
 * `PyTorch <https://pytorch.org/get-started/locally/>`_: Required for PyTorch interoperability (see :ref:`pytorch-interop`).
 * `Paddle <https://github.com/PaddlePaddle/Paddle>`_: Required for Paddle interoperability (see :ref:`paddle-interop`).
 * `NVTX for Python <https://github.com/NVIDIA/NVTX#python>`_: Required to use :class:`wp.ScopedTimer(use_nvtx=True) <warp.ScopedTimer>`.
-* `psutil <https://psutil.readthedocs.io/en/latest/>`_: Required to query CPU memory info (`get_device("cpu").total_memory`, `get_device("cpu").free_memory`).
+* `psutil <https://psutil.io/>`_: Required to query CPU memory info (`get_device("cpu").total_memory`, `get_device("cpu").free_memory`).
 
 Building from Source
 --------------------
@@ -153,7 +153,7 @@ For developers who want to build the library themselves, the following tools are
 * `Git Large File Storage <https://git-lfs.com>`_
 
 A CUDA Toolkit is not required for a CPU-only build. CUDA-enabled builds on Windows and Linux require
-`CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_ 12.0 or newer.
+`CUDA Toolkit <https://developer.nvidia.com/cuda/toolkit>`_ 12.0 or newer.
 
 After cloning the repository, users should run:
 
@@ -286,7 +286,7 @@ Conda Environments
 Some modules, such as ``usd-core``, don't support the latest Python version.
 To manage running Warp and other projects on different Python versions one can
 make use of an environment management system such as
-`Conda <https://docs.conda.io/>`__.
+`Conda <https://docs.conda.io/en/latest/>`__.
 
 .. warning::
 

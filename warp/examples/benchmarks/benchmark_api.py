@@ -341,7 +341,10 @@ for i in range(num_runs):
 
 
 def print_stat(name, data, trim=trim_runs):
-    assert len(data) - 2 * trim > 0
+    if len(data) - 2 * trim <= 0:
+        raise ValueError(
+            f"Benchmark trimming must leave at least one sample, got {len(data)} samples with trim={trim} per side"
+        )
     if trim > 0:
         data = sorted(data)[trim:-trim]
     print(f"{name:15s} {1000000 * stats.mean(data):.0f}")

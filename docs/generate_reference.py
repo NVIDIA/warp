@@ -57,6 +57,12 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 # Module containing Warp's built-ins functions and requiring special handling.
 BUILTINS_MODULE = "warp._src.lang"
 
+# Public cross-reference labels for selected built-in categories.
+BUILTINS_CATEGORY_LABELS = {
+    "Textures": "builtins-textures",
+    "Volumes": "builtins-volumes",
+}
+
 # Fallback category for items not explicitly categorized.
 DEFAULT_CATEGORY = "Misc"
 
@@ -81,7 +87,6 @@ BUILTINS_REF_DIR = "language_reference"
 SKIP = (
     "warp._src",
     "warp.examples",
-    "warp.jax_experimental",
     "warp.tests",
 )
 
@@ -501,6 +506,10 @@ def render_category_to_rst(
         lines: List to append RST lines to
         module_name: Name of the module being documented (for special handling)
     """
+    if module_name == BUILTINS_MODULE and (label := BUILTINS_CATEGORY_LABELS.get(cat.display_name)):
+        lines.append(f".. _{label}:")
+        lines.append("")
+
     # Render section header
     underline = "^" * len(cat.display_name) if cat.is_subcategory else "-" * len(cat.display_name)
     lines.append(cat.display_name)
@@ -732,7 +741,6 @@ def run():
 
     # Third pass: handle the built-ins symbols.
     # Include a builtin if ANY of its overloads are visible (not hidden).
-    # This matches the behavior of the old export_functions_rst system.
     def has_visible_overload(func):
         """Check if a builtin function has at least one non-hidden overload."""
         if hasattr(func, "overloads"):

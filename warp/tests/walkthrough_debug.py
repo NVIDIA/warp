@@ -1,18 +1,16 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-####################################################################################################
-#
-# This file demonstrates step-through debugging support of the C++ code generated for a Warp kernel
-# running on the CPU.
-#
-# This is not a unit test; it should be run interactively.
-#
-# For a fully integrated experience use Visual Studio Code and install the "Python C++ Debugger"
-# and "CodeLLDB" extensions. Add the following configurations to your .vscode/launch.json file:
-#
+"""Interactive walkthrough for debugging Warp CPU kernels.
 
-"""
+This module demonstrates step-through debugging of the C++ code generated for
+a Warp kernel running on the CPU. It is not a unit test and should be run
+interactively.
+
+For a fully integrated experience, use Visual Studio Code with the "Python C++
+Debugger" and "CodeLLDB" extensions. Add the following configurations to
+``.vscode/launch.json``:
+
 {
     "name": "Warp Debugger",
     "type": "pythoncpp",
@@ -33,17 +31,15 @@
     "type": "lldb",
     "request": "attach",
 },
-"""
 
-#
-# Then run this .py file using the "Warp Debugger" configuration.
-#
-# Check out the following resources for more information about launch configurations and
-# troubleshooting common VSCode debugger integration issues:
-# • https://vscode-docs.readthedocs.io/en/stable/editor/debugging/#launch-configurations
-# • https://code.visualstudio.com/docs/cpp/cpp-debug#_debugging
-#
-####################################################################################################
+Then run this file using the "Warp Debugger" configuration.
+
+See the following resources for more information about launch configurations
+and troubleshooting common Visual Studio Code debugger integration issues:
+
+* https://vscode-docs.readthedocs.io/en/stable/editor/debugging/#launch-configurations
+* https://code.visualstudio.com/docs/cpp/cpp-debug#_debugging
+"""
 
 import warp as wp
 

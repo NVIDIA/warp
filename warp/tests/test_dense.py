@@ -39,8 +39,7 @@ def eval_dense_solve(n: int, A: wp.array[float], L: wp.array[float], b: wp.array
 
 
 def test_dense_compilation(test, device):
-    # just testing compilation of the dense matrix routines
-    # most are deprecated / WIP
+    """Compile the dense matrix routines."""
     wp.load_module(device=device)
 
 

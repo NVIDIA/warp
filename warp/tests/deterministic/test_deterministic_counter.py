@@ -70,7 +70,7 @@ def helper_counter_side_effect_kernel(
     output: wp.array[wp.float32],
     scratch: wp.array[wp.float32],
 ):
-    """Normal stores before helper counter calls must be suppressed in phase 0."""
+    """Suppress normal stores before helper counter calls in Phase 0."""
     tid = wp.tid()
     scratch[tid] = scratch[tid] + 1.0
     _det_counter_write(counter, output, float(tid))
@@ -308,6 +308,41 @@ def counter_with_component_store_kernel(
     output[slot] = tid
 
 
+@wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
+def counter_with_int_slot_augassign_kernel(
+    counter: wp.array[wp.int32],
+    values: wp.array[wp.vec3i],
+    output: wp.array[wp.int32],
+):
+    """Update an integer component alongside a deterministic counter."""
+    slot = wp.atomic_add(counter, 0, 1)
+    values[0].x += 1
+    output[slot] = slot
+
+
+@wp.func
+def _det_int_slot_augassign(values: wp.array[wp.vec3i]):
+    values[0].x += 1
+
+
+@wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
+def counter_with_helper_int_slot_augassign_kernel(
+    counter: wp.array[wp.int32],
+    values: wp.array[wp.vec3i],
+    output: wp.array[wp.int32],
+):
+    """Update an integer component from a counter-kernel helper."""
+    slot = wp.atomic_add(counter, 0, 1)
+    _det_int_slot_augassign(values)
+    output[slot] = slot
+
+
+@wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
+def deterministic_float_slot_augassign_kernel(values: wp.array[wp.vec3], x: wp.array[wp.float32]):
+    """Floating-point slot atomics need deterministic scatter support."""
+    values[0].x += x[0]
+
+
 @wp.kernel
 def mixed_pattern_kernel(
     data: wp.array[wp.float32],
@@ -358,7 +393,7 @@ def strided_counter_gap_kernel(
     gaps: wp.array[wp.int32],
     output: wp.array[wp.int32],
 ):
-    """Stores to a neighboring strided view must be skipped during Phase 0."""
+    """Skip stores to a neighboring strided view during Phase 0."""
     tid = wp.tid()
     gaps[tid] = gaps[tid] + 1
     slot = wp.atomic_add(counter, 0, 1)
@@ -518,7 +553,7 @@ def test_counter_function_parameter_unconsumed_atomic(test, device):
 
 
 def test_counter_consumed_bitwise_atomic_rejected(test, device):
-    """Consuming a bitwise atomic return inside a two-pass body must be rejected."""
+    """Verify that consuming a bitwise atomic return inside a two-pass body must be rejected."""
     flag = wp.full(1, value=1, dtype=wp.int32, device=device)
     counter = wp.zeros(1, dtype=wp.int32, device=device)
     output = wp.full(1, value=-1, dtype=wp.int32, device=device)
@@ -544,6 +579,30 @@ def test_counter_phase0_suppresses_component_stores(test, device):
     np.testing.assert_array_equal(values.numpy(), np.array([[1.0, 0.0, 0.0]], dtype=np.float32))
     test.assertEqual(int(counter.numpy()[0]), 1)
     test.assertEqual(int(output.numpy()[0]), 0)
+
+
+def test_deterministic_counter_slot_augassign_runs_once(test, device):
+    """Run integer component updates once in deterministic counter kernels."""
+    for kernel in (counter_with_int_slot_augassign_kernel, counter_with_helper_int_slot_augassign_kernel):
+        with test.subTest(kernel=kernel.key):
+            counter = wp.zeros(1, dtype=wp.int32, device=device)
+            values = wp.zeros(1, dtype=wp.vec3i, device=device)
+            output = wp.full(1, value=-1, dtype=wp.int32, device=device)
+
+            wp.launch(kernel, dim=1, inputs=[counter, values], outputs=[output], device=device)
+
+            np.testing.assert_array_equal(values.numpy(), np.array([[1, 0, 0]], dtype=np.int32))
+            test.assertEqual(int(counter.numpy()[0]), 1)
+            test.assertEqual(int(output.numpy()[0]), 0)
+
+
+def test_deterministic_float_slot_augassign_rejected(test, device):
+    """Verify deterministic mode rejects unsupported floating-point slot atomics."""
+    values = wp.zeros(1, dtype=wp.vec3, device=device)
+    x = wp.ones(1, dtype=wp.float32, device=device)
+
+    with test.assertRaisesRegex(Exception, "floating-point composite slot augmented assignment atomics"):
+        wp.launch(deterministic_float_slot_augassign_kernel, dim=1, inputs=[values, x], device=device)
 
 
 def test_counter_correctness(test, device):
@@ -1021,6 +1080,8 @@ for _name in (
     "test_counter_function_parameter_unconsumed_atomic",
     "test_counter_consumed_bitwise_atomic_rejected",
     "test_counter_phase0_suppresses_component_stores",
+    "test_deterministic_counter_slot_augassign_runs_once",
+    "test_deterministic_float_slot_augassign_rejected",
     "test_counter_nonzero_initial_value",
     "test_counter_multi_launch_accumulates",
     "test_counter_variable_total_writeback",

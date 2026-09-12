@@ -704,7 +704,7 @@ def test_texture3d_resolution_query(test, device):
 
 
 def test_texture_dtype_prefers_warp_types(test, device):
-    """Texture dtype property should report canonical Warp scalar types."""
+    """Verify that texture dtype property should report canonical Warp scalar types."""
     data_u8 = np.zeros((4, 4), dtype=np.uint8)
     tex_u8 = wp.Texture2D(data_u8, device=device)
     test.assertIs(tex_u8.dtype, wp.uint8)
@@ -715,13 +715,13 @@ def test_texture_dtype_prefers_warp_types(test, device):
 
 
 def test_texture_dtype_float_alias_maps_to_float32(test, device):
-    """Python float in constructor args should map to Warp float32."""
+    """Verify that Python float in constructor args should map to Warp float32."""
     tex = wp.Texture1D(width=4, num_channels=1, dtype=float, device=device)
     test.assertIs(tex.dtype, wp.float32)
 
 
 def test_texture_dtype_int_alias_maps_to_int32(test, device):
-    """Python int in constructor args should map to Warp int32."""
+    """Verify that Python int in constructor args should map to Warp int32."""
     tex = wp.Texture1D(width=4, num_channels=1, dtype=int, device=device)
     test.assertIs(tex.dtype, wp.int32)
 
@@ -891,7 +891,7 @@ def test_texture1d_new_del(test, device):
 
 
 def test_texture2d_constructor_from_same_device_array(test, device):
-    """Texture2D constructor should accept same-device wp.array input."""
+    """Verify that Texture2D constructor should accept same-device wp.array input."""
     h, w = 8, 16
     data = np.random.default_rng(1234).random((h, w, 4), dtype=np.float32)
     src = wp.array(data, dtype=wp.vec4, device=device)
@@ -911,7 +911,7 @@ def test_texture2d_constructor_from_same_device_array(test, device):
 
 
 def test_texture2d_constructor_transfers_cross_device(test, device):
-    """Constructor should transparently transfer wp.array data to the target device."""
+    """Verify that constructor should transparently transfer wp.array data to the target device."""
     data = np.random.default_rng(42).random((4, 4), dtype=np.float32)
     src = wp.array(data, dtype=float, device="cpu")
     tex = wp.Texture2D(src, filter_mode=wp.TextureFilterMode.CLOSEST, device=device)
@@ -969,7 +969,7 @@ def test_texture3d_cuda_interop_handles(test, device):
 
 
 def test_texture_id_device_independent(test, device):
-    """Texture.id should be valid on both CPU and CUDA."""
+    """Verify that texture.id should be valid on both CPU and CUDA."""
     data = np.zeros((4, 4, 4), dtype=np.float32)
     tex = wp.Texture2D(data, device=device)
 
@@ -1067,7 +1067,7 @@ def test_texture_copy_validation_messages(test, device):
 
 
 def test_texture2d_cuda_array_copy_api_rejects_indexedarray(test, device):
-    """Texture2D CUDA copy helpers should reject non-``wp.array`` inputs."""
+    """Verify that Texture2D CUDA copy helpers should reject non-``wp.array`` inputs."""
     h, w = 8, 16
     data = np.random.default_rng(1234).random((h, w, 4), dtype=np.float32)
     src = wp.array(data, dtype=wp.vec4, device=device)
@@ -1080,7 +1080,7 @@ def test_texture2d_cuda_array_copy_api_rejects_indexedarray(test, device):
 
 
 def test_texture3d_cuda_array_copy_api_rejects_indexedarray(test, device):
-    """Texture3D CUDA copy helpers should reject non-``wp.array`` inputs."""
+    """Verify that Texture3D CUDA copy helpers should reject non-``wp.array`` inputs."""
     d, h, w = 6, 8, 16
     data = np.random.default_rng(1234).random((d, h, w, 4), dtype=np.float32)
     dst = wp.zeros((d, h, w), dtype=wp.vec4, device=device)
@@ -1245,7 +1245,7 @@ def test_texture3d_cuda_surface_property_api(test, device):
 
 
 def test_texture2d_cuda_surface_property_requires_surface_access(test, device):
-    """cuda_surface should fail unless surface access was enabled at texture creation."""
+    """Verify that cuda_surface should fail unless surface access was enabled at texture creation."""
     data = np.zeros((4, 4, 4), dtype=np.float32)
     tex = wp.Texture2D(data, device=device)
 
@@ -1254,7 +1254,7 @@ def test_texture2d_cuda_surface_property_requires_surface_access(test, device):
 
 
 def test_texture3d_cuda_surface_property_requires_surface_access(test, device):
-    """cuda_surface should fail unless surface access was enabled at texture creation."""
+    """Verify that cuda_surface should fail unless surface access was enabled at texture creation."""
     data = np.zeros((4, 4, 4), dtype=np.float32)
     tex = wp.Texture3D(data, device=device)
 
@@ -2757,7 +2757,7 @@ def sample_texture3d_mipmap(
 
 
 def test_texture2d_mipmap_full_chain(test, device):
-    """A texture created with num_mip_levels=0 should expose the full chain down to 1x1."""
+    """Verify that a texture created with num_mip_levels=0 should expose the full chain down to 1x1."""
     width = height = 16
     data = np.zeros((height, width, 4), dtype=np.float32)
     y = np.linspace(0.0, 1.0, height, dtype=np.float32)
@@ -2789,7 +2789,7 @@ def test_texture2d_mipmap_full_chain(test, device):
 
 
 def test_texture2d_mipmap_lod_selects_constant_level(test, device):
-    """Sampling at an integer LOD should return the constant color of that level."""
+    """Verify that sampling at an integer LOD should return the constant color of that level."""
     width = height = 8
 
     base = np.full((height, width, 4), fill_value=0.1, dtype=np.float32)

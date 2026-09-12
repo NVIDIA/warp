@@ -669,18 +669,18 @@ class TestStreams(unittest.TestCase):
             assert_np_equal(c0.numpy(), np.full(N, fill_value=2 * num_iters))
 
     def test_stream_new_del(self):
-        # test the scenario in which a Stream is created but not initialized before gc
+        """Delete a stream that was allocated without initialization."""
         instance = wp.Stream.__new__(wp.Stream)
         instance.__del__()
 
     def test_event_new_del(self):
-        # test the scenario in which an Event is created but not initialized before gc
+        """Delete an event that was allocated without initialization."""
         instance = wp.Event.__new__(wp.Event)
         instance.__del__()
 
 
 def test_stream_is_blocking(test, device):
-    # Warp-created streams are always blocking (hardcoded at construction time, no native call)
+    """Report Warp-created streams as blocking."""
     warp_stream = wp.Stream(device)
     test.assertTrue(warp_stream.is_blocking)
 

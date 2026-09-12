@@ -48,7 +48,7 @@ def conditional_sum_grid_stride(result: wp.array[wp.uint64]):
 
 
 def test_large_launch_max_blocks(test, device):
-    # Loop over 1000x1x1 elements using a grid of 256 threads
+    """Process more elements than the configured maximum block count."""
     test_result = wp.zeros(shape=(1,), dtype=wp.uint64, device=device)
     wp.launch(count_elements, (1000,), inputs=[test_result], max_blocks=1, device=device)
     test.assertEqual(test_result.numpy()[0], 1000)
@@ -70,7 +70,7 @@ def test_large_launch_max_blocks(test, device):
 
 
 def test_large_launch_very_large_kernel(test, device):
-    """Due to the size of the grid, this test is not run on CPUs"""
+    """Test a very large kernel launch on CUDA devices."""
 
     # Dim is chosen to be larger than the maximum CUDA one-dimensional grid size (total threads)
     dim = (2**31 - 1) * 256 + 1
@@ -127,7 +127,7 @@ def test_large_arrays(test, device):
 
 
 def test_large_array_excessive_zeros(test, device):
-    # Tests the allocation of an array with length exceeding 2**31-1 in a dimension
+    """Allocate an array with a dimension longer than 2**31 - 1."""
 
     with test.assertRaisesRegex(
         ValueError, "Array shapes must not exceed the maximum representable value of a signed 32-bit integer"

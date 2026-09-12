@@ -57,8 +57,8 @@ template <typename T, typename Op = OpAdd<T>> inline CUDA_CALLABLE T scan_warp_i
     // Computes an inclusive cumulative sum/max/etc
     Op op;
 #pragma unroll
-    for (int i = 1; i < 32; i *= 2) {
-        auto n = __shfl_up_sync(0xffffffffu, value, i, 32);
+    for (int i = 1; i < WP_TILE_WARP_SIZE; i *= 2) {
+        auto n = __shfl_up_sync(WP_TILE_LANE_MASK_ALL, value, i, WP_TILE_WARP_SIZE);
 
         if (lane >= i)
             value = op(value, n);
@@ -77,7 +77,7 @@ inline CUDA_CALLABLE T scan_warp_exclusive(int lane, T value, T* inclusive_value
         *inclusive_value = inclusive;
 
     // Shift right by 1 to convert inclusive to exclusive
-    T exclusive = __shfl_up_sync(0xffffffffu, inclusive, 1, 32);
+    T exclusive = __shfl_up_sync(WP_TILE_LANE_MASK_ALL, inclusive, 1, WP_TILE_WARP_SIZE);
 
     // Lane 0 gets the identity value
     if (lane == 0)
@@ -96,10 +96,10 @@ inline CUDA_CALLABLE T thread_block_scan(int lane, int warp_index, int num_warps
     T orig_value = value;
 
     if constexpr (exclusive) {
-        value = scan_warp_exclusive<T, Op>(lane, value, lane == 31 ? &sums[warp_index] : nullptr);
+        value = scan_warp_exclusive<T, Op>(lane, value, lane == WP_TILE_WARP_SIZE - 1 ? &sums[warp_index] : nullptr);
     } else {
         value = scan_warp_inclusive<T, Op>(lane, value);
-        if (lane == 31)
+        if (lane == WP_TILE_WARP_SIZE - 1)
             sums[warp_index] = value;
     }
 
@@ -210,45 +210,128 @@ inline CUDA_CALLABLE auto tile_scan_exclusive_impl(Tile& t)
 
 #else
 
-// CPU implementations
+// CPU implementations.
+//
+// At block_dim==1 each thread holds the entire tile in its registers, so the
+// scan reduces to a sequential pass. At block_dim>1 each thread holds only
+// `Layout::NumRegs` slots of the tile (Size / block_dim, rounded up), so the
+// scan must coordinate across fibers. We gather all values into a per-block
+// shared scratch via `tile_shared_storage_t::alloc`, sync, then each fiber
+// computes the inclusive scan up to its own elements. O(Size^2 / block_dim)
+// per fiber — comparable to the GPU warp-level shuffle path for moderate
+// block_dim. (See plan A8 step 4: a more efficient port is a follow-up.)
+
 template <typename Tile, typename Op = OpAdd<typename Tile::Type>> inline auto tile_scan_inclusive_impl(Tile& t)
 {
     using T = typename Tile::Type;
-    constexpr int num_elements_to_scan = Tile::Layout::Shape::size();
+    constexpr int N = Tile::Layout::Shape::size();
 
     auto input = t.copy_to_register();
     auto output = tile_register_like<Tile>();
-
     using Layout = typename decltype(input)::Layout;
     Op op;
 
-    T acc = op.identity();
-    for (int i = 0; i < num_elements_to_scan; ++i) {
-        acc = op(acc, input.data[i]);
-        output.data[i] = acc;
-    }
+    if constexpr (WP_TILE_BLOCK_DIM == 1) {
+        // Block-dim 1 fast path: full tile in one thread's registers.
+        T acc = op.identity();
+        for (int i = 0; i < Layout::NumRegs && i < N; ++i) {
+            acc = op(acc, input.data[i]);
+            output.data[i] = acc;
+        }
+        return output;
+    } else {
+        // Cross-fiber scan via shared scratch.
+        T* scratch = (T*)tile_shared_storage_t::alloc(int(sizeof(T) * N));
+        bool* active = (bool*)tile_shared_storage_t::alloc(int(sizeof(bool) * WP_TILE_BLOCK_DIM));
+        const int tid = WP_TILE_THREAD_IDX;
 
-    return output;
+        // Inactive tail fibers in a partial CPU block never enter the kernel,
+        // so their register-owned scratch slots are unwritten. Record the
+        // fibers that participate and skip all other slots below.
+        // Every live fiber clears all flags so initialization remains valid
+        // when lane 0, or a sparse set of lanes, has already returned.
+        for (int i = 0; i < WP_TILE_BLOCK_DIM; ++i)
+            active[i] = false;
+        WP_TILE_SYNC();
+        active[tid] = true;
+
+        for (int r = 0; r < Layout::NumRegs; ++r) {
+            int linear = Layout::linear_from_register(r);
+            if (linear < N)
+                scratch[linear] = input.data[r];
+        }
+        WP_TILE_SYNC();
+
+        for (int r = 0; r < Layout::NumRegs; ++r) {
+            int linear = Layout::linear_from_register(r);
+            if (linear < N) {
+                T acc = op.identity();
+                for (int j = 0; j <= linear; ++j) {
+                    if (active[Layout::thread_from_linear(j)])
+                        acc = op(acc, scratch[j]);
+                }
+                output.data[r] = acc;
+            }
+        }
+        WP_TILE_SYNC();
+
+        tile_shared_storage_t::alloc(-(int)(sizeof(bool) * WP_TILE_BLOCK_DIM));
+        tile_shared_storage_t::alloc(-(int)(sizeof(T) * N));
+        return output;
+    }
 }
 
 template <typename Tile, typename Op = OpAdd<typename Tile::Type>> inline auto tile_scan_exclusive_impl(Tile& t)
 {
     using T = typename Tile::Type;
-    constexpr int num_elements_to_scan = Tile::Layout::Shape::size();
+    constexpr int N = Tile::Layout::Shape::size();
 
     auto input = t.copy_to_register();
     auto output = tile_register_like<Tile>();
-
     using Layout = typename decltype(input)::Layout;
     Op op;
 
-    T acc = op.identity();
-    for (int i = 0; i < num_elements_to_scan; ++i) {
-        output.data[i] = acc;
-        acc = op(acc, input.data[i]);
-    }
+    if constexpr (WP_TILE_BLOCK_DIM == 1) {
+        T acc = op.identity();
+        for (int i = 0; i < Layout::NumRegs && i < N; ++i) {
+            output.data[i] = acc;
+            acc = op(acc, input.data[i]);
+        }
+        return output;
+    } else {
+        T* scratch = (T*)tile_shared_storage_t::alloc(int(sizeof(T) * N));
+        bool* active = (bool*)tile_shared_storage_t::alloc(int(sizeof(bool) * WP_TILE_BLOCK_DIM));
+        const int tid = WP_TILE_THREAD_IDX;
 
-    return output;
+        for (int i = 0; i < WP_TILE_BLOCK_DIM; ++i)
+            active[i] = false;
+        WP_TILE_SYNC();
+        active[tid] = true;
+
+        for (int r = 0; r < Layout::NumRegs; ++r) {
+            int linear = Layout::linear_from_register(r);
+            if (linear < N)
+                scratch[linear] = input.data[r];
+        }
+        WP_TILE_SYNC();
+
+        for (int r = 0; r < Layout::NumRegs; ++r) {
+            int linear = Layout::linear_from_register(r);
+            if (linear < N) {
+                T acc = op.identity();
+                for (int j = 0; j < linear; ++j) {
+                    if (active[Layout::thread_from_linear(j)])
+                        acc = op(acc, scratch[j]);
+                }
+                output.data[r] = acc;
+            }
+        }
+        WP_TILE_SYNC();
+
+        tile_shared_storage_t::alloc(-(int)(sizeof(bool) * WP_TILE_BLOCK_DIM));
+        tile_shared_storage_t::alloc(-(int)(sizeof(T) * N));
+        return output;
+    }
 }
 
 #endif  // !defined(__CUDA_ARCH__)

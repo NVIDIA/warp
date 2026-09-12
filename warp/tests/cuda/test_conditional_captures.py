@@ -931,7 +931,7 @@ def test_complex_with_subgraphs(test, device):
 
 
 def test_graph_debug_dot_print(test, device):
-    # create a simple graph to test dot file output
+    """Test debug graph output in DOT format."""
     array = wp.array([1.0, 2.0, 3.0, 4.0], dtype=wp.float32, device=device)
 
     with wp.ScopedCapture() as capture:

@@ -698,8 +698,7 @@ def test_indexedarray_generics(test, device):
 
 
 def test_indexedarray_empty(test, device):
-    # Test whether common operations work with empty (zero-sized) indexed arrays
-    # without throwing exceptions.
+    """Test common operations on empty indexed arrays."""
 
     def test_empty_ops(ndim, nrows, ncols, wptype, nptype):
         data_shape = (1,) * ndim
@@ -847,7 +846,7 @@ def test_indexedarray_fill_scalar(test, device):
 
 
 def test_indexedarray_fill_vector(test, device):
-    # test filling a vector array with scalar or vector values (vec_type, list, or numpy array)
+    """Fill an indexed vector array with scalar and vector values."""
 
     dim_x = 4
 
@@ -993,7 +992,7 @@ def test_indexedarray_fill_vector(test, device):
 
 
 def test_indexedarray_fill_matrix(test, device):
-    # test filling a matrix array with scalar or matrix values (mat_type, nested list, or 2d numpy array)
+    """Fill an indexed matrix array with scalar and matrix values."""
 
     dim_x = 4
 

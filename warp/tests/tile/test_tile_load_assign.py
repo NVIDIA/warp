@@ -99,6 +99,13 @@ class TestTileLoadAssign(unittest.TestCase):
 
 add_function_test(
     TestTileLoadAssign,
+    "test_tile_assign_2d_cpu_blocks",
+    test_tile_assign(tile_assign_2d_kernel, 2),
+    devices=["cpu"],
+    enable_cpu_blocks=True,
+)
+add_function_test(
+    TestTileLoadAssign,
     "test_tile_assign_1d",
     test_tile_assign(tile_assign_1d_kernel, 1),
     devices=devices,

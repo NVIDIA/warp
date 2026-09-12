@@ -4,6 +4,7 @@
 from typing import Any
 
 import warp as wp
+from warp._src.types import type_repr
 
 
 @wp.kernel
@@ -43,7 +44,7 @@ class SGD:
     Nesterov accelerated gradient, and weight decay (L2 regularization).
 
     The interface is similar to `PyTorch's torch.optim.SGD
-    <https://pytorch.org/docs/stable/generated/torch.optim.SGD.html>`_.
+    <https://docs.pytorch.org/docs/stable/generated/torch.optim.SGD.html>`_.
 
     Args:
         params: List of :class:`warp.array` objects to optimize. Can be ``None``
@@ -98,7 +99,8 @@ class SGD:
         Args:
             grad: List of gradient arrays matching ``params``.
         """
-        assert self.params is not None
+        if self.params is None:
+            raise RuntimeError("SGD parameters must be set before calling step(), got None")
         for i in range(len(self.params)):
             SGD.step_detail(
                 grad[i],
@@ -128,8 +130,16 @@ class SGD:
             t: Current step index.
             params: Parameter array to update in-place.
         """
-        assert params.dtype == g.dtype
-        assert params.dtype == b.dtype
-        assert params.shape == g.shape
+        if params.dtype != g.dtype:
+            raise TypeError(
+                f"SGD gradient dtype must match parameter dtype {type_repr(params.dtype)}, got {type_repr(g.dtype)}"
+            )
+        if params.dtype != b.dtype:
+            raise TypeError(
+                f"SGD momentum buffer dtype must match parameter dtype {type_repr(params.dtype)}, "
+                f"got {type_repr(b.dtype)}"
+            )
+        if params.shape != g.shape:
+            raise ValueError(f"SGD gradient shape must match parameter shape {params.shape}, got {g.shape}")
         kernel_inputs = (g, b, lr, momentum, dampening, weight_decay, int(nesterov), t, params)
         wp.launch(sgd_step_kernel, dim=len(params), inputs=kernel_inputs, device=params.device)

@@ -240,7 +240,7 @@ def test_typed_constructor_accepts_literals_kernel(result: wp.array[wp.vec3d]):
 
 @wp.kernel
 def test_vector_dtype_float_is_float32_kernel(result: wp.array[wp.vec3]):
-    """wp.types.vector(..., dtype=float) produces float32 elements."""
+    """Verify that ``wp.types.vector(..., dtype=float)`` produces float32 elements."""
     v = wp.types.vector(1.0, 2.0, 3.0, dtype=float)
     result[0] = v
 
@@ -318,7 +318,7 @@ def test_vec3_int_literals(test, device):
 
 
 def test_int_literal_float64_constructor(test, device):
-    """Int literals in float64 constructors (vec3d(1, 2, 3)) produce exact values."""
+    """Verify that int literals in float64 constructors (vec3d(1, 2, 3)) produce exact values."""
     result = wp.zeros(3, dtype=wp.float64, device=device)
     wp.launch(test_int_literal_float64_constructor_kernel, dim=1, inputs=[result], device=device)
     vals = result.numpy()
@@ -334,7 +334,7 @@ def test_vec3d_fill(test, device):
 
 
 def test_warp_constant_constructor(test, device):
-    """Module constants in typed constructors (vec3d) preserve precision of each component."""
+    """Verify that module constants in typed constructors (vec3d) preserve precision of each component."""
     result = wp.zeros(3, dtype=wp.float64, device=device)
     wp.launch(test_warp_constant_constructor_kernel, dim=1, inputs=[result], device=device)
     vals = result.numpy()
@@ -350,7 +350,7 @@ def test_typed_constructor_accepts_literals(test, device):
 
 
 def test_vector_dtype_float_is_float32(test, device):
-    """wp.types.vector(..., dtype=float) produces float32 elements."""
+    """Verify that wp.types.vector(..., dtype=float) produces float32 elements."""
     result = wp.zeros(1, dtype=wp.vec3, device=device)
     wp.launch(test_vector_dtype_float_is_float32_kernel, dim=1, inputs=[result], device=device)
     np.testing.assert_allclose(result.numpy()[0], [1.0, 2.0, 3.0])
@@ -390,7 +390,7 @@ def test_quatd_mixed_literal_variable(test, device):
 
 
 def test_typed_constructor_rejects_mismatched_variable(test, device):
-    """Passing a float64 variable to a float32 constructor errors."""
+    """Verify that passing a float64 variable to a float32 constructor errors."""
 
     @wp.kernel(module="unique")
     def kernel(x: wp.float64):
@@ -401,7 +401,7 @@ def test_typed_constructor_rejects_mismatched_variable(test, device):
 
 
 def test_matrix_constructor_rejects_mismatched_variable(test, device):
-    """Passing a float64 variable to a float32 matrix constructor errors."""
+    """Verify that passing a float64 variable to a float32 matrix constructor errors."""
     mat22f = wp.types.matrix((2, 2), wp.float32)
 
     @wp.kernel(module="unique")
@@ -413,7 +413,7 @@ def test_matrix_constructor_rejects_mismatched_variable(test, device):
 
 
 def test_matrix_fill_rejects_mismatched_variable(test, device):
-    """Filling a float32 matrix with a float64 variable errors."""
+    """Verify that filling a float32 matrix with a float64 variable errors."""
     mat22f = wp.types.matrix((2, 2), wp.float32)
 
     @wp.kernel(module="unique")
@@ -425,7 +425,7 @@ def test_matrix_fill_rejects_mismatched_variable(test, device):
 
 
 def test_mixed_literal_variable_rejects_wrong_type(test, device):
-    """vec3h(literal, float32_var, literal) errors — variable type doesn't match constructor dtype."""
+    """Verify that vec3h(literal, float32_var, literal) errors — variable type doesn't match constructor dtype."""
 
     @wp.kernel(module="unique")
     def kernel(x: wp.float32):

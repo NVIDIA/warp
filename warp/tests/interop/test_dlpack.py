@@ -282,7 +282,7 @@ def test_dlpack_dtypes_and_shapes(test, device):
 
 
 def test_dlpack_stream_arg(test, device):
-    # test valid range for the stream argument to array.__dlpack__()
+    """Test valid stream arguments for ``array.__dlpack__()``."""
 
     data = np.arange(10)
 
@@ -359,7 +359,7 @@ def test_dlpack_warp_to_torch(test, device):
 
 
 def test_dlpack_warp_to_torch_v2(test, device):
-    # same as original test, but uses newer __dlpack__() method
+    """Convert Warp arrays to Torch with the DLPack protocol."""
     torch = _import_torch_with_dlpack()
 
     a = wp.array(data=np.arange(N, dtype=np.float32), device=device)
@@ -413,7 +413,7 @@ def test_dlpack_torch_to_warp(test, device):
 
 
 def test_dlpack_torch_to_warp_v2(test, device):
-    # same as original test, but uses newer __dlpack__() method
+    """Convert Torch tensors to Warp with the DLPack protocol."""
     torch = _import_torch_with_dlpack()
 
     torch_device = torch.device(wp.device_to_torch(device))
@@ -519,7 +519,7 @@ def test_dlpack_warp_to_jax(test, device):
 
 @unittest.skipUnless(_jax_version() >= (0, 4, 15), "Jax version too old")
 def test_dlpack_warp_to_jax_v2(test, device):
-    # same as original test, but uses newer __dlpack__() method
+    """Convert Warp arrays to JAX with the DLPack protocol."""
     jax = _import_jax_with_dlpack()
     jnp = _import_jax_numpy()
 
@@ -591,7 +591,7 @@ def test_dlpack_warp_to_paddle(test, device):
 
 
 def test_dlpack_warp_to_paddle_v2(test, device):
-    # same as original test, but uses newer __dlpack__() method
+    """Convert Warp arrays to Paddle with the DLPack protocol."""
 
     paddle = _import_paddle_with_dlpack()
 
@@ -654,7 +654,7 @@ def test_dlpack_jax_to_warp(test, device):
 
 @unittest.skipUnless(_jax_version() >= (0, 4, 15), "Jax version too old")
 def test_dlpack_jax_to_warp_v2(test, device):
-    # same as original test, but uses newer __dlpack__() method
+    """Convert JAX arrays to Warp with the DLPack protocol."""
 
     jax = _import_jax()
 
@@ -712,7 +712,16 @@ def test_dlpack_bf16_round_trip(test, device):
 
 
 class TestDLPack(unittest.TestCase):
-    pass
+    def test_invalid_capsule_error(self):
+        class InvalidDLPackSource:
+            def __dlpack_device__(self):
+                return (1, 0)
+
+            def __dlpack__(self, stream=None):
+                return object()
+
+        with self.assertRaisesRegex(TypeError, "Expected a valid DLPack capsule, got object"):
+            wp.from_dlpack(InvalidDLPackSource())
 
 
 devices = get_test_devices()

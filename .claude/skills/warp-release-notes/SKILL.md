@@ -279,7 +279,7 @@ For revising an existing gist (the `revise-gist:<id>` destination), remind the r
 - **Tagged target section missing.** Abort; the tag does not contain its expected `## [<target-version>]` section.
 - **No pending fragments before tagging.** Abort rather than substituting the newest historical release section.
 - **Towncrier draft fails.** Surface its output and abort; do not hand-build a release section.
-- **`gh` unavailable.** `list_contributors.py` falls back to email-only classification (only `@nvidia.com` registers as internal); private-membership NVIDIA staff committing from noreply / personal addresses will be misclassified as `external`. Note in the chat summary.
+- **`gh` unavailable.** `list_contributors.py` falls back to email-only classification (`nvidia.com` and its subdomains register as NVIDIA-affiliated); private-membership NVIDIA staff committing from noreply / personal addresses will be misclassified as `external`. Note in the chat summary.
 
 ## Regexes and parsing rules (inline reference)
 

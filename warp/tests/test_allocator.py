@@ -169,13 +169,13 @@ def _check_torch_cuda_allocator_device(test, device):
 
 class TestAllocatorProtocol(unittest.TestCase):
     def test_protocol_conformance_cpu(self):
-        """Built-in CPU allocators satisfy the Allocator protocol."""
+        """Verify that built-in CPU allocators satisfy the Allocator protocol."""
         cpu = wp.get_device("cpu")
         self.assertIsInstance(cpu.default_allocator, Allocator)
         self.assertIsInstance(cpu.pinned_allocator, Allocator)
 
     def test_memory_kind_values_match_native_codes(self):
-        """MemoryKind values match the native wp_memory_kind enum."""
+        """Verify that MemoryKind values match the native wp_memory_kind enum."""
 
         self.assertIs(wp.MemoryKind(0), wp.MemoryKind.UNKNOWN)
         self.assertIs(wp.MemoryKind(1), wp.MemoryKind.HOST)
@@ -185,7 +185,7 @@ class TestAllocatorProtocol(unittest.TestCase):
         self.assertIs(wp.MemoryKind(5), wp.MemoryKind.CUDA_MANAGED)
 
     def test_public_memory_kind_for_cpu_arrays(self):
-        """array.memory_kind reports observed CPU memory kind."""
+        """Verify that array.memory_kind reports observed CPU memory kind."""
 
         a = wp.empty(4, dtype=wp.float32, device="cpu")
         self.assertIs(a.memory_kind, wp.MemoryKind.HOST)
@@ -216,7 +216,7 @@ class TestAllocatorProtocol(unittest.TestCase):
 
 
 def test_protocol_conformance_cuda(test, device):
-    """Built-in CUDA allocators satisfy the Allocator protocol."""
+    """Verify that built-in CUDA allocators satisfy the Allocator protocol."""
     device = wp.get_device(device)
     test.assertIsInstance(device.default_allocator, Allocator)
     if device.is_mempool_supported:
@@ -247,7 +247,7 @@ class TestCustomAllocator(unittest.TestCase):
 
     @unittest.skipUnless(wp.is_cuda_available(), "CUDA not available")
     def test_managed_allocator_failure_uses_native_error_only(self):
-        """CudaManagedAllocator does not synthesize capture-specific errors."""
+        """Verify that CudaManagedAllocator does not synthesize capture-specific errors."""
 
         alloc = wp.CudaManagedAllocator()
         device = wp.get_device("cuda:0")
@@ -267,7 +267,7 @@ class TestCustomAllocator(unittest.TestCase):
 
     @unittest.skipUnless(wp.get_cuda_device_count() >= 2, "Multi-GPU not available")
     def test_set_cuda_allocator_broadcasts_to_all_devices(self):
-        """set_cuda_allocator() applies the allocator to every available CUDA device."""
+        """Verify that set_cuda_allocator() applies the allocator to every available CUDA device."""
         dev0 = wp.get_device("cuda:0")
         dev1 = wp.get_device("cuda:1")
         alloc = CountingAllocator(dev0)
@@ -280,7 +280,7 @@ class TestCustomAllocator(unittest.TestCase):
 
     @unittest.skipUnless(wp.get_cuda_device_count() >= 2, "Multi-GPU not available")
     def test_per_device_isolation(self):
-        """Setting allocator on one device does not affect another."""
+        """Verify that setting allocator on one device does not affect another."""
         dev0 = wp.get_device("cuda:0")
         dev1 = wp.get_device("cuda:1")
         alloc0 = CountingAllocator(dev0)
@@ -298,13 +298,13 @@ class TestCustomAllocator(unittest.TestCase):
 
     @unittest.skipUnless(wp.is_cuda_available(), "CUDA not available")
     def test_set_device_allocator_cpu_raises(self):
-        """set_device_allocator() raises for CPU devices."""
+        """Verify that set_device_allocator() raises for CPU devices."""
         with self.assertRaises(RuntimeError):
             wp.set_device_allocator("cpu", CountingAllocator(wp.get_device("cuda:0")))
 
 
 def test_set_cuda_allocator(test, device):
-    """set_cuda_allocator() routes array allocations through the custom allocator."""
+    """Verify that set_cuda_allocator() routes array allocations through the custom allocator."""
     device = wp.get_device(device)
     alloc = CountingAllocator(device)
     wp.set_cuda_allocator(alloc)
@@ -322,7 +322,7 @@ def test_set_cuda_allocator(test, device):
 
 
 def test_set_device_allocator(test, device):
-    """set_device_allocator() sets allocator on a specific device."""
+    """Verify that set_device_allocator() sets allocator on a specific device."""
     device = wp.get_device(device)
     alloc = CountingAllocator(device)
     wp.set_device_allocator(device, alloc)
@@ -334,7 +334,7 @@ def test_set_device_allocator(test, device):
 
 
 def test_get_device_allocator(test, device):
-    """get_device_allocator() returns the effective allocator."""
+    """Verify that get_device_allocator() returns the effective allocator."""
     device = wp.get_device(device)
     alloc = CountingAllocator(device)
     wp.set_device_allocator(device, alloc)
@@ -345,7 +345,7 @@ def test_get_device_allocator(test, device):
 
 
 def test_reset_to_default(test, device):
-    """set_cuda_allocator(None) restores the built-in allocator."""
+    """Verify that set_cuda_allocator(None) restores the built-in allocator."""
     device = wp.get_device(device)
     original = wp.get_device_allocator(device)
     wp.set_cuda_allocator(CountingAllocator(device))
@@ -354,7 +354,7 @@ def test_reset_to_default(test, device):
 
 
 def test_scoped_allocator(test, device):
-    """ScopedAllocator restores the previous allocator on exit."""
+    """Verify that ScopedAllocator restores the previous allocator on exit."""
     device = wp.get_device(device)
     alloc = CountingAllocator(device)
     original = wp.get_device_allocator(device)
@@ -366,7 +366,7 @@ def test_scoped_allocator(test, device):
 
 
 def test_managed_allocator_allocates_on_selected_device(test, device):
-    """CudaManagedAllocator uses the CUDA device selected by ScopedAllocator."""
+    """Verify that CudaManagedAllocator uses the CUDA device selected by ScopedAllocator."""
 
     if not device.is_managed_memory_supported:
         test.skipTest(f"{device} does not support CUDA managed memory")
@@ -383,7 +383,7 @@ def test_managed_allocator_allocates_on_selected_device(test, device):
 
 
 def test_scoped_allocator_restores_on_exception(test, device):
-    """ScopedAllocator restores allocator even if body raises."""
+    """Verify that ScopedAllocator restores allocator even if body raises."""
     device = wp.get_device(device)
     alloc = CountingAllocator(device)
     original = wp.get_device_allocator(device)
@@ -394,7 +394,7 @@ def test_scoped_allocator_restores_on_exception(test, device):
 
 
 def test_allocator_swap_with_live_arrays(test, device):
-    """Arrays allocated with a custom allocator survive allocator reset."""
+    """Verify that arrays allocated with a custom allocator survive allocator reset."""
     device = wp.get_device(device)
     alloc = CountingAllocator(device)
     wp.set_device_allocator(device, alloc)
@@ -406,7 +406,7 @@ def test_allocator_swap_with_live_arrays(test, device):
 
 
 def test_allocator_deallocate_uses_current_device_context_guard(test, device):
-    """Array teardown uses the device context guard at deallocation time."""
+    """Verify that array teardown uses the device context guard at deallocation time."""
     device = wp.get_device(device)
     alloc = CountingAllocator(device)
     original_guard = device.context_guard
@@ -429,7 +429,7 @@ def test_allocator_deallocate_uses_current_device_context_guard(test, device):
 
 
 def test_allocate_failure(test, device):
-    """Allocation failure in custom allocator propagates cleanly."""
+    """Verify that allocation failure in custom allocator propagates cleanly."""
     device = wp.get_device(device)
     wp.set_device_allocator(device, FailAllocator())
     try:
@@ -440,7 +440,7 @@ def test_allocate_failure(test, device):
 
 
 def test_zero_size_allocation(test, device):
-    """Custom allocator is not invoked for zero-size arrays."""
+    """Verify that custom allocator is not invoked for zero-size arrays."""
     device = wp.get_device(device)
     alloc = CountingAllocator(device)
     wp.set_device_allocator(device, alloc)
@@ -481,7 +481,7 @@ class TestRmmAllocator(unittest.TestCase):
     @unittest.skipUnless(rmm_available, "rmm not installed")
     @unittest.skipUnless(wp.get_cuda_device_count() >= 2, "Multi-GPU not available")
     def test_rmm_allocator_multi_gpu(self):
-        """A single AllocatorRmm instance works across multiple CUDA devices."""
+        """Verify that a single AllocatorRmm instance works across multiple CUDA devices."""
         rmm.reinitialize(pool_allocator=True, initial_pool_size=2**26)
 
         alloc = wp.utils.AllocatorRmm()
@@ -502,13 +502,13 @@ class TestRmmAllocator(unittest.TestCase):
 
     @unittest.skipIf(rmm_available, "rmm is installed")
     def test_rmm_allocator_import_error(self):
-        """AllocatorRmm raises ImportError when rmm is not installed."""
+        """Verify that AllocatorRmm raises ImportError when rmm is not installed."""
         with self.assertRaises(ImportError):
             wp.utils.AllocatorRmm()
 
 
 def test_rmm_allocator_basic(test, device):
-    """AllocatorRmm routes allocations through RMM."""
+    """Verify that AllocatorRmm routes allocations through RMM."""
     rmm.reinitialize(pool_allocator=True, initial_pool_size=2**26)
 
     device = wp.get_device(device)
@@ -527,7 +527,7 @@ def test_rmm_allocator_basic(test, device):
 
 
 def test_rmm_allocator_interop_torch(test, device):
-    """RMM-allocated Warp array can be exported to PyTorch."""
+    """Verify that RMM-allocated Warp array can be exported to PyTorch."""
     try:
         import torch  # noqa: F401, PLC0415
     except ImportError:
@@ -549,7 +549,7 @@ def test_rmm_allocator_interop_torch(test, device):
 
 
 def test_rmm_allocator_double_free(test, device):
-    """deallocate() raises RuntimeError for an already-freed or unknown pointer."""
+    """Verify that deallocate() raises RuntimeError for an already-freed or unknown pointer."""
     device = wp.get_device(device)
     alloc = wp.utils.AllocatorRmm()
     wp.set_device_allocator(device, alloc)
@@ -582,7 +582,7 @@ if rmm_available:
 
 class TestTorchAllocator(unittest.TestCase):
     def test_torch_import_probe_handles_os_error(self):
-        """Torch DLL load failures make Torch allocator tests unavailable."""
+        """Verify that Torch DLL load failures make Torch allocator tests unavailable."""
 
         real_import = __import__
 
@@ -599,7 +599,7 @@ class TestTorchAllocator(unittest.TestCase):
         self.assertFalse(is_available)
 
     def test_torch_import_probe_propagates_unexpected_errors(self):
-        """Unexpected Torch import failures still fail test collection."""
+        """Verify that unexpected Torch import failures still fail test collection."""
 
         real_import = __import__
 
@@ -615,7 +615,7 @@ class TestTorchAllocator(unittest.TestCase):
 
 
 def test_torch_caching_allocator(test, device):
-    """Warp arrays can allocate from PyTorch's CUDA caching allocator."""
+    """Verify that Warp arrays can allocate from PyTorch's CUDA caching allocator."""
     import torch  # noqa: PLC0415
 
     device = wp.get_device(device)

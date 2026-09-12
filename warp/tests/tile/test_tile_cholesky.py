@@ -980,6 +980,27 @@ add_function_test(
     check_output=False,
 )
 
+cpu_block_tests = (
+    ("test_tile_cholesky_cholesky", test_tile_cholesky_cholesky),
+    ("test_tile_cholesky_cholesky_inplace", test_tile_cholesky_cholesky_inplace),
+    ("test_tile_cholesky_cholesky_multiple_rhs", test_tile_cholesky_cholesky_multiple_rhs),
+    ("test_tile_cholesky_upper", test_tile_cholesky_upper),
+    ("test_tile_cholesky_upper_inplace", test_tile_cholesky_upper_inplace),
+    ("test_tile_cholesky_solve_upper", test_tile_cholesky_solve_upper),
+    ("test_tile_cholesky_solve_upper_multiple_rhs", test_tile_cholesky_solve_upper_multiple_rhs),
+    ("test_tile_cholesky_lower_backward_fp32", test_tile_cholesky_lower_backward(wp.float32)),
+    ("test_tile_cholesky_upper_backward_fp32", test_tile_cholesky_upper_backward(wp.float32)),
+)
+for name, func in cpu_block_tests:
+    add_function_test(
+        TestTileCholesky,
+        f"{name}_cpu_blocks",
+        func,
+        devices=["cpu"] if wp.is_cpu_available() else [],
+        check_output=False,
+        enable_cpu_blocks=True,
+    )
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2, failfast=True)

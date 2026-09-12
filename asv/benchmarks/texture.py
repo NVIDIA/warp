@@ -12,6 +12,9 @@ from .benchmarks_utils import setup_once
 NUM_QUERIES = 1 << 20
 NUM_TEXTURES = 4
 
+# Cycle the one-million-query benchmark over 64K texels 16 times.
+TEXTURE_1D_WIDTH = 1 << 16
+
 TEXTURE_2D_WIDTH = 512
 TEXTURE_2D_HEIGHT = 512
 
@@ -21,9 +24,17 @@ TEXTURE_3D_DEPTH = 64
 
 
 @wp.func
+def query_1d(tid: int) -> float:
+    return (float(tid % TEXTURE_1D_WIDTH) + 0.5) / float(TEXTURE_1D_WIDTH)
+
+
+@wp.func
 def query_2d(tid: int) -> wp.vec2f:
-    x = tid % TEXTURE_2D_WIDTH
-    y = (tid // TEXTURE_2D_WIDTH) % TEXTURE_2D_HEIGHT
+    coord = wp.uint32(tid)
+    width = wp.uint32(TEXTURE_2D_WIDTH)
+    height = wp.uint32(TEXTURE_2D_HEIGHT)
+    x = coord % width
+    y = (coord // width) % height
     return wp.vec2f(
         (float(x) + 0.5) / float(TEXTURE_2D_WIDTH),
         (float(y) + 0.5) / float(TEXTURE_2D_HEIGHT),
@@ -32,9 +43,13 @@ def query_2d(tid: int) -> wp.vec2f:
 
 @wp.func
 def query_3d(tid: int) -> wp.vec3f:
-    x = tid % TEXTURE_3D_WIDTH
-    y = (tid // TEXTURE_3D_WIDTH) % TEXTURE_3D_HEIGHT
-    z = (tid // (TEXTURE_3D_WIDTH * TEXTURE_3D_HEIGHT)) % TEXTURE_3D_DEPTH
+    coord = wp.uint32(tid)
+    width = wp.uint32(TEXTURE_3D_WIDTH)
+    height = wp.uint32(TEXTURE_3D_HEIGHT)
+    depth = wp.uint32(TEXTURE_3D_DEPTH)
+    x = coord % width
+    y = (coord // width) % height
+    z = (coord // (width * height)) % depth
     return wp.vec3f(
         float(x) + 0.5,
         float(y) + 0.5,
@@ -73,9 +88,39 @@ def texture_index(tid: int, lane_varying: bool) -> int:
 
 
 @wp.kernel
-def sample_texture2d_uv(tex: wp.Texture2D, output: wp.array[wp.vec4f]):
+def sample_texture2d_vec4(tex: wp.Texture2D, output: wp.array[wp.vec4f]):
     tid = wp.tid()
     output[tid] = wp.texture_sample(tex, query_2d(tid), dtype=wp.vec4f)
+
+
+@wp.kernel
+def sample_texture1d_vec2(tex: wp.Texture1D, output: wp.array[wp.vec2f]):
+    tid = wp.tid()
+    output[tid] = wp.texture_sample(tex, query_1d(tid), dtype=wp.vec2f)
+
+
+@wp.kernel
+def sample_texture1d_vec4(tex: wp.Texture1D, output: wp.array[wp.vec4f]):
+    tid = wp.tid()
+    output[tid] = wp.texture_sample(tex, query_1d(tid), dtype=wp.vec4f)
+
+
+@wp.kernel
+def sample_texture2d_vec2(tex: wp.Texture2D, output: wp.array[wp.vec2f]):
+    tid = wp.tid()
+    output[tid] = wp.texture_sample(tex, query_2d(tid), dtype=wp.vec2f)
+
+
+@wp.kernel
+def sample_texture3d_vec2(tex: wp.Texture3D, output: wp.array[wp.vec2f]):
+    tid = wp.tid()
+    output[tid] = wp.texture_sample(tex, query_3d(tid), dtype=wp.vec2f)
+
+
+@wp.kernel
+def sample_texture3d_vec4(tex: wp.Texture3D, output: wp.array[wp.vec4f]):
+    tid = wp.tid()
+    output[tid] = wp.texture_sample(tex, query_3d(tid), dtype=wp.vec4f)
 
 
 @wp.kernel
@@ -122,14 +167,31 @@ def sample_texture3d_array(
     output[tid] = finite_difference_gradient(tex, query_3d(tid))
 
 
-def _make_texture2d_data(seed: int) -> np.ndarray:
+def _make_texture1d_data(seed: int, num_channels: int) -> np.ndarray:
     rng = np.random.default_rng(seed)
-    return rng.random((TEXTURE_2D_HEIGHT, TEXTURE_2D_WIDTH, 4), dtype=np.float32)
+    return rng.random((TEXTURE_1D_WIDTH, num_channels), dtype=np.float32)
 
 
-def _make_texture3d_data(seed: int) -> np.ndarray:
+def _make_texture2d_data(seed: int, num_channels: int = 4) -> np.ndarray:
     rng = np.random.default_rng(seed)
-    return rng.random((TEXTURE_3D_DEPTH, TEXTURE_3D_HEIGHT, TEXTURE_3D_WIDTH), dtype=np.float32)
+    return rng.random((TEXTURE_2D_HEIGHT, TEXTURE_2D_WIDTH, num_channels), dtype=np.float32)
+
+
+def _make_texture3d_data(seed: int, num_channels: int = 1) -> np.ndarray:
+    rng = np.random.default_rng(seed)
+    shape = (TEXTURE_3D_DEPTH, TEXTURE_3D_HEIGHT, TEXTURE_3D_WIDTH)
+    if num_channels == 1:
+        return rng.random(shape, dtype=np.float32)
+    return rng.random((*shape, num_channels), dtype=np.float32)
+
+
+def _make_texture1d(data: np.ndarray, device: wp.Device) -> wp.Texture1D:
+    return wp.Texture1D(
+        data,
+        filter_mode=wp.TextureFilterMode.LINEAR,
+        address_mode=wp.TextureAddressMode.CLAMP,
+        device=device,
+    )
 
 
 def _make_texture2d(data: np.ndarray, device: wp.Device) -> wp.Texture2D:
@@ -151,6 +213,51 @@ def _make_texture3d(data: np.ndarray, device: wp.Device) -> wp.Texture3D:
     )
 
 
+class TextureBaseVector:
+    """Sample one base-level vector texture value per query."""
+
+    params = ["1d_vec2", "1d_vec4", "2d_vec2", "2d_vec4", "3d_vec2", "3d_vec4"]
+    param_names = ["sample"]
+    # On the L40 CI runner, these settings yield 0.8-1.3 ms timed calls and
+    # 51-83 ms samples.
+    number = 64
+    repeat = 10
+
+    @setup_once
+    def setup(self, sample):
+        wp.init()
+        self.device = wp.get_device("cuda:0")
+        dimension = sample[:2]
+        num_channels = int(sample[-1])
+        dtype = wp.vec2f if num_channels == 2 else wp.vec4f
+
+        if dimension == "1d":
+            self.texture = _make_texture1d(_make_texture1d_data(42, num_channels), self.device)
+            kernel = sample_texture1d_vec2 if num_channels == 2 else sample_texture1d_vec4
+        elif dimension == "2d":
+            self.texture = _make_texture2d(_make_texture2d_data(42, num_channels), self.device)
+            kernel = sample_texture2d_vec2 if num_channels == 2 else sample_texture2d_vec4
+        else:
+            self.texture = _make_texture3d(_make_texture3d_data(42, num_channels), self.device)
+            kernel = sample_texture3d_vec2 if num_channels == 2 else sample_texture3d_vec4
+
+        self.output = wp.empty(NUM_QUERIES, dtype=dtype, device=self.device)
+        self.cmd = wp.launch(
+            kernel,
+            dim=NUM_QUERIES,
+            inputs=[self.texture],
+            outputs=[self.output],
+            device=self.device,
+            record_cmd=True,
+        )
+        self.cmd.launch()
+        wp.synchronize_device(self.device)
+
+    def time_cuda(self, sample):
+        self.cmd.launch()
+        wp.synchronize_device(self.device)
+
+
 class Texture2DUv:
     """Sample one RGBA 2D texture value per query, as in UV-mapped rendering."""
 
@@ -164,7 +271,7 @@ class Texture2DUv:
         self.texture = _make_texture2d(_make_texture2d_data(42), self.device)
         self.output = wp.empty(NUM_QUERIES, dtype=wp.vec4f, device=self.device)
         self.cmd = wp.launch(
-            sample_texture2d_uv,
+            sample_texture2d_vec4,
             dim=NUM_QUERIES,
             inputs=[self.texture],
             outputs=[self.output],

@@ -33,6 +33,7 @@ HERE = os.path.dirname(__file__)
 WARP_PATH = os.path.realpath(os.path.join(HERE, ".."))
 
 sys.path.insert(0, WARP_PATH)
+sys.path.insert(0, os.path.join(HERE, "_ext"))
 
 try:
     import warp as wp
@@ -74,6 +75,8 @@ extensions = [
     # Third-party extensions.
     "myst_parser",  # Parses markdown files.
     "sphinx_copybutton",  # Adds a copy button to code blocks.
+    # Local extensions, from `docs/_ext`.
+    "wp_builtin_tags",  # Renders the property tags of the built-ins.
 ]
 
 # Generate targets for Markdown headings through level 2 so standard fragment
@@ -89,6 +92,8 @@ nitpicky = True
 nitpick_ignore_regex = [
     # Public type aliases indexed as py:data but referenced as py:class (Sphinx limitation)
     (r"py:class", r"(warp\.|wp\.)?(Scalar|Int|Float|DeviceLike)"),
+    # numpy.typing aliases used in annotations but imported only under TYPE_CHECKING
+    (r"py:class", r"npt\.ArrayLike"),
     # Internal meta-types used in builtin function signatures (not exported)
     (
         r"py:class",
@@ -125,6 +130,15 @@ nitpick_ignore_regex = [
     (r"py:class", r"<(property|functools\.cached_property) object at .*>"),
     # Autosummary-generated member stubs for Warp classes (Texture*, fem.*, etc.)
     (r"py:obj", r"warp\.(Texture\w+|fixedarray|indexedarray|indexedfabricarray|fabricarray|fem\.).*"),
+    # Members inherited from IsoSurfaceBase, listed in member tables but documented on the base class
+    (r"py:obj", r"warp\.geometry\.IsoSurface(MarchingCubes|Nets)\.(resize|surface|extract)"),
+    # Everything on the deprecated `wp.MarchingCubes` alias is inherited from, and
+    # documented on, `warp.geometry.IsoSurfaceMarchingCubes`
+    (r"py:(obj|attr)", r"warp\.MarchingCubes\..*"),
+    (
+        r"py:attr",
+        r"(CUBE_CORNER_OFFSETS|EDGE_TO_CORNERS|CASE_TO_TRI_RANGE|TRI_LOCAL_INDICES)",
+    ),
     # Internal C++/Python interop methods on geometric types
     (
         r"py:obj",
@@ -354,6 +368,34 @@ def normalize_docstring(doc: str) -> str:
     return re.sub(r"^(:(rtype|type\s+\w+):.*)\bwp\.", r"\1warp.", rst, flags=re.MULTILINE) if "wp." in rst else rst
 
 
+def _with_defaults(func, args: dict[str, str]) -> dict[str, str]:
+    """Append each registered default value to the rendered parameter annotations.
+
+    Uses the same renderer as the type stub so that the documented signature and
+    the IDE hint show either the substituted value or ``...`` for an internally
+    inferred omission sentinel.
+
+    Args:
+        func: The built-in whose ``defaults`` supply the values.
+        args: The rendered annotation per ``input_types`` key.
+
+    Returns:
+        A new mapping with ``= value`` appended wherever a default is registered.
+    """
+    result = {}
+    for key, annotation in args.items():
+        # ``input_types`` keeps the ``*``/``**`` prefix that ``defaults`` omits.
+        name = key.lstrip("*")
+        if key.startswith("*") or name not in func.defaults:
+            result[key] = annotation
+            continue
+
+        value = func.defaults[name]
+        result[key] = f"{annotation} = {wp._src.context.format_default_value(value)}"
+
+    return result
+
+
 def _get_builtin_overloads_info(symbol: str) -> list[dict[str, object]]:
     head = wp._src.context.builtin_functions[symbol]
 
@@ -366,13 +408,17 @@ def _get_builtin_overloads_info(symbol: str) -> list[dict[str, object]]:
     overloads_info = []
     seen_overloads = set()
     for func in visible_overloads:
+        # Warp scalar annotations stay narrow here: unlike the type stub, the
+        # rendered documentation favours readability over checkability.
         args = {k: wp._src.context.type_str(v) for k, v in func.input_types.items()}
-        args_str = ", ".join(f"{k}: {v}" for k, v in args.items())
+        args_str = ", ".join(f"{k}: {v}" for k, v in _with_defaults(func, args).items())
 
         try:
             return_type = wp._src.context.type_str(func.value_func(None, None))
         except Exception:
-            return_type = "None"
+            # The return type of a built-in whose value function cannot be evaluated
+            # without concrete arguments is unknown here, not absent.
+            return_type = "Any"
 
         is_exported = any(
             wp._src.codegen.func_match_args(func, list(exported.input_types.values()), {})
@@ -460,6 +506,12 @@ _intersphinx_mapping = {
 # Fail fast on unreachable inventories instead of hanging on the default socket
 # timeout (seconds).
 intersphinx_timeout = 2
+
+# PyTorch's ``stable`` documentation URLs are client-side redirect stubs that
+# preserve fragments in browsers. The linkcheck builder cannot follow those
+# redirects before validating anchors, so only skip anchor checks for them;
+# URL availability is still checked.
+linkcheck_anchors_ignore_for_url = [r"https://docs\.pytorch\.org/docs/stable/.*"]
 
 _sphinx_logger = sphinx.util.logging.getLogger(__name__)
 # WARP_DOCS_OFFLINE=1 skips external resolution entirely for known-offline builds.

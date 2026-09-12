@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import subprocess
+import sys
 import unittest
 
 import numpy as np
@@ -111,6 +113,48 @@ def test_tile_sort(test, device):
             )
 
 
+def _run_large_cpu_tile_sort():
+    """Exercise the heap-backed radix path outside the parent runner."""
+    wp.config.enable_cpu_blocks = True
+    length = 2049
+    np_keys = np.arange(length - 1, -1, -1, dtype=np.int32)
+    np_values = np.arange(length, dtype=np.int32)
+
+    input_keys = wp.array(np_keys, dtype=wp.int32, device="cpu")
+    input_values = wp.array(np_values, dtype=wp.int32, device="cpu")
+    output_keys = wp.zeros_like(input_keys)
+    output_values = wp.zeros_like(input_values)
+
+    wp.launch_tiled(
+        create_sort_kernel(wp.int32, length),
+        dim=1,
+        inputs=[input_keys, input_values, output_keys, output_values],
+        block_dim=32,
+        device="cpu",
+    )
+
+    sorted_indices = np.argsort(np_keys)
+    np.testing.assert_array_equal(output_keys.numpy(), np_keys[sorted_indices])
+    np.testing.assert_array_equal(output_values.numpy(), np_values[sorted_indices])
+    print("ok")
+
+
+def test_tile_sort_large_cpu(test, device):
+    result = subprocess.run(
+        [sys.executable, "-u", "-c", "import warp.tests.tile.test_tile_sort as m; m._run_large_cpu_tile_sort()"],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    test.assertEqual(
+        result.returncode,
+        0,
+        f"large CPU tile sort failed (rc={result.returncode}):\nstdout:\n{result.stdout}\nstderr:\n{result.stderr}",
+    )
+    test.assertIn("ok", result.stdout)
+
+
 def create_bfloat16_payload_sort_kernel(length):
     @wp.kernel(enable_backward=False, module="unique")
     def tile_sort_bfloat16_kernel(
@@ -163,6 +207,96 @@ def test_tile_sort_bfloat16_payload(test, device):
     assert_np_equal(decoded, np_values[sorted_indices])
 
 
+SURVIVING_LANE_BLOCK_DIM = 32
+SURVIVING_LANE_BLOCK_COUNT = 2
+
+
+def create_surviving_lane_sort_kernel(length):
+    @wp.kernel(enable_backward=False)
+    def tile_sort_surviving_lane_kernel(
+        input_keys: wp.array[wp.int32],
+        input_values: wp.array[wp.int32],
+        output_keys: wp.array[wp.int32],
+        output_values: wp.array[wp.int32],
+    ):
+        tid = wp.tid()
+        block = tid // SURVIVING_LANE_BLOCK_DIM
+        lane = tid % SURVIVING_LANE_BLOCK_DIM
+        offset = block * length
+
+        keys = wp.tile_load(input_keys, shape=length, offset=offset, storage="shared")
+        values = wp.tile_load(input_values, shape=length, offset=offset, storage="shared")
+
+        # The sort must elect a surviving leader after lane zero leaves the block.
+        if lane == 0:
+            return
+
+        wp.tile_sort(keys, values)
+
+        # A surviving lane copies every shared result because lane zero can no
+        # longer participate in a cooperative tile_store().
+        if lane == 1:
+            for i in range(length):
+                output_keys[offset + i] = keys[i]
+                output_values[offset + i] = values[i]
+
+    return tile_sort_surviving_lane_kernel
+
+
+def _run_surviving_lane_cpu_tile_sort(length):
+    """Run two blocks so the second sort reuses fibers and fresh leader state."""
+    wp.config.enable_cpu_blocks = True
+    rng = np.random.default_rng(1638 + length)
+    np_keys = np.concatenate([rng.permutation(length), rng.permutation(length)]).astype(np.int32)
+    np_values = np.arange(SURVIVING_LANE_BLOCK_COUNT * length, dtype=np.int32)
+
+    input_keys = wp.array(np_keys, dtype=wp.int32, device="cpu")
+    input_values = wp.array(np_values, dtype=wp.int32, device="cpu")
+    output_keys = wp.full_like(input_keys, -1)
+    output_values = wp.full_like(input_values, -1)
+
+    wp.launch(
+        create_surviving_lane_sort_kernel(length),
+        dim=SURVIVING_LANE_BLOCK_COUNT * SURVIVING_LANE_BLOCK_DIM,
+        inputs=[input_keys, input_values],
+        outputs=[output_keys, output_values],
+        block_dim=SURVIVING_LANE_BLOCK_DIM,
+        device="cpu",
+    )
+
+    for block in range(SURVIVING_LANE_BLOCK_COUNT):
+        block_slice = slice(block * length, (block + 1) * length)
+        sorted_indices = np.argsort(np_keys[block_slice])
+        np.testing.assert_array_equal(output_keys.numpy()[block_slice], np_keys[block_slice][sorted_indices])
+        np.testing.assert_array_equal(output_values.numpy()[block_slice], np_values[block_slice][sorted_indices])
+
+
+def test_tile_sort_surviving_lane(test, device):
+    _run_surviving_lane_cpu_tile_sort(17)
+
+
+def test_tile_sort_surviving_lane_large_cpu(test, device):
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-u",
+            "-c",
+            "import warp.tests.tile.test_tile_sort as m; m._run_surviving_lane_cpu_tile_sort(2049); print('ok')",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    test.assertEqual(
+        result.returncode,
+        0,
+        f"large surviving-lane CPU tile sort failed (rc={result.returncode}):\n"
+        f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}",
+    )
+    test.assertIn("ok", result.stdout)
+
+
 devices = get_test_devices()
 
 
@@ -172,6 +306,35 @@ class TestTileSort(unittest.TestCase):
 
 add_function_test(TestTileSort, "test_tile_sort", test_tile_sort, devices=devices)
 add_function_test(TestTileSort, "test_tile_sort_bfloat16_payload", test_tile_sort_bfloat16_payload, devices=devices)
+add_function_test(TestTileSort, "test_tile_sort_large_cpu", test_tile_sort_large_cpu, devices=["cpu"])
+add_function_test(
+    TestTileSort,
+    "test_tile_sort_surviving_lane",
+    test_tile_sort_surviving_lane,
+    devices=["cpu"] if wp.is_cpu_available() else [],
+    enable_cpu_blocks=True,
+)
+add_function_test(
+    TestTileSort,
+    "test_tile_sort_surviving_lane_large_cpu",
+    test_tile_sort_surviving_lane_large_cpu,
+    devices=["cpu"] if wp.is_cpu_available() else [],
+    enable_cpu_blocks=True,
+)
+add_function_test(
+    TestTileSort,
+    "test_tile_sort_cpu_blocks",
+    test_tile_sort,
+    devices=["cpu"] if wp.is_cpu_available() else [],
+    enable_cpu_blocks=True,
+)
+add_function_test(
+    TestTileSort,
+    "test_tile_sort_bfloat16_payload_cpu_blocks",
+    test_tile_sort_bfloat16_payload,
+    devices=["cpu"] if wp.is_cpu_available() else [],
+    enable_cpu_blocks=True,
+)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2, failfast=True)

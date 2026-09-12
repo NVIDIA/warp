@@ -39,7 +39,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # CUDA 12.x and CUDA 13.0 reject the VS 2026 image.
+          # Keep Windows x86_64 builds on the established VS 2022 image.
           - os: windows-2022
             platform: windows
             cuda-version: "12.9.2"
@@ -48,7 +48,7 @@ jobs:
             artifact-name: build-artifact-windows-cuda12
           - os: windows-2022
             platform: windows
-            cuda-version: "13.0.3"
+            cuda-version: "13.4.1"
             cuda-platform: windows-x86_64
             build-args: ""
             artifact-name: build-artifact-windows-cuda13
@@ -67,7 +67,7 @@ jobs:
             artifact-name: build-artifact-ubuntu-x86_64-cuda12
           - os: ubuntu-24.04
             platform: ubuntu-x86_64
-            cuda-version: "13.0.3"
+            cuda-version: "13.4.1"
             cuda-platform: linux-x86_64
             build-args: ""
             artifact-name: build-artifact-ubuntu-x86_64-cuda13
@@ -79,7 +79,7 @@ jobs:
             artifact-name: build-artifact-ubuntu-aarch64-cuda12
           - os: ubuntu-24.04-arm
             platform: ubuntu-aarch64
-            cuda-version: "13.0.3"
+            cuda-version: "13.4.1"
             cuda-platform: linux-sbsa
             build-args: ""
             artifact-name: build-artifact-ubuntu-aarch64-cuda13
@@ -128,13 +128,181 @@ jobs:
         env:
           WARP_CACHE_PATH: ${{ runner.temp }}/warp-cache-${{ matrix.artifact-name }}
         run: uv run build_lib.py ${{ matrix.build-args }}
-      
+
       - name: Upload build artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: ${{ matrix.artifact-name }}
           path: warp/bin/
           retention-days: ${{ github.repository == 'NVIDIA/warp' && 7 || 1 }}
+
+  build-windows-wheels:
+    if: github.event_name != 'schedule' || github.repository == 'NVIDIA/warp'
+    name: build-windows-wheel (${{ matrix.platform }})
+    needs: build-warp
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    env:
+      UV_PYTHON: ${{ matrix.python_request || '3.12' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2022
+            platform: windows-x86_64-cuda12
+            build_artifact_name: build-artifact-windows-cuda12
+            wheel_artifact_name: wheel-artifact-windows-x86_64-cuda12
+            wheel_platform: windows-x86_64
+            wheel_tag: win_amd64
+          - os: windows-2022
+            platform: windows-x86_64-cuda13
+            build_artifact_name: build-artifact-windows-cuda13
+            wheel_artifact_name: wheel-artifact-windows-x86_64-cuda13
+            wheel_platform: windows-x86_64
+            wheel_tag: win_amd64
+          - os: windows-11-arm
+            platform: windows-aarch64-cpu
+            python_request: cpython-3.12-windows-aarch64-none
+            build_artifact_name: build-artifact-windows-aarch64-cpu
+            wheel_artifact_name: wheel-artifact-windows-aarch64-cpu
+            wheel_platform: windows-aarch64
+            wheel_tag: win_arm64
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+          lfs: true
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
+        with:
+          version: "0.12.7"
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Download Warp build artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          name: ${{ matrix.build_artifact_name }}
+          path: warp/bin/
+
+      - name: Build Windows wheel
+        shell: pwsh
+        run: |
+          uv build --wheel --out-dir _build/wheel -C--build-option=-P${{ matrix.wheel_platform }}
+          $wheels = @(Get-ChildItem -Path _build/wheel -Filter *.whl)
+          if ($wheels.Count -ne 1) {
+            throw "Expected one wheel, found $($wheels.Count)"
+          }
+          $expectedSuffix = "-${{ matrix.wheel_tag }}.whl"
+          if (-not $wheels[0].Name.EndsWith($expectedSuffix)) {
+            throw "Expected wheel tag ${{ matrix.wheel_tag }}, found $($wheels[0].Name)"
+          }
+
+      - name: Upload Windows wheel
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: ${{ matrix.wheel_artifact_name }}
+          path: _build/wheel/*.whl
+          if-no-files-found: error
+          retention-days: ${{ github.repository == 'NVIDIA/warp' && 7 || 1 }}
+
+  test-windows-import-libraries:
+    if: github.event_name != 'schedule' || github.repository == 'NVIDIA/warp'
+    name: test-windows-import-libraries (${{ matrix.platform }})
+    needs: build-windows-wheels
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    env:
+      UV_PYTHON: ${{ matrix.python_request || '3.12' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2022
+            platform: windows-x86_64-cuda12
+            wheel_artifact_name: wheel-artifact-windows-x86_64-cuda12
+            python_machine: amd64
+          - os: windows-2022
+            platform: windows-x86_64-cuda13
+            wheel_artifact_name: wheel-artifact-windows-x86_64-cuda13
+            python_machine: amd64
+          - os: windows-11-arm
+            platform: windows-aarch64-cpu
+            python_request: cpython-3.12-windows-aarch64-none
+            wheel_artifact_name: wheel-artifact-windows-aarch64-cpu
+            python_machine: arm64
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
+        with:
+          version: "0.12.7"
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Download Windows wheel
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          name: ${{ matrix.wheel_artifact_name }}
+          path: _build/wheel/
+
+      - name: Install Windows wheel
+        shell: pwsh
+        run: |
+          $wheels = @(Get-ChildItem -Path _build/wheel -Filter *.whl)
+          if ($wheels.Count -ne 1) {
+            throw "Expected one wheel, found $($wheels.Count)"
+          }
+          $wheelPath = $wheels[0].FullName
+          uv pip install --target _build/wheel-install $wheelPath
+
+      - name: Test installed Windows wheel
+        env:
+          WARP_CACHE_PATH: ${{ runner.temp }}/warp-cache-${{ matrix.platform }}-wheel
+        working-directory: _build/wheel-install
+        shell: pwsh
+        run: |
+          @'
+          import platform
+
+          import warp as wp
+
+          wp.init()
+          info = wp.print_diagnostics()
+          assert info["warp_python"] == info["warp_native"], info
+          assert info["warp_clang"].split()[0] == info["warp_python"], info
+          machine = platform.machine().lower()
+          assert machine == "${{ matrix.python_machine }}", machine
+          '@ | uv run --no-project python -
+
+      - name: Test Windows import libraries
+        shell: pwsh
+        run: |
+          cmake `
+            -S tools/ci/windows_import_library_smoke `
+            -B _build/windows-import-library-smoke `
+            -DWARP_PACKAGE_ROOT:PATH="$env:GITHUB_WORKSPACE/_build/wheel-install/warp"
+          if ($LASTEXITCODE -ne 0) {
+            throw "CMake configuration failed with exit code $LASTEXITCODE"
+          }
+          cmake --build _build/windows-import-library-smoke --config Release
+          if ($LASTEXITCODE -ne 0) {
+            throw "CMake build failed with exit code $LASTEXITCODE"
+          }
+          ctest `
+            --test-dir _build/windows-import-library-smoke `
+            --build-config Release `
+            --output-on-failure
       
   build-warp-python-free-threaded:
     if: github.event_name != 'schedule' || github.repository == 'NVIDIA/warp'
@@ -164,13 +332,13 @@ jobs:
           path: warp/bin/
           # Hash only native-binary inputs. VERSION.md changes flow through
           # generated warp/native/version.h, which is covered by native headers.
-          key: build-ubuntu-x86_64-cuda13-python314t-13.0.3-${{ hashFiles('build_lib.py', 'build_llvm.py', 'warp/_src/build_dll.py', 'warp/native/**/*.cpp', 'warp/native/**/*.cu', 'warp/native/**/*.cuh', 'warp/native/**/*.h', 'warp/native/libdevice/*.bc', 'warp/native/warp.map', 'deps/libmathdx-deps.packman.xml', '.github/actions/setup-warp-cuda/action.yml', 'tools/ci/cuda_toolkit.py', 'tools/ci/cuda_toolkit_requirements.json', 'tools/ci/cuda_toolkit_lock.json') }}
+          key: build-ubuntu-x86_64-cuda13-python314t-13.4.1-${{ hashFiles('build_lib.py', 'build_llvm.py', 'warp/_src/build_dll.py', 'warp/native/**/*.cpp', 'warp/native/**/*.cu', 'warp/native/**/*.cuh', 'warp/native/**/*.h', 'warp/native/libdevice/*.bc', 'warp/native/warp.map', 'deps/libmathdx-deps.packman.xml', '.github/actions/setup-warp-cuda/action.yml', 'tools/ci/cuda_toolkit.py', 'tools/ci/cuda_toolkit_requirements.json', 'tools/ci/cuda_toolkit_lock.json') }}
 
       - name: Set up CUDA Toolkit for Warp
         if: steps.cache-build.outputs.cache-hit != 'true'
         uses: ./.github/actions/setup-warp-cuda
         with:
-          version: "13.0.3"
+          version: "13.4.1"
           platform: linux-x86_64
           cache-read: ${{ github.repository == 'NVIDIA/warp' }}
           cache-write: ${{ github.repository == 'NVIDIA/warp' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-') || inputs.allow-ctk-cache-save) }}
@@ -198,10 +366,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # CUDA 12.x and CUDA 13.0 reject the VS 2026 image.
+          # Keep Windows x86_64 builds on the established VS 2022 image.
           - os: windows-2022
             platform: windows
-            cuda-version: "13.0.3"
+            cuda-version: "13.4.1"
             cuda-platform: windows-x86_64
             warp-enable-cuda: "ON"
             msvc-component: Microsoft.VisualStudio.Component.VC.Tools.x86.x64
@@ -220,13 +388,13 @@ jobs:
             warp-cache-path-suffix: '\warp-cache-cmake-windows-aarch64'
           - os: ubuntu-24.04
             platform: ubuntu-x86_64
-            cuda-version: "13.0.3"
+            cuda-version: "13.4.1"
             cuda-platform: linux-x86_64
             warp-enable-cuda: "ON"
             warp-cache-path-suffix: /warp-cache-cmake
           - os: ubuntu-24.04-arm
             platform: ubuntu-aarch64
-            cuda-version: "13.0.3"
+            cuda-version: "13.4.1"
             cuda-platform: linux-sbsa
             warp-enable-cuda: "ON"
             warp-cache-path-suffix: /warp-cache-cmake
@@ -445,7 +613,7 @@ jobs:
         run: uv run --extra dev -m warp.tests --junit-report-xml rspec.xml -s autodetect
       
       - name: Test Summary
-        uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86  # v2.4
+        uses: test-summary/action@37b508cfee6d4d080eedd00b5bb240a6a784a6a5  # v2.6
         with:
           paths: "rspec.xml"
           show: "fail"
@@ -483,7 +651,7 @@ jobs:
         run: uv run --extra dev -m warp.tests --junit-report-xml rspec.xml --suite debug --warp-debug --failfast
       
       - name: Test Summary
-        uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86  # v2.4
+        uses: test-summary/action@37b508cfee6d4d080eedd00b5bb240a6a784a6a5  # v2.6
         with:
           paths: "rspec.xml"
           show: "fail"
@@ -644,7 +812,7 @@ jobs:
         run: uv run --extra dev --extra ${{ matrix.torch-extra }} --with "${{ matrix.jax-extra }}" ${{ matrix.rmm-args }} -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
 
       - name: Test Summary
-        uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86  # v2.4
+        uses: test-summary/action@37b508cfee6d4d080eedd00b5bb240a6a784a6a5  # v2.6
         with:
           paths: "rspec.xml"
           show: "fail"
@@ -728,7 +896,7 @@ jobs:
         run: uv run --extra dev --with "jax[cuda13]" -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
 
       - name: Test Summary
-        uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86  # v2.4
+        uses: test-summary/action@37b508cfee6d4d080eedd00b5bb240a6a784a6a5  # v2.6
         with:
           paths: "rspec.xml"
           show: "fail"
@@ -825,11 +993,102 @@ jobs:
         run: uv run --python 3.14t --no-sync -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
 
       - name: Test Summary
-        uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86  # v2.4
+        uses: test-summary/action@37b508cfee6d4d080eedd00b5bb240a6a784a6a5  # v2.6
         with:
           paths: "rspec.xml"
           show: "fail"
         if: always()
+
+  # Test against the latest MuJoCo Warp without making upstream failures block CI.
+  # Run after the free-threaded test to avoid competing for RTX PRO 6000 capacity.
+  test-mujoco-warp-gpu-linux:
+    runs-on: linux-amd64-gpu-rtxpro6000-latest-1
+    needs: [build-warp, test-warp-gpu-linux-python-free-threaded]
+    if: |
+      always() &&
+      needs.build-warp.result == 'success' &&
+      (
+        needs.test-warp-gpu-linux-python-free-threaded.result == 'success' ||
+        needs.test-warp-gpu-linux-python-free-threaded.result == 'failure'
+      )
+    continue-on-error: true
+    permissions:
+      contents: read
+    container:
+      image: ubuntu:24.04
+      options: -u root --security-opt seccomp=unconfined --shm-size 16g
+      env:
+        NVIDIA_VISIBLE_DEVICES: ${{ env.NVIDIA_VISIBLE_DEVICES }}
+    timeout-minutes: 60
+    env:
+      UV_PYTHON: "3.12"
+      WARP_CACHE_PATH: /tmp/warp-cache-${{ github.run_id }}-${{ github.run_attempt }}-mujoco-warp
+    steps:
+      - name: Display GPU information
+        run: nvidia-smi
+
+      - name: Setup proxy cache
+        uses: nv-gha-runners/setup-proxy-cache@main
+        with:
+          enable-apt: true
+
+      - name: Install system dependencies
+        run: |
+          apt-get update
+          apt-get install -y git git-lfs
+          git lfs install
+
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+          lfs: true
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
+        with:
+          version: "0.12.7"
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Download Warp build artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          name: build-artifact-ubuntu-x86_64-cuda13
+          path: warp/bin/
+
+      - name: Install Python dependencies
+        run: |
+          uv venv
+          uv pip install -e . mujoco "git+https://github.com/google-deepmind/mujoco_warp@main" pytest pytest-xdist "jax[cuda13]"
+
+      - name: Report Warp diagnostics
+        run: uv run --no-sync python -c "import warp as wp; wp.print_diagnostics(); assert wp.get_cuda_devices(), 'No CUDA device visible to Warp'"
+
+      - name: Run MuJoCo Warp tests
+        id: mujoco_tests
+        run: uv run --no-sync pytest -n 4 -ra --pyargs mujoco_warp --junit-xml=rspec.xml
+
+      - name: Re-run failed MuJoCo Warp tests serially
+        if: ${{ failure() && steps.mujoco_tests.outcome == 'failure' }}
+        run: uv run --no-sync pytest --lf --last-failed-no-failures none -vv -ra --tb=long --pyargs mujoco_warp
+
+      - name: Test Summary
+        uses: test-summary/action@37b508cfee6d4d080eedd00b5bb240a6a784a6a5  # v2.6
+        with:
+          paths: "rspec.xml"
+          show: "fail"
+        if: always()
+
+      - name: Upload MuJoCo Warp test report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: mujoco-warp-test-results-${{ github.run_attempt }}
+          path: rspec.xml
+          if-no-files-found: warn
+          retention-days: 7
 
   test-warp-gpu-linux-mgpu-python310:
     runs-on: linux-amd64-gpu-rtxpro6000-latest-2
@@ -900,7 +1159,7 @@ jobs:
         run: uv run --extra dev -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
 
       - name: Test Summary
-        uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86  # v2.4
+        uses: test-summary/action@37b508cfee6d4d080eedd00b5bb240a6a784a6a5  # v2.6
         with:
           paths: "rspec.xml"
           show: "fail"
@@ -975,7 +1234,7 @@ jobs:
         run: uv run --extra dev --extra torch-cu13 --with usd-core==25.5.1 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
 
       - name: Test Summary
-        uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86  # v2.4
+        uses: test-summary/action@37b508cfee6d4d080eedd00b5bb240a6a784a6a5  # v2.6
         with:
           paths: "rspec.xml"
           show: "fail"
@@ -1389,6 +1648,6 @@ jobs:
       - name: Set up Python
         run: uv python install
       - name: Run pyright on stub file
-        run: uvx pyright warp/__init__.pyi
+        run: uvx pyright warp/__init__.pyi tools/ci/stub_typecheck_fixture.py
       - name: Run mypy on stub file
-        run: uvx mypy warp/__init__.pyi --follow-imports=silent
+        run: uvx mypy warp/__init__.pyi tools/ci/stub_typecheck_fixture.py --follow-imports=silent

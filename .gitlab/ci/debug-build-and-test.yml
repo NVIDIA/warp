@@ -144,7 +144,9 @@ create pypi wheels:
     # Move binaries into platform-specific folders. Already done in the build jobs for Linux.
     - mkdir -p warp/bin/windows-x86_64
     - mv warp/bin/warp.dll warp/bin/windows-x86_64/
+    - mv warp/bin/warp.lib warp/bin/windows-x86_64/
     - mv warp/bin/warp-clang.dll warp/bin/windows-x86_64/
+    - mv warp/bin/warp-clang.lib warp/bin/windows-x86_64/
   script:
     - uv build --wheel -C--build-option=-Pwindows-x86_64
     - uv build --wheel -C--build-option=-Plinux-x86_64

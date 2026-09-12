@@ -7,6 +7,7 @@ import ctypes
 import sys
 import time
 from collections import defaultdict
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -1518,8 +1519,11 @@ class OpenGLRenderer:
     @tiled_rendering.setter
     def tiled_rendering(self, value):
         """Enable or disable tiled rendering."""
-        if value:
-            assert self._tile_instances is not None, "Tiled rendering is not set up. Call setup_tiled_rendering first."
+        if value and self._tile_instances is None:
+            raise RuntimeError(
+                "Tiled rendering must be configured with setup_tiled_rendering() before it can be enabled, "
+                "got no tile instances"
+            )
         self._tiled_rendering = value
 
     def setup_tiled_rendering(
@@ -1567,7 +1571,13 @@ class OpenGLRenderer:
                 updated when the camera is moved.
         """
 
-        assert len(instances) > 0 and all(isinstance(i, list) for i in instances), "Invalid tile instances."
+        if not isinstance(instances, list):
+            raise TypeError(f"instances must be a list of lists, got {type(instances).__name__}")
+        if not instances:
+            raise ValueError(f"instances must be non-empty, got {instances!r}")
+        for index, item in enumerate(instances):
+            if not isinstance(item, list):
+                raise TypeError(f"instances elements must be lists, got {type(item).__name__} at index {index}")
 
         self._tile_instances = instances
         n = len(self._tile_instances)
@@ -1590,9 +1600,11 @@ class OpenGLRenderer:
             if rescale_window:
                 self.window.set_size(self._tile_width * self._tile_ncols, self._tile_height * self._tile_nrows)
         else:
-            assert len(tile_positions) == n and len(tile_sizes) == n, (
-                "Number of tiles does not match number of instances."
-            )
+            if len(tile_positions) != n or len(tile_sizes) != n:
+                raise ValueError(
+                    f"tile_positions and tile_sizes must each contain {n} entries to match instances, "
+                    f"got {len(tile_positions)} positions and {len(tile_sizes)} sizes"
+                )
             self._tile_ncols = None
             self._tile_nrows = None
             self._tile_width = None
@@ -1648,8 +1660,14 @@ class OpenGLRenderer:
             tile_position: A (x, y) tuple specifying the position of the tile in pixels (optional).
         """
 
-        assert self._tile_instances is not None, "Tiled rendering is not set up. Call setup_tiled_rendering first."
-        assert tile_id < len(self._tile_instances), "Invalid tile id."
+        if self._tile_instances is None:
+            raise RuntimeError(
+                "update_tile() requires setup_tiled_rendering() to be called first, got no tile instances"
+            )
+        tile_count = len(self._tile_instances)
+        if tile_id < 0 or tile_id >= tile_count:
+            tile_label = "tile" if tile_count == 1 else "tiles"
+            raise IndexError(f"tile_id {tile_id} is out of bounds for {tile_count} {tile_label}")
 
         if instances is not None:
             self._tile_instances[tile_id] = instances
@@ -2792,29 +2810,39 @@ Instances: {len(self._instances)}"""
         channels = 3 if mode == "rgb" else 1
 
         if split_up_tiles:
-            assert self._tile_width is not None and self._tile_height is not None, (
-                "Tile width and height are not set, tiles must all have the same size"
-            )
-            assert all(vp[2] == self._tile_width for vp in self._tile_viewports), (
-                "Tile widths do not all equal global tile_width, use `get_tile_pixels` instead to retrieve pixels for a single tile"
-            )
-            assert all(vp[3] == self._tile_height for vp in self._tile_viewports), (
-                "Tile heights do not all equal global tile_height, use `get_tile_pixels` instead to retrieve pixels for a single tile"
-            )
-            assert target_image.shape == (
+            if self._tile_viewports is None:
+                raise RuntimeError(
+                    "get_pixels() requires setup_tiled_rendering() when split_up_tiles=True, got no tile viewports"
+                )
+            if self._tile_width is None or self._tile_height is None:
+                raise RuntimeError(
+                    "Uniform tile width and height must be configured when split_up_tiles=True, "
+                    f"got tile_width={self._tile_width} and tile_height={self._tile_height}"
+                )
+            if not all(vp[2] == self._tile_width for vp in self._tile_viewports):
+                actual_widths = sorted({vp[2] for vp in self._tile_viewports})
+                raise RuntimeError(
+                    f"All tile widths must equal the configured tile width {self._tile_width}, "
+                    f"got {actual_widths}. Use get_tile_pixels() to retrieve pixels for a single tile"
+                )
+            if not all(vp[3] == self._tile_height for vp in self._tile_viewports):
+                actual_heights = sorted({vp[3] for vp in self._tile_viewports})
+                raise RuntimeError(
+                    f"All tile heights must equal the configured tile height {self._tile_height}, "
+                    f"got {actual_heights}. Use get_tile_pixels() to retrieve pixels for a single tile"
+                )
+            expected_shape = (
                 self.num_tiles,
                 self._tile_height,
                 self._tile_width,
                 channels,
-            ), (
-                f"Shape of `target_image` array does not match {self.num_tiles} x {self._tile_height} x {self._tile_width} x {channels}"
             )
+            if target_image.shape != expected_shape:
+                raise ValueError(f"target_image shape must be {expected_shape}, got {target_image.shape}")
         else:
-            assert target_image.shape == (
-                self.screen_height,
-                self.screen_width,
-                channels,
-            ), f"Shape of `target_image` array does not match {self.screen_height} x {self.screen_width} x {channels}"
+            expected_shape = (self.screen_height, self.screen_width, channels)
+            if target_image.shape != expected_shape:
+                raise ValueError(f"target_image shape must be {expected_shape}, got {target_image.shape}")
 
         gl.glBindBuffer(gl.GL_PIXEL_PACK_BUFFER, self._frame_pbo)
         if mode == "rgb":
@@ -3222,33 +3250,57 @@ Instances: {len(self._instances)}"""
     def render_mesh(
         self,
         name: str,
-        points,
-        indices,
-        colors=None,
-        pos=(0.0, 0.0, 0.0),
-        rot=(0.0, 0.0, 0.0, 1.0),
-        scale=(1.0, 1.0, 1.0),
-        update_topology=False,
+        points: Sequence[Sequence[float]] | np.ndarray,
+        indices: Sequence[int] | Sequence[Sequence[int]] | np.ndarray,
+        colors: Sequence[float] | np.ndarray | None = None,
+        pos: Sequence[float] = (0.0, 0.0, 0.0),
+        rot: Sequence[float] = (0.0, 0.0, 0.0, 1.0),
+        scale: Sequence[float] = (1.0, 1.0, 1.0),
+        update_topology: bool = False,
         parent_body: str | None = None,
         is_template: bool = False,
         smooth_shading: bool = True,
         visible: bool = True,
-    ):
-        """Add a mesh for visualization
+    ) -> int:
+        """Create or update a triangular mesh for visualization.
+
+        When ``update_topology`` is ``False`` and ``name`` identifies an existing mesh instance, the renderer reuses
+        its registered topology and ignores ``indices``.
 
         Args:
-            name: The name of the mesh
-            points: The points of the mesh
-            indices: The indices of the mesh
-            colors: The colors of the mesh
-            pos: The position of the mesh
-            rot: The rotation of the mesh
-            scale: The scale of the mesh
-            update_topology: Whether to update the topology of an existing mesh
-            parent_body: The name of the parent body (optional)
-            is_template: Whether the mesh is a template
-            smooth_shading: Whether to average face normals at each vertex or introduce additional vertices for each face
-            visible: Whether the mesh is visible
+            name: Name used to identify the mesh or template.
+            points: Array-like vertex positions with shape ``(num_points, 3)``. Values are converted to ``float32``.
+            indices: Triangle vertex indices supplied as a flat array or with shape ``(num_triangles, 3)``. Values are
+                converted to ``int32`` when creating or updating topology.
+            colors: Optional RGB color for the mesh instance.
+            pos: Translation in ``(x, y, z)`` order.
+            rot: Orientation quaternion in ``(x, y, z, w)`` order.
+            scale: Per-axis scale in ``(x, y, z)`` order.
+            update_topology: Whether to replace the topology of an existing named mesh.
+            parent_body: Optional parent body name.
+            is_template: Whether to register reusable geometry without creating an instance.
+            smooth_shading: Whether to average face normals at each vertex. If ``False``, each triangle receives its own
+                vertices and face normal.
+            visible: Whether the mesh instance should be visible.
+
+        Returns:
+            The integer ID of the registered shape.
+
+        Raises:
+            ValueError: If consumed indices cannot be grouped into triangles or contain a value outside
+                ``[0, min(len(points), 2**31))``.
+
+        Example:
+            Render a single triangle using an initialized renderer:
+
+            .. code-block:: python
+
+                shape = renderer.render_mesh(
+                    name="triangle",
+                    points=((0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0)),
+                    indices=(0, 1, 2),
+                    colors=(0.2, 0.4, 0.8),
+                )
         """
         if colors is not None:
             colors = np.array(colors, dtype=np.float32)
@@ -3256,7 +3308,28 @@ Instances: {len(self._instances)}"""
         points = np.array(points, dtype=np.float32)
         point_count = len(points)
 
-        indices = np.array(indices, dtype=np.int32).reshape((-1, 3))
+        # Existing instances reuse their registered topology, so skip copying and validating ignored indices.
+        if not update_topology and name in self._instances:
+            shape = self._instances[name][2]
+            self.update_shape_instance(name, pos, rot, color1=colors, color2=colors, scale=scale, visible=visible)
+            self.update_shape_vertices(shape, points)
+            return shape
+
+        # Snapshot caller-owned input so validation and rendering use the same index values.
+        source_indices = np.array(indices, copy=True)
+        # Indices must address an existing point and fit Warp's int32 index type.
+        index_limit = min(point_count, np.iinfo(np.int32).max + 1)
+        if source_indices.size:
+            min_index = source_indices.min()
+            max_index = source_indices.max()
+            if not (min_index >= 0 and max_index < index_limit):
+                raise ValueError(
+                    f"Mesh indices must be in the range [0, {index_limit}), "
+                    f"but found an index range of [{min_index}, {max_index}]"
+                )
+
+        # Reuse an int32 snapshot directly; converting other dtypes allocates as needed.
+        indices = np.asarray(source_indices, dtype=np.int32).reshape((-1, 3))
         idx_count = len(indices)
 
         geo_hash = hash((points.tobytes(), indices.tobytes()))
@@ -3273,25 +3346,21 @@ Instances: {len(self._instances)}"""
 
         # Check if we already have that shape registered and can perform
         # minimal updates since the topology is not changing, before exiting.
-        if not update_topology:
-            if name in self._instances:
-                # Update the instance's transform.
-                self.update_shape_instance(name, pos, rot, color1=colors, color2=colors, scale=scale, visible=visible)
+        if not update_topology and shape is not None:
+            # Update the shape's point positions.
+            self.update_shape_vertices(shape, points)
 
-            if shape is not None:
-                # Update the shape's point positions.
-                self.update_shape_vertices(shape, points)
+            if not is_template:
+                # Create a new instance.
+                body = self._resolve_body_id(parent_body)
+                self.add_shape_instance(name, shape, body, pos, rot, color1=colors, scale=scale)
 
-                if not is_template and name not in self._instances:
-                    # Create a new instance.
-                    body = self._resolve_body_id(parent_body)
-                    self.add_shape_instance(name, shape, body, pos, rot, color1=colors, scale=scale)
-
-                return shape
+            return shape
 
         # No existing shape for the given mesh was found, or its topology may have changed,
         # so we need to define a new one either way.
         with wp.ScopedDevice(self._device):
+            # Smooth shading preserves shared vertices; flat shading expands each face corner into a distinct vertex.
             if smooth_shading:
                 normals = wp.zeros(point_count, dtype=wp.vec3)
                 vertices = wp.array(points, dtype=wp.vec3)

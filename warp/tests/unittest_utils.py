@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import contextlib
 import ctypes
 import ctypes.util
 import functools
@@ -9,6 +10,7 @@ import importlib.util
 import io
 import os
 import re
+import subprocess
 import sys
 import tempfile
 import time
@@ -43,6 +45,23 @@ import warp as wp  # noqa: E402
 
 pxr = importlib.util.find_spec("pxr")
 USD_AVAILABLE = pxr is not None
+
+
+@contextlib.contextmanager
+def suppress_native_error_output():
+    """Suppress native ``stderr`` output while preserving the recorded diagnostic.
+
+    Native output originates in C, so :func:`contextlib.redirect_stderr` cannot
+    intercept it. The diagnostic remains available through
+    :meth:`warp._src.context.Runtime.get_error_string`.
+    """
+    core = wp._src.context.runtime.core
+    saved_error_output_enabled = core.wp_is_error_output_enabled()
+    try:
+        core.wp_set_error_output_enabled(False)
+        yield
+    finally:
+        core.wp_set_error_output_enabled(saved_error_output_enabled)
 
 
 def make_isolated_kernel(func, **kwargs):
@@ -83,7 +102,7 @@ except OSError:
 
 
 def get_selected_cuda_test_devices(mode: str | None = None):
-    """Returns a list of CUDA devices according the selected ``mode`` behavior.
+    """Return CUDA devices according to the selected ``mode`` behavior.
 
     If ``mode`` is ``None``, the ``global test_mode`` value will be used and
     this list will be a subset of the devices returned from ``get_test_devices()``.
@@ -125,7 +144,7 @@ def get_selected_cuda_test_devices(mode: str | None = None):
 
 
 def get_test_devices(mode: str | None = None):
-    """Returns a list of devices based on the mode selected.
+    """Return devices based on the selected mode.
 
     Args:
         mode: The testing mode to specify which devices to include. If not provided or ``None``, the
@@ -358,19 +377,57 @@ def assert_np_equal(result: np.ndarray, expect: np.ndarray, tol=0.0):
         np.testing.assert_array_equal(result, expect)
 
 
+def run_test_in_subprocess(test: unittest.TestCase, timeout: int = 600) -> bool:
+    """Run the current test in a child interpreter.
+
+    Returns ``True`` in the parent after the child passes and ``False`` in the
+    child so the caller can execute the test body there.
+    """
+
+    test_id = test.id()
+    isolation_env = "WARP_ISOLATED_TEST_ID"
+    if os.environ.get(isolation_env) == test_id:
+        return False
+
+    env = os.environ.copy()
+    env[isolation_env] = test_id
+    result = subprocess.run(
+        [sys.executable, "-m", "unittest", test_id],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+        env=env,
+    )
+    if result.returncode != 0:
+        test.fail(
+            f"Isolated test process exited with code {result.returncode}.\n"
+            f"stdout:\n{result.stdout}\n"
+            f"stderr:\n{result.stderr}"
+        )
+
+    return True
+
+
 # if check_output is True any output to stdout will be treated as an error
-def create_test_func(func, device, check_output, device_check=None, **kwargs):
+def create_test_func(func, device, check_output, device_check=None, enable_cpu_blocks=False, **kwargs):
     # pass args to func
     @functools.wraps(func)
     def test_func(self):
-        if device_check is not None:
-            device_check(self, device)
+        previous_enable_cpu_blocks = wp.config.enable_cpu_blocks
+        if enable_cpu_blocks:
+            wp.config.enable_cpu_blocks = True
+        try:
+            if device_check is not None:
+                device_check(self, device)
 
-        if check_output:
-            with CheckOutput(self):
+            if check_output:
+                with CheckOutput(self):
+                    func(self, device, **kwargs)
+            else:
                 func(self, device, **kwargs)
-        else:
-            func(self, device, **kwargs)
+        finally:
+            wp.config.enable_cpu_blocks = previous_enable_cpu_blocks
 
     return test_func
 
@@ -381,7 +438,7 @@ def skip_test_func(self):
 
 
 def sanitize_identifier(s):
-    """replace all non-identifier characters with '_'"""
+    """Replace all non-identifier characters with underscores."""
 
     s = str(s)
     if s.isidentifier():
@@ -474,7 +531,7 @@ def write_junit_results(
     tests_skipped: int,
     test_duration: float,
 ):
-    """Write a JUnit XML from our report data
+    """Write a JUnit XML from our report data.
 
     The report file is needed for GitLab to add test reports in merge requests.
     """

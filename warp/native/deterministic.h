@@ -289,8 +289,12 @@ inline CUDA_CALLABLE void array_store_if_active(det_ctx& ctx, const A<T>& buf, i
 #ifdef __CUDA_ARCH__
 #define WP_DET_SCATTER_OR_FALLBACK(det_ctx, helper, flat_idx, value, cpu_expr) \
     do { \
-        if ((det_ctx).phase != 0 && (helper).count != nullptr) { \
-            wp::deterministic::scatter((det_ctx), (helper), static_cast<int>(flat_idx), (value)); \
+        if ((det_ctx).phase != 0) { \
+            if ((helper).count != nullptr) { \
+                wp::deterministic::scatter((det_ctx), (helper), static_cast<int>(flat_idx), (value)); \
+            } else { \
+                cpu_expr; \
+            } \
         } \
     } while (0)
 
@@ -313,7 +317,8 @@ inline CUDA_CALLABLE void array_store_if_active(det_ctx& ctx, const A<T>& buf, i
             || !wp::deterministic::is_global_store_target(&_wp_det_slot) \
             || wp::deterministic::is_counter_store_target((det_ctx), &_wp_det_slot)) \
         { \
-            _wp_det_slot = (value_expr); \
+            auto _wp_det_value = (value_expr); \
+            wp::store(&_wp_det_slot, _wp_det_value); \
         } \
     } while (0)
 
@@ -349,7 +354,9 @@ inline CUDA_CALLABLE void array_store_if_active(det_ctx& ctx, const A<T>& buf, i
 #define WP_DET_SLOT_STORE_IF_ACTIVE(det_ctx, slot_lvalue, value_expr) \
     do { \
         (void)(det_ctx); \
-        (slot_lvalue) = (value_expr); \
+        auto& _wp_det_slot = (slot_lvalue); \
+        auto _wp_det_value = (value_expr); \
+        wp::store(&_wp_det_slot, _wp_det_value); \
     } while (0)
 
 #define WP_DET_SIDE_EFFECT_IF_ACTIVE(det_ctx, ...) \

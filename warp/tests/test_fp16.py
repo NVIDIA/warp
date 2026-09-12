@@ -50,7 +50,7 @@ def value_load_store_half(f16_value: wp.float16, f16_array: wp.array[wp.float16]
 
 
 def test_fp16_kernel_parameter(test, device):
-    """Test the ability to pass in fp16 into kernels as parameters"""
+    """Test passing ``float16`` values as kernel parameters."""
 
     s = [1.0, 2.0, 3.0, -3.14159]
 

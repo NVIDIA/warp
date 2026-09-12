@@ -522,7 +522,12 @@ CUDA_CALLABLE inline bvh_query_t bvh_query(uint64_t id, const vec3& lower, const
 
 #if BVH_SHARED_STACK
     __shared__ int stack[BVH_QUERY_STACK_SIZE * WP_TILE_BLOCK_DIM];
-    query.stack.ptr = &stack[threadIdx.x];
+    // threadIdx.x is only unique within a 1D block. Flatten the block coordinates
+    // so external multidimensional launches still select one stack per thread.
+    const int linear_thread_idx = static_cast<int>(threadIdx.x)
+        + static_cast<int>(blockDim.x)
+            * (static_cast<int>(threadIdx.y) + static_cast<int>(blockDim.y) * static_cast<int>(threadIdx.z));
+    query.stack.ptr = &stack[linear_thread_idx];
 #endif
 
     query.bounds_nr = -1;

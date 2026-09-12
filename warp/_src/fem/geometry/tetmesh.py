@@ -15,7 +15,7 @@ from warp._src.fem.types import (
     OUTSIDE,
     ElementIndex,
 )
-from warp._src.fem.utils import compress_node_indices, host_read_at_index, masked_indices
+from warp._src.fem.utils import compress_node_indices, host_read_at_index, masked_indices, validate_indices_in_range
 from warp._src.types import type_scalar_type
 from warp._src.utils import array_scan
 
@@ -382,6 +382,10 @@ class Tetmesh(Geometry):
 
     def _build_topology(self, temporary_store: TemporaryStore):
         device = self.tet_vertex_indices.device
+
+        validate_indices_in_range(
+            self.vertex_count(), self.tet_vertex_indices, index_name="Vertex", temporary_store=temporary_store
+        )
 
         vertex_tet_offsets, vertex_tet_indices = compress_node_indices(
             self.vertex_count(), self.tet_vertex_indices, temporary_store=temporary_store

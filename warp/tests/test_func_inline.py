@@ -4,13 +4,13 @@
 import re
 import tempfile
 import unittest
+from pathlib import Path
 
 import numpy as np
 
 import warp as wp
-import warp._src.codegen as codegen
 from warp._src.context import ModuleBuilder
-from warp.tests.unittest_utils import add_function_test, assert_np_equal, get_test_devices
+from warp.tests.unittest_utils import add_function_test, assert_np_equal, get_test_devices, run_test_in_subprocess
 
 
 def module_source(kernel, device: str) -> str:
@@ -188,20 +188,23 @@ class TestFuncInline(unittest.TestCase):
         compiler would leave the helper out of line unless the attribute is honored. In release
         mode it inlines small helpers anyway and the assertion would hold either way.
         """
+        if run_test_in_subprocess(self):
+            return
+
         ptx = self._compile_ptx("debug")
         defined, called = self._out_of_line(ptx, "forced_inline")
         self.assertFalse(defined, "inline=True helper was left out of line")
         self.assertFalse(called, "inline=True helper is still called out of line")
 
-    def test_inline_macros_defined_in_headers(self):
-        """Define the inline macros for both backends."""
-        self.assertIn("#define WP_NOINLINE __attribute__((noinline))", codegen.cuda_module_header)
-        self.assertIn("#define WP_FORCEINLINE inline __attribute__((always_inline))", codegen.cuda_module_header)
-        self.assertIn("#define WP_NOINLINE __declspec(noinline)", codegen.cpu_module_header)
+    def test_inline_macros_defined_in_builtin_header(self):
+        """Define the inline macros for every backend in the shared native header."""
+        header = (Path(wp.__file__).parent / "native" / "builtin.h").read_text()
+
+        self.assertIn("#define WP_NOINLINE __declspec(noinline)", header)
         # newline-anchored: __forceinline is a prefix of __forceinline__, so a bare substring passes
-        self.assertIn("#define WP_FORCEINLINE __forceinline\n", codegen.cpu_module_header)
-        self.assertIn("#define WP_NOINLINE __attribute__((noinline))", codegen.cpu_module_header)
-        self.assertIn("#define WP_FORCEINLINE inline __attribute__((always_inline))", codegen.cpu_module_header)
+        self.assertIn("#define WP_FORCEINLINE __forceinline\n", header)
+        self.assertIn("#define WP_NOINLINE __attribute__((noinline))", header)
+        self.assertIn("#define WP_FORCEINLINE inline __attribute__((always_inline))", header)
 
 
 devices = get_test_devices()

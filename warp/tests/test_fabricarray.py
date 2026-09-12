@@ -613,8 +613,7 @@ def test_fabricarray_generic_array(test, device):
 
 
 def test_fabricarray_empty(test, device):
-    # Test whether common operations work with empty (zero-sized) indexed arrays
-    # without throwing exceptions.
+    """Test common operations on empty fabric arrays."""
 
     def test_empty_ops(nrows, ncols, wptype, nptype):
         # scalar, vector, or matrix
@@ -766,7 +765,7 @@ def test_fabricarray_fill_scalar(test, device):
 
 
 def test_fabricarray_fill_vector(test, device):
-    # test filling a vector array with scalar or vector values (vec_type, list, or numpy array)
+    """Fill a fabric vector array with scalar and vector values."""
 
     for nptype, wptype in wp._src.types.np_dtype_to_warp_type.items():
         # vector types
@@ -907,7 +906,7 @@ def test_fabricarray_fill_vector(test, device):
 
 
 def test_fabricarray_fill_matrix(test, device):
-    # test filling a matrix array with scalar or matrix values (mat_type, nested list, or 2d numpy array)
+    """Fill a fabric matrix array with scalar and matrix values."""
 
     for nptype, wptype in wp._src.types.np_dtype_to_warp_type.items():
         # matrix types
@@ -1120,6 +1119,26 @@ def fa_generic_sums_kernel_indexed(a: wp.indexedfabricarrayarray(dtype=Any), sum
         sums[i] = sums[i] + row[j]
 
 
+@wp.kernel(module="unique")
+def fabric_view_component_store(values: Any):
+    row = values[0]
+    row[0].x = 7.0
+
+
+def test_fabricarrayarray_component_store(test, device):
+    """Compile component stores through Fabric and indexed Fabric array views."""
+    for indexed in (False, True):
+        with test.subTest(indexed=indexed):
+            rows = [wp.zeros(1, dtype=wp.vec3, device=device) for _ in range(2)]
+            iface = _create_fabric_array_array_interface(rows, "values", bucket_sizes=[2])
+            values = wp.fabricarrayarray(data=iface, attrib="values")
+            if indexed:
+                values = values[wp.array([1], dtype=int, device=device)]
+            wp.launch(fabric_view_component_store, 1, [values], device=device)
+            np.testing.assert_array_equal(rows[int(indexed)].numpy(), [[7.0, 0.0, 0.0]])
+            np.testing.assert_array_equal(rows[1 - int(indexed)].numpy(), [[0.0, 0.0, 0.0]])
+
+
 def test_fabricarrayarray(test, device):
     for T in _fabric_types:
         if hasattr(T, "_wp_scalar_type_"):
@@ -1202,9 +1221,23 @@ cuda_devices = get_cuda_test_devices()
 
 class TestFabricArray(unittest.TestCase):
     def test_fabricarray_new_del(self):
-        # test the scenario in which a fabricarray is created but not initialized before gc
+        """Delete a fabric array that was allocated without initialization."""
         instance = wp.fabricarray.__new__(wp.fabricarray)
         instance.__del__()
+
+    def test_fabricarray_rejects_malformed_type_metadata(self):
+        data = wp.zeros(1, dtype=wp.float32, device="cpu")
+        invalid_types = (
+            ((True, "f4", 1, 0), r"must contain five elements, got 4: \(True, 'f4', 1, 0\)"),
+            ((True, "f4", 6, 0, "matrix"), "must have a square element count, got 6"),
+        )
+
+        for type_info, error in invalid_types:
+            with self.subTest(type_info=type_info):
+                interface = _create_fabric_array_interface(data, "values", bucket_sizes=[1])
+                interface["attribs"]["values"]["type"] = type_info
+                with self.assertRaisesRegex(ValueError, error):
+                    wp.fabricarray(data=interface, attrib="values")
 
     def test_fabricarray_struct_field_declaration(self):
         """Verify structs accept subscript and factory-style Fabric array fields."""
@@ -1391,6 +1424,9 @@ add_function_test(TestFabricArray, "test_fabricarray_indexing_types", test_fabri
 
 # fabric arrays of arrays
 add_function_test(TestFabricArray, "test_fabricarrayarray", test_fabricarrayarray, devices=devices)
+add_function_test(
+    TestFabricArray, "test_fabricarrayarray_component_store", test_fabricarrayarray_component_store, devices=devices
+)
 
 
 if __name__ == "__main__":

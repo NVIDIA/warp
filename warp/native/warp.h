@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "api.h"
+
 // defines all crt + builtin types
 #include "builtin.h"
 
@@ -25,6 +27,12 @@ enum wp_memory_kind {
     WP_MEMORY_KIND_CUDA_DEVICE = 3,
     WP_MEMORY_KIND_CUDA_MEMPOOL = 4,
     WP_MEMORY_KIND_CUDA_MANAGED = 5,
+};
+
+enum wp_volume_validation_result {
+    WP_VOLUME_VALIDATION_INVALID = 0,
+    WP_VOLUME_VALIDATION_SUCCESS = 1,
+    WP_VOLUME_VALIDATION_UNSUPPORTED_LAYOUT = 2,
 };
 
 struct timing_result_t;
@@ -151,6 +159,7 @@ WP_API void
 wp_hash_grid_update_device(uint64_t id, int type, double cell_width, const void* points, const void* groups);
 WP_API void wp_hash_grid_reserve_device(uint64_t id, int type, int num_points, bool with_groups);
 
+WP_API int wp_volume_validate_host(const void* buf, uint64_t size);
 WP_API uint64_t wp_volume_create_host(void* buf, uint64_t size, bool copy, bool owner);
 WP_API void wp_volume_get_tiles_host(uint64_t id, void* buf);
 WP_API void wp_volume_get_voxels_host(uint64_t id, void* buf);
@@ -446,16 +455,16 @@ WP_API void wp_array_scan_double_host(
     uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
 );
 
-WP_API void wp_array_scan_int_device(
+WP_API bool wp_array_scan_int_device(
     uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
 );
-WP_API void wp_array_scan_int64_device(
+WP_API bool wp_array_scan_int64_device(
     uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
 );
-WP_API void wp_array_scan_float_device(
+WP_API bool wp_array_scan_float_device(
     uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
 );
-WP_API void wp_array_scan_double_device(
+WP_API bool wp_array_scan_double_device(
     uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
 );
 
@@ -489,7 +498,7 @@ wp_radix_sort_pairs_uint64_host(uint64_t keys, uint64_t values, int n, int begin
 WP_API void
 wp_radix_sort_pairs_uint64_device(uint64_t keys, uint64_t values, int n, int begin_bit, int end_bit, int value_size);
 
-WP_API void wp_segmented_sort_pairs_float_host(
+WP_API bool wp_segmented_sort_pairs_float_host(
     uint64_t keys,
     uint64_t values,
     int n,
@@ -506,7 +515,7 @@ WP_API void wp_segmented_sort_pairs_float_device(
     int num_segments
 );
 
-WP_API void wp_segmented_sort_pairs_int_host(
+WP_API bool wp_segmented_sort_pairs_int_host(
     uint64_t keys,
     uint64_t values,
     int n,
@@ -576,9 +585,7 @@ WP_API void wp_bsr_matrix_from_triplets_host(
     int* summed_block_indices,
     int* bsr_offsets,
     const int* bsr_row_counts,
-    int* bsr_columns,
-    int* bsr_nnz,
-    void* bsr_nnz_event
+    int* bsr_columns
 );
 WP_API void wp_bsr_matrix_from_triplets_device(
     int block_size,
@@ -596,9 +603,7 @@ WP_API void wp_bsr_matrix_from_triplets_device(
     int* summed_block_indices,
     int* bsr_offsets,
     const int* bsr_row_counts,
-    int* bsr_columns,
-    int* bsr_nnz,
-    void* bsr_nnz_event
+    int* bsr_columns
 );
 
 WP_API void wp_bsr_transpose_host(
@@ -641,9 +646,7 @@ WP_API void wp_bsr_compress_inplace_host(
     int* bsr_row_counts,
     int* bsr_columns,
     void* bsr_values,
-    bool compress_values,
-    int* bsr_nnz,
-    void* bsr_nnz_event
+    bool compress_values
 );
 WP_API void wp_bsr_compress_inplace_device(
     int row_count,
@@ -658,9 +661,7 @@ WP_API void wp_bsr_compress_inplace_device(
     int* bsr_row_counts,
     int* bsr_columns,
     void* bsr_values,
-    bool compress_values,
-    int* bsr_nnz,
-    void* bsr_nnz_event
+    bool compress_values
 );
 
 

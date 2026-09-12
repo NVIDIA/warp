@@ -580,7 +580,7 @@ instead of having to define a separate function for each device.
 
 ## Benchmarks
 
-Warp uses [airspeed velocity (ASV)](https://asv.readthedocs.io/) for performance benchmarking.
+Warp uses [airspeed velocity (ASV)](https://asv.readthedocs.io/en/latest/) for performance benchmarking.
 Benchmark scripts live in the `asv/benchmarks/` directory, and the ASV configuration is in
 `asv.conf.json`.
 

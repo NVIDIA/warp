@@ -36,7 +36,7 @@ def aligned_param_2d_kernel(input: wp.array2d[float], output: wp.array2d[float])
 
 
 def test_tile_load_aligned_param_2d(test, device):
-    """aligned=True with properly aligned 2D shared tile produces correct results."""
+    """Verify that aligned=True with properly aligned 2D shared tile produces correct results."""
     rng = np.random.default_rng(42)
     size = 128
     arr_np = rng.random((size, size)).astype(np.float32)
@@ -75,7 +75,7 @@ def partial_tile_outer_dim_kernel(
 
 
 def test_tile_load_partial_outer_dim(test, device):
-    """Regression: float4-aligned tile where array outer dim is not a multiple of tile dim.
+    """Load an aligned tile when the array and tile outer dimensions differ.
 
     On main, the partial tile incorrectly hit the vectorized path because the
     2D-only vectorization check did not verify that the tile fits within bounds.
@@ -122,7 +122,7 @@ def vec3_vectorized_kernel(
 
 
 def test_tile_load_vec3_vectorized(test, device):
-    """Correctness check for 2D vec3 shared tiles with float4-aligned last dim."""
+    """Check 2D vec3 shared tiles with float4-aligned last dim."""
     rng = np.random.default_rng(42)
     rows, cols = 16, 16
     arr_np = rng.random((rows, cols, 3), dtype=np.float32)
@@ -164,7 +164,7 @@ def shared_3d_vectorized_kernel(
 
 
 def test_tile_load_3d_shared_vectorized(test, device):
-    """Correctness check for 3D shared tiles taking the vectorized float4 path."""
+    """Check 3D shared tiles taking the vectorized float4 path."""
     rng = np.random.default_rng(42)
     shape = (8, 8, 16)
     arr_np = rng.random(shape, dtype=np.float32)
@@ -199,7 +199,7 @@ def coalesced_mat33_kernel(
 
 
 def test_tile_load_coalesced_mat33(test, device):
-    """Correctness check for shared tiles of large types (mat33) via coalesced byte-copy."""
+    """Check shared tiles of large types (mat33) via coalesced byte-copy."""
     rng = np.random.default_rng(42)
     n = 64
     arr_np = rng.random((n, 3, 3), dtype=np.float32)

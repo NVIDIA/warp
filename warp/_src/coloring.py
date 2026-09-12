@@ -85,7 +85,7 @@ def graph_coloring_assign(
     )
 
     if color_count < 0:
-        raise RuntimeError("Graph coloring failed")
+        raise RuntimeError(f"Graph coloring failed: {runtime.get_error_string()}")
 
     return color_count
 
@@ -153,13 +153,18 @@ def graph_coloring_balance(
 
     node_count = node_colors.shape[0]
 
-    return runtime.core.wp_balance_coloring(
+    max_min_ratio = runtime.core.wp_balance_coloring(
         node_count,
         edges.__ctype__(),
         color_count,
         target_max_min_ratio,
         node_colors.__ctype__(),
     )
+
+    if max_min_ratio < 0.0:
+        raise RuntimeError(f"Graph coloring balance failed: {runtime.get_error_string()}")
+
+    return max_min_ratio
 
 
 @wp.kernel

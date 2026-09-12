@@ -108,6 +108,7 @@ select = [
     "F",   # pyflakes
     "W",   # pycodestyle warnings
     "B",   # flake8-bugbear
+    "S101", # flake8-bandit: assert
     "C4",  # flake8-comprehensions
     "NPY", # NumPy-specific rules
     "PLC", # pylint convention
@@ -115,6 +116,11 @@ select = [
     "PLW", # pylint warning
     "UP",  # pyupgrade
     "RUF",
+    "D200", # One-line docstrings should fit on one line
+    "D205", # Separate summaries from descriptions with a blank line
+    "D400", # End summary lines with a period
+    "D401", # Write summary lines in the imperative mood
+    "D403", # Capitalize the first word of each docstring
 ]
 ignore = [
     "E501",    # Many lines are over 120 characters already
@@ -130,14 +136,17 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
+# Enforce the selected pydocstyle rules only in the Warp test suite for now.
+"!warp/tests/**.py" = ["D200", "D205", "D400", "D401", "D403"]
 "__init__.py" = ["F401", "PLC0414"]
-"__init__.pyi" = ["E402", "I001"]
+"__init__.pyi" = ["B008", "E402", "I001"]
 # `warp/__init__.py` registers all Warp module source declarations before
 # importing implementation symbols, so the statement-before-import ordering is
 # intentional.
 "warp/__init__.py" = ["E402"]
 "warp/*.py" = ["PLC0414"]
 "warp/tests/*.py" = ["F841"]
+"warp/tests/**/*.py" = ["S101"]
 # Skill evaluation fixtures intentionally contain the defects agents must
 # find (e.g. a computed-but-never-consumed adjoint), so unused-variable
 # lints are expected there.

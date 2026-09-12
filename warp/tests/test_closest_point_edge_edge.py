@@ -204,12 +204,11 @@ def test_edge_edge_perpendicular_s0_t1(test, device):
 
 @wp.func
 def check_edge_closest_point_sufficient_necessary(c1: wp.vec3, c2: wp.vec3, t: float, p: wp.vec3, q: wp.vec3):
-    """
-    This is a sufficient and necessary condition of closest point
-    c1: closest point on the other edge
-    c2: closest point on edge p-q
-    t: c2 = (1.0-t) * p + t * q
-    e1, e2: end points of the edge
+    """Check a sufficient and necessary condition for the closest point.
+
+    ``c1`` is the closest point on the other edge, ``c2`` is the closest point
+    on edge ``p``-``q``, and ``t`` satisfies
+    ``c2 = (1.0 - t) * p + t * q``.
     """
     eps = 1e-5
     e = p - q
@@ -352,8 +351,9 @@ def _fd_dist_grads(p1_np, q1_np, p2_np, q2_np, device, h=1e-3):
 
 
 def _well_conditioned_mask(p1, q1, p2, q2):
-    """Accept inputs that fall *firmly inside* one of the smooth branches
-    (D, E, or F) of the forward function. Rejects:
+    """Accept inputs firmly inside a smooth forward-function branch.
+
+    Accept branches D, E, or F. Reject:
       - degenerate edges (epsilon branches)
       - near-parallel edges (boundary between D and D_DEGEN)
       - inputs near a clamp boundary or t-correction boundary, where finite
@@ -400,8 +400,11 @@ def _well_conditioned_mask(p1, q1, p2, q2):
 
 
 def test_edge_edge_grad_finite_difference(test, device):
-    """Analytic gradients of dist match central finite differences across all
-    forward branches at well-conditioned inputs (away from boundary transitions)."""
+    """Match analytic edge-distance gradients against finite differences.
+
+    Cover all forward branches at well-conditioned inputs away from boundary
+    transitions.
+    """
     rng = np.random.default_rng(2024)
     n = 500
     p1 = rng.standard_normal((n, 3)).astype(np.float32)
@@ -422,10 +425,11 @@ def test_edge_edge_grad_finite_difference(test, device):
 
 
 def test_edge_edge_grad_bounded_near_parallel(test, device):
-    """At near-parallel edges, the analytic gradient must remain finite and
-    physically bounded. The previous codegen'd adjoint produced gradients up
-    to ~1e6 here because it divided by a denom near machine epsilon; the
-    cross-product formulation keeps the chain rule well-conditioned.
+    """Keep near-parallel edge gradients finite and physically bounded.
+
+    The previous generated adjoint produced gradients up to ~1e6 because it
+    divided by a denominator near machine epsilon. The cross-product formulation
+    keeps the chain rule well-conditioned.
 
     Sampling: log-uniform sin θ ∈ [1e-7, 1e-2] covers both the parallel
     branch (sin θ < sqrt(REL_PARALLEL_TOL) ≈ 1e-3) and the near-threshold

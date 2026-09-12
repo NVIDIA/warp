@@ -631,6 +631,7 @@ def build_dll_for_arch(
 
         nvcc_opts = [
             *gencode_opts,
+            "-DWP_BUILD_DLL",
             "-t0",  # multithreaded compilation
             "--extended-lambda",
             "-diag-suppress=221",  # suppress "floating-point value does not fit" warning from INFINITY macro in CUDA headers
@@ -644,6 +645,7 @@ def build_dll_for_arch(
         clang_opts = [
             *clang_arch_flags,
             "-std=c++17",
+            "-DWP_BUILD_DLL",
             "-xcuda",
             f'--cuda-path="{cuda_home}"',
             "-D_GLIBCXX_USE_CXX11_ABI=0",
@@ -700,7 +702,7 @@ def build_dll_for_arch(
             iter_dbg = "_ITERATOR_DEBUG_LEVEL=2"
             debug = "_DEBUG"
 
-        cpp_flags = f'/nologo /std:c++17 /GR- /EHsc {runtime} /D "{debug}" /D "{cuda_enabled}" /D "{mathdx_enabled}" /D "{cuda_compat_enabled}" /D "{iter_dbg}" /I"{native_dir}" {includes} '
+        cpp_flags = f'/nologo /std:c++17 /GR- /EHsc {runtime} /D "WP_BUILD_DLL" /D "{debug}" /D "{cuda_enabled}" /D "{mathdx_enabled}" /D "{cuda_compat_enabled}" /D "{iter_dbg}" /I"{native_dir}" {includes} '
 
         if args.mode == "debug":
             cpp_flags += "/FS /Zi /Od /D WP_ENABLE_DEBUG=1"
@@ -801,7 +803,8 @@ def build_dll_for_arch(
                 print(f"build took {elapsed:.2f} ms ({args.jobs:d} workers)")
 
         with ScopedTimer("link", active=args.verbose):
-            link_cmd = f'"{host_linker}" {" ".join(linkopts + libs)} /out:"{dll_path}"'
+            implib_path = os.path.splitext(dll_path)[0] + ".lib"
+            link_cmd = f'"{host_linker}" {" ".join(linkopts + libs)} /out:"{dll_path}" /IMPLIB:"{implib_path}"'
             run_cmd(link_cmd)
 
     else:
@@ -826,7 +829,7 @@ def build_dll_for_arch(
             else:
                 version = ""
 
-        cpp_flags = f'-Werror -Wuninitialized {version} --std=c++17 -fno-rtti -D{cuda_enabled} -D{mathdx_enabled} -D{cuda_compat_enabled} -fPIC -fvisibility=hidden -fvisibility-inlines-hidden -D_GLIBCXX_USE_CXX11_ABI=0 -I"{native_dir}" {includes} '
+        cpp_flags = f'-Werror -Wuninitialized {version} --std=c++17 -fno-rtti -DWP_BUILD_DLL -D{cuda_enabled} -D{mathdx_enabled} -D{cuda_compat_enabled} -fPIC -fvisibility=hidden -fvisibility-inlines-hidden -D_GLIBCXX_USE_CXX11_ABI=0 -I"{native_dir}" {includes} '
 
         if mode == "debug":
             cpp_flags += "-Og -g -D_DEBUG -DWP_ENABLE_DEBUG=1"
@@ -899,9 +902,9 @@ def build_dll_for_arch(
 
                 if args.libmathdx_path:
                     if args.use_dynamic_cuda:
-                        ld_inputs.append(f"-lnvJitLink -L{args.libmathdx_path}/lib -lmathdx")
+                        ld_inputs.append(f"-lnvJitLink -L{quote(args.libmathdx_path + '/lib')} -lmathdx")
                     else:
-                        ld_inputs.append(f"-lnvJitLink_static -L{args.libmathdx_path}/lib -lmathdx_static")
+                        ld_inputs.append(f"-lnvJitLink_static -L{quote(args.libmathdx_path + '/lib')} -lmathdx_static")
 
             if args.jobs <= 1:
                 with ScopedTimer("build_cuda", active=args.verbose):
@@ -936,7 +939,9 @@ def build_dll_for_arch(
             # C++ hosts even on distros that flip the default to -z now via RELRO.
             opt_undefined = "-Wl,-z,lazy"
             opt_exclude_libs = "-Wl,--exclude-libs,ALL"
-            opt_static_runtime = f"-static-libstdc++ -static-libgcc -Wl,--version-script={native_dir}/warp.map"
+            opt_static_runtime = (
+                f"-static-libstdc++ -static-libgcc -Wl,--version-script={quote(native_dir + '/warp.map')}"
+            )
 
         sanitize_ld = f" -fsanitize={args.sanitize}" if args.sanitize else ""
 
@@ -979,11 +984,12 @@ def build_dll_for_arch(
             # Strip symbols to reduce the binary size
             if mode == "release":
                 if sys.platform == "darwin":
-                    run_cmd(f"strip -x {dll_path}")  # Strip all local symbols
+                    run_cmd(f"strip -x {quote(dll_path)}")  # Strip all local symbols
                 else:  # Linux
                     # Strip symbols not needed for dynamic linking, except those needed to support debugging JIT-compiled code
                     run_cmd(
-                        f"strip --strip-unneeded --keep-symbol=__jit_debug_register_code --keep-symbol=__jit_debug_descriptor {dll_path}"
+                        f"strip --strip-unneeded --keep-symbol=__jit_debug_register_code "
+                        f"--keep-symbol=__jit_debug_descriptor {quote(dll_path)}"
                     )
 
 

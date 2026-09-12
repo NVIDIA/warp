@@ -235,7 +235,7 @@ The current operation families are summarized below; ``APICOpType`` in ``warp/na
 | Kernel dispatch | forward, backward, tiled, reusable launches | Record instead of execute; call resolved CPU function on replay | Driver captures launch and APIC records it when enabled | Resolve module symbol and reissue launch | Yes; requires companion module metadata and binaries |
 | Basic memory | contiguous copy, zero, contiguous fill | Record ``memcpy``, ``memset``, or ``memtile`` instead of executing | Driver captures supported same-device work and APIC records it | Reissue supported memory operation | Supported same-device contiguous forms only |
 | Array algorithms | reductions, scan, radix/segmented sort, run-length encode | Record a semantic host-helper operation | Execute helper under CUDA stream capture and record semantics | Reissue helper under reconstruction capture | Yes for supported forms |
-| Sparse topology | BSR from triplets and transpose | Record semantic topology operation | Supported CUDA forms run under stream capture; unsupported forms raise | Reissue supported form, including required capacity metadata | BSR transpose on both backends; from-triplets on CPU only |
+| Sparse topology | BSR from triplets and transpose | Record semantic topology operation | Supported CUDA forms run under stream capture; unsupported forms raise | Reissue supported form, including required capacity metadata | Yes, on both backends |
 | Dynamic control flow | ``capture_if``, ``capture_while`` | Interpret nested operation streams | Driver creates conditional graph nodes and APIC stores nested streams | Reconstruct conditional nodes and child graphs | Yes when every nested operation is serializable |
 | In-process spatial updates | BVH refit/rebuild, HashGrid update | Replay against the live process-local object | Not a supported APIC CUDA path | Not reconstructed | No; CPU BVH fails at save, saveable HashGrid capture fails at build, and CUDA has no APIC update record |
 
@@ -278,6 +278,8 @@ Validation checks:
 - that every operation type is recognized.
 
 Replay then trusts the record layout but continues to validate region resolution and operation-specific memory spans. Structural validation is deliberately paid once at capture close or load rather than repeated for every operation in launch-dense replay loops; runtime address and span checks remain in place. CPU replay and CUDA reconstruction return failure when a kernel, region, module, or helper operation cannot be resolved.
+
+Native diagnostics emitted by APIC use a product-first prefix so standalone and Python callers can identify their source. Errors begin with ``Warp APIC error:`` and warnings begin with ``Warp APIC warning:``, whether they are written directly to ``stderr`` or stored through ``wp::set_error_string()`` for propagation to Python.
 
 Handle relocation is a current exception. When an ``APIC_RELOC_HANDLE`` value has no entry in ``handle_ptr_remap``, both CPU replay and CUDA reconstruction preserve the original captured integer instead of failing. The same fallback applies to registered handle fields inside memory regions. Missing mesh metadata or a handle for an unsupported object type can therefore reach replay as a stale process-local handle.
 

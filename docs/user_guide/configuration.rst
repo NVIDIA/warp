@@ -31,6 +31,39 @@ For example, the location of the user kernel cache can be changed with:
     wp.init()
 
 See :doc:`../api_reference/warp_config` for a complete list of global settings.
+See :doc:`execution_and_performance/reducing_compilation_and_startup_time` for
+guidance on settings that affect compilation and startup.
+
+Experimental CPU Block Execution
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. versionadded:: 1.18.0
+
+By default, an omitted or non-positive ``block_dim`` selects one logical thread
+per block on CPU and 256 threads per block on CUDA. CPU launches also preserve
+the historical effective ``block_dim`` of ``1`` when a larger value is
+requested. To honor an explicit CPU ``block_dim`` from 2 through 1024, enable
+the experimental cooperative-block path:
+
+.. code-block:: python
+
+    wp.config.enable_cpu_blocks = True
+    wp.launch(kernel, dim=count, block_dim=64, device="cpu")
+
+The setting applies to :func:`wp.launch() <warp.launch>` and
+:func:`wp.launch_tiled() <warp.launch_tiled>`. Warp resolves the effective block
+dimension when the launch is created, so recorded commands and captured launches
+retain that value if the setting later changes. An explicit CPU value greater
+than 1024 raises ``ValueError`` even when the feature is disabled.
+
+CPU block execution currently targets correctness testing and CPU/CUDA semantic
+equivalence; it does not provide SIMD or multi-core acceleration.
+
+AddressSanitizer fiber switching is not yet supported. In an AddressSanitizer
+build, an enabled CPU launch with ``block_dim > 1`` raises
+``NotImplementedError``; one-lane CPU launches remain available. See
+:ref:`CPU Tile Semantics <cpu_tile_semantics>` for how the option affects tile
+kernels.
 
 .. _module-settings:
 
@@ -96,6 +129,8 @@ The options for a module can also be queried using :func:`wp.get_module_options(
 |``enable_mathdx_solver``              | Boolean | ``None``    | A module-level override of the :attr:`warp.config.enable_mathdx_solver`  |
 |                                      |         |             | setting. ``None`` defers to the global setting at compile time.          |
 +--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
+
+.. _kernel-settings:
 
 Kernel Settings
 ---------------

@@ -43,6 +43,11 @@ def single_atomic(out: wp.array[wp.int32]):
 
 
 @wp.kernel(module="unique")
+def module_default_atomic(out: wp.array[wp.int32]):
+    wp.atomic_add(out, 0, 2)
+
+
+@wp.kernel(module="unique")
 def tile_zeros_64(out: wp.array[float]):
     t = wp.tile_zeros(shape=64, dtype=float)
     out[wp.tid()] = t[0]
@@ -155,6 +160,26 @@ def test_load_module_no_cross_device_block_dim_leak(test, device):
     )
 
 
+def test_load_module_respects_module_default_block_dim(test, device):
+    """Verify an initial explicit load uses the module-level block dimension."""
+
+    module = module_default_atomic.module
+    wp.set_module_options({"block_dim": 8}, module=module)
+
+    wp.load_module(module=module, device=device)
+
+    test.assertIn(
+        (device.context, 8),
+        module.execs,
+        "wp.load_module should compile the module-level default block_dim variant",
+    )
+    test.assertNotIn(
+        (device.context, 256),
+        module.execs,
+        "wp.load_module must not replace an explicit module-level block_dim with the CUDA default",
+    )
+
+
 def test_load_module_tiled_block_dim(test, device):
     """Verify a tiled launch compiles the variant for its own block_dim.
 
@@ -237,6 +262,13 @@ add_function_test(
     TestBlockDimDispatch,
     "test_load_module_no_cross_device_block_dim_leak",
     test_load_module_no_cross_device_block_dim_leak,
+    devices=cuda_devices,
+)
+
+add_function_test(
+    TestBlockDimDispatch,
+    "test_load_module_respects_module_default_block_dim",
+    test_load_module_respects_module_default_block_dim,
     devices=cuda_devices,
 )
 

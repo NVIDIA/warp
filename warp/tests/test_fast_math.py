@@ -28,7 +28,7 @@ def test_pow(e: float, expected: float):
 
 
 def test_fast_math_disabled(test, device):
-    # on all systems pow() should handle negative base correctly with fast math off
+    """Handle negative power bases with fast math disabled."""
     wp.set_module_options({"fast_math": False})
     wp.launch(test_pow, dim=1, inputs=[2.0, 4.0], device=device)
 
@@ -204,7 +204,7 @@ def test_approx_div_compound(test, device):
 
 
 def test_approx_div_backward(test, device):
-    """Verify that backward pass through approx division works correctly."""
+    """Verify that the backward pass through approximate division works."""
     n = 8
     rng = np.random.default_rng(42)
     # div_approx uses rcp.approx (float32 precision) even for float64, so use looser tolerance for f64
@@ -239,7 +239,7 @@ def test_approx_div_backward(test, device):
 
 
 def test_approx_inverse_backward(test, device):
-    """Verify that backward pass through inverse_approx works correctly."""
+    """Verify that the backward pass through ``inverse_approx`` works."""
     n = 4
     rng = np.random.default_rng(42)
     backward_kernels = {
@@ -272,7 +272,8 @@ def test_approx_inverse_backward(test, device):
 
 class TestFastMath(unittest.TestCase):
     def test_fast_math_cpu(self):
-        # on all systems pow() should handle negative base correctly
+        """Handle negative power bases with fast math enabled."""
+
         wp.set_module_options({"fast_math": True})
         try:
             wp.launch(test_pow, dim=1, inputs=[2.0, 4.0], device="cpu")

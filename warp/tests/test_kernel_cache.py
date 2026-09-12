@@ -26,7 +26,7 @@ class TestKernelCache(unittest.TestCase):
             os.environ["WARP_CACHE_PATH"] = self._original_env
 
     def test_cache_path_includes_version(self):
-        """init_kernel_cache appends the Warp version to user-supplied paths."""
+        """Verify that init_kernel_cache appends the Warp version to user-supplied paths."""
         with tempfile.TemporaryDirectory() as tmp:
             warp._src.build.init_kernel_cache(path=tmp)
             expected = os.path.join(os.path.realpath(tmp), warp.config.version)
@@ -36,7 +36,7 @@ class TestKernelCache(unittest.TestCase):
             self.assertTrue(os.path.isdir(expected))
 
     def test_cache_env_var_includes_version(self):
-        """WARP_CACHE_PATH also gets a version subdirectory."""
+        """Verify that WARP_CACHE_PATH also gets a version subdirectory."""
         with tempfile.TemporaryDirectory() as tmp:
             os.environ["WARP_CACHE_PATH"] = tmp
             warp._src.build.init_kernel_cache()
@@ -47,7 +47,7 @@ class TestKernelCache(unittest.TestCase):
             self.assertTrue(os.path.isdir(expected))
 
     def test_cache_env_var_named_version_includes_version(self):
-        """A cache base named after the Warp version still gets a version subdirectory."""
+        """Verify that a cache base named after the Warp version still gets a version subdirectory."""
         with tempfile.TemporaryDirectory() as tmp:
             base_dir = os.path.join(tmp, warp.config.version)
             os.makedirs(base_dir)
@@ -62,7 +62,7 @@ class TestKernelCache(unittest.TestCase):
             self.assertTrue(os.path.isdir(expected))
 
     def test_resolved_cache_path_does_not_duplicate_version(self):
-        """A cache path previously resolved by Warp is not versioned again."""
+        """Verify that a cache path previously resolved by Warp is not versioned again."""
         with tempfile.TemporaryDirectory() as tmp:
             warp._src.build.init_kernel_cache(path=tmp)
             expected = warp.config.kernel_cache_dir
@@ -73,7 +73,7 @@ class TestKernelCache(unittest.TestCase):
             self.assertFalse(os.path.isdir(os.path.join(expected, warp.config.version)))
 
     def test_resolved_cache_env_var_does_not_duplicate_version(self):
-        """WARP_CACHE_PATH is not versioned again when it contains Warp's resolved path."""
+        """Verify that WARP_CACHE_PATH is not versioned again when it contains Warp's resolved path."""
         with tempfile.TemporaryDirectory() as tmp:
             os.environ["WARP_CACHE_PATH"] = tmp
             warp._src.build.init_kernel_cache()
@@ -87,7 +87,7 @@ class TestKernelCache(unittest.TestCase):
 
     @unittest.skipUnless(os.name == "nt", "Long-path prefixes only apply on Windows")
     def test_resolved_cache_path_matches_unprefixed_spelling_on_windows(self):
-        """On Windows, a resolved cache path is recognized without its long-path prefix."""
+        """Verify that on Windows, a resolved cache path is recognized without its long-path prefix."""
         with tempfile.TemporaryDirectory() as tmp:
             warp._src.build.init_kernel_cache(path=tmp)
             resolved = warp.config.kernel_cache_dir
@@ -115,19 +115,19 @@ class TestKernelCache(unittest.TestCase):
                 self.assertIn("previous Warp version", mock_warn.call_args[0][0])
 
     def test_no_stale_artifacts_warning(self):
-        """No warning when the base directory is clean."""
+        """Expect no warning when the base directory is clean."""
         with tempfile.TemporaryDirectory() as tmp:
             with patch("warp._src.logger.log_warning") as mock_warn:
                 warp._src.build.init_kernel_cache(path=tmp)
                 mock_warn.assert_not_called()
 
     def test_default_cache_path_includes_version(self):
-        """The default cache path (no env var, no explicit path) includes the version."""
+        """Verify that the default cache path (no env var, no explicit path) includes the version."""
         warp._src.build.init_kernel_cache()
         self.assertIn(warp.config.version, warp.config.kernel_cache_dir)
 
     def test_lto_cache_does_not_reuse_legacy_prefix_collision(self):
-        """LTO cache keys distinguish hashes that share the legacy 7-char prefix."""
+        """Verify that LTO cache keys distinguish hashes that share the legacy 7-char prefix."""
         symbol_a = "synthetic_lto_symbol_a"
         symbol_b = "synthetic_lto_symbol_b"
         short_prefix = "abcdef0"
@@ -163,7 +163,7 @@ class TestKernelCache(unittest.TestCase):
         self.assertEqual(lto_data_b, symbol_b.encode("utf-8"))
 
     def test_lto_meta_missing_symbol_is_cache_miss(self):
-        """A metadata sidecar without the requested symbol is a cache miss."""
+        """Verify that a metadata sidecar without the requested symbol is a cache miss."""
         with tempfile.TemporaryDirectory() as tmp:
             meta_path = os.path.join(tmp, "cached.meta")
             with open(meta_path, "w") as f:
@@ -172,7 +172,7 @@ class TestKernelCache(unittest.TestCase):
             self.assertIsNone(warp._src.build.get_cached_lto_meta(meta_path, "requested_symbol"))
 
     def test_lto_meta_invalid_json_is_cache_miss(self):
-        """A corrupt metadata sidecar is a cache miss."""
+        """Verify that a corrupt metadata sidecar is a cache miss."""
         with tempfile.TemporaryDirectory() as tmp:
             meta_path = os.path.join(tmp, "cached.meta")
             with open(meta_path, "w") as f:
@@ -181,7 +181,7 @@ class TestKernelCache(unittest.TestCase):
             self.assertIsNone(warp._src.build.get_cached_lto_meta(meta_path, "requested_symbol"))
 
     def test_lto_meta_invalid_encoding_is_cache_miss(self):
-        """A metadata sidecar with invalid text encoding is a cache miss."""
+        """Verify that a metadata sidecar with invalid text encoding is a cache miss."""
         with tempfile.TemporaryDirectory() as tmp:
             meta_path = os.path.join(tmp, "cached.meta")
             with open(meta_path, "wb") as f:
@@ -190,7 +190,7 @@ class TestKernelCache(unittest.TestCase):
             self.assertIsNone(warp._src.build.get_cached_lto_meta(meta_path, "requested_symbol"))
 
     def test_lto_meta_non_integer_value_is_cache_miss(self):
-        """A metadata sidecar with a non-integer value is a cache miss."""
+        """Verify that a metadata sidecar with a non-integer value is a cache miss."""
         with tempfile.TemporaryDirectory() as tmp:
             meta_path = os.path.join(tmp, "cached.meta")
             with open(meta_path, "w") as f:
@@ -199,7 +199,7 @@ class TestKernelCache(unittest.TestCase):
             self.assertIsNone(warp._src.build.get_cached_lto_meta(meta_path, "requested_symbol"))
 
     def test_lto_meta_boolean_value_is_cache_miss(self):
-        """A metadata sidecar with a boolean value is a cache miss."""
+        """Verify that a metadata sidecar with a boolean value is a cache miss."""
         with tempfile.TemporaryDirectory() as tmp:
             meta_path = os.path.join(tmp, "cached.meta")
             with open(meta_path, "w") as f:
@@ -208,7 +208,7 @@ class TestKernelCache(unittest.TestCase):
             self.assertIsNone(warp._src.build.get_cached_lto_meta(meta_path, "requested_symbol"))
 
     def test_lto_rebuild_does_not_replace_concurrent_cache_output(self):
-        """A rebuild keeps a concurrently-created LTO output unless a sidecar is invalid."""
+        """Verify that a rebuild keeps a concurrently-created LTO output unless a sidecar is invalid."""
         lto_symbol = "synthetic_concurrent_lto_symbol"
         h = warp._src.build.hash_symbol(lto_symbol)[: warp._src.build.LTO_CACHE_KEY_LENGTH]
 
@@ -238,7 +238,7 @@ class TestKernelCache(unittest.TestCase):
         self.assertEqual(cached_lto_data, b"concurrent")
 
     def test_lto_rebuild_replaces_invalid_meta_sidecar(self):
-        """A rebuilt LTO cache entry heals an invalid metadata sidecar."""
+        """Verify that a rebuilt LTO cache entry heals an invalid metadata sidecar."""
         lto_symbol = "fft_64_4_70_forward_5"
         shared_memory_bytes = 256
         h = warp._src.build.hash_symbol(lto_symbol)[: warp._src.build.LTO_CACHE_KEY_LENGTH]

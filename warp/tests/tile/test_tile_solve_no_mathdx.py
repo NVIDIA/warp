@@ -6,7 +6,7 @@
 Setting ``enable_mathdx_solver=False`` at module scope routes
 ``tile_cholesky_solve``, ``tile_lower_solve``, and ``tile_upper_solve`` (and
 their inplace variants) through the cooperative scalar substitution
-primitives in ``tile_solve.h`` on GPU (or the CPU sequential branch on CPU),
+primitives in ``tile_solve.h`` on GPU and cooperative CPU blocks,
 exercising the path that runs whenever Warp is built without libmathdx or
 when a user disables the option per-module.
 """
@@ -260,7 +260,7 @@ def test_lower_solve_inplace_matrix(test, device):
 
 
 def _lower_solve_adjoint_numpy(L, y, adj_z):
-    """Reference gradients for the kernel z = tile_lower_solve(L, y).
+    """Compute reference gradients for ``z = tile_lower_solve(L, y)``.
 
     ``L`` is lower triangular and loaded directly (no transpose), so the
     gradient lands on L itself. Backward of L z = y:
@@ -604,7 +604,7 @@ class TestTileSolveNoMathDx(unittest.TestCase):
 
 devices = get_test_devices()
 
-for name, func in [
+solve_tests = [
     ("test_lower_solve_vector", test_lower_solve_vector),
     ("test_lower_solve_matrix", test_lower_solve_matrix),
     ("test_lower_solve_inplace_vector", test_lower_solve_inplace_vector),
@@ -624,8 +624,22 @@ for name, func in [
     ("test_cholesky_solve_inplace_matrix", test_cholesky_solve_inplace_matrix),
     ("test_lower_solve_block_dim_1", test_lower_solve_block_dim_1),
     ("test_cholesky_solve_matrix_block_dim_1", test_cholesky_solve_matrix_block_dim_1),
-]:
+]
+
+for name, func in solve_tests:
     add_function_test(TestTileSolveNoMathDx, name, func, devices=devices, check_output=False)
+
+for name, func in solve_tests:
+    if name.endswith("block_dim_1"):
+        continue
+    add_function_test(
+        TestTileSolveNoMathDx,
+        f"{name}_cpu_blocks",
+        func,
+        devices=["cpu"] if wp.is_cpu_available() else [],
+        check_output=False,
+        enable_cpu_blocks=True,
+    )
 
 
 if __name__ == "__main__":

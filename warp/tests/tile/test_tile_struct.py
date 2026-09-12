@@ -689,7 +689,7 @@ def assert_tile_map_struct_grad(actual, expected):
 
 
 def test_tile_map_custom_struct(test, device):
-    # tile_map over structs (unary scale + binary with a struct constant) and its adjoint
+    """Map unary and binary operations over struct tiles and their adjoints."""
     data = []
     for i in range(TILE_M):
         s = TileMapStruct()
@@ -737,8 +737,35 @@ def test_tile_map_custom_struct(test, device):
     assert_np_equal(input_grad_np["y"], np.full((TILE_M, 3), 2.0, dtype=np.float32))
 
 
+def test_tile_map_custom_struct_forward(test, device):
+    """Map a struct tile without depending on collective reductions."""
+    data = []
+    for i in range(TILE_M):
+        value = TileMapStruct()
+        value.x = float(i)
+        value.y = wp.vec3(float(i), float(i + 1), float(i + 2))
+        data.append(value)
+
+    input_wp = wp.array(data, dtype=TileMapStruct, device=device)
+    output_wp = wp.empty(TILE_M, dtype=TileMapStruct, device=device)
+    wp.launch_tiled(
+        tile_map_custom_struct_kernel,
+        dim=[1],
+        inputs=[input_wp],
+        outputs=[output_wp],
+        block_dim=TILE_DIM,
+        device=device,
+    )
+
+    expected_i = np.arange(TILE_M, dtype=np.float32)
+    expected_y = np.stack((2.0 * expected_i + 1.0, 2.0 * expected_i + 4.0, 2.0 * expected_i + 7.0), axis=1)
+    output_np = output_wp.numpy()
+    assert_np_equal(output_np["x"], expected_i + 11.0)
+    assert_np_equal(output_np["y"], expected_y)
+
+
 def test_tile_nested_struct_ops(test, device):
-    # nested-struct recursion through map / sum / atomic_add / sort, forward + adjoint
+    """Recurse through nested structs in forward and adjoint tile operations."""
     data = make_tile_map_nested_struct_data()
     input_wp = wp.array(data, dtype=TileMapNestedStruct, requires_grad=True, device=device)
     sort_keys_np = np.arange(TILE_M - 1, -1, -1, dtype=np.int32)
@@ -832,7 +859,7 @@ def test_tile_nested_field_store_grad(test, device):
 
 
 def test_tile_struct_array_payload_sort(test, device):
-    # array_t descriptor field carried through tile_sort (exercises the array_t warp-shuffle overload)
+    """Carry array descriptors through tile sorting and Warp shuffles."""
     arrays = [wp.array([100.0 + float(i)], dtype=float, device=device) for i in range(TILE_M)]
     payloads = []
     for i, array in enumerate(arrays):
@@ -1024,7 +1051,7 @@ def test_tile_struct_value_ops(test, device):
 
 
 def test_tile_struct_constructor_assign_stack(test, device):
-    # struct tile construction (tile_from_thread / tile_full+tile_assign / element assign) and stack ops
+    """Construct and assign struct tiles through stack operations."""
     data = make_tile_map_struct_data()
     input_wp = wp.array(data, dtype=TileMapStruct, device=device)
 
@@ -1064,8 +1091,12 @@ def test_tile_struct_constructor_assign_stack(test, device):
 
 
 def test_tile_struct_ones_rejected(test, device):
-    # contract: tile_ones rejects struct dtypes (no canonical "one" value)
-    # Keep the expected codegen failure from invalidating the shared test module.
+    """Reject struct data types in ``tile_ones``.
+
+    Structs have no canonical value for one. Keep the expected code-generation
+    failure from invalidating the shared test module.
+    """
+
     @wp.kernel(module="unique")
     def kernel_fn(output: wp.array[TileMapStruct]):
         t = wp.tile_ones(TILE_M, dtype=TileMapStruct)
@@ -1085,8 +1116,12 @@ def test_tile_struct_ones_rejected(test, device):
 
 
 def test_tile_struct_bitwise_inplace_rejected(test, device):
-    # contract: bitwise in-place ops (&=, |=, ^=) reject struct dtypes at tile and element scope
-    # Keep each expected codegen failure from invalidating the shared test module.
+    """Reject in-place bitwise operations on struct tiles and elements.
+
+    Keep each expected code-generation failure from invalidating the shared test
+    module.
+    """
+
     @wp.kernel(module="unique")
     def tile_bit_and_kernel(input: wp.array[TileMapStruct], output: wp.array[TileMapStruct]):
         t = wp.tile_load(input, shape=TILE_M, storage="shared")
@@ -1201,7 +1236,7 @@ def test_tile_struct_reduction_ops_rejected(test, device):
 
 
 def test_tile_struct_grad_ops(test, device):
-    # adjoints for indexed-load, extract, and broadcast of struct tiles
+    """Test adjoints for indexed loads, extraction, and struct-tile broadcasts."""
     data = make_tile_map_struct_data()
     x = np.arange(1, TILE_M + 1, dtype=np.float32)
     y = np.stack((x, x + 1.0, x + 2.0), axis=1)
@@ -1500,7 +1535,7 @@ def test_tile_struct_additional_grad_ops(test, device):
 
 
 def test_tile_struct_scatter_add_grad_ops(test, device):
-    # scatter_add adjoint, including the collision case (multiple lanes accumulating into one slot)
+    """Test scatter-add adjoints with distinct and colliding lanes."""
     data = make_tile_map_struct_data()
     x, y, value_sums, transformed_value_sums, expected_unit_grad, expected_transformed_y_grad = (
         make_tile_map_struct_expected_values()
@@ -1852,6 +1887,13 @@ class TestTileStruct(unittest.TestCase):
     pass
 
 
+add_function_test(
+    TestTileStruct,
+    "test_tile_map_custom_struct_forward_cpu_blocks",
+    test_tile_map_custom_struct_forward,
+    devices=["cpu"],
+    enable_cpu_blocks=True,
+)
 add_function_test(TestTileStruct, "test_tile_map_custom_struct", test_tile_map_custom_struct, devices=devices)
 add_function_test(TestTileStruct, "test_tile_nested_struct_ops", test_tile_nested_struct_ops, devices=devices)
 add_function_test(

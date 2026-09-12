@@ -57,6 +57,82 @@ def vec3_gather_address_kernel(
     output[tid] = values[source_indices[tid]]
 
 
+@wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
+def slot_store_then_vec3_read_kernel(
+    values: wp.array[wp.vec3],
+    src: wp.array[wp.float32],
+    output: wp.array[wp.vec3],
+):
+    """Overwrite one component before reading the same array element."""
+    values[0].y = src[0]
+    output[0] = values[0]
+
+
+@wp.func
+def _det_read_vec(values: wp.array[wp.vec3]) -> wp.vec3:
+    return values[0]
+
+
+@wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
+def slot_store_then_call_read_kernel(
+    values: wp.array[wp.vec3],
+    src: wp.array[wp.float32],
+    output: wp.array[wp.vec3],
+):
+    """Overwrite one component before calling a vector read helper."""
+    values[0].y = src[0]
+    output[0] = _det_read_vec(values)
+
+
+@wp.func
+def _det_gather_x(values: wp.array[wp.vec3]) -> wp.float32:
+    return values[0].x
+
+
+@wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.GPU_TO_GPU})
+def slot_store_then_contended_call_kernel(values: wp.array[wp.vec3], output: wp.array[wp.float32]):
+    tid = wp.tid()
+    values[tid].y = 2.0
+    output[tid] = _det_gather_x(values)
+
+
+@wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.GPU_TO_GPU})
+def slot_store_then_contended_alias_kernel(values: wp.array[wp.vec3], output: wp.array[wp.float32]):
+    tid = wp.tid()
+    alias = values
+    alias[tid].y = 2.0
+    output[tid] = _det_gather_x(values)
+
+
+@wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.GPU_TO_GPU})
+def contended_call_without_store_kernel(values: wp.array[wp.vec3], output: wp.array[wp.float32]):
+    output[wp.tid()] = _det_gather_x(values)
+
+
+@wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.GPU_TO_GPU})
+def overwrite_sliced_component_then_read_original(
+    values: wp.array[wp.vec3], source: wp.array[float], output: wp.array[float]
+):
+    i = wp.tid()
+    sliced = values[1::2]
+    alias = sliced
+    alias[i].x = source[i]
+    output[i] = values[2 * i + 1].x
+
+
+@wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.GPU_TO_GPU})
+def argument_alias_slot_store_kernel(
+    a: wp.array[wp.vec3],
+    b: wp.array[wp.vec3],
+    src: wp.array[wp.float32],
+    offset: int,
+    output: wp.array[wp.float32],
+):
+    tid = wp.tid()
+    a[tid + offset].x = src[tid]
+    output[tid] = b[tid].x
+
+
 @wp.kernel
 def gather_with_nongrad_input_kernel(
     values: wp.array[wp.float32],
@@ -103,6 +179,65 @@ def _adj_det_lookup_value(values: wp.array[wp.float32], index: int, adj_ret: wp.
     wp.adjoint[values][index] += adj_ret
 
 
+@wp.func
+def _det_lookup_vec_x(values: wp.array[wp.vec3], index: int) -> wp.float32:
+    return values[index].x
+
+
+@wp.func_grad(_det_lookup_vec_x)
+def _adj_det_lookup_vec_x(values: wp.array[wp.vec3], index: int, adj_ret: wp.float32):
+    wp.adjoint[values][index].x += adj_ret
+
+
+@wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
+def slot_store_then_custom_component_read_kernel(
+    values: wp.array[wp.vec3],
+    src: wp.array[wp.float32],
+    output: wp.array[wp.float32],
+):
+    """Overwrite one component before calling a custom-adjoint read helper."""
+    values[0].x = src[0]
+    output[0] = _det_lookup_vec_x(values, 0)
+
+
+@wp.func
+def _det_lookup_vec_x_then_clear_adjoint_alias(values: wp.array[wp.vec3], index: int) -> wp.float32:
+    return values[index].x
+
+
+@wp.func_grad(_det_lookup_vec_x_then_clear_adjoint_alias)
+def _adj_det_lookup_vec_x_then_clear_adjoint_alias(values: wp.array[wp.vec3], index: int, adj_ret: wp.float32):
+    wp.adjoint[values][index].x += adj_ret
+    wp.adjoint[values][index].x = 0.0
+
+
+@wp.struct
+class DetVecArrayFieldHolder:
+    values: wp.array[wp.vec3]
+
+
+@wp.func
+def _det_lookup_holder_vec_x(holder: DetVecArrayFieldHolder, index: int) -> wp.float32:
+    return holder.values[index].x
+
+
+@wp.func_grad(_det_lookup_holder_vec_x)
+def _adj_det_lookup_holder_vec_x(holder: DetVecArrayFieldHolder, index: int, adj_ret: wp.float32):
+    wp.adjoint[holder.values][index].x += adj_ret
+
+
+@wp.func
+def _det_lookup_holder_alias_vec_x(holder: DetVecArrayFieldHolder, index: int) -> wp.float32:
+    values = holder.values
+    return values[index].x
+
+
+@wp.func_grad(_det_lookup_holder_alias_vec_x)
+def _adj_det_lookup_holder_alias_vec_x(holder: DetVecArrayFieldHolder, index: int, adj_ret: wp.float32):
+    values = holder.values
+    wp.adjoint[values][index].x += adj_ret
+
+
 @wp.kernel
 def custom_adjoint_lookup_kernel(
     values: wp.array[wp.float32],
@@ -124,6 +259,50 @@ def custom_adjoint_gather_kernel(
     """Use a custom adjoint that scatters per-lane output gradients."""
     tid = wp.tid()
     output[tid] = _det_lookup_value(values, indices[tid])
+
+
+@wp.kernel
+def custom_adjoint_component_gather_kernel(
+    values: wp.array[wp.vec3],
+    indices: wp.array[wp.int32],
+    output: wp.array[wp.float32],
+):
+    """Use a custom adjoint that scatters into one vector component."""
+    tid = wp.tid()
+    output[tid] = _det_lookup_vec_x(values, indices[tid])
+
+
+@wp.kernel
+def custom_adjoint_component_clear_alias_gather_kernel(
+    values: wp.array[wp.vec3],
+    indices: wp.array[wp.int32],
+    output: wp.array[wp.float32],
+):
+    """Use an adjoint alias followed by a component overwrite."""
+    tid = wp.tid()
+    output[tid] = _det_lookup_vec_x_then_clear_adjoint_alias(values, indices[tid])
+
+
+@wp.kernel
+def custom_adjoint_component_struct_field_gather_kernel(
+    holder: DetVecArrayFieldHolder,
+    indices: wp.array[wp.int32],
+    output: wp.array[wp.float32],
+):
+    """Use a struct-field array in a custom adjoint component scatter."""
+    tid = wp.tid()
+    output[tid] = _det_lookup_holder_vec_x(holder, indices[tid])
+
+
+@wp.kernel
+def custom_adjoint_component_struct_field_alias_gather_kernel(
+    holder: DetVecArrayFieldHolder,
+    indices: wp.array[wp.int32],
+    output: wp.array[wp.float32],
+):
+    """Use a struct-field array alias in a custom adjoint component scatter."""
+    tid = wp.tid()
+    output[tid] = _det_lookup_holder_alias_vec_x(holder, indices[tid])
 
 
 @wp.func
@@ -356,6 +535,175 @@ def test_deterministic_backward_vec3_address_scatter(test, device):
         np.testing.assert_array_equal(result, expected)
 
 
+def test_deterministic_single_thread_slot_store_backward(test, device):
+    """Preserve gradients for single-thread mutation and reads."""
+    for label, kernel in (
+        ("same body", slot_store_then_vec3_read_kernel),
+        ("function call", slot_store_then_call_read_kernel),
+    ):
+        with test.subTest(label):
+            values = wp.array([[2.0, 3.0, 4.0]], dtype=wp.vec3, device=device, requires_grad=True)
+            src = wp.array([7.0], dtype=wp.float32, device=device, requires_grad=True)
+            output = wp.zeros(1, dtype=wp.vec3, device=device, requires_grad=True)
+
+            tape = wp.Tape()
+            with tape:
+                wp.launch(kernel, dim=1, inputs=[values, src], outputs=[output], device=device)
+
+            tape.backward(grads={output: wp.ones_like(output)})
+
+            np.testing.assert_allclose(output.numpy(), np.array([[2.0, 7.0, 4.0]], dtype=np.float32), rtol=0, atol=0)
+            np.testing.assert_allclose(src.grad.numpy(), np.array([1.0], dtype=np.float32), rtol=0, atol=0)
+            np.testing.assert_allclose(
+                values.grad.numpy(), np.array([[1.0, 0.0, 1.0]], dtype=np.float32), rtol=0, atol=0
+            )
+
+
+def test_deterministic_single_thread_custom_adjoint_slot_store_backward(test, device):
+    """Preserve gradients for single-thread mutation followed by a custom adjoint."""
+    values = wp.array([[2.0, 3.0, 4.0]], dtype=wp.vec3, device=device, requires_grad=True)
+    src = wp.array([7.0], dtype=wp.float32, device=device, requires_grad=True)
+    output = wp.zeros(1, dtype=wp.float32, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(
+            slot_store_then_custom_component_read_kernel, dim=1, inputs=[values, src], outputs=[output], device=device
+        )
+
+    tape.backward(grads={output: wp.ones_like(output)})
+
+    np.testing.assert_allclose(output.numpy(), np.array([7.0], dtype=np.float32), rtol=0, atol=0)
+    np.testing.assert_allclose(src.grad.numpy(), np.array([1.0], dtype=np.float32), rtol=0, atol=0)
+    np.testing.assert_allclose(values.grad.numpy(), np.array([[0.0, 0.0, 0.0]], dtype=np.float32), rtol=0, atol=0)
+
+
+def test_deterministic_parallel_slot_store_backward_rejected(test, device):
+    """Reject unsafe parallel mutation and gradient accumulation."""
+    n = 64
+    for label, kernel, shape in (
+        ("call", slot_store_then_contended_call_kernel, n),
+        ("alias", slot_store_then_contended_alias_kernel, n),
+    ):
+        with test.subTest(label):
+            values = wp.ones(shape, dtype=wp.vec3, device=device, requires_grad=True)
+            output = wp.zeros(n, dtype=wp.float32, device=device, requires_grad=True)
+            tape = wp.Tape()
+            with tape:
+                wp.launch(kernel, dim=n, inputs=[values], outputs=[output], device=device)
+            np.testing.assert_array_equal(output.numpy(), np.ones(n, dtype=np.float32))
+
+            with test.assertRaisesRegex(RuntimeError, "Deterministic.*parallel backward"):
+                tape.backward(grads={output: wp.ones_like(output)})
+            np.testing.assert_array_equal(values.grad.numpy(), np.zeros((*values.shape, 3), dtype=np.float32))
+
+
+def test_recorded_deterministic_backward_respects_updated_dim(test, device):
+    """Apply the mutation restriction after a recorded launch changes dimensions."""
+    n = 64
+    values = wp.ones(n, dtype=wp.vec3, device=device, requires_grad=True)
+    output = wp.ones(n, dtype=wp.float32, device=device, requires_grad=True)
+    output.grad.fill_(1.0)
+    command = wp.launch(
+        slot_store_then_contended_call_kernel,
+        dim=1,
+        inputs=[values],
+        outputs=[output],
+        adj_inputs=[values.grad],
+        adj_outputs=[output.grad],
+        adjoint=True,
+        device=device,
+        record_cmd=True,
+    )
+    command.launch()
+    expected = np.zeros((n, 3), dtype=np.float32)
+    expected[0, 0] = 1.0
+    np.testing.assert_array_equal(values.grad.numpy(), expected)
+
+    command.set_dim(n)
+    with test.assertRaisesRegex(RuntimeError, "Deterministic.*parallel backward.*mutation"):
+        command.launch()
+    np.testing.assert_array_equal(values.grad.numpy(), expected)
+
+    command.set_dim(1)
+    output.grad.fill_(1.0)
+    command.launch()
+    expected[0, 0] = 2.0
+    np.testing.assert_array_equal(values.grad.numpy(), expected)
+
+
+def test_deterministic_read_only_helper_backward(test, device):
+    """Read-only helper gradients retain deterministic parallel reductions."""
+    n = 65536
+    values = wp.ones(1, dtype=wp.vec3, device=device, requires_grad=True)
+    output = wp.zeros(n, dtype=wp.float32, device=device, requires_grad=True)
+    seeds_np = np.random.default_rng(2026).random(n, dtype=np.float32)
+    seeds = wp.array(seeds_np, dtype=wp.float32, device=device)
+    expected_x = _reference_scatter_add_float32(seeds_np, np.zeros(n, dtype=np.int32), 1)[0]
+    expected = np.array([[expected_x, 0.0, 0.0]], dtype=np.float32)
+
+    for _ in range(3):
+        values.grad.zero_()
+        tape = wp.Tape()
+        with tape:
+            wp.launch(contended_call_without_store_kernel, dim=n, inputs=[values], outputs=[output], device=device)
+        tape.backward(grads={output: seeds})
+        np.testing.assert_array_equal(values.grad.numpy(), expected)
+
+
+def test_deterministic_sliced_store_backward_is_serial_only(test, device):
+    """Keep slice overwrites ordered with reads through the original array."""
+    for n in (1, 2):
+        with test.subTest(n=n):
+            values = wp.zeros(2 * n, dtype=wp.vec3, device=device, requires_grad=True)
+            source = wp.full(n, 7.0, dtype=float, device=device, requires_grad=True)
+            output = wp.zeros(n, dtype=wp.float32, device=device, requires_grad=True)
+            with wp.Tape() as tape:
+                wp.launch(overwrite_sliced_component_then_read_original, n, [values, source, output], device=device)
+            np.testing.assert_array_equal(output.numpy(), np.full(n, 7.0))
+            if device.is_cuda and n > 1:
+                with test.assertRaisesRegex(RuntimeError, "Deterministic.*parallel backward.*mutation"):
+                    tape.backward(grads={output: wp.ones_like(output)})
+            else:
+                tape.backward(grads={output: wp.ones_like(output)})
+                np.testing.assert_array_equal(source.grad.numpy(), np.ones(n))
+                np.testing.assert_array_equal(values.grad.numpy(), np.zeros((2 * n, 3)))
+
+
+def test_deterministic_overlapping_arguments_backward_rejected(test, device):
+    """Reject unsafe CUDA gradients when separate arguments overlap in storage."""
+    n = 64
+    for alias_kind in ("same array", "overlapping views", "distinct arrays"):
+        with test.subTest(alias_kind=alias_kind):
+            offset = int(alias_kind == "overlapping views")
+            a = wp.ones(n + offset, dtype=wp.vec3, device=device, requires_grad=True)
+            if alias_kind == "same array":
+                b = a
+            elif alias_kind == "overlapping views":
+                b = a[1:]
+            else:
+                b = wp.ones(n, dtype=wp.vec3, device=device, requires_grad=True)
+            src = wp.full(n, 2.0, device=device, requires_grad=True)
+            output = wp.zeros(n, dtype=wp.float32, device=device, requires_grad=True)
+            tape = wp.Tape()
+            with tape:
+                wp.launch(
+                    argument_alias_slot_store_kernel,
+                    dim=n,
+                    inputs=[a, b, src, offset],
+                    outputs=[output],
+                    device=device,
+                )
+            if device.is_cuda and alias_kind != "distinct arrays":
+                with test.assertRaisesRegex(RuntimeError, "Deterministic.*parallel backward.*mutation"):
+                    tape.backward(grads={output: wp.ones_like(output)})
+                np.testing.assert_array_equal(src.grad.numpy(), np.zeros(n, dtype=np.float32))
+            else:
+                tape.backward(grads={output: wp.ones_like(output)})
+                expected = np.full(n, float(alias_kind != "distinct arrays"), dtype=np.float32)
+                np.testing.assert_array_equal(src.grad.numpy(), expected)
+
+
 def test_deterministic_backward_missing_adjoint_target(test, device):
     """Verify backward deterministic reductions ignore array reads with no grad buffer."""
     n = 2048
@@ -513,6 +861,160 @@ def test_deterministic_custom_adjoint_gather_atomic(test, device):
         np.testing.assert_array_equal(result, expected)
 
 
+def test_deterministic_custom_adjoint_component_gradient(test, device):
+    """Accumulate deterministic component gradients from custom adjoints."""
+    n = 2048
+    value_count = 31
+    rng = np.random.default_rng(307)
+    values_np = rng.random((value_count, 3), dtype=np.float32)
+    indices_np = rng.integers(0, value_count, size=n, dtype=np.int32)
+    grad_np = rng.random(n, dtype=np.float32)
+
+    expected = np.zeros((value_count, 3), dtype=np.float32)
+    expected[:, 0] = _reference_scatter_add_float32(grad_np, indices_np, value_count)
+
+    values = wp.array(values_np, dtype=wp.vec3, device=device, requires_grad=True)
+    indices = wp.array(indices_np, dtype=wp.int32, device=device)
+    output_grad = wp.array(grad_np, dtype=wp.float32, device=device)
+
+    old_det = _get_test_module_options()["deterministic"]
+    try:
+        _set_test_module_options({"deterministic": wp.DeterministicMode.GPU_TO_GPU})
+        results = []
+        for _ in range(3):
+            values.grad.zero_()
+            output = wp.zeros(n, dtype=wp.float32, device=device, requires_grad=True)
+            tape = wp.Tape()
+            with tape:
+                wp.launch(
+                    custom_adjoint_component_gather_kernel,
+                    dim=n,
+                    inputs=[values, indices],
+                    outputs=[output],
+                    device=device,
+                )
+            tape.backward(grads={output: output_grad})
+            results.append(tape.gradients[values].numpy().copy())
+    finally:
+        _set_test_module_options({"deterministic": old_det})
+
+    for result in results:
+        np.testing.assert_array_equal(result, expected)
+
+
+def test_deterministic_custom_adjoint_component_negative_stride_rejected(test, device):
+    """Reject negative-stride destinations for deterministic component scatters."""
+    n = 4
+    values = wp.ones(n, dtype=wp.vec3, device=device, requires_grad=True)
+    indices = wp.array(np.arange(n, dtype=np.int32), dtype=wp.int32, device=device)
+    output = wp.zeros(n, dtype=wp.float32, device=device, requires_grad=True)
+    output_grad = wp.ones(n, dtype=wp.float32, device=device)
+    base_grad = wp.zeros(n, dtype=wp.vec3, device=device)
+    reversed_grad = wp.array(
+        ptr=base_grad.ptr + (n - 1) * base_grad.strides[0],
+        dtype=base_grad.dtype,
+        shape=base_grad.shape,
+        strides=(-base_grad.strides[0],),
+        capacity=base_grad.capacity,
+        device=device,
+    )
+    reversed_grad._ref = base_grad
+
+    old_det = _get_test_module_options()["deterministic"]
+    try:
+        _set_test_module_options({"deterministic": wp.DeterministicMode.RUN_TO_RUN})
+        wp.launch(custom_adjoint_component_gather_kernel, n, inputs=[values, indices], outputs=[output], device=device)
+        with test.assertRaisesRegex(RuntimeError, "negative-stride.*composite slot"):
+            wp.launch(
+                custom_adjoint_component_gather_kernel,
+                n,
+                inputs=[values, indices],
+                outputs=[output],
+                adj_inputs=[reversed_grad, None],
+                adj_outputs=[output_grad],
+                device=device,
+                adjoint=True,
+            )
+    finally:
+        _set_test_module_options({"deterministic": old_det})
+
+    np.testing.assert_array_equal(base_grad.numpy(), np.zeros((n, 3), dtype=np.float32))
+
+
+def test_deterministic_custom_adjoint_component_overwrite_is_serial_only(test, device):
+    """Preserve ordered component overwrites only for serial backward launches."""
+    value_count = 17
+
+    old_det = _get_test_module_options()["deterministic"]
+    try:
+        _set_test_module_options({"deterministic": wp.DeterministicMode.GPU_TO_GPU})
+        for n in (1, 128):
+            indices_np = (np.arange(n, dtype=np.int32) * 5) % value_count
+            indices = wp.array(indices_np, dtype=wp.int32, device=device)
+            output_grad = wp.ones(n, dtype=wp.float32, device=device)
+            values = wp.zeros(value_count, dtype=wp.vec3, device=device, requires_grad=True)
+            output = wp.zeros(n, dtype=wp.float32, device=device, requires_grad=True)
+            tape = wp.Tape()
+            with tape:
+                wp.launch(
+                    custom_adjoint_component_clear_alias_gather_kernel,
+                    dim=n,
+                    inputs=[values, indices],
+                    outputs=[output],
+                    device=device,
+                )
+            if device.is_cuda and n > 1:
+                with test.assertRaisesRegex(RuntimeError, "Deterministic.*parallel backward.*mutation"):
+                    tape.backward(grads={output: output_grad})
+            else:
+                tape.backward(grads={output: output_grad})
+
+            np.testing.assert_array_equal(values.grad.numpy(), np.zeros((value_count, 3), dtype=np.float32))
+    finally:
+        _set_test_module_options({"deterministic": old_det})
+
+
+def test_deterministic_custom_adjoint_struct_field_component_gradient(test, device):
+    """Verify struct-field adjoint arrays reduce component gradients deterministically."""
+    n = 2048
+    value_count = 31
+    rng = np.random.default_rng(308)
+    values_np = rng.random((value_count, 3), dtype=np.float32)
+    indices_np = rng.integers(0, value_count, size=n, dtype=np.int32)
+    grad_np = rng.random(n, dtype=np.float32)
+
+    expected = np.zeros((value_count, 3), dtype=np.float32)
+    expected[:, 0] = _reference_scatter_add_float32(grad_np, indices_np, value_count)
+
+    values = wp.array(values_np, dtype=wp.vec3, device=device, requires_grad=True)
+    holder = DetVecArrayFieldHolder()
+    holder.values = values
+    indices = wp.array(indices_np, dtype=wp.int32, device=device)
+    output_grad = wp.array(grad_np, dtype=wp.float32, device=device)
+
+    old_det = _get_test_module_options()["deterministic"]
+    try:
+        _set_test_module_options({"deterministic": wp.DeterministicMode.GPU_TO_GPU})
+        for kernel in (
+            custom_adjoint_component_struct_field_gather_kernel,
+            custom_adjoint_component_struct_field_alias_gather_kernel,
+        ):
+            results = []
+            for _ in range(3):
+                values.grad.zero_()
+                output = wp.zeros(n, dtype=wp.float32, device=device, requires_grad=True)
+                tape = wp.Tape()
+                with tape:
+                    wp.launch(kernel, dim=n, inputs=[holder, indices], outputs=[output], device=device)
+                tape.backward(grads={output: output_grad})
+                results.append(tape.gradients[values].numpy().copy())
+
+            for result in results:
+                np.testing.assert_array_equal(result, expected)
+    finally:
+        _set_test_module_options({"deterministic": old_det})
+
+
 def test_deterministic_custom_adjoint_store_function(test, device):
     """Verify custom adjoints on functions with deterministic store context compile."""
     n = 32
@@ -640,10 +1142,18 @@ for _name in (
     "test_deterministic_backward_address_scatter",
     "test_deterministic_backward_strided_adjoint_address_scatter",
     "test_deterministic_backward_vec3_address_scatter",
+    "test_deterministic_single_thread_slot_store_backward",
+    "test_deterministic_parallel_slot_store_backward_rejected",
+    "test_recorded_deterministic_backward_respects_updated_dim",
+    "test_deterministic_read_only_helper_backward",
     "test_deterministic_backward_missing_adjoint_target",
     "test_deterministic_custom_replay_counter",
     "test_deterministic_custom_adjoint_array_atomic",
     "test_deterministic_custom_adjoint_gather_atomic",
+    "test_deterministic_custom_adjoint_component_gradient",
+    "test_deterministic_custom_adjoint_component_negative_stride_rejected",
+    "test_deterministic_single_thread_custom_adjoint_slot_store_backward",
+    "test_deterministic_custom_adjoint_struct_field_component_gradient",
     "test_deterministic_custom_adjoint_store_function",
     "test_deterministic_scratch_overwrite_replay_gradient",
 ):
@@ -653,6 +1163,9 @@ _add("test_deterministic_backward_counter_store_rejected", devices=all_devices)
 _add("test_deterministic_backward_counter_manual_launch_rejected", devices=cuda_devices)
 _add("test_deterministic_custom_adjoint_consumed_counter_rejected", devices=all_devices)
 _add("test_custom_adjoint_not_guaranteed_mode", devices=all_devices)
+_add("test_deterministic_custom_adjoint_component_overwrite_is_serial_only", devices=all_devices)
+_add("test_deterministic_sliced_store_backward_is_serial_only", devices=all_devices)
+_add("test_deterministic_overlapping_arguments_backward_rejected", devices=all_devices)
 
 
 if __name__ == "__main__":

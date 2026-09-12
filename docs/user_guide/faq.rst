@@ -174,7 +174,7 @@ with MuJoCo Warp as its primary backend.
 Applications that need a ready-made simulation stack can start with Newton.
 Applications that need custom kernels or lower-level computation can use Warp
 directly, including alongside Newton. See Newton's `migration guide
-<https://newton-physics.github.io/newton/migration.html>`__ and Warp's
+<https://newton-physics.github.io/newton/latest/migration.html>`__ and Warp's
 :doc:`/project/publications` page for examples.
 
 Installation and Compatibility
@@ -339,9 +339,11 @@ respect to Python. Both devices use the same kernel language, but they have
 different performance and concurrency characteristics.
 
 Tile kernels need additional care on the CPU backend because its effective
-``block_dim`` is one. Consult :ref:`CPU Tile Semantics <cpu_tile_semantics>`
-when the same tile kernel must run on both backends. Other device differences
-are covered in :ref:`devices`.
+``block_dim`` is one by default. The experimental
+:attr:`warp.config.enable_cpu_blocks` option honors explicit CPU block dimensions
+through 1024 with cooperative fibers on one host thread. Consult
+:ref:`CPU Tile Semantics <cpu_tile_semantics>` when the same tile kernel must run
+on both backends. Other device differences are covered in :ref:`devices`.
 
 When do I need to synchronize explicitly?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

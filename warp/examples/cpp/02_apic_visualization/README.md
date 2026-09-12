@@ -45,6 +45,10 @@ This example runs from within the Warp repository.
 - **Build System**: GNU Make (Unix/Linux) or CMake 3.20+ (cross-platform)
 - **Note**: macOS is **not supported** (CUDA not available on macOS)
 
+On Windows, keep `warp.dll` and `warp.lib` from the same Warp build together in
+`warp/bin`. CMake links the import library and copies the DLL beside the example
+executable.
+
 **Setup:**
 
 Clone and build Warp:
@@ -82,7 +86,13 @@ make              # Build everything (auto-captures graph if needed)
 python capture_wave.py                        # Step 1: Capture the graph
 cmake -B build -DCMAKE_BUILD_TYPE=Release     # Step 2: Configure
 cmake --build build --config Release          # Step 3: Build
-./build/02_apic_visualization                 # Step 4: Run
+./build/02_apic_visualization                 # Step 4: Run (Ninja / Unix Makefiles)
+```
+
+If using the Visual Studio generator on Windows, run:
+
+```powershell
+.\build\Release\02_apic_visualization.exe
 ```
 
 **Headless smoke mode**:
@@ -93,8 +103,22 @@ graph 10 times without opening a GLFW window. CTest registers this mode
 as `apic_visualization_smoke` so the example runs in CI on hosts without
 a display server.
 
+**Using Make (Unix/Linux)**:
+
 ```bash
 ./02_apic_visualization --smoke    # exits 0 with "smoke OK (10 graph launches)"
+```
+
+**Using CMake (Ninja / Unix Makefiles)**:
+
+```bash
+./build/02_apic_visualization --smoke
+```
+
+**Using CMake (Visual Studio on Windows)**:
+
+```powershell
+.\build\Release\02_apic_visualization.exe --smoke
 ```
 
 ## How It Works
@@ -144,6 +168,12 @@ The C++ program loads the saved APIC representation, reconstructs a CUDA graph, 
 #include "aot.h"   // Warp AOT utilities
 #include "warp.h"  // Warp C API
 #include "apic.h"  // APIC graph loading and execution
+#include "version.h"
+
+// Reject a native library from a different Warp release.
+if (wp_init(WP_VERSION_STRING) != 0) {
+    return 1;
+}
 
 // Load the saved APIC representation
 APICGraph* graph = wp_apic_load_graph(context, "generated/wave_sim", 0);  // 0 = CUDA

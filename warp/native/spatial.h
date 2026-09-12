@@ -157,16 +157,32 @@ template <typename Type> struct transform_t {
 
     CUDA_CALLABLE inline Type operator[](int index) const
     {
-        assert(index < 7);
+        assert(index >= 0 && index < 7);
 
-        return p.c[index];
+        if (index < 3) {
+            return p.c[index];
+        }
+        return q[index - 3];
     }
 
     CUDA_CALLABLE inline Type& operator[](int index)
     {
-        assert(index < 7);
+        assert(index >= 0 && index < 7);
 
-        return p.c[index];
+        if (index < 3) {
+            return p.component_ref(index);
+        }
+        return q.component_ref(index - 3);
+    }
+
+    // Mutable component reference with Python-style negative indexing.
+    CUDA_CALLABLE inline Type& component_ref(int index)
+    {
+        if (index < 0) {
+            index += 7;
+        }
+        assert(index >= 0 && index < 7);
+        return (*this)[index];
     }
 };
 
@@ -490,7 +506,7 @@ template <typename Type>
 inline void CUDA_CALLABLE
 adj_extract(const transform_t<Type>& t, int idx, transform_t<Type>& adj_t, int& adj_idx, Type adj_ret)
 {
-    adj_t[idx] += adj_ret;
+    adj_t.component_ref(idx) += adj_ret;
 }
 
 template <unsigned SliceLength, typename Type>
@@ -982,8 +998,7 @@ CUDA_CALLABLE inline void adj_transform_t(
 template <typename Type>
 CUDA_CALLABLE inline void adj_transform_t(Type s, Type& adj_s, const transform_t<Type>& adj_ret)
 {
-    // `transform_t::operator[]` indexes into `p` alone, so the components are
-    // summed explicitly rather than through a seven-element loop.
+    // Sum all transform components into the fill scalar adjoint.
     adj_s += adj_ret.p[0];
     adj_s += adj_ret.p[1];
     adj_s += adj_ret.p[2];

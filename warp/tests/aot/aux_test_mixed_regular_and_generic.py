@@ -22,6 +22,6 @@ def regular_add(a: wp.array[wp.float32], b: wp.array[wp.float32], c: wp.array[wp
 
 @wp.kernel
 def generic_scale(x: wp.array[Any], s: Any):
-    """Generic kernel without overloads - should trigger a warning."""
+    """Trigger a warning for a generic kernel without overloads."""
     i = wp.tid()
     x[i] = s * x[i]

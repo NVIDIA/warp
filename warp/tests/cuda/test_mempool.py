@@ -180,10 +180,11 @@ def test_mempool_access(test, _):
     get_device_pair_without_mempool_access_support(), "Requires devices without mempool access support"
 )
 def test_mempool_access_exceptions_unsupported(test, _):
+    """Handle memory-pool access between unsupported CUDA device pairs."""
+
     # get a CUDA device pair without mempool access support
     target_device, peer_device = get_device_pair_without_mempool_access_support()
 
-    # querying is ok, but must return False
     test.assertFalse(wp.is_mempool_access_enabled(target_device, peer_device))
 
     # enabling should raise RuntimeError
@@ -196,7 +197,8 @@ def test_mempool_access_exceptions_unsupported(test, _):
 
 @unittest.skipUnless(wp.is_cpu_available() and wp.is_cuda_available(), "Requires both CUDA and CPU devices")
 def test_mempool_access_exceptions_cpu(test, _):
-    # querying is ok, but must return False
+    """Handle memory-pool access queries involving a CPU device."""
+
     test.assertFalse(wp.is_mempool_access_enabled("cuda:0", "cpu"))
     test.assertFalse(wp.is_mempool_access_enabled("cpu", "cuda:0"))
 
@@ -213,8 +215,11 @@ def test_mempool_access_exceptions_cpu(test, _):
 
 @unittest.skipUnless(wp.is_cpu_available(), "Requires a CPU device")
 def test_mempool_cpu_unsupported(test, _):
-    """CPU does not expose a CUDA-style memory pool: support/enabled are ``False`` and the pool
-    query/toggle APIs raise ``ValueError`` (the public mempool API is CUDA-only)."""
+    """Verify CPU behavior for unsupported CUDA-style memory pools.
+
+    CPU support and enablement are ``False``, and the public CUDA-only memory-pool
+    query and toggle APIs raise ``ValueError``.
+    """
     device = wp.get_device("cpu")
 
     test.assertFalse(wp.is_mempool_supported(device))
@@ -235,10 +240,13 @@ def test_mempool_cpu_unsupported(test, _):
 
 @unittest.skipUnless(wp.is_cpu_available(), "Requires a CPU device")
 def test_graph_capture_allocation_capability(test, _):
-    """The internal graph-capture allocation capability is the gate the capture/allocation
-    paths use instead of the mempool flag. It is always ``True`` for CPU (host allocation +
-    APIC region retention) and, for CUDA, mirrors the device's memory-pool support / enabled
-    state."""
+    """Verify the graph-capture allocation capability for each device type.
+
+    The capture and allocation paths use this internal capability instead of the
+    memory-pool flag. It is always ``True`` for CPU because of host allocation and
+    APIC region retention. For CUDA, it mirrors the device's memory-pool support
+    and enabled state.
+    """
     from warp._src.context import (  # noqa: PLC0415
         _is_graph_capture_allocation_enabled,
         _is_graph_capture_allocation_supported,

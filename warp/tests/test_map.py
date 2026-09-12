@@ -15,6 +15,7 @@ from warp.tests.unittest_utils import (
     assert_np_equal,
     get_cuda_test_devices_with_mempool,
     get_test_devices,
+    run_test_in_subprocess,
 )
 
 
@@ -453,9 +454,9 @@ def test_kernel_creation(test, device):
     kernel = wp.map(lambda a: a + 2.0, a, return_kernel=True)
     test.assertIsInstance(kernel, wp.Kernel)
 
-    b = wp.zeros(20)
+    b = wp.zeros(20, device=device)
     out = wp.empty_like(b)
-    wp.launch(kernel, dim=len(b), inputs=[b], outputs=[out])
+    wp.launch(kernel, dim=len(b), inputs=[b], outputs=[out], device=device)
     expected = np.full(20, 2.0, dtype=np.float32)
     assert_np_equal(out.numpy(), expected)
 
@@ -497,7 +498,7 @@ def test_renamed_warp_module(test, device):
 
 
 def test_cache_same_types_shapes(test, device):
-    """Same function with same types/shapes should reuse cache."""
+    """Verify that same function with same types/shapes should reuse cache."""
     map_cache.clear()
 
     a = wp.array([1.0, 2.0, 3.0], dtype=wp.float32, device=device)
@@ -513,7 +514,7 @@ def test_cache_same_types_shapes(test, device):
 
 
 def test_cache_different_shapes(test, device):
-    """Different shapes with same ndim/dtype should reuse cache."""
+    """Verify that different shapes with same ndim/dtype should reuse cache."""
     map_cache.clear()
 
     a = wp.array([1.0, 2.0, 3.0], dtype=wp.float32, device=device)
@@ -532,7 +533,7 @@ def test_cache_different_shapes(test, device):
 
 
 def test_cache_different_dtypes(test, device):
-    """Different dtypes should create new cache entries."""
+    """Verify that different dtypes should create new cache entries."""
     map_cache.clear()
 
     a = wp.array([1.0, 2.0, 3.0], dtype=wp.float32, device=device)
@@ -551,7 +552,7 @@ def test_cache_different_dtypes(test, device):
 
 
 def test_cache_warp_function(test, device):
-    """Warp functions should also be cached properly."""
+    """Verify that Warp functions should also be cached properly."""
     map_cache.clear()
 
     a = wp.array([1.0, 2.0, 3.0], dtype=wp.float32, device=device)
@@ -568,7 +569,7 @@ def test_cache_warp_function(test, device):
 
 
 def test_cache_explicit_output(test, device):
-    """Explicit output arrays should reuse cache if types match."""
+    """Verify that explicit output arrays should reuse cache if types match."""
     map_cache.clear()
 
     a = wp.array([1.0, 2.0, 3.0], dtype=wp.float32, device=device)
@@ -585,7 +586,7 @@ def test_cache_explicit_output(test, device):
 
 
 def test_cache_broadcasting(test, device):
-    """Broadcasting should create separate cache entries for different broadcast patterns."""
+    """Verify that broadcasting should create separate cache entries for different broadcast patterns."""
     map_cache.clear()
 
     a = wp.array([1.0, 2.0, 3.0], dtype=wp.float32, device=device)
@@ -647,8 +648,23 @@ class TestMapDebug(unittest.TestCase):
         wp.config.mode = cls._saved_mode
 
 
-add_function_test(TestMapDebug, "test_mixed_inputs", test_mixed_inputs, devices=devices)
-add_function_test(TestMapDebug, "test_kernel_creation", test_kernel_creation, devices=devices)
+def _run_debug_map_test(test, device, test_func):
+    if wp.get_device(device).is_cuda and run_test_in_subprocess(test):
+        return
+
+    test_func(test, device)
+
+
+def test_mixed_inputs_debug(test, device):
+    _run_debug_map_test(test, device, test_mixed_inputs)
+
+
+def test_kernel_creation_debug(test, device):
+    _run_debug_map_test(test, device, test_kernel_creation)
+
+
+add_function_test(TestMapDebug, "test_mixed_inputs", test_mixed_inputs_debug, devices=devices)
+add_function_test(TestMapDebug, "test_kernel_creation", test_kernel_creation_debug, devices=devices)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -24,6 +24,15 @@
 #include <cudaTypedefs.h>
 #endif
 
+// Checked multiplication for byte spans derived from serialized records.
+inline bool apic_mul_check(uint64_t a, uint64_t b, uint64_t* out)
+{
+    if (b != 0 && a > (SIZE_MAX / b))
+        return false;
+    *out = a * b;
+    return true;
+}
+
 // Byte size of a scalar APICType value: 4 for the 32-bit members, 8 for the
 // 64-bit members, 0 for an unrecognized/unset value. Shared by the array_scan
 // and radix/segmented sort capture and replay paths (apic.cpp and warp.cpp).
@@ -407,8 +416,9 @@ void apic_record_runlength_encode(
     uint32_t value_count
 );
 
-// Records a wp_bsr_matrix_from_triplets_host() call. Optional regions
-// (tpl_nnz, tpl_values, bsr_nnz) carry region_id == -1 when absent.
+// Records a wp_bsr_matrix_from_triplets_host/device() call. Optional regions
+// (tpl_nnz, tpl_values) carry region_id == -1 when absent. The bsr_nnz
+// arguments preserve the format 13-15 record layout; new calls pass -1 and 0.
 void apic_record_bsr_from_triplets(
     APICState* state,
     int32_t block_size,

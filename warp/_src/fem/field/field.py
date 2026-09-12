@@ -505,7 +505,8 @@ class UniformField(GeometryField):
     @value.setter
     def value(self, v):
         value_type = type_to_warp(type(v))
-        assert types_equal(value_type, self.dtype)
+        if not types_equal(value_type, self.dtype):
+            raise TypeError(f"UniformField value type must remain {type_repr(self.dtype)}, got {type_repr(value_type)}")
         self._value = self.dtype(v)
 
     @property

@@ -20,6 +20,7 @@ from unittest import mock
 
 import warp as wp
 from warp._src import codegen
+from warp.tests import aux_test_array_slot_operators as slot_operators
 from warp.tests import aux_test_extract_source_patterns as patterns
 from warp.tests.aux_test_extract_source_patterns import contains_truncating_string
 from warp.tests.unittest_utils import *
@@ -567,7 +568,8 @@ def test_error_unmatched_arguments(test, device):
 
 
 def test_error_kernel_return_value(test, device):
-    # kernels can return without a value
+    """Allow kernels to return without a value."""
+
     @wp.kernel(module="unique")
     def f0(x: float):
         return
@@ -1614,6 +1616,136 @@ def test_augassign_no_double_eval_both(test, device):
 
 
 @wp.func
+def store_index_mutate_src(scratch: wp.array[float]) -> int:
+    # Side effect: overwrite scratch[0] (which the rhs reads) and return index 0.
+    scratch[0] = 7.0
+    return 0
+
+
+@wp.kernel
+def assign_rhs_before_target_index_kernel(
+    dst: wp.array[float],
+    scratch: wp.array[float],
+):
+    # Plain array store: Python evaluates the rhs (scratch[0]) before the
+    # assignment target's index expression (which mutates scratch[0]), so
+    # dst[0] must receive the original scratch[0].
+    dst[store_index_mutate_src(scratch)] = scratch[0]
+
+
+def test_assign_rhs_before_target_index(test, device):
+    """Verify plain assignment evaluates RHS before target indices."""
+    dst = wp.zeros(1, dtype=float, device=device)
+    scratch = wp.array([3.0], dtype=float, device=device)
+
+    wp.launch(assign_rhs_before_target_index_kernel, dim=1, inputs=[dst, scratch], device=device)
+
+    test.assertAlmostEqual(dst.numpy()[0], 3.0, msg="rhs was read after the target index expression mutated it")
+    test.assertAlmostEqual(scratch.numpy()[0], 7.0)
+
+
+@wp.kernel
+def array_copy_grad_kernel(dst: wp.array[float], src: wp.array[float]):
+    i = wp.tid()
+    dst[i] = src[i]
+
+
+def test_assign_array_copy_preserves_gradient(test, device):
+    """Verify array-to-array assignment preserves source gradients."""
+    # A bare array-to-array store `dst[i] = src[i]` materializes the rhs
+    # reference before storing. That materialization must be differentiable
+    # (copy), not a non-differentiable load -- otherwise the read-side gradient
+    # to src is silently dropped while the forward result stays correct.
+    n = 4
+    src = wp.array([1.0, 2.0, 3.0, 4.0], dtype=float, requires_grad=True, device=device)
+    dst = wp.zeros(n, dtype=float, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(array_copy_grad_kernel, dim=n, inputs=[dst, src], device=device)
+
+    dst.grad = wp.array([1.0, 1.0, 1.0, 1.0], dtype=float, device=device)
+    tape.backward()
+
+    assert_np_equal(dst.numpy(), np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float32))
+    assert_np_equal(src.grad.numpy(), np.array([1.0, 1.0, 1.0, 1.0], dtype=np.float32))
+
+
+@wp.func
+def augassign_index_bump(state: wp.array[int]) -> int:
+    # Returns the current index and bumps state[0]; the rhs reads state[0] after.
+    i = state[0]
+    state[0] = 1
+    return i
+
+
+@wp.func
+def augassign_rhs_read_state(state: wp.array[int]) -> float:
+    return float(state[0]) * 100.0
+
+
+@wp.kernel
+def augassign_slot_target_before_rhs_kernel(
+    dst: wp.array[wp.mat33],
+    state: wp.array[int],
+):
+    # The row-index expression has a side effect the RHS reads, so the
+    # target/index must be evaluated before the RHS.
+    dst[augassign_index_bump(state)][1] += wp.vec3(augassign_rhs_read_state(state), 0.0, 0.0)
+
+
+def test_augassign_slot_target_before_rhs(test, device):
+    """Verify slot augmented assignment evaluates target before RHS."""
+    dst = wp.zeros(2, dtype=wp.mat33, device=device)
+    state = wp.zeros(1, dtype=int, device=device)
+
+    wp.launch(augassign_slot_target_before_rhs_kernel, dim=1, inputs=[dst, state], device=device)
+
+    # Index first (-> row 0 of dst[0], state -> 1), then rhs reads state == 1 -> 100.
+    expected = np.zeros((2, 3, 3), dtype=np.float32)
+    expected[0, 1, 0] = 100.0
+    assert_np_equal(dst.numpy(), expected)
+
+
+def test_array_slot_augassign_uses_user_operator(test, device):
+    """Preserve user operator dispatch for attribute and indexed array slots."""
+    values = wp.array([wp.vec3(3.0)], dtype=wp.vec3, device=device)
+
+    wp.launch(slot_operators.overloaded_slot_augassign, dim=1, inputs=[values, 2.0], device=device)
+
+    np.testing.assert_array_equal(values.numpy(), np.array([[1.0, 1.0, 6.0]], dtype=np.float32))
+
+
+def test_overloaded_slot_update_backward_rejected(test, device):
+    """Reject overloaded slot updates that cannot preserve gradients through an overwrite."""
+    for update in (
+        slot_operators.overloaded_slot_add_backward,
+        slot_operators.overloaded_slot_sub_backward,
+        slot_operators.update_shared_component_backward,
+    ):
+        with test.subTest(update=update.key):
+            values = wp.array([wp.vec3(3.0)], dtype=wp.vec3, requires_grad=True, device=device)
+            rhs = wp.array([2.0], dtype=wp.float32, requires_grad=True, device=device)
+            with test.assertRaisesRegex(
+                codegen.WarpCodegenError, "Differentiable composite slot augmented assignments"
+            ):
+                wp.launch(update, dim=1, inputs=[values, rhs], device=device)
+
+
+def test_slot_updates_ignore_nonmatching_operator_overloads(test, device):
+    """Use builtin updates and adjoints when user operators have different argument types."""
+    values = wp.full(1, wp.vec3d(3.0), dtype=wp.vec3d, device=device, requires_grad=True)
+    rhs = wp.array([2.0], dtype=wp.float64, device=device, requires_grad=True)
+    with wp.Tape() as tape:
+        wp.launch(slot_operators.update_double_components_with_float_overloads, 1, [values, rhs], device=device)
+
+    np.testing.assert_array_equal(values.numpy(), [[5.0, 5.0, 1.0]])
+    tape.backward(grads={values: wp.full_like(values, wp.vec3d(1.0))})
+    np.testing.assert_array_equal(values.grad.numpy(), [[1.0, 1.0, 1.0]])
+    np.testing.assert_array_equal(rhs.grad.numpy(), [1.0])
+
+
+@wp.func
 def func_to_local_double(a: float):
     return a * 2.0
 
@@ -2019,9 +2151,11 @@ class TestCodeGen(unittest.TestCase):
         self.assertEqual(directive, '#line 1 "C:/warp/kernels/example.py"')
 
     def test_extract_function_source_slow_path_when_fast_returns_none(self):
-        """When ``_try_extract_function_source`` returns ``None`` (e.g. for an
-        ``exec``-defined function with no linecache entry), ``extract_function_source``
-        falls through to ``inspect.getsourcelines`` exactly once and parses its result.
+        """Verify source extraction falls back when the fast path returns ``None``.
+
+        For an ``exec``-defined function with no line-cache entry,
+        ``extract_function_source`` falls through to ``inspect.getsourcelines``
+        exactly once and parses its result.
         """
         slow_source = "def generated():\n    return 42\n"
 
@@ -2035,10 +2169,11 @@ class TestCodeGen(unittest.TestCase):
         get_lines.assert_called_once()
 
     def test_extract_function_source_fast_path_patterns(self):
-        """Every fixture in ``aux_test_extract_source_patterns`` is served by the
-        fast path. We force a hard failure if ``inspect.getsourcelines`` is ever
-        called, so each ``subTest`` proves the corresponding branch of the forward
-        walk produced a parseable slice on its own.
+        """Verify fast source extraction for every supported fixture pattern.
+
+        Force a hard failure if ``inspect.getsourcelines`` is called, so each
+        ``subTest`` proves the corresponding branch of the forward walk produced a
+        parseable slice on its own.
         """
         fixtures = [
             patterns.plain,
@@ -2075,9 +2210,10 @@ class TestCodeGen(unittest.TestCase):
                 self.assertEqual(tree.body[0].name, fn.__code__.co_name)
 
     def test_extract_function_source_unwraps_like_inspect(self):
-        """``extract_function_source`` follows ``__wrapped__`` so the fast path is
-        a true substitute for ``inspect.getsourcelines`` on ``functools.wraps``-style
-        decorators.
+        """Follow ``__wrapped__`` during fast source extraction.
+
+        This makes the fast path a true substitute for ``inspect.getsourcelines``
+        with ``functools.wraps``-style decorators.
         """
 
         def real_kernel():
@@ -2103,8 +2239,9 @@ class TestCodeGen(unittest.TestCase):
         self.assertEqual(tree.body[0].name, "real_kernel")
 
     def test_adjoint_recovers_from_truncated_fast_extract(self):
-        """When the fast extractor truncates a multi-line string, the parse-time
-        fallback inside :meth:`extract_function_source` recovers via
+        """Recover when fast source extraction truncates a multiline string.
+
+        The parse-time fallback inside :meth:`extract_function_source` uses
         ``inspect.getsourcelines``.
         """
         # Sanity: the fast path really does produce a truncated, unparsable slice
@@ -2127,8 +2264,9 @@ class TestCodeGen(unittest.TestCase):
         self.assertEqual(adj.source, textwrap.dedent(inspect.getsource(contains_truncating_string)))
 
     def test_extract_function_source_refreshes_stale_linecache(self):
-        """The fast path must not accept stale ``linecache`` content for a file that
-        was rewritten and recompiled in the same process.
+        """Reject stale line-cache content during fast source extraction.
+
+        Cover a file rewritten and recompiled in the same process.
         """
 
         def load_function(path, source):
@@ -2157,9 +2295,10 @@ class TestCodeGen(unittest.TestCase):
                 linecache.cache.pop(path, None)
 
     def test_extract_function_source_rejects_non_function_fast_slice(self):
-        """If malformed line metadata makes the fast slice start inside a function,
-        the parse may still succeed. That slice must be rejected and recovered via
-        ``inspect.getsourcelines``.
+        """Reject fast source slices that do not start at a function.
+
+        Malformed line metadata can make a slice start inside a function while still
+        parsing successfully. Recover through ``inspect.getsourcelines`` instead.
         """
         source = "def line_shifted():\n    x = 1\n"
 
@@ -2381,8 +2520,9 @@ class TestCodeGen(unittest.TestCase):
             if value == wp.uint32(0):
                 return
 
+        cpu_device = mock.Mock(is_cpu=True)
         with mock.patch("warp._src.context.init"):
-            with mock.patch.object(wp._src.context.runtime, "get_device", return_value="cpu"):
+            with mock.patch.object(wp._src.context.runtime, "get_device", return_value=cpu_device):
                 with self.assertRaisesRegex(RuntimeError, "cannot be launched with wp.launch"):
                     wp.launch(external_params_kernel, dim=0)
 
@@ -2401,11 +2541,11 @@ class TestCodeGen(unittest.TestCase):
                 return
 
     def test_replace_static_expressions_replaces_call_in_ast(self):
-        """The walker actually mutates ``adj.tree``: every resolvable ``wp.static``
-        Call gets replaced with an ``ast.Constant`` (or ``ast.Name`` for a
-        Function result). This pins the deferred-replacement application step,
-        which is the only behavioural difference vs upstream's in-flight
-        replacement.
+        """Replace resolvable ``wp.static`` calls in the abstract syntax tree.
+
+        The walker mutates ``adj.tree`` by replacing each resolvable call with an
+        ``ast.Constant`` or, for a function result, an ``ast.Name``. This pins the
+        deferred-replacement application step.
         """
         _value_a = 7
         _value_b = 13
@@ -2431,10 +2571,11 @@ class TestCodeGen(unittest.TestCase):
         self.assertIn(_value_b, constants)
 
     def test_replace_static_expressions_defers_loop_var_reference(self):
-        """A ``wp.static`` call inside a ``for`` body that references the loop
-        variable must be deferred — ``has_unresolved_static_expressions`` set,
-        Call left in the AST for codegen-time resolution. This pins the
-        loop-variable tracking in ``visit_For`` / ``visit_Call``.
+        """Defer ``wp.static`` calls that reference a loop variable.
+
+        Set ``has_unresolved_static_expressions`` and leave the call in the abstract
+        syntax tree for code-generation-time resolution. This pins loop-variable
+        tracking in ``visit_For`` and ``visit_Call``.
         """
 
         def _kernel_with_loop_var_static(out: wp.array[int]):
@@ -2453,8 +2594,10 @@ class TestCodeGen(unittest.TestCase):
         self.assertEqual(len(remaining_static_calls), 1)
 
     def test_shared_source_across_redeclarations(self):
-        """Redeclarations of one code object share the extracted source and tree;
-        resolution stays per-adjoint, so closure values are not shared."""
+        """Share extracted syntax across redeclarations of one code object.
+
+        Keep resolution per-adjoint so closure values are not shared.
+        """
 
         def make(v):
             @wp.kernel(module="unique")
@@ -2472,8 +2615,10 @@ class TestCodeGen(unittest.TestCase):
         self.assertIs(make(1.0), k1)
 
     def test_rebind_observed_through_shared_source(self):
-        """A rebound module global must be observed by the next redeclaration's
-        references and hash, even though syntax is served from the cache."""
+        """Observe rebound module globals when reusing cached syntax.
+
+        Include the rebound value in the next redeclaration's references and hash.
+        """
         module = sys.modules[__name__]
         module.SHARED_SOURCE_REBOUND = wp.constant(10.0)
         self.addCleanup(delattr, module, "SHARED_SOURCE_REBOUND")
@@ -2495,9 +2640,12 @@ class TestCodeGen(unittest.TestCase):
         self.assertNotEqual(k1.module.name, k2.module.name)
 
     def test_recompiled_equal_code_object_reextracts(self):
-        """A new code object that compares equal to a cached one (old text compiled
-        again while the file moved on, as with a stale .pyc) must miss the cache
-        and re-extract the current file contents."""
+        """Re-extract source for an equal but distinct code object.
+
+        An old source string compiled again after the file changes, as with a stale
+        ``.pyc`` file, can compare equal to the cached code object. It must miss the
+        identity-based cache and extract the current file contents.
+        """
         v1 = "import warp as wp\n\ndef kf(a: wp.array[wp.float32]):\n    tid = wp.tid()\n    a[tid] = 1.0\n"
         v2 = v1.replace("1.0", "42.25")
 
@@ -2529,8 +2677,7 @@ class TestCodeGen(unittest.TestCase):
             self.assertNotEqual(k_a.module.name, k_b.module.name)
 
     def test_shared_source_lookup_requires_identity(self):
-        # A record planted under another code object's id (the address-reuse case)
-        # must be rejected by the weakref identity guard.
+        """Reject cached source records belonging to another code object."""
         code_1 = compile("def g1():\n    return 1\n", "g.py", "exec").co_consts[0]
         code_2 = compile("def g2():\n    return 2\n", "g.py", "exec").co_consts[0]
         entry = codegen._SharedFunctionSource("src", 0, None)
@@ -2775,6 +2922,42 @@ add_function_test(
     TestCodeGen,
     "test_augassign_no_double_eval_both",
     test_augassign_no_double_eval_both,
+    devices=devices,
+)
+add_function_test(
+    TestCodeGen,
+    "test_assign_rhs_before_target_index",
+    test_assign_rhs_before_target_index,
+    devices=devices,
+)
+add_function_test(
+    TestCodeGen,
+    "test_assign_array_copy_preserves_gradient",
+    test_assign_array_copy_preserves_gradient,
+    devices=devices,
+)
+add_function_test(
+    TestCodeGen,
+    "test_augassign_slot_target_before_rhs",
+    test_augassign_slot_target_before_rhs,
+    devices=devices,
+)
+add_function_test(
+    TestCodeGen,
+    "test_array_slot_augassign_uses_user_operator",
+    test_array_slot_augassign_uses_user_operator,
+    devices=devices,
+)
+add_function_test(
+    TestCodeGen,
+    "test_overloaded_slot_update_backward_rejected",
+    test_overloaded_slot_update_backward_rejected,
+    devices=devices,
+)
+add_function_test(
+    TestCodeGen,
+    "test_slot_updates_ignore_nonmatching_operator_overloads",
+    test_slot_updates_ignore_nonmatching_operator_overloads,
     devices=devices,
 )
 add_function_test(TestCodeGen, "test_assign_function_to_local", test_assign_function_to_local, devices=devices)

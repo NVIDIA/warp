@@ -199,10 +199,10 @@ def test_loop_variadic_ellipsis():
 # Test for Python 3.10 tuple type compatibility issue
 @wp.func
 def complex_tuple_function(scale: float, offset: wp.vec3) -> tuple[float, wp.vec3f, wp.vec3f]:
-    """
-    Function that returns a complex tuple with mixed types.
-    This specifically tests the tuple[float, wp.vec3f, wp.vec3f] case
-    that was problematic on Python 3.10.
+    """Return a complex tuple with mixed types.
+
+    Exercise the ``tuple[float, wp.vec3f, wp.vec3f]`` case that was
+    problematic on Python 3.10.
     """
     # Create some computed values
     scaled_value = scale * 2.5
@@ -214,9 +214,9 @@ def complex_tuple_function(scale: float, offset: wp.vec3) -> tuple[float, wp.vec
 
 @wp.func
 def mixed_types_tuple_function() -> tuple[wp.vec3f, wp.vec3f, float, wp.mat33f]:
-    """
-    Function returning mixed types in a tuple.
-    Tests tuple[vec3f, vec3f, float, mat33f] type annotation.
+    """Return mixed types in a tuple.
+
+    Exercise the ``tuple[vec3f, vec3f, float, mat33f]`` type annotation.
     """
     return (
         wp.vec3f(1.0, 2.0, 3.0),
@@ -228,18 +228,16 @@ def mixed_types_tuple_function() -> tuple[wp.vec3f, wp.vec3f, float, wp.mat33f]:
 
 @wp.func
 def homogeneous_tuple_function() -> tuple[wp.vec3f, wp.vec3f, wp.vec3f]:
-    """
-    Function returning fixed-size homogeneous tuple.
-    Tests tuple[wp.vec3f, wp.vec3f, wp.vec3f] type annotation.
+    """Return a fixed-size homogeneous tuple.
+
+    Exercise the ``tuple[wp.vec3f, wp.vec3f, wp.vec3f]`` type annotation.
     """
     return (wp.vec3f(1.0, 2.0, 3.0), wp.vec3f(4.0, 5.0, 6.0), wp.vec3f(7.0, 8.0, 9.0))
 
 
 @wp.kernel
 def test_complex_tuple_functions():
-    """
-    Kernel that tests complex tuple return types that were problematic on Python 3.10.
-    """
+    """Test complex tuple return types that failed on Python 3.10."""
     # Test the main problematic case: tuple[float, wp.vec3f, wp.vec3f]
     result1 = complex_tuple_function(4.0, wp.vec3(10.0, 20.0, 30.0))
 

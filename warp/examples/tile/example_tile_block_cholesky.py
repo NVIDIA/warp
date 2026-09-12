@@ -119,7 +119,7 @@ def create_blocked_cholesky_solve_kernel(block_size: int):
     ):
         """Solve ``A x = b`` given the Cholesky factor ``L (A = L L^T)`` using blocked forward and backward substitution.
 
-        ``b`` can be a vector or 2-D array with multiple right-hand sides.
+        ``b`` must be a 2-D column vector.
         """
 
         active_matrix_size = active_matrix_size_arr[0]
@@ -191,15 +191,22 @@ class BlockCholeskySolver:
         It returns a lower-triangular matrix ``L`` such that ``A = L L^T``.
         """
 
-        assert num_active_equations <= self.max_num_equations, (
-            f"Number of active equations ({num_active_equations}) exceeds maximum allowed ({self.max_num_equations})"
-        )
+        if num_active_equations < 0:
+            raise ValueError(f"num_active_equations must be non-negative, got {num_active_equations}")
+        if num_active_equations > self.max_num_equations:
+            raise ValueError(
+                f"num_active_equations must not exceed {self.max_num_equations}, got {num_active_equations}"
+            )
 
         padded_n = ((num_active_equations + self.block_size - 1) // self.block_size) * self.block_size
 
         # Verify input dimensions
-        assert A.shape[0] == A.shape[1], "Matrix A must be square"
-        assert A.shape[0] >= padded_n, f"Matrix A must be at least {padded_n}x{padded_n} to accommodate padding"
+        if A.shape[0] != A.shape[1]:
+            raise ValueError(f"Matrix A must be square, got shape {A.shape}")
+        if A.shape[0] < padded_n:
+            raise ValueError(
+                f"Matrix A must be at least ({padded_n}, {padded_n}) to accommodate padding, got shape {A.shape}"
+            )
 
         self.active_matrix_size.zero_()
         wp.copy(self.active_matrix_size, wp.array([num_active_equations], dtype=int, device=self.device))
@@ -229,7 +236,7 @@ class BlockCholeskySolver:
     def solve(self, rhs: wp.array(dtype=float, ndim=2), result: wp.array(dtype=float, ndim=2)):
         """Solve ``A x = b`` given the Cholesky factor ``L (A = L L^T)`` using blocked forward and backward substitution.
 
-        ``b`` can be a vector or 2-D array with multiple right-hand sides.
+        ``b`` must be a 2-D column vector.
         """
 
         # Do safety checks but they can only be done if the matrix size is known on the host
@@ -238,11 +245,19 @@ class BlockCholeskySolver:
             padded_n = ((n + self.block_size - 1) // self.block_size) * self.block_size
 
             # Verify input dimensions
-            assert rhs.shape[1] == 1, "Matrix b must be a column vector"
-            assert rhs.shape[0] >= padded_n, f"Matrix b must be at least {padded_n}x1 to accommodate padding"
+            if rhs.shape[1] != 1:
+                raise ValueError(f"Matrix b must be a column vector with one column, got shape {rhs.shape}")
+            if rhs.shape[0] < padded_n:
+                raise ValueError(
+                    f"Matrix b must be at least ({padded_n}, 1) to accommodate padding, got shape {rhs.shape}"
+                )
 
-            assert result.shape[1] == 1, "Matrix result must be a column vector"
-            assert result.shape[0] >= padded_n, f"Matrix result must be at least {padded_n}x1 to accommodate padding"
+            if result.shape[1] != 1:
+                raise ValueError(f"Matrix result must be a column vector with one column, got shape {result.shape}")
+            if result.shape[0] < padded_n:
+                raise ValueError(
+                    f"Matrix result must be at least ({padded_n}, 1) to accommodate padding, got shape {result.shape}"
+                )
 
         if self.active_matrix_size_external is not None:
             matrix_size = self.active_matrix_size_external
@@ -275,17 +290,22 @@ class CholeskySolverNumPy:
 
         It returns a lower-triangular matrix ``L`` such that ``A = L L^T``.
         """
-        assert num_active_equations <= self.max_num_equations, (
-            f"Number of active equations ({num_active_equations}) exceeds maximum allowed ({self.max_num_equations})"
-        )
+        if num_active_equations < 0:
+            raise ValueError(f"num_active_equations must be non-negative, got {num_active_equations}")
+        if num_active_equations > self.max_num_equations:
+            raise ValueError(
+                f"num_active_equations must not exceed {self.max_num_equations}, got {num_active_equations}"
+            )
 
         self.num_active_equations = num_active_equations
 
         # Verify input dimensions
-        assert A.shape[0] == A.shape[1], "Matrix A must be square"
-        assert A.shape[0] >= num_active_equations, (
-            f"Matrix A must be at least {num_active_equations}x{num_active_equations}"
-        )
+        if A.shape[0] != A.shape[1]:
+            raise ValueError(f"Matrix A must be square, got shape {A.shape}")
+        if A.shape[0] < num_active_equations:
+            raise ValueError(
+                f"Matrix A must be at least ({num_active_equations}, {num_active_equations}), got shape {A.shape}"
+            )
 
         # Compute Cholesky factorization
         self.L[:num_active_equations, :num_active_equations] = np.linalg.cholesky(
@@ -295,20 +315,25 @@ class CholeskySolverNumPy:
     def solve(self, rhs: np.ndarray, result: np.ndarray):
         """Solve ``A x = b`` given the Cholesky factor ``L (A = L L^T)`` using forward and backward substitution.
 
-        ``b`` can be a vector or 2-D array with multiple right-hand sides.
+        ``b`` must be a 2-D column vector.
         """
-        assert self.num_active_equations <= self.max_num_equations, (
-            f"Number of active equations ({self.num_active_equations}) exceeds maximum allowed ({self.max_num_equations})"
-        )
+        if self.num_active_equations > self.max_num_equations:
+            raise ValueError(
+                f"num_active_equations must not exceed {self.max_num_equations}, got {self.num_active_equations}"
+            )
 
         n = self.num_active_equations
 
         # Verify input dimensions
-        assert rhs.shape[1] == 1, "Matrix b must be a column vector"
-        assert rhs.shape[0] >= n, f"Matrix b must be at least {n}x1"
+        if rhs.ndim != 2 or rhs.shape[1] != 1:
+            raise ValueError(f"Matrix b must be a column vector with one column, got shape {rhs.shape}")
+        if rhs.shape[0] < n:
+            raise ValueError(f"Matrix b must be at least ({n}, 1), got shape {rhs.shape}")
 
-        assert result.shape[1] == 1, "Matrix result must be a column vector"
-        assert result.shape[0] >= n, f"Matrix result must be at least {n}x1"
+        if result.ndim != 2 or result.shape[1] != 1:
+            raise ValueError(f"Matrix result must be a column vector with one column, got shape {result.shape}")
+        if result.shape[0] < n:
+            raise ValueError(f"Matrix result must be at least ({n}, 1), got shape {result.shape}")
 
         # Forward substitution: L y = b
         self.y[:n] = np.linalg.solve(self.L[:n, :n], rhs[:n])

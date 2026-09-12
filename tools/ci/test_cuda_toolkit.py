@@ -106,6 +106,35 @@ class ToolkitTestCase(unittest.TestCase):
         self.directory = Path(self.temporary_directory.name)
 
 
+class RepositoryConfigTests(unittest.TestCase):
+    def test_cuda_13_supports_windows_arm64(self) -> None:
+        """Resolve the repository CUDA 13 bundle for Windows ARM64."""
+        requirements = ctk.load_requirements(ctk.REQUIREMENTS_PATH)
+        lock = ctk.load_lock(ctk.LOCK_PATH)
+        version = max(
+            (version for version in requirements.releases if version.startswith("13.")),
+            key=lambda version: tuple(int(part) for part in version.split(".")),
+        )
+        release = requirements.releases[version]
+
+        self.assertIn("windows-arm64", release.platforms)
+
+        bundle = ctk.resolve_bundle(requirements, lock, version, "windows-arm64")
+        self.assertEqual(
+            tuple(archive.component for archive in bundle.archives),
+            (
+                "cccl",
+                "cuda_crt",
+                "cuda_cudart",
+                "cuda_nvcc",
+                "cuda_nvrtc",
+                "libnvvm",
+                "libnvptxcompiler",
+                "libnvjitlink",
+            ),
+        )
+
+
 class ConfigTests(ToolkitTestCase):
     def setUp(self) -> None:
         super().setUp()

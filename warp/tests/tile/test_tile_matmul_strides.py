@@ -45,7 +45,7 @@ def test_tile_matmul_strided_view(test, device):
 
 
 def test_tile_matmul_strided_view_backward(test, device):
-    # the backward GEMMs also read and write the strided view
+    """Read and write strided views during backward tile matrix multiplication."""
     rng = np.random.default_rng(42)
     A = rng.standard_normal((TILE_M, 2 * TILE_K)).astype(np.float32)
     B = rng.standard_normal((TILE_K, TILE_N)).astype(np.float32)

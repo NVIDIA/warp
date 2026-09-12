@@ -14,9 +14,9 @@ void scan_host(
     int type_length,
     bool inclusive = true
 );
-template <typename T> void scan_device(const T* values_in, T* values_out, int n, bool inclusive = true);
+template <typename T> bool scan_device(const T* values_in, T* values_out, int n, bool inclusive = true);
 template <typename T>
-void scan_device(
+bool scan_device(
     const T* values_in,
     T* values_out,
     int n,

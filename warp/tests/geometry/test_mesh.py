@@ -384,7 +384,7 @@ def test_mesh_refit_graph(test, device):
 
 
 def test_mesh_exceptions(test, device):
-    # points and indices must be on same device
+    """Reject mesh points and indices located on different devices."""
     with test.assertRaises(RuntimeError):
         points = wp.array(POINT_POSITIONS, dtype=wp.vec3, device="cpu")
         indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=int, device=device)
@@ -442,7 +442,7 @@ cuda_devices_with_mempool = get_selected_cuda_test_devices_with_mempool()
 
 class TestMesh(unittest.TestCase):
     def test_mesh_new_del(self):
-        # test the scenario in which a mesh is created but not initialized before gc
+        """Delete a mesh that was allocated without initialization."""
         instance = wp.Mesh.__new__(wp.Mesh)
         instance.__del__()
 

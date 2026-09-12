@@ -51,7 +51,7 @@ RUN wget --max-redirect=0 https://raw.githubusercontent.com/NVIDIA/build-system-
 # Architecture: x86_64 only (ARM64/sbsa support can be added later if needed)
 #
 # Minimal component list for C++ testing (pre-built Warp):
-#   - cuda_cccl: CUDA headers (cuda.h, cuda_runtime.h, thrust, cub)
+#   - cuda_cccl/cccl: CUDA headers (cuda.h, cuda_runtime.h, thrust, cub)
 #   - cuda_cudart: CUDA runtime library (libcudart.so)
 #   - cuda_nvcc: CUDA compiler for compiling C++ examples
 #
@@ -62,10 +62,13 @@ RUN wget --max-redirect=0 https://raw.githubusercontent.com/NVIDIA/build-system-
 # CUDA 13.x differences:
 #   - cuda_crt: C runtime (new standalone in CUDA 13, was bundled in 12)
 RUN CUDA_MAJOR=$(echo ${CUDA_VERSION} | cut -d. -f1) && \
+    CUDA_MINOR=$(echo ${CUDA_VERSION} | cut -d. -f2) && \
     if [ "$CUDA_MAJOR" = "12" ]; then \
         COMPONENTS="cuda_cccl cuda_cudart cuda_nvcc"; \
-    else \
+    elif [ "$CUDA_MAJOR" = "13" ] && [ "$CUDA_MINOR" -lt 3 ]; then \
         COMPONENTS="cuda_cccl cuda_crt cuda_cudart cuda_nvcc"; \
+    else \
+        COMPONENTS="cccl cuda_crt cuda_cudart cuda_nvcc"; \
     fi && \
     for component in $COMPONENTS; do \
         echo "Installing $component for x86_64..."; \

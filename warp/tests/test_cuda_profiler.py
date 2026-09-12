@@ -1,8 +1,11 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-"""Unit tests for the CUDA profiler control API (:func:`warp.cuda_profiler_start`,
-:func:`warp.cuda_profiler_stop`, and :class:`warp.ScopedCudaProfiler`)."""
+"""Tests for the CUDA profiler control API.
+
+Cover :func:`warp.cuda_profiler_start`, :func:`warp.cuda_profiler_stop`, and
+:class:`warp.ScopedCudaProfiler`.
+"""
 
 import unittest
 from unittest import mock
@@ -41,8 +44,10 @@ class TestCudaProfiler(unittest.TestCase):
 
     @unittest.skipUnless(wp.is_cuda_available(), "Requires CUDA")
     def test_start_stop_invoke_core(self):
-        """``cuda_profiler_start``/``cuda_profiler_stop`` each call their native entry point once,
-        forwarding the selected device's CUDA context."""
+        """Call each native profiler entry point with the selected CUDA context.
+
+        Invoke ``cuda_profiler_start`` and ``cuda_profiler_stop`` once each.
+        """
         core = _core()
         device = wp.get_device()
         with (
@@ -56,8 +61,10 @@ class TestCudaProfiler(unittest.TestCase):
 
     @unittest.skipUnless(wp.is_cuda_available(), "Requires CUDA")
     def test_scoped_capture_invokes_start_then_stop(self):
-        """``ScopedCudaProfiler`` starts on entry and stops on exit, forwarding the resolved
-        device's CUDA context to both calls."""
+        """Start and stop ``ScopedCudaProfiler`` around the context body.
+
+        Forward the resolved device's CUDA context to both calls.
+        """
         core = _core()
         device = wp.get_device()
         with (
@@ -72,7 +79,7 @@ class TestCudaProfiler(unittest.TestCase):
 
     @unittest.skipUnless(wp.is_cuda_available(), "Requires CUDA")
     def test_scoped_capture_stops_on_exception(self):
-        """``ScopedCudaProfiler`` still stops profiling when the body raises."""
+        """Verify that ``ScopedCudaProfiler`` still stops profiling when the body raises."""
         core = _core()
         device = wp.get_device()
         with (
@@ -87,7 +94,7 @@ class TestCudaProfiler(unittest.TestCase):
 
     @unittest.skipUnless(wp.is_cuda_available(), "Requires CUDA")
     def test_scoped_capture_preserves_body_exception(self):
-        """A stop failure does not mask an exception raised inside the captured region."""
+        """Verify that a stop failure does not mask an exception raised inside the captured region."""
         device = wp.get_device()
         with (
             mock.patch.object(wp, "cuda_profiler_start"),
@@ -99,7 +106,7 @@ class TestCudaProfiler(unittest.TestCase):
 
     @unittest.skipUnless(wp.is_cuda_available(), "Requires CUDA")
     def test_scoped_capture_raises_stop_exception(self):
-        """A stop failure is raised when the captured region completes successfully."""
+        """Verify that a stop failure is raised when the captured region completes successfully."""
         device = wp.get_device()
         with (
             mock.patch.object(wp, "cuda_profiler_start"),
@@ -110,8 +117,11 @@ class TestCudaProfiler(unittest.TestCase):
                     pass
 
     def test_cpu_device_is_noop(self):
-        """Passing a non-CUDA device is a no-op: the native entry points are never invoked
-        and no error is raised (a CPU device has no CUDA context to profile)."""
+        """Treat profiling a non-CUDA device as a no-op.
+
+        Do not invoke native entry points or raise an error because a CPU device has
+        no CUDA context to profile.
+        """
         core = _core()
         with (
             mock.patch.object(core, "wp_cuda_profiler_start") as start,

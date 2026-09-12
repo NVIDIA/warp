@@ -64,7 +64,7 @@ within these limits. Use 64-bit arithmetic when flattening such coordinates into
 
 By default, Warp will try to process one element from the Warp grid in one CUDA thread.
 This is not always possible for kernels launched with multi-dimensional grid bounds, as there are
-`hardware limitations <https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#features-and-technical-specifications-technical-specifications-per-compute-capability>`_
+`hardware limitations <https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/compute-capabilities.html#features-and-technical-specifications>`_
 on CUDA block dimensions.
 
 Warp will automatically fall back to using

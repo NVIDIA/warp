@@ -501,6 +501,19 @@ def test_to_torch(test, device):
     wrap_mat_array(6, 6, wp.spatial_matrix)
 
 
+def test_to_torch_empty(test, device):
+    """Verify that Torch accepts an empty CPU Warp array."""
+    torch = _import_torch()
+
+    a = wp.zeros((1, 0), dtype=wp.vec2f, device=device)
+
+    t = wp.to_torch(a)
+
+    test.assertEqual(tuple(t.shape), (1, 0, 2))
+    test.assertEqual(t.dtype, torch.float32)
+    test.assertEqual(t.numel(), 0)
+
+
 def test_from_torch_slices(test, device):
     torch = _import_torch()
 
@@ -685,7 +698,7 @@ def test_torch_mgpu_interop(test, device):
 
 
 def test_torch_retain_grad_from_torch(test, device):
-    """Test that retain_grad can be set when converting from PyTorch via from_torch"""
+    """Test that ``retain_grad`` can be set after conversion from PyTorch."""
     torch = _import_torch()
 
     torch_device = wp.device_to_torch(device)
@@ -931,7 +944,7 @@ def test_torch_tape_autograd_torch_stream(test, device):
 
 
 def test_torch_graph_torch_stream(test, device):
-    """Capture Torch graph on Torch stream"""
+    """Capture a Torch graph on a Torch stream."""
 
     wp.load_module(device=device)
 
@@ -1053,7 +1066,7 @@ def test_torch_graph_radix_sort_unregistered(test, device):
 
 
 def test_torch_graph_warp_stream(test, device):
-    """Capture Torch graph on Warp stream"""
+    """Capture a Torch graph on a Warp stream."""
 
     torch = _import_torch()
 
@@ -1095,7 +1108,7 @@ def test_torch_graph_warp_stream(test, device):
 
 
 def test_warp_graph_warp_stream(test, device):
-    """Capture Warp graph on Warp stream"""
+    """Capture a Warp graph on a Warp stream."""
 
     torch = _import_torch()
 
@@ -1129,7 +1142,7 @@ def test_warp_graph_warp_stream(test, device):
 
 
 def test_warp_graph_torch_stream(test, device):
-    """Capture Warp graph on Torch stream"""
+    """Capture a Warp graph on a Torch stream."""
 
     wp.load_module(device=device)
 
@@ -1169,7 +1182,7 @@ def test_warp_graph_torch_stream(test, device):
 
 
 def test_direct(test, device):
-    """Pass Torch tensors to Warp kernels directly"""
+    """Pass Torch tensors directly to Warp kernels."""
 
     torch = _import_torch()
 
@@ -1358,6 +1371,13 @@ else:
             "test_to_torch",
             test_to_torch,
             devices=torch_candidate_devices,
+            device_check=_check_torch_device,
+        )
+        add_function_test(
+            TestTorch,
+            "test_to_torch_empty",
+            test_to_torch_empty,
+            devices=["cpu"],
             device_check=_check_torch_device,
         )
         add_function_test(

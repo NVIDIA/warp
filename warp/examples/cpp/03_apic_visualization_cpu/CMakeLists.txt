@@ -19,10 +19,11 @@ if(NOT DEFINED WARP_NATIVE_DIR)
 endif()
 
 get_filename_component(WARP_INCLUDE "${WARP_NATIVE_DIR}" ABSOLUTE)
-if(NOT EXISTS "${WARP_INCLUDE}/builtin.h")
+if(NOT EXISTS "${WARP_INCLUDE}/builtin.h" OR NOT EXISTS "${WARP_INCLUDE}/warp_clang.h")
     message(FATAL_ERROR
         "Could not find Warp native directory at: ${WARP_INCLUDE}\n"
-        "Set WARP_NATIVE_DIR to override (e.g., cmake -DWARP_NATIVE_DIR=/path/to/warp/native)")
+        "Expected builtin.h and warp_clang.h. Set WARP_NATIVE_DIR to override\n"
+        "(e.g., cmake -DWARP_NATIVE_DIR=/path/to/warp/native)")
 endif()
 
 # Find Warp library
@@ -31,29 +32,81 @@ if(NOT DEFINED WARP_BIN_DIR)
 endif()
 get_filename_component(WARP_BIN_ABS "${WARP_BIN_DIR}" ABSOLUTE)
 
-find_library(WARP_LIB
-    NAMES warp warp.so warp.dll
-    HINTS ${WARP_BIN_ABS}
-    PATHS ENV WARP_PATH
-    PATH_SUFFIXES bin lib
-)
+if(WIN32)
+    find_file(WARP_LIBRARY
+        NAMES warp.dll
+        HINTS ${WARP_BIN_ABS}
+        PATHS ENV WARP_PATH
+        PATH_SUFFIXES bin
+    )
+    find_library(WARP_IMPLIB
+        NAMES warp
+        HINTS ${WARP_BIN_ABS}
+        PATHS ENV WARP_PATH
+        PATH_SUFFIXES bin lib
+    )
+    find_file(WARP_CLANG_LIBRARY
+        NAMES warp-clang.dll
+        HINTS ${WARP_BIN_ABS}
+        PATHS ENV WARP_PATH
+        PATH_SUFFIXES bin
+    )
+    find_library(WARP_CLANG_IMPLIB
+        NAMES warp-clang
+        HINTS ${WARP_BIN_ABS}
+        PATHS ENV WARP_PATH
+        PATH_SUFFIXES bin lib
+    )
+    if(NOT WARP_LIBRARY OR NOT WARP_IMPLIB OR NOT WARP_CLANG_LIBRARY OR NOT WARP_CLANG_IMPLIB)
+        message(FATAL_ERROR
+            "Could not find warp.dll, warp.lib, warp-clang.dll, and warp-clang.lib\n"
+            "Hints searched: ${WARP_BIN_ABS}\n"
+            "Set WARP_BIN_DIR to the directory containing all four files")
+    endif()
 
-if(NOT WARP_LIB)
-    message(FATAL_ERROR
-        "Could not find Warp library (warp.dll / warp.so / libwarp.dylib)\n"
-        "Hints searched: ${WARP_BIN_ABS}\n"
-        "Set WARP_BIN_DIR to the directory containing the warp library")
+    add_library(Warp::runtime SHARED IMPORTED)
+    set_target_properties(Warp::runtime PROPERTIES
+        IMPORTED_LOCATION "${WARP_LIBRARY}"
+        IMPORTED_IMPLIB "${WARP_IMPLIB}"
+        INTERFACE_INCLUDE_DIRECTORIES "${WARP_INCLUDE}"
+    )
+    add_library(Warp::clang SHARED IMPORTED)
+    set_target_properties(Warp::clang PROPERTIES
+        IMPORTED_LOCATION "${WARP_CLANG_LIBRARY}"
+        IMPORTED_IMPLIB "${WARP_CLANG_IMPLIB}"
+        INTERFACE_INCLUDE_DIRECTORIES "${WARP_INCLUDE}"
+    )
+else()
+    find_library(WARP_LIBRARY
+        NAMES warp warp.so
+        HINTS ${WARP_BIN_ABS}
+        PATHS ENV WARP_PATH
+        PATH_SUFFIXES bin lib
+    )
+    find_library(WARP_CLANG_LIBRARY
+        NAMES warp-clang warp-clang.so
+        HINTS ${WARP_BIN_ABS}
+        PATHS ENV WARP_PATH
+        PATH_SUFFIXES bin lib
+    )
+    if(NOT WARP_LIBRARY OR NOT WARP_CLANG_LIBRARY)
+        message(FATAL_ERROR
+            "Could not find the Warp and warp-clang shared libraries\n"
+            "Hints searched: ${WARP_BIN_ABS}\n"
+            "Set WARP_BIN_DIR to the directory containing both libraries")
+    endif()
+
+    add_library(Warp::runtime SHARED IMPORTED)
+    set_target_properties(Warp::runtime PROPERTIES
+        IMPORTED_LOCATION "${WARP_LIBRARY}"
+        INTERFACE_INCLUDE_DIRECTORIES "${WARP_INCLUDE}"
+    )
+    add_library(Warp::clang SHARED IMPORTED)
+    set_target_properties(Warp::clang PROPERTIES
+        IMPORTED_LOCATION "${WARP_CLANG_LIBRARY}"
+        INTERFACE_INCLUDE_DIRECTORIES "${WARP_INCLUDE}"
+    )
 endif()
-
-# Wrap the resolved library path in an IMPORTED target so CMake passes the
-# full path to the linker verbatim. Otherwise CMake converts an absolute
-# path like /path/to/warp.so to "-L/path/to -lwarp", which fails on Linux
-# because the library lacks the conventional lib<name>.so prefix.
-add_library(warp::runtime UNKNOWN IMPORTED)
-set_target_properties(warp::runtime PROPERTIES
-    IMPORTED_LOCATION "${WARP_LIB}"
-    IMPORTED_NO_SONAME TRUE
-)
 
 # Fetch GLFW and GLAD
 include(FetchContent)
@@ -100,33 +153,34 @@ add_executable(03_apic_visualization_cpu main.cpp)
 
 target_compile_features(03_apic_visualization_cpu PRIVATE cxx_std_17)
 
-target_include_directories(03_apic_visualization_cpu SYSTEM PRIVATE
-    ${WARP_INCLUDE}
-)
-
 target_link_libraries(03_apic_visualization_cpu
     OpenGL::GL
     glfw
     glad
-    warp::runtime
+    Warp::runtime
+    Warp::clang
 )
 
 # On Windows, copy the warp DLLs to the output directory
 if(WIN32)
-    get_filename_component(WARP_LIB_DIR "${WARP_LIB}" DIRECTORY)
     add_custom_command(TARGET 03_apic_visualization_cpu POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${WARP_LIB_DIR}/warp.dll"
+            "${WARP_LIBRARY}"
             "$<TARGET_FILE_DIR:03_apic_visualization_cpu>"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${WARP_LIB_DIR}/warp-clang.dll"
+            "${WARP_CLANG_LIBRARY}"
             "$<TARGET_FILE_DIR:03_apic_visualization_cpu>"
         COMMENT "Copying warp.dll and warp-clang.dll to output directory"
     )
 endif()
 
 message(STATUS "Warp include: ${WARP_INCLUDE}")
-message(STATUS "Warp library: ${WARP_LIB}")
+message(STATUS "Warp library: ${WARP_LIBRARY}")
+message(STATUS "warp-clang library: ${WARP_CLANG_LIBRARY}")
+if(WIN32)
+    message(STATUS "Warp import library: ${WARP_IMPLIB}")
+    message(STATUS "warp-clang import library: ${WARP_CLANG_IMPLIB}")
+endif()
 
 # Add headless smoke test (uses --smoke to skip GUI).
 # PASS_REGULAR_EXPRESSION asserts the iteration count actually ran — guards against

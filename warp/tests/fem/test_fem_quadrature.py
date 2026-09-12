@@ -32,6 +32,11 @@ def _rbf_kernel_grad_func(squared_dist: float, point_index: int, radius: float):
     return -wp.exp(-squared_dist / (2.0 * radius * radius)) * (squared_dist / (2.0 * radius * radius))
 
 
+@wp.func
+def _invalid_rbf_kernel_func(squared_dist: int, point_index: int):
+    return float(squared_dist + point_index)
+
+
 @fem.integrand
 def _bicubic(s: Sample, domain: Domain):
     x = domain(s)
@@ -337,7 +342,7 @@ def test_particle_quadratures(test, device):
 
 
 def test_gimp_quadrature(test, device):
-    # Test GIMP mode for PicQuadrature: particles spanning multiple cells
+    """Test GIMP quadrature for particles spanning multiple cells."""
 
     geo = fem.Grid2D(res=wp.vec2i(2))
     domain = fem.Cells(geo)
@@ -458,7 +463,18 @@ def test_nodal_quadrature(test, device):
 
 
 class TestFemQuadrature(unittest.TestCase):
-    pass
+    def test_point_basis_rejects_invalid_kernel_argument_types(self):
+        """Verify that invalid radial-kernel annotations report a type error."""
+        with wp.ScopedDevice("cpu"):
+            geo = fem.Grid2D(res=wp.vec2i(1))
+            quadrature = fem.RegularQuadrature(fem.Cells(geo), order=0)
+
+            with self.assertRaisesRegex(
+                TypeError,
+                r"Radial kernel '_invalid_rbf_kernel_func' argument types must be "
+                r"\(float32, int32\), got \(int32, int32\)",
+            ):
+                fem.PointBasisSpace(quadrature, kernel_func=_invalid_rbf_kernel_func)
 
 
 devices = get_test_devices()

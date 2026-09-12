@@ -383,7 +383,7 @@ def mesh_query_ray_brutal(
 
 @unittest.skipUnless(USD_AVAILABLE, "Requires usd-core")
 def test_mesh_query_ray_count_intersections(test, device):
-    """Stress test for mesh_query_ray_count_intersections with various ray configurations"""
+    """Stress-test ``mesh_query_ray_count_intersections`` with varied rays."""
     from pxr import Usd, UsdGeom  # noqa: PLC0415
 
     # Load a complex mesh (torus is good for multiple intersections)
@@ -723,7 +723,7 @@ def test_mesh_query_ray_edge(test, device):
 
 
 def test_mesh_query_ray_parallel_slab_boundaries(test, device):
-    """Regression for the parallel-slab false negative in BVH ray traversal.
+    """Test the parallel-slab false negative in BVH ray traversal.
 
     When dir[i] == 0 the ray is parallel to that slab axis.  The previous
     safe_ray_rcp_dir trick replaced zero dir components with ~FLT_MIN, which

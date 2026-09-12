@@ -14,8 +14,8 @@ check uses ``/orgs/<org>/members/<login>``, which only returns 204 to fellow
 org members; outside callers see 404 even for actual members and any
 private-membership staff fall through to ``external``. The skill is for the
 release manager (an NVIDIA org member by definition), so the assumption holds.
-When ``gh`` is unavailable both lookups are skipped and only ``@nvidia.com``
-emails register as internal.
+When ``gh`` is unavailable both lookups are skipped and NVIDIA email domains
+remain a deterministic affiliation signal.
 """
 
 from __future__ import annotations
@@ -360,17 +360,21 @@ def gh_check_org_membership(login: str, org: str) -> bool:
     return result.returncode == 0
 
 
+def is_nvidia_email(email: str) -> bool:
+    """Return whether ``email`` uses ``nvidia.com`` or one of its subdomains."""
+    _, separator, domain = email.strip().lower().rpartition("@")
+    return bool(separator) and (domain == "nvidia.com" or domain.endswith(".nvidia.com"))
+
+
 def classify(email: str, *, is_org_member: bool) -> str:
     """Apply the classification rules from ``contributor-attribution.md``.
 
-    Returns ``"nvidia"`` if any positive-internal signal matches (NVIDIA
-    email OR confirmed NVIDIA org membership), else ``"external"``. Order
-    matters: first match wins.
+    Returns ``"nvidia"`` if any NVIDIA-affiliation signal matches (NVIDIA
+    email domain OR confirmed NVIDIA org membership), else ``"external"``.
+    Order matters: first match wins.
     """
-    email_lower = email.strip().lower()
-
     # 1. NVIDIA email. Free, deterministic, no API call.
-    if email_lower.endswith("@nvidia.com") or email_lower.endswith("@exchange.nvidia.com"):
+    if is_nvidia_email(email):
         return "nvidia"
 
     # 2. Confirmed NVIDIA org member. Catches staff who commit from personal
@@ -437,11 +441,13 @@ def aggregate_contributors(
 
     contributors = []
     for (name, email), info in by_key.items():
+        has_nvidia_email = is_nvidia_email(email)
+
         # Resolve login from email pattern first (free, deterministic).
         login = resolve_gh_login_from_email(email)
 
         # Fallback to gh api on the FIRST commit only; cache by author key.
-        if login is None and use_gh and not email.lower().endswith("@nvidia.com"):
+        if login is None and use_gh and not has_nvidia_email:
             sample_sha = info["commits"][0]["sha"]
             login = gh_lookup_login_for_commit(sample_sha, repo_slug)
 
@@ -449,7 +455,7 @@ def aggregate_contributors(
         # or noreply addresses; relies on the caller being an NVIDIA org
         # member so the endpoint can see private memberships.
         is_org_member = False
-        if login is not None and use_gh and not email.lower().endswith("@nvidia.com"):
+        if login is not None and use_gh and not has_nvidia_email:
             is_org_member = gh_check_org_membership(login, org)
 
         classification = classify(email, is_org_member=is_org_member)

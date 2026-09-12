@@ -3,6 +3,8 @@
 
 """Tests for kernel compilation and linking configuration."""
 
+import ctypes
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -12,6 +14,7 @@ import numpy as np
 
 import warp as wp
 from warp._src import build as _build_module
+from warp.tests.unittest_utils import add_function_test, get_cuda_test_devices
 
 
 def _make_arange_kernel():
@@ -32,6 +35,99 @@ def _run_and_check(test):
     wp.launch(kernel, dim=10, inputs=[a], device="cpu")
     expected = np.arange(10, dtype=np.float32) * 2.0
     np.testing.assert_allclose(a.numpy(), expected)
+
+
+@wp.struct
+class _LargeKernelArgument:
+    v1: wp.vec3
+    v2: wp.vec3
+    v3: wp.vec3
+    m1: wp.mat22
+    m2: wp.mat22
+    m3: wp.mat22
+    m4: wp.mat22
+    m5: wp.mat22
+    m6: wp.mat22
+
+
+def _make_debug_warmup_kernel():
+    """Create a fresh CUDA kernel compiled in debug mode."""
+
+    @wp.kernel(module="unique", module_options={"mode": "debug"})
+    def debug_warmup(output: wp.array[int]):
+        output[0] = 1
+
+    return debug_warmup
+
+
+def _make_large_argument_kernel():
+    """Create a fresh release kernel with a large by-value argument."""
+
+    @wp.kernel(module="unique", module_options={"mode": "release"})
+    def read_large_argument(value: _LargeKernelArgument, output: wp.array[float]):
+        output[0] = value.v1[0]
+        output[1] = value.v2[0]
+        output[2] = value.v3[0]
+        output[3] = value.m1[0, 0]
+        output[4] = value.m2[0, 0]
+        output[5] = value.m3[0, 0]
+        output[6] = value.m4[0, 0]
+        output[7] = value.m5[0, 0]
+        output[8] = value.m6[0, 0]
+
+    return read_large_argument
+
+
+def test_cuda_debug_compile_does_not_corrupt_release(test, device):
+    """Compile a CUDA release kernel safely after a debug kernel.
+
+    CUDA Toolkit 13.1 and newer can retain process-wide NVRTC state after
+    compiling device-debug code and corrupt a later release compilation on
+    Blackwell and newer GPUs. Skipping these configurations prevents the test
+    from contaminating the worker process. Re-evaluate this guard starting with
+    CUDA Toolkit 13.5, removing it or adding an upper version bound once the
+    NVRTC issue is fixed.
+    """
+
+    if wp.config.llvm_cuda:
+        test.skipTest("NVRTC is not the configured CUDA compiler")
+
+    cache_kernels = wp.config.cache_kernels
+    try:
+        wp.config.cache_kernels = False
+
+        if (
+            sys.platform != "win32"
+            and wp._src.context.runtime.toolkit_version is not None
+            and wp._src.context.runtime.toolkit_version >= (13, 1)
+            and device.arch >= 100
+        ):
+            test.skipTest("CUDA Toolkit 13.1 and newer can corrupt release NVRTC compilations after device debugging")
+
+        warmup_output = wp.zeros(1, dtype=int, device=device)
+        wp.launch(_make_debug_warmup_kernel(), dim=1, outputs=[warmup_output], device=device)
+        np.testing.assert_array_equal(warmup_output.numpy(), [1])
+
+        value = _LargeKernelArgument()
+        test.assertGreater(ctypes.sizeof(_LargeKernelArgument.ctype), 128)
+        value.v1 = wp.vec3(1.0)
+        value.v2 = wp.vec3(2.0)
+        value.v3 = wp.vec3(3.0)
+        value.m1 = wp.mat22(4.0)
+        value.m2 = wp.mat22(5.0)
+        value.m3 = wp.mat22(6.0)
+        value.m4 = wp.mat22(7.0)
+        value.m5 = wp.mat22(8.0)
+        value.m6 = wp.mat22(9.0)
+
+        output = wp.zeros(9, dtype=float, device=device)
+        wp.launch(_make_large_argument_kernel(), dim=1, inputs=[value], outputs=[output], device=device)
+        np.testing.assert_allclose(output.numpy(), np.arange(1.0, 10.0, dtype=np.float32))
+    finally:
+        wp.config.cache_kernels = cache_kernels
+
+
+cuda_devices = get_cuda_test_devices()
 
 
 class TestCompilation(unittest.TestCase):
@@ -125,6 +221,15 @@ class TestCompilation(unittest.TestCase):
             _build_module.warp._src.context.runtime = original_runtime
 
         self.assertEqual(captured["include_dirs"], [str(include_dir.resolve())])
+
+
+add_function_test(
+    TestCompilation,
+    "test_cuda_debug_compile_does_not_corrupt_release",
+    test_cuda_debug_compile_does_not_corrupt_release,
+    devices=cuda_devices,
+    check_output=False,
+)
 
 
 if __name__ == "__main__":

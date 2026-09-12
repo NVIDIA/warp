@@ -458,5 +458,14 @@ tile_matmul_tests = [
 for name, func in tile_matmul_tests:
     add_function_test(TestTileMatmulNoMathDx, name, func, devices=devices)
 
+for name, func in tile_matmul_tests:
+    add_function_test(
+        TestTileMatmulNoMathDx,
+        f"{name}_cpu_blocks",
+        func,
+        devices=["cpu"] if wp.is_cpu_available() else [],
+        enable_cpu_blocks=True,
+    )
+
 if __name__ == "__main__":
     unittest.main(verbosity=2, failfast=True)

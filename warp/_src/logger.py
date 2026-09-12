@@ -154,10 +154,10 @@ def get_logger() -> Logger:
 
 
 def log_debug(message: str) -> None:
-    """Emit a debug-level message if debug logging or legacy verbose mode is enabled."""
+    """Emit a debug-level message if ``warp.config.log_level <= LOG_DEBUG``."""
     import warp.config  # noqa: PLC0415
 
-    if warp.config.verbose or warp.config.log_level <= LOG_DEBUG:
+    if warp.config.log_level <= LOG_DEBUG:
         _active_logger.debug(message)
 
 

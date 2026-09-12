@@ -404,7 +404,7 @@ def test_tile_mesh_query_aabb(test, device):
     indices_wp = wp.array(indices, dtype=int, device=device)
 
     # Cover the cuBQL constructor alongside the default Warp BVH path.
-    if device.is_cpu:
+    if wp.get_device(device).is_cpu:
         constructors = ["sah", "median"]
     else:
         constructors = ["sah", "median", "lbvh"]
@@ -712,8 +712,7 @@ def mesh_query_aabb_via_typed_func(mesh_id: wp.uint64, lower: wp.vec3, upper: wp
 
 
 def test_mesh_query_sphere_alias_next(test, device):
-    # mesh_query_aabb_next is documented as an alias for mesh_query_next, so it must
-    # also advance sphere queries with the sphere narrow phase.
+    """Advance sphere queries through the AABB-next alias."""
     rng = np.random.default_rng(123)
     m, tris, _lowers, _uppers = _random_triangle_mesh(device, rng)
     num_tris = tris.shape[0]
@@ -728,10 +727,12 @@ def test_mesh_query_sphere_alias_next(test, device):
 
 
 def test_mesh_query_sphere_for_loop(test, device):
-    # The for-loop protocol dispatches through a shared iter_cmp() that must select the
-    # sphere iterator even when radius == 0 (radius_sq alone cannot distinguish a
-    # zero-radius sphere from an AABB query). A zero-radius sphere keeps only triangles
-    # that pass exactly through the center, not every triangle whose AABB contains it.
+    """Select the sphere iterator for zero-radius query loops.
+
+    The loop protocol dispatches through a shared ``iter_cmp()``. Radius squared
+    alone cannot distinguish a zero-radius sphere from an AABB query, but the sphere
+    must retain only triangles that pass exactly through its center.
+    """
     points = wp.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], dtype=wp.vec3, device=device)
     indices = wp.array([0, 1, 2], dtype=int, device=device)
     m = wp.Mesh(points=points, indices=indices)
@@ -762,8 +763,7 @@ def test_mesh_query_sphere_for_loop(test, device):
 
 
 def test_mesh_query_runtime_kind(test, device):
-    # A query whose kind is chosen by a runtime branch decays to the erased parent
-    # MeshQuery type and must match the statically-typed kernels for both kinds.
+    """Match static mesh queries when selecting the query kind at runtime."""
     rng = np.random.default_rng(123)
     m, tris, _lowers, _uppers = _random_triangle_mesh(device, rng)
     num_tris = tris.shape[0]
@@ -815,9 +815,7 @@ def test_mesh_query_runtime_kind(test, device):
 
 
 def test_mesh_query_erased_func_param(test, device):
-    # A sphere query passed to a wp.func annotated with the parent MeshQuery type
-    # keeps sphere semantics, and an AABB query passed to a wp.func annotated with
-    # the concrete MeshQueryAABB type (pre-rename convention) still resolves.
+    """Preserve mesh-query semantics through erased and concrete function parameters."""
     rng = np.random.default_rng(123)
     m, tris, _lowers, _uppers = _random_triangle_mesh(device, rng)
     num_tris = tris.shape[0]
@@ -852,7 +850,7 @@ def mesh_bvh_sphere_hits(mesh_id: wp.uint64, center: wp.vec3, radius: float, hit
 
 
 def _random_triangle_mesh(device, rng, num_tris=2000):
-    """A mesh of small, randomly placed triangles (one independent triangle per face)."""
+    """Create a mesh of small, randomly placed independent triangles."""
     centers = rng.random((num_tris, 3)).astype(np.float32) * 8.0
     verts = (centers[:, None, :] + (rng.random((num_tris, 3, 3)) - 0.5).astype(np.float32) * 0.4).reshape(-1, 3)
     indices = np.arange(3 * num_tris, dtype=np.int32)
@@ -898,9 +896,11 @@ def _point_tri_dist2(p, A, B, C):
 
 
 def test_mesh_query_sphere(test, device):
-    # Narrow phase: returned faces are exactly the triangles the sphere actually intersects (closest point
-    # on the triangle within radius), not merely AABB overlaps. Use dilate/erode bands to stay robust to
-    # float32-vs-float64 rounding right at the boundary.
+    """Return exact narrow-phase triangle intersections for sphere queries.
+
+    Use dilation and erosion bands to avoid Float32-versus-Float64 rounding at the
+    boundary.
+    """
     rng = np.random.default_rng(123)
     m, tris, _lowers, _uppers = _random_triangle_mesh(device, rng)
     A, B, C = tris[:, 0].astype(np.float64), tris[:, 1].astype(np.float64), tris[:, 2].astype(np.float64)
@@ -923,7 +923,7 @@ def test_mesh_query_sphere(test, device):
 
 
 def test_mesh_get_bvh(test, device):
-    # mesh_get_bvh exposes the mesh BVH; bvh_query_sphere on it returns the broad (per-triangle AABB) set.
+    """Expose the broad-phase mesh BVH for direct sphere queries."""
     rng = np.random.default_rng(99)
     m, tris, lowers, uppers = _random_triangle_mesh(device, rng)
     num_tris = tris.shape[0]
@@ -1008,6 +1008,19 @@ add_function_test(
     TestMeshQueryAABBMethods, "test_mesh_query_erased_func_param", test_mesh_query_erased_func_param, devices=devices
 )
 add_function_test(TestMeshQueryAABBMethods, "test_mesh_get_bvh", test_mesh_get_bvh, devices=devices)
+
+for name, func in (
+    ("test_tile_mesh_query_aabb", test_tile_mesh_query_aabb),
+    ("test_tile_mesh_query_aabb_large", test_tile_mesh_query_aabb_large),
+    ("test_mesh_query_aabb_tiled", test_mesh_query_aabb_tiled),
+):
+    add_function_test(
+        TestMeshQueryAABBMethods,
+        f"{name}_cpu_blocks",
+        func,
+        devices=["cpu"] if wp.is_cpu_available() else [],
+        enable_cpu_blocks=True,
+    )
 
 
 if __name__ == "__main__":

@@ -17,7 +17,7 @@ def inc_kernel(a: wp.array(dtype=float)):
 
 
 class KernelLaunch:
-    number = 1000  # Number of measurements to make between a single setup and teardown
+    number = 1000  # Number of timed calls per sample
 
     @setup_once
     def setup(self):

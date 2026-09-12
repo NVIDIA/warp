@@ -59,6 +59,8 @@ generated compilation artifacts as Warp does not automatically try to keep the c
 Note that these functions only clear Warp's own cache. The NVIDIA CUDA driver
 maintains a separate compute cache that is not affected by Warp's cache-clearing
 functions (see :ref:`benchmarking-cold-start-compilation`).
+For guidance on reducing startup latency and improving cache reuse, see
+:doc:`execution_and_performance/reducing_compilation_and_startup_time`.
 
 
 .. _Runtime Kernel Creation:
@@ -1286,7 +1288,7 @@ Users should use type constructors such as ``float()``, ``int()``, :class:`wp.in
 to the correct type.
 
 The multiplication expression ``a * b`` can also be used to perform matrix multiplication
-between `matrix types <Matrices>`_.
+between :ref:`matrix types <mat>`.
 
 Mapping Functions
 #################
@@ -2023,12 +2025,23 @@ graphs replay them from current inputs: kernel launches (forward, adjoint, and r
 :func:`wp.utils.radix_sort_pairs() <warp.utils.radix_sort_pairs>`,
 :func:`wp.utils.segmented_sort_pairs() <warp.utils.segmented_sort_pairs>`,
 :func:`wp.utils.runlength_encode() <warp.utils.runlength_encode>` (with an explicit
-``run_count``), :func:`wp.sparse.bsr_set_transpose() <warp.sparse.bsr_set_transpose>`, and
+``run_count``), :func:`wp.sparse.bsr_from_triplets() <warp.sparse.bsr_from_triplets>`,
+:func:`wp.sparse.bsr_set_from_triplets() <warp.sparse.bsr_set_from_triplets>` with compact or padded topology,
+:func:`wp.sparse.bsr_assign() <warp.sparse.bsr_assign>`,
+:func:`wp.sparse.bsr_axpy() <warp.sparse.bsr_axpy>`,
+:func:`wp.sparse.bsr_mm() <warp.sparse.bsr_mm>` when no host count readback is required,
+:func:`wp.sparse.bsr_set_transpose() <warp.sparse.bsr_set_transpose>`, and
 :func:`wp.capture_if() <warp.capture_if>` / :func:`wp.capture_while() <warp.capture_while>`
 conditionals. Unlike the CPU path, CUDA host code for these helper operations
 issues CUDA operations while CUDA stream capture is active so the driver
 records graph nodes. No GPU reduction executes during capture; GPU work begins
 only when the graph is launched.
+
+The graph-capturable :func:`wp.sparse.bsr_mm() <warp.sparse.bsr_mm>` forms are
+also saveable with APIC: use ``topology="masked"``, ``reuse_topology=True``,
+``max_new_nnz``, or padded topology with supplied work arrays. The default compact
+path without a reusable topology or an explicit bound requires a host count
+readback and remains unavailable during graph capture.
 
 During a matching-device CUDA ``apic=True`` capture, non-empty calls to
 :func:`wp.utils.array_sum() <warp.utils.array_sum>` and
@@ -2046,9 +2059,6 @@ region:
 - :meth:`HashGrid.build() <warp.HashGrid.build>`, because ``HashGrid``
   resources and their process-local IDs cannot yet be serialized. Use
   ``apic=False`` for live CUDA graph capture.
-- :func:`wp.sparse.bsr_set_from_triplets() <warp.sparse.bsr_set_from_triplets>` (and the
-  ``warp.sparse`` matrix products that build topology with it), because it reads the resulting
-  ``nnz`` back to the host after its own kernels, which a captured graph cannot reproduce.
 - Non-contiguous :meth:`array.fill_() <warp.array.fill_>`, indexed/Fabric ``fill_()``, and
   contiguous fills whose value is larger than 3968 bytes.
 - The host-return form of :func:`wp.utils.runlength_encode() <warp.utils.runlength_encode>`
@@ -2204,6 +2214,9 @@ declared in `warp/native/apic.h <https://github.com/NVIDIA/warp/blob/main/warp/n
     // Release the loaded graph and its associated allocations.
     void wp_apic_destroy_graph(APICGraph* graph);
 
+For native library headers, build-system setup, platform-specific linking,
+deployment, and version compatibility, see :ref:`native_library_linking`.
+
 Two reference C++ examples ship with Warp under ``warp/examples/cpp/``. Both
 implement the same interactive 2-D wave simulation visualized with GLFW/OpenGL,
 and both take their captured ``.wrp`` file from a Python ``capture_wave.py``
@@ -2291,14 +2304,23 @@ CPU device. ``main.cpp`` does not link against CUDA at all. Replay goes through
     wp_apic_destroy_graph(graph);
 
 CPU graph replay needs function pointers for each recorded kernel. These are
-resolved from the ``.o`` files in the companion ``_modules/`` directory by
-loading the ``warp-clang`` library at runtime and calling its ``wp_load_obj`` /
-``wp_lookup`` entry points, then registering each pointer with the loaded graph
-via ``wp_apic_register_loaded_cpu_kernel``. The example walks every kernel
-returned by ``wp_apic_get_num_kernels`` and does this resolution once at
-startup. Kernel metadata includes both the kernel key and module hash so
-same-key kernels from distinct ``module="unique"`` modules resolve to the
-correct object file and function pointer. The C API surface for this lookup is:
+resolved from the ``.o`` files in the companion ``_modules/`` directory. The
+CPU example links against ``warp-clang`` at build time, loads each object with
+``wp_load_obj()``, resolves its functions with ``wp_lookup()``, and registers
+each pointer with the loaded graph via
+``wp_apic_register_loaded_cpu_kernel()``.
+
+Before the first call to ``wp_load_obj()``, a standalone native consumer must
+pass the core runtime table returned by ``wp_cpu_block_runtime_get_api()`` to
+``wp_llvm_set_cpu_block_runtime()``. This lets JIT-loaded kernels resolve the
+cooperative CPU block entry points implemented by the core Warp library. Warp's
+Python runtime performs the same binding during initialization.
+
+The example walks every kernel returned by ``wp_apic_get_num_kernels()`` and
+does this resolution once at startup. Kernel metadata includes both the kernel
+key and module hash so same-key kernels from distinct ``module="unique"``
+modules resolve to the correct object file and function pointer. The C API
+surface for this lookup is:
 
 .. code:: c
 
@@ -2336,7 +2358,11 @@ Both examples ship with a ``Makefile`` (Unix/Linux) and a ``CMakeLists.txt``
     cmake --build build --config Release
 
     # 3. Run
+    # Ninja / Unix Makefiles
     ./build/02_apic_visualization                  # or 03_apic_visualization_cpu
+
+    # Visual Studio (Windows)
+    .\build\Release\02_apic_visualization.exe      # or 03_apic_visualization_cpu.exe
 
 Each example directory contains a ``README.md`` with full prerequisites, build
 options, controls, and platform-specific notes.
@@ -2707,7 +2733,7 @@ NanoVDB grids may also contain embedded *blind* data arrays; those can be access
 :func:`feature_array() <warp.Volume.feature_array>` function.
 
 
-.. seealso:: `Built-Ins <../language_reference/builtins.html#volumes>`__ for the volume functions available in kernels.
+.. seealso:: :ref:`Built-Ins <builtins-volumes>` for the volume functions available in kernels.
 
 
 Textures
@@ -2759,7 +2785,7 @@ Supported data types include ``wp.uint8``, ``wp.uint16``, ``wp.uint32``, ``wp.in
 normalized to the [0, 1] range when sampled; signed integer textures are normalized to [-1, 1];
 float types are returned as-is.
 
-.. seealso:: `Reference <../language_reference/builtins.html#textures>`__ for the texture sampling functions available in kernels.
+.. seealso:: :ref:`Reference <builtins-textures>` for the texture sampling functions available in kernels.
 
 
 Bounding Volume Hierarchies (BVH)
@@ -2918,12 +2944,26 @@ normalized views and their backing allocations.
 Marching Cubes
 --------------
 
-The :class:`wp.MarchingCubes <warp.MarchingCubes>` class can be used to extract a 2-D mesh approximating an
-isosurface of a 3-D scalar field. The resulting triangle mesh can be saved to a USD
-file using the :class:`warp.render.UsdRenderer`.
+The :class:`wp.geometry.IsoSurfaceMarchingCubes
+<warp.geometry.IsoSurfaceMarchingCubes>` class can be used to extract a 2-D mesh
+approximating an isosurface of a 3-D scalar field. The resulting triangle mesh
+can be saved to a USD file using the :class:`warp.render.UsdRenderer`.
+
+.. deprecated:: 1.18
+
+    ``wp.MarchingCubes`` is a deprecated alias of
+    :class:`wp.geometry.IsoSurfaceMarchingCubes
+    <warp.geometry.IsoSurfaceMarchingCubes>` and will be removed in a future
+    version of Warp. It is resolved lazily, so the two names refer to the same
+    class and accessing it emits a warning. Because it is resolved at runtime
+    rather than imported, it does not appear in ``warp/__init__.pyi``; annotate
+    with :class:`wp.geometry.IsoSurfaceMarchingCubes
+    <warp.geometry.IsoSurfaceMarchingCubes>` instead.
 
 .. testcode::
     :skipif: wp.get_cuda_device_count() == 0
+
+    import warp.geometry
 
     @wp.kernel
     def make_sphere_sdf(field: wp.array3d[float], center: wp.vec3, radius: float):
@@ -2934,7 +2974,7 @@ file using the :class:`warp.render.UsdRenderer`.
     dim = 16
     field = wp.zeros((dim, dim, dim), dtype=float, device="cuda:0")
     wp.launch(make_sphere_sdf, dim=field.shape, inputs=[field, wp.vec3(8.0, 8.0, 8.0), 4.0], device="cuda:0")
-    mc = wp.MarchingCubes(nx=dim, ny=dim, nz=dim)
+    mc = wp.geometry.IsoSurfaceMarchingCubes(nx=dim, ny=dim, nz=dim)
     mc.surface(field, threshold=0.0)
     print(mc.verts.shape[0] > 0)
     print(mc.indices.shape[0] % 3 == 0)
@@ -2948,19 +2988,199 @@ file using the :class:`warp.render.UsdRenderer`.
 The resulting mesh is stored in ``mc.verts`` as a :class:`wp.array <warp.array>` of
 :class:`wp.vec3 <warp.vec3>` vertices and in ``mc.indices`` as a flat :class:`wp.int32 <warp.int32>` index array.
 
-See :github:`warp/examples/core/example_marching_cubes.py` for a complete usage example.
+See :github:`warp/examples/geometry/example_isosurface.py` for a complete usage example.
+
+Sparse Marching Cubes
+#####################
+
+If we have access to a scalar field as a samplable function, we can extract its
+isosurface without densely sampling an entire volumetric grid. Let us assume
+that the function has a known Lipschitz bound (e.g., a signed distance
+function has a Lipschitz constant of 1 because
+:math:`|f(x) - f(y)| \le |x - y|`).
+
+:func:`wp.geometry.sparse_marching_cubes
+<warp.geometry.sparse_marching_cubes>` extracts the
+isosurface by efficiently identifying cells near the requested level set using
+an octree and then running marching cubes only on those cells.
+
+.. figure:: ../img/examples/geometry_sparse_marching_cubes.gif
+    :align: center
+    :width: 60%
+
+    A signed distance field to the Stanford bunny, re-meshed as the octree
+    depth increases. Only the sparse cells near the surface (blue) are
+    instantiated.
+
+The *implied* grid is specified the same way as
+:meth:`warp.geometry.IsoSurfaceMarchingCubes.extract`: ``nx, ny, nz`` grid
+nodes over a (possibly anisotropic) domain box. Calling this function and
+``extract`` with the same grid and bounds produces the same triangulation and
+vertex positions, to floating-point tolerance -- only the near-surface cells
+are instantiated here.
+
+The provided function ``field`` must be batched callable, ``evaluate(points:
+wp.array[wp.vec3]) -> wp.array[wp.float32]``. A callable backed by a
+host library (NumPy, PyTorch, ...) also works, at the cost of a device/host sync
+per call.
+
+.. testcode::
+    :skipif: wp.get_cuda_device_count() == 0
+
+    import warp.geometry
+
+    @wp.func
+    def sphere_sdf(p: wp.vec3):
+        return wp.length(p) - 0.5
+
+    @wp.kernel
+    def eval_sphere_sdf(points: wp.array[wp.vec3], values: wp.array[wp.float32]):
+        i = wp.tid()
+        values[i] = sphere_sdf(points[i])
+
+    def sphere_evaluate(points):
+        values = wp.empty(points.shape[0], dtype=wp.float32, device=points.device)
+        wp.launch(eval_sphere_sdf, dim=points.shape[0], inputs=[points], outputs=[values], device=points.device)
+        return values
+
+    # A 257^3 grid (octree depth 8) touches only cells near the surface.
+    verts, indices = wp.geometry.sparse_marching_cubes(
+        sphere_evaluate,
+        257, 257, 257,
+        lower=wp.vec3(-1.0, -1.0, -1.0),
+        upper=wp.vec3(1.0, 1.0, 1.0),
+        threshold=0.0,
+        device="cuda:0",
+    )
+    print(f"extracted {verts.shape[0]} vertices and {indices.shape[0] // 3} triangles")
+
+.. testoutput::
+    :skipif: wp.get_cuda_device_count() == 0
+
+    extracted 77094 vertices and 154184 triangles
+
+The pruning and extraction stages are also exposed separately:
+:func:`wp.geometry.lipschitz_octree <warp.geometry.lipschitz_octree>`
+returns the leaf cells, and :func:`wp.geometry.sparse_marching_cubes_from_cells
+<warp.geometry.sparse_marching_cubes_from_cells>` runs marching cubes on an
+explicit list of occupied cells and their sampled corner values --
+``sparse_marching_cubes`` chains the two using shared
+internals. Calling the extraction stage directly is useful when the occupied
+cells are already known, such as a marked band of voxels from a vision or
+generative model, or a custom sparse data structure that already tracks which
+voxels are near the surface.
+
+Extracting from an explicit cell set
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+:func:`wp.geometry.sparse_marching_cubes_from_cells
+<warp.geometry.sparse_marching_cubes_from_cells>` takes the occupied cells as an
+``(N, 3)`` array of integer cell subscripts, plus an ``(N, 8)`` array holding the
+field value at each cell's 8 corners, ordered by
+:attr:`~warp.geometry.IsoSurfaceMarchingCubes.CUBE_CORNER_OFFSETS`. A cell at
+subscript ``(i, j, k)`` covers the box whose minimum corner is
+``origin + cell_width * (i, j, k)``. Subscripts may be negative and need not be
+contiguous, so cells can come straight from a sparse structure without
+renumbering. Corners shared between neighboring cells are de-duplicated
+internally, so the result is watertight even though each cell supplies its own
+eight values.
+
+.. note::
+
+    This subscript convention differs from the VDB-style one used by
+    :class:`wp.Volume <warp.Volume>`, where a subscript names a voxel whose
+    *center* holds the sample. Here a subscript names a cell by its *minimum
+    corner*, and the samples sit at the cell's corners. A :class:`wp.Volume
+    <warp.Volume>` voxel subscript therefore lines up with a *corner*
+    subscript here, not a cell subscript: the corners of cell ``(i, j, k)``
+    are the voxels ``(i, j, k)`` through ``(i+1, j+1, k+1)``.
+
+The cells a closed surface passes through form a face-connected shell, so they
+can be gathered with a breadth-first search from a single seed cell, without
+ever visiting the volume the surface encloses:
+
+.. testcode::
+
+    from collections import deque
+
+    import numpy as np
+    import warp.geometry
+
+    # A sphere of radius 0.5, on cells of width 1/16 with subscript (0, 0, 0) at the origin.
+    origin = np.array((0.0, 0.0, 0.0))
+    cell_width = 1.0 / 16
+    offsets = np.array(wp.geometry.IsoSurfaceMarchingCubes.CUBE_CORNER_OFFSETS)
+    neighbors = [(1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1)]
+
+    def corner_values(cell):
+        """Sample the sphere SDF at the 8 corners of one cell."""
+        p = origin + cell_width * (np.array(cell) + offsets)
+        return np.linalg.norm(p, axis=1) - 0.5
+
+    def straddles(values):
+        """Report whether the isosurface passes through the cell."""
+        return values.min() < 0.0 <= values.max()
+
+    # Seed the search by stepping out from the sphere's center until a cell crosses it.
+    seed = (0, 0, 0)
+    while not straddles(corner_values(seed)):
+        seed = (seed[0] + 1, seed[1], seed[2])
+
+    # Flood-fill the shell, expanding only from cells the surface passes through.
+    found, visited, queue = {}, {seed}, deque([seed])
+    while queue:
+        cell = queue.popleft()
+        values = corner_values(cell)
+        if not straddles(values):
+            continue
+        found[cell] = values
+        for dx, dy, dz in neighbors:
+            neighbor = (cell[0] + dx, cell[1] + dy, cell[2] + dz)
+            if neighbor not in visited:
+                visited.add(neighbor)
+                queue.append(neighbor)
+
+    cells = np.array(list(found), dtype=np.int32)
+    values = np.array(list(found.values()), dtype=np.float32)
+
+    verts, indices = wp.geometry.sparse_marching_cubes_from_cells(
+        cells, values, origin=origin, cell_width=cell_width, threshold=0.0
+    )
+
+    radial_error = np.abs(np.linalg.norm(verts.numpy(), axis=1) - 0.5).max()
+    print(f"evaluated {len(visited)} cells to find the {len(cells)} the surface crosses")
+    print(f"extracted {indices.shape[0] // 3} triangles")
+    print(f"vertices lie on the sphere: {radial_error < 0.01}")
+
+.. testoutput::
+
+    evaluated 2504 cells to find the 1160 the surface crosses
+    extracted 2312 triangles
+    vertices lie on the sphere: True
+
+A dense grid covering the same sphere (32 cells per axis) would hold 32,768
+cells -- more than ten times what the search evaluated -- and the gap grows
+with resolution. The subscripts here are also centered on the origin and
+therefore negative on one side, which the extractor handles directly.
+
+See :github:`warp/examples/geometry/example_sparse_marching_cubes.py` for a
+complete usage example, with an interactive rendering mode and a
+``--show-cells`` option that draws the octree leaf cells as a voxel cage
+around the surface, and
+:github:`warp/examples/benchmarks/benchmark_sparse_marching_cubes.py` for a
+sparse-versus-dense performance comparison.
 
 Custom Marching Cubes Implementations
 #####################################
 
 For advanced use cases requiring custom extraction logic (e.g., working with
 sparse volumes, computing additional per-triangle data), the
-:class:`warp.MarchingCubes` class exposes the fundamental lookup tables
-that define the marching cubes algorithm as class attributes:
-:attr:`~warp.MarchingCubes.CUBE_CORNER_OFFSETS`,
-:attr:`~warp.MarchingCubes.EDGE_TO_CORNERS`,
-:attr:`~warp.MarchingCubes.CASE_TO_TRI_RANGE`, and
-:attr:`~warp.MarchingCubes.TRI_LOCAL_INDICES`.
+:class:`warp.geometry.IsoSurfaceMarchingCubes` class exposes the fundamental
+lookup tables that define the marching cubes algorithm as class attributes:
+:attr:`~warp.geometry.IsoSurfaceMarchingCubes.CUBE_CORNER_OFFSETS`,
+:attr:`~warp.geometry.IsoSurfaceMarchingCubes.EDGE_TO_CORNERS`,
+:attr:`~warp.geometry.IsoSurfaceMarchingCubes.CASE_TO_TRI_RANGE`, and
+:attr:`~warp.geometry.IsoSurfaceMarchingCubes.TRI_LOCAL_INDICES`.
 
 The marching cubes algorithm partitions space into cubic cells and classifies
 each cell based on which of its 8 corners are inside/outside the isosurface.

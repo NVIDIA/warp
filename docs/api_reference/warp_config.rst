@@ -24,6 +24,7 @@ API
    deterministic_debug
    deterministic_max_records
    enable_backward
+   enable_cpu_blocks
    enable_graph_capture_module_load_by_default
    enable_mathdx_fft
    enable_mathdx_gemm
@@ -45,10 +46,8 @@ API
    optimization_level
    print_launches
    ptx_target_arch
-   quiet
    track_memory
    use_precompiled_headers
-   verbose
    verbose_warnings
    verify_autograd_array_access
    verify_cuda

@@ -16,6 +16,8 @@ like :func:`wp.tile_cholesky <warp._src.lang.tile_cholesky>`,
 :func:`wp.tile_fft <warp._src.lang.tile_fft>`, and :func:`wp.tile_matmul <warp._src.lang.tile_matmul>`.
 See `Building with MathDx`_ for more details when building the Warp locally with support for
 these linear-algebra tile operations.
+For guidance on MathDx LTO compile costs and development-time fallback flags,
+see :doc:`../execution_and_performance/reducing_compilation_and_startup_time`.
 
 Execution Model
 ---------------
@@ -1008,7 +1010,7 @@ Example: Using tiles to accelerate array-wide reductions
 Prior to the addition of tile support in Warp, array-wide reductions were commonly performed in a single kernel
 using a built-in atomic function like :func:`wp.atomic_add() <warp._src.lang.atomic_add>`.
 This could be very inefficient when compared to optimized mechanisms like
-`cub::BlockReduce <https://nvidia.github.io/cccl/cub/api/classcub_1_1BlockReduce.html>`__.
+`cub::BlockReduce <https://nvidia.github.io/cccl/unstable/cub/api/classcub_1_1BlockReduce.html>`__.
 Consider the following sum-of-squares reduction on an array:
 
 .. code-block:: python
@@ -1082,10 +1084,10 @@ CPU Tile Semantics
 ------------------
 
 Tile operations are block-cooperative on the GPU: the ``block_dim`` threads of a block
-share tile storage and cooperate on reductions, scans, scatters, and stores. The CPU
-backend is currently single-threaded, so it executes tiled kernels with an effective ``block_dim``
-of ``1``, regardless of the value you pass to :func:`wp.launch() <warp.launch>` or
-:func:`wp.launch_tiled() <warp.launch_tiled>`. The consequences are:
+share tile storage and cooperate on reductions, scans, scatters, and stores. By default,
+the CPU backend preserves its historical effective ``block_dim`` of ``1``, regardless of
+the value passed to :func:`wp.launch() <warp.launch>` or
+:func:`wp.launch_tiled() <warp.launch_tiled>`. In that default mode:
 
 - :func:`wp.block_dim() <warp._src.lang.block_dim>` returns ``1``.
 - For :func:`wp.launch_tiled() <warp.launch_tiled>`, the trailing lane index added to
@@ -1095,6 +1097,21 @@ of ``1``, regardless of the value you pass to :func:`wp.launch() <warp.launch>` 
 - Tile state is not cooperatively populated by ``block_dim`` lanes on CPU. On the GPU,
   lanes ``0`` through ``block_dim - 1`` can each contribute values to the same block tile.
   On CPU the effective lane count is ``1``, so only lane ``0`` participates.
+
+Set :attr:`warp.config.enable_cpu_blocks` to ``True`` to opt into explicit CPU
+block dimensions from 2 through 1024. Warp then executes the logical lanes as
+cooperative stackful fibers on one host thread, so ``wp.block_dim()``, the trailing
+lane index, barriers, and shared tile state follow the requested block shape. This
+path is initially intended for correctness testing and CPU/CUDA equivalence; it is
+not SIMD or multi-core acceleration. See :ref:`Configuration <Configuration>` for
+its resource limits and AddressSanitizer restriction.
+
+A **partial CPU block** has fewer currently participating lanes than its requested
+``block_dim``. This occurs initially when the final logical block contains only an
+in-bounds prefix and can also occur later when lanes return from the kernel. An
+**active lane** entered the block and has not returned before the cooperative
+operation in question. Finished and out-of-bounds lanes do not participate in later
+CPU barriers or tile operations.
 
 This does not make all tile code non-portable. Whole-tile cooperative
 operations on explicitly shaped tiles still produce the same result on CPU and GPU. A
@@ -1109,9 +1126,12 @@ cases detailed below.
 Patterns that do not produce identical CPU/GPU results
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Every divergence below traces to one fact: a CPU block has a single lane. A kernel's
-result differs across devices only when it depends on a block having *more than one* lane.
-That dependence enters in three ways. The CPU and GPU outputs are shown as comments.
+With the default CPU setting, every divergence below traces to one fact: the
+effective CPU block has a single lane. A kernel's result differs across devices
+only when it depends on a block having *more than one* lane. That dependence
+enters in three ways. The CPU and GPU outputs are shown as comments. Enabling CPU
+blocks with the same explicit dimension exercises the cooperative behavior, but
+portable applications should not assume that the experimental option is enabled.
 
 **Problem 1: arithmetic that uses** ``block_dim`` **or the lane index.** On CPU,
 :func:`wp.block_dim() <warp._src.lang.block_dim>` returns ``1`` and the lane index (the
@@ -1683,8 +1703,8 @@ the two programming models.
 Tile operations (:func:`wp.tile_load() <warp._src.lang.tile_load>`,
 :func:`wp.tile_store() <warp._src.lang.tile_store>`,
 :func:`wp.tile_matmul() <warp._src.lang.tile_matmul>`, etc.) work with either launch
-function. On CPU, Warp always forces ``block_dim=1``; see the next question for
-CPU-specific caveats.
+function. By default, Warp resolves CPU launches to ``block_dim=1``; see the
+next question for CPU-specific behavior and the experimental opt-in.
 
 .. _tiles-cpu-gpu-behavior-differences:
 
@@ -1693,9 +1713,11 @@ CPU vs. GPU behavior differences
 
 *Why does my kernel using tiles behave differently depending on whether I run it on a CPU or GPU?*
 
-On CPU, Warp forces ``block_dim=1``, which collapses the logical block to a single lane.
-See :ref:`CPU Tile Semantics <cpu_tile_semantics>` for the affected patterns
-and the workarounds that produce identical results on both devices.
+By default, Warp resolves CPU launches to ``block_dim=1``, which collapses the
+logical block to a single lane. The experimental
+:attr:`warp.config.enable_cpu_blocks` option instead honors explicit CPU block
+dimensions through 1024. See :ref:`CPU Tile Semantics <cpu_tile_semantics>` for
+the affected patterns, resource limits, and portable workarounds.
 
 Tile operations in divergent branches
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

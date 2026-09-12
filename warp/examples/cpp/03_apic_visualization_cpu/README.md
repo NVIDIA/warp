@@ -26,7 +26,8 @@ the CPU, but it still needs the `warp-clang` library and the companion
 
 - `capture_wave.py` — Python script that captures the wave simulation graph on CPU
 - `main.cpp` — C++ program (pure C++, no CUDA) with OpenGL visualization
-- `Makefile` / `CMakeLists.txt` — Build systems (Make for Unix, CMake for cross-platform; both fetch glad v2 and link `warp.so` directly)
+- `Makefile` / `CMakeLists.txt` — Build systems (Make for Unix, CMake for
+  cross-platform; both link the Warp and `warp-clang` shared libraries)
 - `generated/` — Directory containing generated files:
   - `wave_sim.wrp` — Serialized APIC graph representation
   - `wave_sim_modules/` — Compiled CPU modules (.o files)
@@ -38,10 +39,10 @@ the CPU, but it still needs the `warp-clang` library and the companion
 - **Python 3.10+** with Warp installed
 - **CMake 3.20+**
 - **OpenGL 3.3** support
-- **Warp native library** (`warp.dll` on Windows, `warp.so` on Linux,
-  `libwarp.dylib` on macOS)
-- **Warp LLVM library** (`warp-clang.dll` on Windows, `warp-clang.so` on
-  Linux, `libwarp-clang.dylib` on macOS) for CPU JIT
+- **Warp native library** (`warp.dll` and `warp.lib` on Windows, `warp.so` on
+  Linux, or `libwarp.dylib` on macOS)
+- **Warp LLVM library** (`warp-clang.dll` and `warp-clang.lib` on Windows,
+  `warp-clang.so` on Linux, or `libwarp-clang.dylib` on macOS) for CPU JIT
 
 The generated `wave_sim_modules/` directory must be available next to the
 `.wrp` graph for replay.
@@ -72,6 +73,12 @@ cmake --build build --config Release
 ./build/03_apic_visualization_cpu
 ```
 
+If using the Visual Studio generator on Windows instead of Ninja, run:
+
+```powershell
+.\build\Release\03_apic_visualization_cpu.exe
+```
+
 **Headless smoke mode**:
 
 The example also accepts `--smoke` as a single argv to run a headless
@@ -80,8 +87,22 @@ on the CPU 10 times without opening a GLFW window. CTest registers this
 mode as `apic_visualization_cpu_smoke` so the example runs in CI on
 hosts without a display server.
 
+**Using Make (Unix/Linux)**:
+
 ```bash
 ./03_apic_visualization_cpu --smoke    # exits 0 with "smoke OK (10 replay iterations)"
+```
+
+**Using CMake (Ninja / Unix Makefiles)**:
+
+```bash
+./build/03_apic_visualization_cpu --smoke
+```
+
+**Using CMake (Visual Studio on Windows)**:
+
+```powershell
+.\build\Release\03_apic_visualization_cpu.exe --smoke
 ```
 
 ## Controls
@@ -109,9 +130,14 @@ wp_apic_destroy_graph(graph);
 ```
 
 CPU replay also needs kernel function pointers from the companion `.o` files.
-The example loads each object with `warp-clang`, resolves the recorded forward
-and backward symbols, and registers them with `wp_apic_register_loaded_cpu_kernel()`
-using the recorded kernel key and module hash.
+The example includes `warp_clang.h` and links against `warp-clang` at build
+time. After verifying that both native libraries match the version declared by
+the installed headers, it binds the core CPU block runtime with
+`wp_llvm_set_cpu_block_runtime(wp_cpu_block_runtime_get_api())`. It then loads
+each object with `wp_load_obj()`, resolves the recorded forward and backward
+symbols with `wp_lookup()`, and registers them with
+`wp_apic_register_loaded_cpu_kernel()` using the recorded kernel key and module
+hash.
 
 ## Current Limitations
 

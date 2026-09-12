@@ -266,8 +266,10 @@ def tile_view_non_dense_store_kernel(src: wp.array2d[float], dst: wp.array2d[flo
 
 
 def test_tile_view_non_dense_store(test, device):
-    """Regression test: tile_store of a non-dense shared view must use
-    the scalar path and produce correct results."""
+    """Use scalar stores for non-dense shared tile views.
+
+    Verify that ``tile_store`` produces the expected results.
+    """
     rng = np.random.default_rng(42)
     src_np = rng.random((TILE_M, TILE_N), dtype=np.float32)
     src = wp.array(src_np, dtype=float, device=device)
@@ -454,9 +456,11 @@ def test_tile_advanced_inline_index_chain(test, device):
 
 
 def test_tile_advanced_index_duplicate_grad(test, device):
-    # Duplicate indices must accumulate their gradients (atomic scatter). The
-    # generic _check_slice reference assigns rather than accumulates, so this
-    # case needs an np.add.at reference of its own.
+    """Accumulate gradients for duplicate advanced indices.
+
+    The generic ``_check_slice`` reference assigns rather than accumulates, so use
+    a dedicated ``np.add.at`` reference for the atomic scatter.
+    """
     rng = np.random.default_rng(42)
     src_np = rng.random((TILE_M, TILE_N), dtype=np.float32)
     idx_np = np.array([0, 0, 3, 3, 5, 5, 7, 7], dtype=np.int32)
@@ -480,8 +484,7 @@ def test_tile_advanced_index_duplicate_grad(test, device):
 
 
 def test_tile_slice_assign_grad(test, device):
-    # Slice assignment must route gradients correctly: the overwritten region flows
-    # to the assigned source, and the untouched region passes through to the base.
+    """Route gradients through assigned and untouched tile-slice regions."""
     rng = np.random.default_rng(42)
     src_np = rng.random((TILE_M, TILE_N), dtype=np.float32)
     val_np = rng.random((4, TILE_N), dtype=np.float32)
@@ -509,17 +512,17 @@ def test_tile_slice_assign_grad(test, device):
 
 
 def test_tile_slice_neg_index(test, device):
-    # A negative integer index must wrap like NumPy (last row), not read out of bounds.
+    """Wrap negative tile indices like NumPy."""
     _check_slice(test, device, tile_slice_neg_index_kernel, np.s_[-1, :], (TILE_N,))
 
 
 def test_tile_slice_neg_step_oob_start(test, device):
-    # An out-of-range start with a negative step clamps to length-1 (full reverse).
+    """Clamp an out-of-range negative-step start to the last tile element."""
     _check_slice(test, device, tile_slice_neg_step_oob_kernel, np.s_[100::-1, :], (TILE_M, TILE_N))
 
 
 def test_tile_slice_neg_stop(test, device):
-    # An out-of-range negative stop with a negative step must still reach row 0.
+    """Reach row zero with an out-of-range negative stop and step."""
     _check_slice(test, device, tile_slice_neg_stop_kernel, np.s_[7:-100:-1, :], (8, TILE_N))
 
 
@@ -567,7 +570,8 @@ def test_tile_slice_augassign_rejected(test, device):
 
 
 def test_tile_row_augassign_rejected(test, device):
-    # A partial integer index (a row view) has no in-place path either.
+    """Reject augmented assignment through partial integer tile indices."""
+
     @wp.kernel(module="unique", enable_backward=False)
     def kernel_fn():
         t = wp.tile_ones(shape=(TILE_M, TILE_N), dtype=float)
@@ -617,8 +621,10 @@ def tile_slice_assign_overlap_kernel(src: wp.array1d[wp.int32], dst: wp.array1d[
 
 
 def test_tile_slice_assign_overlap(test, device):
-    # Overlapping slice assignment must read the pre-assignment source values
-    # (NumPy semantics): the copy is staged through registers, not interleaved.
+    """Preserve source values during overlapping tile-slice assignment.
+
+    Match NumPy semantics by staging the copy through registers.
+    """
     src_np = np.arange(TILE_DIM, dtype=np.int32)
     src = wp.array(src_np, device=device)
     dst = wp.zeros(TILE_DIM, dtype=wp.int32, device=device)
@@ -641,7 +647,8 @@ def test_tile_slice_float_index_rejected(test, device):
 
 
 def test_tile_view_float_offset_rejected(test, device):
-    # The explicit tile_view() API must reject non-integer offsets as well.
+    """Reject noninteger offsets in explicit tile views."""
+
     @wp.kernel(module="unique", enable_backward=False)
     def kernel_fn():
         t = wp.tile_ones(shape=(TILE_M, TILE_N), dtype=float)
@@ -652,8 +659,8 @@ def test_tile_view_float_offset_rejected(test, device):
 
 
 def test_tile_reshape_strided_view_rejected(test, device):
-    # Reshape aliases the source pointer with dense strides, so a strided or
-    # reversed view would silently read the wrong elements (or out of bounds).
+    """Reject reshaping strided or reversed tile views."""
+
     @wp.kernel(module="unique", enable_backward=False)
     def kernel_fn():
         t = wp.tile_ones(shape=(TILE_M, TILE_N), dtype=float)
@@ -664,8 +671,8 @@ def test_tile_reshape_strided_view_rejected(test, device):
 
 
 def test_tile_view_shape_with_slice_rejected(test, device):
-    # Passing an explicit shape alongside a slice-containing offset would
-    # silently drop the shape, so it must be rejected.
+    """Reject explicit tile-view shapes paired with slice offsets."""
+
     @wp.kernel(module="unique", enable_backward=False)
     def kernel_fn():
         t = wp.tile_ones(shape=(TILE_M, TILE_N), dtype=float)
@@ -676,8 +683,7 @@ def test_tile_view_shape_with_slice_rejected(test, device):
 
 
 def test_tile_slice_sentinel_bounds_empty_rejected(test, device):
-    # Explicit bounds equal to the old omitted-bound sentinels must remain
-    # ordinary integer bounds and produce an empty tile, matching Python slices.
+    """Treat former slice sentinels as ordinary explicit bounds."""
     src = wp.array(np.arange(8, dtype=np.float32), dtype=float, device=device)
     dst = wp.zeros(8, dtype=float, device=device)
 
@@ -722,9 +728,11 @@ def tile_runtime_ref_explicit_kernel(src: wp.array2d[float], indices: wp.array1d
 
 
 def test_tile_runtime_ref_index(test, device):
-    # A runtime integer index loaded from an array (a wp.ref[int32] during code
-    # generation) must be accepted by the subscript, bare-index, and explicit
-    # tile_view() routes; the referenced value is loaded at the call site.
+    """Accept runtime reference indices through every tile-view route.
+
+    Load the referenced integer at the call site for subscript, bare-index, and
+    explicit ``tile_view()`` operations.
+    """
     rng = np.random.default_rng(42)
     src_np = rng.random((TILE_M, TILE_N), dtype=np.float32)
     src = wp.array(src_np, dtype=float, device=device)
@@ -748,8 +756,7 @@ def tile_runtime_neg_index_kernel(src: wp.array2d[float], offset: int, dst: wp.a
 
 
 def test_tile_runtime_neg_index(test, device):
-    # A runtime (non-constant) negative index must wrap like NumPy, matching the
-    # compile-time-constant t[-1]. -TILE_M wraps to row 0.
+    """Wrap runtime negative tile indices like NumPy."""
     rng = np.random.default_rng(42)
     src_np = rng.random((TILE_M, TILE_N), dtype=np.float32)
     src = wp.array(src_np, dtype=float, device=device)
@@ -767,8 +774,7 @@ def tile_gather_neg_index_kernel(src: wp.array2d[float], idx: wp.array1d[int], d
 
 
 def test_tile_gather_neg_index(test, device):
-    # Negative values in an integer index tile must wrap against the gathered axis
-    # (NumPy semantics) on both the forward gather and the backward scatter.
+    """Wrap negative tile-gather indices in forward and backward passes."""
     rng = np.random.default_rng(42)
     src_np = rng.random((TILE_M, TILE_N), dtype=np.float32)
     idx_np = np.array([-1, 0, -TILE_M, 3], dtype=np.int32)  # wraps to [TILE_M-1, 0, 0, 3]
@@ -831,8 +837,7 @@ def tile_chain_row_slice_kernel(src: wp.array2d[float], dst: wp.array1d[float]):
 
 
 def test_tile_chained_subscript(test, device):
-    # Chained tile subscripts (a[X][Y]...) apply each bracket to the previous
-    # result: slice/slice, three-deep, slice/gather, and gather/slice.
+    """Apply each chained tile subscript to the preceding result."""
     a = np.arange(TILE_DIM, dtype=np.float32)
     src = wp.array(a, dtype=float, requires_grad=True, device=device)
 
@@ -862,8 +867,7 @@ def test_tile_chained_subscript(test, device):
 
 
 def test_tile_chained_partial_int_subscript(test, device):
-    # A partial integer prefix followed by a slice/gather must apply the later
-    # bracket to the row view, while pure integer chains still use tile_extract.
+    """Apply chained partial subscripts to the intermediate tile view."""
     rng = np.random.default_rng(42)
     src_np = rng.random((TILE_M, TILE_N), dtype=np.float32)
     idx_np = np.array([1, 3, 3, -1], dtype=np.int32)
@@ -957,8 +961,7 @@ def tile_view_explicit_slice_neg_start_kernel(src: wp.array1d[float], dst: wp.ar
 
 
 def test_tile_view_explicit_slice(test, device):
-    # An explicit slice offset must normalize its bounds against the parent shape,
-    # matching the equivalent subscript syntax (t[0:-1], t[-3:]).
+    """Normalize explicit slice offsets against the parent tile shape."""
     a = np.arange(TILE_DIM, dtype=np.float32)
     src = wp.array(a, dtype=float, device=device)
 
@@ -980,8 +983,7 @@ def tile_row_assign_kernel(src: wp.array2d[float], row_src: wp.array1d[float], d
 
 
 def test_tile_row_assign(test, device):
-    # Partial integer index assignment (t[0] = row) must build a row view and assign
-    # in place, matching t[0, :] = row, including gradient routing.
+    """Assign tile rows in place through partial integer indices."""
     rng = np.random.default_rng(42)
     src_np = rng.random((TILE_M, TILE_N), dtype=np.float32)
     row_np = rng.random(TILE_N, dtype=np.float32)
@@ -1014,8 +1016,7 @@ def tile_chain_int_element_kernel(src: wp.array2d[float], dst: wp.array1d[float]
 
 
 def test_tile_chain_int_element(test, device):
-    # t[i][j] with all-integer brackets must resolve to the same element as t[i, j]
-    # without going through the slice/view path (which would force shared storage).
+    """Resolve chained integer tile indices without creating a view."""
     rng = np.random.default_rng(42)
     src_np = rng.random((5, 7), dtype=np.float32)
     src = wp.array(src_np, dtype=float, device=device)
@@ -1025,9 +1026,8 @@ def test_tile_chain_int_element(test, device):
 
 
 def test_tile_view_offset_oob_rejected(test, device):
-    # An explicit tile_view() offset is a raw coordinate, so an out-of-range constant
-    # (negative or too large) must be rejected rather than silently read out of
-    # bounds, matching the subscript path.
+    """Reject out-of-bounds constant offsets in explicit tile views."""
+
     @wp.kernel(module="unique", enable_backward=False)
     def neg_kernel():
         t = wp.tile_ones(shape=(TILE_M, TILE_N), dtype=float)
@@ -1046,8 +1046,8 @@ def test_tile_view_offset_oob_rejected(test, device):
 
 
 def test_tile_view_runtime_slice_bound_rejected(test, device):
-    # An explicit slice offset with a runtime bound cannot infer the view shape at
-    # code-gen time, so it must be rejected with a clear message (not crash).
+    """Reject runtime slice bounds whose tile-view shape cannot be inferred."""
+
     @wp.kernel(module="unique", enable_backward=False)
     def kernel_fn(n: int):
         t = wp.tile_ones(shape=(TILE_N,), dtype=float)
@@ -1064,6 +1064,20 @@ class TestTileView(unittest.TestCase):
     pass
 
 
+add_function_test(
+    TestTileView,
+    "test_tile_view_cpu_blocks",
+    test_tile_view,
+    devices=["cpu"],
+    enable_cpu_blocks=True,
+)
+add_function_test(
+    TestTileView,
+    "test_tile_assign_2d_cpu_blocks",
+    test_tile_assign_2d,
+    devices=["cpu"],
+    enable_cpu_blocks=True,
+)
 add_function_test(TestTileView, "test_tile_view", test_tile_view, devices=devices)
 add_function_test(TestTileView, "test_tile_view_offset", test_tile_view_offset, devices=devices)
 add_function_test(TestTileView, "test_tile_assign_1d", test_tile_assign_1d, devices=devices)

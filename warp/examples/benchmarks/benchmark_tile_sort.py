@@ -96,16 +96,19 @@ if __name__ == "__main__":
                         cmd.launch()
                     wp.synchronize()
 
+                output_keys_np = output_keys.numpy()
+                output_values_np = output_values.numpy()
                 if dtype == int:
-                    keys_match = np.array_equal(output_keys.numpy(), np_sorted_keys)
+                    np.testing.assert_array_equal(output_keys_np, np_sorted_keys)
                 else:  # dtype == float
-                    keys_match = np.allclose(output_keys.numpy(), np_sorted_keys, atol=1e-6)  # Use tolerance for floats
-
-                values_match = np.array_equal(output_values.numpy(), np_sorted_values)
-
-                # Validate results
-                assert keys_match, f"Key sorting mismatch for dtype={dtype}!"
-                assert values_match, f"Value sorting mismatch for dtype={dtype}!"
+                    np.testing.assert_allclose(
+                        output_keys_np,
+                        np_sorted_keys,
+                        rtol=1e-5,
+                        atol=1e-6,
+                        equal_nan=False,
+                    )
+                np.testing.assert_array_equal(output_values_np, np_sorted_values)
 
                 timing_results = [result.elapsed for result in timer.timing_results]
                 mean_timing = np.mean(timing_results)

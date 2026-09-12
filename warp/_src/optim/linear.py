@@ -152,7 +152,7 @@ def aslinearoperator(
         batch_offsets: Optional array of shape ``(B+1,)`` partitioning scalar degrees of freedom into
             ``B`` independent subproblems (see :class:`LinearOperator`).
         max_batch_length: Optional upper bound on the number of scalar degrees of freedom in any subproblem.
-            Requires ``batch_offsets`` (see :class:`LinearOperator`).
+            Specifying ``max_batch_length`` requires ``batch_offsets`` (see :class:`LinearOperator`).
     """
 
     if A is None or isinstance(A, LinearOperator):
@@ -1754,7 +1754,7 @@ class GMRES(LinearSolverState):
         self._least_squares_solve = wp.launch(
             least_squares_kernel,
             dim=(batch_count, tile_size),
-            block_dim=tile_size if tile_size > 1 else 256,
+            block_dim=tile_size if tile_size > 1 else None,
             device=device,
             inputs=[restart, self._pivot_tolerance, self._beta, self._H, self._y],
             record_cmd=True,

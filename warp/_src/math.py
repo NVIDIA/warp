@@ -77,7 +77,7 @@ def norm_huber(v: Any, delta: float = 1.0) -> float:
 
     Args:
         v (Vector[Float, Any]): The vector to compute the Huber norm of.
-        delta (float): The threshold value, defaults to 1.0.
+        delta (float): The threshold value.
 
     Returns:
         float: The Huber norm of the vector.
@@ -100,7 +100,7 @@ def norm_pseudo_huber(v: Any, delta: float = 1.0) -> float:
 
     Args:
         v (Vector[Float, Any]): The vector to compute the Huber norm of.
-        delta (float): The threshold value, defaults to 1.0.
+        delta (float): The threshold value.
 
     Returns:
         float: The Huber norm of the vector.
@@ -120,7 +120,7 @@ def smooth_normalize(v: Any, delta: float = 1.0) -> Any:
 
     Args:
         v (Vector[Float, Any]): The vector to normalize.
-        delta (float): The threshold value, defaults to 1.0.
+        delta (float): The threshold value.
 
     Returns:
         Vector[Float, Any]: The normalized vector.

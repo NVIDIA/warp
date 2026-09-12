@@ -195,7 +195,7 @@ def _boundary_cells_field_lookup_integral(
 
 @fem.integrand
 def _y_only_init(s: fem.Sample, domain: fem.Domain):
-    """rho = 1 + y, all other components zero."""
+    """Initialize ``rho = 1 + y`` with all other components set to zero."""
     x = domain(s)
     return wp.vec4(1.0 + x[1], 0.0, 0.0, 0.0)
 
@@ -533,7 +533,7 @@ def test_implicit_fields(test, device):
 
 
 def test_vector_spaces(test, device):
-    # Test covariant / contravariant mappings
+    """Test covariant and contravariant vector-space mappings."""
 
     with wp.ScopedDevice(device):
         positions, hex_vidx = _gen_quadmesh(3)
@@ -677,7 +677,7 @@ def test_vector_spaces(test, device):
 
 
 def test_traced_cells_field_lookup_is_correct(test, device):
-    """U(s) on boundary sides with traced field gives correct results."""
+    """Verify that U(s) on boundary sides with traced field gives correct results."""
 
     def _setup_grid(device, res=10):
         aspect = 2.0
@@ -725,7 +725,12 @@ devices = get_test_devices()
 
 
 class TestFemField(unittest.TestCase):
-    pass
+    def test_uniform_field_rejects_value_type_change(self):
+        domain = fem.Cells(fem.Grid2D(res=wp.vec2i(1, 1)))
+        field = fem.UniformField(domain, 1.0)
+
+        with self.assertRaisesRegex(TypeError, "UniformField value type must remain float32, got vec2f"):
+            field.value = wp.vec2(1.0)
 
 
 add_function_test(TestFemField, "test_vector_spaces", test_vector_spaces, devices=devices)

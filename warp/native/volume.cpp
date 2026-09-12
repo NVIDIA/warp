@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cstring>
 #include <map>
+#include <vector>
 
 using namespace wp;
 
@@ -24,8 +25,9 @@ struct VolumeDesc {
     pnanovdb_grid_t grid_data {};
     pnanovdb_tree_t tree_data {};
 
-    // Host-accessible version of the blind metadata (copy if GPU, alias if CPU)
-    pnanovdb_gridblindmetadata_t* blind_metadata = nullptr;
+    // Keep a host-side snapshot so accessors use the same validated, stable
+    // metadata for host and device volumes.
+    std::vector<pnanovdb_gridblindmetadata_t> blind_metadata;
 
     // CUDA context for this volume (NULL if CPU)
     void* context = nullptr;
@@ -61,6 +63,358 @@ bool volume_exists(const void* id)
     return volume_get_descriptor((uint64_t)id, volume);
 }
 
+// Resolves a relative offset within the grid. On success, data_offset is no greater than grid_size.
+bool volume_resolve_relative_offset(
+    uint64_t base_offset, int64_t relative_offset, uint64_t grid_size, uint64_t& data_offset
+)
+{
+    if (base_offset > grid_size)
+        return false;
+
+    if (relative_offset < 0) {
+        // Avoid negating INT64_MIN directly; -(x + 1) remains representable.
+        const uint64_t magnitude = uint64_t(-(relative_offset + 1)) + 1;
+        if (magnitude > base_offset)
+            return false;
+        data_offset = base_offset - magnitude;
+    } else {
+        const uint64_t offset = uint64_t(relative_offset);
+        if (offset > grid_size - base_offset)
+            return false;
+        data_offset = base_offset + offset;
+    }
+
+    return true;
+}
+
+// Returns whether the relative offset resolves within the grid and the requested element range fits.
+bool volume_resolve_relative_range(
+    uint64_t base_offset, int64_t relative_offset, uint64_t value_count, uint32_t value_size, uint64_t grid_size
+)
+{
+    uint64_t data_offset;
+    if (!volume_resolve_relative_offset(base_offset, relative_offset, grid_size, data_offset))
+        return false;
+
+    // A zero-sized value occupies no bytes, so any value count fits once the offset resolves.
+    // Division avoids overflowing when converting the element count to bytes.
+    return value_size == 0 || value_count <= (grid_size - data_offset) / value_size;
+}
+
+bool volume_validate_grid_metadata(
+    const pnanovdb_grid_t& grid_data, uint64_t buffer_size, uint64_t& metadata_offset, uint64_t& metadata_size
+)
+{
+    // A NanoVDB grid starts with a grid header followed by a tree header.
+    const uint64_t minimum_grid_size = sizeof(pnanovdb_grid_t) + sizeof(pnanovdb_tree_t);
+    if (grid_data.grid_size < minimum_grid_size || grid_data.grid_size > buffer_size) {
+        return false;
+    }
+
+    // Names cross the C ABI and must terminate within their fixed-size fields.
+    if (std::memchr(grid_data.grid_name, '\0', sizeof(grid_data.grid_name)) == nullptr)
+        return false;
+
+    // The metadata table offset is relative to the grid and must resolve within it.
+    if (grid_data.blind_metadata_offset < 0)
+        return false;
+
+    metadata_offset = uint64_t(grid_data.blind_metadata_offset);
+    if (metadata_offset > grid_data.grid_size)
+        return false;
+
+    const uint64_t available = grid_data.grid_size - metadata_offset;
+    // Bound the count before computing the table size to avoid multiplication overflow.
+    if (grid_data.blind_metadata_count > available / sizeof(pnanovdb_gridblindmetadata_t))
+        return false;
+
+    metadata_size = uint64_t(grid_data.blind_metadata_count) * sizeof(pnanovdb_gridblindmetadata_t);
+    return true;
+}
+
+bool volume_validate_blind_metadata(
+    const pnanovdb_grid_t& grid_data,
+    const std::vector<pnanovdb_gridblindmetadata_t>& blind_metadata,
+    uint64_t metadata_offset
+)
+{
+    for (uint64_t i = 0; i < blind_metadata.size(); ++i) {
+        const pnanovdb_gridblindmetadata_t& metadata = blind_metadata[i];
+        if (std::memchr(metadata.name, '\0', sizeof(metadata.name)) == nullptr)
+            return false;
+
+        // NanoVDB data offsets are relative to the containing metadata entry.
+        const uint64_t entry_offset = metadata_offset + i * sizeof(pnanovdb_gridblindmetadata_t);
+        if (!volume_resolve_relative_range(
+                entry_offset, metadata.data_offset, metadata.value_count, metadata.value_size, grid_data.grid_size
+            )) {
+            return false;
+        }
+    }
+    return true;
+}
+
+// The validation helpers below treat all serialized tree fields as untrusted. They first prove that each node array
+// occupies a valid byte range, then verify that every child offset targets the start of a node in the next level.
+// This keeps later NanoVDB traversal from interpreting arbitrary payload bytes as nodes.
+
+// Describes the validated byte extent and legal node starts for one NanoVDB tree level. The validator resolves these
+// ranges before inspecting node contents, then uses them to ensure that every child offset lands exactly at the start
+// of a node in the next level. Fixed-size nodes use begin, end, and stride; variable-size FpN leaves record each legal
+// start in node_offsets instead.
+struct VolumeNodeRange {
+    uint64_t begin = 0;
+    uint64_t end = 0;
+    uint32_t stride = 0;
+    uint32_t count = 0;
+    std::vector<uint64_t> node_offsets;
+};
+
+bool volume_resolve_node_begin(uint64_t relative_offset, uint64_t grid_size, uint64_t& node_offset)
+{
+    // Tree node offsets are relative to the tree header, which immediately follows the grid header. Nodes must begin
+    // after that header and retain NanoVDB's data alignment. volume_validate_grid_metadata() has already established
+    // that grid_size includes both headers, so subtracting tree_offset below cannot underflow.
+    const uint64_t tree_offset = sizeof(pnanovdb_grid_t);
+    if (relative_offset < sizeof(pnanovdb_tree_t) || relative_offset > grid_size - tree_offset
+        || relative_offset % NANOVDB_DATA_ALIGNMENT != 0) {
+        return false;
+    }
+
+    node_offset = tree_offset + relative_offset;
+    return true;
+}
+
+bool volume_resolve_node_range(
+    uint64_t relative_offset, uint32_t count, uint32_t stride, uint64_t grid_size, VolumeNodeRange& range
+)
+{
+    if (stride == 0)
+        return false;
+
+    range.stride = stride;
+    range.count = count;
+    if (count == 0)
+        return true;
+
+    if (!volume_resolve_node_begin(relative_offset, grid_size, range.begin))
+        return false;
+
+    // Bound the count before multiplication so the half-open range [begin, end) cannot overflow the grid.
+    if (count > (grid_size - range.begin) / stride)
+        return false;
+
+    range.end = range.begin + uint64_t(count) * stride;
+    return true;
+}
+
+bool volume_resolve_fpn_leaf_range(
+    const uint8_t* grid_buffer, uint64_t relative_offset, uint32_t count, uint64_t grid_size, VolumeNodeRange& range
+)
+{
+    range.count = count;
+    if (count == 0)
+        return true;
+
+    if (!volume_resolve_node_begin(relative_offset, grid_size, range.begin))
+        return false;
+
+    // FpN leaves have a 96-byte header followed by 512 values packed at a per-leaf width of 1, 2, 4, 8, or 16 bits.
+    // Consequently, the encoded value array occupies bit_width * 64 bytes.
+    constexpr uint32_t leaf_header_size = 96;
+    constexpr uint32_t minimum_leaf_size = leaf_header_size + 64;
+    if (count > (grid_size - range.begin) / minimum_leaf_size)
+        return false;
+
+    range.node_offsets.reserve(count);
+    uint64_t leaf_offset = range.begin;
+    for (uint32_t leaf_index = 0; leaf_index < count; ++leaf_index) {
+        if (leaf_header_size > grid_size - leaf_offset)
+            return false;
+
+        uint32_t bbox_dif_and_flags;
+        std::memcpy(
+            &bbox_dif_and_flags, grid_buffer + leaf_offset + PNANOVDB_LEAF_OFF_BBOX_DIF_AND_FLAGS,
+            sizeof(bbox_dif_and_flags)
+        );
+        // The top three flag bits store log2(bit_width). NanoVDB supports values from zero through four here.
+        const uint32_t value_log_bits = bbox_dif_and_flags >> 29;
+        if (value_log_bits > 4)
+            return false;
+
+        const uint32_t leaf_size = leaf_header_size + (uint32_t(1) << value_log_bits) * 64;
+        if (leaf_size > grid_size - leaf_offset)
+            return false;
+
+        range.node_offsets.push_back(leaf_offset);
+        leaf_offset += leaf_size;
+    }
+
+    range.end = leaf_offset;
+    return true;
+}
+
+bool volume_node_range_contains(const VolumeNodeRange& range, uint64_t node_offset)
+{
+    // A child reference must land exactly on a node boundary, not merely somewhere inside a node array. Variable-size
+    // FpN leaves use their recorded starts; all other node types can use modular arithmetic with a fixed stride.
+    if (range.stride == 0)
+        return std::binary_search(range.node_offsets.begin(), range.node_offsets.end(), node_offset);
+
+    return node_offset >= range.begin && node_offset < range.end && (node_offset - range.begin) % range.stride == 0;
+}
+
+bool volume_validate_child_reference(
+    uint64_t parent_offset, int64_t relative_offset, const VolumeNodeRange& child_range, uint64_t grid_size
+)
+{
+    // Internal-node and root-tile child offsets are signed byte offsets relative to their parent node.
+    uint64_t child_offset;
+    return volume_resolve_relative_offset(parent_offset, relative_offset, grid_size, child_offset)
+        && volume_node_range_contains(child_range, child_offset);
+}
+
+bool volume_validate_internal_children(
+    const uint8_t* grid_buffer,
+    const VolumeNodeRange& parent_range,
+    uint32_t child_mask_offset,
+    uint32_t table_offset,
+    uint32_t table_count,
+    uint32_t table_stride,
+    const VolumeNodeRange& child_range,
+    uint64_t grid_size
+)
+{
+    // A set child-mask bit means that the corresponding table slot begins with an int64_t child offset. Validate both
+    // structures against the fixed parent stride before reading any serialized mask or table entry.
+    const uint32_t mask_word_count = (table_count + 31) / 32;
+    if (table_stride < sizeof(int64_t) || child_mask_offset > parent_range.stride
+        || mask_word_count > (parent_range.stride - child_mask_offset) / sizeof(uint32_t)
+        || table_offset > parent_range.stride || table_count > (parent_range.stride - table_offset) / table_stride) {
+        return false;
+    }
+
+    for (uint32_t node_index = 0; node_index < parent_range.count; ++node_index) {
+        const uint64_t node_offset = parent_range.begin + uint64_t(node_index) * parent_range.stride;
+        for (uint32_t word_index = 0; word_index < mask_word_count; ++word_index) {
+            uint32_t child_mask;
+            std::memcpy(
+                &child_mask, grid_buffer + node_offset + child_mask_offset + word_index * sizeof(uint32_t),
+                sizeof(child_mask)
+            );
+            for (uint32_t bit_index = 0; child_mask != 0; ++bit_index, child_mask >>= 1) {
+                if ((child_mask & 1) == 0)
+                    continue;
+
+                const uint32_t table_index = word_index * 32 + bit_index;
+                int64_t relative_offset;
+                std::memcpy(
+                    &relative_offset, grid_buffer + node_offset + table_offset + uint64_t(table_index) * table_stride,
+                    sizeof(relative_offset)
+                );
+                if (!volume_validate_child_reference(node_offset, relative_offset, child_range, grid_size))
+                    return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+bool volume_validate_tree(
+    const uint8_t* grid_buffer, const pnanovdb_grid_t& grid_data, const pnanovdb_tree_t& tree_data
+)
+{
+    // The caller validates the grid type and breadth-first flag before this helper uses the type-layout table and
+    // assumes the serialized order root, root tiles, upper nodes, lower nodes, leaves, then optional blind metadata.
+    const uint32_t grid_type = grid_data.grid_type;
+    const uint32_t root_size = PNANOVDB_GRID_TYPE_GET(grid_type, root_size);
+    const uint32_t root_tile_size = PNANOVDB_GRID_TYPE_GET(grid_type, root_tile_size);
+    // Reject incomplete type layouts before reading the root's tile count or a tile's child field.
+    if (root_size < PNANOVDB_ROOT_BASE_SIZE || root_tile_size < PNANOVDB_ROOT_TILE_BASE_SIZE)
+        return false;
+
+    VolumeNodeRange root_range;
+    VolumeNodeRange upper_range;
+    VolumeNodeRange lower_range;
+    VolumeNodeRange leaf_range;
+    // Resolve every declared node array before dereferencing it. FpN leaves require a linear scan because their
+    // per-leaf bit widths make them variable-sized; all other node arrays have a type-defined fixed stride.
+    if (!volume_resolve_node_range(tree_data.node_offset_root, 1, root_size, grid_data.grid_size, root_range)
+        || !volume_resolve_node_range(
+            tree_data.node_offset_upper, tree_data.node_count_upper, PNANOVDB_GRID_TYPE_GET(grid_type, upper_size),
+            grid_data.grid_size, upper_range
+        )
+        || !volume_resolve_node_range(
+            tree_data.node_offset_lower, tree_data.node_count_lower, PNANOVDB_GRID_TYPE_GET(grid_type, lower_size),
+            grid_data.grid_size, lower_range
+        )
+        || (grid_type == PNANOVDB_GRID_TYPE_FPN
+                ? !volume_resolve_fpn_leaf_range(
+                      grid_buffer, tree_data.node_offset_leaf, tree_data.node_count_leaf, grid_data.grid_size,
+                      leaf_range
+                  )
+                : !volume_resolve_node_range(
+                      tree_data.node_offset_leaf, tree_data.node_count_leaf,
+                      PNANOVDB_GRID_TYPE_GET(grid_type, leaf_size), grid_data.grid_size, leaf_range
+                  ))) {
+        return false;
+    }
+
+    uint32_t root_tile_count;
+    std::memcpy(&root_tile_count, grid_buffer + root_range.begin + PNANOVDB_ROOT_OFF_TABLE_SIZE, sizeof(uint32_t));
+    // Root tiles immediately follow the fixed root data, and their serialized count is not covered by the tree header.
+    if (root_tile_count > (grid_data.grid_size - root_range.end) / root_tile_size)
+        return false;
+
+    const uint64_t root_tiles_begin = root_range.end;
+    uint64_t occupied_end = root_tiles_begin + uint64_t(root_tile_count) * root_tile_size;
+    // Each populated breadth-first level must begin at or after the previous level ends. Empty levels are skipped
+    // because NanoVDB permits their unused offsets to alias another level. Tree data must end before the declared
+    // blind-metadata boundary. Metadata-free legacy grids may use zero as an omitted offset, in which case the grid
+    // boundary applies instead.
+    const uint64_t tree_boundary = grid_data.blind_metadata_count == 0 && grid_data.blind_metadata_offset == 0
+        ? grid_data.grid_size
+        : uint64_t(grid_data.blind_metadata_offset);
+    const auto validate_range_order = [&occupied_end](const VolumeNodeRange& range) {
+        if (range.count == 0)
+            return true;
+        if (range.begin < occupied_end)
+            return false;
+        occupied_end = range.end;
+        return true;
+    };
+    if (!validate_range_order(upper_range) || !validate_range_order(lower_range) || !validate_range_order(leaf_range)
+        || occupied_end > tree_boundary) {
+        return false;
+    }
+
+    for (uint32_t tile_index = 0; tile_index < root_tile_count; ++tile_index) {
+        const uint64_t tile_offset = root_tiles_begin + uint64_t(tile_index) * root_tile_size;
+        int64_t relative_offset;
+        std::memcpy(
+            &relative_offset, grid_buffer + tile_offset + PNANOVDB_ROOT_TILE_OFF_CHILD, sizeof(relative_offset)
+        );
+        // A zero offset denotes a value tile; nonzero offsets must target an upper node and are relative to the root.
+        if (relative_offset != 0
+            && !volume_validate_child_reference(root_range.begin, relative_offset, upper_range, grid_data.grid_size)) {
+            return false;
+        }
+    }
+
+    const uint32_t table_stride = PNANOVDB_GRID_TYPE_GET(grid_type, table_stride);
+    return volume_validate_internal_children(
+               grid_buffer, upper_range, PNANOVDB_UPPER_OFF_CHILD_MASK,
+               PNANOVDB_GRID_TYPE_GET(grid_type, upper_off_table), PNANOVDB_UPPER_TABLE_COUNT, table_stride,
+               lower_range, grid_data.grid_size
+           )
+        && volume_validate_internal_children(
+               grid_buffer, lower_range, PNANOVDB_LOWER_OFF_CHILD_MASK,
+               PNANOVDB_GRID_TYPE_GET(grid_type, lower_off_table), PNANOVDB_LOWER_TABLE_COUNT, table_stride, leaf_range,
+               grid_data.grid_size
+        );
+}
+
 void volume_add_descriptor(uint64_t id, VolumeDesc&& volumeDesc) { g_volume_descriptors[id] = std::move(volumeDesc); }
 
 void volume_rem_descriptor(uint64_t id) { g_volume_descriptors.erase(id); }
@@ -69,10 +423,13 @@ void volume_copy_live_metadata(const VolumeDesc* volume, pnanovdb_grid_t& grid_d
 {
     if (volume->context) {
         ContextGuard guard(volume->context);
-        wp_memcpy_d2h(WP_CURRENT_CONTEXT, &grid_data, volume->buffer, sizeof(pnanovdb_grid_t));
+        void* stream = wp_cuda_stream_get_current();
+        wp_memcpy_d2h(WP_CURRENT_CONTEXT, &grid_data, volume->buffer, sizeof(pnanovdb_grid_t), stream);
         wp_memcpy_d2h(
-            WP_CURRENT_CONTEXT, &tree_data, static_cast<pnanovdb_grid_t*>(volume->buffer) + 1, sizeof(pnanovdb_tree_t)
+            WP_CURRENT_CONTEXT, &tree_data, static_cast<pnanovdb_grid_t*>(volume->buffer) + 1, sizeof(pnanovdb_tree_t),
+            stream
         );
+        wp_cuda_stream_synchronize(stream);
     } else {
         std::memcpy(&grid_data, volume->buffer, sizeof(pnanovdb_grid_t));
         std::memcpy(&tree_data, static_cast<pnanovdb_grid_t*>(volume->buffer) + 1, sizeof(pnanovdb_tree_t));
@@ -133,6 +490,71 @@ void volume_set_map(nanovdb::Map& map, const float transform[9], const float tra
 
 }  // anonymous namespace
 
+static int volume_validate_grid(const uint8_t* grid_buffer, uint64_t available_size, uint64_t& grid_size)
+{
+    // Validate one grid from a host buffer. grid_size is returned only after the header and metadata table are bounded,
+    // allowing wp_volume_validate_host() to advance safely through files containing concatenated grids.
+    if (available_size < sizeof(pnanovdb_grid_t) + sizeof(pnanovdb_tree_t))
+        return WP_VOLUME_VALIDATION_INVALID;
+
+    pnanovdb_grid_t grid_data;
+    pnanovdb_tree_t tree_data;
+    std::memcpy(&grid_data, grid_buffer, sizeof(grid_data));
+    std::memcpy(&tree_data, grid_buffer + sizeof(grid_data), sizeof(tree_data));
+
+    if (grid_data.magic != PNANOVDB_MAGIC_NUMBER && grid_data.magic != PNANOVDB_MAGIC_GRID)
+        return WP_VOLUME_VALIDATION_INVALID;
+    if (grid_data.grid_size % NANOVDB_DATA_ALIGNMENT != 0)
+        return WP_VOLUME_VALIDATION_INVALID;
+
+    uint64_t metadata_offset;
+    uint64_t metadata_size;
+    if (!volume_validate_grid_metadata(grid_data, available_size, metadata_offset, metadata_size))
+        return WP_VOLUME_VALIDATION_INVALID;
+
+    if (grid_data.grid_type == PNANOVDB_GRID_TYPE_UNKNOWN || grid_data.grid_type >= PNANOVDB_GRID_TYPE_END)
+        return WP_VOLUME_VALIDATION_INVALID;
+
+    std::vector<pnanovdb_gridblindmetadata_t> blind_metadata(grid_data.blind_metadata_count);
+    if (metadata_size > 0) {
+        std::memcpy(blind_metadata.data(), grid_buffer + metadata_offset, metadata_size);
+    }
+
+    grid_size = grid_data.grid_size;
+    if (!volume_validate_blind_metadata(grid_data, blind_metadata, metadata_offset))
+        return WP_VOLUME_VALIDATION_INVALID;
+    if ((grid_data.flags & PNANOVDB_GRID_FLAGS_IS_BREADTH_FIRST) == 0)
+        return WP_VOLUME_VALIDATION_UNSUPPORTED_LAYOUT;
+    return volume_validate_tree(grid_buffer, grid_data, tree_data) ? WP_VOLUME_VALIDATION_SUCCESS
+                                                                   : WP_VOLUME_VALIDATION_INVALID;
+}
+
+int wp_volume_validate_host(const void* buf, uint64_t size)
+{
+    if (buf == nullptr)
+        return WP_VOLUME_VALIDATION_INVALID;
+
+    const uint8_t* buffer = static_cast<const uint8_t*>(buf);
+    uint64_t grid_offset = 0;
+    int validation_result = WP_VOLUME_VALIDATION_SUCCESS;
+    // NanoVDB files may concatenate multiple grids. Require validated grid sizes to consume the buffer exactly, and
+    // reject an empty input even though the loop itself would otherwise succeed.
+    while (grid_offset < size) {
+        uint64_t grid_size;
+        const int result = volume_validate_grid(buffer + grid_offset, size - grid_offset, grid_size);
+        if (result == WP_VOLUME_VALIDATION_INVALID)
+            return WP_VOLUME_VALIDATION_INVALID;
+        if (result == WP_VOLUME_VALIDATION_UNSUPPORTED_LAYOUT)
+            validation_result = WP_VOLUME_VALIDATION_UNSUPPORTED_LAYOUT;
+        else if (result != WP_VOLUME_VALIDATION_SUCCESS)
+            return WP_VOLUME_VALIDATION_INVALID;
+
+        grid_offset += grid_size;
+    }
+
+    return grid_offset == size && grid_offset != 0 ? validation_result : WP_VOLUME_VALIDATION_INVALID;
+}
+
 // NB: buf must be a host pointer
 uint64_t wp_volume_create_host(void* buf, uint64_t size, bool copy, bool owner)
 {
@@ -157,6 +579,18 @@ uint64_t wp_volume_create_host(void* buf, uint64_t size, bool copy, bool owner)
         size = volume.grid_data.grid_size;
     }
 
+    uint64_t metadata_offset;
+    uint64_t metadata_size;
+    if (!volume_validate_grid_metadata(volume.grid_data, size, metadata_offset, metadata_size))
+        return 0;
+
+    volume.blind_metadata.resize(volume.grid_data.blind_metadata_count);
+    if (metadata_size > 0) {
+        std::memcpy(volume.blind_metadata.data(), static_cast<uint8_t*>(buf) + metadata_offset, metadata_size);
+    }
+    if (!volume_validate_blind_metadata(volume.grid_data, volume.blind_metadata, metadata_offset))
+        return 0;
+
     // Copy or alias buffer
     volume.size_in_bytes = size;
     if (copy) {
@@ -167,11 +601,6 @@ uint64_t wp_volume_create_host(void* buf, uint64_t size, bool copy, bool owner)
         volume.buffer = buf;
         volume.owner = owner;
     }
-
-    // Alias blind metadata
-    volume.blind_metadata = reinterpret_cast<pnanovdb_gridblindmetadata_t*>(
-        static_cast<uint8_t*>(volume.buffer) + volume.grid_data.blind_metadata_offset
-    );
 
     uint64_t id = (uint64_t)volume.buffer;
 
@@ -196,9 +625,10 @@ uint64_t wp_volume_create_device(void* context, void* buf, uint64_t size, bool c
     VolumeDesc volume;
     volume.context = context ? context : wp_cuda_context_get_current();
 
-    wp_memcpy_d2h(WP_CURRENT_CONTEXT, &volume.grid_data, buf, sizeof(pnanovdb_grid_t));
-    wp_memcpy_d2h(WP_CURRENT_CONTEXT, &volume.tree_data, (pnanovdb_grid_t*)buf + 1, sizeof(pnanovdb_tree_t));
-    // no sync needed since the above copies are to pageable memory
+    void* stream = wp_cuda_stream_get_current();
+    wp_memcpy_d2h(WP_CURRENT_CONTEXT, &volume.grid_data, buf, sizeof(pnanovdb_grid_t), stream);
+    wp_memcpy_d2h(WP_CURRENT_CONTEXT, &volume.tree_data, (pnanovdb_grid_t*)buf + 1, sizeof(pnanovdb_tree_t), stream);
+    wp_cuda_stream_synchronize(stream);
 
     if (volume.grid_data.magic != PNANOVDB_MAGIC_NUMBER && volume.grid_data.magic != PNANOVDB_MAGIC_GRID)
         return 0;
@@ -206,6 +636,22 @@ uint64_t wp_volume_create_device(void* context, void* buf, uint64_t size, bool c
     if (size == 0) {
         size = volume.grid_data.grid_size;
     }
+
+    uint64_t metadata_offset;
+    uint64_t metadata_size;
+    if (!volume_validate_grid_metadata(volume.grid_data, size, metadata_offset, metadata_size))
+        return 0;
+
+    volume.blind_metadata.resize(volume.grid_data.blind_metadata_count);
+    if (metadata_size > 0) {
+        wp_memcpy_d2h(
+            WP_CURRENT_CONTEXT, volume.blind_metadata.data(), static_cast<uint8_t*>(buf) + metadata_offset,
+            metadata_size, stream
+        );
+        wp_cuda_stream_synchronize(stream);
+    }
+    if (!volume_validate_blind_metadata(volume.grid_data, volume.blind_metadata, metadata_offset))
+        return 0;
 
     // Copy or alias data buffer
     volume.size_in_bytes = size;
@@ -217,15 +663,6 @@ uint64_t wp_volume_create_device(void* context, void* buf, uint64_t size, bool c
         volume.buffer = buf;
         volume.owner = owner;
     }
-
-    // Make blind metadata accessible on host
-    const uint64_t blindmetadata_size = volume.grid_data.blind_metadata_count * sizeof(pnanovdb_gridblindmetadata_t);
-    volume.blind_metadata
-        = static_cast<pnanovdb_gridblindmetadata_t*>(wp_alloc_pinned(blindmetadata_size, "(native:volume)"));
-    wp_memcpy_d2h(
-        WP_CURRENT_CONTEXT, volume.blind_metadata,
-        static_cast<uint8_t*>(volume.buffer) + volume.grid_data.blind_metadata_offset, blindmetadata_size
-    );
 
     uint64_t id = (uint64_t)volume.buffer;
     volume_add_descriptor(id, std::move(volume));
@@ -735,7 +1172,6 @@ void wp_volume_destroy_device(uint64_t id)
         if (volume->owner) {
             wp_free_device(WP_CURRENT_CONTEXT, volume->buffer);
         }
-        wp_free_pinned(volume->blind_metadata);
         volume_rem_descriptor(id);
     }
 }

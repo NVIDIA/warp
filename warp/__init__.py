@@ -35,7 +35,9 @@ from warp._src.module_registry import register_module_source as _register_module
 # stubs. ``# fmt: off`` stops the formatter from wrapping the longer lines.
 # fmt: off
 _register_module_source("warp.autograd", "warp._src.autograd")
-_register_module_source("warp.marching_cubes", "warp._src.marching_cubes")
+_register_module_source("warp.geometry", "warp._src.geometry.delaunay")
+_register_module_source("warp.geometry.marching_cubes", "warp._src.geometry.marching_cubes")
+_register_module_source("warp.geometry.sparse_marching_cubes", "warp._src.geometry.sparse_marching_cubes")
 _register_module_source("warp.math", "warp._src.math")
 _register_module_source("warp.sparse", "warp._src.sparse")
 _register_module_source("warp.utils", "warp._src.utils")
@@ -594,28 +596,40 @@ from warp.config import DeterministicMode as DeterministicMode
 # category: Misc
 
 from warp._src.math import *
-from warp._src.marching_cubes import MarchingCubes as MarchingCubes
+
 from warp._src.context import RegisteredGLBuffer as RegisteredGLBuffer
 
 
+from typing import TYPE_CHECKING as _TYPE_CHECKING
+
+if _TYPE_CHECKING:
+    from warp._src.geometry.marching_cubes import IsoSurfaceMarchingCubes as _IsoSurfaceMarchingCubes
+
+    MarchingCubes = _IsoSurfaceMarchingCubes
+
+
 def __getattr__(name):
-    if name == "HashGridQueryH":
-        dtype = float16
-    elif name == "HashGridQueryD":
-        dtype = float64
-    else:
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    # Deprecated alias of `warp.geometry.IsoSurfaceMarchingCubes`, resolved lazily
+    # so that `wp.MarchingCubes` *is* the new class rather than a subclass of it.
+    # The isosurface API itself lives in `warp.geometry`, imported explicitly.
+    # export_stubs() omits this function's body from the generated warp/__init__.pyi
+    # (see skip_runtime_dunder_getattr there), so the TYPE_CHECKING alias above --
+    # which the stub keeps verbatim -- is what gives Pyright a concrete type for
+    # `wp.MarchingCubes` instead of falling back to treating all of `warp.*` as
+    # Unknown because of a module-level __getattr__ in the stub.
+    if name == "MarchingCubes":
+        from warp._src.geometry.marching_cubes import IsoSurfaceMarchingCubes  # noqa: PLC0415
+        from warp._src.logger import log_warning  # noqa: PLC0415
 
-    from warp._src.logger import log_warning  # noqa: PLC0415
-    from warp._src.types import hash_grid_query_type  # noqa: PLC0415
+        log_warning(
+            "wp.MarchingCubes is deprecated and will be removed in a future version of Warp. "
+            "Use wp.geometry.IsoSurfaceMarchingCubes instead.",
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
+        return IsoSurfaceMarchingCubes
 
-    log_warning(
-        f"warp.{name} is deprecated and will be removed in a future release. "
-        "Use warp.HashGridQuery in public type references; query objects are returned by warp.hash_grid_query().",
-        category=DeprecationWarning,
-        stacklevel=2,
-    )
-    return hash_grid_query_type(dtype)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 __version__ = config.version
