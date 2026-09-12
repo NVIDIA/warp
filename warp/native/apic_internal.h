@@ -24,6 +24,15 @@
 #include <cudaTypedefs.h>
 #endif
 
+// Checked multiplication for byte spans derived from serialized records.
+inline bool apic_mul_check(uint64_t a, uint64_t b, uint64_t* out)
+{
+    if (b != 0 && a > (SIZE_MAX / b))
+        return false;
+    *out = a * b;
+    return true;
+}
+
 // Byte size of a scalar APICType value: 4 for the 32-bit members, 8 for the
 // 64-bit members, 0 for an unrecognized/unset value. Shared by the array_scan
 // and radix/segmented sort capture and replay paths (apic.cpp and warp.cpp).
