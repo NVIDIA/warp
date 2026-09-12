@@ -38,11 +38,11 @@ class APICapture:
         # C++ APICState*
         self.apic_state: ctypes.c_void_p = runtime.core.wp_apic_create_state()
 
-        # Region tracking: id(base_array) -> (region_id, base_ptr, capacity, base_array).
+        # Region tracking: region key -> (region_id, base_ptr, capacity, base_array).
         # The base array is retained so Python cannot recycle its id() (which would
         # otherwise alias unrelated allocations to the same region_id) and so that
         # capture_save still has a valid base_ptr to read from.
-        self._regions: dict[int, tuple[int, int, int, object]] = {}
+        self._regions: dict[object, tuple[int, int, int, object]] = {}
 
         # Region ids whose backing was allocated *during* this capture (graph-scoped
         # on a memory-pool device). Their memory is gone once the capture ends, so
@@ -81,17 +81,28 @@ class APICapture:
         """Walk the _ref chain to find the base allocation.
 
         Returns:
-            (base_array, byte_offset) where base_array is the root allocation
-            and byte_offset is the offset of arr.ptr from base_array.ptr.
+            (base_array, base_ptr, base_capacity, byte_offset) where base_array
+            is the root array, and byte_offset is the offset of arr.ptr within
+            the backing allocation.
         """
         base = arr
         while hasattr(base, "_ref") and base._ref is not None and hasattr(base._ref, "ptr"):
             base = base._ref
+
+        base_ptr = base._storage_base_ptr if base._storage_base_ptr is not None else base.ptr
+        base_capacity = base._storage_nbytes if base._storage_nbytes is not None else base.capacity
+
         # Empty arrays (shape=(0,)) have arr.ptr == None; treat as zero offset.
-        if arr.ptr is None or base.ptr is None:
-            return base, 0
-        byte_offset = arr.ptr - base.ptr
-        return base, byte_offset
+        if arr.ptr is None or base_ptr is None:
+            return base, base_ptr, base_capacity, 0
+        byte_offset = arr.ptr - base_ptr
+        return base, base_ptr, base_capacity, byte_offset
+
+    @staticmethod
+    def _region_key(base, base_ptr):
+        if base._storage_base_ptr is not None:
+            return "external", base_ptr
+        return id(base)
 
     def _find_handle_offsets(self, dtype, base_offset: int = 0) -> list[int]:
         """Recursively find byte offsets of ``wp.handle`` fields in a type.
@@ -129,27 +140,32 @@ class APICapture:
         if self.device is not None and arr.device != self.device:
             return -1, 0
 
-        base, byte_offset = self._find_base(arr)
-        base_id = id(base)
+        base, base_ptr, base_capacity, byte_offset = self._find_base(arr)
+        region_key = self._region_key(base, base_ptr)
 
-        if base_id in self._regions:
-            region_id, _, _, _ = self._regions[base_id]
+        if region_key in self._regions:
+            region_id, _, registered_capacity, _ = self._regions[region_key]
+            if base._storage_base_ptr is not None and registered_capacity != base_capacity:
+                raise RuntimeError(
+                    f"APIC external allocation at 0x{base_ptr:x} has conflicting capacities "
+                    f"({registered_capacity} and {base_capacity})"
+                )
             return region_id, byte_offset
 
         # Register new region in C++
         region_id = self.runtime.core.wp_apic_register_memory_region_by_ptr(
             self.apic_state,
-            ctypes.c_uint64(base.ptr),
-            ctypes.c_uint64(base.capacity),
+            ctypes.c_uint64(base_ptr),
+            ctypes.c_uint64(base_capacity),
             ctypes.c_uint32(warp._src.types.type_size_in_bytes(base.dtype)),
         )
         if region_id == 0:
             raise RuntimeError(
                 f"APIC region registration failed "
-                f"(apic_state={self.apic_state}, base_id={base_id}, "
-                f"ptr=0x{base.ptr:x}, capacity={base.capacity})"
+                f"(apic_state={self.apic_state}, region_key={region_key}, "
+                f"ptr=0x{base_ptr:x}, capacity={base_capacity})"
             )
-        self._regions[base_id] = (region_id, base.ptr, base.capacity, base)
+        self._regions[region_key] = (region_id, base_ptr, base_capacity, base)
 
         # Mark the region transient only if its base was allocated by *this* APIC
         # capture (matching apic_state). Such memory is graph-scoped: capture_save
@@ -180,10 +196,10 @@ class APICapture:
         """Get the region_id for an array (must have been tracked already)."""
         if arr is None or not arr.ptr:
             return -1
-        base, _ = self._find_base(arr)
-        base_id = id(base)
-        if base_id in self._regions:
-            return self._regions[base_id][0]
+        base, base_ptr, _, _ = self._find_base(arr)
+        region_key = self._region_key(base, base_ptr)
+        if region_key in self._regions:
+            return self._regions[region_key][0]
         # Fall back to tracking
         region_id, _ = self.track_array(arr)
         return region_id
