@@ -679,6 +679,12 @@ detect array overwrites. <a class="reference internal" href="#array-overwrite-tr
 <p>Though in-place operations such as <code class="docutils literal notranslate"><span class="pre">x[tid]</span> <span class="pre">+=</span> <span class="pre">1.0</span></code> and <a class="reference internal" href="../language_reference/_generated/warp.atomic_add.html#warp._src.lang.atomic_add" title="warp._src.lang.atomic_add"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.atomic_add()</span></code></a> are technically overwrite operations,
 the Warp graph specifically accommodates adjoint accumulation in these cases. <a class="reference internal" href="#in-place-math"><span class="std std-ref">Read more here</span></a>.</p>
 </div>
+<p>Warp can differentiate builtin atomic <code class="docutils literal notranslate"><span class="pre">+=</span></code> and <code class="docutils literal notranslate"><span class="pre">-=</span></code> updates to array components.
+It rejects other augmented assignments to differentiable components when generating
+backward code, including those handled by user-defined operators. For example,
+<code class="docutils literal notranslate"><span class="pre">values[i].x</span> <span class="pre">+=</span> <span class="pre">rhs</span></code> is unsupported if a user-defined <code class="docutils literal notranslate"><span class="pre">add</span></code> function handles it.
+Write the result to a separate array, or set
+<code class="docutils literal notranslate"><span class="pre">enable_backward=False</span></code> on the kernel if you only need forward execution.</p>
 </section>
 <section id="copying-is-differentiable">
 <h2>Copying is Differentiable<a class="headerlink" href="#copying-is-differentiable" title="Link to this heading">#</a></h2>

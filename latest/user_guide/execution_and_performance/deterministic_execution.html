@@ -794,6 +794,13 @@ written in Warp code using supported atomic patterns:</p>
     <span class="n">wp</span><span class="o">.</span><span class="n">adjoint</span><span class="p">[</span><span class="n">values</span><span class="p">][</span><span class="n">index</span><span class="p">]</span> <span class="o">+=</span> <span class="n">adj_ret</span>
 </pre></div>
 </div>
+<p>For kernels with composite component updates, deterministic mode rejects
+parallel CUDA backward passes that both mutate an array and accumulate into
+its gradient, including through aliases. Component overwrites consume the
+gradient at that point, so reductions cannot be deferred until after the kernel.
+The check treats the whole array as one target; independent indices or
+components may still trigger it. Split mutation and gradient reduction into
+separate kernels. CPU and single-thread CUDA backward launches remain supported.</p>
 <p>The deterministic launcher distinguishes forward-only, backward-only, and
 shared deterministic targets.  Backward-only gradient targets are part of the
 compiled hidden ABI, but forward launches pass inert helper buffers for those
@@ -804,7 +811,7 @@ the forward pass but does not require gradients, deterministic mode treats the
 corresponding backward target as inactive and leaves the generated helper as a
 no-op.  Other gradients from the same backward kernel are still reduced
 deterministically.</p>
-<p>The unsupported autodiff case is Pattern 2 slot allocation with a consumed
+<p>Another unsupported autodiff case is Pattern 2 slot allocation with a consumed
 counter return.  A generated backward pass normally replays the original
 forward code before running reverse statements.  Replaying
 <code class="docutils literal notranslate"><span class="pre">slot</span> <span class="pre">=</span> <span class="pre">wp.atomic_add(counter,</span> <span class="pre">index,</span> <span class="pre">value)</span></code> would allocate new slots from
