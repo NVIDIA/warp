@@ -83,6 +83,11 @@ def vector_component_form(s: Sample, v: Field):
     return v(s)[0]
 
 
+@integrand
+def first_sample_form(s: Sample, u: Field):
+    return u(s) * float(s.element_index + 1)
+
+
 # -- Test functions --
 
 
@@ -520,6 +525,55 @@ def test_integrate_high_order(test, device):
         assert_np_equal(h0.values[:h0_nnz].numpy(), h1.values[:h1_nnz].numpy(), tol=1.0e-6)
 
 
+def test_interpolate_first_row_compression(test, device):
+    """Preserve first-sample Jacobians for changing, noncontiguous restrictions."""
+    with wp.ScopedDevice(device):
+        geo = fem.Grid3D(res=wp.vec3i(2))
+        indices = wp.array([1, 3, 5, 6], dtype=int)
+        domain = fem.Subdomain(fem.Cells(geo), element_indices=indices)
+        space = fem.make_polynomial_space(geo, degree=3, element_basis=fem.ElementBasis.SERENDIPITY)
+        trial_space = fem.make_polynomial_space(geo, degree=1, discontinuous=True)
+        trial = fem.make_trial(trial_space, domain=domain)
+        store = fem.TemporaryStore()
+        restriction = fem.make_space_restriction(space_topology=space.topology, domain=domain, temporary_store=store)
+        reference = bsr_zeros(space.node_count(), trial_space.node_count(), block_type=float)
+        candidate = bsr_zeros(space.node_count(), trial_space.node_count(), block_type=float)
+
+        def interpolate(matrix, construction, capacity="auto"):
+            fem.interpolate(
+                first_sample_form,
+                dest=matrix,
+                dest_space=space,
+                at=restriction,
+                fields={"u": trial},
+                reduction="first",
+                temporary_store=store,
+                bsr_options={"construction": construction, "capacity": capacity},
+                kernel_options={"enable_backward": False},
+            )
+
+        interpolate(candidate, "row_compress")
+        graph = None
+        if wp.get_device(device).is_cuda:
+            with wp.ScopedCapture() as capture:
+                restriction.rebuild(temporary_store=store)
+                interpolate(candidate, "row_compress", "reuse")
+            graph = capture.graph
+        for elements in ([1, 3, 5, 6], [0, 2, 4, 7], [-1, -1, -1, -1], [7, 6, 5, 4]):
+            indices.assign(np.array(elements, dtype=np.int32))
+            if graph is None:
+                restriction.rebuild(temporary_store=store)
+                interpolate(candidate, "row_compress", "reuse")
+            else:
+                wp.capture_launch(graph)
+            interpolate(reference, "triplets")
+            count = reference.nnz_sync()
+            test.assertEqual(candidate.nnz_sync(), count)
+            test.assertEqual(candidate.offsets.numpy().tobytes(), reference.offsets.numpy().tobytes())
+            test.assertEqual(candidate.columns.numpy()[:count].tobytes(), reference.columns.numpy()[:count].tobytes())
+            test.assertEqual(candidate.values.numpy()[:count].tobytes(), reference.values.numpy()[:count].tobytes())
+
+
 def test_padded_sparse_assembly(test, device):
     with wp.ScopedDevice(device):
         geo = fem.Grid3D(res=(4, 4, 4))
@@ -853,6 +907,9 @@ add_function_test(
 )
 add_function_test(TestFemIntegrate, "test_padded_sparse_assembly", test_padded_sparse_assembly, devices=cuda_devices)
 add_function_test(TestFemIntegrate, "test_interpolate_reduction", test_interpolate_reduction, devices=devices)
+add_function_test(
+    TestFemIntegrate, "test_interpolate_first_row_compression", test_interpolate_first_row_compression, devices=devices
+)
 add_function_test(TestFemIntegrate, "test_capturability", test_capturability, devices=cuda_devices_with_mempool)
 add_function_test(TestFemIntegrate, "test_restriction_rebuild", test_restriction_rebuild, devices=devices)
 
