@@ -613,7 +613,7 @@ jobs:
         run: uv run --extra dev -m warp.tests --junit-report-xml rspec.xml -s autodetect
       
       - name: Test Summary
-        uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86  # v2.4
+        uses: test-summary/action@37b508cfee6d4d080eedd00b5bb240a6a784a6a5  # v2.6
         with:
           paths: "rspec.xml"
           show: "fail"
@@ -651,7 +651,7 @@ jobs:
         run: uv run --extra dev -m warp.tests --junit-report-xml rspec.xml --suite debug --warp-debug --failfast
       
       - name: Test Summary
-        uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86  # v2.4
+        uses: test-summary/action@37b508cfee6d4d080eedd00b5bb240a6a784a6a5  # v2.6
         with:
           paths: "rspec.xml"
           show: "fail"
@@ -812,7 +812,7 @@ jobs:
         run: uv run --extra dev --extra ${{ matrix.torch-extra }} --with "${{ matrix.jax-extra }}" ${{ matrix.rmm-args }} -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
 
       - name: Test Summary
-        uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86  # v2.4
+        uses: test-summary/action@37b508cfee6d4d080eedd00b5bb240a6a784a6a5  # v2.6
         with:
           paths: "rspec.xml"
           show: "fail"
@@ -896,7 +896,7 @@ jobs:
         run: uv run --extra dev --with "jax[cuda13]" -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
 
       - name: Test Summary
-        uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86  # v2.4
+        uses: test-summary/action@37b508cfee6d4d080eedd00b5bb240a6a784a6a5  # v2.6
         with:
           paths: "rspec.xml"
           show: "fail"
@@ -993,7 +993,7 @@ jobs:
         run: uv run --python 3.14t --no-sync -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
 
       - name: Test Summary
-        uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86  # v2.4
+        uses: test-summary/action@37b508cfee6d4d080eedd00b5bb240a6a784a6a5  # v2.6
         with:
           paths: "rspec.xml"
           show: "fail"
@@ -1004,6 +1004,13 @@ jobs:
   test-mujoco-warp-gpu-linux:
     runs-on: linux-amd64-gpu-rtxpro6000-latest-1
     needs: [build-warp, test-warp-gpu-linux-python-free-threaded]
+    if: |
+      always() &&
+      needs.build-warp.result == 'success' &&
+      (
+        needs.test-warp-gpu-linux-python-free-threaded.result == 'success' ||
+        needs.test-warp-gpu-linux-python-free-threaded.result == 'failure'
+      )
     continue-on-error: true
     permissions:
       contents: read
@@ -1060,14 +1067,28 @@ jobs:
         run: uv run --no-sync python -c "import warp as wp; wp.print_diagnostics(); assert wp.get_cuda_devices(), 'No CUDA device visible to Warp'"
 
       - name: Run MuJoCo Warp tests
-        run: uv run --no-sync pytest -n 4 --pyargs mujoco_warp --junit-xml=rspec.xml
+        id: mujoco_tests
+        run: uv run --no-sync pytest -n 4 -ra --pyargs mujoco_warp --junit-xml=rspec.xml
+
+      - name: Re-run failed MuJoCo Warp tests serially
+        if: ${{ failure() && steps.mujoco_tests.outcome == 'failure' }}
+        run: uv run --no-sync pytest --lf --last-failed-no-failures none -vv -ra --tb=long --pyargs mujoco_warp
 
       - name: Test Summary
-        uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86  # v2.4
+        uses: test-summary/action@37b508cfee6d4d080eedd00b5bb240a6a784a6a5  # v2.6
         with:
           paths: "rspec.xml"
           show: "fail"
         if: always()
+
+      - name: Upload MuJoCo Warp test report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: mujoco-warp-test-results-${{ github.run_attempt }}
+          path: rspec.xml
+          if-no-files-found: warn
+          retention-days: 7
 
   test-warp-gpu-linux-mgpu-python310:
     runs-on: linux-amd64-gpu-rtxpro6000-latest-2
@@ -1138,7 +1159,7 @@ jobs:
         run: uv run --extra dev -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
 
       - name: Test Summary
-        uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86  # v2.4
+        uses: test-summary/action@37b508cfee6d4d080eedd00b5bb240a6a784a6a5  # v2.6
         with:
           paths: "rspec.xml"
           show: "fail"
@@ -1213,7 +1234,7 @@ jobs:
         run: uv run --extra dev --extra torch-cu13 --with usd-core==25.5.1 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
 
       - name: Test Summary
-        uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86  # v2.4
+        uses: test-summary/action@37b508cfee6d4d080eedd00b5bb240a6a784a6a5  # v2.6
         with:
           paths: "rspec.xml"
           show: "fail"
