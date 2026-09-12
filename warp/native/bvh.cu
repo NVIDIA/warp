@@ -459,22 +459,28 @@ __global__ void compute_total_bounds(
 
     const int tid = blockStart + threadIdx.x;
 
+    // BlockReduce::Reduce() and __syncthreads() are block-wide collectives, so every thread
+    // in the block must reach them, including the tail threads with tid >= num_items.
+    // Out-of-range lanes contribute neutral values, which Reduce() ignores through numValid.
+    vec3 lower = vec3(FLT_MAX);
+    vec3 upper = vec3(-FLT_MAX);
+
     if (tid < num_items) {
-        vec3 lower = item_lowers[tid];
-        vec3 upper = item_uppers[tid];
+        lower = item_lowers[tid];
+        upper = item_uppers[tid];
+    }
 
-        vec3 block_upper = BlockReduce(temp_storage).Reduce(upper, Vec3Max, numValid);
+    vec3 block_upper = BlockReduce(temp_storage).Reduce(upper, Vec3Max, numValid);
 
-        // sync threads because second reduce uses same temp storage as first
-        __syncthreads();
+    // sync threads because second reduce uses same temp storage as first
+    __syncthreads();
 
-        vec3 block_lower = BlockReduce(temp_storage).Reduce(lower, Vec3Min, numValid);
+    vec3 block_lower = BlockReduce(temp_storage).Reduce(lower, Vec3Min, numValid);
 
-        if (threadIdx.x == 0) {
-            // write out block results, expanded by the radius
-            atomic_max(total_upper, block_upper);
-            atomic_min(total_lower, block_lower);
-        }
+    if (threadIdx.x == 0) {
+        // write out block results, expanded by the radius
+        atomic_max(total_upper, block_upper);
+        atomic_min(total_lower, block_lower);
     }
 }
 
