@@ -2450,10 +2450,10 @@ def quat_slerp(a: Quaternion[Float], b: Quaternion[Float], t: Float) -> Quaterni
     Args:
         a: Start quaternion (unit length).
         b: End quaternion (unit length).
-        t: Blend factor, where ``0`` returns ``a`` and ``1`` returns ``b``.
+        t: Blend factor, where ``0`` returns ``a`` and ``1`` returns a quaternion equivalent to ``b`` (exact components except for antipodal inputs where ``b == -a``).
 
     Returns:
-        Interpolated unit quaternion."""
+        Interpolated unit quaternion on the slerp path."""
     ...
 
 def quat_to_matrix(quat: Quaternion[Float]) -> Matrix[Float, Literal[3], Literal[3]]:

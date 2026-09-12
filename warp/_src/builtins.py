@@ -1880,10 +1880,10 @@ add_builtin(
     Args:
         a: Start quaternion (unit length).
         b: End quaternion (unit length).
-        t: Blend factor, where ``0`` returns ``a`` and ``1`` returns ``b``.
+        t: Blend factor, where ``0`` returns ``a`` and ``1`` returns a quaternion equivalent to ``b`` (exact components except for antipodal inputs where ``b == -a``).
 
     Returns:
-        Interpolated unit quaternion.
+        Interpolated unit quaternion on the slerp path.
     """,
     require_original_output_arg=True,
 )
