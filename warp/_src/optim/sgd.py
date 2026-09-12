@@ -101,6 +101,8 @@ class SGD:
         """
         if self.params is None:
             raise RuntimeError("SGD parameters must be set before calling step(), got None")
+        if len(grad) != len(self.params):
+            raise ValueError(f"Expected {len(self.params)} gradient arrays, got {len(grad)}")
         for i in range(len(self.params)):
             SGD.step_detail(
                 grad[i],
@@ -134,12 +136,17 @@ class SGD:
             raise TypeError(
                 f"SGD gradient dtype must match parameter dtype {type_repr(params.dtype)}, got {type_repr(g.dtype)}"
             )
-        if params.dtype != b.dtype:
-            raise TypeError(
-                f"SGD momentum buffer dtype must match parameter dtype {type_repr(params.dtype)}, "
-                f"got {type_repr(b.dtype)}"
-            )
         if params.shape != g.shape:
             raise ValueError(f"SGD gradient shape must match parameter shape {params.shape}, got {g.shape}")
+        if b is None and momentum != 0.0:
+            raise ValueError("A momentum buffer is required when momentum is nonzero")
+        if b is not None:
+            if params.dtype != b.dtype:
+                raise TypeError(
+                    f"SGD momentum buffer dtype must match parameter dtype {type_repr(params.dtype)}, "
+                    f"got {type_repr(b.dtype)}"
+                )
+            if params.shape != b.shape:
+                raise ValueError(f"SGD momentum buffer shape must match parameter shape {params.shape}, got {b.shape}")
         kernel_inputs = (g, b, lr, momentum, dampening, weight_decay, int(nesterov), t, params)
         wp.launch(sgd_step_kernel, dim=len(params), inputs=kernel_inputs, device=params.device)
