@@ -1825,14 +1825,34 @@ add_builtin(
     input_types={"roll": Float, "pitch": Float, "yaw": Float},
     value_func=lambda arg_types, arg_values: quaternion(dtype=float_infer_type(arg_types)),
     group="Quaternion Math",
-    doc="Construct a quaternion representing a combined roll (z), pitch (x), yaw rotations (y) in radians.",
+    doc="""Construct a quaternion from roll-pitch-yaw Euler angles.
+
+    Roll is rotation about X, pitch about Y, and yaw about Z, all in radians. Rotations compose as ``yaw * pitch * roll``.
+
+    Args:
+        roll: Roll angle in radians about X.
+        pitch: Pitch angle in radians about Y.
+        yaw: Yaw angle in radians about Z.
+
+    Returns:
+        Unit quaternion for the composed rotation.
+    """,
 )
 add_builtin(
     "quat_inverse",
     input_types={"quat": quaternion(dtype=Float)},
     value_func=lambda arg_types, arg_values: quaternion(dtype=float_infer_type(arg_types)),
     group="Quaternion Math",
-    doc="Compute quaternion conjugate.",
+    doc="""Compute the conjugate of a quaternion.
+
+    The conjugate equals the inverse only for unit-length quaternions. Normalize ``quat`` with :func:`warp.normalize` first if needed.
+
+    Args:
+        quat: Input quaternion. Must have unit length for a true inverse.
+
+    Returns:
+        Conjugate ``(-x, -y, -z, w)``.
+    """,
 )
 add_builtin(
     "quat_rotate",
@@ -1853,7 +1873,18 @@ add_builtin(
     input_types={"a": quaternion(dtype=Float), "b": quaternion(dtype=Float), "t": Float},
     value_func=lambda arg_types, arg_values: quaternion(dtype=float_infer_type(arg_types)),
     group="Quaternion Math",
-    doc="Linearly interpolate between two quaternions.",
+    doc="""Spherically interpolate between two quaternions.
+
+    Follow the shortest arc from ``a`` to ``b``. Both inputs should be unit length. ``q`` and ``-q`` denote the same rotation, so the result can differ by sign without changing orientation.
+
+    Args:
+        a: Start quaternion (unit length).
+        b: End quaternion (unit length).
+        t: Blend factor, where ``0`` returns ``a`` and ``1`` returns a quaternion equivalent to ``b`` (exact components except for antipodal inputs where ``b == -a``).
+
+    Returns:
+        Interpolated unit quaternion on the slerp path.
+    """,
     require_original_output_arg=True,
 )
 add_builtin(
