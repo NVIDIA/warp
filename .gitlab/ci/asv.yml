@@ -40,13 +40,13 @@ stages:
 linux-x86_64 asv build:
   stage: build
   needs: []
-  image: $WARP_BUILDER_IMAGE_CU12
+  image: $WARP_BUILDER_IMAGE_CU12_X86_64
   extends:
     - .ipp_lnx_x86_64_cpu_medium
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
     GIT_DEPTH: "50"
-    CUDA_HOME: "/usr/local/cuda"
+    CUDA_HOME: "/opt/cuda"
   before_script:
     - !reference [.snippets, section-start-install-deps]
     - df -h

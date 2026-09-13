@@ -32,12 +32,12 @@ stages:
 # Hide this job for now until debug aarch64 builds work
 .linux-aarch64 build:
   stage: build
-  image: $WARP_BUILDER_IMAGE_CU12
+  image: $WARP_BUILDER_IMAGE_CU12_AARCH64
   extends:
     - .lnx-aarch64-cpu-medium
     - .save_warp_bin_artifact
   script:
-    - uv run build_lib.py --cuda-path=/usr/local/cuda --mode=debug
+    - uv run build_lib.py --cuda-path=/opt/cuda --mode=debug
     - mkdir -p warp/bin/linux-aarch64
     - mv warp/bin/warp.so warp/bin/linux-aarch64
     - mv warp/bin/warp-clang.so warp/bin/linux-aarch64

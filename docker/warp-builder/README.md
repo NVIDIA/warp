@@ -66,6 +66,66 @@ source revision.
 The workflow does not publish multi-architecture manifests. Each tag identifies one native architecture and
 one CUDA release.
 
+## Promoting Images
+
+Promote only images from a successful workflow run, and address the source by its validated digest rather
+than by a movable tag. Set `CI_REGISTRY_IMAGE` to the destination project's registry root when running the
+promotion outside GitLab CI.
+
+```bash
+SOURCE_IMAGE="ghcr.io/nvidia/warp-builder"
+SOURCE_TAG="manylinux_2_28-cuda13.4.1-uv0.12.13-x86_64"
+SOURCE_DIGEST="<validated-source-digest>"
+DESTINATION_IMAGE="${CI_REGISTRY_IMAGE}/warp-builder"
+TARGET_OS="linux"
+TARGET_ARCH="amd64"
+PROMOTION_DIGEST="${SOURCE_DIGEST}"
+
+docker buildx imagetools inspect "${SOURCE_IMAGE}@${SOURCE_DIGEST}" --raw
+```
+
+If the raw manifest has media type `application/vnd.oci.image.index.v1+json`, select the runnable manifest
+for the intended platform before promotion. BuildKit can add provenance as an `unknown/unknown` attestation
+manifest in the same index; an attestation is metadata, not a runnable image. Some destination registries
+also reject cross-registry copies of that attestation. For an indexed source, obtain the runnable digest with:
+
+```bash
+PROMOTION_DIGEST="$(
+  docker buildx imagetools inspect "${SOURCE_IMAGE}@${SOURCE_DIGEST}" --raw |
+    jq -er --arg os "${TARGET_OS}" --arg arch "${TARGET_ARCH}" '
+      first(
+        .manifests[]
+        | select(.platform.os == $os and .platform.architecture == $arch)
+        | select((.annotations["vnd.docker.reference.type"] // "") != "attestation-manifest")
+        | .digest
+      )
+    '
+)"
+```
+
+Inspect the selected manifest, copy it without wrapping it in a new index, and verify that the destination
+resolves to the same digest:
+
+```bash
+docker buildx imagetools inspect "${SOURCE_IMAGE}@${PROMOTION_DIGEST}" \
+  --format '{{.Manifest.Digest}} {{.Image.OS}}/{{.Image.Architecture}}'
+
+docker buildx imagetools create --prefer-index=false \
+  --tag "${DESTINATION_IMAGE}:${SOURCE_TAG}" \
+  "${SOURCE_IMAGE}@${PROMOTION_DIGEST}"
+
+DESTINATION_DIGEST="$(
+  docker buildx imagetools inspect "${DESTINATION_IMAGE}:${SOURCE_TAG}" \
+    --format '{{.Manifest.Digest}}'
+)"
+test "${DESTINATION_DIGEST}" = "${PROMOTION_DIGEST}"
+```
+
+`--prefer-index=false` preserves a selected image manifest, but it does not unwrap an existing index. Always
+perform the explicit platform selection first when the source digest identifies an index. Record the workflow
+run, source digest, selected runnable digest, destination tag, and verified destination digest with the change
+that updates CI consumers.
+
 ## Building and Testing
 
 The [Build Warp Builder Images](../../.github/workflows/build-warp-builder-images.yml) workflow builds x86_64
