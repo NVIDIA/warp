@@ -33,16 +33,19 @@ request. Towncrier adds the GitHub issue link when it renders the fragment, so d
 not put that link in the fragment text. Other useful links, such as migration
 guides, are allowed.
 
-When there is no GitHub issue, use a readable orphan identifier:
+When there is no GitHub issue because the change does not require one under the
+contribution guidelines, use a readable orphan identifier:
 
 ```text
-+fix-cuda-graph-capture.fixed.md
++clarify-array-docstring.documentation.md
 ```
 
-The leading `+` tells Towncrier that the entry has no issue link. Prefer a short
-description over an opaque hash. A normalized branch description is often a
-good starting point, but it is not required. If you use one, drop the username
-prefix and replace runs of non-alphanumeric characters with `-`.
+The leading `+` tells Towncrier that the entry has no issue link. Do not use `+`
+for bugs or other substantial changes; those require a GitHub issue before
+opening a pull request. Prefer a short description over an opaque hash. A
+normalized branch description is often a good starting point, but it is not
+required. If you use one, drop the username prefix and replace runs of
+non-alphanumeric characters with `-`.
 
 ## Choose a category
 

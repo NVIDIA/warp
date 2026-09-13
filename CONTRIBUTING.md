@@ -1,6 +1,7 @@
 # Contributing to Warp
 
-Contributions and PRs from the community are welcome.
+Community participation in Warp is welcome. Pull requests are reviewed based on
+demonstrated need, project direction, and validation.
 
 Some ways to contribute to the development of Warp include:
 
@@ -9,7 +10,7 @@ Some ways to contribute to the development of Warp include:
   [GitHub](https://github.com/NVIDIA/warp/discussions).
 * Adding new examples to the Warp repository.
 * Documentation improvements.
-* Contributing bug fixes or new features.
+* Proposing changes based on problems or needs encountered while using Warp.
 * Adding your work to the [publications list](https://github.com/NVIDIA/warp/blob/main/PUBLICATIONS.md).
 
 ## Contents
@@ -28,17 +29,30 @@ Some ways to contribute to the development of Warp include:
 
 Before opening a pull request, search [GitHub Issues](https://github.com/NVIDIA/warp/issues)
 and [Discussions](https://github.com/NVIDIA/warp/discussions) for earlier reports
-and relevant context. Report bugs in an issue first. For other substantial
-changes, start an issue or discussion.
+and relevant context. Report bugs and propose other substantial changes in an
+issue before opening a pull request. Use Discussions for questions and early
+exploration.
 
 Explain what the change would address and why it matters. If it affects an
 application, library, research project, or production system that uses Warp,
 describe the impact. Include a reproduction when possible. If you already have a
 fix, mention it and briefly explain your approach.
 
-Issues track bugs, requests, and project plans. They are not a task list for
-contributors. An open or unassigned issue does not mean maintainers are looking
-for someone to implement it.
+Issues track bugs, requests, and project plans; they are not a list of
+contribution assignments. If you want to work on an issue about a problem you
+did not discover yourself, explain how the problem affects your use of Warp and
+ask in the issue whether an outside implementation is wanted. Pull requests
+based only on an existing issue, without demonstrated user impact or prior
+coordination, may be closed without detailed review or individualized feedback.
+
+If you report a previously unknown bug that you encountered while using Warp,
+you may submit a related fix without waiting for maintainer approval. The pull
+request remains a proposal: maintainers may request a different approach, defer
+it, or decline it based on project direction and review capacity.
+
+Discuss new features with maintainers before implementing them. Feature
+proposals should describe the application, library, research project, production
+system, or other concrete workflow that needs the new capability.
 
 ## Code Contributions
 
@@ -152,6 +166,12 @@ contribution meets these expectations:
   adequate test coverage will not be merged. That said, every test adds to the suite
   runtime, so focus on meaningful tests that verify real behavior rather than
   exhaustively testing trivial variations. See [Testing Warp](#testing-warp) for guidance.
+* **Test CUDA behavior on NVIDIA hardware.** Changes to functionality that
+  supports CUDA execution must be tested on a supported NVIDIA GPU, even if the
+  problem was discovered on CPU. Fixes for behavior shared by CPU and CUDA must
+  address both. If you have not performed this testing, state that clearly in the
+  pull request description. Maintainers cannot provide the primary GPU
+  validation for a community contribution.
 * **Follow the pull request template.** Fill out all relevant sections, including
   a test plan that explains how you verified the changes. This also helps reviewers
   reproduce and confirm your results. See [Pull Requests](#pull-requests).

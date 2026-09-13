@@ -1,56 +1,55 @@
-## Description
+## What problem are you trying to solve?
 
 <!--
-Explain what changed and why it matters. If it affects a downstream project that
-uses Warp, describe the project and the impact. Link the related issue or
-discussion, using "closes #1234" when applicable.
+Describe the concrete problem or need that led to this pull request and how it
+affects your use of Warp. If available, link to a downstream repository,
+branch, commit, or minimal reproducer.
+
+If there is a related issue, use "Part of #123" if this contributes to but
+does not complete it. Use "Closes #123" only if merging this pull request
+fully resolves it.
 -->
 
-## Changes
+## What does this change?
 
 <!--
-List the main changes grouped by behavior or subsystem. Keep this high-level;
-avoid repeating the diff.
+Briefly explain the approach and the main changes. For a new feature or
+enhancement, include a short usage example.
 -->
+
+## Existing pull requests
+
+- [ ] I searched open pull requests for duplicate or overlapping work.
+
+<!--
+List relevant open pull requests by number, or write "None found."
+-->
+- Related pull requests:
+
+## Validation
+
+<!--
+For a bug fix, list the tests or reproducers you confirmed fail without this
+change and pass with it. Write N/A if this is not a bug fix.
+-->
+- Regression validation:
+
+<!--
+For code changes, name the NVIDIA GPU and platform used for testing, for
+example, RTX 4090 on Ubuntu 24.04. If not tested on an NVIDIA GPU, say so
+clearly. Documentation-only changes may use N/A.
+-->
+- NVIDIA GPU:
+
+<!--
+For a new feature, list the tests covering its core behavior. Briefly describe
+any other relevant checks. Do not paste complete test logs.
+-->
+- Other validation:
 
 ## Checklist
 
-- [ ] I am familiar with the [Contributing Guidelines](https://github.com/NVIDIA/warp/blob/main/CONTRIBUTING.md).
-- [ ] New or existing tests cover these changes.
-- [ ] The documentation is up to date with these changes.
-- [ ] I added a changelog fragment if this change affects users.
-
-## Validation summary
-
-<!--
-Explain what was verified and why it is sufficient for review. Write a short
-step-by-step validation narrative, not a command dump. Prefer test names plus
-behavior summaries.
-
-For test-driven changes, include red/green evidence when applicable, e.g.:
-- Verified the new test fails on the target branch without this change.
-- Verified the new test passes on this branch with the fix.
-
-If testing was not run, say so and explain the risk or blocker. Include
-commands only when they help reproduce the validation.
--->
-
-## Bug fix
-
-<!-- If this is a bug fix, provide a minimal code example that reproduces
-     the issue WITHOUT this PR applied. Delete this section if not applicable. -->
-
-```python
-import warp as wp
-# Code that demonstrates the bug
-```
-
-## New feature / enhancement
-
-<!-- If this is a new feature or enhancement, provide a code example showing
-     what this PR enables. Delete this section if not applicable. -->
-
-```python
-import warp as wp
-# Code that demonstrates the new capability
-```
+- [ ] I have read and followed the [Contributing Guidelines](https://github.com/NVIDIA/warp/blob/main/CONTRIBUTING.md).
+- [ ] This pull request does not bundle unrelated changes unless a maintainer agreed to the broader scope.
+- [ ] My branch is up to date with `main` and contains one commit, unless a maintainer agreed to keep the change as multiple commits.
+- [ ] I included any required [changelog fragments](https://github.com/NVIDIA/warp/blob/main/changelog/README.md) and used a `+` prefix only for changes that do not require a GitHub issue.
