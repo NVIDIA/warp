@@ -525,17 +525,17 @@
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>element</strong> (<a class="reference internal" href="warp.fem.Element.html#warp.fem.Element" title="warp._src.fem.geometry.element.Element"><em>Element</em></a>) – the type of reference element on which to build the shape function</p></li>
-<li><p><strong>degree</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – polynomial degree of the per-element shape functions</p></li>
+<li><p><strong>degree</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – polynomial degree of the per-element shape functions</p></li>
 <li><p><strong>element_basis</strong> (<a class="reference internal" href="warp.fem.ElementBasis.html#warp.fem.ElementBasis" title="warp._src.fem.space.shape.ElementBasis"><em>ElementBasis</em></a><em> | </em><em>None</em>) – type of basis function for the individual elements</p></li>
 <li><p><strong>family</strong> (<a class="reference internal" href="warp.fem.Polynomial.html#warp.fem.Polynomial" title="warp._src.fem.polynomial.Polynomial"><em>Polynomial</em></a><em> | </em><em>None</em>) – Polynomial family used to generate the shape function basis. If not provided, a reasonable basis is chosen.</p></li>
-<li><p><strong>scalar_type</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><em>type</em></a><em> | </em><em>None</em>)</p></li>
+<li><p><strong>scalar_type</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.14)"><em>type</em></a><em> | </em><em>None</em>)</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>the corresponding shape function</p>
 </dd>
 <dt class="field-odd">Raises<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><strong>NotImplementedError</strong></a> – If the shape function is not implemented for the given element type</p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#NotImplementedError" title="(in Python v3.14)"><strong>NotImplementedError</strong></a> – If the shape function is not implemented for the given element type</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><a class="reference internal" href="warp.fem.ShapeFunction.html#warp.fem.ShapeFunction" title="warp._src.fem.space.shape.shape_function.ShapeFunction"><em>ShapeFunction</em></a></p>

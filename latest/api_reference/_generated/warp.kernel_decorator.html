@@ -584,21 +584,21 @@ The function must not return anything.</p>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>f</strong> (<a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Callable" title="(in Python v3.14)"><em>Callable</em></a><em> | </em><em>None</em>) – The function to be registered as a kernel.</p></li>
-<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Sets the kernel key used for registration and native code
+<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Sets the kernel key used for registration and native code
 generation. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, Warp derives the key from <code class="docutils literal notranslate"><span class="pre">f</span></code>. A custom
 name must be a valid C++ identifier. When <code class="docutils literal notranslate"><span class="pre">strip_hash=True</span></code>, Warp
 uses the key without a hash suffix as the base of the generated
 native entry-point names.</p></li>
 <li><p><strong>enable_backward</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a><em> | </em><em>None</em>) – If False, the backward pass will not be
 generated.</p></li>
-<li><p><strong>launch_bounds</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>...</em><em>] </em><em>| </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – CUDA <code class="docutils literal notranslate"><span class="pre">__launch_bounds__</span></code> attribute for the
+<li><p><strong>launch_bounds</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>...</em><em>] </em><em>| </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – CUDA <code class="docutils literal notranslate"><span class="pre">__launch_bounds__</span></code> attribute for the
 kernel. Can be an int (<code class="docutils literal notranslate"><span class="pre">maxThreadsPerBlock</span></code>) or a tuple
 of 1-2 ints <code class="docutils literal notranslate"><span class="pre">(maxThreadsPerBlock,</span>
 <span class="pre">minBlocksPerMultiprocessor)</span></code>. Only applies to CUDA
 kernels. Note: The <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> parameter in
 <a class="reference internal" href="warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.launch()</span></code></a> must not exceed the
 <code class="docutils literal notranslate"><span class="pre">maxThreadsPerBlock</span></code> value specified here.</p></li>
-<li><p><strong>cuda_max_registers</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – CUDA <code class="docutils literal notranslate"><span class="pre">__maxnreg__</span></code> attribute specifying the maximum
+<li><p><strong>cuda_max_registers</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – CUDA <code class="docutils literal notranslate"><span class="pre">__maxnreg__</span></code> attribute specifying the maximum
 number of registers allocated per thread. <code class="docutils literal notranslate"><span class="pre">cuda_max_registers</span></code> must
 be a positive int and cannot be combined with <code class="docutils literal notranslate"><span class="pre">launch_bounds</span></code>. The
 <code class="docutils literal notranslate"><span class="pre">cuda_max_registers</span></code> option applies only to CUDA kernels and is ignored
@@ -612,7 +612,7 @@ an entry point uses dynamic shared memory, on CPU, with older CUDA
 Toolkits, in unsupported device-debug compilation, or when
 <code class="docutils literal notranslate"><span class="pre">warp.config.llvm_cuda</span></code> is <code class="docutils literal notranslate"><span class="pre">True</span></code>. Explicit <code class="docutils literal notranslate"><span class="pre">launch_bounds</span></code> are
 recommended to avoid over-allocating shared memory and reducing occupancy.</p></li>
-<li><p><strong>cluster_dim</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – CUDA Thread Block Cluster size as a 1D CTA count.
+<li><p><strong>cluster_dim</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – CUDA Thread Block Cluster size as a 1D CTA count.
 Warp emits CUDA <code class="docutils literal notranslate"><span class="pre">__cluster_dims__(cluster_dim,</span> <span class="pre">1,</span> <span class="pre">1)</span></code> because
 kernels use a 1D hardware launch grid. Must be a positive int &lt;= 16
 (Hopper non-portable cap). Default <code class="docutils literal notranslate"><span class="pre">1</span></code> means no clustering. Only
@@ -624,7 +624,7 @@ kernel belongs. Alternatively, if a string <code class="docutils literal notrans
 provided, the kernel is assigned to a new module named
 after the kernel name and hash. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, the module is
 inferred from the function’s module.</p></li>
-<li><p><strong>module_options</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a><em>] </em><em>| </em><em>None</em>) – A dict of module-level compilation options
+<li><p><strong>module_options</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a><em>] </em><em>| </em><em>None</em>) – A dict of module-level compilation options
 (e.g. <code class="docutils literal notranslate"><span class="pre">fast_math</span></code>, <code class="docutils literal notranslate"><span class="pre">mode</span></code>, <code class="docutils literal notranslate"><span class="pre">max_unroll</span></code>,
 <code class="docutils literal notranslate"><span class="pre">deterministic</span></code>, <code class="docutils literal notranslate"><span class="pre">deterministic_max_records</span></code>) that are
 applied to the kernel’s module. Requires

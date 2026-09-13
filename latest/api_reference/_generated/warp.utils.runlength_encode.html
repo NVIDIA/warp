@@ -535,7 +535,7 @@ host-return form cannot represent a replay-time result.</p>
 <li><p><strong>run_lengths</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>) – Output array to store run lengths. Must be at least value_count in size.</p></li>
 <li><p><strong>run_count</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>) – Optional output array to store the number of runs.
 If <code class="docutils literal notranslate"><span class="pre">None</span></code>, returns the count as an integer.</p></li>
-<li><p><strong>value_count</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Number of values to process. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, processes entire array.</p></li>
+<li><p><strong>value_count</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Number of values to process. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, processes entire array.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -543,14 +543,14 @@ If <code class="docutils literal notranslate"><span class="pre">None</span></cod
 </dd>
 <dt class="field-odd">Raises<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If array storage devices don’t match, if storage size is insufficient, if data types are
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If array storage devices don’t match, if storage size is insufficient, if data types are
     unsupported, or if <code class="docutils literal notranslate"><span class="pre">value_count</span></code> is negative.</p></li>
-<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><strong>NotImplementedError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">run_count</span></code> is <code class="docutils literal notranslate"><span class="pre">None</span></code> for a non-empty call
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#NotImplementedError" title="(in Python v3.14)"><strong>NotImplementedError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">run_count</span></code> is <code class="docutils literal notranslate"><span class="pre">None</span></code> for a non-empty call
     during CPU graph capture or CUDA graph capture with <code class="docutils literal notranslate"><span class="pre">apic=True</span></code>.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a> | <a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a></p>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)">int</a> | <a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a></p>
 </dd>
 </dl>
 </dd></dl>

@@ -520,12 +520,12 @@ should be <code class="docutils literal notranslate"><span class="pre">...</span
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>snippet</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Native C++/CUDA code inserted into the generated forward
+<li><p><strong>snippet</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Native C++/CUDA code inserted into the generated forward
 function body.</p></li>
-<li><p><strong>adj_snippet</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Optional native code inserted into the generated adjoint
+<li><p><strong>adj_snippet</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Optional native code inserted into the generated adjoint
 function body. Use <code class="docutils literal notranslate"><span class="pre">adj_</span></code>-prefixed argument names, and <code class="docutils literal notranslate"><span class="pre">adj_ret</span></code>
 for the adjoint of a return value.</p></li>
-<li><p><strong>replay_snippet</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Optional native code used when Warp replays the forward
+<li><p><strong>replay_snippet</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Optional native code used when Warp replays the forward
 function while executing the generated backward pass. Use this when
 replaying <code class="docutils literal notranslate"><span class="pre">snippet</span></code> would repeat an unsafe side effect, such as
 incrementing an atomic counter.</p></li>

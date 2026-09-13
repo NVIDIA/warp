@@ -683,7 +683,7 @@ The behavior of the modulus operator in a Warp kernel follows that of C++11: The
 </section>
 <section id="power-operator">
 <h3>Power Operator<a class="headerlink" href="#power-operator" title="Link to this heading">#</a></h3>
-<p>The power operator (<code class="docutils literal notranslate"><span class="pre">**</span></code>) in Warp kernels only works on floating-point numbers (also see <a class="reference external" href="https://docs.python.org/3/library/functions.html#pow" title="(in Python v3.14)"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.pow()</span></code></a>).
+<p>The power operator (<code class="docutils literal notranslate"><span class="pre">**</span></code>) in Warp kernels only works on floating-point numbers (also see <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#pow" title="(in Python v3.14)"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.pow()</span></code></a>).
 In Python, the power operator can also be used on integers.</p>
 </section>
 <section id="inverse-sine-and-cosine">
@@ -695,7 +695,7 @@ with an input outside [-1, 1] raises a <code class="docutils literal notranslate
 <section id="rounding">
 <h3>Rounding<a class="headerlink" href="#rounding" title="Link to this heading">#</a></h3>
 <p><a class="reference internal" href="../language_reference/_generated/warp.round.html#warp._src.lang.round" title="warp._src.lang.round"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.round()</span></code></a> rounds halfway cases away from zero, but Python’s
-<a class="reference external" href="https://docs.python.org/3/library/functions.html#round" title="(in Python v3.14)"><code class="xref py py-func docutils literal notranslate"><span class="pre">round()</span></code></a> rounds halfway cases to the nearest even
+<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#round" title="(in Python v3.14)"><code class="xref py py-func docutils literal notranslate"><span class="pre">round()</span></code></a> rounds halfway cases to the nearest even
 choice (Banker’s rounding). Use <a class="reference internal" href="../language_reference/_generated/warp.rint.html#warp._src.lang.rint" title="warp._src.lang.rint"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.rint()</span></code></a> when Banker’s rounding is
 desired. Unlike Python, the return type in Warp of both of these rounding
 functions is the same type as the input:</p>

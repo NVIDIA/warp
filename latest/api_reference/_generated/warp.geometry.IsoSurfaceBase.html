@@ -532,12 +532,12 @@ for the specific interpolation its gradient flows through.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>nx</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of grid nodes in the x-direction.</p></li>
-<li><p><strong>ny</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of grid nodes in the y-direction.</p></li>
-<li><p><strong>nz</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of grid nodes in the z-direction.</p></li>
-<li><p><strong>lower</strong> (<a class="reference internal" href="warp.vec3.html#warp.vec3" title="warp.vec3"><em>warp.vec3</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>] </em><em>| </em><em>None</em>) – The 3D coordinate that the grid’s corner at index (0,0,0)
+<li><p><strong>nx</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of grid nodes in the x-direction.</p></li>
+<li><p><strong>ny</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of grid nodes in the y-direction.</p></li>
+<li><p><strong>nz</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of grid nodes in the z-direction.</p></li>
+<li><p><strong>lower</strong> (<a class="reference internal" href="warp.vec3.html#warp.vec3" title="warp.vec3"><em>warp.vec3</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>] </em><em>| </em><em>None</em>) – The 3D coordinate that the grid’s corner at index (0,0,0)
 maps to. Defaults to <code class="docutils literal notranslate"><span class="pre">(0.0,</span> <span class="pre">0.0,</span> <span class="pre">0.0)</span></code> if <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
-<li><p><strong>upper</strong> (<a class="reference internal" href="warp.vec3.html#warp.vec3" title="warp.vec3"><em>warp.vec3</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>] </em><em>| </em><em>None</em>) – The 3D coordinate that the grid’s corner at index
+<li><p><strong>upper</strong> (<a class="reference internal" href="warp.vec3.html#warp.vec3" title="warp.vec3"><em>warp.vec3</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>] </em><em>| </em><em>None</em>) – The 3D coordinate that the grid’s corner at index
 (nx-1, ny-1, nz-1) maps to. Defaults to align with the grid’s
 maximal indices if <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
 </ul>
@@ -549,7 +549,7 @@ maximal indices if <code class="docutils literal notranslate"><span class="pre">
 <dd><p>The number of grid nodes in the x-direction.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)">int</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -560,7 +560,7 @@ maximal indices if <code class="docutils literal notranslate"><span class="pre">
 <dd><p>The number of grid nodes in the y-direction.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)">int</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -571,7 +571,7 @@ maximal indices if <code class="docutils literal notranslate"><span class="pre">
 <dd><p>The number of grid nodes in the z-direction.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)">int</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -583,7 +583,7 @@ maximal indices if <code class="docutils literal notranslate"><span class="pre">
 coordinate scaling.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="warp.vec3f.html#warp.vec3f" title="warp.vec3f">warp.vec3f</a> | <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a> | None</p>
+<dd class="field-odd"><p><a class="reference internal" href="warp.vec3f.html#warp.vec3f" title="warp.vec3f">warp.vec3f</a> | <a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a> | None</p>
 </dd>
 </dl>
 </dd></dl>
@@ -595,7 +595,7 @@ coordinate scaling.</p>
 coordinate scaling.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="warp.vec3f.html#warp.vec3f" title="warp.vec3f">warp.vec3f</a> | <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a> | None</p>
+<dd class="field-odd"><p><a class="reference internal" href="warp.vec3f.html#warp.vec3f" title="warp.vec3f">warp.vec3f</a> | <a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a> | None</p>
 </dd>
 </dl>
 </dd></dl>
@@ -629,14 +629,14 @@ coordinate scaling.</p>
 </div>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.geometry.IsoSurfaceBase.verts">
-<span class="sig-name descname"><span class="pre">verts</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><span class="pre">wp.array</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="warp.vec3f.html#warp.vec3f" title="warp.vec3f"><span class="pre">wp.vec3f</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><a class="headerlink" href="#warp.geometry.IsoSurfaceBase.verts" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">verts</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><span class="pre">wp.array</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="warp.vec3f.html#warp.vec3f" title="warp.vec3f"><span class="pre">wp.vec3f</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><a class="headerlink" href="#warp.geometry.IsoSurfaceBase.verts" title="Link to this definition">#</a></dt>
 <dd><p>An array of vertex positions of type <a class="reference internal" href="warp.vec3f.html#warp.vec3f" title="warp.vec3f"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3f</span></code></a> for the
 output mesh. This is populated by calling the <a class="reference internal" href="#warp.geometry.IsoSurfaceBase.surface" title="warp.geometry.IsoSurfaceBase.surface"><code class="xref py py-meth docutils literal notranslate"><span class="pre">surface()</span></code></a> method.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.geometry.IsoSurfaceBase.indices">
-<span class="sig-name descname"><span class="pre">indices</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><span class="pre">wp.array</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="warp.int32.html#warp.int32" title="warp.int32"><span class="pre">wp.int32</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><a class="headerlink" href="#warp.geometry.IsoSurfaceBase.indices" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">indices</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><span class="pre">wp.array</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="warp.int32.html#warp.int32" title="warp.int32"><span class="pre">wp.int32</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><a class="headerlink" href="#warp.geometry.IsoSurfaceBase.indices" title="Link to this definition">#</a></dt>
 <dd><p>An array of face vertex indices of type <a class="reference internal" href="warp.int32.html#warp.int32" title="warp.int32"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.int32</span></code></a> for the
 output mesh. This is populated by calling the <a class="reference internal" href="#warp.geometry.IsoSurfaceBase.surface" title="warp.geometry.IsoSurfaceBase.surface"><code class="xref py py-meth docutils literal notranslate"><span class="pre">surface()</span></code></a> method.</p>
 </dd></dl>
@@ -651,9 +651,9 @@ resolution. The new dimensions take effect on the next call to
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>nx</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – New number of nodes in the x-direction.</p></li>
-<li><p><strong>ny</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – New number of nodes in the y-direction.</p></li>
-<li><p><strong>nz</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – New number of nodes in the z-direction.</p></li>
+<li><p><strong>nx</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – New number of nodes in the x-direction.</p></li>
+<li><p><strong>ny</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – New number of nodes in the y-direction.</p></li>
+<li><p><strong>nz</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – New number of nodes in the z-direction.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
@@ -673,11 +673,11 @@ resolution. The new dimensions take effect on the next call to
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>field</strong> (<a class="reference internal" href="warp.array3d.html#warp.array3d" title="warp.array3d"><em>warp.array3d</em></a><em>[</em><a class="reference internal" href="warp.float32.html#warp.float32" title="warp.float32"><em>warp.float32</em></a><em>]</em>) – A 3D scalar field whose shape must match the grid dimensions
 (nx, ny, nz) of the instance.</p></li>
-<li><p><strong>threshold</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – The field value defining the isosurface to extract.</p></li>
+<li><p><strong>threshold</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – The field value defining the isosurface to extract.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If the shape of <code class="docutils literal notranslate"><span class="pre">field</span></code> does not match the configured
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If the shape of <code class="docutils literal notranslate"><span class="pre">field</span></code> does not match the configured
     grid dimensions of the instance.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -704,11 +704,11 @@ resolution. The new dimensions take effect on the next call to
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>field</strong> (<a class="reference internal" href="warp.array3d.html#warp.array3d" title="warp.array3d"><em>warp.array3d</em></a><em>[</em><a class="reference internal" href="warp.float32.html#warp.float32" title="warp.float32"><em>warp.float32</em></a><em>]</em>) – A 3D array representing the scalar values on a regular grid.</p></li>
-<li><p><strong>threshold</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – The field value defining the isosurface to extract.</p></li>
-<li><p><strong>lower</strong> (<a class="reference internal" href="warp.vec3f.html#warp.vec3f" title="warp._src.types.vec3f"><em>vec3f</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>] </em><em>| </em><em>None</em>) – The 3D coordinate that the grid’s corner at index
+<li><p><strong>threshold</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – The field value defining the isosurface to extract.</p></li>
+<li><p><strong>lower</strong> (<a class="reference internal" href="warp.vec3f.html#warp.vec3f" title="warp._src.types.vec3f"><em>vec3f</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>] </em><em>| </em><em>None</em>) – The 3D coordinate that the grid’s corner at index
 (0,0,0) maps to. Defaults to <code class="docutils literal notranslate"><span class="pre">(0.0,</span> <span class="pre">0.0,</span> <span class="pre">0.0)</span></code> if
 <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
-<li><p><strong>upper</strong> (<a class="reference internal" href="warp.vec3f.html#warp.vec3f" title="warp._src.types.vec3f"><em>vec3f</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>] </em><em>| </em><em>None</em>) – The 3D coordinate that the grid’s corner at index
+<li><p><strong>upper</strong> (<a class="reference internal" href="warp.vec3f.html#warp.vec3f" title="warp._src.types.vec3f"><em>vec3f</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>] </em><em>| </em><em>None</em>) – The 3D coordinate that the grid’s corner at index
 (nx-1, ny-1, nz-1) maps to. Defaults to align with the
 grid’s maximal indices if <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
 </ul>
@@ -723,13 +723,13 @@ to <code class="docutils literal notranslate"><span class="pre">indices</span></
 </dd>
 <dt class="field-odd">Raises<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">field</span></code> is not a 3D array, or has fewer than
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">field</span></code> is not a 3D array, or has fewer than
     two nodes on any axis.</p></li>
-<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.14)"><strong>TypeError</strong></a> – If the <code class="docutils literal notranslate"><span class="pre">field</span></code> data type is not <code class="docutils literal notranslate"><span class="pre">warp.float32</span></code>.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#TypeError" title="(in Python v3.14)"><strong>TypeError</strong></a> – If the <code class="docutils literal notranslate"><span class="pre">field</span></code> data type is not <code class="docutils literal notranslate"><span class="pre">warp.float32</span></code>.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference internal" href="warp.array.html#warp.array" title="warp.array">wp.array</a>[<a class="reference internal" href="warp.vec3f.html#warp.vec3f" title="warp.vec3f">wp.vec3f</a>], <a class="reference internal" href="warp.array.html#warp.array" title="warp.array">wp.array</a>[<a class="reference internal" href="warp.int32.html#warp.int32" title="warp.int32">wp.int32</a>]]</p>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference internal" href="warp.array.html#warp.array" title="warp.array">wp.array</a>[<a class="reference internal" href="warp.vec3f.html#warp.vec3f" title="warp.vec3f">wp.vec3f</a>], <a class="reference internal" href="warp.array.html#warp.array" title="warp.array">wp.array</a>[<a class="reference internal" href="warp.int32.html#warp.int32" title="warp.int32">wp.int32</a>]]</p>
 </dd>
 </dl>
 </dd></dl>

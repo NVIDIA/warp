@@ -539,12 +539,12 @@ vertex indices, assumed counterclockwise. Modified in place.</p></li>
 would create a degenerate triangle in the reference configuration
 are rejected. Useful when the working mesh is a deformation of a
 reference mesh that must stay non-degenerate.</p></li>
-<li><p><strong>max_passes</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Maximum number of parallel flip passes before stopping. Must
+<li><p><strong>max_passes</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Maximum number of parallel flip passes before stopping. Must
 be at least 1.</p></li>
-<li><p><strong>area_epsilon</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Minimum signed area required for each triangle produced by
+<li><p><strong>area_epsilon</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Minimum signed area required for each triangle produced by
 a flip; guards against creating inverted or sliver triangles. Must be
 finite and non-negative.</p></li>
-<li><p><strong>ref_area_epsilon</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Degeneracy threshold applied to <code class="docutils literal notranslate"><span class="pre">ref_positions</span></code>. Must be
+<li><p><strong>ref_area_epsilon</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Degeneracy threshold applied to <code class="docutils literal notranslate"><span class="pre">ref_positions</span></code>. Must be
 finite and non-negative.</p></li>
 </ul>
 </dd>

@@ -523,7 +523,7 @@
 <li><p><strong>priority</strong> – An optional integer specifying the requested stream priority.
 Can be -1 (high priority) or 0 (low/default priority).
 Values outside this range will be clamped.</p></li>
-<li><p><strong>cuda_stream</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – A optional external stream handle passed as an
+<li><p><strong>cuda_stream</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – A optional external stream handle passed as an
 integer. The caller is responsible for ensuring that the external
 stream does not get destroyed while it is referenced by this
 object.</p></li>
@@ -531,12 +531,12 @@ object.</p></li>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
 <dd class="field-even"><ul class="simple">
-<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If function is called before Warp has completed
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If function is called before Warp has completed
     initialization with a <code class="docutils literal notranslate"><span class="pre">device</span></code> that is not an instance of
     <a class="reference internal" href="warp.Device.html#warp.Device" title="warp._src.context.Device"><code class="xref py py-class docutils literal notranslate"><span class="pre">Device</span></code></a>.</p></li>
-<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – <code class="docutils literal notranslate"><span class="pre">device</span></code> is not a CUDA Device.</p></li>
-<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – The stream could not be created on the device.</p></li>
-<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.14)"><strong>TypeError</strong></a> – The requested stream priority is not an integer.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – <code class="docutils literal notranslate"><span class="pre">device</span></code> is not a CUDA Device.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – The stream could not be created on the device.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#TypeError" title="(in Python v3.14)"><strong>TypeError</strong></a> – The requested stream priority is not an integer.</p></li>
 </ul>
 </dd>
 </dl>
@@ -595,7 +595,7 @@ argument has no effect outside of graph capture.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – The provided <a class="reference internal" href="warp.Event.html#warp.Event" title="warp.Event"><code class="xref py py-class docutils literal notranslate"><span class="pre">Event</span></code></a> is from a different device than
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – The provided <a class="reference internal" href="warp.Event.html#warp.Event" title="warp.Event"><code class="xref py py-class docutils literal notranslate"><span class="pre">Event</span></code></a> is from a different device than
     the recording stream.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -666,7 +666,7 @@ argument has no effect outside of graph capture.</p></li>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.Stream.priority">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">priority</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L5585-L5589"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Stream.priority" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">priority</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L5585-L5589"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Stream.priority" title="Link to this definition">#</a></dt>
 <dd><p>An integer representing the priority of the stream.</p>
 </dd></dl>
 

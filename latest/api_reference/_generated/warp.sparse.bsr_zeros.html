@@ -527,8 +527,8 @@
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>rows_of_blocks</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of rows of blocks.</p></li>
-<li><p><strong>cols_of_blocks</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of columns of blocks.</p></li>
+<li><p><strong>rows_of_blocks</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of rows of blocks.</p></li>
+<li><p><strong>cols_of_blocks</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of columns of blocks.</p></li>
 <li><p><strong>block_type</strong> (<em>BlockType</em>) – Type of individual blocks.
 For CSR matrices, this should be a scalar type.
 For BSR matrices, this should be a matrix type (e.g. from <a class="reference internal" href="warp.types.matrix.html#warp.types.matrix" title="warp.types.matrix"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.types.matrix()</span></code></a>).</p></li>
@@ -536,11 +536,11 @@ For BSR matrices, this should be a matrix type (e.g. from <a class="reference in
 <li><p><strong>topology</strong> (<em>Literal</em><em>[</em><em>'compact'</em><em>, </em><em>'padded'</em><em>] </em><em>| </em><em>None</em>) – Topology policy. Defaults to <code class="docutils literal notranslate"><span class="pre">&quot;compact&quot;</span></code> unless
 <code class="docutils literal notranslate"><span class="pre">row_capacity</span></code> is provided, in which case it defaults to
 <code class="docutils literal notranslate"><span class="pre">&quot;padded&quot;</span></code>.</p></li>
-<li><p><strong>row_capacity</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>Array</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>] </em><em>| </em><em>None</em>) – Optional row capacity for padded matrices. May be a
+<li><p><strong>row_capacity</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>Array</em><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>] </em><em>| </em><em>None</em>) – Optional row capacity for padded matrices. May be a
 nonnegative integer for uniform capacity, or an integer Warp array of
 shape <code class="docutils literal notranslate"><span class="pre">(rows_of_blocks,)</span></code> for per-row capacity. Providing this
 implies padded topology when <code class="docutils literal notranslate"><span class="pre">topology</span></code> is omitted.</p></li>
-<li><p><strong>nnz_capacity</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Optional storage allocation upper bound for <code class="docutils literal notranslate"><span class="pre">columns</span></code>
+<li><p><strong>nnz_capacity</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Optional storage allocation upper bound for <code class="docutils literal notranslate"><span class="pre">columns</span></code>
 and <code class="docutils literal notranslate"><span class="pre">values</span></code>. This is mainly useful with per-row <code class="docutils literal notranslate"><span class="pre">row_capacity</span></code>
 arrays when an upper bound is already known. When <code class="docutils literal notranslate"><span class="pre">row_capacity</span></code> is
 an array, the caller is responsible for ensuring <code class="docutils literal notranslate"><span class="pre">nnz_capacity</span></code> is

@@ -533,9 +533,9 @@ Must be a CPU array with <code class="docutils literal notranslate"><span class=
 <li><p><strong>node_colors</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>) – A 1D array of shape <code class="docutils literal notranslate"><span class="pre">(node_count,)</span></code> containing the current color
 assignments. Will be modified in-place with the balanced coloring.
 Must be a CPU array with <code class="docutils literal notranslate"><span class="pre">int32</span></code> dtype.</p></li>
-<li><p><strong>color_count</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – The number of colors in the current coloring (as returned by
+<li><p><strong>color_count</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – The number of colors in the current coloring (as returned by
 <a class="reference internal" href="warp.utils.graph_coloring_assign.html#warp.utils.graph_coloring_assign" title="warp.utils.graph_coloring_assign"><code class="xref py py-func docutils literal notranslate"><span class="pre">graph_coloring_assign()</span></code></a>).</p></li>
-<li><p><strong>target_max_min_ratio</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – The target ratio between the largest and smallest color
+<li><p><strong>target_max_min_ratio</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – The target ratio between the largest and smallest color
 group sizes. The algorithm will stop when this ratio is achieved or when
 no further improvements are possible.</p></li>
 </ul>
@@ -545,7 +545,7 @@ no further improvements are possible.</p></li>
 the target if the graph structure prevents further balancing.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)">float</a></p>
 </dd>
 </dl>
 <p class="rubric">Example</p>

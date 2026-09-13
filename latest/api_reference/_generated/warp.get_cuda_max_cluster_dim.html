@@ -534,10 +534,10 @@ declared value when the device supports it, or <code class="docutils literal not
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>kernel</strong> – A <code class="docutils literal notranslate"><span class="pre">&#64;warp.kernel</span></code>-decorated kernel instance.</p></li>
-<li><p><strong>device</strong> (<a class="reference internal" href="warp.Device.html#warp.Device" title="warp._src.context.Device"><em>Device</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Target device. Defaults to the current device.</p></li>
-<li><p><strong>block_dim</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Threads per block at launch. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, uses the kernel’s
+<li><p><strong>device</strong> (<a class="reference internal" href="warp.Device.html#warp.Device" title="warp._src.context.Device"><em>Device</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Target device. Defaults to the current device.</p></li>
+<li><p><strong>block_dim</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Threads per block at launch. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, uses the kernel’s
 module-resolved <code class="docutils literal notranslate"><span class="pre">block_dim</span></code>.</p></li>
-<li><p><strong>dynamic_smem_bytes</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Dynamic shared memory bytes used at launch.</p></li>
+<li><p><strong>dynamic_smem_bytes</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Dynamic shared memory bytes used at launch.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -545,7 +545,7 @@ module-resolved <code class="docutils literal notranslate"><span class="pre">blo
 with compute capability &lt; 9.0, on non-CUDA devices, and on driver error.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)">int</a></p>
 </dd>
 </dl>
 </dd></dl>

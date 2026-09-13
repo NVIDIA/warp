@@ -581,7 +581,7 @@ retain the external buffer.</p>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>loss</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>) – A single-element array that holds the loss function value whose gradient is to be computed</p></li>
-<li><p><strong>grads</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>[</em><a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em>, </em><a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em>] </em><em>| </em><em>None</em>) – A dictionary of arrays that map from Warp arrays to their incoming gradients</p></li>
+<li><p><strong>grads</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>[</em><a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em>, </em><a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em>] </em><em>| </em><em>None</em>) – A dictionary of arrays that map from Warp arrays to their incoming gradients</p></li>
 </ul>
 </dd>
 </dl>
@@ -622,7 +622,7 @@ the same arrays and has not yet run its own backward pass, or against a second
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>backward</strong> (<em>Callable</em>) – A callable Python object (can be any function) that will be executed in the backward pass.</p></li>
-<li><p><strong>arrays</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a>) – A list of arrays that are used by the backward function. The tape keeps track of these to be able to zero their gradients in Tape.zero()</p></li>
+<li><p><strong>arrays</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a>) – A list of arrays that are used by the backward function. The tape keeps track of these to be able to zero their gradients in Tape.zero()</p></li>
 </ul>
 </dd>
 </dl>
@@ -716,24 +716,24 @@ a <a class="reference internal" href="warp.struct.html#warp.struct" title="warp.
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>filename</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – The filename to save the visualization to (optional).</p></li>
+<li><p><strong>filename</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – The filename to save the visualization to (optional).</p></li>
 <li><p><strong>simplify_graph</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If True, simplify the graph by detecting repeated kernel launch sequences and summarizing them in subgraphs.</p></li>
 <li><p><strong>hide_readonly_arrays</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If True, hide arrays that are not modified by any kernel launch.</p></li>
-<li><p><strong>array_labels</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>[</em><a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>] </em><em>| </em><em>None</em>) – A dictionary mapping arrays to custom labels.</p></li>
+<li><p><strong>array_labels</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>[</em><a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>] </em><em>| </em><em>None</em>) – A dictionary mapping arrays to custom labels.</p></li>
 <li><p><strong>choose_longest_node_name</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If True, the automatic name resolution will aim to find the longest name for each array in the computation graph.</p></li>
 <li><p><strong>ignore_graph_scopes</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If True, ignore the scopes recorded on the tape when visualizing the graph.</p></li>
-<li><p><strong>track_inputs</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em>] </em><em>| </em><em>None</em>) – A list of arrays to track as inputs in the graph to ensure they are shown regardless of the <cite>hide_readonly_arrays</cite> setting.</p></li>
-<li><p><strong>track_outputs</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em>] </em><em>| </em><em>None</em>) – A list of arrays to track as outputs in the graph so that they remain visible.</p></li>
-<li><p><strong>track_input_names</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>] </em><em>| </em><em>None</em>) – A list of custom names for the input arrays to track in the graph (used in conjunction with <cite>track_inputs</cite>).</p></li>
-<li><p><strong>track_output_names</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>] </em><em>| </em><em>None</em>) – A list of custom names for the output arrays to track in the graph (used in conjunction with <cite>track_outputs</cite>).</p></li>
-<li><p><strong>graph_direction</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – The direction of the graph layout (default: “LR”).</p></li>
+<li><p><strong>track_inputs</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em>] </em><em>| </em><em>None</em>) – A list of arrays to track as inputs in the graph to ensure they are shown regardless of the <cite>hide_readonly_arrays</cite> setting.</p></li>
+<li><p><strong>track_outputs</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em>] </em><em>| </em><em>None</em>) – A list of arrays to track as outputs in the graph so that they remain visible.</p></li>
+<li><p><strong>track_input_names</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>] </em><em>| </em><em>None</em>) – A list of custom names for the input arrays to track in the graph (used in conjunction with <cite>track_inputs</cite>).</p></li>
+<li><p><strong>track_output_names</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>] </em><em>| </em><em>None</em>) – A list of custom names for the output arrays to track in the graph (used in conjunction with <cite>track_outputs</cite>).</p></li>
+<li><p><strong>graph_direction</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – The direction of the graph layout (default: “LR”).</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>The dot code representing the graph.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
 </dd>
 </dl>
 </dd></dl>

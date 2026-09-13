@@ -518,7 +518,7 @@
 kind.</p>
 <p>Graphs returned by <a class="reference internal" href="warp.capture_load.html#warp.capture_load" title="warp.capture_load"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.capture_load()</span></code></a> additionally expose parameter
 binding through <a class="reference internal" href="#warp.Graph.set_param" title="warp.Graph.set_param"><code class="xref py py-meth docutils literal notranslate"><span class="pre">set_param()</span></code></a>, <a class="reference internal" href="#warp.Graph.get_param" title="warp.Graph.get_param"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_param()</span></code></a>, and
-<a class="reference internal" href="#warp.Graph.get_param_ptr" title="warp.Graph.get_param_ptr"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_param_ptr()</span></code></a>. These methods raise <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">RuntimeError</span></code></a> on graphs
+<a class="reference internal" href="#warp.Graph.get_param_ptr" title="warp.Graph.get_param_ptr"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_param_ptr()</span></code></a>. These methods raise <a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#RuntimeError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">RuntimeError</span></code></a> on graphs
 obtained from <a class="reference internal" href="warp.capture_end.html#warp.capture_end" title="warp.capture_end"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.capture_end()</span></code></a>. Use <a class="reference internal" href="#warp.Graph.is_loaded" title="warp.Graph.is_loaded"><code class="xref py py-attr docutils literal notranslate"><span class="pre">is_loaded</span></code></a> to distinguish
 the two cases at runtime.</p>
 <p class="rubric">Methods</p>
@@ -552,23 +552,23 @@ the two cases at runtime.</p>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>device</strong> (<a class="reference internal" href="warp.Device.html#warp.Device" title="warp.Device"><em>Device</em></a>)</p></li>
-<li><p><strong>capture_id</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>capture_id</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
 </ul>
 </dd>
 </dl>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Graph.module_execs">
-<span class="sig-name descname"><span class="pre">module_execs</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#set" title="(in Python v3.14)"><span class="pre">set</span></a><span class="p"><span class="pre">[</span></span><span class="pre">ModuleExec</span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#warp.Graph.module_execs" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">module_execs</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#set" title="(in Python v3.14)"><span class="pre">set</span></a><span class="p"><span class="pre">[</span></span><span class="pre">ModuleExec</span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#warp.Graph.module_execs" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Graph.graph_exec">
-<span class="sig-name descname"><span class="pre">graph_exec</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/ctypes.html#ctypes.c_void_p" title="(in Python v3.14)"><span class="pre">c_void_p</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><a class="headerlink" href="#warp.Graph.graph_exec" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">graph_exec</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/ctypes.html#ctypes.c_void_p" title="(in Python v3.14)"><span class="pre">c_void_p</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><a class="headerlink" href="#warp.Graph.graph_exec" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Graph.graph">
-<span class="sig-name descname"><span class="pre">graph</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/ctypes.html#ctypes.c_void_p" title="(in Python v3.14)"><span class="pre">c_void_p</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><a class="headerlink" href="#warp.Graph.graph" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">graph</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/ctypes.html#ctypes.c_void_p" title="(in Python v3.14)"><span class="pre">c_void_p</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><a class="headerlink" href="#warp.Graph.graph" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -578,7 +578,7 @@ the two cases at runtime.</p>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Graph.apic_state">
-<span class="sig-name descname"><span class="pre">apic_state</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/ctypes.html#ctypes.c_void_p" title="(in Python v3.14)"><span class="pre">c_void_p</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><a class="headerlink" href="#warp.Graph.apic_state" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">apic_state</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/ctypes.html#ctypes.c_void_p" title="(in Python v3.14)"><span class="pre">c_void_p</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><a class="headerlink" href="#warp.Graph.apic_state" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -588,7 +588,7 @@ the two cases at runtime.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – The parameter name as registered in <a class="reference internal" href="warp.capture_save.html#warp.capture_save" title="warp.capture_save"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.capture_save()</span></code></a>
+<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – The parameter name as registered in <a class="reference internal" href="warp.capture_save.html#warp.capture_save" title="warp.capture_save"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.capture_save()</span></code></a>
 (via its <code class="docutils literal notranslate"><span class="pre">inputs</span></code> or <code class="docutils literal notranslate"><span class="pre">outputs</span></code> argument).</p></li>
 <li><p><strong>arr</strong> – A Warp <a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">array</span></code></a> on the same device as the graph. The
 array’s underlying memory is copied into the parameter region.</p></li>
@@ -596,12 +596,12 @@ array’s underlying memory is copied into the parameter region.</p></li>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
 <dd class="field-even"><ul class="simple">
-<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If this graph was not loaded from a <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> file
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If this graph was not loaded from a <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> file
     (use <a class="reference internal" href="#warp.Graph.is_loaded" title="warp.Graph.is_loaded"><code class="xref py py-attr docutils literal notranslate"><span class="pre">is_loaded</span></code></a> to check), or if the runtime fails to
     copy the data (including when <code class="docutils literal notranslate"><span class="pre">arr</span></code>’s capacity does not match
     the registered parameter size).</p></li>
-<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.14)"><strong>TypeError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">arr</span></code> is not a Warp array.</p></li>
-<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">arr</span></code> is on a different device than the graph.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#TypeError" title="(in Python v3.14)"><strong>TypeError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">arr</span></code> is not a Warp array.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">arr</span></code> is on a different device than the graph.</p></li>
 </ul>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -626,7 +626,7 @@ array’s underlying memory is copied into the parameter region.</p></li>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – The parameter name as registered in <a class="reference internal" href="warp.capture_save.html#warp.capture_save" title="warp.capture_save"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.capture_save()</span></code></a>
+<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – The parameter name as registered in <a class="reference internal" href="warp.capture_save.html#warp.capture_save" title="warp.capture_save"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.capture_save()</span></code></a>
 (via its <code class="docutils literal notranslate"><span class="pre">inputs</span></code> or <code class="docutils literal notranslate"><span class="pre">outputs</span></code> argument).</p></li>
 <li><p><strong>arr</strong> – A Warp <a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">array</span></code></a> on the same device as the graph. The
 parameter region is copied into the array’s underlying memory.</p></li>
@@ -634,12 +634,12 @@ parameter region is copied into the array’s underlying memory.</p></li>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
 <dd class="field-even"><ul class="simple">
-<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If this graph was not loaded from a <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> file
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If this graph was not loaded from a <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> file
     (use <a class="reference internal" href="#warp.Graph.is_loaded" title="warp.Graph.is_loaded"><code class="xref py py-attr docutils literal notranslate"><span class="pre">is_loaded</span></code></a> to check), or if the runtime fails to
     copy the data (including when <code class="docutils literal notranslate"><span class="pre">arr</span></code>’s capacity does not match
     the registered parameter size).</p></li>
-<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.14)"><strong>TypeError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">arr</span></code> is not a Warp array.</p></li>
-<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">arr</span></code> is on a different device than the graph.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#TypeError" title="(in Python v3.14)"><strong>TypeError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">arr</span></code> is not a Warp array.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">arr</span></code> is on a different device than the graph.</p></li>
 </ul>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -666,14 +666,14 @@ other libraries or for implementing custom replay loops in C++ via the
 <code class="docutils literal notranslate"><span class="pre">wp_apic_*</span></code> C API.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – The parameter name registered when the graph was saved.</p>
+<dd class="field-odd"><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – The parameter name registered when the graph was saved.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>The address (as an integer) of the parameter region, or <code class="docutils literal notranslate"><span class="pre">None</span></code> if
 <code class="docutils literal notranslate"><span class="pre">name</span></code> is not a registered parameter.</p>
 </dd>
 <dt class="field-odd">Raises<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If this graph was not loaded from a <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> file
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If this graph was not loaded from a <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> file
     (use <a class="reference internal" href="#warp.Graph.is_loaded" title="warp.Graph.is_loaded"><code class="xref py py-attr docutils literal notranslate"><span class="pre">is_loaded</span></code></a> to check).</p>
 </dd>
 </dl>
@@ -681,7 +681,7 @@ other libraries or for implementing custom replay loops in C++ via the
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.Graph.params">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">params</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L6345-L6357"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Graph.params" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">params</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L6345-L6357"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Graph.params" title="Link to this definition">#</a></dt>
 <dd><p>Mapping of parameter name to binding metadata for a loaded graph.</p>
 <p>Each value is a dict with a single <code class="docutils literal notranslate"><span class="pre">&quot;size&quot;</span></code> key giving the parameter
 region’s size in bytes. Empty for graphs that were not loaded from a

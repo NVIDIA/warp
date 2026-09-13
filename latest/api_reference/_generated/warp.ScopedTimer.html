@@ -534,16 +534,16 @@ or record NVTX ranges.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Name of timer</p></li>
+<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Name of timer</p></li>
 <li><p><strong>active</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Enables this timer</p></li>
 <li><p><strong>print</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – At context manager exit, print elapsed time to <code class="docutils literal notranslate"><span class="pre">sys.stdout</span></code></p></li>
 <li><p><strong>detailed</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Collects additional profiling data using cProfile and calls <code class="docutils literal notranslate"><span class="pre">print_stats()</span></code> at context exit</p></li>
-<li><p><strong>dict</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>]</em><em>] </em><em>| </em><em>None</em>) – A dictionary of lists to which the elapsed time will be appended using <code class="docutils literal notranslate"><span class="pre">name</span></code> as a key</p></li>
+<li><p><strong>dict</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>]</em><em>] </em><em>| </em><em>None</em>) – A dictionary of lists to which the elapsed time will be appended using <code class="docutils literal notranslate"><span class="pre">name</span></code> as a key</p></li>
 <li><p><strong>use_nvtx</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If true, timing functionality is replaced by an NVTX range</p></li>
-<li><p><strong>color</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – ARGB value (e.g. 0x00FFFF) or color name (e.g. ‘cyan’) associated with the NVTX range</p></li>
+<li><p><strong>color</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – ARGB value (e.g. 0x00FFFF) or color name (e.g. ‘cyan’) associated with the NVTX range</p></li>
 <li><p><strong>synchronize</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Synchronize the CPU thread with any outstanding CUDA work to return accurate GPU timings</p></li>
-<li><p><strong>cuda_filter</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Filter flags for CUDA activity timing, e.g. <code class="docutils literal notranslate"><span class="pre">warp.TIMING_KERNEL</span></code> or <code class="docutils literal notranslate"><span class="pre">warp.TIMING_ALL</span></code></p></li>
-<li><p><strong>report_func</strong> (<em>Callable</em><em>[</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference internal" href="warp.TimingResult.html#warp.TimingResult" title="warp.TimingResult"><em>TimingResult</em></a><em>]</em><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>]</em><em>, </em><em>None</em><em>] </em><em>| </em><em>None</em>) – A callback function to print the activity report.
+<li><p><strong>cuda_filter</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Filter flags for CUDA activity timing, e.g. <code class="docutils literal notranslate"><span class="pre">warp.TIMING_KERNEL</span></code> or <code class="docutils literal notranslate"><span class="pre">warp.TIMING_ALL</span></code></p></li>
+<li><p><strong>report_func</strong> (<em>Callable</em><em>[</em><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference internal" href="warp.TimingResult.html#warp.TimingResult" title="warp.TimingResult"><em>TimingResult</em></a><em>]</em><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>]</em><em>, </em><em>None</em><em>] </em><em>| </em><em>None</em>) – A callback function to print the activity report.
 If <code class="docutils literal notranslate"><span class="pre">None</span></code>,  <a class="reference internal" href="warp.timing_print.html#warp.timing_print" title="warp.timing_print"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.timing_print()</span></code></a> will be used.</p></li>
 <li><p><strong>skip_tape</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If true, the timer will not be recorded in the tape</p></li>
 </ul>
@@ -555,7 +555,7 @@ If <code class="docutils literal notranslate"><span class="pre">None</span></cod
 <dd><p>Can be set to a string that will be added to the printout at context exit.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -566,7 +566,7 @@ If <code class="docutils literal notranslate"><span class="pre">None</span></cod
 <dd><p>The duration of the <code class="docutils literal notranslate"><span class="pre">with</span></code> block used with this object</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)">float</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -577,7 +577,7 @@ If <code class="docutils literal notranslate"><span class="pre">None</span></cod
 <dd><p>The list of activity timing results, if collection was requested using <code class="docutils literal notranslate"><span class="pre">cuda_filter</span></code></p>
 <dl class="field-list simple">
 <dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a>[<a class="reference internal" href="warp.TimingResult.html#warp.TimingResult" title="warp.TimingResult">TimingResult</a>]</p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)">list</a>[<a class="reference internal" href="warp.TimingResult.html#warp.TimingResult" title="warp.TimingResult">TimingResult</a>]</p>
 </dd>
 </dl>
 </dd></dl>

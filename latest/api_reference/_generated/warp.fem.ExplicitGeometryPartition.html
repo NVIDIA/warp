@@ -534,9 +534,9 @@ This provides fine-grained control over which cells belong to the partition.</p>
 <li><p><strong>geometry</strong> (<a class="reference internal" href="warp.fem.Geometry.html#warp.fem.Geometry" title="warp._src.fem.geometry.geometry.Geometry"><em>Geometry</em></a>) – The geometry to partition.</p></li>
 <li><p><strong>cell_mask</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>warp.array</em></a><em>(</em><em>dtype=int</em><em>)</em>) – Warp array of length <code class="docutils literal notranslate"><span class="pre">geometry.cell_count()</span></code> indicating which
 cells are selected. Values must be <code class="docutils literal notranslate"><span class="pre">1</span></code> (selected) or <code class="docutils literal notranslate"><span class="pre">0</span></code> (not selected).</p></li>
-<li><p><strong>max_cell_count</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – If positive, limits the number of cells to avoid device/host
+<li><p><strong>max_cell_count</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – If positive, limits the number of cells to avoid device/host
 synchronization.</p></li>
-<li><p><strong>max_side_count</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – If positive, limits the number of sides to avoid device/host
+<li><p><strong>max_side_count</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – If positive, limits the number of sides to avoid device/host
 synchronization.</p></li>
 <li><p><strong>temporary_store</strong> (<a class="reference internal" href="warp.fem.TemporaryStore.html#warp.fem.TemporaryStore" title="warp._src.fem.cache.TemporaryStore"><em>TemporaryStore</em></a><em> | </em><em>None</em>) – Temporary storage for intermediate arrays.</p></li>
 </ul>
@@ -634,7 +634,7 @@ synchronization.</p></li>
 <dd><p>Return the number of cells in the partition.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)">int</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -662,7 +662,7 @@ synchronization.</p></li>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>args</strong> (<em>CellArg</em>)</p></li>
-<li><p><strong>partition_cell_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>partition_cell_index</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
 </ul>
 </dd>
 </dl>
@@ -675,7 +675,7 @@ synchronization.</p></li>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>args</strong> (<em>CellArg</em>)</p></li>
-<li><p><strong>cell_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>cell_index</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
 </ul>
 </dd>
 </dl>

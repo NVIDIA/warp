@@ -537,7 +537,7 @@
 <li><p><strong>work_buffer</strong> (<em>Array</em><em>[</em><em>Vector</em><em>[</em><a class="reference internal" href="warp.Scalar.html#warp.Scalar" title="warp.Scalar"><em>Scalar</em></a><em>, </em><em>Rows</em><em>] </em><em>| </em><a class="reference internal" href="warp.Scalar.html#warp.Scalar" title="warp.Scalar"><em>Scalar</em></a><em>] </em><em>| </em><em>None</em>) – Temporary storage is required if and only if <code class="docutils literal notranslate"><span class="pre">x</span></code> and <code class="docutils literal notranslate"><span class="pre">y</span></code> are the same vector.
 If provided, the <code class="docutils literal notranslate"><span class="pre">work_buffer</span></code> array will be used for this purpose,
 otherwise a temporary allocation will be performed.</p></li>
-<li><p><strong>tile_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – If a positive integer, use tiles of this size to compute the matrix-matrix product.
+<li><p><strong>tile_size</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – If a positive integer, use tiles of this size to compute the matrix-matrix product.
 If negative, disable tile-based computation. Defaults to <code class="docutils literal notranslate"><span class="pre">0</span></code>, which determines whether to
 use tiles using using an heuristic based on the matrix shape and number of non-zeros..</p></li>
 </ul>

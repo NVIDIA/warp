@@ -558,7 +558,7 @@ not suppressed.</p></li>
 <li><p><strong>enable_backward</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Enable automatic differentiation for this kernel.</p></li>
 <li><p><strong>has_side_effect</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether the custom call has side effects. When True,
 the FFI call will be executed even when the outputs are not used.</p></li>
-<li><p><strong>block_dim</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Specify the number of threads per block. When <code class="docutils literal notranslate"><span class="pre">None</span></code>, CUDA
+<li><p><strong>block_dim</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Specify the number of threads per block. When <code class="docutils literal notranslate"><span class="pre">None</span></code>, CUDA
 uses 256 threads per block and CPU uses one. Explicit CPU block
 dimensions greater than one are honored when
 <code class="docutils literal notranslate"><span class="pre">warp.config.enable_cpu_blocks</span></code> is <code class="docutils literal notranslate"><span class="pre">True</span></code>. The value is fixed

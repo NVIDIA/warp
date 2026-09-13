@@ -525,8 +525,8 @@ addresses and strides must be aligned to the scalar type.</p>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>values</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>) – Input array to sum. Its scalar type must be <code class="docutils literal notranslate"><span class="pre">float32</span></code> or <code class="docutils literal notranslate"><span class="pre">float64</span></code>.</p></li>
 <li><p><strong>out</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>) – Output array to store results. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, a new array is created.</p></li>
-<li><p><strong>value_count</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Number of elements to process. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, processes entire array.</p></li>
-<li><p><strong>axis</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Axis along which to compute sum. Negative values count from the last dimension. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, computes
+<li><p><strong>value_count</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Number of elements to process. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, processes entire array.</p></li>
+<li><p><strong>axis</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Axis along which to compute sum. Negative values count from the last dimension. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, computes
 sum of all elements.</p></li>
 </ul>
 </dd>
@@ -536,16 +536,16 @@ otherwise returns the <code class="docutils literal notranslate"><span class="pr
 </dd>
 <dt class="field-odd">Raises<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#IndexError" title="(in Python v3.14)"><strong>IndexError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">axis</span></code> is outside the valid range for <code class="docutils literal notranslate"><span class="pre">values</span></code>.</p></li>
-<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If output array storage device or data type is incompatible with input array, or if an
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#IndexError" title="(in Python v3.14)"><strong>IndexError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">axis</span></code> is outside the valid range for <code class="docutils literal notranslate"><span class="pre">values</span></code>.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If output array storage device or data type is incompatible with input array, or if an
     APIC-recorded call uses an unsupported count or memory layout.</p></li>
-<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><strong>NotImplementedError</strong></a> – If a non-empty call during APIC recording omits
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#NotImplementedError" title="(in Python v3.14)"><strong>NotImplementedError</strong></a> – If a non-empty call during APIC recording omits
     <code class="docutils literal notranslate"><span class="pre">out</span></code>. Also raised if any input or output array has a negative
     stride during APIC recording, including for a zero-count call.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+<dd class="field-even"><p><a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a> | <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)">float</a></p>
 </dd>
 </dl>
 </dd></dl>

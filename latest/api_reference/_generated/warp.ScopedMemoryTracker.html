@@ -532,14 +532,14 @@ tracking before starting the workers.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Scope name for grouping allocations.  Nested trackers form a
+<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Scope name for grouping allocations.  Nested trackers form a
 hierarchical scope path, e.g. <code class="docutils literal notranslate"><span class="pre">&quot;simulation/collision&quot;</span></code>.</p></li>
 <li><p><strong>active</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If <code class="docutils literal notranslate"><span class="pre">False</span></code>, the tracker becomes a no-op.  This allows
 keeping tracker calls in the code and toggling them without
 changing the call sites.</p></li>
 <li><p><strong>print</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code> (the default), print an allocation summary
 on exit.</p></li>
-<li><p><strong>report_func</strong> (<em>Callable</em><em>[</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>]</em><em>, </em><em>None</em><em>] </em><em>| </em><em>None</em>) – Optional callback <code class="docutils literal notranslate"><span class="pre">(str)</span> <span class="pre">-&gt;</span> <span class="pre">None</span></code> for custom report
+<li><p><strong>report_func</strong> (<em>Callable</em><em>[</em><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>]</em><em>, </em><em>None</em><em>] </em><em>| </em><em>None</em>) – Optional callback <code class="docutils literal notranslate"><span class="pre">(str)</span> <span class="pre">-&gt;</span> <span class="pre">None</span></code> for custom report
 handling.  When set, the report text is passed to this function
 instead of being printed to <code class="docutils literal notranslate"><span class="pre">sys.stdout</span></code>.</p></li>
 </ul>
@@ -586,7 +586,7 @@ category (default <code class="docutils literal notranslate"><span class="pre">1
 </ul>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">sort</span></code> is not <code class="docutils literal notranslate"><span class="pre">&quot;size&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;chronological&quot;</span></code>.</p>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">sort</span></code> is not <code class="docutils literal notranslate"><span class="pre">&quot;size&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;chronological&quot;</span></code>.</p>
 </dd>
 </dl>
 </dd></dl>

@@ -550,9 +550,9 @@ Large coordinates or small cell widths may cause incorrect cell assignments.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>dim_x</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of cells in x-axis</p></li>
-<li><p><strong>dim_y</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of cells in y-axis</p></li>
-<li><p><strong>dim_z</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of cells in z-axis</p></li>
+<li><p><strong>dim_x</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of cells in x-axis</p></li>
+<li><p><strong>dim_y</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of cells in y-axis</p></li>
+<li><p><strong>dim_z</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of cells in z-axis</p></li>
 <li><p><strong>device</strong> – Device to create the hash grid on</p></li>
 <li><p><strong>dtype</strong> – Scalar data type for point coordinates (default: float32)</p></li>
 </ul>
@@ -581,7 +581,7 @@ of points changes.</p>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>points</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a>) – Array of points matching the grid’s dtype
 (vec3h for float16, vec3/vec3f for float32, vec3d for float64)</p></li>
-<li><p><strong>radius</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – The cell size to use for bucketing points, cells are cubes with edges of this width.
+<li><p><strong>radius</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – The cell size to use for bucketing points, cells are cubes with edges of this width.
 For best performance the radius used to construct the grid should match closely to
 the radius used when performing queries.</p></li>
 <li><p><strong>groups</strong> – Optional array of point group indices of data type <a class="reference internal" href="warp.int32.html#warp.int32" title="warp.int32"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.int32</span></code></a>.
@@ -594,7 +594,7 @@ change between rebuilds, including during CPU and CUDA graph replay.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><strong>NotImplementedError</strong></a> – If called during a saveable graph capture
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#NotImplementedError" title="(in Python v3.14)"><strong>NotImplementedError</strong></a> – If called during a saveable graph capture
     (<code class="docutils literal notranslate"><span class="pre">apic=True</span></code>), because HashGrid serialization is not yet
     supported.</p>
 </dd>
@@ -612,7 +612,7 @@ replayed build, so pre-reserving is optional. <a class="reference internal" href
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>num_points</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of points the grid should accommodate.</p></li>
+<li><p><strong>num_points</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of points the grid should accommodate.</p></li>
 <li><p><strong>with_groups</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Also reserve the buffers used by grouped builds (with <code class="docutils literal notranslate"><span class="pre">groups</span></code>).</p></li>
 </ul>
 </dd>

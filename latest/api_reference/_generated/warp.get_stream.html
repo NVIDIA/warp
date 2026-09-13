@@ -513,12 +513,12 @@
 <dd><p>Return the stream currently used by the given device.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>device</strong> (<a class="reference internal" href="warp.Device.html#warp.Device" title="warp._src.context.Device"><em>Device</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – An optional <a class="reference internal" href="warp.Device.html#warp.Device" title="warp.Device"><code class="xref py py-class docutils literal notranslate"><span class="pre">Device</span></code></a> instance or device alias
+<dd class="field-odd"><p><strong>device</strong> (<a class="reference internal" href="warp.Device.html#warp.Device" title="warp._src.context.Device"><em>Device</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – An optional <a class="reference internal" href="warp.Device.html#warp.Device" title="warp.Device"><code class="xref py py-class docutils literal notranslate"><span class="pre">Device</span></code></a> instance or device alias
 (e.g. “cuda:0”) for which the current stream will be returned.
 If <code class="docutils literal notranslate"><span class="pre">None</span></code>, the default device will be used.</p>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – The device is not a CUDA device.</p>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – The device is not a CUDA device.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference internal" href="warp.Stream.html#warp.Stream" title="warp._src.context.Stream"><em>Stream</em></a></p>
