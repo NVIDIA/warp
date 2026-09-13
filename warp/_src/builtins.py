@@ -9,6 +9,8 @@ import math
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
+import numpy as np
+
 import warp._src.build
 import warp._src.context
 from warp._src.codegen import Var, get_arg_value
@@ -3863,6 +3865,74 @@ add_builtin(
 )
 
 
+def _represent_float(value, dtype):
+    """Return ``value`` as represented by the floating-point type ``dtype``."""
+    if isinstance(value, builtins.int):
+        # Round the integer straight to the output type. Converting to a double first would round
+        # twice, which can land on the wrong side of a tie and shift the element count by one.
+        # An integer too wide for these types raises, and is reported by the caller: code
+        # generation could not emit it as a literal either.
+        integer = np.int64(value) if value < 0 else np.uint64(value)
+        value = (np.float64(integer) if dtype is float64 else np.float32(integer)).item()
+    else:
+        value = builtins.float(value)
+
+    if dtype is float16:
+        return half_bits_to_float(float_to_half_bits(value))
+    if dtype is bfloat16:
+        return bfloat16_bits_to_float(float_to_bfloat16_bits(value))
+    return dtype._type_(value).value
+
+
+def _tile_arange_range_value(name, value, dtype):
+    """Return a ``tile_arange()`` range argument as represented by ``dtype``.
+
+    The native range is evaluated at the output element type, so the element count has to be
+    derived from that representation rather than from the caller's Python value. Raise a
+    ``ValueError`` naming *name* when the value has no representation in ``dtype``.
+    """
+    if type(value) in scalar_types:
+        # A `wp.constant()` argument arrives wrapped in its Warp scalar type.
+        value = value.value
+
+    written = value
+    out_of_range = f"tile_arange() {name}={written} is out of range for the output type {type_repr(dtype)}"
+
+    if type_is_int(dtype):
+        if isinstance(value, float):
+            if not value.is_integer():
+                raise ValueError(
+                    f"tile_arange() {name}={written} has a fractional part, which the integer "
+                    f"output type {type_repr(dtype)} cannot represent"
+                )
+            value = int(value)
+        try:
+            represented = dtype._type_(value).value
+        except (OverflowError, TypeError) as e:
+            # ctypes wraps a value that does not fit rather than reporting it, so compare the
+            # round trip below; only a value too large to convert at all raises here.
+            raise ValueError(out_of_range) from e
+        if represented != value:
+            raise ValueError(out_of_range)
+        return value
+
+    # The dtype is a numeric scalar, so anything not an integer type is a floating-point one.
+    try:
+        was_finite = not isinstance(value, builtins.float) or math.isfinite(value)
+        represented = _represent_float(value, dtype)
+    except OverflowError as e:
+        # The output type may well hold this value; what fails is carrying it as an integer.
+        # Rounding it exactly needs an integer type at least as wide, and code generation would
+        # not be able to emit a literal that wide either, so point at the spelling that works.
+        raise ValueError(
+            f"tile_arange() {name}={written} is too wide to use as an integer bound; write it as "
+            f"a floating-point literal to build a {type_repr(dtype)} range"
+        ) from e
+    if was_finite and not math.isfinite(represented):
+        raise ValueError(out_of_range)
+    return represented
+
+
 def tile_arange_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     # Result when the optional `dtype` argument is omitted, as used by doc builds
     # and the type stubs. `tile_arange()` defaults to `float`, unlike the value
@@ -3874,6 +3944,8 @@ def tile_arange_value_func(arg_types: Mapping[str, type], arg_values: Mapping[st
         raise TypeError("tile_arange() requires at least one positional argument specifying the range")
 
     args = arg_values["args"]
+    if len(args) > 3:
+        raise TypeError(f"tile_arange() accepts at most 3 positional arguments, got {len(args)}")
 
     start = 0
     stop = 0
@@ -3892,24 +3964,70 @@ def tile_arange_value_func(arg_types: Mapping[str, type], arg_values: Mapping[st
         stop = args[1]
         step = args[2]
 
-    if start is None or stop is None or step is None:
-        raise RuntimeError("tile_arange() arguments must be compile time constants")
+    for name, value in (("start", start), ("stop", stop), ("step", step)):
+        # A runtime value reaches the value function as a Var rather than as None, so testing for
+        # None alone let it through to the arithmetic below and surface as an internal TypeError.
+        if value is None or isinstance(value, Var):
+            raise RuntimeError(f"tile_arange() arguments must be compile time constants, but {name} is not")
 
     if "dtype" in arg_values:
         dtype = arg_values["dtype"]
     else:
         dtype = float
 
-    # tile_arange() is variadic, which bypasses the Scalar dtype constraint enforced by
-    # overload matching, so reject struct dtypes explicitly: a numeric range has no
-    # meaning for a struct and the native tile_arange would fail to compile.
-    if type_is_struct(dtype):
-        raise TypeError("tile_arange() does not support Warp struct dtypes")
+    dtype = type_to_warp(dtype)
+
+    # tile_arange() is variadic, which bypasses the Scalar dtype constraint enforced by overload
+    # matching, so check the element type here: a linear range only has meaning for a numeric
+    # scalar, and a struct, vector, or bool would either fail to compile in the native
+    # tile_arange() or fill the tile with values the range never described.
+    if not type_is_scalar(dtype):
+        raise TypeError(f"tile_arange() requires a numeric scalar dtype, but got {type_repr(dtype)}")
 
     if arg_values["storage"] not in {"shared", "register"}:
         raise ValueError(f"Invalid value for 'storage': {arg_values['storage']!r}. Expected 'shared' or 'register'.")
 
-    n = int((stop - start) / step)
+    # The native range is evaluated at the output element type, so interpret the Python-side
+    # values the same way before sizing the tile. A float32 range, for instance, is counted from
+    # the values float32 can hold, not from the wider ones the caller wrote them as.
+    start = _tile_arange_range_value("start", start, dtype)
+    stop = _tile_arange_range_value("stop", stop, dtype)
+    step = _tile_arange_range_value("step", step, dtype)
+
+    if step == 0:
+        raise ValueError("tile_arange() step cannot be zero")
+
+    if (step > 0 and start >= stop) or (step < 0 and start <= stop):
+        raise ValueError(
+            f"tile_arange() requires a non-empty range, but start={start}, stop={stop}, "
+            f"step={step} produces no elements; zero-length tile dimensions are not supported."
+        )
+
+    # arange() covers the half-open interval [start, stop), so the element count is the ceiling
+    # of the span divided by the step. Truncating instead drops the final element whenever the
+    # span is not an exact multiple of the step, e.g. (0, 10, 3) -> [0, 3, 6].
+    if type_is_int(dtype):
+        # Exact integer ceil division, so a range wider than the float mantissa keeps the element
+        # that a double-precision quotient would round away.
+        n = -((stop - start) // -step)
+    else:
+        # Represent the quotient at the output type as well. Rounding the operands alone leaves it
+        # a hair above an exact integer -- (0.0, 0.3, 0.1) divides to 3.0000000003 in float32 --
+        # and ceiling that would add an element past the stop.
+        quotient = _represent_float((stop - start) / step, dtype)
+        if not math.isfinite(quotient):
+            # A step small enough to overflow the quotient describes no tile anyone can build.
+            raise ValueError(
+                f"tile_arange() start={start}, stop={stop}, step={step} spans more elements than "
+                f"can be counted; the step is too small for the range."
+            )
+
+        n = math.ceil(quotient)
+
+    # A correctly directed nonempty range always contains `start`, even when rounding drives
+    # its positive quotient to zero at the output precision.
+    n = max(1, n)
+
     return tile(dtype=dtype, shape=(n,), storage=arg_values["storage"])
 
 
@@ -3933,12 +4051,15 @@ def tile_arange_dispatch_func(arg_types: Mapping[str, type], return_type: Any, a
         start = args[0]
         stop = args[1]
         step = warp._src.codegen.Var(label=None, type=return_type.dtype, constant=1)
-    elif len(args) == 3:
-        start = args[0]
-        stop = args[1]
-        step = args[2]
     else:
-        raise TypeError(f"tile_arange() accepts at most 3 positional arguments, got {len(args)}")
+        # The value function runs first and has already rejected every other arity.
+        start, stop, step = args
+
+    # The native tile_arange() takes all three range arguments at the output element type. Cast
+    # the constants explicitly so a wide literal is not narrowed through its inferred type.
+    start = _cast_scalar_constant(start, dtype)
+    stop = _cast_scalar_constant(stop, dtype)
+    step = _cast_scalar_constant(step, dtype)
 
     function_args = []
     function_args.append(start)
@@ -3965,6 +4086,14 @@ add_builtin(
     The interval excludes ``stop``, except when ``step`` is non-integral and floating-point
     round-off affects the number of elements.
 
+    The range is interpreted at the output element type: each argument must be representable
+    there, so an integer ``dtype`` rejects a fractional bound, and a floating-point range is
+    counted from its rounded values rather than from the wider ones it was written as.
+
+    A zero ``step`` raises an error, as does a range spanning no elements, such as
+    ``tile_arange(5, 5)`` or ``tile_arange(0, 10, -1)``, because zero-length tile dimensions
+    are not supported.
+
     Args:
         args: Positional compile-time constants specifying the range:
 
@@ -3973,7 +4102,7 @@ add_builtin(
             - ``(start, stop, step)``: Use the supplied ``start``, ``stop``, and ``step``.
         dtype: Data type of output tile's elements. Defaults to ``float`` even when the
             range arguments are integers; pass ``dtype=int`` for an integer tile. Must
-            be a compile-time constant.
+            be a compile-time constant and a numeric scalar type.
         storage: The storage location for the tile: ``"register"`` for registers or
             ``"shared"`` for shared memory. Must be a compile-time constant.
 

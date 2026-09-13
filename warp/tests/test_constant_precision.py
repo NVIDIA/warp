@@ -234,6 +234,34 @@ def test_typed_constructor_accepts_literals_kernel(result: wp.array[wp.vec3d]):
 
 
 # ---------------------------------------------------------------------------
+# Constant reuse after a typed constructor
+# ---------------------------------------------------------------------------
+
+
+@wp.kernel
+def test_constant_reuse_after_constructor_kernel(
+    values: wp.array[wp.float64],
+    counts: wp.array[wp.int32],
+):
+    """Test that a typed constructor leaves the caller's own constants alone."""
+    x = 0.1
+    n = 3
+
+    d = wp.vec3d(x, 0.0, 0.0)
+
+    values[0] = d[0]
+    # `x` must still carry the value it was written with, not the one the constructor
+    # converted for its own use.
+    values[1] = wp.float64(x)
+
+    # `n` must still be usable wherever an `int` literal is, such as a slice bound.
+    f = wp.vec3f(4.0, 5.0, 6.0)
+    sliced = f[0:n]
+    counts[0] = n
+    counts[1] = wp.int32(sliced[2])
+
+
+# ---------------------------------------------------------------------------
 # dtype=float means float32
 # ---------------------------------------------------------------------------
 
@@ -347,6 +375,29 @@ def test_typed_constructor_accepts_literals(test, device):
     result = wp.zeros(1, dtype=wp.vec3d, device=device)
     wp.launch(test_typed_constructor_accepts_literals_kernel, dim=1, inputs=[result], device=device)
     np.testing.assert_allclose(result.numpy()[0], [1.0, 2.0, 3.0])
+
+
+def test_constant_reuse_after_constructor(test, device):
+    """Verify a typed constructor does not rewrite the constants its caller passed it.
+
+    ``_cast_scalar_constant()`` converts a literal to the constructor's element type. The
+    converted value belongs to that call alone: the caller's own constant is shared with every
+    later expression that names it, so rewriting it in place would silently change a value
+    somewhere else, or downgrade a Python ``int`` into a type that is no longer accepted where
+    a compile-time integer is required.
+    """
+    values = wp.empty(2, dtype=wp.float64, device=device)
+    counts = wp.empty(2, dtype=wp.int32, device=device)
+
+    wp.launch(
+        test_constant_reuse_after_constructor_kernel,
+        dim=1,
+        outputs=[values, counts],
+        device=device,
+    )
+
+    assert_np_equal(values.numpy(), np.array([0.1, 0.1], dtype=np.float64))
+    assert_np_equal(counts.numpy(), np.array([3, 6], dtype=np.int32))
 
 
 def test_vector_dtype_float_is_float32(test, device):
@@ -503,6 +554,12 @@ add_function_test(
     TestConstantPrecision,
     "test_mixed_literal_variable_rejects_wrong_type",
     test_mixed_literal_variable_rejects_wrong_type,
+    devices=devices,
+)
+add_function_test(
+    TestConstantPrecision,
+    "test_constant_reuse_after_constructor",
+    test_constant_reuse_after_constructor,
     devices=devices,
 )
 

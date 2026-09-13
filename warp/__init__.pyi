@@ -3893,6 +3893,14 @@ def tile_arange(*args: Scalar, storage: str = "register") -> Tile[float32, tuple
     The interval excludes ``stop``, except when ``step`` is non-integral and floating-point
     round-off affects the number of elements.
 
+    The range is interpreted at the output element type: each argument must be representable
+    there, so an integer ``dtype`` rejects a fractional bound, and a floating-point range is
+    counted from its rounded values rather than from the wider ones it was written as.
+
+    A zero ``step`` raises an error, as does a range spanning no elements, such as
+    ``tile_arange(5, 5)`` or ``tile_arange(0, 10, -1)``, because zero-length tile dimensions
+    are not supported.
+
     Args:
         args: Positional compile-time constants specifying the range:
 
@@ -3901,7 +3909,7 @@ def tile_arange(*args: Scalar, storage: str = "register") -> Tile[float32, tuple
             - ``(start, stop, step)``: Use the supplied ``start``, ``stop``, and ``step``.
         dtype: Data type of output tile's elements. Defaults to ``float`` even when the
             range arguments are integers; pass ``dtype=int`` for an integer tile. Must
-            be a compile-time constant.
+            be a compile-time constant and a numeric scalar type.
         storage: The storage location for the tile: ``"register"`` for registers or
             ``"shared"`` for shared memory. Must be a compile-time constant.
 
@@ -3941,6 +3949,14 @@ def tile_arange(*args: Scalar, dtype: type[DTypeScalar], storage: str = "registe
     The interval excludes ``stop``, except when ``step`` is non-integral and floating-point
     round-off affects the number of elements.
 
+    The range is interpreted at the output element type: each argument must be representable
+    there, so an integer ``dtype`` rejects a fractional bound, and a floating-point range is
+    counted from its rounded values rather than from the wider ones it was written as.
+
+    A zero ``step`` raises an error, as does a range spanning no elements, such as
+    ``tile_arange(5, 5)`` or ``tile_arange(0, 10, -1)``, because zero-length tile dimensions
+    are not supported.
+
     Args:
         args: Positional compile-time constants specifying the range:
 
@@ -3949,7 +3965,7 @@ def tile_arange(*args: Scalar, dtype: type[DTypeScalar], storage: str = "registe
             - ``(start, stop, step)``: Use the supplied ``start``, ``stop``, and ``step``.
         dtype: Data type of output tile's elements. Defaults to ``float`` even when the
             range arguments are integers; pass ``dtype=int`` for an integer tile. Must
-            be a compile-time constant.
+            be a compile-time constant and a numeric scalar type.
         storage: The storage location for the tile: ``"register"`` for registers or
             ``"shared"`` for shared memory. Must be a compile-time constant.
 

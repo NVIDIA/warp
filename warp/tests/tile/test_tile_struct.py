@@ -1231,7 +1231,7 @@ def test_tile_struct_reduction_ops_rejected(test, device):
             tile_reduce_bad_return_kernel, dim=[1], inputs=[input_wp], outputs=[struct_out], block_dim=8, device=device
         )
 
-    with test.assertRaisesRegex((RuntimeError, TypeError), "tile_arange.*Warp struct"):
+    with test.assertRaisesRegex((RuntimeError, TypeError), "tile_arange.*numeric scalar dtype"):
         wp.launch_tiled(tile_arange_kernel, dim=[1], inputs=[], outputs=[struct_out], block_dim=8, device=device)
 
 
