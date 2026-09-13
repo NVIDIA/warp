@@ -981,9 +981,10 @@ jobs:
       # usd-core wheels use ABI tag "none" but are built against the regular
       # (GIL) CPython ABI, so importing pxr on a free-threaded interpreter
       # segfaults. Blosc also does not support free-threaded Python and importing
-      # its extension re-enables the GIL. Keep both packages out of this environment.
+      # its extension re-enables the GIL. NLopt does not provide a free-threaded
+      # Python wheel. Keep all three packages out of this environment.
       - name: Install Python dependencies
-        run: uv sync --python 3.14t --extra dev --no-install-package usd-core --no-install-package blosc
+        run: uv sync --python 3.14t --extra dev --no-install-package usd-core --no-install-package blosc --no-install-package nlopt
 
       - name: Report Warp diagnostics
         # See the note in test-warp-gpu-linux; the Warp counterpart to nvidia-smi.
