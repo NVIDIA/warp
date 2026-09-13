@@ -867,7 +867,7 @@ linux-x86_64 python matrix test:
 # Ensure cpp examples compile and run
 linux-x86_64 cpp examples test:
   stage: test
-  image: ${CI_REGISTRY_IMAGE}/warp-cpp-test-env:12.9.1-ubuntu24.04@sha256:01847b3539ae1b23e865a27828ea24cb397afee9a2a70a9aa36439e0d4a3dfc8
+  image: ${CI_REGISTRY_IMAGE}/warp-cpp-test-env:cuda13.4.1-ubuntu24.04-b291af1fdd25@sha256:3a26bf865de50aebbe854f2db88d62726f48046af29228153da582fb527a7f22
   needs: [linux-x86_64 build]
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
