@@ -1,236 +1,121 @@
-# Warp Builder Docker Images
+# Warp Builder Images
 
-Multi-architecture Docker images providing the toolchain for building NVIDIA Warp: CUDA, CMake, Ninja, and uv.
+Architecture- and CUDA-specific manylinux images used to build NVIDIA Warp in CI. Each image provides a
+pinned uv release, the uv-managed Python versions used by the Warp build jobs, and one repository-locked CUDA
+Toolkit. LLVM remains repository-selected at build time.
 
-Clang/LLVM is deliberately not baked in. `build_lib.py` fetches the prebuilt SDK through Packman using the
-digests pinned in `deps/llvm-deps.packman.xml`, so the LLVM version is chosen by the repository you are
-building rather than by the image. Bumping LLVM is a one-line manifest change and needs no new image.
+## Availability
 
-> **⚠️ Access Restriction:** These images are currently set to **Internal** visibility on GitHub.
-> They are only accessible to:
->
-> - **NVIDIA Internal users** (with NVIDIA GitHub organization membership)
-> - **NVIDIA/warp GitHub Actions** (automatically authenticated)
->
-> External users should [build the images locally](#alternative-build-locally). See [Authentication](#authentication) for details.
+The published images are internal NVIDIA CI artifacts. GitHub Actions builds and tests the canonical images in
+GitHub Container Registry (GHCR). CUDA is downloaded only when these deliberately published images are built;
+jobs that consume a promoted image use its embedded Toolkit instead of downloading CUDA from an external
+package host.
 
-## Quick Start
+After all four variants are validated, a maintainer deliberately promotes them into the GitLab registry. A
+separate follow-up change must map each Linux architecture and CUDA release to its promoted digest, replace
+the Linux build jobs' `/usr/local/cuda` arguments with `/opt/cuda` (or rely on `WARP_CUDA_PATH`), and remove the
+redundant free-threaded Python install. GitLab CI continues to use the legacy images until that promotion and
+follow-up change are complete.
 
-### Use in GitHub Actions
+The GHCR package is not publicly accessible. Anyone without NVIDIA organization access can build the
+Dockerfile from source.
 
-```yaml
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/nvidia/warp-builder:cuda13  # Or use :latest for newest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Build Warp
-        run: uv run build_lib.py
-      
-      - name: Build wheel
-        run: uv build --wheel
+## Image Contract
+
+The image contains:
+
+- An architecture-specific, digest-pinned manylinux base.
+- One CUDA Toolkit assembled from `tools/ci/cuda_toolkit_lock.json` and installed in `/opt/cuda`.
+- uv 0.12.13, copied from a digest-pinned official uv image.
+- uv-managed CPython 3.10.21, 3.11.16, 3.12.14, 3.13.15, 3.14.7, and 3.14.7t.
+- The compiler and utilities already supplied by the manylinux base.
+
+The image sets:
+
+```text
+UV_PYTHON_INSTALL_DIR=/opt/uv/python
+UV_PYTHON_PREFERENCE=only-managed
+CUDA_HOME=/opt/cuda
+CUDA_PATH=/opt/cuda
+WARP_CUDA_PATH=/opt/cuda
+WARP_CUDA_VERSION=<CUDA Toolkit release>
 ```
 
-> **Note:** GitHub Actions in the NVIDIA/warp repository automatically authenticate with GHCR. External users cannot access these images (see [Authentication](#authentication)).
+Automatic Python downloads remain enabled. A CI experiment can therefore request a newer unbundled Python,
+while the normal build matrix uses the preinstalled versions.
 
-### Use Locally to Build Warp
+The image does not add LLVM, CMake, or Ninja beyond anything supplied by its manylinux base. A tool present in
+the selected base is not part of this image's supported contract unless listed above. Redistribution of the
+embedded Toolkit is subject to the NVIDIA CUDA Toolkit EULA.
 
-**Prerequisites:** Docker installed, Warp repository cloned locally, NVIDIA Internal access (see [Authentication](#authentication))
+## Tags
+
+Tags describe the compatibility boundary, CUDA and uv releases, and architecture:
+
+```text
+ghcr.io/nvidia/warp-builder:manylinux_2_28-cuda12.9.2-uv0.12.13-x86_64
+ghcr.io/nvidia/warp-builder:manylinux_2_28-cuda13.4.1-uv0.12.13-x86_64
+ghcr.io/nvidia/warp-builder:manylinux_2_34-cuda12.9.2-uv0.12.13-aarch64
+ghcr.io/nvidia/warp-builder:manylinux_2_34-cuda13.4.1-uv0.12.13-aarch64
+```
+
+The tags can move when an image is rebuilt with the same contract. Consumers must pin the image digest for
+immutable identity. OCI labels and the GitHub Actions workflow history record the precise build inputs and
+source revision.
+
+The workflow does not publish multi-architecture manifests. Each tag identifies one native architecture and
+one CUDA release.
+
+## Building and Testing
+
+The [Build Warp Builder Images](../../.github/workflows/build-warp-builder-images.yml) workflow builds x86_64
+and aarch64 images independently on native runners. For each CUDA release it assembles the repository-locked
+Toolkit, passes that directory to BuildKit as the `cuda_toolkit` build context, verifies CUDA and every bundled
+Python without network access, and then builds Warp with the embedded Toolkit. The image is published only
+after these checks pass.
+
+To build the x86_64 image locally:
 
 ```bash
-# 1. Navigate to your Warp checkout
-cd /path/to/your/warp
+docker build \
+  --platform linux/amd64 \
+  --build-context cuda_toolkit="$WARP_CUDA_PATH" \
+  --build-arg MANYLINUX_IMAGE=quay.io/pypa/manylinux_2_28_x86_64@sha256:53390351aeb4688114b02c36a23b3e6ce1166ee9b7afc5df1a4f776354fc764c \
+  --build-arg MANYLINUX_POLICY=manylinux_2_28 \
+  --build-arg CUDA_VERSION=13.4.1 \
+  --build-arg TARGETARCH=x86_64 \
+  --tag warp-builder:manylinux_2_28-cuda13.4.1-uv0.12.13-x86_64 \
+  docker/warp-builder
+```
 
-# 2. Pull the image (Docker auto-selects x86_64 or aarch64)
-# Note: Requires NVIDIA Internal access - authenticate first if needed
-docker pull ghcr.io/nvidia/warp-builder:cuda13
+`WARP_CUDA_PATH` must identify a Toolkit matching `CUDA_VERSION`. The GitHub workflow obtains this directory
+from the repository's CUDA setup action rather than relying on a developer installation.
 
-# 3. Build Warp native libraries
+Verify the embedded Toolkit and preinstalled Python runtimes without network access:
+
+```bash
+docker run --rm --network=none \
+  -e EXPECTED_CUDA_PLATFORM=linux-x86_64 \
+  -e EXPECTED_CUDA_VERSION=13.4.1 \
+  -v "$(pwd):/workspace:ro" \
+  warp-builder:manylinux_2_28-cuda13.4.1-uv0.12.13-x86_64 \
+  bash /workspace/docker/warp-builder/verify-image.sh
+```
+
+To build Warp with the embedded Toolkit:
+
+```bash
 docker run --rm \
-  -v $(pwd):/workspace \
-  -w /workspace \
-  ghcr.io/nvidia/warp-builder:cuda13 \
-  bash -c "uv run build_lib.py"
-
-# 4. Build Python wheel (optional)
-docker run --rm \
-  -v $(pwd):/workspace \
-  -w /workspace \
-  ghcr.io/nvidia/warp-builder:cuda13 \
-  bash -c "uv build --wheel"
-
-# Result: Compiled binaries in warp/bin/, wheel in dist/
+  -v "$(pwd):/workspace" \
+  -e WARP_CACHE_PATH=/workspace/.cache/warp-builder \
+  warp-builder:manylinux_2_28-cuda13.4.1-uv0.12.13-x86_64 \
+  uv run --no-python-downloads --python 3.12 build_lib.py --cuda-path=/opt/cuda
 ```
 
-**Interactive development with GPU access:**
+`build_lib.py` fetches the LLVM SDK and libmathdx package selected by their manifests in `deps/` unless an
+explicit dependency path is provided or libmathdx is disabled.
 
-```bash
-# Prerequisites: Install NVIDIA Container Toolkit on your host
-# See: https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html
+## Updating the Images
 
-# Start a shell with GPU access
-docker run --rm -it \
-  --gpus all \
-  -v $(pwd):/workspace \
-  -w /workspace \
-  ghcr.io/nvidia/warp-builder:cuda13 \
-  bash
-
-# Inside container:
-# uv run build_lib.py                             # Build
-# uv run --extra dev -m warp.tests -s autodetect  # Test (GPU tests will be skipped without --gpus)
-# uv build --wheel                                 # Package
-```
-
-> **Note:** The `--gpus all` flag requires [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) installed on your host. You can run tests without a GPU, but GPU-specific tests will be skipped.
-
-## Available Tags
-
-**Short aliases (recommended for most users):**
-
-- `latest` - Default CUDA 13 build
-- `cuda13` - Selected CUDA 13.x build (currently 13.4.1)
-- `cuda12` - Latest CUDA 12.x build (currently 12.9.1)
-
-**Full version tags (for reproducibility):**
-
-- `cuda13.4.1-latest` - Multi-arch, always current
-- `cuda13.4.1-YYYYMMDD` - Multi-arch, date-pinned workflow build
-- `cuda13.4.1-x86_64-latest` - Architecture-specific
-- `cuda13.4.1-aarch64-latest` - Architecture-specific
-
-**Examples:**
-
-```bash
-# Short and memorable
-docker pull ghcr.io/nvidia/warp-builder:cuda13
-
-# Pinned to specific CUDA version
-docker pull ghcr.io/nvidia/warp-builder:cuda13.4.1-latest
-
-# Pinned to exact build date
-docker pull ghcr.io/nvidia/warp-builder:cuda13.4.1-YYYYMMDD
-```
-
-Replace `YYYYMMDD` with the date from a published workflow build.
-
-All multi-arch tags work on both x86_64 and aarch64.
-
-## Authentication
-
-**Current Status:** These images are set to **Internal** visibility on GitHub Container Registry, meaning they are only accessible to NVIDIA Internal users.
-
-### For NVIDIA Internal Users
-
-**Quick Setup (TL;DR for NVIDIA employees):**
-
-1. Create a classic token at <https://github.com/settings/tokens/new> with `read:packages` scope (don't use unlimited expiration)
-2. Click **"Configure SSO"** next to the token and authorize it for the **NVIDIA** organization
-3. Export the token: `export CR_PAT=ghp_your_token_here`
-4. Login and pull: `echo $CR_PAT | docker login ghcr.io -u USERNAME --password-stdin`
-
-For more details, see [GitHub's Container Registry documentation](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry).
-
-**Prerequisites:**
-
-- GitHub account that is a **member of the NVIDIA GitHub organization**
-- GitHub Personal Access Token (PAT) with:
-  - `read:packages` scope
-  - Limited expiration (unlimited expiration tokens cannot be SSO-authorized)
-  - **SSO authorized for the NVIDIA organization**
-
-**To authenticate and pull:**
-
-```bash
-# Authenticate with your NVIDIA GitHub account
-# Note: Username can be left as USERNAME
-echo $CR_PAT | docker login ghcr.io -u USERNAME --password-stdin
-
-# Then pull normally
-docker pull ghcr.io/nvidia/warp-builder:cuda13
-```
-
-### For CI/CD
-
-- **NVIDIA/warp repository:** GitHub Actions automatically authenticates when using `container:` in workflows.
-- **Other NVIDIA repositories:** Use a GitHub Personal Access Token (PAT) or GitHub App token with `read:packages` permission.
-- **External users:** Cannot access these images. [Build locally](#alternative-build-locally) instead.
-
-### Alternative: Build Locally
-
-If you cannot access published images, you can build them locally:
-
-```bash
-cd docker/warp-builder
-docker buildx build --platform linux/amd64 -t warp-builder:cuda13 -f Dockerfile \
-  --build-arg CUDA_VERSION=13.4.1 --load .
-```
-
-## Image Contents
-
-- **Base:** manylinux_2_28 (x86_64) / manylinux_2_34 (aarch64)
-- **CUDA:** Configurable (supports 12.x and 13.x, default 13.4.1)
-  - Installed using NVIDIA's [parse_redist.py](https://github.com/NVIDIA/build-system-archive-import-examples) script to pull only the minimal components needed for building Warp
-- **LLVM:** Not included. Fetched at build time by `build_lib.py` through Packman, per
-  `deps/llvm-deps.packman.xml`.
-- **Python:** Managed by uv
-- **Tools:** GCC toolchain (from manylinux base)
-
-> **Note:** The Dockerfile automatically handles component differences between CUDA 12.x and 13.x (different components are required for each version).
-
-## Rebuilding Images
-
-Images are automatically built by the workflow at `.github/workflows/build-warp-builder-images.yml`.
-
-**Each workflow run builds:**
-
-- CUDA 12.9.1 (x86_64 + aarch64)
-- CUDA 13.4.1 (x86_64 + aarch64)
-- All 4 builds run in parallel (a few minutes; no LLVM is built or downloaded here)
-
-**To trigger a rebuild:**
-
-1. Go to Actions → Build Warp Builder Images
-2. Click "Run workflow"
-3. Both CUDA versions will be built and published
-
-To change CUDA versions, edit the matrix in the workflow file.
-
-## Architecture Support
-
-Both x86_64 and aarch64 are fully supported with native compilation (no emulation).
-
-**ARM64 variants:**
-
-- **CUDA 12:** Uses Tegra/Jetson packages (`linux-aarch64`) - optimized for Jetson devices but works on most ARM64 systems
-- **CUDA 13:** Uses unified server packages (`linux-sbsa`) - works on all ARM64 systems including Jetson
-
-## Licenses
-
-These images contain software components under different licenses:
-
-- **CUDA Toolkit:** Subject to the [NVIDIA CUDA End User License Agreement (EULA)](https://docs.nvidia.com/cuda/eula/)
-
-  - License files are included in the image at `/usr/local/cuda/licenses/`
-  - By using these images, you agree to the CUDA EULA terms
-  
-- **LLVM/Clang:** Not redistributed in these images. The SDK is fetched at build time from the
-  [NVIDIA/warp releases](https://github.com/NVIDIA/warp/releases) and ships its own licenses under
-  `licenses/` in the extracted tree.
-
-- **Container Image:** Components built and distributed by NVIDIA for use with NVIDIA Warp
-
-To view licenses in a running container:
-
-```bash
-docker run --rm ghcr.io/nvidia/warp-builder:cuda13 cat /usr/local/cuda/licenses/README.txt
-```
-
-## Notes
-
-- Building Warp in these images requires network access to `github.com` so Packman can fetch the
-  Clang/LLVM SDK. Use `--llvm-path` or `WARP_LLVM_PATH` to point at a local SDK instead.
-- The published Warp LLVM SDK is built with targets for X86/AArch64 + NVPTX
+Rebuild and promote the affected images when the CUDA release, manylinux policy, supported Python versions,
+or uv release changes. Routine LLVM updates do not require a new image.

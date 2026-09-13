@@ -69,7 +69,8 @@ from pathlib import Path, PurePosixPath
 from typing import Any, BinaryIO
 
 LOCK_SCHEMA_VERSION = 1
-INSTALL_SCHEMA_VERSION = 1
+BUNDLE_DIGEST_SCHEMA_VERSION = 1
+CACHE_SCHEMA_VERSION = 2
 PACKAGE_SCHEMA_VERSION = 1
 PACKAGE_ROOT = "cuda-toolkit"
 PACKAGE_METADATA_NAME = ".warp-cuda-toolkit.json"
@@ -124,7 +125,7 @@ class Bundle:
     def digest(self) -> str:
         payload = {
             "archives": [archive.digest_value() for archive in self.archives],
-            "installation_schema": INSTALL_SCHEMA_VERSION,
+            "installation_schema": BUNDLE_DIGEST_SCHEMA_VERSION,
             "platform": self.platform,
             "version": self.version,
         }
@@ -137,7 +138,7 @@ class Bundle:
 
     @property
     def cache_key(self) -> str:
-        return f"warp-cuda-toolkit-v{INSTALL_SCHEMA_VERSION}-{self.version}-{self.platform}-{self.digest}"
+        return f"warp-cuda-toolkit-v{CACHE_SCHEMA_VERSION}-{self.version}-{self.platform}-{self.digest}"
 
 
 @dataclass(frozen=True)
@@ -662,6 +663,11 @@ def install_bundle(
             merge_component(library, toolkit / "lib64")
             shutil.rmtree(library)
 
+        (toolkit / PACKAGE_METADATA_NAME).write_text(
+            json.dumps(_package_metadata(bundle), indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
         if installed.exists() or installed.is_symlink():
             _remove_path(installed)
         os.replace(toolkit, installed)
@@ -851,6 +857,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             command.add_argument("--archive", required=True, type=Path)
 
     activate = commands.add_parser("activate")
+    activate.add_argument("--version", required=True)
     activate.add_argument("--platform", required=True)
     activate.add_argument("--cuda-path", required=True, type=Path)
     activate.add_argument("--github-env", type=Path)
@@ -921,9 +928,14 @@ def main(argv: list[str] | None = None) -> int:
             )
             print(f"Unpacked CUDA {bundle.version} for {bundle.platform} at {installed}")
         else:
+            bundle = _configured_bundle(args.version, args.platform)
+            _validate_package_metadata(
+                args.cuda_path / PACKAGE_METADATA_NAME,
+                bundle,
+            )
             installed = activate_toolkit(
                 args.cuda_path,
-                args.platform,
+                bundle.platform,
                 args.github_env,
                 args.github_path,
             )

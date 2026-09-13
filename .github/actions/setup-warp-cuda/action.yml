@@ -31,6 +31,11 @@ inputs:
       Set to "true" to save an assembled Toolkit to GitHub cache.
     default: "false"
 
+outputs:
+  cuda-path:
+    description: Path to the assembled CUDA Toolkit
+    value: ${{ steps.resolve.outputs.cuda-path }}
+
 runs:
   using: composite
   steps:
@@ -78,11 +83,13 @@ runs:
     - name: Activate assembled CUDA Toolkit
       shell: bash
       env:
+        WARP_CUDA_VERSION: ${{ inputs.version }}
         WARP_CUDA_PLATFORM: ${{ inputs.platform }}
         WARP_CUDA_INSTALL_PATH: ${{ steps.resolve.outputs.cuda-path }}
       run: |
         uv run --no-project python \
           "$GITHUB_WORKSPACE/tools/ci/cuda_toolkit.py" activate \
+          --version "$WARP_CUDA_VERSION" \
           --platform "$WARP_CUDA_PLATFORM" \
           --cuda-path "$WARP_CUDA_INSTALL_PATH" \
           --github-env "$GITHUB_ENV" \

@@ -1,20 +1,22 @@
-# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 name: Build Warp Builder Images
 
 on:
   workflow_dispatch:
-    # Both CUDA 12 and 13 are always built in parallel
-    # To change versions, update the matrix in the build job
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  UV_IMAGE: ghcr.io/astral-sh/uv:0.12.13@sha256:b485bd65cc2cf1c9a93b3554012c9c3778cf7b1b5fd3d3096ce9e1226c97e1e6
+  UV_VERSION: "0.12.13"
+
 jobs:
-  build:
-    name: Build CUDA ${{ matrix.cuda_version }} (${{ matrix.arch }})
+  build-and-test:
+    name: Build ${{ matrix.policy }} (${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
@@ -23,312 +25,199 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # CUDA 12.9.1 builds
-          - cuda_version: '12.9.1'
-            arch: x86_64
-            runner: ubuntu-latest
+          - arch: x86_64
+            runner: ubuntu-24.04
             platform: linux/amd64
-            manylinux: manylinux_2_28_x86_64
-            manylinux_image: quay.io/pypa/manylinux_2_28_x86_64:latest
-            targetarch: x86_64
-          - cuda_version: '12.9.1'
-            arch: aarch64
+            policy: manylinux_2_28
+            manylinux_image: quay.io/pypa/manylinux_2_28_x86_64@sha256:53390351aeb4688114b02c36a23b3e6ce1166ee9b7afc5df1a4f776354fc764c
+            cuda12_platform: linux-x86_64
+            cuda13_platform: linux-x86_64
+          - arch: aarch64
             runner: ubuntu-24.04-arm
             platform: linux/arm64
-            manylinux: manylinux_2_34_aarch64
-            manylinux_image: quay.io/pypa/manylinux_2_34_aarch64:latest
-            targetarch: aarch64
-          # CUDA 13.4.1 builds
-          - cuda_version: '13.4.1'
-            arch: x86_64
-            runner: ubuntu-latest
-            platform: linux/amd64
-            manylinux: manylinux_2_28_x86_64
-            manylinux_image: quay.io/pypa/manylinux_2_28_x86_64:latest
-            targetarch: x86_64
-          - cuda_version: '13.4.1'
-            arch: aarch64
-            runner: ubuntu-24.04-arm
-            platform: linux/arm64
-            manylinux: manylinux_2_34_aarch64
-            manylinux_image: quay.io/pypa/manylinux_2_34_aarch64:latest
-            targetarch: sbsa
-    
+            policy: manylinux_2_34
+            manylinux_image: quay.io/pypa/manylinux_2_34_aarch64@sha256:effc0e17319a56b2c7eaff0cb5dd81a2d2c2850410841d3f017378f52ead6442
+            cuda12_platform: linux-aarch64
+            cuda13_platform: linux-sbsa
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           persist-credentials: false
+          lfs: true
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435  # v3.11.1
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef  # v3.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install uv for host-side setup
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Set up host Python
+        run: uv python install
+
+      - name: Set up CUDA Toolkit 12.9.2
+        id: cuda12
+        uses: ./.github/actions/setup-warp-cuda
+        with:
+          version: "12.9.2"
+          platform: ${{ matrix.cuda12_platform }}
+          cache-read: "true"
+          cache-write: "true"
+
+      - name: Set up CUDA Toolkit 13.4.1
+        id: cuda13
+        uses: ./.github/actions/setup-warp-cuda
+        with:
+          version: "13.4.1"
+          platform: ${{ matrix.cuda13_platform }}
+          cache-read: "true"
+          cache-write: "true"
 
       - name: Generate image metadata
         id: meta
+        env:
+          MANYLINUX_POLICY: ${{ matrix.policy }}
+          TARGET_ARCH: ${{ matrix.arch }}
         run: |
-          CUDA_VERSION="${{ matrix.cuda_version }}"
-          DATE_TAG=$(date +%Y%m%d)
-          ARCH="${{ matrix.arch }}"
-          
-          # Lowercase repository owner for GHCR compatibility
-          OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          OWNER_LOWER="${GITHUB_REPOSITORY_OWNER,,}"
           IMAGE_BASE="ghcr.io/${OWNER_LOWER}/warp-builder"
-          
-          # Generate tags with full CUDA version
-          TAGS="${IMAGE_BASE}:cuda${CUDA_VERSION}-${ARCH}-${DATE_TAG}"
-          TAGS="${TAGS},${IMAGE_BASE}:cuda${CUDA_VERSION}-${ARCH}-latest"
-          
-          echo "dockerfile=Dockerfile" >> $GITHUB_OUTPUT
-          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
-          echo "date_tag=${DATE_TAG}" >> $GITHUB_OUTPUT
-          echo "image_base=${IMAGE_BASE}" >> $GITHUB_OUTPUT
-          echo "cuda_version=${CUDA_VERSION}" >> $GITHUB_OUTPUT
 
-      - name: Build and push Docker image
-        id: build
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83
+          {
+            echo "created_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "image_cuda12=${IMAGE_BASE}:${MANYLINUX_POLICY}-cuda12.9.2-uv${UV_VERSION}-${TARGET_ARCH}"
+            echo "image_cuda13=${IMAGE_BASE}:${MANYLINUX_POLICY}-cuda13.4.1-uv${UV_VERSION}-${TARGET_ARCH}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Build CUDA Toolkit 12.9.2 image
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83  # v6.18.0
         with:
           context: docker/warp-builder
-          file: docker/warp-builder/${{ steps.meta.outputs.dockerfile }}
+          file: docker/warp-builder/Dockerfile
           platforms: ${{ matrix.platform }}
+          build-contexts: |
+            cuda_toolkit=${{ steps.cuda12.outputs.cuda-path }}
           build-args: |
+            CUDA_VERSION=12.9.2
             MANYLINUX_IMAGE=${{ matrix.manylinux_image }}
-            CUDA_VERSION=${{ steps.meta.outputs.cuda_version }}
-            TARGETARCH=${{ matrix.targetarch }}
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          cache-from: type=gha,scope=warp-builder-${{ matrix.arch }}
-          cache-to: type=gha,mode=max,scope=warp-builder-${{ matrix.arch }}
+            MANYLINUX_POLICY=${{ matrix.policy }}
+            TARGETARCH=${{ matrix.arch }}
+            UV_IMAGE=${{ env.UV_IMAGE }}
+            UV_VERSION=${{ env.UV_VERSION }}
+          load: true
+          tags: ${{ steps.meta.outputs.image_cuda12 }}
+          cache-from: type=gha,scope=warp-builder-${{ matrix.policy }}-cuda12-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=warp-builder-${{ matrix.policy }}-cuda12-${{ matrix.arch }}
           labels: |
-            org.opencontainers.image.title=Warp Builder
-            org.opencontainers.image.description=Build environment for NVIDIA Warp with CUDA ${{ steps.meta.outputs.cuda_version }}
-            org.opencontainers.image.vendor=NVIDIA
-            org.opencontainers.image.licenses=NVIDIA CUDA EULA AND Apache-2.0
-            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.created=${{ steps.meta.outputs.created_at }}
             org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.created=${{ github.event.repository.updated_at }}
-            cuda.version=${{ steps.meta.outputs.cuda_version }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
 
-      - name: Report image size
-        run: |
-          IMAGE="${{ steps.meta.outputs.image_base }}:cuda${{ steps.meta.outputs.cuda_version }}-${{ matrix.arch }}-latest"
-          
-          # Pull image to get accurate info
-          docker pull $IMAGE
-          
-          # Get size
-          SIZE_BYTES=$(docker image inspect $IMAGE --format='{{.Size}}')
-          SIZE_HUMAN=$(numfmt --to=iec-i --suffix=B $SIZE_BYTES)
-          
-          # Compact single-line report
-          echo "📦 **CUDA ${{ steps.meta.outputs.cuda_version }} / ${{ matrix.arch }}:** ${SIZE_HUMAN}" >> $GITHUB_STEP_SUMMARY
-
-
-  test:
-    name: Test CUDA ${{ matrix.cuda_version }} (${{ matrix.arch }})
-    needs: build
-    runs-on: ${{ matrix.runner }}
-    permissions:
-      contents: read
-      packages: read
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - cuda_version: '12.9.1'
-            arch: x86_64
-            runner: ubuntu-latest
-          - cuda_version: '12.9.1'
-            arch: aarch64
-            runner: ubuntu-24.04-arm
-          - cuda_version: '13.4.1'
-            arch: x86_64
-            runner: ubuntu-latest
-          - cuda_version: '13.4.1'
-            arch: aarch64
-            runner: ubuntu-24.04-arm
-    
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - name: Build CUDA Toolkit 13.4.1 image
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83  # v6.18.0
         with:
-          persist-credentials: false
+          context: docker/warp-builder
+          file: docker/warp-builder/Dockerfile
+          platforms: ${{ matrix.platform }}
+          build-contexts: |
+            cuda_toolkit=${{ steps.cuda13.outputs.cuda-path }}
+          build-args: |
+            CUDA_VERSION=13.4.1
+            MANYLINUX_IMAGE=${{ matrix.manylinux_image }}
+            MANYLINUX_POLICY=${{ matrix.policy }}
+            TARGETARCH=${{ matrix.arch }}
+            UV_IMAGE=${{ env.UV_IMAGE }}
+            UV_VERSION=${{ env.UV_VERSION }}
+          load: true
+          tags: ${{ steps.meta.outputs.image_cuda13 }}
+          cache-from: type=gha,scope=warp-builder-${{ matrix.policy }}-cuda13-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=warp-builder-${{ matrix.policy }}-cuda13-${{ matrix.arch }}
+          labels: |
+            org.opencontainers.image.created=${{ steps.meta.outputs.created_at }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
 
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Generate test metadata
-        id: meta
+      - name: Verify CUDA Toolkit 12.9.2 image offline
+        env:
+          EXPECTED_CUDA_PLATFORM: ${{ matrix.cuda12_platform }}
+          EXPECTED_CUDA_VERSION: "12.9.2"
+          IMAGE: ${{ steps.meta.outputs.image_cuda12 }}
         run: |
-          CUDA_VERSION="${{ matrix.cuda_version }}"
-          
-          # Lowercase repository owner for GHCR compatibility
-          OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          IMAGE_BASE="ghcr.io/${OWNER_LOWER}/warp-builder"
-          IMAGE_TAG="${IMAGE_BASE}:cuda${CUDA_VERSION}-${{ matrix.arch }}-latest"
-          
-          echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+          docker run --rm --network=none \
+            --env EXPECTED_CUDA_PLATFORM \
+            --env EXPECTED_CUDA_VERSION \
+            --volume "${GITHUB_WORKSPACE}:/workspace:ro" \
+            "${IMAGE}" \
+            bash /workspace/docker/warp-builder/verify-image.sh
 
-      - name: Test Warp build in container
+      - name: Verify CUDA Toolkit 13.4.1 image offline
+        env:
+          EXPECTED_CUDA_PLATFORM: ${{ matrix.cuda13_platform }}
+          EXPECTED_CUDA_VERSION: "13.4.1"
+          IMAGE: ${{ steps.meta.outputs.image_cuda13 }}
         run: |
-          IMAGE="${{ steps.meta.outputs.image_tag }}"
-          
-          echo "Testing Warp build with image: ${IMAGE}"
-          
+          docker run --rm --network=none \
+            --env EXPECTED_CUDA_PLATFORM \
+            --env EXPECTED_CUDA_VERSION \
+            --volume "${GITHUB_WORKSPACE}:/workspace:ro" \
+            "${IMAGE}" \
+            bash /workspace/docker/warp-builder/verify-image.sh
+
+      - name: Build Warp with embedded CUDA Toolkit 12.9.2
+        env:
+          IMAGE: ${{ steps.meta.outputs.image_cuda12 }}
+        run: |
           docker run --rm \
-            -v $(pwd):/workspace \
-            -w /workspace \
-            ${IMAGE} \
-            bash -c '
-              set -e
-              echo "=== Environment Check ==="
-              echo "CUDA Version:"
-              nvcc --version
-              echo ""
-              echo "uv Version:"
-              uv --version
-              echo ""
-              echo "CMake Version:"
-              cmake --version
-              echo ""
-              echo "Ninja Version:"
-              ninja --version
-              echo ""
-              echo "Architecture:"
-              uname -m
-              echo ""
-              echo "LLVM: fetched by build_lib.py through Packman"
-              echo ""
-              echo "=== Building Warp ==="
-              uv run build_lib.py
-              echo ""
-              echo "=== Build Complete ==="
-              ls -lh warp/bin/
-              echo ""
-              echo "=== Building Warp with CMake ==="
-              rm -rf warp/bin _build/cmake-image
-              uv sync --no-install-project
-              export WARP_CACHE_PATH="/tmp/warp-cache-cmake-image-${{ github.run_id }}-${{ matrix.cuda_version }}-${{ matrix.arch }}"
-              cmake -S . -B _build/cmake-image -G Ninja
-              cmake --build _build/cmake-image --parallel
-              uv run python -c "import warp; info = warp.print_diagnostics(); assert not info[\"warp_native\"].startswith(\"unknown\"); assert not info[\"warp_clang\"].startswith(\"unknown\")"
-              ls -lh warp/bin/
-              echo ""
-              echo "=== Building Python Wheel ==="
-              uv build --wheel
-              echo ""
-              echo "=== Wheel Created ==="
-              ls -lh dist/*.whl
-              echo ""
-              echo "Wheel size:"
-              du -h dist/*.whl
-            '
+            --volume "${GITHUB_WORKSPACE}:/workspace" \
+            --env WARP_CACHE_PATH=/tmp/warp-cache-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.arch }}-cuda12 \
+            "${IMAGE}" \
+            uv run --no-python-downloads --python 3.12 build_lib.py --cuda-path=/opt/cuda
 
-
-  create-manifest:
-    name: Create multi-arch manifest
-    runs-on: ubuntu-latest
-    needs: test
-    if: success()
-    permissions:
-      packages: write
-    
-    steps:
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create and push multi-arch manifests
+      - name: Build Warp with embedded CUDA Toolkit 13.4.1
+        env:
+          IMAGE: ${{ steps.meta.outputs.image_cuda13 }}
         run: |
-          DATE_TAG=$(date +%Y%m%d)
-          
-          # Lowercase repository owner for GHCR compatibility
-          OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          IMAGE_BASE="ghcr.io/${OWNER_LOWER}/warp-builder"
-          
-          # Create manifests for both CUDA versions
-          for CUDA_VERSION in "12.9.1" "13.4.1"; do
-            BASE_TAG="cuda${CUDA_VERSION}"
-            CUDA_MAJOR=$(echo ${CUDA_VERSION} | cut -d. -f1)
-            
-            echo "Creating manifests for CUDA ${CUDA_VERSION}..."
-            
-            # Create manifest for date tag
-            docker buildx imagetools create -t ${IMAGE_BASE}:${BASE_TAG}-${DATE_TAG} \
-              ${IMAGE_BASE}:${BASE_TAG}-x86_64-${DATE_TAG} \
-              ${IMAGE_BASE}:${BASE_TAG}-aarch64-${DATE_TAG}
-            
-            # Create manifest for versioned latest tag
-            docker buildx imagetools create -t ${IMAGE_BASE}:${BASE_TAG}-latest \
-              ${IMAGE_BASE}:${BASE_TAG}-x86_64-latest \
-              ${IMAGE_BASE}:${BASE_TAG}-aarch64-latest
-            
-            # Create short alias: cuda12, cuda13
-            docker buildx imagetools create -t ${IMAGE_BASE}:cuda${CUDA_MAJOR} \
-              ${IMAGE_BASE}:${BASE_TAG}-x86_64-latest \
-              ${IMAGE_BASE}:${BASE_TAG}-aarch64-latest
+          docker run --rm \
+            --volume "${GITHUB_WORKSPACE}:/workspace" \
+            --env WARP_CACHE_PATH=/tmp/warp-cache-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.arch }}-cuda13 \
+            "${IMAGE}" \
+            uv run --no-python-downloads --python 3.12 build_lib.py --cuda-path=/opt/cuda
+
+      - name: Publish images
+        env:
+          IMAGE_CUDA12: ${{ steps.meta.outputs.image_cuda12 }}
+          IMAGE_CUDA13: ${{ steps.meta.outputs.image_cuda13 }}
+          IMAGE_PLATFORM: ${{ matrix.platform }}
+        run: |
+          {
+            echo "## Published Warp builder images"
+            echo ""
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+          for IMAGE in "${IMAGE_CUDA12}" "${IMAGE_CUDA13}"; do
+            SIZE_BYTES=$(docker image inspect "${IMAGE}" --format='{{.Size}}')
+            SIZE_HUMAN=$(numfmt --to=iec-i --suffix=B "${SIZE_BYTES}")
+            docker push "${IMAGE}"
+            IMAGE_DIGEST=$(docker buildx imagetools inspect "${IMAGE}" --format '{{.Manifest.Digest}}')
+
+            if [[ ! "${IMAGE_DIGEST}" =~ ^sha256:[[:xdigit:]]{64}$ ]]; then
+              echo "Invalid published digest: ${IMAGE_DIGEST}" >&2
+              exit 1
+            fi
+
+            {
+              echo "- Tag: \`${IMAGE}\`"
+              echo "  - Digest: \`${IMAGE_DIGEST}\`"
+              echo "  - Platform: \`${IMAGE_PLATFORM}\`"
+              echo "  - Size: ${SIZE_HUMAN}"
+            } >> "${GITHUB_STEP_SUMMARY}"
           done
-          
-          # Create :latest pointing to CUDA 13
-          echo "Creating :latest tag (points to CUDA 13)..."
-          docker buildx imagetools create -t ${IMAGE_BASE}:latest \
-            ${IMAGE_BASE}:cuda13.4.1-x86_64-latest \
-            ${IMAGE_BASE}:cuda13.4.1-aarch64-latest
-          
-          echo "---" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Multi-arch manifests created: **:cuda12**, **:cuda13**, **:latest**" >> $GITHUB_STEP_SUMMARY
-
-      - name: Verify multi-arch manifests
-        run: |
-          
-          # Lowercase repository owner for GHCR compatibility
-          OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          IMAGE_BASE="ghcr.io/${OWNER_LOWER}/warp-builder"
-          
-          # Just verify they exist, don't clutter summary with inspect output
-          for CUDA_VERSION in "12.9.1" "13.4.1"; do
-            CUDA_MAJOR=$(echo ${CUDA_VERSION} | cut -d. -f1)
-            docker buildx imagetools inspect ${IMAGE_BASE}:cuda${CUDA_MAJOR} > /dev/null
-            echo "✅ Verified :cuda${CUDA_MAJOR} manifest"
-          done
-
-      - name: Final summary
-        run: |
-          # Lowercase repository owner for GHCR compatibility
-          OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          IMAGE_BASE="ghcr.io/${OWNER_LOWER}/warp-builder"
-          DATE_TAG=$(date +%Y%m%d)
-          
-          echo "## 🚀 Images Published" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Quick start:**" >> $GITHUB_STEP_SUMMARY
-          echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo "# CUDA 13 (recommended)" >> $GITHUB_STEP_SUMMARY
-          echo "docker pull ${IMAGE_BASE}:cuda13" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "# CUDA 12 (for users with older drivers)" >> $GITHUB_STEP_SUMMARY
-          echo "docker pull ${IMAGE_BASE}:cuda12" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Build Warp:**" >> $GITHUB_STEP_SUMMARY
-          echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo "docker run --rm -v \$(pwd):/workspace -w /workspace ${IMAGE_BASE}:cuda13 \\" >> $GITHUB_STEP_SUMMARY
-          echo "  bash -c \"uv run build_lib.py\"" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Date-pinned tags: \`:cuda13-${DATE_TAG}\`, \`:cuda12-${DATE_TAG}\`" >> $GITHUB_STEP_SUMMARY
