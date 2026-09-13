@@ -15,7 +15,7 @@ from warp._src.types import _launch_bounds_classes, launch_bounds_t
 from warp.tests.unittest_utils import *
 
 BLOCK_DIM = 64
-SCALAR_TID_MAX_EXTENT = 2**31
+TID_MAX_EXTENT = 2**31
 SCALAR_TID_DISABLED = False
 TILE_M = wp.constant(8)
 TILE_N = wp.constant(4)
@@ -29,6 +29,7 @@ class ScalarTidFlags:
 
 # Exercise semantic ``tid`` detection through a resolved alias rather than ``wp.tid`` syntax.
 TID_FUNCTION = context.builtin_functions["tid"]
+TID_NAMESPACE = types.SimpleNamespace(tid=TID_FUNCTION)
 # Isolate the intentionally invalid user function so its build error cannot fail the shared test module.
 ALIASED_TID_FUNCTION_MODULE = wp.Module("test_template_launch_bounds_aliased_tid_function")
 
@@ -58,6 +59,12 @@ def named_false_scalar_tid_kernel():
 
 
 @wp.kernel
+def named_false_tuple_tid_kernel():
+    if SCALAR_TID_DISABLED:
+        _i, _j = wp.tid()
+
+
+@wp.kernel
 def attributed_false_scalar_tid_kernel():
     if ScalarTidFlags.disabled:
         i = wp.tid()
@@ -78,6 +85,52 @@ def named_false_scalar_tid_if_exp_kernel():
 @wp.kernel
 def aliased_scalar_tid_kernel():
     i = TID_FUNCTION()
+
+
+@wp.kernel
+def aliased_tuple_tid_kernel(out: wp.array2d[int]):
+    i, j = TID_FUNCTION()
+    out[i, j] = i * 2 + j
+
+
+@wp.kernel
+def local_aliased_tuple_tid_kernel(out: wp.array2d[int]):
+    tid_function = TID_FUNCTION
+    i, j = tid_function()
+    out[i, j] = i * 2 + j
+
+
+@wp.kernel
+def qualified_aliased_tuple_tid_kernel(out: wp.array2d[int]):
+    i, j = TID_NAMESPACE.tid()
+    out[i, j] = i * 2 + j
+
+
+@wp.kernel
+def dead_rebound_aliased_tuple_tid_kernel(out: wp.array2d[int]):
+    tid_function = TID_FUNCTION
+    if SCALAR_TID_DISABLED:
+        tid_function = tid_name_collision_func
+    i, j = tid_function()
+    out[i, j] = i * 2 + j
+
+
+@wp.kernel
+def nested_aliased_tuple_tid_kernel(out: wp.array2d[int]):
+    if not SCALAR_TID_DISABLED:
+        tid_function = TID_FUNCTION
+    nested_tid_function = tid_function
+    i, j = nested_tid_function()
+    out[i, j] = i * 2 + j
+
+
+ALIASED_TUPLE_TID_KERNELS = (
+    aliased_tuple_tid_kernel,
+    local_aliased_tuple_tid_kernel,
+    qualified_aliased_tuple_tid_kernel,
+    dead_rebound_aliased_tuple_tid_kernel,
+    nested_aliased_tuple_tid_kernel,
+)
 
 
 @wp.func(module=ALIASED_TID_FUNCTION_MODULE)
@@ -332,11 +385,11 @@ def test_scalar_tid_rejects_oversized_extent(test, device):
     out = wp.zeros(1, dtype=int, device=device)
 
     with test.assertRaisesRegex(
-        ValueError, r"Warp cannot launch a kernel using scalar wp\.tid\(\) with extent 2147483649"
+        ValueError, r"Warp cannot launch a kernel using wp\.tid\(\) with extent 2147483649 in dimension 0"
     ):
         wp.launch(
             regular_1d_kernel,
-            dim=SCALAR_TID_MAX_EXTENT + 1,
+            dim=TID_MAX_EXTENT + 1,
             inputs=[out],
             device=device,
             record_cmd=True,
@@ -348,11 +401,11 @@ def test_inline_scalar_tid_rejects_oversized_extent(test, device):
     out = wp.zeros(1, dtype=int, device=device)
 
     with test.assertRaisesRegex(
-        ValueError, r"Warp cannot launch a kernel using scalar wp\.tid\(\) with extent 2147483649"
+        ValueError, r"Warp cannot launch a kernel using wp\.tid\(\) with extent 2147483649 in dimension 0"
     ):
         wp.launch(
             inline_tid_kernel,
-            dim=SCALAR_TID_MAX_EXTENT + 1,
+            dim=TID_MAX_EXTENT + 1,
             inputs=[out],
             device=device,
             record_cmd=True,
@@ -364,11 +417,11 @@ def test_mixed_tid_arities_reject_oversized_scalar_extent(test, device):
     out = wp.zeros(1, dtype=int, device=device)
 
     with test.assertRaisesRegex(
-        ValueError, r"Warp cannot launch a kernel using scalar wp\.tid\(\) with extent 2147483649"
+        ValueError, r"Warp cannot launch a kernel using wp\.tid\(\) with extent 2147483649 in dimension 0"
     ):
         wp.launch(
             mixed_tid_arity_kernel,
-            dim=(SCALAR_TID_MAX_EXTENT + 1, 1),
+            dim=(TID_MAX_EXTENT + 1, 1),
             inputs=[out],
             device=device,
             record_cmd=True,
@@ -381,13 +434,63 @@ def test_scalar_tid_accepts_max_extent(test, device):
 
     launch = wp.launch(
         regular_1d_kernel,
-        dim=SCALAR_TID_MAX_EXTENT,
+        dim=TID_MAX_EXTENT,
         inputs=[out],
         device=device,
         record_cmd=True,
     )
 
-    test.assertEqual(launch.bounds.size, SCALAR_TID_MAX_EXTENT)
+    test.assertEqual(launch.bounds.size, TID_MAX_EXTENT)
+
+
+def test_tuple_tid_validates_every_dimension(test, device):
+    """Apply the signed-coordinate boundary independently to every launch dimension."""
+    kernels = {
+        1: (regular_1d_kernel, ()),
+        2: (regular_2d_kernel, (1, 1)),
+        3: (regular_3d_kernel, (1, 1, 1)),
+        4: (regular_4d_kernel, (1, 1, 1)),
+    }
+
+    for rank, (kernel, extra_inputs) in kernels.items():
+        out = wp.zeros((1,) * rank, dtype=int, device=device)
+        inputs = [out, *extra_inputs]
+        for axis in range(rank):
+            with test.subTest(rank=rank, axis=axis):
+                dim = [1] * rank
+                dim[axis] = TID_MAX_EXTENT
+                launch = wp.launch(kernel, dim=dim, inputs=inputs, device=device, record_cmd=True)
+                test.assertEqual(tuple(launch.bounds.shape), tuple(dim))
+
+                dim[axis] += 1
+                with test.assertRaisesRegex(
+                    ValueError,
+                    rf"Warp cannot launch a kernel using wp\.tid\(\) with extent 2147483649 in dimension {axis}",
+                ):
+                    wp.launch(kernel, dim=dim, inputs=inputs, device=device, record_cmd=True)
+
+
+def test_tuple_tid_accepts_large_total_with_safe_extents(test, device):
+    """Allow total thread counts above signed 32-bit range when every coordinate is safe."""
+    dim = (2**16, 2**16)
+    out = wp.zeros((1, 1), dtype=int, device=device)
+
+    launch = wp.launch(regular_2d_kernel, dim=dim, inputs=[out, 1, 1], device=device, record_cmd=True)
+
+    test.assertEqual(tuple(launch.bounds.shape), dim)
+    test.assertEqual(launch.bounds.size, 2**32)
+
+
+def test_tuple_tid_accepts_oversized_extent_in_empty_launch(test, device):
+    """Allow an extent above the coordinate limit when no thread can observe it."""
+    dim = (0, TID_MAX_EXTENT + 1)
+    out = wp.zeros((1, 1), dtype=int, device=device)
+
+    launch = wp.launch(regular_2d_kernel, dim=(1, 1), inputs=[out, 1, 1], device=device, record_cmd=True)
+    launch.set_dim(dim)
+
+    test.assertEqual(tuple(launch.bounds.shape), dim)
+    test.assertEqual(launch.bounds.size, 0)
 
 
 def test_no_tid_accepts_oversized_extent(test, device):
@@ -396,25 +499,25 @@ def test_no_tid_accepts_oversized_extent(test, device):
 
     launch = wp.launch(
         no_tid_kernel,
-        dim=SCALAR_TID_MAX_EXTENT + 1,
+        dim=TID_MAX_EXTENT + 1,
         inputs=[out, 1.0],
         device=device,
         record_cmd=True,
     )
 
-    test.assertEqual(launch.bounds.size, SCALAR_TID_MAX_EXTENT + 1)
+    test.assertEqual(launch.bounds.size, TID_MAX_EXTENT + 1)
 
 
 def test_static_false_scalar_tid_accepts_oversized_extent(test, device):
     """Ignore scalar ``wp.tid()`` calls removed by static control flow."""
     launch = wp.launch(
         static_false_scalar_tid_kernel,
-        dim=SCALAR_TID_MAX_EXTENT + 1,
+        dim=TID_MAX_EXTENT + 1,
         device=device,
         record_cmd=True,
     )
 
-    test.assertEqual(launch.bounds.size, SCALAR_TID_MAX_EXTENT + 1)
+    test.assertEqual(launch.bounds.size, TID_MAX_EXTENT + 1)
 
 
 def test_codegen_false_scalar_tid_accepts_oversized_extent(test, device):
@@ -430,12 +533,24 @@ def test_codegen_false_scalar_tid_accepts_oversized_extent(test, device):
         with test.subTest(kernel=kernel.key):
             launch = wp.launch(
                 kernel,
-                dim=SCALAR_TID_MAX_EXTENT + 1,
+                dim=TID_MAX_EXTENT + 1,
                 device=device,
                 record_cmd=True,
             )
 
-            test.assertEqual(launch.bounds.size, SCALAR_TID_MAX_EXTENT + 1)
+            test.assertEqual(launch.bounds.size, TID_MAX_EXTENT + 1)
+
+
+def test_codegen_false_tuple_tid_accepts_oversized_extent(test, device):
+    """Ignore tuple-valued ``wp.tid()`` calls removed by code generation."""
+    launch = wp.launch(
+        named_false_tuple_tid_kernel,
+        dim=(1, TID_MAX_EXTENT + 1),
+        device=device,
+        record_cmd=True,
+    )
+
+    test.assertEqual(tuple(launch.bounds.shape), (1, TID_MAX_EXTENT + 1))
 
 
 def test_aliased_scalar_tid_rejects_oversized_extent(test, device):
@@ -443,13 +558,39 @@ def test_aliased_scalar_tid_rejects_oversized_extent(test, device):
     aliased_scalar_tid_kernel.module.get_module_hash(BLOCK_DIM)
 
     with test.assertRaisesRegex(
-        ValueError, r"Warp cannot launch a kernel using scalar wp\.tid\(\) with extent 2147483649"
+        ValueError, r"Warp cannot launch a kernel using wp\.tid\(\) with extent 2147483649 in dimension 0"
     ):
         context._build_kernel_launch_bounds(
-            SCALAR_TID_MAX_EXTENT + 1,
+            TID_MAX_EXTENT + 1,
             aliased_scalar_tid_kernel,
             BLOCK_DIM,
         )
+
+
+def test_aliased_tuple_tid_coordinates_and_limits(test, device):
+    """Preserve coordinates and enforce extent limits for aliased tuple-valued ``wp.tid()`` calls."""
+    for kernel in ALIASED_TUPLE_TID_KERNELS:
+        with test.subTest(kernel=kernel.key, check="coordinates"):
+            out = wp.zeros((2, 2), dtype=int, device=device)
+
+            wp.launch(kernel, dim=(2, 2), inputs=[out], device=device)
+
+            np.testing.assert_array_equal(out.numpy(), np.arange(4).reshape((2, 2)))
+
+        with test.subTest(kernel=kernel.key, check="extent limit"):
+            out = wp.zeros((1, 1), dtype=int, device=device)
+
+            with test.assertRaisesRegex(
+                ValueError,
+                r"Warp cannot launch a kernel using wp\.tid\(\) with extent 2147483649 in dimension 1",
+            ):
+                wp.launch(
+                    kernel,
+                    dim=(1, TID_MAX_EXTENT + 1),
+                    inputs=[out],
+                    device=device,
+                    record_cmd=True,
+                )
 
 
 def test_aliased_tid_in_user_function_is_rejected(test, device):
@@ -461,7 +602,7 @@ def test_aliased_tid_in_user_function_is_rejected(test, device):
         r"tid\(\) may only be called from a Warp kernel",
     ):
         context._build_kernel_launch_bounds(
-            SCALAR_TID_MAX_EXTENT + 1,
+            TID_MAX_EXTENT + 1,
             aliased_tid_user_function_kernel,
             BLOCK_DIM,
         )
@@ -476,16 +617,26 @@ def test_scalar_tid_empty_dim_uses_padded_extent(test, device):
     test.assertEqual(bounds.size, 1)
 
 
-def test_small_launch_skips_exact_scalar_tid_resolution(test, device):
+def test_small_launch_skips_exact_tid_resolution(test, device):
     """Keep exact metadata codegen off the ordinary small-launch path."""
     regular_1d_kernel.module.get_module_hash(BLOCK_DIM)
 
     with mock.patch.object(
         regular_1d_kernel.module,
-        "_get_kernel_scalar_tid_extent_limit",
-        wraps=regular_1d_kernel.module._get_kernel_scalar_tid_extent_limit,
+        "_get_kernel_tid_extent_limit",
+        wraps=regular_1d_kernel.module._get_kernel_tid_extent_limit,
     ) as get_limit:
         bounds = context._build_kernel_launch_bounds(1, regular_1d_kernel, BLOCK_DIM)
+
+    test.assertEqual(bounds.size, 1)
+    get_limit.assert_not_called()
+
+    with mock.patch.object(
+        regular_2d_kernel.module,
+        "_get_kernel_tid_extent_limit",
+        wraps=regular_2d_kernel.module._get_kernel_tid_extent_limit,
+    ) as get_limit:
+        bounds = context._build_kernel_launch_bounds((1, 1), regular_2d_kernel, BLOCK_DIM)
 
     test.assertEqual(bounds.size, 1)
     get_limit.assert_not_called()
@@ -495,14 +646,14 @@ def test_launch_set_dim_accepts_compile_time_dead_scalar_tid(test, device):
     """Use exact scalar-``tid`` metadata when resizing a recorded launch."""
     launch = wp.launch(
         named_false_scalar_tid_kernel,
-        dim=SCALAR_TID_MAX_EXTENT + 1,
+        dim=TID_MAX_EXTENT + 1,
         device=device,
         record_cmd=True,
     )
 
-    launch.set_dim(SCALAR_TID_MAX_EXTENT + 2)
+    launch.set_dim(TID_MAX_EXTENT + 2)
 
-    test.assertEqual(launch.bounds.size, SCALAR_TID_MAX_EXTENT + 2)
+    test.assertEqual(launch.bounds.size, TID_MAX_EXTENT + 2)
 
 
 def test_qualified_tid_name_collision_accepts_oversized_extent(test, device):
@@ -512,7 +663,7 @@ def test_qualified_tid_name_collision_accepts_oversized_extent(test, device):
     try:
         launch = wp.launch(
             qualified_tid_name_collision_kernel,
-            dim=SCALAR_TID_MAX_EXTENT + 1,
+            dim=TID_MAX_EXTENT + 1,
             inputs=[out],
             device=device,
             record_cmd=True,
@@ -520,33 +671,64 @@ def test_qualified_tid_name_collision_accepts_oversized_extent(test, device):
     except ValueError as error:
         test.fail(f"Qualified non-builtin function was mistaken for wp.tid(): {error}")
 
-    test.assertEqual(launch.bounds.size, SCALAR_TID_MAX_EXTENT + 1)
+    test.assertEqual(launch.bounds.size, TID_MAX_EXTENT + 1)
 
 
-def test_scalar_tid_validates_retained_extent(test, device):
-    """Validate the retained scalar extent instead of the total launch size."""
+def test_scalar_tid_validates_first_dimension(test, device):
+    """Validate the first launch dimension instead of the total thread count."""
     out = wp.zeros(1, dtype=int, device=device)
 
     launch = wp.launch(
         regular_1d_kernel,
-        dim=(SCALAR_TID_MAX_EXTENT, 2),
+        dim=(TID_MAX_EXTENT, 2),
         inputs=[out],
         device=device,
         record_cmd=True,
     )
-    test.assertEqual(launch.bounds.size, SCALAR_TID_MAX_EXTENT * 2)
+    test.assertEqual(launch.bounds.size, TID_MAX_EXTENT * 2)
     test.assertEqual(launch.bounds.coord_mult, 2)
 
     with test.assertRaisesRegex(
-        ValueError, r"Warp cannot launch a kernel using scalar wp\.tid\(\) with extent 2147483649"
+        ValueError, r"Warp cannot launch a kernel using wp\.tid\(\) with extent 2147483649 in dimension 0"
     ):
         wp.launch(
             regular_1d_kernel,
-            dim=(SCALAR_TID_MAX_EXTENT + 1, 2),
+            dim=(TID_MAX_EXTENT + 1, 2),
             inputs=[out],
             device=device,
             record_cmd=True,
         )
+
+
+def test_scalar_tid_accepts_oversized_folded_extent(test, device):
+    """Allow oversized dimensions folded into the scalar coordinate multiplier."""
+    out = wp.zeros(1, dtype=int, device=device)
+
+    launch = wp.launch(
+        regular_1d_kernel,
+        dim=(1, TID_MAX_EXTENT + 1),
+        inputs=[out],
+        device=device,
+        record_cmd=True,
+    )
+
+    test.assertEqual(launch.bounds.shape[0], 1)
+    test.assertEqual(launch.bounds.coord_mult, TID_MAX_EXTENT + 1)
+    test.assertEqual(launch.bounds.size, TID_MAX_EXTENT + 1)
+
+
+def test_direct_launch_accepts_oversized_extent_when_empty(test, device):
+    """Allow an extent above the coordinate limit when a direct launch has no threads."""
+    out = wp.zeros((1, 1), dtype=int, device=device)
+
+    result = wp.launch(
+        regular_2d_kernel,
+        dim=(0, TID_MAX_EXTENT + 1),
+        inputs=[out, 1, 1],
+        device=device,
+    )
+
+    test.assertIsNone(result)
 
 
 def test_launch_set_dim_validates_scalar_tid_extent(test, device):
@@ -554,13 +736,31 @@ def test_launch_set_dim_validates_scalar_tid_extent(test, device):
     out = wp.zeros(1, dtype=int, device=device)
     launch = wp.launch(regular_1d_kernel, dim=1, inputs=[out], device=device, record_cmd=True)
 
-    launch.set_dim(SCALAR_TID_MAX_EXTENT)
+    launch.set_dim(TID_MAX_EXTENT)
     last_valid_bounds = launch.bounds
 
     with test.assertRaisesRegex(
-        ValueError, r"Warp cannot launch a kernel using scalar wp\.tid\(\) with extent 2147483649"
+        ValueError, r"Warp cannot launch a kernel using wp\.tid\(\) with extent 2147483649 in dimension 0"
     ):
-        launch.set_dim(SCALAR_TID_MAX_EXTENT + 1)
+        launch.set_dim(TID_MAX_EXTENT + 1)
+
+    test.assertIs(launch.bounds, last_valid_bounds)
+    test.assertIs(launch.params[0], last_valid_bounds)
+
+
+def test_launch_set_dim_validates_nonleading_tid_extent(test, device):
+    """Keep the last valid recorded bounds after a non-leading extent rejection."""
+    out = wp.zeros((1, 1), dtype=int, device=device)
+    launch = wp.launch(regular_2d_kernel, dim=(1, 1), inputs=[out, 1, 1], device=device, record_cmd=True)
+
+    launch.set_dim((1, TID_MAX_EXTENT))
+    last_valid_bounds = launch.bounds
+
+    with test.assertRaisesRegex(
+        ValueError,
+        r"Warp cannot launch a kernel using wp\.tid\(\) with extent 2147483649 in dimension 1",
+    ):
+        launch.set_dim((1, TID_MAX_EXTENT + 1))
 
     test.assertIs(launch.bounds, last_valid_bounds)
     test.assertIs(launch.params[0], last_valid_bounds)
@@ -776,6 +976,24 @@ add_function_test(
 )
 add_function_test(
     TestTemplateLaunchBounds,
+    "test_tuple_tid_validates_every_dimension",
+    test_tuple_tid_validates_every_dimension,
+    devices=devices,
+)
+add_function_test(
+    TestTemplateLaunchBounds,
+    "test_tuple_tid_accepts_large_total_with_safe_extents",
+    test_tuple_tid_accepts_large_total_with_safe_extents,
+    devices=devices,
+)
+add_function_test(
+    TestTemplateLaunchBounds,
+    "test_tuple_tid_accepts_oversized_extent_in_empty_launch",
+    test_tuple_tid_accepts_oversized_extent_in_empty_launch,
+    devices=devices,
+)
+add_function_test(
+    TestTemplateLaunchBounds,
     "test_no_tid_accepts_oversized_extent",
     test_no_tid_accepts_oversized_extent,
     devices=devices,
@@ -794,9 +1012,21 @@ add_function_test(
 )
 add_function_test(
     TestTemplateLaunchBounds,
+    "test_codegen_false_tuple_tid_accepts_oversized_extent",
+    test_codegen_false_tuple_tid_accepts_oversized_extent,
+    devices=["cpu"],
+)
+add_function_test(
+    TestTemplateLaunchBounds,
     "test_aliased_scalar_tid_rejects_oversized_extent",
     test_aliased_scalar_tid_rejects_oversized_extent,
     devices=["cpu"],
+)
+add_function_test(
+    TestTemplateLaunchBounds,
+    "test_aliased_tuple_tid_coordinates_and_limits",
+    test_aliased_tuple_tid_coordinates_and_limits,
+    devices=devices,
 )
 add_function_test(
     TestTemplateLaunchBounds,
@@ -812,8 +1042,8 @@ add_function_test(
 )
 add_function_test(
     TestTemplateLaunchBounds,
-    "test_small_launch_skips_exact_scalar_tid_resolution",
-    test_small_launch_skips_exact_scalar_tid_resolution,
+    "test_small_launch_skips_exact_tid_resolution",
+    test_small_launch_skips_exact_tid_resolution,
     devices=["cpu"],
 )
 add_function_test(
@@ -830,14 +1060,32 @@ add_function_test(
 )
 add_function_test(
     TestTemplateLaunchBounds,
-    "test_scalar_tid_validates_retained_extent",
-    test_scalar_tid_validates_retained_extent,
+    "test_scalar_tid_validates_first_dimension",
+    test_scalar_tid_validates_first_dimension,
+    devices=devices,
+)
+add_function_test(
+    TestTemplateLaunchBounds,
+    "test_scalar_tid_accepts_oversized_folded_extent",
+    test_scalar_tid_accepts_oversized_folded_extent,
+    devices=devices,
+)
+add_function_test(
+    TestTemplateLaunchBounds,
+    "test_direct_launch_accepts_oversized_extent_when_empty",
+    test_direct_launch_accepts_oversized_extent_when_empty,
     devices=devices,
 )
 add_function_test(
     TestTemplateLaunchBounds,
     "test_launch_set_dim_validates_scalar_tid_extent",
     test_launch_set_dim_validates_scalar_tid_extent,
+    devices=devices,
+)
+add_function_test(
+    TestTemplateLaunchBounds,
+    "test_launch_set_dim_validates_nonleading_tid_extent",
+    test_launch_set_dim_validates_nonleading_tid_extent,
     devices=devices,
 )
 add_function_test(

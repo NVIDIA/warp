@@ -36,7 +36,9 @@ from warp._src.types import *
 # of current compile options (block_dim) etc
 options = {}
 
-_SCALAR_TID_MAX_EXTENT = 2**31
+# wp.tid() coordinates are signed 32-bit integers. An extent of 2**31 is
+# valid because its largest coordinate is 2**31 - 1.
+_TID_MAX_EXTENT = 2**31
 
 # Extraction products shared across Adjoints of one code object, populated
 # lazily by Adjoint.__init__ (see _SharedFunctionSource).
@@ -370,19 +372,46 @@ def is_valid_cpp_identifier(value: str) -> bool:
     return _IDENTIFIER_RE.fullmatch(value) is not None
 
 
-def _is_tid_call(node, adj=None) -> bool:
-    """Return True if ``node`` is an AST call to ``wp.tid()``."""
-    if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute) or node.func.attr != "tid":
+def _is_tid_call(
+    node,
+    adj=None,
+    local_variables=frozenset(),
+    tid_aliases=frozenset(),
+    callable_arg_values=None,
+) -> bool:
+    """Return whether ``node`` semantically calls ``wp.tid()``.
+
+    Args:
+        node: AST node to inspect.
+        adj: Adjoint whose scope is used to resolve the call. If omitted, only
+            direct ``wp.tid()`` and ``warp.tid()`` syntax is recognized.
+        local_variables: Names assigned in the function scope.
+        tid_aliases: Local names known to reference ``wp.tid()``.
+        callable_arg_values: Specialized function targets keyed by callable
+            parameter name.
+    """
+    if not isinstance(node, ast.Call):
         return False
 
-    receiver = node.func.value
-    if adj is not None:
-        if isinstance(receiver, ast.Name):
-            return adj.resolve_external_reference(receiver.id) is warp
-        resolved_receiver, _ = adj.resolve_static_expression(receiver, eval_types=False)
-        return resolved_receiver is warp
+    if adj is None:
+        if not isinstance(node.func, ast.Attribute) or node.func.attr != "tid":
+            return False
 
-    return isinstance(receiver, ast.Name) and receiver.id in ("wp", "warp")
+        receiver = node.func.value
+        return isinstance(receiver, ast.Name) and receiver.id in ("wp", "warp")
+
+    if isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Name):
+        receiver = adj.resolve_external_reference(node.func.value.id)
+        if receiver is warp:
+            func = warp._src.context.builtin_functions.get(node.func.attr)
+        else:
+            func = getattr(receiver, node.func.attr, None)
+    elif isinstance(node.func, ast.Name) and node.func.id in local_variables:
+        return node.func.id in tid_aliases
+    else:
+        func = resolve_reference_call_func(adj, node, callable_arg_values)
+
+    return func is warp._src.context.builtin_functions["tid"]
 
 
 def is_external_constant_params_arg(arg) -> bool:
@@ -413,7 +442,14 @@ def iter_ast_nodes_of_types(root: ast.AST, *types: type):
 
 
 def _uses_tid_call(adj) -> bool:
-    return any(_is_tid_call(node, adj) for node in iter_ast_nodes_of_types(adj.tree, ast.Call))
+    """Return whether ``adj`` calls ``wp.tid()`` directly or through an alias."""
+    local_variables = adj.assigned_name_ids()
+    tid_aliases = resolve_reference_tid_aliases(adj, local_variables)
+    callable_arg_values = getattr(adj, "callable_arg_values", None) or {}
+    return any(
+        _is_tid_call(node, adj, local_variables, tid_aliases, callable_arg_values)
+        for node in iter_ast_nodes_of_types(adj.tree, ast.Call)
+    )
 
 
 def _is_texture_type(var_type: type) -> bool:
@@ -1530,6 +1566,52 @@ def resolve_reference_call_func(adj, call_node, callable_arg_values=None):
     return func
 
 
+def resolve_reference_tid_aliases(adj, local_variables) -> frozenset[str]:
+    """Return local names that can resolve to ``wp.tid()`` during reference scans."""
+
+    tid_func = warp._src.context.builtin_functions["tid"]
+    tid_aliases = set()
+    aliases_by_source = {}
+
+    # Pair assignment targets with matching values, including nested tuple/list
+    # unpacking, so each local binding can be analyzed independently.
+    def iter_bindings(target, value):
+        if isinstance(target, ast.Name):
+            yield target.id, value
+        elif isinstance(target, (ast.Tuple, ast.List)) and isinstance(value, (ast.Tuple, ast.List)):
+            for target_item, value_item in zip(target.elts, value.elts, strict=False):
+                yield from iter_bindings(target_item, value_item)
+
+    # Seed direct ``wp.tid()`` aliases and record local-to-local edges in reverse
+    # so resolved sources can propagate to their dependent names.
+    for node in adj.reference_nodes():
+        if not isinstance(node, ast.Assign):
+            continue
+
+        for target in node.targets:
+            for name, value_node in iter_bindings(target, node.value):
+                if isinstance(value_node, ast.Name) and value_node.id in local_variables:
+                    aliases_by_source.setdefault(value_node.id, set()).add(name)
+                else:
+                    func, path = adj.resolve_static_expression(value_node, eval_types=False)
+                    if path and func is warp:
+                        func = warp._src.context.builtin_functions.get(path[-1])
+
+                    if func is tid_func:
+                        tid_aliases.add(name)
+
+    # Compute the transitive closure (for example, ``f = wp.tid; g = f; h = g``).
+    pending = list(tid_aliases)
+    while pending:
+        source = pending.pop()
+        for name in aliases_by_source.get(source, ()):
+            if name not in tid_aliases:
+                tid_aliases.add(name)
+                pending.append(name)
+
+    return frozenset(tid_aliases)
+
+
 def iter_call_callable_arg_targets(adj, func, call_node, callable_arg_values=None):
     """Yield Warp function targets passed to ``wp.Function`` parameters.
 
@@ -1763,7 +1845,7 @@ class _SharedFunctionSource:
     and ``wp.static`` (which rewrites the tree) exclude an adjoint.
     """
 
-    __slots__ = ("assigned_name_ids", "fun_lineno", "reference_nodes", "source", "tree")
+    __slots__ = ("assigned_name_ids", "assignment_call_metadata", "fun_lineno", "reference_nodes", "source", "tree")
 
     def __init__(self, source, fun_lineno, tree):
         self.source = source
@@ -1771,6 +1853,7 @@ class _SharedFunctionSource:
         self.tree = tree
         self.reference_nodes = None
         self.assigned_name_ids = None
+        self.assignment_call_metadata = None
 
 
 def _shared_source_for_code(code):
@@ -1943,10 +2026,11 @@ class Adjoint:
         # paths do not need to coordinate deterministic internals directly.
         adj.deterministic = DeterministicCodegen(adj)
 
-        # Caches derived from the AST. Reset both if ``adj.tree`` is ever mutated
-        # after either cache is populated.
+        # Caches derived from the AST. Reset all three if ``adj.tree`` is ever
+        # mutated after any cache is populated.
         adj._reference_nodes = None
         adj._assigned_name_ids = None
+        adj._assignment_call_metadata = None
 
     # allocate extra space for a function call that requires its
     # own shared memory space, we treat shared memory as a stack
@@ -2167,7 +2251,7 @@ class Adjoint:
         adj.called_user_functions = {}
 
         # Exact launch metadata derived from calls reached by this build.
-        adj.uses_scalar_tid = False
+        adj.uses_tid = False
 
         # wp.ref[T] callees lacking a manual adjoint; rejected post-build, once used_by_backward_kernel is final
         adj.unvalidated_ref_calls = []
@@ -4488,8 +4572,8 @@ class Adjoint:
         if hasattr(node, "expects"):
             min_outputs = node.expects
 
-        if func is warp._src.context.builtin_functions["tid"] and (min_outputs is None or min_outputs <= 1):
-            adj.uses_scalar_tid = True
+        if func is warp._src.context.builtin_functions["tid"]:
+            adj.uses_tid = True
 
         # Evaluate positional arguments.
         args = []
@@ -6872,9 +6956,9 @@ class Adjoint:
         This cache assumes ``adj.tree`` is structurally final before the first call; adjoints
         whose tree is mutated (transformers, ``wp.static`` rewriting) never share it. Any new
         code that mutates ``adj.tree`` afterwards must reset ``adj._reference_nodes`` -- and
-        ``adj._shared_source.reference_nodes`` and ``assigned_name_ids`` when set, which
-        invalidates every adjoint sharing the tree -- or better, exclude the adjoint from
-        sharing like the cases above.
+        ``adj._shared_source.reference_nodes``, ``assigned_name_ids``, and
+        ``assignment_call_metadata`` when set, which invalidates every adjoint sharing the tree
+        -- or better, exclude the adjoint from sharing like the cases above.
         """
         if adj._reference_nodes is None:
             shared = adj._shared_source
@@ -6912,11 +6996,40 @@ class Adjoint:
                     shared.assigned_name_ids = adj._assigned_name_ids
         return adj._assigned_name_ids
 
+    def assignment_call_metadata(adj) -> tuple[dict[ast.Call, int], frozenset[str]]:
+        """Return direct assignment calls by unpacking arity and their bare callee names."""
+
+        if adj._assignment_call_metadata is None:
+            # Shared-source adjoints use identical AST nodes, so ``ast.Call`` keys
+            # remain valid when this metadata is reused.
+            shared = adj._shared_source
+            if shared is not None and shared.assignment_call_metadata is not None:
+                adj._assignment_call_metadata = shared.assignment_call_metadata
+            else:
+                # Record unpacking arity for ``wp.tid()`` dimension inference. Bare
+                # callee names let ``get_references()`` skip alias resolution unless
+                # a locally assigned name is actually called on an assignment RHS.
+                call_dims = {}
+                call_name_ids = set()
+                for node in adj.reference_nodes():
+                    if not isinstance(node, ast.Assign) or not isinstance(node.value, ast.Call):
+                        continue
+
+                    target = node.targets[0]
+                    call_dims[node.value] = len(target.elts) if isinstance(target, ast.Tuple) else 1
+                    if isinstance(node.value.func, ast.Name):
+                        call_name_ids.add(node.value.func.id)
+
+                adj._assignment_call_metadata = (call_dims, frozenset(call_name_ids))
+                if shared is not None:
+                    shared.assignment_call_metadata = adj._assignment_call_metadata
+        return adj._assignment_call_metadata
+
     def get_references(adj) -> tuple[dict[str, Any], dict[Any, Any], dict[warp._src.context.Function, Any]]:
         """Traverse ``adj.tree`` for referenced constants, types, and user-defined functions.
 
         As a side effect, also sets ``adj.kernel_dim`` (the thread-grid dimension inferred from
-        ``wp.tid()``) and ``adj.scalar_tid_extent_limit_candidate``. They are folded into this
+        ``wp.tid()``) and ``adj.tid_extent_limit_candidate``. They are folded into this
         traversal rather than walked separately because ``get_references`` already visits every
         ``Assign`` and runs for every adjoint during module hashing. The candidate is conservative;
         code generation records exact reachability before an oversized launch is rejected.
@@ -6931,6 +7044,12 @@ class Adjoint:
         types: dict[Struct | type, Any] = {}
         functions: dict[warp._src.context.Function, Any] = {}
         max_dim = 0  # thread-grid dimension, inferred from wp.tid() unpack arity
+        assignment_call_dims, assignment_call_name_ids = adj.assignment_call_metadata()
+        if local_variables.isdisjoint(assignment_call_name_ids):
+            tid_aliases = frozenset()
+        else:
+            tid_aliases = resolve_reference_tid_aliases(adj, local_variables)
+        tid_func = warp._src.context.builtin_functions["tid"]
         callable_arg_values = getattr(adj, "callable_arg_values", None) or {}
         # Shared single traversal (see reference_nodes()); resolved here at hash time.
         for node in adj.reference_nodes():
@@ -6948,8 +7067,15 @@ class Adjoint:
             elif isinstance(node, ast.Call):
                 if isinstance(node.func, ast.Name) and node.func.id in local_variables:
                     func = callable_arg_values.get(node.func.id)
+                    if func is None and node.func.id in tid_aliases:
+                        func = tid_func
                 else:
                     func = resolve_reference_call_func(adj, node, callable_arg_values)
+
+                if func is tid_func:
+                    call_dim = assignment_call_dims.get(node)
+                    if call_dim is not None:
+                        max_dim = max(max_dim, call_dim)
 
                 if isinstance(func, warp._src.context.Function):
                     if not func.is_builtin():
@@ -6976,11 +7102,6 @@ class Adjoint:
                     types[func] = None
 
             elif isinstance(node, ast.Assign):
-                # Infer the thread-grid dimension from `i[, j, ...] = wp.tid()` unpack arity.
-                if _is_tid_call(node.value, adj):
-                    target = node.targets[0]
-                    max_dim = max(max_dim, len(target.elts) if isinstance(target, ast.Tuple) else 1)
-
                 # A function bound to a local (`f = mod.func`) or to several locals via tuple
                 # unpacking (`f, g = mod.a, mod.b`) is referenced only through the local(s)
                 # afterwards, so it would otherwise be missed here and left out of the module
@@ -6996,11 +7117,11 @@ class Adjoint:
                         functions[rhs_func] = None
 
         adj.kernel_dim = max_dim if max_dim > 0 else 1
-        # Treat every kernel as a potential scalar-`wp.tid()` user until exact
-        # code generation proves otherwise. This conservative gate cannot miss
-        # aliases or transformer-generated calls, and only oversized leading
-        # extents pay for metadata-only code generation.
-        adj.scalar_tid_extent_limit_candidate = _SCALAR_TID_MAX_EXTENT
+        # Treat every kernel as a potential `wp.tid()` user until exact code
+        # generation proves otherwise. This conservative gate cannot miss
+        # aliases or transformer-generated calls, and only launch extents above
+        # the coordinate limit pay for metadata-only code generation.
+        adj.tid_extent_limit_candidate = _TID_MAX_EXTENT
         return constants, types, functions
 
 

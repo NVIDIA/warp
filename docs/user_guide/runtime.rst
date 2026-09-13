@@ -1996,7 +1996,10 @@ API Capture: Saving and Loading Graphs
     surface, the C ``wp_apic_*`` API, and the recorded operation set are all
     subject to change without a formal deprecation cycle. ``.wrp`` files written
     by one version of Warp may not be loadable by another. The current writer
-    emits format version 15, and the reader accepts versions 13 through 15.
+    emits format version 16, and the reader accepts versions 13 through 16.
+    Version 16 stores kernel launch extents as unsigned 32-bit values. Older
+    files whose launch extents have the high bit set are rejected because those
+    values overflowed the signed representation used by their format.
 
 The APIC operation stream lets Warp serialize a supported captured graph to
 disk and load it back later from another Python program or a standalone C++

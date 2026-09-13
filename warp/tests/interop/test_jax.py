@@ -409,7 +409,27 @@ def test_ffi_jax_kernel_rejects_oversized_explicit_scalar_tid_launch_dims(test, 
 
     with jax.default_device(wp.device_to_jax(device)):
         with test.assertRaisesRegex(
-            ValueError, r"Warp cannot launch a kernel using scalar wp\.tid\(\) with extent 2147483649"
+            ValueError, r"Warp cannot launch a kernel using wp\.tid\(\) with extent 2147483649 in dimension 0"
+        ):
+            run.lower()
+
+
+def test_ffi_jax_kernel_rejects_oversized_explicit_tuple_tid_launch_dims(test, device):
+    """Reject an explicit oversized tuple-valued ``wp.tid()`` dimension during tracing."""
+    jp = _import_jax_numpy()
+    jax_inc = wp.jax_kernel(
+        inc_2d_kernel,
+        launch_dims=(1, 2**31 + 1),
+        output_dims=(1, 1),
+    )
+
+    @jax.jit
+    def run():
+        return jax_inc(jp.ones((1, 1), dtype=jp.float32))
+
+    with jax.default_device(wp.device_to_jax(device)):
+        with test.assertRaisesRegex(
+            ValueError, r"Warp cannot launch a kernel using wp\.tid\(\) with extent 2147483649 in dimension 1"
         ):
             run.lower()
 
@@ -428,7 +448,24 @@ def test_ffi_jax_kernel_rejects_oversized_inferred_scalar_tid_launch_dims(test, 
     abstract_input = jax.ShapeDtypeStruct((2**31 + 1,), jp.float32)
     with jax.default_device(wp.device_to_jax(device)):
         with test.assertRaisesRegex(
-            ValueError, r"Warp cannot launch a kernel using scalar wp\.tid\(\) with extent 2147483649"
+            ValueError, r"Warp cannot launch a kernel using wp\.tid\(\) with extent 2147483649 in dimension 0"
+        ):
+            run.lower(abstract_input)
+
+
+def test_ffi_jax_kernel_rejects_oversized_inferred_tuple_tid_launch_dims(test, device):
+    """Reject an inferred oversized tuple-valued ``wp.tid()`` dimension during tracing."""
+    jp = _import_jax_numpy()
+    jax_inc = wp.jax_kernel(inc_2d_kernel, output_dims=(1, 1))
+
+    @jax.jit
+    def run(x):
+        return jax_inc(x)
+
+    abstract_input = jax.ShapeDtypeStruct((1, 2**31 + 1), jp.float32)
+    with jax.default_device(wp.device_to_jax(device)):
+        with test.assertRaisesRegex(
+            ValueError, r"Warp cannot launch a kernel using wp\.tid\(\) with extent 2147483649 in dimension 1"
         ):
             run.lower(abstract_input)
 
@@ -3136,7 +3173,9 @@ else:
                 test_ffi_jax_kernel_launch_dims_custom,
                 test_ffi_jax_kernel_validates_all_target_block_dims_during_tracing,
                 test_ffi_jax_kernel_rejects_oversized_explicit_scalar_tid_launch_dims,
+                test_ffi_jax_kernel_rejects_oversized_explicit_tuple_tid_launch_dims,
                 test_ffi_jax_kernel_rejects_oversized_inferred_scalar_tid_launch_dims,
+                test_ffi_jax_kernel_rejects_oversized_inferred_tuple_tid_launch_dims,
                 # callables
                 test_ffi_jax_callable_scale_constant,
                 test_ffi_jax_callable_scale_static,

@@ -105,8 +105,32 @@ def k0():
 
 
 @wp.kernel
+def k0_2d():
+    _i, _j = wp.tid()
+
+
+@wp.kernel
+def k0_4d():
+    _i, _j, _k, _l = wp.tid()
+
+
+@wp.kernel
 def k0_no_tid():
     pass
+
+
+@wp.kernel
+def write_tid_2d(output: wp.array[int]):
+    i, j = wp.tid()
+    index = i * 1024 + j
+    output[index] = index
+
+
+@wp.kernel
+def write_tid_4d(output: wp.array[int]):
+    i, j, k, l = wp.tid()
+    index = ((i * 32 + j) * 32 + k) * 32 + l
+    output[index] = index
 
 
 class KernelLaunchParameters:
@@ -158,6 +182,22 @@ class KernelLaunchParameters:
     def time_direct_empty(self):
         wp.launch(k0, dim=1, inputs=[], device="cuda:0")
 
+    def time_direct_empty_2d(self):
+        """Measure host overhead for a two-dimensional kernel launch."""
+        wp.launch(k0_2d, dim=(1, 1), inputs=[], device="cuda:0")
+
+    # ``asv_runner`` 0.3+ runs teardown between numbered calls. Average several
+    # independently synchronized launches per sample to reduce timing noise.
+    time_direct_empty_2d.number = 20
+    time_direct_empty_2d.repeat = 20
+
+    def time_direct_empty_4d(self):
+        """Measure host overhead for a four-dimensional kernel launch."""
+        wp.launch(k0_4d, dim=(1, 1, 1, 1), inputs=[], device="cuda:0")
+
+    time_direct_empty_4d.number = 20
+    time_direct_empty_4d.repeat = 20
+
     def time_direct_empty_no_tid(self):
         """Measure an empty direct launch that does not consume ``wp.tid()``."""
         wp.launch(k0_no_tid, dim=1, inputs=[], device="cuda:0")
@@ -167,6 +207,40 @@ class KernelLaunchParameters:
 
     def time_struct_empty(self):
         wp.launch(ks0, dim=1, inputs=[self.s0], device="cuda:0")
+
+
+class ThreadCoordinateReconstruction:
+    """Measure device-side reconstruction of multidimensional thread coordinates."""
+
+    # Each timed call synchronizes, so repeats provide independent samples
+    # without batching additional synchronized launches into each sample.
+    number = 1
+    repeat = 10
+    params = ["2d", "4d"]
+    param_names = ["rank"]
+
+    @setup_once
+    def setup(self, rank):
+        wp.init()
+        wp.load_module(device="cuda:0")
+        self.output = wp.empty(1024 * 1024, dtype=int, device="cuda:0")
+        if rank == "2d":
+            kernel = write_tid_2d
+            dim = (1024, 1024)
+        else:
+            kernel = write_tid_4d
+            dim = (32, 32, 32, 32)
+
+        self.cmd = wp.launch(kernel, dim=dim, outputs=[self.output], device="cuda:0", record_cmd=True)
+        self.cmd.launch()
+        wp.synchronize_device("cuda:0")
+
+    def teardown(self, rank):
+        wp.synchronize_device("cuda:0")
+
+    def time_cuda(self, rank):
+        self.cmd.launch()
+        wp.synchronize_device("cuda:0")
 
 
 class GraphLaunch:
