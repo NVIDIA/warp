@@ -2479,7 +2479,10 @@ undefined behavior.</p></li>
 surface, the C <code class="docutils literal notranslate"><span class="pre">wp_apic_*</span></code> API, and the recorded operation set are all
 subject to change without a formal deprecation cycle. <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> files written
 by one version of Warp may not be loadable by another. The current writer
-emits format version 15, and the reader accepts versions 13 through 15.</p>
+emits format version 16, and the reader accepts versions 13 through 16.
+Version 16 stores kernel launch extents as unsigned 32-bit values. Older
+files whose launch extents have the high bit set are rejected because those
+values overflowed the signed representation used by their format.</p>
 </div>
 <p>The APIC operation stream lets Warp serialize a supported captured graph to
 disk and load it back later from another Python program or a standalone C++

@@ -655,9 +655,9 @@ This should not be changed after the launch object is created.</p>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
 <dd class="field-even"><ul class="simple">
-<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">dim</span></code> is invalid, its leading extent exceeds <code class="docutils literal notranslate"><span class="pre">2**31</span></code> for a kernel
-    that uses scalar <code class="docutils literal notranslate"><span class="pre">warp.tid()</span></code>, or the resized grid is incompatible with the launch’s
-    CUDA thread-block cluster configuration.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">dim</span></code> is invalid, a launch with a nonzero thread count has an extent
+    represented by <code class="docutils literal notranslate"><span class="pre">warp.tid()</span></code> greater than <code class="docutils literal notranslate"><span class="pre">2**31</span></code>, or the resized grid is
+    incompatible with the launch’s CUDA thread-block cluster configuration.</p></li>
 <li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If the kernel is not grid-stride and the new dimensions exceed the lean 3D
     grid capacity (~7e16 work items). Decorate the kernel with
     <code class="docutils literal notranslate"><span class="pre">&#64;warp.kernel(grid_stride=True)</span></code> to support launch dimensions this large.</p></li>
