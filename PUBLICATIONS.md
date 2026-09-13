@@ -7,6 +7,12 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 
 ## 2026
 
+- **Learning Terrain-Adaptive Humanoid Locomotion on Granular Terrain**. *J. Kamohara, F. Wu, A. N. Zong, D. I. Goldman, Y. Nakka, S. Hutchinson, Y. Zhao*. September 2026. [arXiv:2609.10286](https://arxiv.org/abs/2609.10286)
+- **InstantMimic: A High Performance System for Learning Physics-based Skills in Seconds**. *I. Choi, G. Leem, J. Won*. September 2026. [arXiv:2609.09821](https://arxiv.org/abs/2609.09821)
+- **Ostrich: Taking Large Strides Through Stiff Contact in Differentiable Dynamics**. *A. Kučera, K. Zimmermann*. September 2026. [arXiv:2609.08800](https://arxiv.org/abs/2609.08800)
+- **Adaptively Incorporating Directional Hints into Zeroth-Order Optimization**. *A. Ryabchenko, J. Qian, W. Mou*. September 2026. [arXiv:2609.08277](https://arxiv.org/abs/2609.08277)
+- **Phase-and-First-Arrival VLM Feedback for Sparse-Reward Reinforcement Learning in Surgical Manipulation**. *W. Liuchen, F. Wang, B. Li, A. Duan, Y. Liu, P. Zhou, D. Navarro-Alarcon*. September 2026. [arXiv:2609.07211](https://arxiv.org/abs/2609.07211)
+- **FALCON-S: Fixed-wing ground-effect Aerodynamics Simulator and Flight Control Learning Suite**. *M. E. Hariry, P. Lima, A. Orsula, M. Geist, M. Olivares-Mendez*. September 2026. [arXiv:2609.06046](https://arxiv.org/abs/2609.06046)
 - **DarcyWarp: A graphics processing unit (GPU)-accelerated multigrid solver for repeated 2D fixed-transmissivity groundwater solves validated against reference solvers**. *P. Durney, J. Fourie*. September 2026. [DOI:10.1016/j.envsoft.2026.107081](https://doi.org/10.1016/j.envsoft.2026.107081)
 - **Learning Agile Perceptive Traversal of Sparse 3D Structures for Humanoids**. *E. Ongan, C. Zhang, B. Sun, A. Cramariuc, C. Cadena, M. Hutter*. August 2026. [arXiv:2608.29769](https://arxiv.org/abs/2608.29769)
 - **VersaGauss: A Versatile Framework for Generating Multiphase Dynamics with 3D Gaussians**. *R. Su, L. Yang, X. Xie, J. Lai*. August 2026. [arXiv:2608.28069](https://arxiv.org/abs/2608.28069)
