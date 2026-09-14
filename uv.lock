@@ -1616,6 +1616,38 @@ wheels = [
 ]
 
 [[package]]
+name = "nlopt"
+version = "2.11.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11' or (extra == 'extra-9-warp-lang-torch-cu12' and extra == 'extra-9-warp-lang-torch-cu13')" },
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.11.*' or (extra == 'extra-9-warp-lang-torch-cu12' and extra == 'extra-9-warp-lang-torch-cu13')" },
+    { name = "numpy", version = "2.5.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12' or (extra == 'extra-9-warp-lang-torch-cu12' and extra == 'extra-9-warp-lang-torch-cu13')" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/61/4b/7c1a1a9404ae4938e3c3e6d5ef03b231307c17be7db5a71c3718775395af/nlopt-2.11.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:bcc941be7a0be8bef04c71169fa48d7aed43f92a24db2fecd7bd08d469658282", size = 614033, upload-time = "2026-07-17T06:50:36.22Z" },
+    { url = "https://files.pythonhosted.org/packages/e9/ac/6f222870296b0191dbb27df8f65a0571c32997fad2f680a72d44346e39b2/nlopt-2.11.0-cp310-cp310-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:f03df2a182370340710072dfff969386f84c5c51cb2c98ed95033865bd8ad775", size = 386954, upload-time = "2026-07-17T06:50:37.438Z" },
+    { url = "https://files.pythonhosted.org/packages/cb/11/4420e6b0a2cc1c2b4b2dbec146d65fd4623ffe91ca4268ffd437d81d8777/nlopt-2.11.0-cp310-cp310-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:fd42cc951ca0015a4b6dea52ac5dcba652adf1897e97be279a4b6d2c4e0e29e5", size = 400925, upload-time = "2026-07-17T06:50:38.582Z" },
+    { url = "https://files.pythonhosted.org/packages/83/df/98c8e6468b5fde90855c70d0a623b5dfe42dfff2a0dfd0710393f3046487/nlopt-2.11.0-cp310-cp310-win_amd64.whl", hash = "sha256:b4b1e64b3332b2f1206d0d68a13523f47ec6a18a93335af626a1376ed78e29b7", size = 572482, upload-time = "2026-07-17T06:50:39.809Z" },
+    { url = "https://files.pythonhosted.org/packages/89/f8/2bb592f153f2fcdb1b365cd987a2729e4794b073484530292590e1cf7f2c/nlopt-2.11.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:2a46da97c2cb810f0b0642d8acec228e6c031a94d3181f155ddbfda7e622a15e", size = 614227, upload-time = "2026-07-17T06:50:40.986Z" },
+    { url = "https://files.pythonhosted.org/packages/45/5e/166c76a122958d5064a2c1ea8d6d7dca435ecef75e499f00d73bbd8ddf5a/nlopt-2.11.0-cp311-cp311-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:084caa4b59179ce607a0709681baa1baffe5fee367814fb0fe078d44ce750217", size = 387432, upload-time = "2026-07-17T06:50:42.266Z" },
+    { url = "https://files.pythonhosted.org/packages/9e/e8/009f82fec407860df690bdf8caaadf08fd23f71836ecc97bd93402435f61/nlopt-2.11.0-cp311-cp311-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:389f05d632722eae0bf3674dd069ce67b25d32bfe15f939f68370f31fc0124ea", size = 401376, upload-time = "2026-07-17T06:50:43.697Z" },
+    { url = "https://files.pythonhosted.org/packages/4c/e6/e19f2a51fe33dd648671bf85fe1a777d02ab83abdfbc284f7da700fefc0c/nlopt-2.11.0-cp311-cp311-win_amd64.whl", hash = "sha256:c142be2649e06eae1e00439a953dc3743ba96ec4e73f85070f8286a6bd448e92", size = 572576, upload-time = "2026-07-17T06:50:44.924Z" },
+    { url = "https://files.pythonhosted.org/packages/a1/80/5f4be91234ced35333c1adf1ba58378753b670380f076c9c78ebf30852a0/nlopt-2.11.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:251b51a6b4ee761945211c9213c97d2c6a6d444138fa15547dd77b83f6bbe1e6", size = 615249, upload-time = "2026-07-17T06:50:46.152Z" },
+    { url = "https://files.pythonhosted.org/packages/61/1d/382ab0aadfdf75782899eea7bbc7fa42846ac850666614ba8211f913a6a6/nlopt-2.11.0-cp312-cp312-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:4c6b3d5f9dbfa2d049fc89611e8bb70e8ff2ebbea61c3d5e295783080fc06143", size = 389198, upload-time = "2026-07-17T06:50:47.223Z" },
+    { url = "https://files.pythonhosted.org/packages/d0/0d/9f826469fdc6dd21f18c52dbe209b2c7a29b71d2b6bb21f494bcc7260085/nlopt-2.11.0-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:b7ea0d34cb00ed71fb032ff24a1b5599a61ca0101984c3fdfd954eca569e8ad2", size = 402848, upload-time = "2026-07-17T06:50:48.233Z" },
+    { url = "https://files.pythonhosted.org/packages/ce/c4/c753b9251cbf34447c6ce41a119d345c8bd1f16c1af88840afb6e8bc3637/nlopt-2.11.0-cp312-cp312-win_amd64.whl", hash = "sha256:ebccfc7161ecbf97a250c93c99e2ec0fb6cd2a02b87c063386f07ff420ec435e", size = 572623, upload-time = "2026-07-17T06:50:49.191Z" },
+    { url = "https://files.pythonhosted.org/packages/8b/2d/93253eb3da33dbbc661abe508c436d061347f97d6cae40b3719ccfa32370/nlopt-2.11.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:b831d681774acde53f329780e05bbf80dc4962c4db257dadc9a190de0de7727e", size = 615100, upload-time = "2026-07-17T06:50:50.604Z" },
+    { url = "https://files.pythonhosted.org/packages/af/dc/10f942fdd1736f895f66e4a5077a52d9e34d2d8b9cf5331a5da3635a4c48/nlopt-2.11.0-cp313-cp313-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:b75a516b4d7bb68ce9baeb1201cc76d0206126122c9b78db748478ae77a36d4d", size = 388859, upload-time = "2026-07-17T06:50:51.885Z" },
+    { url = "https://files.pythonhosted.org/packages/cf/fd/2a387ba82fc0ba09e4095df9b18a3029e9a81e7f257f6da26e66d2932feb/nlopt-2.11.0-cp313-cp313-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:be39d121216995d2ab199d6ff9439cd5090c5f1a4b3613150e08dbaca5716cea", size = 402641, upload-time = "2026-07-17T06:50:53.206Z" },
+    { url = "https://files.pythonhosted.org/packages/4f/02/1b4303d3c77445186fc5624d7b51860fea435935e518faf94cddd2d35f5b/nlopt-2.11.0-cp313-cp313-win_amd64.whl", hash = "sha256:581c3c57c932a725b4df401c2550a02bafb2f52782201acde69d4415aed29640", size = 572440, upload-time = "2026-07-17T06:50:54.331Z" },
+    { url = "https://files.pythonhosted.org/packages/06/cf/919bf13a6c5d5570adea437c3fe4e9bf55b1e6db1854a9888cfb34a42a4d/nlopt-2.11.0-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:34a4efdf1f40d96eb5cad5a776527a706158526849e87eb6a2c2040f0fa2c98e", size = 615041, upload-time = "2026-07-17T06:50:55.403Z" },
+    { url = "https://files.pythonhosted.org/packages/2d/b9/43208fdfaec625b9a69feb8ffb79d319dd20f147efdbe76d431702fa3ced/nlopt-2.11.0-cp314-cp314-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:aedc3d91dafeb3d0f5f3832647841f6b0571ee2bee894c67a1d3e6ee850b084c", size = 388837, upload-time = "2026-07-17T06:50:56.452Z" },
+    { url = "https://files.pythonhosted.org/packages/a2/96/74d537ea2740ef63916c2574be7a0c893f05bd489292146b00f54bb006c1/nlopt-2.11.0-cp314-cp314-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:8b795c8304405a267822b8d4310ac71c4a7929bfdcc2e9a24f38fdec620937f9", size = 402589, upload-time = "2026-07-17T06:50:57.384Z" },
+    { url = "https://files.pythonhosted.org/packages/4b/be/0c943243281d5690656ceeddac4e20aedae4dc82634b1bf66beefc6019fd/nlopt-2.11.0-cp314-cp314-win_amd64.whl", hash = "sha256:00d74c7c9fb63489973901f372c501541a2509c6d9f2d1a4089fee8193b8fd51", size = 588533, upload-time = "2026-07-17T06:50:58.436Z" },
+]
+
+[[package]]
 name = "nodeenv"
 version = "1.10.0"
 source = { registry = "https://pypi.org/simple" }
@@ -3119,6 +3151,7 @@ dev = [
     { name = "ml-dtypes" },
     { name = "myst-parser", version = "4.0.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11' or (extra == 'extra-9-warp-lang-torch-cu12' and extra == 'extra-9-warp-lang-torch-cu13')" },
     { name = "myst-parser", version = "5.1.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11' or (extra == 'extra-9-warp-lang-torch-cu12' and extra == 'extra-9-warp-lang-torch-cu13')" },
+    { name = "nlopt" },
     { name = "nvidia-sphinx-theme" },
     { name = "nvtx", marker = "(platform_machine != 'ARM64' and platform_machine != 'aarch64' and platform_machine != 'arm64') or (platform_machine == 'ARM64' and extra == 'extra-9-warp-lang-torch-cu12' and extra == 'extra-9-warp-lang-torch-cu13') or (platform_machine == 'aarch64' and extra == 'extra-9-warp-lang-torch-cu12' and extra == 'extra-9-warp-lang-torch-cu13') or (platform_machine == 'arm64' and extra == 'extra-9-warp-lang-torch-cu12' and extra == 'extra-9-warp-lang-torch-cu13') or sys_platform != 'win32'" },
     { name = "pillow" },
@@ -3140,6 +3173,7 @@ examples = [
     { name = "blosc", marker = "(platform_machine != 'ARM64' and platform_machine != 'aarch64' and platform_machine != 'arm64') or (platform_machine == 'ARM64' and extra == 'extra-9-warp-lang-torch-cu12' and extra == 'extra-9-warp-lang-torch-cu13') or (platform_machine == 'aarch64' and extra == 'extra-9-warp-lang-torch-cu12' and extra == 'extra-9-warp-lang-torch-cu13') or (platform_machine == 'arm64' and extra == 'extra-9-warp-lang-torch-cu12' and extra == 'extra-9-warp-lang-torch-cu13') or sys_platform != 'win32'" },
     { name = "matplotlib", version = "3.10.9", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11' or (extra == 'extra-9-warp-lang-torch-cu12' and extra == 'extra-9-warp-lang-torch-cu13')" },
     { name = "matplotlib", version = "3.11.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11' or (extra == 'extra-9-warp-lang-torch-cu12' and extra == 'extra-9-warp-lang-torch-cu13')" },
+    { name = "nlopt" },
     { name = "pillow" },
     { name = "psutil" },
     { name = "pyglet" },
@@ -3150,6 +3184,7 @@ torch-cu12 = [
     { name = "blosc", marker = "(platform_machine != 'ARM64' and platform_machine != 'aarch64' and platform_machine != 'arm64') or sys_platform != 'win32'" },
     { name = "matplotlib", version = "3.10.9", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.11' and extra == 'extra-9-warp-lang-torch-cu12') or (extra == 'extra-9-warp-lang-torch-cu12' and extra == 'extra-9-warp-lang-torch-cu13')" },
     { name = "matplotlib", version = "3.11.1", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version >= '3.11' and extra == 'extra-9-warp-lang-torch-cu12') or (extra == 'extra-9-warp-lang-torch-cu12' and extra == 'extra-9-warp-lang-torch-cu13')" },
+    { name = "nlopt" },
     { name = "pillow" },
     { name = "psutil" },
     { name = "pyglet" },
@@ -3161,6 +3196,7 @@ torch-cu13 = [
     { name = "blosc", marker = "(platform_machine != 'ARM64' and platform_machine != 'aarch64' and platform_machine != 'arm64') or sys_platform != 'win32'" },
     { name = "matplotlib", version = "3.10.9", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.11' and extra == 'extra-9-warp-lang-torch-cu13') or (extra == 'extra-9-warp-lang-torch-cu12' and extra == 'extra-9-warp-lang-torch-cu13')" },
     { name = "matplotlib", version = "3.11.1", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version >= '3.11' and extra == 'extra-9-warp-lang-torch-cu13') or (extra == 'extra-9-warp-lang-torch-cu12' and extra == 'extra-9-warp-lang-torch-cu13')" },
+    { name = "nlopt" },
     { name = "pillow" },
     { name = "psutil" },
     { name = "pyglet" },
@@ -3176,6 +3212,7 @@ requires-dist = [
     { name = "matplotlib", marker = "extra == 'examples'", specifier = ">=3.7.5" },
     { name = "ml-dtypes", marker = "extra == 'dev'", specifier = ">=0.5.4" },
     { name = "myst-parser", marker = "extra == 'docs'" },
+    { name = "nlopt", marker = "extra == 'examples'" },
     { name = "numpy" },
     { name = "nvidia-sphinx-theme", marker = "extra == 'docs'" },
     { name = "nvtx", marker = "(platform_machine != 'ARM64' and platform_machine != 'aarch64' and platform_machine != 'arm64' and extra == 'dev') or (sys_platform != 'win32' and extra == 'dev')" },

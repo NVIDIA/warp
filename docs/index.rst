@@ -152,6 +152,15 @@ warp/examples/fem
       - nonconforming contact
       - darcy level-set optimization
       - elastic shape optimization
+    * - .. image:: ./img/examples/fem_cantilever_topology_optimization.png
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_cantilever_topology_optimization.py
+      -
+      -
+      -
+    * - cantilever topology optimization (requires NLopt)
+      -
+      -
+      -
 
 warp/examples/geometry
 ^^^^^^^^^^^^^^^^^^^^^^

@@ -60,6 +60,14 @@ def add_fem_example_test(
         else:
             options = test_options | test_options_cpu
 
+        # Mark the test as skipped if NLopt is not installed but required
+        nlopt_required = options.pop("nlopt_required", False)
+        if nlopt_required:
+            try:
+                import nlopt  # noqa: PLC0415,F401
+            except ImportError:
+                test.skipTest("Requires nlopt")
+
         # Default any USD output into the gitignored warp/tests/outputs/ directory
         # (mirroring the core example harness) and remove it after a passing run,
         # so examples run via the suite never litter the working directory (e.g.
@@ -272,6 +280,19 @@ add_fem_example_test(
     name="fem.example_darcy_ls_optimization",
     devices=cuda_devices,
     test_options={"num_iters": 5, "resolution": 25, "headless": True},
+)
+add_fem_example_test(
+    TestFemExamples,
+    name="fem.example_cantilever_topology_optimization",
+    devices=cuda_devices,
+    test_options={
+        "nx": 16,
+        "ny": 6,
+        "nz": 1,
+        "max_evals": 3,
+        "headless": True,
+        "nlopt_required": True,
+    },
 )
 add_fem_example_test(
     TestFemExamples,

@@ -212,6 +212,12 @@ python -m warp.examples.browse
             <td align="center">darcy level-set optimization</td>
             <td align="center">elastic shape optimization</td>
         </tr>
+        <tr>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_cantilever_topology_optimization.py"><img src="./docs/img/examples/fem_cantilever_topology_optimization.png"></a></td>
+        </tr>
+        <tr>
+            <td align="center">cantilever topology optimization (requires NLopt)</td>
+        </tr>
     </tbody>
 </table>
 
