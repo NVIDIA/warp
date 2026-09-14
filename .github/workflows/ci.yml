@@ -11,10 +11,21 @@ on:
         required: false
         type: boolean
         default: false
+      retain-wheel-artifacts:
+        description: Retain NVIDIA/warp wheel artifacts for seven days instead of one
+        required: false
+        type: boolean
+        default: false
     secrets:
       CODECOV_TOKEN:
         required: false
   workflow_dispatch:
+    inputs:
+      retain-wheel-artifacts:
+        description: Retain NVIDIA/warp wheel artifacts for seven days instead of one
+        required: false
+        type: boolean
+        default: false
   push:
     tags:
       - v*
@@ -55,10 +66,10 @@ jobs:
           - os: windows-11-arm
             platform: windows-aarch64
             python_request: cpython-3.12-windows-aarch64-none
-            cuda-version: ""
-            cuda-platform: ""
-            build-args: --no-cuda
-            artifact-name: build-artifact-windows-aarch64-cpu
+            cuda-version: "13.4.1"
+            cuda-platform: windows-arm64
+            build-args: --no-use-libmathdx
+            artifact-name: build-artifact-windows-aarch64-cuda13
           - os: ubuntu-24.04
             platform: ubuntu-x86_64
             cuda-version: "12.9.2"
@@ -162,10 +173,10 @@ jobs:
             wheel_platform: windows-x86_64
             wheel_tag: win_amd64
           - os: windows-11-arm
-            platform: windows-aarch64-cpu
+            platform: windows-aarch64-cuda13
             python_request: cpython-3.12-windows-aarch64-none
-            build_artifact_name: build-artifact-windows-aarch64-cpu
-            wheel_artifact_name: wheel-artifact-windows-aarch64-cpu
+            build_artifact_name: build-artifact-windows-aarch64-cuda13
+            wheel_artifact_name: wheel-artifact-windows-aarch64-cuda13
             wheel_platform: windows-aarch64
             wheel_tag: win_arm64
     steps:
@@ -208,7 +219,7 @@ jobs:
           name: ${{ matrix.wheel_artifact_name }}
           path: _build/wheel/*.whl
           if-no-files-found: error
-          retention-days: ${{ github.repository == 'NVIDIA/warp' && 7 || 1 }}
+          retention-days: ${{ github.repository == 'NVIDIA/warp' && (github.event_name == 'schedule' || inputs.retain-wheel-artifacts) && 7 || 1 }}
 
   test-windows-import-libraries:
     if: github.event_name != 'schedule' || github.repository == 'NVIDIA/warp'
@@ -232,9 +243,9 @@ jobs:
             wheel_artifact_name: wheel-artifact-windows-x86_64-cuda13
             python_machine: amd64
           - os: windows-11-arm
-            platform: windows-aarch64-cpu
+            platform: windows-aarch64-cuda13
             python_request: cpython-3.12-windows-aarch64-none
-            wheel_artifact_name: wheel-artifact-windows-aarch64-cpu
+            wheel_artifact_name: wheel-artifact-windows-aarch64-cuda13
             python_machine: arm64
     steps:
       - name: Checkout repository
@@ -372,6 +383,7 @@ jobs:
             cuda-version: "13.4.1"
             cuda-platform: windows-x86_64
             warp-enable-cuda: "ON"
+            warp-use-libmathdx: "ON"
             msvc-component: Microsoft.VisualStudio.Component.VC.Tools.x86.x64
             msvc-host-arch: x64
             msvc-target-arch: x64
@@ -379,9 +391,10 @@ jobs:
           - os: windows-11-arm
             platform: windows-aarch64
             python_request: cpython-3.12-windows-aarch64-none
-            cuda-version: ""
-            cuda-platform: ""
-            warp-enable-cuda: "OFF"
+            cuda-version: "13.4.1"
+            cuda-platform: windows-arm64
+            warp-enable-cuda: "ON"
+            warp-use-libmathdx: "OFF"
             msvc-component: Microsoft.VisualStudio.Component.VC.Tools.ARM64
             msvc-host-arch: arm64
             msvc-target-arch: arm64
@@ -391,12 +404,14 @@ jobs:
             cuda-version: "13.4.1"
             cuda-platform: linux-x86_64
             warp-enable-cuda: "ON"
+            warp-use-libmathdx: "ON"
             warp-cache-path-suffix: /warp-cache-cmake
           - os: ubuntu-24.04-arm
             platform: ubuntu-aarch64
             cuda-version: "13.4.1"
             cuda-platform: linux-sbsa
             warp-enable-cuda: "ON"
+            warp-use-libmathdx: "ON"
             warp-cache-path-suffix: /warp-cache-cmake
     steps:
       - name: Checkout repository
@@ -479,6 +494,7 @@ jobs:
             -G Ninja
             -DCMAKE_BUILD_TYPE=Release
             "-DWARP_ENABLE_CUDA=${{ matrix.warp-enable-cuda }}"
+            "-DWARP_USE_LIBMATHDX=${{ matrix.warp-use-libmathdx }}"
           )
           if [ "${{ matrix.warp-enable-cuda }}" = "ON" ]; then
             cuda_path="${CUDA_HOME:-${CUDA_PATH:-}}"
@@ -503,7 +519,8 @@ jobs:
             "-DCMAKE_BUILD_TYPE=Release",
             "-DCMAKE_C_COMPILER=cl",
             "-DCMAKE_CXX_COMPILER=cl",
-            "-DWARP_ENABLE_CUDA=${{ matrix.warp-enable-cuda }}"
+            "-DWARP_ENABLE_CUDA=${{ matrix.warp-enable-cuda }}",
+            "-DWARP_USE_LIBMATHDX=${{ matrix.warp-use-libmathdx }}"
           )
           if ("${{ matrix.warp-enable-cuda }}" -eq "ON") {
             if (!$env:CUDA_PATH) {
@@ -563,9 +580,9 @@ jobs:
             artifact-name: build-artifact-windows-cuda12
             jax-extra: jax>=0.5
           - os: windows-11-arm
-            platform: windows-aarch64
+            platform: windows-aarch64-cuda13
             python_request: cpython-3.12-windows-aarch64-none
-            artifact-name: build-artifact-windows-aarch64-cpu
+            artifact-name: build-artifact-windows-aarch64-cuda13
             jax-extra: ""
           - os: ubuntu-24.04
             platform: ubuntu-x86_64
@@ -1428,8 +1445,8 @@ jobs:
             symbol-format: macho
             allow-nv-optimus: false
           - os: windows-11-arm
-            platform: windows-aarch64-cpu
-            artifact-name: build-artifact-windows-aarch64-cpu
+            platform: windows-aarch64-cuda13
+            artifact-name: build-artifact-windows-aarch64-cuda13
             symbol-format: pe
             allow-nv-optimus: false
     steps:
