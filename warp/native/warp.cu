@@ -3623,7 +3623,15 @@ bool wp_cuda_graph_end_capture(void* context, void* stream, void** graph_ret)
 
     // end the capture
     if (!check_cuda(cudaStreamEndCapture(cuda_stream, &graph)))
+    {
+        // Unwind the capture bookkeeping before bailing out. Every other failure
+        // return below the clean_up() definition calls it; this one did not, so
+        // a failed EndCapture left g_captures, the graph allocation table, and
+        // the terminating EndCapture untouched, and the stream stayed marked as
+        // capturing for the remaining life of the process.
+        clean_up();
         return false;
+    }
 
     // process deferred free list if no more captures are ongoing
     if (g_captures.empty()) {
