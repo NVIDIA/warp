@@ -53,8 +53,20 @@ stages:
     - unset CUDA_HOME
     - !reference [.snippets, setup-packman-config]
 
-linux-x86_64 build:
+linux-x86_64 cu12 clang build:
   image: ${CI_REGISTRY_IMAGE}/cuda:12.9.2-devel-ubuntu24.04@sha256:420850a3fd665171b3f1fd08946c51d50468d732a46d6c42345ea04444755048
+  variables:
+    IPP_RUNNER_EXECUTION_DURATION: "3600"
+  extends:
+    - .build_linux_base
+    - .ipp_lnx_x86_64_cpu_medium
+  script:
+    - uv run build_lib.py --clang-build-toolchain
+
+linux-x86_64 cu13 clang build:
+  # CUDA 13.3.1 bundles a CCCL release that fails with Clang CUDA compilation.
+  # Keep 13.0.1 until a CUDA image includes https://github.com/NVIDIA/cccl/issues/7896.
+  image: ${CI_REGISTRY_IMAGE}/cuda:13.0.1-devel-ubuntu24.04@sha256:84e5f33efdccadc21599978ea7e6ed80cbe19bb432f9c339b15a66c4025ac983
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
@@ -71,18 +83,6 @@ linux-x86_64 build:
     - mv warp/bin/warp.so warp/bin/linux-x86_64
     - mv warp/bin/warp-clang.so warp/bin/linux-x86_64
 
-linux-x86_64 build cuda 13:
-  # CUDA 13.3.1 bundles a CCCL release that fails with Clang CUDA compilation.
-  # Keep 13.0.1 until a CUDA image includes https://github.com/NVIDIA/cccl/issues/7896.
-  image: ${CI_REGISTRY_IMAGE}/cuda:13.0.1-devel-ubuntu24.04@sha256:84e5f33efdccadc21599978ea7e6ed80cbe19bb432f9c339b15a66c4025ac983
-  variables:
-    IPP_RUNNER_EXECUTION_DURATION: "3600"
-  extends:
-    - .build_linux_base
-    - .ipp_lnx_x86_64_cpu_medium
-  script:
-    - uv run build_lib.py --clang-build-toolchain
-
 # ==============================================================================
 # Unit Testing Jobs
 #
@@ -90,10 +90,10 @@ linux-x86_64 build cuda 13:
 # generate code coverage reports.
 # ==============================================================================
 
-linux-x86_64 test:
+linux-x86_64 cu13 clang test:
   stage: test
   image: $UV_TRIXIE_SLIM_IMAGE
-  needs: [linux-x86_64 build]
+  needs: [linux-x86_64 cu13 clang build]
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
@@ -103,4 +103,4 @@ linux-x86_64 test:
     - df -h
     - !reference [.snippets, move-linux-x86_64-binaries]
   script:
-    - uv run --extra dev --extra torch-cu12 --with "jax[cuda12]" --with rmm-cu12 -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
+    - uv run --extra dev --extra torch-cu13 --with "jax[cuda13]" --with rmm-cu13 -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast

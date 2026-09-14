@@ -6065,6 +6065,8 @@ class Device:
         if self.is_cpu:
             return None
 
+        _validate_cuda_device_arch(self.arch, self.runtime.toolkit_version, self.alias)
+
         if self.get_cuda_output_format() == "ptx":
             # use the default PTX arch if the device supports it
             if warp.config.ptx_target_arch is not None:
@@ -6083,6 +6085,30 @@ class Device:
             device_arch=self.arch,
             toolkit_version=self.runtime.toolkit_version,
             device_name=self.alias,
+        )
+
+
+def _validate_cuda_device_arch(
+    device_arch: int,
+    toolkit_version: tuple[int, int] | None,
+    device_name: str | None = None,
+) -> None:
+    """Validate that the CUDA toolkit supports the device architecture.
+
+    Args:
+        device_arch: The compute capability version, such as 75 for ``sm_75``.
+        toolkit_version: The CUDA toolkit version as ``(major, minor)``, or ``None``.
+        device_name: The device name to include in error messages.
+
+    Raises:
+        RuntimeError: If the device architecture is unsupported by the CUDA toolkit.
+    """
+    if toolkit_version is not None and toolkit_version >= (13, 0) and device_arch < 75:
+        device_label = f" (device {device_name})" if device_name else ""
+        raise RuntimeError(
+            f"CUDA {toolkit_version[0]}.{toolkit_version[1]} requires sm_75 or higher, "
+            f"but sm_{device_arch}{device_label} was specified. "
+            "Use a CUDA 12 build of Warp on this GPU."
         )
 
 

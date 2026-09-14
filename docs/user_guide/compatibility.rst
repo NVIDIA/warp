@@ -57,6 +57,11 @@ The following requirements apply when running Warp:
 
 **GPU Acceleration**:
 
+PyPI and nightly wheels for Linux and Windows use CUDA Toolkit 13.4. They require an
+NVIDIA R580-series or newer driver and a Turing (``sm_75``) or newer GPU for CUDA acceleration.
+For CUDA 12 environments, download a ``+cu12`` wheel from
+:ref:`GitHub Releases <github-release-wheels>` or :ref:`build Warp from source with CUDA 12 <building-from-source>`.
+
 .. table:: GPU Compute Capability Requirements
     :align: left
 
@@ -70,17 +75,22 @@ The following requirements apply when running Warp:
 
 To determine your GPU's compute capability, see `NVIDIA CUDA GPUs <https://developer.nvidia.com/cuda/gpus>`__.
 
+CUDA 12.9 builds for Linux AArch64, including ``+cu12`` wheels, omit the
+``sm_52``, ``sm_60``, ``sm_61``, and ``sm_70`` targets.
+For those targets on Linux AArch64, build from source with CUDA Toolkit 12.0 through 12.8;
+see the :ref:`cuda-12-arm-limitation`.
+
 * **Driver Requirements**: The driver requirements are determined by the CUDA Toolkit version used to build the Warp
   library, not the version installed on the system when running Warp.
 
-  * Warp packages built with CUDA Toolkit 12.x require NVIDIA driver 525 or newer.
-  * Warp packages built with CUDA Toolkit 13.x require NVIDIA driver 580 or newer.
-  * PyPI wheels for Windows/Linux are currently built with CUDA 12.9.
+  * Warp packages built with CUDA Toolkit 12.x require an NVIDIA R525-series or newer driver.
+  * Warp packages built with CUDA Toolkit 13.x require an NVIDIA R580-series or newer driver.
+  * Builds using ``--quick`` can require a newer driver; see :ref:`cuda-requirements`.
 
 * **Advanced Features**: Half-precision (``float16``) atomic operations require compute capability 7.0+ (Volta). 
   On older GPUs, these operations return zero.
 
-* **CPU-only execution** is supported on all platforms for users without a GPU.
+* **CPU-only execution** is supported on all supported platforms for users without a compatible GPU or driver.
 
 Building from source
 --------------------
@@ -109,6 +119,9 @@ To build Warp from source, you need:
 
 * libmathdx (auto-fetched via Packman by default)
 * LLVM/Clang (auto-fetched via Packman by default)
+
+Building from source with CUDA 12 remains supported, subject to the driver and GPU architecture
+requirements above. A CUDA Toolkit is not needed for a CPU-only build.
 
 **Building:**
 
@@ -341,11 +354,11 @@ CUDA versions
 Warp supports the two most recent CUDA major versions. Features with specific CUDA version
 requirements are noted in the documentation.
 
-Pre-built wheels are available for the two supported CUDA major versions, although the specific minor version
-used is set at our discretion.
+The default PyPI and nightly Linux and Windows wheels use CUDA Toolkit 13.4. CUDA 12 compatibility
+wheels are available with a ``+cu12`` version suffix on :ref:`GitHub Releases <github-release-wheels>`.
+Building from source with CUDA 12 also remains supported.
 
-The specific CUDA minor version used for PyPI wheels is selected at our discretion based on what we
-believe is most useful for the average user.
+The CUDA minor version used for pre-built wheels may change between releases.
 
 NVIDIA driver compatibility
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

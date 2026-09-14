@@ -83,11 +83,11 @@ stages:
 # ==============================================================================
 # Build Jobs
 #
-# Compiles Warp binaries for all platforms (Linux, Windows, macOS) using CUDA 12
-# by default. Also includes CUDA 13 build for compatibility testing.
+# Compiles Warp binaries for Linux and Windows with explicit CUDA 12 and CUDA 13
+# lanes. Default consumers use CUDA 13; macOS builds remain CPU-only.
 # ==============================================================================
 
-linux-aarch64 build:
+linux-aarch64 cu12 build:
   stage: build
   image: $WARP_BUILDER_IMAGE_CU12_AARCH64
   extends:
@@ -101,7 +101,7 @@ linux-aarch64 build:
     - mv warp/bin/warp.so warp/bin/linux-aarch64
     - mv warp/bin/warp-clang.so warp/bin/linux-aarch64
 
-linux-x86_64 build:
+linux-x86_64 cu12 build:
   stage: build
   image: $WARP_BUILDER_IMAGE_CU12_X86_64
   variables:
@@ -117,7 +117,7 @@ linux-x86_64 build:
     - mv warp/bin/warp.so warp/bin/linux-x86_64
     - mv warp/bin/warp-clang.so warp/bin/linux-x86_64
 
-windows-x86_64 build:
+windows-x86_64 cu12 build:
   stage: build
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
@@ -148,7 +148,7 @@ mac-aarch64 build:
   script:
     - uv run build_lib.py
 
-linux-x86_64 cuda 13 build:
+linux-x86_64 cu13 build:
   stage: build
   image: $WARP_BUILDER_IMAGE_CU13_X86_64
   variables:
@@ -162,7 +162,7 @@ linux-x86_64 cuda 13 build:
     - mv warp/bin/warp.so warp/bin/linux-x86_64
     - mv warp/bin/warp-clang.so warp/bin/linux-x86_64
 
-linux-x86_64 python free-threaded build:
+linux-x86_64 cu13 free-threaded build:
   stage: build
   image: $WARP_BUILDER_IMAGE_CU13_X86_64
   variables:
@@ -177,7 +177,7 @@ linux-x86_64 python free-threaded build:
     - mv warp/bin/warp.so warp/bin/linux-x86_64
     - mv warp/bin/warp-clang.so warp/bin/linux-x86_64
 
-linux-aarch64 cuda 13 build:
+linux-aarch64 cu13 build:
   stage: build
   image: $WARP_BUILDER_IMAGE_CU13_AARCH64
   extends:
@@ -191,7 +191,7 @@ linux-aarch64 cuda 13 build:
     - mv warp/bin/warp.so warp/bin/linux-aarch64
     - mv warp/bin/warp-clang.so warp/bin/linux-aarch64
 
-windows-x86_64 cuda 13 build:
+windows-x86_64 cu13 build:
   stage: build
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
@@ -209,9 +209,9 @@ windows-x86_64 cuda 13 build:
       $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
       uv run build_lib.py --msvc-path=_build\host-deps\msvc\VC\Tools\MSVC\14.29.30133 --sdk-path=_build\host-deps\winsdk --cuda-path=_build\target-deps\cuda
 
-linux-x86_64 debug build:
+linux-x86_64 cu13 debug build:
   stage: build
-  image: $WARP_BUILDER_IMAGE_CU12_X86_64
+  image: $WARP_BUILDER_IMAGE_CU13_X86_64
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
@@ -279,7 +279,7 @@ type-check stubs:
 doctest:
   stage: quality
   image: $UV_TRIXIE_IMAGE
-  needs: [linux-x86_64 build]
+  needs: [linux-x86_64 cu13 build]
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
@@ -295,7 +295,7 @@ doctest:
 # artifacts.
 windows-x86_64 docs:
   stage: quality
-  needs: [windows-x86_64 build]
+  needs: [windows-x86_64 cu13 build]
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
@@ -352,13 +352,13 @@ windows-x86_64 docs:
 
       echo "SUCCESS: All symbols are correctly namespaced."
 
-check un-namespaced symbols linux-x86_64:
-  needs: [linux-x86_64 build]
+check un-namespaced symbols linux-x86_64 cu12:
+  needs: [linux-x86_64 cu12 build]
   extends:
     - .check_un_namespaced_symbols_linux_x86_64
 
-check un-namespaced symbols linux-x86_64 cuda 13:
-  needs: [linux-x86_64 cuda 13 build]
+check un-namespaced symbols linux-x86_64 cu13:
+  needs: [linux-x86_64 cu13 build]
   extends:
     - .check_un_namespaced_symbols_linux_x86_64
 
@@ -445,9 +445,9 @@ cppcheck:
         coverage_format: cobertura
         path: coverage.xml
 
-linux-aarch64 test:
+linux-aarch64 cu12 test:
   image: $UV_TRIXIE_SLIM_ARM_IMAGE
-  needs: [linux-aarch64 build]
+  needs: [linux-aarch64 cu12 build]
   extends:
     - .omni_rtx_gpu_arm
     - .test_common_with_coverage
@@ -457,9 +457,9 @@ linux-aarch64 test:
   script:
     - uv run --extra dev --with "jax[cuda12]>=0.5" --with rmm-cu12 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
 
-linux-aarch64 cuda 13 test:
+linux-aarch64 cu13 test:
   image: $UV_TRIXIE_SLIM_ARM_IMAGE
-  needs: [linux-aarch64 cuda 13 build]
+  needs: [linux-aarch64 cu13 build]
   extends:
     - .omni_rtx_gpu_arm
     - .test_common_with_coverage
@@ -469,8 +469,8 @@ linux-aarch64 cuda 13 test:
   script:
     - uv run --extra dev --with "jax[cuda13]>=0.5" --with rmm-cu13 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
 
-linux-aarch64 test orin:
-  needs: [linux-aarch64 build]
+linux-aarch64 cu12 test orin:
+  needs: [linux-aarch64 cu12 build]
   image: $UV_TRIXIE_SLIM_ARM_IMAGE
   extends:
     - .save_test_report_artifact
@@ -493,8 +493,8 @@ linux-aarch64 test orin:
   tags:
     - gpu/orin
 
-linux-aarch64 test thor:
-  needs: [linux-aarch64 build]
+linux-aarch64 cu13 test thor:
+  needs: [linux-aarch64 cu13 build]
   image: $UV_TRIXIE_SLIM_ARM_IMAGE
   extends:
     - .save_test_report_artifact
@@ -506,12 +506,12 @@ linux-aarch64 test thor:
     - uv sync --extra dev
     - !reference [.snippets, section-end-install-deps]
   script:
-    - uv run --extra dev --with rmm-cu12 -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
+    - uv run --extra dev --with rmm-cu13 -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
   tags:
     - gpu/thor
 
-linux-aarch64 test dgx spark:
-  needs: [linux-aarch64 build]
+linux-aarch64 cu12 test dgx spark:
+  needs: [linux-aarch64 cu12 build]
   image: $UV_TRIXIE_SLIM_ARM_IMAGE
   extends:
     - .save_test_report_artifact
@@ -529,8 +529,8 @@ linux-aarch64 test dgx spark:
     - arch/arm
     - gpu/GB10
 
-linux-aarch64 test dgx spark cuda 13:
-  needs: [linux-aarch64 cuda 13 build]
+linux-aarch64 cu13 test dgx spark:
+  needs: [linux-aarch64 cu13 build]
   image: $UV_TRIXIE_SLIM_ARM_IMAGE
   extends:
     - .save_test_report_artifact
@@ -548,8 +548,8 @@ linux-aarch64 test dgx spark cuda 13:
     - arch/arm
     - gpu/GB10
 
-linux-x86_64 test:
-  needs: [linux-x86_64 build]
+linux-x86_64 cu12 test:
+  needs: [linux-x86_64 cu12 build]
   image: $UV_TRIXIE_IMAGE
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
@@ -564,8 +564,8 @@ linux-x86_64 test:
   script:
     - uv run --extra dev --extra torch-cu12 --with "jax[cuda12]>=0.5" --with rmm-cu12 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
 
-linux-x86_64 cuda 13 test:
-  needs: [linux-x86_64 cuda 13 build]
+linux-x86_64 cu13 test:
+  needs: [linux-x86_64 cu13 build]
   image: $UV_TRIXIE_IMAGE
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
@@ -581,8 +581,8 @@ linux-x86_64 cuda 13 test:
     - uv run --extra dev --extra torch-cu13 --with "jax[cuda13]>=0.5" --with rmm-cu13 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
 
 # A temporary job for testing on Blackwell until more runners are available
-linux-x86_64-blackwell test:
-  needs: [linux-x86_64 build]
+linux-x86_64 cu13 blackwell test:
+  needs: [linux-x86_64 cu13 build]
   image: $UV_TRIXIE_SLIM_IMAGE
   extends:
     - .test_common_with_coverage
@@ -597,9 +597,9 @@ linux-x86_64-blackwell test:
     - os/linux
     - platform/horde
 
-linux-x86_64 python free-threaded test:
+linux-x86_64 cu13 free-threaded test:
   stage: test
-  needs: [linux-x86_64 python free-threaded build]
+  needs: [linux-x86_64 cu13 free-threaded build]
   image: $UV_TRIXIE_SLIM_IMAGE
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
@@ -624,9 +624,9 @@ linux-x86_64 python free-threaded test:
   script:
     - uv run --python 3.14t --no-sync -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
 
-linux-x86_64 test debug mode:
+linux-x86_64 cu13 debug-mode test:
   stage: test
-  needs: [linux-x86_64 build]
+  needs: [linux-x86_64 cu13 build]
   image: $UV_TRIXIE_SLIM_IMAGE
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "2700"
@@ -641,9 +641,9 @@ linux-x86_64 test debug mode:
     - uv run --extra dev -m warp.tests --junit-report-xml rspec.xml --suite debug --warp-debug --isolate-test-processes --failfast
 
 # Note that for throughput reasons this runs on a single-GPU runner
-windows-x86_64 test:
+windows-x86_64 cu12 test:
   stage: test
-  needs: [windows-x86_64 build]
+  needs: [windows-x86_64 cu12 build]
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "4500"
   extends:
@@ -659,9 +659,9 @@ windows-x86_64 test:
       $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
       uv run --extra dev --extra torch-cu12 --with "jax>=0.5" -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
 
-windows-x86_64 cuda 13 test:
+windows-x86_64 cu13 test:
   stage: test
-  needs: [windows-x86_64 cuda 13 build]
+  needs: [windows-x86_64 cu13 build]
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "4500"
   extends:
@@ -679,9 +679,9 @@ windows-x86_64 cuda 13 test:
 
 # Exercise the omniblue KubeVirt development pool without replacing the generic
 # Windows GPU jobs that cover the existing A40/L40 fleet.
-windows-x86_64-blackwell test:
+windows-x86_64 cu13 blackwell test:
   stage: test
-  needs: [windows-x86_64 build]
+  needs: [windows-x86_64 cu13 build]
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "4500"
   extends:
@@ -699,9 +699,9 @@ windows-x86_64-blackwell test:
     - win-x86_64-gpu-1x-595.97-kubevirt-dev
 
 # Optional multi-GPU Windows job (likely longer queue time)
-windows-x86_64 test mgpu:
+windows-x86_64 cu13 mgpu test:
   stage: test
-  needs: [windows-x86_64 build]
+  needs: [windows-x86_64 cu13 build]
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "4500"
   extends:
@@ -720,15 +720,15 @@ windows-x86_64 test mgpu:
   script:
     - |
       $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
-      uv run --extra dev --extra torch-cu12 -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
+      uv run --extra dev --extra torch-cu13 -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
   tags:
     - win-x86_64-gpu-2x-595.97
 
 # Note: This will no longer be needed once Warp auto-initializes upon import
-linux-x86_64 test warp-init:
+linux-x86_64 cu13 warp-init test:
   stage: test
   image: $UV_TRIXIE_SLIM_IMAGE
-  needs: [linux-x86_64 build]
+  needs: [linux-x86_64 cu13 build]
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "900"
   extends:
@@ -744,9 +744,9 @@ linux-x86_64 test warp-init:
     - uv run --python 3.12 --extra dev -m warp.tests --junit-report-xml rspec.xml -s autodetect --isolate-test-processes --level class -p 'test_implicit_init.py'
 
 # Optional job to test MuJoCo Warp
-linux-x86_64 test mujoco warp:
+linux-x86_64 cu13 mujoco-warp test:
   stage: test
-  needs: [linux-x86_64 build]
+  needs: [linux-x86_64 cu13 build]
   image: $UV_TRIXIE_IMAGE
   extends:
     - .ipp_lnx_x86_64_gpu
@@ -779,16 +779,16 @@ linux-x86_64 test mujoco warp:
     - uv pip install -e .
     - uv pip install mujoco
     - uv pip install "git+https://github.com/google-deepmind/mujoco_warp@main"
-    - uv pip install pytest pytest-xdist "jax[cuda12]"
+    - uv pip install pytest pytest-xdist "jax[cuda13]"
     - source .venv/bin/activate
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
     - pytest -n 4 --pyargs mujoco_warp --junit-xml=rspec.xml
 
 # Serial counterpart to help diagnose multi-process failures
-linux-x86_64 test mujoco warp serial:
+linux-x86_64 cu13 mujoco-warp serial test:
   stage: test
-  needs: [linux-x86_64 build]
+  needs: [linux-x86_64 cu13 build]
   image: $UV_TRIXIE_IMAGE
   extends:
     - .ipp_lnx_x86_64_gpu
@@ -814,9 +814,9 @@ linux-x86_64 test mujoco warp serial:
     - pytest --pyargs mujoco_warp --junit-xml=rspec.xml
 
 # Optional job to test Newton (https://pypi.org/project/newton/)
-linux-x86_64 test newton:
+linux-x86_64 cu13 newton test:
   stage: test
-  needs: [linux-x86_64 build]
+  needs: [linux-x86_64 cu13 build]
   image: $UV_TRIXIE_IMAGE
   extends:
     - .ipp_lnx_x86_64_gpu
@@ -839,10 +839,10 @@ linux-x86_64 test newton:
     - python -m newton.tests --junit-report-xml rspec.xml
 
 # Ensure minimum and maximum Python versions are supported
-linux-x86_64 python matrix test:
+linux-x86_64 cu13 python-matrix test:
   stage: test
   image: $UV_TRIXIE_SLIM_IMAGE
-  needs: [linux-x86_64 build]
+  needs: [linux-x86_64 cu13 build]
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
@@ -862,13 +862,13 @@ linux-x86_64 python matrix test:
     - !reference [.snippets, move-linux-x86_64-binaries]
     - !reference [.snippets, section-end-install-deps]
   script:
-    - uv run --extra dev --with rmm-cu12 -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
+    - uv run --extra dev --with rmm-cu13 -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
 
 # Ensure cpp examples compile and run
-linux-x86_64 cpp examples test:
+linux-x86_64 cu13 cpp-examples test:
   stage: test
   image: ${CI_REGISTRY_IMAGE}/warp-cpp-test-env:cuda13.4.1-ubuntu24.04-b291af1fdd25@sha256:3a26bf865de50aebbe854f2db88d62726f48046af29228153da582fb527a7f22
-  needs: [linux-x86_64 build]
+  needs: [linux-x86_64 cu13 build]
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
@@ -896,7 +896,7 @@ trigger debug build and test pipeline:
   image: busybox
   extends:
     - .ipp_lnx_x86_64_cpu_micro
-  needs: [linux-x86_64 debug build]
+  needs: [linux-x86_64 cu13 debug build]
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_COMMIT_TAG
@@ -980,14 +980,14 @@ asv benchmarks:
 # ==============================================================================
 
 
-# Creates wheel files for PyPI
+# Creates the canonical CUDA 13 wheels, plus the CPU-only macOS wheel.
 create pypi wheels:
   stage: package
   image: $UV_TRIXIE_SLIM_IMAGE
   needs:
-    - linux-aarch64 build
-    - linux-x86_64 build
-    - windows-x86_64 build
+    - linux-aarch64 cu13 build
+    - linux-x86_64 cu13 build
+    - windows-x86_64 cu13 build
     - mac-aarch64 build
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
@@ -1008,15 +1008,6 @@ create pypi wheels:
     - !reference [.snippets, move-windows-binaries-to-platform-dir]
     - !reference [.snippets, move-macos-binaries-to-platform-dir]
   script:
-    - printf '%s+cu12\n' "$(head -n1 VERSION.md | tr -d '\n\r')" > VERSION.md # Modify VERSION.md with +cu12
-    - uv build --wheel -C--build-option=-Pwindows-x86_64
-    - uv build --wheel -C--build-option=-Plinux-x86_64
-    - uv build --wheel -C--build-option=-Plinux-aarch64 -C--build-option=-Mmanylinux_2_34
-    - printf '%s+cpu\n' "$(head -n1 VERSION.md | sed 's/+cu12$//' | tr -d '\n\r')" > VERSION.md # Modify VERSION.md with +cu12 replaced by +cpu
-    - uv build --wheel -C--build-option=-Pmacos-aarch64
-    - printf '%s\n' "$(head -n1 VERSION.md | sed 's/+cpu$//' | tr -d '\n\r')" > VERSION.md # Revert VERSION.md changes
-    - mv dist dist-github
-    # Now make the wheels meant for PyPI publishing
     - uv build --wheel -C--build-option=-Pwindows-x86_64
     - uv build --wheel -C--build-option=-Plinux-x86_64
     - uv build --wheel -C--build-option=-Plinux-aarch64 -C--build-option=-Mmanylinux_2_34
@@ -1028,50 +1019,49 @@ create pypi wheels:
     expose_as: "Python Wheels"
     paths:
       - "dist/"
-      - "dist-github/"
-    when: always
 
-create cuda 13 pypi wheels:
+# Creates the CUDA 12 compatibility wheels for release assets.
+create cu12 pypi wheels:
   stage: package
   image: $UV_TRIXIE_SLIM_IMAGE
   needs:
-    - windows-x86_64 cuda 13 build
-    - linux-aarch64 cuda 13 build
-    - linux-x86_64 cuda 13 build
+    - windows-x86_64 cu12 build
+    - linux-aarch64 cu12 build
+    - linux-x86_64 cu12 build
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
     - .ipp_lnx_x86_64_cpu_micro
   rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_COMMIT_TAG
     - if: $CI_COMMIT_BRANCH =~ /^release-.*/
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never # Ordinary nightly schedules only produce canonical wheels.
     - when: manual
       allow_failure: true
   before_script:
     # Move binaries into platform-specific folders. Already done for Linux.
     - !reference [.snippets, move-windows-binaries-to-platform-dir]
   script:
-    - printf '%s+cu13\n' "$(head -n1 VERSION.md | tr -d '\n\r')" > VERSION.md
-    - uv build --wheel -C--build-option=-Pwindows-x86_64
-    - uv build --wheel -C--build-option=-Plinux-x86_64 -C--build-option=-Mmanylinux_2_28
-    - uv build --wheel -C--build-option=-Plinux-aarch64 -C--build-option=-Mmanylinux_2_34
+    - printf '%s+cu12\n' "$(head -n1 VERSION.md | tr -d '\n\r')" > VERSION.md
+    - uv build --wheel --out-dir dist-cu12 -C--build-option=-Pwindows-x86_64
+    - uv build --wheel --out-dir dist-cu12 -C--build-option=-Plinux-x86_64 -C--build-option=-Mmanylinux_2_28
+    - uv build --wheel --out-dir dist-cu12 -C--build-option=-Plinux-aarch64 -C--build-option=-Mmanylinux_2_34
     - find . -type f -exec chmod 664 {} +
     - find . -type d -exec chmod 775 {} +
   artifacts:
     name: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
     expose_as: "Python Wheels"
     paths:
-      - "dist/"
-    when: always
+      - "dist-cu12/"
 
 create dev wheels:
   stage: package
   image: $UV_TRIXIE_SLIM_IMAGE
   needs:
-    - linux-aarch64 build
-    - linux-x86_64 build
-    - windows-x86_64 build
+    - linux-aarch64 cu13 build
+    - linux-x86_64 cu13 build
+    - windows-x86_64 cu13 build
     - mac-aarch64 build
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
@@ -1100,7 +1090,7 @@ create dev wheels:
 # ==============================================================================
 # Deployment Jobs
 #
-# Publishes Python wheels to PyPI, GitLab registries, and GitHub releases.
+# Publishes Python wheels to PyPI, GitLab PyPI, and GitHub releases.
 # Also builds and deploys documentation to GitLab Pages for merge requests
 # and the main branch.
 # ==============================================================================
@@ -1121,7 +1111,7 @@ publish wheels to pypi registry:
     name: production
     url: https://pypi.org/project/warp-lang/
   script:
-    - uv publish --verbose -t $PYPI_DEPLOY_KEY dist/*
+    - uv publish --verbose -t $PYPI_DEPLOY_KEY dist/*.whl
 
 publish wheels to gitlab pypi registry:
   stage: deploy
@@ -1136,40 +1126,12 @@ publish wheels to gitlab pypi registry:
       when: manual
       allow_failure: true
   script:
-    - uv publish --verbose -u gitlab-ci-token -p ${CI_JOB_TOKEN} --publish-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi --check-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi/simple dist-github/*
-
-# Uploads the wheels to the internal GitLab package registry in the Warp project
-# Generated files will be in a branch/tag-specific folder
-publish wheels to gitlab package registry:
-  stage: deploy
-  needs: ["create pypi wheels"]
-  image: $UV_TRIXIE_IMAGE
-  variables:
-    IPP_RUNNER_EXECUTION_DURATION: "3600"
-  extends:
-    - .ipp_lnx_x86_64_cpu_micro
-  rules:
-    - if: $CI_COMMIT_TAG
-    - when: manual # If not auto-triggered, allow any pipeline to run this job manually
-      allow_failure: true
-  script:
-    - |
-      # Fail if no wheels found
-      wheels=$(find dist -name '*.whl')
-      if [ -z "$wheels" ]; then
-        echo "ERROR: No wheel files found in dist/"
-        exit 1
-      fi
-      for file in $wheels; do
-          filename=$(basename -- "$file")
-          curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file "$file" "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/warp/${CI_COMMIT_REF_SLUG}/${filename}"
-      done
-    - echo "See the published files at $CI_PROJECT_URL/-/packages"
+    - uv publish --verbose -u gitlab-ci-token -p ${CI_JOB_TOKEN} --publish-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi --check-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi/simple dist/*.whl
 
 publish wheels to github release:
   stage: deploy
   image: $MINIFORGE_IMAGE
-  needs: ["create pypi wheels"]
+  needs: ["create pypi wheels", "create cu12 pypi wheels"]
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
@@ -1177,46 +1139,14 @@ publish wheels to github release:
   rules:
     - if: $CI_COMMIT_TAG =~ /^v/
   before_script:
-    - conda install gh --channel conda-forge
-  script:
-    - gh release upload $CI_COMMIT_TAG ./dist-github/*.whl
-
-publish cuda 13 wheels to gitlab pypi registry:
-  stage: deploy
-  image: $UV_TRIXIE_IMAGE
-  needs: ["create cuda 13 pypi wheels"]
-  variables:
-    IPP_RUNNER_EXECUTION_DURATION: "3600"
-  extends:
-    - .ipp_lnx_x86_64_cpu_micro
-  rules:
-    - if: $CI_COMMIT_BRANCH =~ /^release-.*/ || $CI_COMMIT_TAG
-      when: manual
-      allow_failure: true
-  script:
-    - uv publish --verbose -u gitlab-ci-token -p ${CI_JOB_TOKEN} --publish-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi --check-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi/simple dist/*
-
-publish cuda 13 wheels to github release:
-  stage: deploy
-  image: $MINIFORGE_IMAGE
-  needs: ["create cuda 13 pypi wheels"]
-  variables:
-    IPP_RUNNER_EXECUTION_DURATION: "3600"
-  extends:
-    - .ipp_lnx_x86_64_cpu_micro
-  rules:
-    - if: $CI_COMMIT_TAG =~ /^v/
-  before_script:
-    - !reference [.snippets, section-start-install-deps]
     - conda install gh --channel conda-forge --yes
-    - !reference [.snippets, section-end-install-deps]
   script:
-    - gh release upload $CI_COMMIT_TAG ./dist/*.whl
+    - gh release upload $CI_COMMIT_TAG ./dist/*.whl ./dist-cu12/*.whl
 
 .build-docs-common:
   stage: deploy
   image: $UV_TRIXIE_IMAGE
-  needs: [linux-x86_64 build]
+  needs: [linux-x86_64 cu13 build]
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "1200"
   extends:

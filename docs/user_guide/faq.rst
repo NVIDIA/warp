@@ -184,8 +184,10 @@ Which operating systems, Python versions, and GPUs does Warp support?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Warp requires Python 3.10 or newer and supports Windows and Linux on x86-64,
-Linux on ARM64, and Apple Silicon macOS. CUDA acceleration needs a supported
-NVIDIA GPU and driver; macOS uses the CPU backend.
+Linux on ARM64, and Apple Silicon macOS. PyPI and nightly wheels for Linux and
+Windows use CUDA Toolkit 13.4. They require an NVIDIA R580-series or newer driver
+and a Turing (``sm_75``) or newer GPU for CUDA acceleration. Warp can still run
+on the CPU without a compatible GPU or driver; macOS uses the CPU backend.
 
 Python, operating-system, GPU-architecture, and driver requirements may change
 between releases. Check :doc:`compatibility` for the current requirements.
@@ -234,10 +236,10 @@ A pre-built Warp package does not require a system CUDA Toolkit. CUDA-enabled
 packages include the components that Warp needs, but the system still needs a
 compatible NVIDIA driver.
 
-Building Warp with CUDA support from source does require a CUDA Toolkit. If a
-build uses shared CUDA libraries, those libraries must also be available at
-runtime. The current driver and build requirements are in
-:doc:`installation`.
+Building Warp with CUDA support from source requires a CUDA Toolkit. CUDA 12
+builds are still supported. Builds that use shared CUDA libraries also require
+those libraries at runtime. See :doc:`installation` for the current driver and
+build requirements.
 
 Which Warp package or build should I install?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -245,8 +247,9 @@ Which Warp package or build should I install?
 Most users should install the stable ``warp-lang`` package from PyPI. The
 `warp-lang packages on conda-forge <https://anaconda.org/conda-forge/warp-lang>`__
 provide managed CPU and CUDA variants. Nightly packages contain unreleased
-changes, GitHub Releases provide wheels for alternate CUDA runtimes, and source
-builds support custom toolchains or build options.
+changes. For CUDA 12 environments, install a ``+cu12`` wheel from
+:ref:`GitHub Releases <github-release-wheels>` or :ref:`build from source with CUDA 12 <building-from-source>`.
+Source builds also support custom toolchains or build options.
 
 Package variants and commands change over time. Follow :doc:`installation`
 instead of copying a version-specific command from an old issue or message.

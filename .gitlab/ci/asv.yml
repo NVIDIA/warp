@@ -7,13 +7,13 @@
 # Runs Warp's airspeed velocity (ASV) benchmark suite on an L40 GPU host.
 #
 # Structure:
-#   - `linux-x86_64 asv build` (stage: build): compiles wheels for the MR
+#   - `linux-x86_64 cu13 asv build` (stage: build): compiles wheels for the MR
 #     target ref and the current commit on a CPU runner so the GPU host
 #     doesn't burn L40 booking time on builds. Wheels are shipped to the
 #     bench jobs via the `_wheels/` artifact.
-#   - `linux-x86_64 asv non-tile` (stage: test): always runs once this
+#   - `linux-x86_64 cu13 asv non-tile` (stage: test): always runs once this
 #     pipeline is triggered.
-#   - `linux-x86_64 asv tile` (stage: test): heavier than the rest of the
+#   - `linux-x86_64 cu13 asv tile` (stage: test): heavier than the rest of the
 #     suite combined; auto-runs only on tile-relevant changes, otherwise
 #     available as a manual play button.
 #
@@ -37,10 +37,10 @@ stages:
 # the GPU-bound asv bench jobs don't spend L40 booking time compiling.
 # Wheels are written to asv's native build cache; the bench jobs skip
 # build_command and go straight to install_command using the cached wheels.
-linux-x86_64 asv build:
+linux-x86_64 cu13 asv build:
   stage: build
   needs: []
-  image: $WARP_BUILDER_IMAGE_CU12_X86_64
+  image: $WARP_BUILDER_IMAGE_CU13_X86_64
   extends:
     - .ipp_lnx_x86_64_cpu_medium
   variables:
@@ -108,10 +108,10 @@ linux-x86_64 asv build:
 # jobs differ only in their `--bench` filter regex and `--machine` name (set
 # via per-job ASV_BENCH_FILTER / ASV_MACHINE_NAME) and their `rules:` block.
 # Everything else -- L40 booking, env setup, wheel-cache restage from the
-# `linux-x86_64 asv build` artifact, asv invocation -- is identical.
-.linux-x86_64-asv-bench-base:
+# `linux-x86_64 cu13 asv build` artifact, asv invocation -- is identical.
+.linux-x86_64-cu13-asv-bench-base:
   stage: test
-  needs: ["linux-x86_64 asv build"]
+  needs: ["linux-x86_64 cu13 asv build"]
   timeout: 8h
   tags:
     - omni-perf-only/linux
@@ -198,8 +198,8 @@ linux-x86_64 asv build:
 
 # Non-tile asv benchmarks. Runs whenever this child pipeline is triggered;
 # the parent's `asv benchmarks` job is what gates ASV on path changes.
-linux-x86_64 asv non-tile:
-  extends: .linux-x86_64-asv-bench-base
+linux-x86_64 cu13 asv non-tile:
+  extends: .linux-x86_64-cu13-asv-bench-base
   variables:
     ASV_MACHINE_NAME: asv-bench-non-tile
     ASV_BENCH_FILTER: '^(?!tile\.)'
@@ -208,8 +208,8 @@ linux-x86_64 asv non-tile:
 # tile-relevant changes; available as a manual play button otherwise for
 # contributors whose change touches tile perf in ways the path filter
 # doesn't catch (e.g. codegen tweaks, Newton-side changes).
-linux-x86_64 asv tile:
-  extends: .linux-x86_64-asv-bench-base
+linux-x86_64 cu13 asv tile:
+  extends: .linux-x86_64-cu13-asv-bench-base
   variables:
     ASV_MACHINE_NAME: asv-bench-tile
     ASV_BENCH_FILTER: '^tile\.'

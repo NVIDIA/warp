@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import time
 from datetime import datetime
@@ -27,6 +28,15 @@ import requests
 import urllib3
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+
+
+CANONICAL_WHEEL_PLATFORMS = {
+    "manylinux_2_28_x86_64",
+    "manylinux_2_34_aarch64",
+    "win_amd64",
+    "macosx_11_0_arm64",
+}
+WARP_WHEEL_FILENAME_PATTERN = re.compile(r"^warp_lang-(?P<version>[^-]+)-py3-none-(?P<platform>[^.]+)\.whl$")
 
 
 class KitmakerClient:
@@ -140,6 +150,38 @@ class KitmakerClient:
             time.sleep(poll_interval)
 
 
+def validate_canonical_wheel_urls(wheel_urls):
+    """Validate the complete canonical Warp wheel URL set."""
+    if len(wheel_urls) != 4:
+        raise ValueError(f"expected exactly 4 canonical wheel URLs, found {len(wheel_urls)}")
+
+    platforms = []
+    versions = set()
+    errors = []
+    for wheel_url in wheel_urls:
+        filename = wheel_url.rsplit("/", 1)[-1]
+        match = WARP_WHEEL_FILENAME_PATTERN.fullmatch(filename)
+        if match is None:
+            errors.append(f"invalid Warp wheel filename: {filename}")
+            continue
+        versions.add(match.group("version"))
+        platforms.append(match.group("platform"))
+
+    actual_platforms = set(platforms)
+    missing_platforms = CANONICAL_WHEEL_PLATFORMS - actual_platforms
+    duplicate_platforms = {platform for platform in actual_platforms if platforms.count(platform) > 1}
+    if missing_platforms:
+        errors.append(f"missing platforms: {', '.join(sorted(missing_platforms))}")
+    if duplicate_platforms:
+        errors.append(f"duplicate platforms: {', '.join(sorted(duplicate_platforms))}")
+    if len(versions) > 1:
+        errors.append(f"mixed versions: {', '.join(sorted(versions))}")
+    if any("+" in version for version in versions):
+        errors.append("canonical wheels must not use a local version suffix")
+    if errors:
+        raise ValueError("invalid canonical Warp wheel URL set:\n- " + "\n- ".join(errors))
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(
         description="Create and monitor releases on the Kitmaker portal",
@@ -186,6 +228,11 @@ Environment Variables:
                         help="Person-in-charge email (default: KITMAKER_PIC_EMAIL env var)")
     parser.add_argument("--no-verify-ssl", action="store_true",
                         help="Disable SSL certificate verification")
+    parser.add_argument(
+        "--require-canonical-wheel-set",
+        action="store_true",
+        help="Require the complete canonical Warp wheel URL set",
+    )
 
     args = parser.parse_args(argv)
 
@@ -219,6 +266,12 @@ Environment Variables:
                 print(f"Error: Invalid wheel URL (must be https:// and end with .whl): {wheel_url}")
                 return 1
             wheels.append(wheel_url)
+        if args.require_canonical_wheel_set:
+            try:
+                validate_canonical_wheel_urls(wheels)
+            except ValueError as error:
+                print(f"Error: {error}")
+                return 1
 
         # Configuration summary
         print(f"\nProject: {config['project_name']} (ID: {config['project_id']})")

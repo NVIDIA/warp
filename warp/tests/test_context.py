@@ -9,6 +9,25 @@ from warp._src.codegen import _codegen_lock
 
 
 class TestContext(unittest.TestCase):
+    def test_cuda_13_rejects_unsupported_device_arch(self):
+        for arch in (61, 74):
+            with self.subTest(arch=arch):
+                with self.assertRaises(RuntimeError) as error:
+                    wp._src.context._validate_cuda_device_arch(arch, (13, 0), "cuda:0")
+
+                message = str(error.exception)
+                for detail in ("CUDA 13", f"sm_{arch}", "sm_75", "CUDA 12 build", "cuda:0"):
+                    self.assertIn(detail, message)
+
+    def test_cuda_13_accepts_minimum_device_arch(self):
+        wp._src.context._validate_cuda_device_arch(75, (13, 0))
+
+    def test_cuda_12_accepts_older_device_arch(self):
+        wp._src.context._validate_cuda_device_arch(52, (12, 9))
+
+    def test_unknown_cuda_toolkit_accepts_device_arch(self):
+        wp._src.context._validate_cuda_device_arch(52, None)
+
     def test_context_type_str(self):
         self.assertEqual(wp._src.context.type_str(list[int]), "list[int]")
         self.assertEqual(wp._src.context.type_str(list[float]), "list[float]")

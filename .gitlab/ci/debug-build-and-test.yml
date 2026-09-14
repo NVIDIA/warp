@@ -22,17 +22,15 @@ workflow:
 stages:
   - build
   - test
-  - package
-  - deploy
 
 # ==============================================================================
 # Build Jobs (Debug)
 # ==============================================================================
 
 # Hide this job for now until debug aarch64 builds work
-.linux-aarch64 build:
+.linux-aarch64 cu13 build:
   stage: build
-  image: $WARP_BUILDER_IMAGE_CU12_AARCH64
+  image: $WARP_BUILDER_IMAGE_CU13_AARCH64
   extends:
     - .lnx-aarch64-cpu-medium
     - .save_warp_bin_artifact
@@ -42,7 +40,7 @@ stages:
     - mv warp/bin/warp.so warp/bin/linux-aarch64
     - mv warp/bin/warp-clang.so warp/bin/linux-aarch64
 
-windows-x86_64 build:
+windows-x86_64 cu13 build:
   stage: build
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
@@ -54,7 +52,7 @@ windows-x86_64 build:
     - Move-Item -Path $env:PACKMAN_CONFIG_FILE -Destination "$env:CI_PROJECT_DIR\tools\packman\config.packman.xml" -Force
     - powershell -ExecutionPolicy ByPass -c {$env:UV_UNMANAGED_INSTALL = "$env:CI_PROJECT_DIR\_uv";irm https://astral.sh/uv/install.ps1 | iex}
     - $env:PATH = "$env:CI_PROJECT_DIR\_uv\bin;$env:PATH"
-    - tools\packman\packman pull --platform windows-x86_64 deps\cuda-toolkit-deps.packman.xml --verbose --include-tag "cuda-12"
+    - tools\packman\packman pull --platform windows-x86_64 deps\cuda-toolkit-deps.packman.xml --verbose --include-tag "cuda-13"
     - tools\packman\packman install -l _build\host-deps\winsdk winsdk 10.17763
     - tools\packman\packman install -l _build\host-deps\msvc msvc 2019-16.11.24
   script:
@@ -70,10 +68,10 @@ windows-x86_64 build:
 # ==============================================================================
 
 # Hide this job for now until debug aarch64 builds work
-.linux-aarch64 test:
+.linux-aarch64 cu13 test:
   stage: test
   image: $UV_TRIXIE_SLIM_ARM_IMAGE
-  needs: [linux-aarch64 build]
+  needs: [linux-aarch64 cu13 build]
   extends:
     - .runner-test-linux-aarch64 # TODO: Change to .omni_devplat_arm_docker_gpu
     - .save_test_report_artifact
@@ -83,14 +81,14 @@ windows-x86_64 build:
   script:
     - uv run --extra dev -m warp.tests --maxjobs 4 --junit-report-xml rspec.xml -s autodetect --failfast
 
-linux-x86_64 test:
+linux-x86_64 cu13 test:
   stage: test
   # Note: Using slim image is intentional - manylinux-built wheels are glibc-portable
   # and GPU runtime libs are provided by the runner environment
   image: $UV_TRIXIE_SLIM_IMAGE
   needs:
     - pipeline: $PARENT_PIPELINE_ID
-      job: linux-x86_64 debug build
+      job: linux-x86_64 cu13 debug build
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
@@ -100,11 +98,11 @@ linux-x86_64 test:
     - df -h
     - !reference [.snippets, move-linux-x86_64-binaries]
   script:
-    - uv run --extra dev --with rmm-cu12 -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
+    - uv run --extra dev --with rmm-cu13 -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
 
-windows-x86_64 test:
+windows-x86_64 cu13 test:
   stage: test
-  needs: [windows-x86_64 build]
+  needs: [windows-x86_64 cu13 build]
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "4500"
   extends:
@@ -119,42 +117,4 @@ windows-x86_64 test:
   script:
     - |
       $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
-      uv run --extra dev --extra torch-cu12 -m warp.tests --maxjobs 4 --junit-report-xml rspec.xml -s autodetect --failfast
-
-# ==============================================================================
-# Packaging Jobs
-#
-# ==============================================================================
-
-# Creates wheel files for PyPI
-# Note that compared to the job in .gitlab-ci.yml, there is no aarch64 job
-# due to problems building a debug binary
-create pypi wheels:
-  stage: package
-  image: $UV_TRIXIE_SLIM_IMAGE
-  needs:
-    - pipeline: $PARENT_PIPELINE_ID
-      job: linux-x86_64 debug build
-    - windows-x86_64 build
-  variables:
-    IPP_RUNNER_EXECUTION_DURATION: "3600"
-  extends:
-    - .ipp_lnx_x86_64_cpu_micro
-  before_script:
-    # Move binaries into platform-specific folders. Already done in the build jobs for Linux.
-    - mkdir -p warp/bin/windows-x86_64
-    - mv warp/bin/warp.dll warp/bin/windows-x86_64/
-    - mv warp/bin/warp.lib warp/bin/windows-x86_64/
-    - mv warp/bin/warp-clang.dll warp/bin/windows-x86_64/
-    - mv warp/bin/warp-clang.lib warp/bin/windows-x86_64/
-  script:
-    - uv build --wheel -C--build-option=-Pwindows-x86_64
-    - uv build --wheel -C--build-option=-Plinux-x86_64
-    - find . -type f -exec chmod 664 {} +
-    - find . -type d -exec chmod 775 {} +
-  artifacts:
-    name: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
-    expose_as: "Python Wheels Debug"
-    paths:
-      - "dist/"
-    when: always
+      uv run --extra dev --extra torch-cu13 -m warp.tests --maxjobs 4 --junit-report-xml rspec.xml -s autodetect --failfast
