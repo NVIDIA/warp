@@ -622,6 +622,11 @@ def build_dll_for_arch(
             raise Exception(
                 f"CUDA Toolkit version {MIN_CTK_VERSION[0]}.{MIN_CTK_VERSION[1]}+ is required (found {ctk_version[0]}.{ctk_version[1]} in {cuda_home})"
             )
+        if sys.platform == "win32" and arch == "aarch64" and ctk_version < (13, 4):
+            raise RuntimeError(
+                f"CUDA Toolkit 13.4+ is required for Windows ARM64 builds "
+                f"(found {ctk_version[0]}.{ctk_version[1]} in {cuda_home})"
+            )
 
         # Get architecture flags based on CUDA version
         if ctk_version >= (13, 0):
@@ -640,6 +645,9 @@ def build_dll_for_arch(
         if sys.platform == "win32":
             # CCCL headers require MSVC's standard conforming preprocessor.
             nvcc_opts.append("-Xcompiler /Zc:preprocessor")
+            if arch == "aarch64":
+                nvcc_opts.append("-target-dir arm64")
+                nvcc_opts.append(f'--compiler-bindir="{os.path.dirname(args.host_compiler)}"')
 
         # Clang options
         clang_opts = [
@@ -681,6 +689,8 @@ def build_dll_for_arch(
         mathdx_enabled = "WP_ENABLE_MATHDX=0"
 
     if os.name == "nt":
+        cuda_lib_arch = "arm64" if arch == "aarch64" else "x64"
+
         if args.host_compiler:
             host_linker = os.path.join(os.path.dirname(args.host_compiler), "link.exe")
         else:
@@ -770,19 +780,21 @@ def build_dll_for_arch(
 
                 if args.use_dynamic_cuda:
                     linkopts.append(
-                        f'cudart.lib nvrtc.lib nvptxcompiler_static.lib ws2_32.lib user32.lib /LIBPATH:"{cuda_home}/lib/x64"'
+                        f'cudart.lib nvrtc.lib nvptxcompiler_static.lib ws2_32.lib user32.lib /LIBPATH:"{cuda_home}/lib/{cuda_lib_arch}"'
                     )
                 else:
                     linkopts.append(
-                        f'cudart_static.lib nvrtc_static.lib nvrtc-builtins_static.lib nvptxcompiler_static.lib ws2_32.lib user32.lib ntdll.lib /LIBPATH:"{cuda_home}/lib/x64"'
+                        f'cudart_static.lib nvrtc_static.lib nvrtc-builtins_static.lib nvptxcompiler_static.lib ws2_32.lib user32.lib ntdll.lib /LIBPATH:"{cuda_home}/lib/{cuda_lib_arch}"'
                     )
 
                 if args.libmathdx_path:
                     if args.use_dynamic_cuda:
-                        linkopts.append(f'nvJitLink.lib /LIBPATH:"{args.libmathdx_path}/lib/x64" mathdx.lib')
+                        linkopts.append(
+                            f'nvJitLink.lib /LIBPATH:"{args.libmathdx_path}/lib/{cuda_lib_arch}" mathdx.lib'
+                        )
                     else:
                         linkopts.append(
-                            f'nvJitLink_static.lib /LIBPATH:"{args.libmathdx_path}/lib/x64" mathdx_static.lib'
+                            f'nvJitLink_static.lib /LIBPATH:"{args.libmathdx_path}/lib/{cuda_lib_arch}" mathdx_static.lib'
                         )
 
             if args.jobs <= 1:

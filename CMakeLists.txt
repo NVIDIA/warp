@@ -21,6 +21,13 @@ option(WARP_ENABLE_CUDA "Build Warp with CUDA support" ${_warp_enable_cuda_defau
 if(APPLE AND WARP_ENABLE_CUDA)
     message(FATAL_ERROR "CUDA builds are not supported on macOS")
 endif()
+if(WIN32
+   AND WARP_ENABLE_CUDA
+   AND CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "^(ARM64|arm64|aarch64)$"
+   AND CMAKE_VERSION VERSION_LESS "4.4"
+)
+    message(FATAL_ERROR "Windows ARM64 CUDA builds require CMake 4.4 or newer")
+endif()
 
 option(WARP_BUILD_CLANG "Build warp-clang" ON)
 option(WARP_VERIFY_FP "Enable floating point verification" OFF)
