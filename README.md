@@ -216,7 +216,7 @@ python -m warp.examples.browse
             <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_cantilever_topology_optimization.py"><img src="./docs/img/examples/fem_cantilever_topology_optimization.png"></a></td>
         </tr>
         <tr>
-            <td align="center">cantilever topology optimization (requires NLopt)</td>
+            <td align="center">cantilever topology optimization</td>
         </tr>
     </tbody>
 </table>
