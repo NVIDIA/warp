@@ -1437,8 +1437,8 @@ prints a message like:
 
 .. code:: text
 
-   Warp 1.12.0 initialized:
-      CUDA Toolkit 13.1, CUDA driver not available (NVRTC compilation available)
+   Warp 1.18.0 initialized:
+      CUDA Toolkit 13.4, CUDA driver not available (NVRTC compilation available)
       Devices:
         "cpu"      : "CPU"
 

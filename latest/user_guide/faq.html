@@ -717,8 +717,10 @@ directly, including alongside Newton. See Newton’s <a class="reference externa
 <section id="which-operating-systems-python-versions-and-gpus-does-warp-support">
 <h3>Which operating systems, Python versions, and GPUs does Warp support?<a class="headerlink" href="#which-operating-systems-python-versions-and-gpus-does-warp-support" title="Link to this heading">#</a></h3>
 <p>Warp requires Python 3.10 or newer and supports Windows and Linux on x86-64,
-Linux on ARM64, and Apple Silicon macOS. CUDA acceleration needs a supported
-NVIDIA GPU and driver; macOS uses the CPU backend.</p>
+Linux on ARM64, and Apple Silicon macOS. PyPI and nightly wheels for Linux and
+Windows use CUDA Toolkit 13.4. They require an NVIDIA R580-series or newer driver
+and a Turing (<code class="docutils literal notranslate"><span class="pre">sm_75</span></code>) or newer GPU for CUDA acceleration. Warp can still run
+on the CPU without a compatible GPU or driver; macOS uses the CPU backend.</p>
 <p>Python, operating-system, GPU-architecture, and driver requirements may change
 between releases. Check <a class="reference internal" href="compatibility.html"><span class="doc">Compatibility &amp; Support</span></a> for the current requirements.</p>
 </section>
@@ -757,18 +759,19 @@ the kernel and its memory-access pattern, so profile the target system. See
 <p>A pre-built Warp package does not require a system CUDA Toolkit. CUDA-enabled
 packages include the components that Warp needs, but the system still needs a
 compatible NVIDIA driver.</p>
-<p>Building Warp with CUDA support from source does require a CUDA Toolkit. If a
-build uses shared CUDA libraries, those libraries must also be available at
-runtime. The current driver and build requirements are in
-<a class="reference internal" href="installation.html"><span class="doc">Installation</span></a>.</p>
+<p>Building Warp with CUDA support from source requires a CUDA Toolkit. CUDA 12
+builds are still supported. Builds that use shared CUDA libraries also require
+those libraries at runtime. See <a class="reference internal" href="installation.html"><span class="doc">Installation</span></a> for the current driver and
+build requirements.</p>
 </section>
 <section id="which-warp-package-or-build-should-i-install">
 <h3>Which Warp package or build should I install?<a class="headerlink" href="#which-warp-package-or-build-should-i-install" title="Link to this heading">#</a></h3>
 <p>Most users should install the stable <code class="docutils literal notranslate"><span class="pre">warp-lang</span></code> package from PyPI. The
 <a class="reference external" href="https://anaconda.org/conda-forge/warp-lang">warp-lang packages on conda-forge</a>
 provide managed CPU and CUDA variants. Nightly packages contain unreleased
-changes, GitHub Releases provide wheels for alternate CUDA runtimes, and source
-builds support custom toolchains or build options.</p>
+changes. For CUDA 12 environments, install a <code class="docutils literal notranslate"><span class="pre">+cu12</span></code> wheel from
+<a class="reference internal" href="installation.html#github-release-wheels"><span class="std std-ref">GitHub Releases</span></a> or <a class="reference internal" href="installation.html#building-from-source"><span class="std std-ref">build from source with CUDA 12</span></a>.
+Source builds also support custom toolchains or build options.</p>
 <p>Package variants and commands change over time. Follow <a class="reference internal" href="installation.html"><span class="doc">Installation</span></a>
 instead of copying a version-specific command from an old issue or message.</p>
 </section>

@@ -542,7 +542,12 @@ with frameworks such as PyTorch, JAX and Paddle.</p>
 <div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>warp-lang
 </pre></div>
 </div>
-<p>For conda, nightly builds, CUDA 13 builds, building from source, and driver requirements,
+<p>PyPI and nightly wheels for Linux and Windows use CUDA Toolkit 13.4. They require an
+NVIDIA R580-series or newer driver and a Turing (<code class="docutils literal notranslate"><span class="pre">sm_75</span></code>) or newer GPU for CUDA acceleration.
+For CUDA 12 environments, download a <code class="docutils literal notranslate"><span class="pre">+cu12</span></code> wheel from
+<a class="reference external" href="https://github.com/NVIDIA/warp/releases">GitHub Releases</a> or build Warp from source with CUDA 12.
+Warp can also run on the CPU. The Apple Silicon macOS wheel is CPU-only.</p>
+<p>For conda, nightly builds, CUDA 12 compatibility wheels, building from source, and driver requirements,
 see <a class="reference internal" href="user_guide/installation.html"><span class="doc">Installation</span></a>.</p>
 </section>
 <section id="example-gallery">

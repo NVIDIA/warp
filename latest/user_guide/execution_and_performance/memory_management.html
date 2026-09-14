@@ -645,8 +645,8 @@ there can be systems where they are not supported, such as certain virtual machi
 so existing code written prior to the introduction of these new allocators should continue to function regardless of whether they
 are supported by the underlying system or not.</p>
 <p>Warp’s startup message gives the status of these allocators, for example:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Warp 0.15.1 initialized:
-CUDA Toolkit 11.5, Driver 12.2
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Warp 1.18.0 initialized:
+CUDA Toolkit 13.4, Driver 13.0
 Devices:
     "cpu"      : "x86_64"
     "cuda:0"   : "NVIDIA GeForce RTX 4090" (24 GiB, sm_89, mempool enabled)
@@ -797,8 +797,8 @@ For memory allocated using default CUDA allocators, we can enable CUDA <a class=
 <span id="peer-access"></span><h3>CUDA Peer Access<a class="headerlink" href="#cuda-peer-access" title="Link to this heading">#</a></h3>
 <p>CUDA allows direct memory access between different GPUs if the system hardware configuration supports it.  Typically, the GPUs should be of the same type and a special interconnect may be required (e.g., NVLINK or PCIe topology).</p>
 <p>During initialization, Warp reports whether peer access is supported on multi-GPU systems:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Warp 0.15.1 initialized:
-   CUDA Toolkit 11.5, Driver 12.2
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.0
    Devices:
      "cpu"      : "x86_64"
      "cuda:0"   : "NVIDIA L40" (48 GiB, sm_89, mempool enabled)
@@ -1028,10 +1028,14 @@ thread-safety, or distributed runtime needs.</p>
 <p><a class="reference external" href="https://github.com/rapidsai/rmm">RAPIDS Memory Manager (RMM)</a> provides high-performance
 pooled allocators for CUDA. Warp includes a built-in adapter, <a class="reference internal" href="../../api_reference/_generated/warp.utils.AllocatorRmm.html#warp.utils.AllocatorRmm" title="warp.utils.AllocatorRmm"><code class="xref py py-class docutils literal notranslate"><span class="pre">AllocatorRmm</span></code></a>, that
 routes array allocations through RMM.</p>
-<p>Install RMM (Linux only):</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>rmm-cu12
+<p>Install RMM for a CUDA 13 environment (Linux only):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>rmm-cu13
 </pre></div>
 </div>
+<p>For CUDA 12, use <code class="docutils literal notranslate"><span class="pre">rmm-cu12</span></code> with a compatible Warp build, such as a <code class="docutils literal notranslate"><span class="pre">+cu12</span></code>
+wheel from <a class="reference internal" href="../installation.html#github-release-wheels"><span class="std std-ref">GitHub Releases</span></a>. Check the
+<a class="reference external" href="https://docs.rapids.ai/install/">RAPIDS installation guide</a> for RMM’s Python,
+CUDA, driver, and GPU requirements.</p>
 <p>Set up a shared RMM pool for PyTorch and Warp:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">rmm</span>
 <span class="n">rmm</span><span class="o">.</span><span class="n">reinitialize</span><span class="p">(</span><span class="n">pool_allocator</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">initial_pool_size</span><span class="o">=</span><span class="mi">2</span><span class="o">**</span><span class="mi">30</span><span class="p">)</span>

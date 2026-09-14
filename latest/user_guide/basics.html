@@ -592,8 +592,8 @@ actively maintained set of Warp tutorials:</p>
 Warp will initialize itself and will print some startup information
 about the compute devices available, driver versions, and the location for any
 generated kernel code, e.g.:</p>
-<div class="highlight-bat notranslate"><div class="highlight"><pre><span></span>Warp 1.2.0 initialized:
-CUDA Toolkit 12.5, Driver 12.5
+<div class="highlight-bat notranslate"><div class="highlight"><pre><span></span>Warp 1.18.0 initialized:
+CUDA Toolkit 13.4, Driver 13.0
 Devices:
     <span class="s2">"cpu"</span>      : <span class="s2">"x86_64"</span>
     <span class="s2">"cuda:0"</span>   : <span class="s2">"NVIDIA GeForce RTX 3090"</span> (24 GiB, sm_86, mempool enabled)
@@ -601,9 +601,12 @@ Devices:
 CUDA peer access:
     Supported fully (all-directional)
 Kernel cache:
-    /home/nvidia/.cache/warp/1.2.0
+    /home/nvidia/.cache/warp/1.18.0
 </pre></div>
 </div>
+<p>The toolkit entry shows the CUDA version used to build Warp. The driver entry shows the latest CUDA
+version supported by the installed NVIDIA driver. See <a class="reference internal" href="installation.html#cuda-requirements"><span class="std std-ref">CUDA Requirements</span></a> for supported
+combinations and CUDA 12 compatibility options.</p>
 <p>It’s also possible to explicitly initialize Warp with the <a class="reference internal" href="../api_reference/_generated/warp.init.html#warp.init" title="warp.init"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.init()</span></code></a> method:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
 

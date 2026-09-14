@@ -43,8 +43,8 @@ generated kernel code, e.g.:
 
 .. code:: bat
 
-    Warp 1.2.0 initialized:
-    CUDA Toolkit 12.5, Driver 12.5
+    Warp 1.18.0 initialized:
+    CUDA Toolkit 13.4, Driver 13.0
     Devices:
         "cpu"      : "x86_64"
         "cuda:0"   : "NVIDIA GeForce RTX 3090" (24 GiB, sm_86, mempool enabled)
@@ -52,8 +52,11 @@ generated kernel code, e.g.:
     CUDA peer access:
         Supported fully (all-directional)
     Kernel cache:
-        /home/nvidia/.cache/warp/1.2.0
+        /home/nvidia/.cache/warp/1.18.0
 
+The toolkit entry shows the CUDA version used to build Warp. The driver entry shows the latest CUDA
+version supported by the installed NVIDIA driver. See :ref:`cuda-requirements` for supported
+combinations and CUDA 12 compatibility options.
 
 It's also possible to explicitly initialize Warp with the :func:`wp.init() <warp.init>` method::
 

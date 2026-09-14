@@ -550,7 +550,11 @@
                   
   <section id="installation">
 <h1>Installation<a class="headerlink" href="#installation" title="Link to this heading">#</a></h1>
-<p>Warp requires Python 3.10 or newer. We publish <code class="docutils literal notranslate"><span class="pre">warp-lang</span></code> wheels on PyPI for Windows (x86-64), Linux (x86-64 and AArch64), and macOS (Apple Silicon). The Windows x86-64 and Linux wheels support CPU execution and CUDA acceleration. CUDA acceleration requires a supported NVIDIA GPU and driver. The macOS wheels support CPU execution but not Metal acceleration.</p>
+<p>Warp requires Python 3.10 or newer. We publish <code class="docutils literal notranslate"><span class="pre">warp-lang</span></code> wheels on PyPI for Windows (x86-64), Linux (x86-64 and AArch64), and macOS (Apple Silicon). The Windows x86-64 and Linux wheels support CPU execution and CUDA acceleration. The macOS wheels support CPU execution but not Metal acceleration.</p>
+<p>PyPI and nightly wheels for Linux and Windows use CUDA Toolkit 13.4. They require an
+NVIDIA R580-series or newer driver and a Turing (<code class="docutils literal notranslate"><span class="pre">sm_75</span></code>) or newer GPU for CUDA acceleration.
+For CUDA 12 environments, download a <code class="docutils literal notranslate"><span class="pre">+cu12</span></code> wheel from <a class="reference internal" href="#github-release-wheels"><span class="std std-ref">GitHub Releases</span></a>
+or <a class="reference internal" href="#building-from-source"><span class="std std-ref">build Warp from source with CUDA 12</span></a>.</p>
 <p>The easiest way to install Warp is from <a class="reference external" href="https://pypi.org/project/warp-lang">PyPI</a>:</p>
 <div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>warp-lang
 </pre></div>
@@ -562,7 +566,8 @@
 <div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-U<span class="w"> </span>--pre<span class="w"> </span>warp-lang<span class="w"> </span>--extra-index-url<span class="o">=</span>https://pypi.nvidia.com/
 </pre></div>
 </div>
-<p>Note that the nightly builds are built with the CUDA 12 runtime and are not published for macOS.</p>
+<p>Nightly builds use CUDA Toolkit 13.4 and have the same <a class="reference internal" href="#cuda-requirements"><span class="std std-ref">CUDA Requirements</span></a> as the default PyPI wheels.
+They also include the CPU-only macOS Apple Silicon wheel.</p>
 <p>If you plan to install nightly builds regularly, you can simplify future installations by adding NVIDIA’s package
 repository as an extra index via the <code class="docutils literal notranslate"><span class="pre">PIP_EXTRA_INDEX_URL</span></code> environment variable. For example:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>export PIP_EXTRA_INDEX_URL="https://pypi.nvidia.com"
@@ -589,39 +594,33 @@ $<span class="w"> </span>conda<span class="w"> </span>install<span class="w"> </
 <a class="reference external" href="https://github.com/conda-forge/warp-lang-feedstock">here</a>.</p>
 </section>
 <section id="installing-from-github-releases">
-<h2>Installing from GitHub Releases<a class="headerlink" href="#installing-from-github-releases" title="Link to this heading">#</a></h2>
-<p>The binaries hosted on PyPI are currently built with the CUDA 12.9 runtime.
-We also provide binaries built with the CUDA 13.0 runtime on the <a class="reference external" href="https://github.com/NVIDIA/warp/releases">GitHub Releases</a> page.
-Copy the URL of the appropriate wheel file (<code class="docutils literal notranslate"><span class="pre">warp-lang-{ver}+cu13-py3-none-{platform}.whl</span></code>) and pass it to
-the <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span></code> command, e.g.</p>
-<div class="pst-scrollable-table-container"><table class="table">
-<thead>
-<tr class="row-odd"><th class="head"><p>Platform</p></th>
-<th class="head"><p>Install Command</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p>Linux aarch64</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">https://github.com/NVIDIA/warp/releases/download/v1.17.0/warp_lang-1.17.0+cu13-py3-none-manylinux_2_34_aarch64.whl</span></code></p></td>
-</tr>
-<tr class="row-odd"><td><p>Linux x86-64</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">https://github.com/NVIDIA/warp/releases/download/v1.17.0/warp_lang-1.17.0+cu13-py3-none-manylinux_2_28_x86_64.whl</span></code></p></td>
-</tr>
-<tr class="row-even"><td><p>Windows x86-64</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">https://github.com/NVIDIA/warp/releases/download/v1.17.0/warp_lang-1.17.0+cu13-py3-none-win_amd64.whl</span></code></p></td>
-</tr>
-</tbody>
-</table>
+<span id="github-release-wheels"></span><h2>Installing from GitHub Releases<a class="headerlink" href="#installing-from-github-releases" title="Link to this heading">#</a></h2>
+<p><a class="reference external" href="https://github.com/NVIDIA/warp/releases">GitHub Releases</a> provides both the default release wheels
+and CUDA 12 compatibility wheels. The default Linux and Windows wheels use CUDA Toolkit 13.4
+and have no CUDA suffix. CUDA 12 wheels have a <code class="docutils literal notranslate"><span class="pre">+cu12</span></code> version suffix.</p>
+<p>Choose a <code class="docutils literal notranslate"><span class="pre">warp_lang-&lt;version&gt;+cu12-py3-none-&lt;platform&gt;.whl</span></code> asset for your operating system
+and CPU architecture. Copy its URL from the release page and replace <code class="docutils literal notranslate"><span class="pre">&lt;wheel-url&gt;</span></code> below:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">"&lt;wheel-url&gt;"</span>
+</pre></div>
 </div>
+<p>The platform tags are <code class="docutils literal notranslate"><span class="pre">manylinux_2_34_aarch64</span></code> for Linux AArch64,
+<code class="docutils literal notranslate"><span class="pre">manylinux_2_28_x86_64</span></code> for Linux x86-64, and <code class="docutils literal notranslate"><span class="pre">win_amd64</span></code> for Windows x86-64.
+See <a class="reference internal" href="#cuda-requirements"><span class="std std-ref">CUDA Requirements</span></a> for driver requirements and <a class="reference internal" href="compatibility.html"><span class="doc">Compatibility &amp; Support</span></a> for GPU architecture support.</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">--force-reinstall</span></code> option may need to be used to overwrite a previous installation.</p>
 </section>
 <section id="cuda-requirements">
-<h2>CUDA Requirements<a class="headerlink" href="#cuda-requirements" title="Link to this heading">#</a></h2>
+<span id="id1"></span><h2>CUDA Requirements<a class="headerlink" href="#cuda-requirements" title="Link to this heading">#</a></h2>
 <ul class="simple">
-<li><p>Warp packages built with CUDA Toolkit 12.x require NVIDIA driver 525 or newer.</p></li>
-<li><p>Warp packages built with CUDA Toolkit 13.x require NVIDIA driver 580 or newer.</p></li>
+<li><p>The default PyPI and nightly Linux and Windows wheels use CUDA Toolkit 13.4 and require
+an NVIDIA R580-series or newer driver and a Turing (<code class="docutils literal notranslate"><span class="pre">sm_75</span></code>) or newer GPU for CUDA acceleration.</p></li>
+<li><p>Warp packages built with CUDA Toolkit 12.x, including the <code class="docutils literal notranslate"><span class="pre">+cu12</span></code> wheels on
+<a class="reference internal" href="#github-release-wheels"><span class="std std-ref">GitHub Releases</span></a>, require an NVIDIA R525-series or newer driver.</p></li>
+<li><p>Warp packages built with CUDA Toolkit 13.x require an NVIDIA R580-series or newer driver
+and a Turing (<code class="docutils literal notranslate"><span class="pre">sm_75</span></code>) or newer GPU.</p></li>
 </ul>
-<p>This applies to pre-built packages distributed on PyPI and GitHub and also when building Warp from source.</p>
+<p>The CUDA Toolkit used to build Warp determines these requirements. Pre-built wheels include the CUDA
+components that Warp needs, so they do not require a system CUDA Toolkit.
+See <a class="reference internal" href="compatibility.html"><span class="doc">Compatibility &amp; Support</span></a> for the GPU architecture requirements of each CUDA major version.</p>
 <p>Note that building Warp with the <code class="docutils literal notranslate"><span class="pre">--quick</span></code> flag changes the driver requirements.
 The quick build skips CUDA backward compatibility, so the minimum required driver is determined by the CUDA Toolkit version.
 Refer to the <a class="reference external" href="https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/index.html">latest CUDA Toolkit release notes</a>
@@ -630,7 +629,7 @@ to find the minimum required driver for different CUDA Toolkit versions
 <p>Warp checks the installed driver during initialization and will report a warning if the driver is not suitable, e.g.:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Warp UserWarning:
    Insufficient CUDA driver version.
-   The minimum required CUDA driver version is 12.0, but the installed CUDA driver version is 11.8.
+   The minimum required CUDA driver version is 13.0, but the installed CUDA driver version is 12.9.
    Visit https://nvidia.github.io/warp/stable/user_guide/installation.html for guidance.
 </pre></div>
 </div>
@@ -638,18 +637,21 @@ to find the minimum required driver for different CUDA Toolkit versions
 <p>To remedy the situation there are a few options:</p>
 <ul class="simple">
 <li><p>Update the driver.</p></li>
-<li><p>Install a compatible pre-built Warp package.</p></li>
-<li><p>Build Warp from source using a CUDA Toolkit that’s compatible with the installed driver.</p></li>
+<li><p>Install a <code class="docutils literal notranslate"><span class="pre">+cu12</span></code> compatibility wheel from <a class="reference internal" href="#github-release-wheels"><span class="std std-ref">GitHub Releases</span></a> if your system meets its requirements.</p></li>
+<li><p><a class="reference internal" href="#building-from-source"><span class="std std-ref">Build Warp from source</span></a> using a CUDA Toolkit that’s compatible with the installed driver and GPU.</p></li>
 </ul>
 <p>Also note that full support for tile-based MathDx features requires CUDA version 12.6.3 or later. See <a class="reference internal" href="programming_model/tiles.html#mathdx"><span class="std std-ref">Failed to compile LTO Error Message</span></a> for more information.</p>
 <section id="cuda-12-9-limitation-on-linux-arm-platforms">
-<h3>CUDA 12.9 limitation on Linux ARM platforms<a class="headerlink" href="#cuda-12-9-limitation-on-linux-arm-platforms" title="Link to this heading">#</a></h3>
-<p>When building Warp from source with CUDA 12.9 on a Linux ARM platform (including NVIDIA Jetson platforms),
-the resulting binary will not support Maxwell, Pascal, or Volta GPU architectures due to a
+<span id="cuda-12-arm-limitation"></span><h3>CUDA 12.9 limitation on Linux ARM platforms<a class="headerlink" href="#cuda-12-9-limitation-on-linux-arm-platforms" title="Link to this heading">#</a></h3>
+<p>When building Warp with CUDA 12.9 on Linux AArch64, the default architecture set omits
+the <code class="docutils literal notranslate"><span class="pre">sm_52</span></code>, <code class="docutils literal notranslate"><span class="pre">sm_60</span></code>, <code class="docutils literal notranslate"><span class="pre">sm_61</span></code>, and <code class="docutils literal notranslate"><span class="pre">sm_70</span></code> targets due to a
 <a class="reference external" href="https://github.com/NVIDIA/cccl/issues/4967">bug</a> in the CUDA 12.9 Toolkit which limits the number of architectures that
 can be compiled at once.</p>
-<p>If support for these architectures is required, build Warp using a CUDA Toolkit prior to 12.9.
-Note that CUDA 13.0 dropped support for the same architectures entirely.</p>
+<p>This also applies to Linux AArch64 <code class="docutils literal notranslate"><span class="pre">+cu12</span></code> wheels built with CUDA 12.9.
+The Jetson targets <code class="docutils literal notranslate"><span class="pre">sm_53</span></code>, <code class="docutils literal notranslate"><span class="pre">sm_62</span></code>, and <code class="docutils literal notranslate"><span class="pre">sm_72</span></code> remain in the default architecture set;
+running Warp on these devices still requires compatible platform and driver support.
+If support for the omitted targets is required, build Warp using CUDA Toolkit 12.0 through 12.8.
+CUDA 13.x requires Turing (<code class="docutils literal notranslate"><span class="pre">sm_75</span></code>) or newer for CUDA acceleration on all platforms.</p>
 </section>
 </section>
 <section id="dependencies">
@@ -671,7 +673,7 @@ The <code class="docutils literal notranslate"><span class="pre">[examples]</spa
 </ul>
 </section>
 <section id="building-from-source">
-<h2>Building from Source<a class="headerlink" href="#building-from-source" title="Link to this heading">#</a></h2>
+<span id="id2"></span><h2>Building from Source<a class="headerlink" href="#building-from-source" title="Link to this heading">#</a></h2>
 <p>For developers who want to build the library themselves, the following tools are required:</p>
 <ul class="simple">
 <li><p>(Windows) Microsoft Visual Studio, minimum version 2019</p></li>
@@ -680,7 +682,9 @@ The <code class="docutils literal notranslate"><span class="pre">[examples]</spa
 <li><p><a class="reference external" href="https://git-lfs.com">Git Large File Storage</a></p></li>
 </ul>
 <p>A CUDA Toolkit is not required for a CPU-only build. CUDA-enabled builds on Windows and Linux require
-<a class="reference external" href="https://developer.nvidia.com/cuda/toolkit">CUDA Toolkit</a> 12.0 or newer.</p>
+<a class="reference external" href="https://developer.nvidia.com/cuda/toolkit">CUDA Toolkit</a> 12.0 or newer.
+Building from source with CUDA 12 remains supported. Choose a toolkit compatible with your
+driver and GPU; see <a class="reference internal" href="#cuda-requirements"><span class="std std-ref">CUDA Requirements</span></a> and the <a class="reference internal" href="#cuda-12-arm-limitation"><span class="std std-ref">CUDA 12.9 limitation on Linux ARM platforms</span></a>.</p>
 <p>After cloning the repository, users should run:</p>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>python<span class="w"> </span>build_lib.py
 </pre></div>
@@ -814,7 +818,9 @@ This is required so that Packman can download dependencies like libmathdx and LL
 when building Warp.</p>
 <p>We recommend using one of the NVIDIA CUDA images from <a class="reference external" href="https://hub.docker.com/r/nvidia/cuda">nvidia/cuda</a> as a base
 image.
-Choose a <code class="docutils literal notranslate"><span class="pre">devel</span></code> flavor that matches your desired CUDA Toolkit version.</p>
+Choose a <code class="docutils literal notranslate"><span class="pre">devel</span></code> flavor that matches your desired CUDA Toolkit version.
+The source-build examples below use CUDA 13.0; the default published wheels use CUDA Toolkit 13.4.
+The host driver and GPU must meet the <a class="reference internal" href="#cuda-requirements"><span class="std std-ref">CUDA Requirements</span></a> of the Warp build inside the container.</p>
 <p>The following Dockerfile clones the Warp repository, builds Warp, and installs it into the system Python
 environment:</p>
 <div class="highlight-dockerfile notranslate"><div class="highlight"><pre><span></span><span class="k">FROM</span><span class="w"> </span><span class="s">nvidia/cuda:13.0.0-devel-ubuntu24.04</span>

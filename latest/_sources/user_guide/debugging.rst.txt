@@ -254,13 +254,14 @@ The cache location is printed at startup when :func:`wp.init() <warp.init>` is c
 
 .. code-block:: text
 
-    Warp 0.8.1 initialized:
-        CUDA Toolkit: 11.8, Driver: 11.8
-        Devices:
-        "cpu"    | AMD64 Family 25 Model 33 Stepping 0, AuthenticAMD
-        "cuda:0" | NVIDIA GeForce RTX 3090 (sm_86)
-        "cuda:1" | NVIDIA GeForce RTX 2080 Ti (sm_75)
-        Kernel cache: C:\Users\LukasW\AppData\Local\NVIDIA Corporation\warp\Cache\0.8.1
+    Warp 1.18.0 initialized:
+    CUDA Toolkit 13.4, Driver 13.0
+    Devices:
+        "cpu"      : "AMD64 Family 25 Model 33 Stepping 0, AuthenticAMD"
+        "cuda:0"   : "NVIDIA GeForce RTX 3090" (24 GiB, sm_86, mempool enabled)
+        "cuda:1"   : "NVIDIA GeForce RTX 2080 Ti" (11 GiB, sm_75, mempool enabled)
+    Kernel cache:
+        C:\Users\LukasW\AppData\Local\NVIDIA Corporation\warp\Cache\1.18.0
 
 The kernel cache has folders beginning with ``wp_`` that contain the generated C++/CUDA code and the compiled binaries
 for each module that was compiled at runtime.
