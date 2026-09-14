@@ -2409,11 +2409,29 @@ def quat_from_matrix(mat: Matrix[Float, Literal[4], Literal[4]]) -> Quaternion[F
     ...
 
 def quat_rpy(roll: Float, pitch: Float, yaw: Float) -> Quaternion[Float]:
-    """Construct a quaternion representing a combined roll (z), pitch (x), yaw rotations (y) in radians."""
+    """Construct a quaternion from roll-pitch-yaw Euler angles.
+
+    Roll is rotation about X, pitch about Y, and yaw about Z, all in radians. Rotations compose as ``yaw * pitch * roll``.
+
+    Args:
+        roll: Roll angle in radians about X.
+        pitch: Pitch angle in radians about Y.
+        yaw: Yaw angle in radians about Z.
+
+    Returns:
+        Unit quaternion for the composed rotation."""
     ...
 
 def quat_inverse(quat: Quaternion[Float]) -> Quaternion[Float]:
-    """Compute quaternion conjugate."""
+    """Compute the conjugate of a quaternion.
+
+    The conjugate equals the inverse only for unit-length quaternions. Normalize ``quat`` with :func:`warp.normalize` first if needed.
+
+    Args:
+        quat: Input quaternion. Must have unit length for a true inverse.
+
+    Returns:
+        Conjugate ``(-x, -y, -z, w)``."""
     ...
 
 def quat_rotate(quat: Quaternion[Float], vec: Vector[Float, Literal[3]]) -> Vector[Float, Literal[3]]:
@@ -2425,7 +2443,17 @@ def quat_rotate_inv(quat: Quaternion[Float], vec: Vector[Float, Literal[3]]) -> 
     ...
 
 def quat_slerp(a: Quaternion[Float], b: Quaternion[Float], t: Float) -> Quaternion[Float]:
-    """Linearly interpolate between two quaternions."""
+    """Spherically interpolate between two quaternions.
+
+    Follow the shortest arc from ``a`` to ``b``. Both inputs should be unit length. ``q`` and ``-q`` denote the same rotation, so the result can differ by sign without changing orientation.
+
+    Args:
+        a: Start quaternion (unit length).
+        b: End quaternion (unit length).
+        t: Blend factor, where ``0`` returns ``a`` and ``1`` returns a quaternion equivalent to ``b`` (exact components except for antipodal inputs where ``b == -a``).
+
+    Returns:
+        Interpolated unit quaternion on the slerp path."""
     ...
 
 def quat_to_matrix(quat: Quaternion[Float]) -> Matrix[Float, Literal[3], Literal[3]]:
