@@ -19,6 +19,7 @@
 
 #define THRUST_IGNORE_CUB_VERSION_CHECK
 
+#include <cub/block/block_radix_sort.cuh>
 #include <cub/device/device_radix_sort.cuh>
 #include <cub/device/device_run_length_encode.cuh>
 #include <cub/device/device_scan.cuh>
@@ -446,6 +447,192 @@ void launch_bsr_fill_triplet_key_values(
         WP_CURRENT_CONTEXT, bsr_fill_triplet_key_values, nnz,
         (nnz, tpl_rows, tpl_columns, isNotZero, mask, block_indices, row_col)
     );
+}
+
+__device__ __forceinline__ int bsr_transpose_reserve(int* counters, int column)
+{
+#if __CUDA_ARCH__ >= 700
+    // Combine reservations for a shared column before issuing a global atomic.
+    const unsigned peers = __match_any_sync(__activemask(), column);
+    const int lane = threadIdx.x & 31;
+    const int leader = __ffs(peers) - 1;
+    int first = 0;
+    if (lane == leader)
+        first = atomicAdd(counters + column, __popc(peers));
+    first = __shfl_sync(peers, first, leader);
+    return first + __popc(peers & ((1u << lane) - 1));
+#else
+    return atomicAdd(counters + column, 1);
+#endif
+}
+
+__global__ void bsr_transpose_count_rows(
+    int row_count, int lane_shift, const int* offsets, const int* row_counts, const int* columns, int* counts
+)
+{
+    const size_t thread = size_t(blockIdx.x) * blockDim.x + threadIdx.x;
+    const int lanes = 1 << lane_shift;
+    const int row = thread >> lane_shift;
+    const int lane = thread & (lanes - 1);
+    if (row >= row_count)
+        return;
+    for (int64_t block = int64_t(offsets[row]) + lane; block < bsr_active_row_end(offsets, row_counts, row);
+         block += lanes)
+        bsr_transpose_reserve(counts, columns[block] + 1);
+}
+
+__global__ void bsr_transpose_scatter_rows(
+    int row_count,
+    int lane_shift,
+    const int* offsets,
+    const int* row_counts,
+    const int* columns,
+    int* cursors,
+    int* transposed_columns,
+    int* src_blocks
+)
+{
+    const size_t thread = size_t(blockIdx.x) * blockDim.x + threadIdx.x;
+    const int lanes = 1 << lane_shift;
+    const int row = thread >> lane_shift;
+    const int lane = thread & (lanes - 1);
+    if (row >= row_count)
+        return;
+    for (int64_t block = int64_t(offsets[row]) + lane; block < bsr_active_row_end(offsets, row_counts, row);
+         block += lanes) {
+        const int dest = bsr_transpose_reserve(cursors, columns[block]);
+        transposed_columns[dest] = row;
+        src_blocks[dest] = block;
+    }
+}
+
+__global__ void
+bsr_transpose_sort_short_rows(int row_count, const int* offsets, int* columns, int* indices, int* long_rows)
+{
+    const size_t thread = size_t(blockIdx.x) * blockDim.x + threadIdx.x;
+    const int row = thread / 32;
+    const int lane = thread % 32;
+    if (row >= row_count)
+        return;
+    const int begin = offsets[row];
+    const int count = offsets[row + 1] - begin;
+    if (count <= 1)
+        return;
+    if (count > 32) {
+        if (lane == 0) {
+            const int tiles = 1 + (count - 1) / 256;
+            const int first = atomicAdd(long_rows, tiles);
+            atomicMax(long_rows + 1, count);
+            for (int tile = 0; tile < tiles; ++tile) {
+                long_rows[3 + 2 * (first + tile)] = row;
+                long_rows[4 + 2 * (first + tile)] = begin + 256 * tile;
+            }
+        }
+        return;
+    }
+    // Source block indices order source rows and resolve ties deterministically.
+    int key = lane < count ? indices[begin + lane] : INT_MAX;
+    int value = lane < count ? columns[begin + lane] : 0;
+    for (int size = 2; size <= 32; size *= 2) {
+        for (int stride = size / 2; stride > 0; stride /= 2) {
+            const int other_key = __shfl_xor_sync(0xffffffff, key, stride);
+            const int other_value = __shfl_xor_sync(0xffffffff, value, stride);
+            const bool ascending = ((lane & stride) == 0) == ((lane & size) == 0);
+            if (ascending ? other_key < key : other_key > key) {
+                key = other_key;
+                value = other_value;
+            }
+        }
+    }
+    if (lane < count) {
+        indices[begin + lane] = key;
+        columns[begin + lane] = value;
+    }
+}
+
+__global__ void bsr_transpose_sort_tiles(const int* offsets, int* columns, int* indices, int* work)
+{
+    // Distribute tiles across blocks even when all entries belong to one row.
+    using Sort = cub::BlockRadixSort<int, 256, 1, int>;
+    __shared__ Sort::TempStorage storage;
+    __shared__ int tile;
+    while (true) {
+        if (threadIdx.x == 0)
+            tile = atomicAdd(work + 2, 1);
+        __syncthreads();
+        if (tile >= work[0])
+            return;
+        const int row = work[3 + 2 * tile];
+        const int64_t i = int64_t(work[4 + 2 * tile]) + threadIdx.x;
+        const bool active = i < offsets[row + 1];
+        int keys[1] = { active ? indices[i] : INT_MAX };
+        int values[1] = { active ? columns[i] : 0 };
+        Sort(storage).Sort(keys, values);
+        if (active) {
+            indices[i] = keys[0];
+            columns[i] = values[0];
+        }
+        __syncthreads();
+    }
+}
+
+__global__ void bsr_transpose_merge_tiles(
+    int shift,
+    const int* offsets,
+    const int* in_columns,
+    const int* in_indices,
+    int* out_columns,
+    int* out_indices,
+    const int* work
+)
+{
+    const int64_t width = int64_t(1) << shift;
+    if (width >= work[1])
+        return;
+    for (int tile = blockIdx.x; tile < work[0]; tile += gridDim.x) {
+        const int row = work[3 + 2 * tile];
+        const int begin = offsets[row];
+        const int count = offsets[row + 1] - begin;
+        const int64_t i = int64_t(work[4 + 2 * tile]) + threadIdx.x - begin;
+        if (i >= count || width >= count)
+            continue;
+        const int64_t chunk = (i >> shift) << shift;
+        const int64_t pair = (i >> (shift + 1)) << (shift + 1);
+        const int other = int(chunk == pair ? min(chunk + width, int64_t(count)) : pair);
+        const int other_end = int(min(int64_t(other) + width, int64_t(count)));
+        const int key = in_indices[begin + i];
+        int lower = other;
+        int upper = other_end;
+        while (lower < upper) {
+            const int mid = lower + (upper - lower) / 2;
+            if (in_indices[begin + mid] < key)
+                lower = mid + 1;
+            else
+                upper = mid;
+        }
+        // The source index is unique, so its merge rank has exactly one writer.
+        const int dest = int(begin + pair + i - chunk + lower - other);
+        out_indices[dest] = key;
+        out_columns[dest] = in_columns[begin + i];
+    }
+}
+
+__global__ void bsr_transpose_finish_tiles(
+    const int* offsets, int* columns, int* indices, const int* temp_columns, const int* temp_indices, const int* work
+)
+{
+    for (int tile = blockIdx.x; tile < work[0]; tile += gridDim.x) {
+        const int row = work[3 + 2 * tile];
+        const int count = offsets[row + 1] - offsets[row];
+        int parity = 0;
+        for (int remaining = (count - 1) / 256; remaining; remaining >>= 1)
+            parity ^= 1;
+        const int64_t i = int64_t(work[4 + 2 * tile]) + threadIdx.x;
+        if (parity && i < offsets[row + 1]) {
+            indices[i] = temp_indices[i];
+            columns[i] = temp_columns[i];
+        }
+    }
 }
 
 __global__ void bsr_transpose_fill_row_col(
@@ -1472,6 +1659,76 @@ WP_API void wp_bsr_transpose_device(
 
     cudaStream_t stream = static_cast<cudaStream_t>(wp_cuda_stream_get_current());
     const bool padded = transposed_bsr_row_counts != nullptr;
+
+    const bool aliases_topology = bsr_offsets == transposed_bsr_offsets || bsr_columns == transposed_bsr_columns
+        || bsr_row_counts == transposed_bsr_offsets || bsr_row_counts == transposed_bsr_columns
+        || bsr_offsets == transposed_bsr_columns || bsr_columns == transposed_bsr_offsets;
+    // Prefer global sorting for dense or narrow matrices; the row path targets
+    // sparse stencils and large unused capacities without a host NNZ readback.
+    // Shared topology must be read before overwriting the destination offsets.
+    if (!padded && !aliases_topology && row_count > 32 && col_count > 32
+        && int64_t(nnz) <= 64 * int64_t(std::min(row_count, col_count))) {
+        const int lane_shift = nnz / row_count >= 32 ? 5 : (nnz / row_count >= 8 ? 3 : 0);
+        const int lanes = 1 << lane_shift;
+        ScopedTemporary<int> cursors(context, size_t(col_count + 1));
+        check_cuda(cudaMemsetAsync(transposed_bsr_offsets, 0, size_t(col_count + 1) * sizeof(int), stream));
+        wp_launch_device(
+            WP_CURRENT_CONTEXT, bsr_transpose_count_rows, size_t(row_count) * lanes,
+            (row_count, lane_shift, bsr_offsets, bsr_row_counts, bsr_columns, transposed_bsr_offsets)
+        );
+        size_t buff_size = 0;
+        check_cuda(
+            cub::DeviceScan::InclusiveSum(
+                nullptr, buff_size, transposed_bsr_offsets, transposed_bsr_offsets, col_count + 1, stream
+            )
+        );
+        ScopedTemporary<> temp(context, buff_size);
+        check_cuda(
+            cub::DeviceScan::InclusiveSum(
+                temp.buffer(), buff_size, transposed_bsr_offsets, transposed_bsr_offsets, col_count + 1, stream
+            )
+        );
+        check_cuda(cudaMemcpyAsync(
+            cursors.buffer(), transposed_bsr_offsets, size_t(col_count + 1) * sizeof(int), cudaMemcpyDeviceToDevice,
+            stream
+        ));
+        wp_launch_device(
+            WP_CURRENT_CONTEXT, bsr_transpose_scatter_rows, size_t(row_count) * lanes,
+            (row_count, lane_shift, bsr_offsets, bsr_row_counts, bsr_columns, cursors.buffer(), transposed_bsr_columns,
+             src_block_indices)
+        );
+        ScopedTemporary<int> sorted_columns(context, size_t(nnz));
+        ScopedTemporary<int> work(context, 3 + 2 * (size_t(col_count) + size_t(nnz) / 256));
+        check_cuda(cudaMemsetAsync(work.buffer(), 0, 3 * sizeof(int), stream));
+        wp_launch_device(
+            WP_CURRENT_CONTEXT, bsr_transpose_sort_short_rows, size_t(col_count) * 32,
+            (col_count, transposed_bsr_offsets, transposed_bsr_columns, src_block_indices, work.buffer())
+        );
+        wp_launch_device(
+            WP_CURRENT_CONTEXT, bsr_transpose_sort_tiles, 128 * 256,
+            (transposed_bsr_offsets, transposed_bsr_columns, src_block_indices, work.buffer())
+        );
+        int* in_columns = transposed_bsr_columns;
+        int* in_indices = src_block_indices;
+        int* out_columns = sorted_columns.buffer();
+        int* out_indices = src_block_indices + nnz;
+        // Fixed launches allow captured row lengths to change without host readback.
+        // Each pass skips rows that already fit in its sorted run length.
+        for (int shift = 8; (int64_t(1) << shift) < nnz; ++shift) {
+            wp_launch_device(
+                WP_CURRENT_CONTEXT, bsr_transpose_merge_tiles, 128 * 256,
+                (shift, transposed_bsr_offsets, in_columns, in_indices, out_columns, out_indices, work.buffer())
+            );
+            std::swap(in_columns, out_columns);
+            std::swap(in_indices, out_indices);
+        }
+        wp_launch_device(
+            WP_CURRENT_CONTEXT, bsr_transpose_finish_tiles, 128 * 256,
+            (transposed_bsr_offsets, transposed_bsr_columns, src_block_indices, sorted_columns.buffer(),
+             src_block_indices + nnz, work.buffer())
+        );
+        return;
+    }
 
     ScopedTemporary<BsrRowCol> combined_row_col(context, 2 * nnz);
     ScopedTemporary<int> active_count(context, 1);
