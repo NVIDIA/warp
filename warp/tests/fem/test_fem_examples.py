@@ -66,7 +66,7 @@ def add_fem_example_test(
             try:
                 import nlopt  # noqa: PLC0415,F401
             except ImportError:
-                test.skipTest("Requires nlopt")
+                test.skipTest("Requires NLopt")
 
         # Default any USD output into the gitignored warp/tests/outputs/ directory
         # (mirroring the core example harness) and remove it after a passing run,

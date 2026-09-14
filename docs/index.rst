@@ -157,7 +157,7 @@ warp/examples/fem
       -
       -
       -
-    * - cantilever topology optimization (requires NLopt)
+    * - cantilever topology optimization
       -
       -
       -
