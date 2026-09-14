@@ -3,12 +3,10 @@
 
 """Tests for printing tiles."""
 
-import subprocess
-import sys
 import unittest
 
 import warp as wp
-from warp.tests.unittest_utils import add_function_test, get_test_devices
+from warp.tests.unittest_utils import add_function_test, get_test_devices, run_python_subprocess
 
 
 @wp.kernel(enable_backward=False)
@@ -44,17 +42,11 @@ def _run_register_tile_cpu_blocks(mode):
 
 class TestTilePrint(unittest.TestCase):
     def test_register_tile_cpu_blocks(self):
-        result = subprocess.run(
-            [
-                sys.executable,
-                "-c",
-                "import sys; import warp.tests.tile.test_tile_print as m; m._run_register_tile_cpu_blocks(sys.argv[1])",
-                wp.config.mode,
-            ],
-            check=False,
-            capture_output=True,
-            text=True,
+        result = run_python_subprocess(
+            "import sys; import warp.tests.tile.test_tile_print as m; m._run_register_tile_cpu_blocks(sys.argv[1])",
+            wp.config.mode,
             timeout=60,
+            hide_gpu=True,
         )
         self.assertEqual(result.returncode, 0, f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}")
         self.assertIn("[1 2 3 4 5 6 7 8] = tile(shape=(8), storage=register)", result.stdout)

@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-import subprocess
 import sys
 import unittest
 from functools import cache
@@ -3667,18 +3666,12 @@ def _run_runtime_zero_step_subprocess(device_alias: str, timeout: int = 120):
     CPU execution aborts, while CUDA execution leaves the context unusable
     after trapping.
     """
-    return subprocess.run(
-        [
-            sys.executable,
-            "-c",
-            "import sys; from warp.tests.test_array import _trigger_runtime_zero_step; "
-            "_trigger_runtime_zero_step(sys.argv[1])",
-            device_alias,
-        ],
-        check=False,
-        capture_output=True,
-        text=True,
+    return run_python_subprocess(
+        "import sys; from warp.tests.test_array import _trigger_runtime_zero_step; "
+        "_trigger_runtime_zero_step(sys.argv[1])",
+        device_alias,
         timeout=timeout,
+        hide_gpu=device_alias == "cpu",
     )
 
 
@@ -3688,10 +3681,9 @@ def test_array_runtime_zero_step(test, device):
     Run each case in a subprocess because the CPU path aborts and the CUDA
     path leaves the context unusable after trapping.
     """
-    if sys.platform == "win32":
+    if sys.platform == "win32" and device.is_cuda:
         test.skipTest(
-            "Skip on Windows because the intentional host abort or CUDA trap may destabilize QA hosts, which cannot "
-            "be identified reliably."
+            "Skip on Windows because the intentional CUDA trap may destabilize release-qualification systems."
         )
 
     result = _run_runtime_zero_step_subprocess(device.alias)

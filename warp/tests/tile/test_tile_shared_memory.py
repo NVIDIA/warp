@@ -4,8 +4,6 @@
 import contextlib
 import io
 import re
-import subprocess
-import sys
 import unittest
 import warnings
 from unittest import mock
@@ -45,16 +43,10 @@ def _run_oversize_cpu_shared_memory():
 
 
 def test_tile_shared_mem_cpu_limit(test, device):
-    result = subprocess.run(
-        [
-            sys.executable,
-            "-c",
-            "import warp.tests.tile.test_tile_shared_memory as m; m._run_oversize_cpu_shared_memory()",
-        ],
-        check=False,
-        capture_output=True,
-        text=True,
+    result = run_python_subprocess(
+        "import warp.tests.tile.test_tile_shared_memory as m; m._run_oversize_cpu_shared_memory()",
         timeout=60,
+        hide_gpu=True,
     )
     test.assertNotEqual(result.returncode, 0, "oversized CPU tile shared-memory allocation unexpectedly succeeded")
     test.assertIn("exceeds the 256 KiB arena", result.stderr)

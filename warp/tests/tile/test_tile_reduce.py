@@ -1,8 +1,6 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-import subprocess
-import sys
 import unittest
 
 import numpy as np
@@ -1093,16 +1091,10 @@ def _run_tile_reduce_axis_empty_custom_slices():
 
 
 def test_tile_reduce_axis_empty_custom_slices(test, device):
-    result = subprocess.run(
-        [
-            sys.executable,
-            "-c",
-            "import warp.tests.tile.test_tile_reduce as m; m._run_tile_reduce_axis_empty_custom_slices()",
-        ],
-        check=False,
-        capture_output=True,
-        text=True,
+    result = run_python_subprocess(
+        "import warp.tests.tile.test_tile_reduce as m; m._run_tile_reduce_axis_empty_custom_slices()",
         timeout=120,
+        hide_gpu=True,
     )
     test.assertNotEqual(result.returncode, 0, "empty custom axis reduction unexpectedly succeeded")
     test.assertIn("operator has no declared identity", result.stderr)

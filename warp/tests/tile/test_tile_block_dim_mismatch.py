@@ -3,13 +3,12 @@
 
 """Regression coverage for indexing a thread tile by its logical lane."""
 
-import subprocess
-import sys
 import unittest
 
 import numpy as np
 
 import warp as wp
+from warp.tests.unittest_utils import run_python_subprocess
 
 
 def _run_block_dim_mismatch(mode):
@@ -32,18 +31,12 @@ def _run_block_dim_mismatch(mode):
 
 class TestTileBlockDimMismatch(unittest.TestCase):
     def test_thread_tile_uses_logical_block_dimension(self):
-        result = subprocess.run(
-            [
-                sys.executable,
-                "-c",
-                "import sys; import warp.tests.tile.test_tile_block_dim_mismatch as m; "
-                "m._run_block_dim_mismatch(sys.argv[1])",
-                wp.config.mode,
-            ],
-            check=False,
-            capture_output=True,
-            text=True,
+        result = run_python_subprocess(
+            "import sys; import warp.tests.tile.test_tile_block_dim_mismatch as m; "
+            "m._run_block_dim_mismatch(sys.argv[1])",
+            wp.config.mode,
             timeout=60,
+            hide_gpu=True,
         )
         self.assertEqual(result.returncode, 0, f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}")
         self.assertIn("BLOCK_DIM_MISMATCH_OK", result.stdout)

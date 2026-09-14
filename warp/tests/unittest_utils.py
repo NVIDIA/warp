@@ -16,6 +16,7 @@ import tempfile
 import time
 import unittest
 import xml.etree.ElementTree as ET
+from collections.abc import Mapping
 
 
 def _normalize_direct_test_sys_path():
@@ -382,11 +383,87 @@ def assert_np_equal(result: np.ndarray, expect: np.ndarray, tol=0.0):
         np.testing.assert_array_equal(result, expect)
 
 
-def run_test_in_subprocess(test: unittest.TestCase, timeout: int = 600) -> bool:
-    """Run the current test in a child interpreter.
+def run_python_subprocess(
+    source: str,
+    *args: str,
+    timeout: float = 60,
+    hide_gpu: bool = False,
+    env_updates: Mapping[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
+    """Run Python source in a child interpreter with test-safe process settings.
 
-    Returns ``True`` in the parent after the child passes and ``False`` in the
-    child so the caller can execute the test body there.
+    Use this helper when the child process's exit status or output is part of
+    the test assertion. Use ``run_test_in_subprocess()`` instead when a test
+    simply needs an isolated interpreter and is expected to pass.
+
+    Crash dump collection is suppressed before ``source`` imports Warp: POSIX
+    core dumps are disabled, while Windows Error Reporting is configured not to
+    collect expected child-process failures. Set ``hide_gpu`` for CPU-only
+    children so they do not enumerate CUDA devices or create CUDA contexts.
+
+    Args:
+        source: Python source passed to the child interpreter with ``-c``.
+        *args: Arguments exposed to ``source`` through ``sys.argv[1:]``.
+        timeout: Maximum number of seconds to wait for the child.
+        hide_gpu: Whether to hide GPUs from the child by setting
+            ``CUDA_VISIBLE_DEVICES`` to an empty string.
+        env_updates: Environment variables to add or replace in the inherited
+            child environment.
+
+    Returns:
+        The completed child process with captured text output.
+    """
+    env = os.environ.copy()
+    if env_updates:
+        env.update(env_updates)
+    if hide_gpu:
+        env["CUDA_VISIBLE_DEVICES"] = ""
+
+    if sys.platform == "win32":
+        source = (
+            "import ctypes as _ctypes;"
+            "_SEM_FAILCRITICALERRORS=0x0001;"
+            "_SEM_NOGPFAULTERRORBOX=0x0002;"
+            "_ctypes.windll.kernel32.SetErrorMode(_SEM_FAILCRITICALERRORS | _SEM_NOGPFAULTERRORBOX);\n"
+            f"{source}"
+        )
+    elif os.name == "posix":
+        source = f"import resource as _resource; _resource.setrlimit(_resource.RLIMIT_CORE, (0, 0));\n{source}"
+
+    return subprocess.run(
+        [sys.executable, "-u", "-c", source, *args],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+        env=env,
+    )
+
+
+def run_test_in_subprocess(
+    test: unittest.TestCase,
+    *,
+    timeout: float = 600,
+    hide_gpu: bool = False,
+    env_updates: Mapping[str, str] | None = None,
+) -> bool:
+    """Run an expected-to-pass test in an isolated child interpreter.
+
+    Call this at the start of a test and return from the test when it returns
+    ``True``. Use ``run_python_subprocess()`` instead when the child is expected
+    to fail or when its output is part of the assertion.
+
+    Args:
+        test: The current test case.
+        timeout: Maximum number of seconds to wait for the child.
+        hide_gpu: Whether to hide GPUs from the child by setting
+            ``CUDA_VISIBLE_DEVICES`` to an empty string.
+        env_updates: Environment variables to add or replace in the inherited
+            child environment.
+
+    Returns:
+        ``True`` in the parent after the child passes and ``False`` in the child
+        so the caller can execute the test body there.
     """
 
     test_id = test.id()
@@ -394,15 +471,14 @@ def run_test_in_subprocess(test: unittest.TestCase, timeout: int = 600) -> bool:
     if os.environ.get(isolation_env) == test_id:
         return False
 
-    env = os.environ.copy()
-    env[isolation_env] = test_id
-    result = subprocess.run(
-        [sys.executable, "-m", "unittest", test_id],
-        check=False,
-        capture_output=True,
-        text=True,
+    child_env_updates = dict(env_updates or {})
+    child_env_updates[isolation_env] = test_id
+    result = run_python_subprocess(
+        "import unittest as _unittest; _unittest.main(module=None)",
+        test_id,
         timeout=timeout,
-        env=env,
+        hide_gpu=hide_gpu,
+        env_updates=child_env_updates,
     )
     if result.returncode != 0:
         test.fail(

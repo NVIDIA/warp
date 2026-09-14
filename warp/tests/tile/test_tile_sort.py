@@ -1,8 +1,6 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-import subprocess
-import sys
 import unittest
 
 import numpy as np
@@ -142,12 +140,10 @@ def _run_large_cpu_tile_sort():
 
 def test_tile_sort_heap_backed_cpu(test, device):
     """Sort 2,049 elements through the CPU heap-backed radix path."""
-    result = subprocess.run(
-        [sys.executable, "-u", "-c", "import warp.tests.tile.test_tile_sort as m; m._run_large_cpu_tile_sort()"],
-        check=False,
-        capture_output=True,
-        text=True,
+    result = run_python_subprocess(
+        "import warp.tests.tile.test_tile_sort as m; m._run_large_cpu_tile_sort()",
         timeout=120,
+        hide_gpu=True,
     )
     test.assertEqual(
         result.returncode,
@@ -279,17 +275,10 @@ def test_tile_sort_surviving_lane(test, device):
 
 def test_tile_sort_surviving_lane_heap_backed_cpu(test, device):
     """Sort 2,049 elements after lane zero exits the CPU block."""
-    result = subprocess.run(
-        [
-            sys.executable,
-            "-u",
-            "-c",
-            "import warp.tests.tile.test_tile_sort as m; m._run_surviving_lane_cpu_tile_sort(2049); print('ok')",
-        ],
-        check=False,
-        capture_output=True,
-        text=True,
+    result = run_python_subprocess(
+        "import warp.tests.tile.test_tile_sort as m; m._run_surviving_lane_cpu_tile_sort(2049); print('ok')",
         timeout=120,
+        hide_gpu=True,
     )
     test.assertEqual(
         result.returncode,
