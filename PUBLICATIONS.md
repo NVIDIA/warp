@@ -7,6 +7,7 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 
 ## 2026
 
+- **ESG: Generating Physically Consistent Dynamic 3D Scenes from Text Descriptions**. *X. Fang, Z. Fang, R. Xie, X. Zhang, G. An, Z. Liu, J. Zhang, J. Guo, Y. Huo*. September 2026. [arXiv:2609.15392](https://arxiv.org/abs/2609.15392)
 - **Learning Terrain-Adaptive Humanoid Locomotion on Granular Terrain**. *J. Kamohara, F. Wu, A. N. Zong, D. I. Goldman, Y. Nakka, S. Hutchinson, Y. Zhao*. September 2026. [arXiv:2609.10286](https://arxiv.org/abs/2609.10286)
 - **InstantMimic: A High Performance System for Learning Physics-based Skills in Seconds**. *I. Choi, G. Leem, J. Won*. September 2026. [arXiv:2609.09821](https://arxiv.org/abs/2609.09821)
 - **Ostrich: Taking Large Strides Through Stiff Contact in Differentiable Dynamics**. *A. Kučera, K. Zimmermann*. September 2026. [arXiv:2609.08800](https://arxiv.org/abs/2609.08800)
