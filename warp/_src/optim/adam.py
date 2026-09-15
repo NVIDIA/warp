@@ -155,6 +155,8 @@ class Adam:
         """
         if self.params is None:
             raise RuntimeError("Adam parameters must be set before calling step(), got None")
+        if len(grad) != len(self.params):
+            raise ValueError(f"Expected {len(self.params)} gradient arrays, got {len(grad)}")
         for i in range(len(self.params)):
             Adam.step_detail(
                 grad[i], self.m[i], self.v[i], self.lr, self.beta1, self.beta2, self.t, self.eps, self.params[i]
@@ -182,6 +184,23 @@ class Adam:
             )
         if params.shape != g.shape:
             raise ValueError(f"Adam gradient shape must match parameter shape {params.shape}, got {g.shape}")
+        if m is None:
+            raise ValueError("A first-moment buffer is required")
+        if v is None:
+            raise ValueError("A second-moment buffer is required")
+        expected_moment_dtype = wp.float32 if params.dtype == wp.float16 else params.dtype
+        if m.dtype != expected_moment_dtype:
+            raise TypeError(
+                f"Adam first-moment dtype must match {type_repr(expected_moment_dtype)}, got {type_repr(m.dtype)}"
+            )
+        if m.shape != params.shape:
+            raise ValueError(f"Adam first-moment shape must match parameter shape {params.shape}, got {m.shape}")
+        if v.dtype != expected_moment_dtype:
+            raise TypeError(
+                f"Adam second-moment dtype must match {type_repr(expected_moment_dtype)}, got {type_repr(v.dtype)}"
+            )
+        if v.shape != params.shape:
+            raise ValueError(f"Adam second-moment shape must match parameter shape {params.shape}, got {v.shape}")
         kernel_inputs = [g, m, v, lr, beta1, beta2, t, eps, params]
         if params.dtype == wp._src.types.float32:
             wp.launch(
