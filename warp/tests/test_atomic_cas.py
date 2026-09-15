@@ -269,13 +269,9 @@ def test_atomic_cas_4d(test, device, dtype, register_kernels=False):
     assert_np_equal(counter_np, expected)
 
 
-# Every test in this module runs a spinlock: one thread wins the CAS and the rest
-# spin until it releases the lock. That terminates only where threads of a warp make
-# independent forward progress, which CUDA guarantees from Volta (sm_70) onward.
-# Under the older reconvergence model the winning thread cannot leave the loop until
-# every thread leaves it, so the lock is never released and the kernel deadlocks.
-# That hangs the runner at zero CPU rather than failing an assertion, so these tests
-# have to be excluded rather than left to fail.
+# Pre-Volta CUDA does not provide independent thread scheduling, so a
+# spinlock contended by lanes in the same warp can deadlock. CPU launches
+# remain covered because Warp executes these kernels serially by default.
 devices = [d for d in get_test_devices() if not d.is_cuda or d.arch >= 70]
 
 
