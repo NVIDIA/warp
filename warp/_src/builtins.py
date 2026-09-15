@@ -12813,9 +12813,9 @@ add_builtin(
             each level used in the blend. The ``lod`` argument is ignored for textures created with a single mip level.
 
     Returns:
-        The sampled value of the specified ``dtype``. The CPU backend normalizes unsigned integer
-        data to ``[0, 1]`` and signed integer data to ``[-1, 1]``. On CUDA devices, normalized
-        integer sampling is supported only for 8- and 16-bit formats; use an 8- or 16-bit integer
+        The sampled value of the specified ``dtype``. The backends normalize unsigned 8- and 16-bit
+        integer data to ``[0, 1]`` and signed 8- and 16-bit integer data to ``[-1, 1]``. Sampling an
+        ``int32`` or ``uint32`` texture causes kernel execution to fail; use an 8- or 16-bit integer
         or floating-point texture. Floating-point texture data is returned as ``float32`` channel
         values without normalization.
 
@@ -12910,9 +12910,9 @@ add_builtin(
             each level used in the blend. The ``lod`` argument is ignored for textures created with a single mip level.
 
     Returns:
-        The sampled value of the specified ``dtype``. The CPU backend normalizes unsigned integer
-        data to ``[0, 1]`` and signed integer data to ``[-1, 1]``. On CUDA devices, normalized
-        integer sampling is supported only for 8- and 16-bit formats; use an 8- or 16-bit integer
+        The sampled value of the specified ``dtype``. The backends normalize unsigned 8- and 16-bit
+        integer data to ``[0, 1]`` and signed 8- and 16-bit integer data to ``[-1, 1]``. Sampling an
+        ``int32`` or ``uint32`` texture causes kernel execution to fail; use an 8- or 16-bit integer
         or floating-point texture. Floating-point texture data is returned as ``float32`` channel
         values without normalization.
 
@@ -12962,9 +12962,9 @@ add_builtin(
             each level used in the blend. The ``lod`` argument is ignored for textures created with a single mip level.
 
     Returns:
-        The sampled value of the specified ``dtype``. The CPU backend normalizes unsigned integer
-        data to ``[0, 1]`` and signed integer data to ``[-1, 1]``. On CUDA devices, normalized
-        integer sampling is supported only for 8- and 16-bit formats; use an 8- or 16-bit integer
+        The sampled value of the specified ``dtype``. The backends normalize unsigned 8- and 16-bit
+        integer data to ``[0, 1]`` and signed 8- and 16-bit integer data to ``[-1, 1]``. Sampling an
+        ``int32`` or ``uint32`` texture causes kernel execution to fail; use an 8- or 16-bit integer
         or floating-point texture. Floating-point texture data is returned as ``float32`` channel
         values without normalization.
 
@@ -13031,9 +13031,9 @@ add_builtin(
             each level used in the blend. The ``lod`` argument is ignored for textures created with a single mip level.
 
     Returns:
-        The sampled value of the specified ``dtype``. The CPU backend normalizes unsigned integer
-        data to ``[0, 1]`` and signed integer data to ``[-1, 1]``. On CUDA devices, normalized
-        integer sampling is supported only for 8- and 16-bit formats; use an 8- or 16-bit integer
+        The sampled value of the specified ``dtype``. The backends normalize unsigned 8- and 16-bit
+        integer data to ``[0, 1]`` and signed 8- and 16-bit integer data to ``[-1, 1]``. Sampling an
+        ``int32`` or ``uint32`` texture causes kernel execution to fail; use an 8- or 16-bit integer
         or floating-point texture. Floating-point texture data is returned as ``float32`` channel
         values without normalization.
 
@@ -13086,9 +13086,9 @@ add_builtin(
             each level used in the blend. The ``lod`` argument is ignored for textures created with a single mip level.
 
     Returns:
-        The sampled value of the specified ``dtype``. The CPU backend normalizes unsigned integer
-        data to ``[0, 1]`` and signed integer data to ``[-1, 1]``. On CUDA devices, normalized
-        integer sampling is supported only for 8- and 16-bit formats; use an 8- or 16-bit integer
+        The sampled value of the specified ``dtype``. The backends normalize unsigned 8- and 16-bit
+        integer data to ``[0, 1]`` and signed 8- and 16-bit integer data to ``[-1, 1]``. Sampling an
+        ``int32`` or ``uint32`` texture causes kernel execution to fail; use an 8- or 16-bit integer
         or floating-point texture. Floating-point texture data is returned as ``float32`` channel
         values without normalization.
 

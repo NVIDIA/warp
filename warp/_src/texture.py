@@ -84,12 +84,14 @@ class texture1d_t(ctypes.Structure):
         ("tex", ctypes.c_uint64),
         ("width", ctypes.c_int32),
         ("num_channels", ctypes.c_int32),
+        ("dtype", ctypes.c_int32),
     )
 
-    def __init__(self, tex=0, width=0, num_channels=0):
+    def __init__(self, tex=0, width=0, num_channels=0, dtype=0):
         self.tex = tex
         self.width = width
         self.num_channels = num_channels
+        self.dtype = dtype
 
 
 class texture2d_t(ctypes.Structure):
@@ -103,13 +105,15 @@ class texture2d_t(ctypes.Structure):
         ("width", ctypes.c_int32),
         ("height", ctypes.c_int32),
         ("num_channels", ctypes.c_int32),
+        ("dtype", ctypes.c_int32),
     )
 
-    def __init__(self, tex=0, width=0, height=0, num_channels=0):
+    def __init__(self, tex=0, width=0, height=0, num_channels=0, dtype=0):
         self.tex = tex
         self.width = width
         self.height = height
         self.num_channels = num_channels
+        self.dtype = dtype
 
 
 class texture3d_t(ctypes.Structure):
@@ -124,14 +128,16 @@ class texture3d_t(ctypes.Structure):
         ("height", ctypes.c_int32),
         ("depth", ctypes.c_int32),
         ("num_channels", ctypes.c_int32),
+        ("dtype", ctypes.c_int32),
     )
 
-    def __init__(self, tex=0, width=0, height=0, depth=0, num_channels=0):
+    def __init__(self, tex=0, width=0, height=0, depth=0, num_channels=0, dtype=0):
         self.tex = tex
         self.width = width
         self.height = height
         self.depth = depth
         self.num_channels = num_channels
+        self.dtype = dtype
 
 
 class cuda_array_desc_t(ctypes.Structure):
@@ -165,10 +171,11 @@ class Texture:
     linear/bilinear/trilinear interpolation and various addressing modes (wrap, clamp, mirror, border).
 
     Supports ``wp.uint8``, ``wp.uint16``, ``wp.uint32``, ``wp.int8``, ``wp.int16``, ``wp.int32``,
-    ``wp.float16``, and ``wp.float32`` data types. Unsigned integer textures are read as normalized
-    floats in [0, 1]; signed integer textures are normalized to [-1, 1]; float types are returned as-is.
-    On CUDA devices, normalized integer sampling is supported only for 8- and 16-bit formats.
-    Use an 8- or 16-bit integer or floating-point format when sampling textures on CUDA.
+    ``wp.float16``, and ``wp.float32`` data types. Unsigned 8- and 16-bit integer textures are read
+    as normalized floats in [0, 1]; signed 8- and 16-bit integer textures are normalized to [-1, 1];
+    float types are returned as-is. Sampling a ``wp.uint32`` or ``wp.int32`` texture causes kernel
+    execution to fail, but these dtypes remain usable for storage, copies, and interop; see
+    :func:`~warp.texture_sample`.
 
     This class should not be instantiated directly. A specific subclass should be used instead
     (:class:`Texture1D`, :class:`Texture2D`, or :class:`Texture3D`).
@@ -229,6 +236,7 @@ class Texture:
                 For 3D: shape ``(depth, height, width)`` or ``(depth, height, width, num_channels)``.
                 Supported dtypes: ``wp.uint8``, ``wp.uint16``, ``wp.uint32``,
                 ``wp.int8``, ``wp.int16``, ``wp.int32``, ``wp.float16``, ``wp.float32``.
+                ``wp.uint32`` and ``wp.int32`` data can be stored and copied but not sampled.
             width: Texture width (required if ``data`` is ``None``).
             height: Texture height (required if ``data`` is ``None``).
             depth: Texture depth (required if ``data`` is ``None`` for 3D textures).
@@ -1190,7 +1198,7 @@ class Texture1D(Texture):
         """Return the ctypes structure for passing to kernels."""
         if self._tex_handle == 0:
             raise RuntimeError("Texture was created with data=None but never initialized.")
-        return texture1d_t(self._tex_handle, self._width, self._num_channels)
+        return texture1d_t(self._tex_handle, self._width, self._num_channels, self._dtype_code)
 
 
 class Texture2D(Texture):
@@ -1271,7 +1279,7 @@ class Texture2D(Texture):
         """Return the ctypes structure for passing to kernels."""
         if self._tex_handle == 0:
             raise RuntimeError("Texture was created with data=None but never initialized.")
-        return texture2d_t(self._tex_handle, self._width, self._height, self._num_channels)
+        return texture2d_t(self._tex_handle, self._width, self._height, self._num_channels, self._dtype_code)
 
 
 class Texture3D(Texture):
@@ -1356,7 +1364,9 @@ class Texture3D(Texture):
         """Return the ctypes structure for passing to kernels."""
         if self._tex_handle == 0:
             raise RuntimeError("Texture was created with data=None but never initialized.")
-        return texture3d_t(self._tex_handle, self._width, self._height, self._depth, self._num_channels)
+        return texture3d_t(
+            self._tex_handle, self._width, self._height, self._depth, self._num_channels, self._dtype_code
+        )
 
 
 class TextureResourceFlags(enum.IntEnum):

@@ -3,12 +3,18 @@
 
 """Unit tests for 1D, 2D, and 3D texture functionality on both CPU and CUDA devices."""
 
+import sys
 import unittest
 
 import numpy as np
 
 import warp as wp
-from warp.tests.unittest_utils import add_function_test, get_selected_cuda_test_devices, get_test_devices
+from warp.tests.unittest_utils import (
+    add_function_test,
+    get_selected_cuda_test_devices,
+    get_test_devices,
+    run_python_subprocess,
+)
 
 # ============================================================================
 # 1D Texture Kernels
@@ -2873,6 +2879,176 @@ def test_texture_mipmap_invalid_levels(test, device):
 
 
 # ============================================================================
+# 32-bit Integer Texture Tests
+# ============================================================================
+
+
+@wp.kernel
+def query_texture2d_resolution(
+    tex: wp.Texture2D,
+    output: wp.array[wp.int32],
+):
+    """Read a 2D texture's resolution without sampling it."""
+    output[0] = tex.width
+    output[1] = tex.height
+
+
+def _trigger_texture_sample_32bit_int(device_alias: str, route: str, dtype_name: str):
+    """Trigger a 32-bit integer texture sample on the requested device."""
+    np_dtype = np.uint32 if dtype_name == "uint32" else np.int32
+
+    with wp.ScopedDevice(device_alias):
+        if route == "1d":
+            tex = wp.Texture1D(np.array([1000, 2000, 3000, 4000], dtype=np_dtype))
+            output = wp.empty(4, dtype=float)
+            wp.launch(sample_texture1d_f_at_centers, dim=4, inputs=[tex, output, 4])
+        elif route == "2d":
+            tex = wp.Texture2D(np.array([[1000, 2000], [3000, 4000]], dtype=np_dtype))
+            output = wp.empty(4, dtype=float)
+            wp.launch(sample_texture2d_f_at_centers, dim=4, inputs=[tex, output, 2, 2])
+        elif route == "3d":
+            tex = wp.Texture3D((np.arange(8, dtype=np_dtype) * 1000).reshape(2, 2, 2))
+            output = wp.empty(8, dtype=float)
+            wp.launch(sample_texture3d_f_at_centers, dim=8, inputs=[tex, output, 2, 2, 2])
+        elif route == "struct":
+            tex = wp.Texture2D(np.array([[1000, 2000], [3000, 4000]], dtype=np_dtype))
+            s = TextureStruct2D()
+            s.tex = tex
+            s.scale = 2.0
+            output = wp.empty(1, dtype=float)
+            wp.launch(sample_texture2d_from_struct, dim=1, inputs=[s, wp.vec2f(0.5, 0.5), output])
+        elif route == "array":
+            tex = wp.Texture2D(np.array([[1000, 2000], [3000, 4000]], dtype=np_dtype))
+            textures = wp.array([tex], dtype=wp.Texture2D)
+            output_base = wp.empty(1, dtype=float)
+            output_lod = wp.empty(1, dtype=float)
+            wp.launch(
+                sample_texture2d_array_kernels[0],
+                dim=1,
+                inputs=[textures, wp.vec2f(0.5, 0.5), output_base, output_lod],
+            )
+        else:
+            raise ValueError(f"Unknown texture route: {route}")
+
+        wp.synchronize_device()
+
+
+def test_texture_sample_rejects_32bit_int(test, device):
+    """Reject 32-bit integer texture samples with a fatal diagnostic.
+
+    Run each case in a subprocess because the CPU path aborts and the CUDA path leaves its
+    context unusable after trapping.
+    """
+    if sys.platform == "win32":
+        test.skipTest("Skip intentional host aborts and CUDA traps on Windows QA hosts.")
+
+    cases = (
+        ("1d", "uint32"),
+        ("2d", "uint32"),
+        ("3d", "uint32"),
+        ("2d", "int32"),
+        ("struct", "uint32"),
+        ("array", "uint32"),
+    )
+    for route, dtype_name in cases:
+        with test.subTest(route=route, dtype=dtype_name):
+            result = run_python_subprocess(
+                "import sys; "
+                "from warp.tests.cuda.test_texture import _trigger_texture_sample_32bit_int; "
+                "_trigger_texture_sample_32bit_int(*sys.argv[1:])",
+                device.alias,
+                route,
+                dtype_name,
+                timeout=120,
+                hide_gpu=device.alias == "cpu",
+            )
+            output = result.stdout + result.stderr
+            test.assertRegex(output, r"texture_sample\(\) does not support 32-bit integer textures")
+            if device.is_cuda:
+                test.assertRegex(output, r"Warp CUDA error")
+            else:
+                test.assertNotEqual(result.returncode, 0)
+
+
+def test_texture_32bit_int_non_sampling_kernel(test, device):
+    """Keep non-sampling kernels usable with 32-bit integer textures.
+
+    Resolution queries read fields of the kernel-facing texture struct without sampling, so
+    they are unaffected by the dtype. This guards against the refusal being applied at the
+    kernel boundary instead of at the sample site, which would break this use.
+    """
+    data = np.zeros((4, 8), dtype=np.uint32)
+    tex = wp.Texture2D(data, device=device)
+
+    output = wp.zeros(2, dtype=wp.int32, device=device)
+    wp.launch(query_texture2d_resolution, dim=1, inputs=[tex, output], device=device)
+
+    np.testing.assert_array_equal(output.numpy(), np.array([8, 4], dtype=np.int32))
+
+
+def test_texture_sample_allows_small_int_dtypes(test, device):
+    """Preserve sampling for dtypes that CUDA promotes.
+
+    An over-broad rejection (for example one that also caught ``int16``) would break these. Each
+    case samples texel (1, 0) of a 2x2 texture with point filtering and checks the documented
+    normalization: unsigned integers map to ``value / (2**n - 1)``, signed integers to
+    ``value / (2**(n - 1) - 1)``, floats pass through.
+    """
+    uvs = wp.array(np.array([[0.75, 0.25]], dtype=np.float32), dtype=wp.vec2f, device=device)
+
+    cases = (
+        (np.uint8, wp.uint8, np.array([[0, 128], [64, 255]], dtype=np.uint8), 128.0 / 255.0),
+        (np.uint16, wp.uint16, np.array([[0, 32768], [16384, 65535]], dtype=np.uint16), 32768.0 / 65535.0),
+        (np.int8, wp.int8, np.array([[0, -64], [64, 127]], dtype=np.int8), -64.0 / 127.0),
+        (np.int16, wp.int16, np.array([[0, -16384], [16384, 32767]], dtype=np.int16), -16384.0 / 32767.0),
+        (np.float16, wp.float16, np.array([[0.0, 0.5], [0.25, 1.0]], dtype=np.float16), 0.5),
+        (np.float32, wp.float32, np.array([[0.0, 0.5], [0.25, 1.0]], dtype=np.float32), 0.5),
+    )
+
+    for _np_dtype, wp_dtype, data, expected in cases:
+        with test.subTest(dtype=wp_dtype.__name__):
+            tex = wp.Texture2D(
+                data,
+                filter_mode=wp.TextureFilterMode.CLOSEST,
+                address_mode=wp.TextureAddressMode.CLAMP,
+                device=device,
+            )
+            test.assertIs(tex.dtype, wp_dtype)
+
+            output = wp.zeros(1, dtype=float, device=device)
+            wp.launch(sample_texture2d_at_uv, dim=1, inputs=[tex, uvs, output], device=device)
+
+            # Tolerance covers float32 rounding of the normalization only.
+            np.testing.assert_allclose(output.numpy(), np.array([expected], dtype=np.float64), rtol=1e-6)
+
+
+def test_texture_uint32_storage_round_trip(test, device):
+    """Preserve 32-bit integer texture storage, copies, and interop.
+
+    Verify the capabilities that the sampling rejection deliberately preserves.
+    """
+    data = np.array([[1, 2, 3, 4], [5, 6, 7, 4294967295]], dtype=np.uint32)
+
+    tex = wp.Texture2D(data, device=device)
+    test.assertIs(tex.dtype, wp.uint32)
+
+    dst = wp.zeros(data.shape, dtype=wp.uint32, device=device)
+    tex.copy_to(dst)
+    np.testing.assert_array_equal(dst.numpy(), data)
+
+    if device.is_cuda:
+        # An external CUDA array reporting a 32-bit integer format must still be wrappable.
+        wrapped = wp.Texture2D(cuda_array=tex.cuda_array, device=device)
+        test.assertIs(wrapped.dtype, wp.uint32)
+        test.assertEqual(wrapped.width, data.shape[1])
+        test.assertEqual(wrapped.height, data.shape[0])
+
+        wrapped_dst = wp.zeros(data.shape, dtype=wp.uint32, device=device)
+        wrapped.copy_to(wrapped_dst)
+        np.testing.assert_array_equal(wrapped_dst.numpy(), data)
+
+
+# ============================================================================
 # Test Class
 # ============================================================================
 
@@ -3175,6 +3351,32 @@ add_function_test(
     TestTexture,
     "test_texture_mipmap_invalid_levels",
     test_texture_mipmap_invalid_levels,
+    devices=all_devices,
+)
+
+# 32-bit integer texture tests - run on all devices, since the point is that CPU and CUDA agree
+add_function_test(
+    TestTexture,
+    "test_texture_sample_rejects_32bit_int",
+    test_texture_sample_rejects_32bit_int,
+    devices=all_devices,
+)
+add_function_test(
+    TestTexture,
+    "test_texture_32bit_int_non_sampling_kernel",
+    test_texture_32bit_int_non_sampling_kernel,
+    devices=all_devices,
+)
+add_function_test(
+    TestTexture,
+    "test_texture_sample_allows_small_int_dtypes",
+    test_texture_sample_allows_small_int_dtypes,
+    devices=all_devices,
+)
+add_function_test(
+    TestTexture,
+    "test_texture_uint32_storage_round_trip",
+    test_texture_uint32_storage_round_trip,
     devices=all_devices,
 )
 
