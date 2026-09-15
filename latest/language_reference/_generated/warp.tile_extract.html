@@ -556,20 +556,51 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="warp._src.lang.tile_extract">
 <span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">tile_extract</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tile</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">i</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span><a class="headerlink" href="#warp._src.lang.tile_extract" title="Link to this definition">#</a></dt>
-<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Extract a single element from the tile.</p>
-<p>This function will extract an element from the tile and broadcast its value to all threads in the block.</p>
-<p>Note that this may incur additional synchronization if the source tile is a register tile.</p>
+<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Extract a single element from a tile.</p>
+<p>Each calling thread receives the element at the index it passes, so a block-uniform
+index gives every thread the same value while a per-thread index gives each thread its
+own element. The current implementation places <code class="docutils literal notranslate"><span class="pre">a</span></code> in shared memory before
+extraction, where it counts against the block’s shared-memory budget (see
+<a class="reference internal" href="../../user_guide/programming_model/tiles.html#tile-shared-memory-budget"><span class="std std-ref">Shared Memory Budget</span></a>).</p>
+<p>Pass one index per tile dimension to read the element itself. A tile of vectors
+accepts one extra index, which selects a scalar component. A tile of matrices accepts
+one extra index, which returns the corresponding row as a vector, or two, which select
+a scalar element.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>a</strong> – Tile to extract the element from</p></li>
-<li><p><strong>i</strong> – Coordinate of element on first dimension</p></li>
+<li><p><strong>a</strong> – Tile to extract the element from. All index arguments may be runtime values.</p></li>
+<li><p><strong>i</strong> – Index along the first dimension of <code class="docutils literal notranslate"><span class="pre">a</span></code>. May be a runtime value. It must be
+non-negative and less than that dimension’s extent.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The value of the element at the specified tile location with the same data type as the input tile.</p>
+<dd class="field-even"><p>The element at index <code class="docutils literal notranslate"><span class="pre">i</span></code> of a 1D tile, with the same data type as the tile’s
+elements.</p>
 </dd>
 </dl>
+<p class="rubric">Example</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">shift_right</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+    <span class="n">block</span><span class="p">,</span> <span class="n">lane</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+
+    <span class="c1"># the index is block-uniform and may differ between blocks</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_extract</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">block</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">lane</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">out</span><span class="p">[</span><span class="n">block</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+<span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span> <span class="o">*</span> <span class="mf">10.0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+<span class="n">out</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch_tiled</span><span class="p">(</span><span class="n">shift_right</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">],</span> <span class="n">block_dim</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[10. 20. 30. 40.]
+</pre></div>
+</div>
 </dd></dl>
 
 <dl class="py function">
@@ -583,19 +614,24 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span></dt>
-<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Extract a single element from the tile.</p>
-<p>This function will extract an element from the tile and broadcast its value to all threads in the block.</p>
-<p>Note that this may incur additional synchronization if the source tile is a register tile.</p>
+<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Extract a single element from a tile.</p>
+<p>Two-index overload: both indices select an element of a 2D tile, or <code class="docutils literal notranslate"><span class="pre">i</span></code> indexes a
+1D tile of vectors and <code class="docutils literal notranslate"><span class="pre">j</span></code> selects a component of that vector, or <code class="docutils literal notranslate"><span class="pre">i</span></code> indexes a
+1D tile of matrices and <code class="docutils literal notranslate"><span class="pre">j</span></code> selects a row of that
+matrix. See the one-index overload for the shared contract and a usage example.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>a</strong> – Tile to extract the element from</p></li>
-<li><p><strong>i</strong> – Coordinate of element on first dimension</p></li>
-<li><p><strong>j</strong> – Coordinate of element on the second dimension, or vector index</p></li>
+<li><p><strong>a</strong> – Tile to extract the element from. All index arguments may be runtime values.</p></li>
+<li><p><strong>i</strong> – Index along the first dimension</p></li>
+<li><p><strong>j</strong> – Index along the second dimension, or vector component index,
+or matrix row index</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The value of the element at the specified tile location with the same data type as the input tile.</p>
+<dd class="field-even"><p>The element at <code class="docutils literal notranslate"><span class="pre">(i,</span> <span class="pre">j)</span></code> of a 2D tile, with the same data type as the tile’s
+elements; the scalar component <code class="docutils literal notranslate"><span class="pre">j</span></code> of the vector element at <code class="docutils literal notranslate"><span class="pre">i</span></code>; or row <code class="docutils literal notranslate"><span class="pre">j</span></code>
+of the matrix element at <code class="docutils literal notranslate"><span class="pre">i</span></code>, as a vector.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -612,20 +648,25 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span></dt>
-<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Extract a single element from the tile.</p>
-<p>This function will extract an element from the tile and broadcast its value to all threads in the block.</p>
-<p>Note that this may incur additional synchronization if the source tile is a register tile.</p>
+<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Extract a single element from a tile.</p>
+<p>Three-index overload: the indices select an element of a 3D tile, a component from a
+2D tile of vectors, a row from a 2D tile of matrices, or an entry from a 1D tile of
+matrices. See the one-index overload for the
+shared contract and a usage example.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>a</strong> – Tile to extract the element from</p></li>
-<li><p><strong>i</strong> – Coordinate of element on first dimension</p></li>
-<li><p><strong>j</strong> – Coordinate of element on the second dimension, or first matrix index</p></li>
-<li><p><strong>k</strong> – Coordinate of element on the third dimension, or vector index, or second matrix index</p></li>
+<li><p><strong>a</strong> – Tile to extract the element from. All index arguments may be runtime values.</p></li>
+<li><p><strong>i</strong> – Index along the first dimension</p></li>
+<li><p><strong>j</strong> – Index along the second dimension, or first matrix index</p></li>
+<li><p><strong>k</strong> – Index along the third dimension, or vector index, or second
+matrix index</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The value of the element at the specified tile location with the same data type as the input tile.</p>
+<dd class="field-even"><p>The selected tile element, vector component, matrix row, or matrix entry. A matrix
+row is returned as a vector; a vector component or matrix entry is returned as a
+scalar.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -643,21 +684,26 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span></dt>
-<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Extract a single element from the tile.</p>
-<p>This function will extract an element from the tile and broadcast its value to all threads in the block.</p>
-<p>Note that this may incur additional synchronization if the source tile is a register tile.</p>
+<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Extract a single element from a tile.</p>
+<p>Four-index overload: the indices select an element of a 4D tile, a component from a
+3D tile of vectors, a row from a 3D tile of matrices, or an entry from a 2D tile of
+matrices. See the one-index overload for the shared
+contract and a usage example.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>a</strong> – Tile to extract the element from</p></li>
-<li><p><strong>i</strong> – Coordinate of element on first dimension</p></li>
-<li><p><strong>j</strong> – Coordinate of element on the second dimension</p></li>
-<li><p><strong>k</strong> – Coordinate of element on the third dimension, or first matrix index</p></li>
-<li><p><strong>l</strong> – Coordinate of element on the fourth dimension, or vector index, or second matrix index</p></li>
+<li><p><strong>a</strong> – Tile to extract the element from. All index arguments may be runtime values.</p></li>
+<li><p><strong>i</strong> – Index along the first dimension</p></li>
+<li><p><strong>j</strong> – Index along the second dimension</p></li>
+<li><p><strong>k</strong> – Index along the third dimension, or first matrix index</p></li>
+<li><p><strong>l</strong> – Index along the fourth dimension, or vector index, or second
+matrix index</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The value of the element at the specified tile location, with the same data type as the input tile.</p>
+<dd class="field-even"><p>The selected tile element, vector component, matrix row, or matrix entry. A matrix
+row is returned as a vector; a vector component or matrix entry is returned as a
+scalar.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -676,22 +722,26 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span></dt>
-<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Extract a single element from the tile.</p>
-<p>This function will extract an element from the tile and broadcast its value to all threads in the block.</p>
-<p>Note that this may incur additional synchronization if the source tile is a register tile.</p>
+<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Extract a single element from a tile.</p>
+<p>Five-index overload: the indices select an element of a 5D tile, a component from a
+4D tile of vectors, a row from a 4D tile of matrices, or an entry from a 3D tile of
+matrices. See the one-index overload for the
+shared contract and a usage example.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>a</strong> – Tile to extract the element from</p></li>
-<li><p><strong>i</strong> – Coordinate of element on first dimension</p></li>
-<li><p><strong>j</strong> – Coordinate of element on the second dimension</p></li>
-<li><p><strong>k</strong> – Coordinate of element on the third dimension</p></li>
-<li><p><strong>l</strong> – Coordinate of element on the fourth dimension, or first matrix index</p></li>
+<li><p><strong>a</strong> – Tile to extract the element from. All index arguments may be runtime values.</p></li>
+<li><p><strong>i</strong> – Index along the first dimension</p></li>
+<li><p><strong>j</strong> – Index along the second dimension</p></li>
+<li><p><strong>k</strong> – Index along the third dimension</p></li>
+<li><p><strong>l</strong> – Index along the fourth dimension, or first matrix index</p></li>
 <li><p><strong>m</strong> – Vector index, or second matrix index</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The value of the element at the specified tile location, with the same data type as the input tile.</p>
+<dd class="field-even"><p>The selected tile element, vector component, matrix row, or matrix entry. A matrix
+row is returned as a vector; a vector component or matrix entry is returned as a
+scalar.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -711,23 +761,25 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span></dt>
-<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Extract a single element from the tile.</p>
-<p>This function will extract an element from the tile and broadcast its value to all threads in the block.</p>
-<p>Note that this may incur additional synchronization if the source tile is a register tile.</p>
+<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Extract a single element from a tile.</p>
+<p>Six-index overload: the indices select an element of a 4D tile of matrices,
+followed by a row and a column index. See the one-index overload for the shared
+contract and a usage example.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>a</strong> – Tile to extract the element from</p></li>
-<li><p><strong>i</strong> – Coordinate of element on first dimension</p></li>
-<li><p><strong>j</strong> – Coordinate of element on the second dimension</p></li>
-<li><p><strong>k</strong> – Coordinate of element on the third dimension</p></li>
-<li><p><strong>l</strong> – Coordinate of element on the fourth dimension</p></li>
-<li><p><strong>m</strong> – Vector index, or first matrix index</p></li>
+<li><p><strong>i</strong> – Index along the first dimension</p></li>
+<li><p><strong>j</strong> – Index along the second dimension</p></li>
+<li><p><strong>k</strong> – Index along the third dimension</p></li>
+<li><p><strong>l</strong> – Index along the fourth dimension</p></li>
+<li><p><strong>m</strong> – First matrix index</p></li>
 <li><p><strong>n</strong> – Second matrix index</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The value of the element at the specified tile location, with the same data type as the input tile.</p>
+<dd class="field-even"><p>The scalar component <code class="docutils literal notranslate"><span class="pre">(m,</span> <span class="pre">n)</span></code> of the matrix element at the specified tile
+indices.</p>
 </dd>
 </dl>
 </dd></dl>

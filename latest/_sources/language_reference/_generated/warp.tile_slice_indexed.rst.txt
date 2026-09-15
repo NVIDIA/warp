@@ -10,11 +10,47 @@
 
    Gather elements of a tile along a single axis using a 1D tile of integer indices.
    
-   This lowers the advanced-indexing syntax ``t[indices, :]``, gathering elements of
-   ``t`` along one axis given by ``indices``. All other axes must be selected in full.
+   This implements the advanced-indexing syntax ``t[indices, :]``.
+   
+   The current implementation places the source and index tiles in shared memory, where
+   they count against the block's shared-memory budget (see
+   :ref:`tile_shared_memory_budget`).
+   
+   Unlike :func:`~warp.tile_view`, the result is a copy, so writing to it leaves ``t``
+   unchanged. Negative indices count from the end of the indexed axis
+   (``-1`` selects the last element); indices beyond either end are invalid. Indices may
+   repeat; duplicate indices accumulate their gradients atomically in the backward pass.
    
    :param t: Input tile to gather from
-   :param indices: A 1D tile of integer indices selecting elements along one axis
+   :param indices: Advanced-indexing subscript tuple. Exactly one entry must be a non-empty
+                   1D integer index tile; every other entry must be a full ``:`` slice. Trailing
+                   axes may be omitted.
    
-   :returns: A register tile whose extent along the indexed axis equals the number of indices.
+   :returns: A tile with the shape of ``t``, except along the gathered axis where the extent
+             equals the number of indices.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def gather_rows(a: wp.array2d[float], indices: wp.array[int], out: wp.array2d[float]):
+           t = wp.tile_load(a, shape=(4, 4))
+           i = wp.tile_load(indices, shape=3)
+   
+           wp.tile_store(out, t[i, :])
+   
+       a = wp.array(np.arange(1, 17, dtype=np.float32).reshape(4, 4), dtype=float)
+       indices = wp.array([3, 0, -1], dtype=int)
+       out = wp.zeros((3, 4), dtype=float)
+   
+       wp.launch_tiled(gather_rows, dim=1, inputs=[a, indices], outputs=[out], block_dim=8)
+   
+       print(out.numpy())
+   
+   .. testoutput::
+   
+       [[13. 14. 15. 16.]
+        [ 1.  2.  3.  4.]
+        [13. 14. 15. 16.]]
    

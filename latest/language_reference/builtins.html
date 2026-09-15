@@ -962,10 +962,10 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <td><p>Cooperatively compute the index of the minimum element in the tile using all threads in the block.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_assign.html#warp._src.lang.tile_assign" title="warp._src.lang.tile_assign"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_assign</span></code></a></p></td>
-<td><p>Assign a tile to a subrange of a destination tile.</p></td>
+<td><p>Copy a tile into a subrange of a destination tile.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_astype.html#warp._src.lang.tile_astype" title="warp._src.lang.tile_astype"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_astype</span></code></a></p></td>
-<td><p>Create a new tile with the same data as the input tile, but with a different data type.</p></td>
+<td><p>Return a tile converted to a different scalar type.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_atomic_add.html#warp._src.lang.tile_atomic_add" title="warp._src.lang.tile_atomic_add"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_atomic_add</span></code></a></p></td>
 <td><p>Atomically add a tile onto the array <code class="docutils literal notranslate"><span class="pre">a</span></code> and return the values it replaced.</p></td>
@@ -977,7 +977,7 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <td><p>Scale <code class="docutils literal notranslate"><span class="pre">src</span></code> by <code class="docutils literal notranslate"><span class="pre">alpha</span></code> and accumulate into <code class="docutils literal notranslate"><span class="pre">dest</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_broadcast.html#warp._src.lang.tile_broadcast" title="warp._src.lang.tile_broadcast"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_broadcast</span></code></a></p></td>
-<td><p>Broadcast a tile.</p></td>
+<td><p>Broadcast a tile to a larger shape.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_bvh_query_aabb.html#warp._src.lang.tile_bvh_query_aabb" title="warp._src.lang.tile_bvh_query_aabb"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_bvh_query_aabb</span></code></a></p></td>
 <td><p>Construct an axis-aligned bounding box query against a BVH object for thread-block parallel traversal.</p></td>
@@ -1010,7 +1010,7 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <td><p>Allocate a tile of uninitialized items.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_extract.html#warp._src.lang.tile_extract" title="warp._src.lang.tile_extract"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_extract</span></code></a></p></td>
-<td><p>Extract a single element from the tile.</p></td>
+<td><p>Extract a single element from a tile.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_fft.html#warp._src.lang.tile_fft" title="warp._src.lang.tile_fft"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_fft</span></code></a></p></td>
 <td><p>Compute the forward FFT along the last dimension of an N-D tile of data.</p></td>
@@ -1070,7 +1070,7 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <td><p>Apply a custom reduction operator across a tile.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_reshape.html#warp._src.lang.tile_reshape" title="warp._src.lang.tile_reshape"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_reshape</span></code></a></p></td>
-<td><p>Create a reshaped view of a tile with the same data.</p></td>
+<td><p>Return a view of a tile with a new shape.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_scan_exclusive.html#warp._src.lang.tile_scan_exclusive" title="warp._src.lang.tile_scan_exclusive"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_scan_exclusive</span></code></a></p></td>
 <td><p>Exclusive scan (prefix sum) across the tile.</p></td>
@@ -1097,7 +1097,7 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <td><p>Cooperatively sort the elements of two tiles in ascending order based on the keys, using all threads in the block.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_squeeze.html#warp._src.lang.tile_squeeze" title="warp._src.lang.tile_squeeze"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_squeeze</span></code></a></p></td>
-<td><p>Create a squeezed view of a tile with the same data.</p></td>
+<td><p>Return a view of a tile with dimensions of length one removed.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_stack.html#warp._src.lang.tile_stack" title="warp._src.lang.tile_stack"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_stack</span></code></a></p></td>
 <td><p>Allocate a cooperative thread-block stack in shared memory.</p></td>
@@ -1124,7 +1124,7 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <td><p>Cooperatively compute the sum of the tile elements.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_transpose.html#warp._src.lang.tile_transpose" title="warp._src.lang.tile_transpose"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_transpose</span></code></a></p></td>
-<td><p>Transpose a tile.</p></td>
+<td><p>Transpose a 2D tile.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_upper_solve.html#warp._src.lang.tile_upper_solve" title="warp._src.lang.tile_upper_solve"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_upper_solve</span></code></a></p></td>
 <td><p>Solve for <code class="docutils literal notranslate"><span class="pre">x</span></code> in <code class="docutils literal notranslate"><span class="pre">Ux</span> <span class="pre">=</span> <span class="pre">z</span></code>, where <code class="docutils literal notranslate"><span class="pre">U</span></code> is an upper triangular matrix.</p></td>
@@ -1133,7 +1133,7 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <td><p>Solve for <code class="docutils literal notranslate"><span class="pre">x</span></code> in <code class="docutils literal notranslate"><span class="pre">Ux</span> <span class="pre">=</span> <span class="pre">z</span></code>, where <code class="docutils literal notranslate"><span class="pre">U</span></code> is an upper triangular matrix by overwriting <code class="docutils literal notranslate"><span class="pre">z</span></code> with <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_view.html#warp._src.lang.tile_view" title="warp._src.lang.tile_view"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_view</span></code></a></p></td>
-<td><p>Extract a view of a tile.</p></td>
+<td><p>Return a view of a tile.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_zeros.html#warp._src.lang.tile_zeros" title="warp._src.lang.tile_zeros"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_zeros</span></code></a></p></td>
 <td><p>Allocate a tile of zero-initialized items.</p></td>

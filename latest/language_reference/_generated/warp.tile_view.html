@@ -564,24 +564,70 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tile</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#warp._src.lang.tile_view" title="Link to this definition">#</a></dt>
-<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="differentiable" data-wp-value="false"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li></ul><p>Extract a view of a tile.</p>
-<p><code class="docutils literal notranslate"><span class="pre">offset</span></code> may contain integer coordinates, in which case <code class="docutils literal notranslate"><span class="pre">shape</span></code> gives the
-returned tile shape. <code class="docutils literal notranslate"><span class="pre">offset</span></code> may also contain <code class="docutils literal notranslate"><span class="pre">slice</span></code> objects, in which
-case the returned shape is inferred from the slice bounds and <code class="docutils literal notranslate"><span class="pre">shape</span></code> must
-not be specified.</p>
+<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="differentiable" data-wp-value="false"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li></ul><p>Return a view of a tile.</p>
+<p>The view aliases the source tile: writing through it modifies <code class="docutils literal notranslate"><span class="pre">t</span></code>. Taking a view
+requires shared storage, but the view itself is non-owning and allocates no additional
+storage.</p>
+<p>Two forms are supported:</p>
+<ul class="simple">
+<li><p>When <code class="docutils literal notranslate"><span class="pre">shape</span></code> is omitted, entries in <code class="docutils literal notranslate"><span class="pre">offset</span></code> map from left to right to the
+dimensions of <code class="docutils literal notranslate"><span class="pre">t</span></code>. Integer entries select and remove dimensions; for example,
+<code class="docutils literal notranslate"><span class="pre">wp.tile_view(t,</span> <span class="pre">offset=(i,))</span></code> on an <code class="docutils literal notranslate"><span class="pre">(M,</span> <span class="pre">N)</span></code> tile returns row <code class="docutils literal notranslate"><span class="pre">i</span></code> with
+<code class="docutils literal notranslate"><span class="pre">shape=(N,)</span></code>. Python <code class="docutils literal notranslate"><span class="pre">slice</span></code> entries select ranges and retain dimensions, with
+each extent determined by its slice. Omitted trailing dimensions are retained in
+full. Tile subscript syntax such as <code class="docutils literal notranslate"><span class="pre">t[2:4,</span> <span class="pre">::-1]</span></code> produces this form.</p></li>
+<li><p>When <code class="docutils literal notranslate"><span class="pre">shape</span></code> is provided, <code class="docutils literal notranslate"><span class="pre">offset</span></code> gives the origin of a rectangular view and
+<code class="docutils literal notranslate"><span class="pre">shape</span></code> gives its extent. In this form, supplied <code class="docutils literal notranslate"><span class="pre">offset</span></code> entries must be
+integers; slices are not allowed.</p></li>
+</ul>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>t</strong> – Input tile to extract a subrange from</p></li>
-<li><p><strong>offset</strong> – Integer offsets or slices in the source tile</p></li>
-<li><p><strong>shape</strong> – Shape of the returned view for integer-only offsets</p></li>
+<li><p><strong>t</strong> – Input tile to take a view of</p></li>
+<li><p><strong>offset</strong> – Integer indices, Python <code class="docutils literal notranslate"><span class="pre">slice</span></code> objects, or a mix describing the part of
+<code class="docutils literal notranslate"><span class="pre">t</span></code> to view. Integer entries may be runtime values; constant integer entries
+must lie within the corresponding dimension of <code class="docutils literal notranslate"><span class="pre">t</span></code>. Runtime integer bounds
+are checked in debug mode; in all modes, out-of-range values are invalid.
+Slice bounds and steps must be compile-time constants; negative bounds and
+steps are supported. Use subscript syntax such as <code class="docutils literal notranslate"><span class="pre">t[-1,</span> <span class="pre">:]</span></code> for negative
+integer indexing.</p></li>
+<li><p><strong>shape</strong> – Extent of the view, with one entry per dimension of <code class="docutils literal notranslate"><span class="pre">t</span></code>. Entries must be
+compile-time constants, and for every dimension <code class="docutils literal notranslate"><span class="pre">d</span></code>,
+<code class="docutils literal notranslate"><span class="pre">offset[d]</span> <span class="pre">+</span> <span class="pre">shape[d]</span></code> must not exceed <code class="docutils literal notranslate"><span class="pre">t.shape[d]</span></code>. Only valid when
+<code class="docutils literal notranslate"><span class="pre">offset</span></code> contains no slices.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>A tile view with dimensions given by <code class="docutils literal notranslate"><span class="pre">shape</span></code>, the remaining source tile
-dimensions, or the inferred slice extents.</p>
+<dd class="field-even"><p>A non-owning tile that aliases <code class="docutils literal notranslate"><span class="pre">t</span></code>, with dimensions given by <code class="docutils literal notranslate"><span class="pre">shape</span></code>, by the
+inferred slice extents, or by the source dimensions that <code class="docutils literal notranslate"><span class="pre">offset</span></code> did not name.</p>
 </dd>
 </dl>
+<p class="rubric">Example</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">replace_rows</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array2d</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array2d</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+
+    <span class="c1"># the view aliases t, so writing through it updates t</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_view</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+    <span class="n">values</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_arange</span><span class="p">(</span><span class="mf">100.0</span><span class="p">,</span> <span class="mf">108.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_assign</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_reshape</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">)))</span>
+
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>
+
+<span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+<span class="n">out</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch_tiled</span><span class="p">(</span><span class="n">replace_rows</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">],</span> <span class="n">block_dim</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[[  0.   1.   2.   3.]
+ [  4.   5.   6.   7.]
+ [100. 101. 102. 103.]
+ [104. 105. 106. 107.]]
+</pre></div>
+</div>
 </dd></dl>
 
 </section>

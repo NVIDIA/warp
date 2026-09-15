@@ -8,10 +8,38 @@
       :python: false
       :differentiable: true
 
-   Create a new tile with the same data as the input tile, but with a different data type.
+   Return a tile converted to a different scalar type.
    
-   :param t: Input tile
-   :param dtype: New data type for the tile
+   Floating-point values converted to integers are truncated toward zero when the
+   truncated value is representable by the destination type.
    
-   :returns: A tile with the same data as the input tile, but with a different data type.
+   Gradients only propagate when both the source and destination types are
+   floating-point; a conversion involving an integer type contributes no gradient.
+   
+   :param t: Input tile, whose element type must be a scalar
+   :param dtype: Scalar data type of the returned tile
+   
+   :returns: A new tile with the same shape as ``t``, holding the converted values.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def truncate_values(a: wp.array[float], out: wp.array[int]):
+           t = wp.tile_load(a, shape=4)
+           i = wp.tile_astype(t, dtype=wp.int32)
+   
+           wp.tile_store(out, i)
+   
+       a = wp.array([-1.7, -0.5, 0.5, 2.7], dtype=float)
+       out = wp.zeros(4, dtype=int)
+   
+       wp.launch_tiled(truncate_values, dim=1, inputs=[a], outputs=[out], block_dim=2)
+   
+       print(out.numpy())
+   
+   .. testoutput::
+   
+       [-1  0  0  2]
    

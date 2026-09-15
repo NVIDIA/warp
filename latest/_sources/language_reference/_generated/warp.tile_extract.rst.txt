@@ -8,16 +8,50 @@
       :python: false
       :differentiable: true
 
-   Extract a single element from the tile.
+   Extract a single element from a tile.
    
-   This function will extract an element from the tile and broadcast its value to all threads in the block.
+   Each calling thread receives the element at the index it passes, so a block-uniform
+   index gives every thread the same value while a per-thread index gives each thread its
+   own element. The current implementation places ``a`` in shared memory before
+   extraction, where it counts against the block's shared-memory budget (see
+   :ref:`tile_shared_memory_budget`).
    
-   Note that this may incur additional synchronization if the source tile is a register tile.
+   Pass one index per tile dimension to read the element itself. A tile of vectors
+   accepts one extra index, which selects a scalar component. A tile of matrices accepts
+   one extra index, which returns the corresponding row as a vector, or two, which select
+   a scalar element.
    
-   :param a: Tile to extract the element from
-   :param i: Coordinate of element on first dimension
+   :param a: Tile to extract the element from. All index arguments may be runtime values.
+   :param i: Index along the first dimension of ``a``. May be a runtime value. It must be
+             non-negative and less than that dimension's extent.
    
-   :returns: The value of the element at the specified tile location with the same data type as the input tile.
+   :returns: The element at index ``i`` of a 1D tile, with the same data type as the tile's
+             elements.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def shift_right(a: wp.array[float], out: wp.array[float]):
+           block, lane = wp.tid()
+           t = wp.tile_load(a, shape=5)
+   
+           # the index is block-uniform and may differ between blocks
+           value = wp.tile_extract(t, block + 1)
+           if lane == 0:
+               out[block] = value
+   
+       a = wp.array(np.arange(5, dtype=np.float32) * 10.0, dtype=float)
+       out = wp.zeros(4, dtype=float)
+   
+       wp.launch_tiled(shift_right, dim=4, inputs=[a], outputs=[out], block_dim=4)
+   
+       print(out.numpy())
+   
+   .. testoutput::
+   
+       [10. 20. 30. 40.]
    
 
 .. function:: warp._src.lang.tile_extract(a: Tile[Any, tuple[int, ...]], i: int32, j: int32) -> Any
@@ -28,17 +62,21 @@
       :python: false
       :differentiable: true
 
-   Extract a single element from the tile.
+   Extract a single element from a tile.
    
-   This function will extract an element from the tile and broadcast its value to all threads in the block.
+   Two-index overload: both indices select an element of a 2D tile, or ``i`` indexes a
+   1D tile of vectors and ``j`` selects a component of that vector, or ``i`` indexes a
+   1D tile of matrices and ``j`` selects a row of that
+   matrix. See the one-index overload for the shared contract and a usage example.
    
-   Note that this may incur additional synchronization if the source tile is a register tile.
+   :param a: Tile to extract the element from. All index arguments may be runtime values.
+   :param i: Index along the first dimension
+   :param j: Index along the second dimension, or vector component index,
+             or matrix row index
    
-   :param a: Tile to extract the element from
-   :param i: Coordinate of element on first dimension
-   :param j: Coordinate of element on the second dimension, or vector index
-   
-   :returns: The value of the element at the specified tile location with the same data type as the input tile.
+   :returns: The element at ``(i, j)`` of a 2D tile, with the same data type as the tile's
+             elements; the scalar component ``j`` of the vector element at ``i``; or row ``j``
+             of the matrix element at ``i``, as a vector.
    
 
 .. function:: warp._src.lang.tile_extract(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32) -> Any
@@ -49,18 +87,22 @@
       :python: false
       :differentiable: true
 
-   Extract a single element from the tile.
+   Extract a single element from a tile.
    
-   This function will extract an element from the tile and broadcast its value to all threads in the block.
+   Three-index overload: the indices select an element of a 3D tile, a component from a
+   2D tile of vectors, a row from a 2D tile of matrices, or an entry from a 1D tile of
+   matrices. See the one-index overload for the
+   shared contract and a usage example.
    
-   Note that this may incur additional synchronization if the source tile is a register tile.
+   :param a: Tile to extract the element from. All index arguments may be runtime values.
+   :param i: Index along the first dimension
+   :param j: Index along the second dimension, or first matrix index
+   :param k: Index along the third dimension, or vector index, or second
+             matrix index
    
-   :param a: Tile to extract the element from
-   :param i: Coordinate of element on first dimension
-   :param j: Coordinate of element on the second dimension, or first matrix index
-   :param k: Coordinate of element on the third dimension, or vector index, or second matrix index
-   
-   :returns: The value of the element at the specified tile location with the same data type as the input tile.
+   :returns: The selected tile element, vector component, matrix row, or matrix entry. A matrix
+             row is returned as a vector; a vector component or matrix entry is returned as a
+             scalar.
    
 
 .. function:: warp._src.lang.tile_extract(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32, l: int32) -> Any
@@ -71,19 +113,23 @@
       :python: false
       :differentiable: true
 
-   Extract a single element from the tile.
+   Extract a single element from a tile.
    
-   This function will extract an element from the tile and broadcast its value to all threads in the block.
+   Four-index overload: the indices select an element of a 4D tile, a component from a
+   3D tile of vectors, a row from a 3D tile of matrices, or an entry from a 2D tile of
+   matrices. See the one-index overload for the shared
+   contract and a usage example.
    
-   Note that this may incur additional synchronization if the source tile is a register tile.
+   :param a: Tile to extract the element from. All index arguments may be runtime values.
+   :param i: Index along the first dimension
+   :param j: Index along the second dimension
+   :param k: Index along the third dimension, or first matrix index
+   :param l: Index along the fourth dimension, or vector index, or second
+             matrix index
    
-   :param a: Tile to extract the element from
-   :param i: Coordinate of element on first dimension
-   :param j: Coordinate of element on the second dimension
-   :param k: Coordinate of element on the third dimension, or first matrix index
-   :param l: Coordinate of element on the fourth dimension, or vector index, or second matrix index
-   
-   :returns: The value of the element at the specified tile location, with the same data type as the input tile.
+   :returns: The selected tile element, vector component, matrix row, or matrix entry. A matrix
+             row is returned as a vector; a vector component or matrix entry is returned as a
+             scalar.
    
 
 .. function:: warp._src.lang.tile_extract(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32, l: int32, m: int32) -> Any
@@ -94,20 +140,23 @@
       :python: false
       :differentiable: true
 
-   Extract a single element from the tile.
+   Extract a single element from a tile.
    
-   This function will extract an element from the tile and broadcast its value to all threads in the block.
+   Five-index overload: the indices select an element of a 5D tile, a component from a
+   4D tile of vectors, a row from a 4D tile of matrices, or an entry from a 3D tile of
+   matrices. See the one-index overload for the
+   shared contract and a usage example.
    
-   Note that this may incur additional synchronization if the source tile is a register tile.
-   
-   :param a: Tile to extract the element from
-   :param i: Coordinate of element on first dimension
-   :param j: Coordinate of element on the second dimension
-   :param k: Coordinate of element on the third dimension
-   :param l: Coordinate of element on the fourth dimension, or first matrix index
+   :param a: Tile to extract the element from. All index arguments may be runtime values.
+   :param i: Index along the first dimension
+   :param j: Index along the second dimension
+   :param k: Index along the third dimension
+   :param l: Index along the fourth dimension, or first matrix index
    :param m: Vector index, or second matrix index
    
-   :returns: The value of the element at the specified tile location, with the same data type as the input tile.
+   :returns: The selected tile element, vector component, matrix row, or matrix entry. A matrix
+             row is returned as a vector; a vector component or matrix entry is returned as a
+             scalar.
    
 
 .. function:: warp._src.lang.tile_extract(a: Tile[Any, tuple[int, int, int, int]], i: int32, j: int32, k: int32, l: int32, m: int32, n: int32) -> Any
@@ -118,19 +167,20 @@
       :python: false
       :differentiable: true
 
-   Extract a single element from the tile.
+   Extract a single element from a tile.
    
-   This function will extract an element from the tile and broadcast its value to all threads in the block.
-   
-   Note that this may incur additional synchronization if the source tile is a register tile.
+   Six-index overload: the indices select an element of a 4D tile of matrices,
+   followed by a row and a column index. See the one-index overload for the shared
+   contract and a usage example.
    
    :param a: Tile to extract the element from
-   :param i: Coordinate of element on first dimension
-   :param j: Coordinate of element on the second dimension
-   :param k: Coordinate of element on the third dimension
-   :param l: Coordinate of element on the fourth dimension
-   :param m: Vector index, or first matrix index
+   :param i: Index along the first dimension
+   :param j: Index along the second dimension
+   :param k: Index along the third dimension
+   :param l: Index along the fourth dimension
+   :param m: First matrix index
    :param n: Second matrix index
    
-   :returns: The value of the element at the specified tile location, with the same data type as the input tile.
+   :returns: The scalar component ``(m, n)`` of the matrix element at the specified tile
+             indices.
    

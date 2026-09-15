@@ -8,13 +8,46 @@
       :python: false
       :differentiable: true
 
-   Broadcast a tile.
+   Broadcast a tile to a larger shape.
    
-   Broadcasts the input tile ``a`` to the destination shape.
-   Broadcasting follows NumPy broadcast rules.
+   Broadcasting follows :func:`numpy.broadcast_to`: the shapes are aligned from the
+   right, each source dimension must either match the target or have length one, and
+   leading dimensions may be added. It is one-way, to the explicit target ``shape``,
+   which must have between one and four dimensions.
+   
+   The result aliases ``a`` instead of copying it. The current implementation places
+   ``a`` in shared memory; the result is non-owning and allocates no additional storage.
+   The result is writable, but every position along a broadcast dimension refers to the
+   same element of ``a``, so a write updates all of them. Concurrent or collective
+   writes of different values through aliased positions race; treat the view as read-only
+   unless each underlying element has exactly one writer.
    
    :param a: Tile to broadcast
-   :param shape: The shape to broadcast to
+   :param shape: The shape to broadcast to, whose entries must be compile-time constants
+                 and which must have at least as many dimensions as ``a``
    
-   :returns: Tile with broadcast shape.
+   :returns: A non-owning tile with the broadcast shape that aliases ``a``.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def repeat_row(a: wp.array[float], out: wp.array2d[float]):
+           t = wp.tile_load(a, shape=3)
+           b = wp.tile_broadcast(t, shape=(2, 3))
+   
+           wp.tile_store(out, b)
+   
+       a = wp.array([1.0, 2.0, 3.0], dtype=float)
+       out = wp.zeros((2, 3), dtype=float)
+   
+       wp.launch_tiled(repeat_row, dim=1, inputs=[a], outputs=[out], block_dim=4)
+   
+       print(out.numpy())
+   
+   .. testoutput::
+   
+       [[1. 2. 3.]
+        [1. 2. 3.]]
    
