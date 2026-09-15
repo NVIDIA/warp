@@ -3,8 +3,8 @@
 
 """Script to update the _git_commit_hash in config.py with the current git commit hash."""
 
+import ast
 import os
-import re
 import subprocess
 import sys
 import argparse
@@ -56,28 +56,46 @@ def update_git_hash_in_config(config_file_path: str, git_hash: str, dry_run: boo
     Returns:
         ``True`` if successful, ``False`` otherwise.
     """
-    if not git_hash:
+    if not git_hash or not all(character in "0123456789abcdefABCDEF" for character in git_hash):
         return False
         
     try:
-        with open(config_file_path, "r") as file:
+        with open(config_file_path, "r", encoding="utf-8", newline="") as file:
             content = file.read()
 
-        # Define the regex to match the _git_commit_hash assignment
-        pattern = r'^(_git_commit_hash\s*:\s*_Optional\[str\]\s*=\s*)(None|"[^"]*")(.*)$'
-        
-        # Replace existing value with the git hash
-        updated_content = re.sub(pattern, rf'\g<1>"{git_hash}"\g<3>', content, flags=re.MULTILINE)
+        assignment_values = []
+        for statement in ast.parse(content, filename=config_file_path).body:
+            if isinstance(statement, ast.AnnAssign):
+                if isinstance(statement.target, ast.Name) and statement.target.id == "_git_commit_hash":
+                    assignment_values.append(statement.value)
+            elif isinstance(statement, ast.Assign) and len(statement.targets) == 1:
+                target = statement.targets[0]
+                if isinstance(target, ast.Name) and target.id == "_git_commit_hash":
+                    assignment_values.append(statement.value)
 
-        if updated_content == content:
-            print(f"Error: _git_commit_hash pattern not found in {config_file_path}")
+        if len(assignment_values) != 1:
+            print(f"Error: _git_commit_hash assignment not found or unsupported in {config_file_path}")
             return False
+
+        value = assignment_values[0]
+        is_supported_value = isinstance(value, ast.Constant) and (value.value is None or isinstance(value.value, str))
+        if not is_supported_value or value.lineno != value.end_lineno:
+            print(f"Error: _git_commit_hash assignment not found or unsupported in {config_file_path}")
+            return False
+
+        lines = content.splitlines(keepends=True)
+        line_index = value.lineno - 1
+        line = lines[line_index].encode("utf-8")
+        lines[line_index] = (
+            line[: value.col_offset] + f'"{git_hash}"'.encode() + line[value.end_col_offset :]
+        ).decode("utf-8")
+        updated_content = "".join(lines)
 
         if dry_run:
             print(f"Dry run: Would update _git_commit_hash in {config_file_path} to {git_hash}")
             return True
 
-        with open(config_file_path, 'w') as file:
+        with open(config_file_path, 'w', encoding="utf-8", newline="") as file:
             file.write(updated_content)
 
         print(f"Successfully updated _git_commit_hash in {config_file_path} to {git_hash}")
