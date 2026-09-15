@@ -1354,6 +1354,9 @@ def test_slerp_grad(test, device, dtype, register_kernels=False):
         np.float32: 1.0e-5,
         np.float64: 1.0e-8,
     }.get(dtype, 0)
+    # FP16 losses are accumulated with atomic adds, whose ordering can vary
+    # across CUDA architectures and compilation modes.
+    loss_tol = 3.0e-2 if dtype == np.float16 and device.is_cuda else tol
 
     # wrt t
 
@@ -1373,10 +1376,10 @@ def test_slerp_grad(test, device, dtype, register_kernels=False):
     assert_np_equal(gradients_y, gradients_y_auto, tol=tol)
     assert_np_equal(gradients_z, gradients_z_auto, tol=tol)
     assert_np_equal(gradients_w, gradients_w_auto, tol=tol)
-    assert_np_equal(xcmp, xcmp_auto, tol=tol)
-    assert_np_equal(ycmp, ycmp_auto, tol=tol)
-    assert_np_equal(zcmp, zcmp_auto, tol=tol)
-    assert_np_equal(wcmp, wcmp_auto, tol=tol)
+    assert_np_equal(xcmp, xcmp_auto, tol=loss_tol)
+    assert_np_equal(ycmp, ycmp_auto, tol=loss_tol)
+    assert_np_equal(zcmp, zcmp_auto, tol=loss_tol)
+    assert_np_equal(wcmp, wcmp_auto, tol=loss_tol)
 
     # wrt q0
 
@@ -1396,10 +1399,10 @@ def test_slerp_grad(test, device, dtype, register_kernels=False):
     assert_np_equal(gradients_y, gradients_y_auto, tol=tol)
     assert_np_equal(gradients_z, gradients_z_auto, tol=tol)
     assert_np_equal(gradients_w, gradients_w_auto, tol=tol)
-    assert_np_equal(xcmp, xcmp_auto, tol=tol)
-    assert_np_equal(ycmp, ycmp_auto, tol=tol)
-    assert_np_equal(zcmp, zcmp_auto, tol=tol)
-    assert_np_equal(wcmp, wcmp_auto, tol=tol)
+    assert_np_equal(xcmp, xcmp_auto, tol=loss_tol)
+    assert_np_equal(ycmp, ycmp_auto, tol=loss_tol)
+    assert_np_equal(zcmp, zcmp_auto, tol=loss_tol)
+    assert_np_equal(wcmp, wcmp_auto, tol=loss_tol)
 
     # wrt q1
 
@@ -1419,10 +1422,10 @@ def test_slerp_grad(test, device, dtype, register_kernels=False):
     assert_np_equal(gradients_y, gradients_y_auto, tol=tol)
     assert_np_equal(gradients_z, gradients_z_auto, tol=tol)
     assert_np_equal(gradients_w, gradients_w_auto, tol=tol)
-    assert_np_equal(xcmp, xcmp_auto, tol=tol)
-    assert_np_equal(ycmp, ycmp_auto, tol=tol)
-    assert_np_equal(zcmp, zcmp_auto, tol=tol)
-    assert_np_equal(wcmp, wcmp_auto, tol=tol)
+    assert_np_equal(xcmp, xcmp_auto, tol=loss_tol)
+    assert_np_equal(ycmp, ycmp_auto, tol=loss_tol)
+    assert_np_equal(zcmp, zcmp_auto, tol=loss_tol)
+    assert_np_equal(wcmp, wcmp_auto, tol=loss_tol)
 
 
 ############################################################
