@@ -4449,68 +4449,246 @@ def tile_atomic_add_indexed(
     ...
 
 def tile_view(t: Tile[Any, tuple[int, ...]], offset: tuple, shape: tuple[int, ...] = ...) -> Tile[Any, tuple[int, ...]]:
-    """Extract a view of a tile.
+    """Return a view of a tile.
 
-    ``offset`` may contain integer coordinates, in which case ``shape`` gives the
-    returned tile shape. ``offset`` may also contain ``slice`` objects, in which
-    case the returned shape is inferred from the slice bounds and ``shape`` must
-    not be specified.
+    The view aliases the source tile: writing through it modifies ``t``. Taking a view
+    requires shared storage, but the view itself is non-owning and allocates no additional
+    storage.
+
+    Two forms are supported:
+
+    * When ``shape`` is omitted, entries in ``offset`` map from left to right to the
+      dimensions of ``t``. Integer entries select and remove dimensions; for example,
+      ``wp.tile_view(t, offset=(i,))`` on an ``(M, N)`` tile returns row ``i`` with
+      ``shape=(N,)``. Python ``slice`` entries select ranges and retain dimensions, with
+      each extent determined by its slice. Omitted trailing dimensions are retained in
+      full. Tile subscript syntax such as ``t[2:4, ::-1]`` produces this form.
+    * When ``shape`` is provided, ``offset`` gives the origin of a rectangular view and
+      ``shape`` gives its extent. In this form, supplied ``offset`` entries must be
+      integers; slices are not allowed.
 
     Args:
-        t: Input tile to extract a subrange from
-        offset: Integer offsets or slices in the source tile
-        shape: Shape of the returned view for integer-only offsets
+        t: Input tile to take a view of
+        offset: Integer indices, Python ``slice`` objects, or a mix describing the part of
+            ``t`` to view. Integer entries may be runtime values; constant integer entries
+            must lie within the corresponding dimension of ``t``. Runtime integer bounds
+            are checked in debug mode; in all modes, out-of-range values are invalid.
+            Slice bounds and steps must be compile-time constants; negative bounds and
+            steps are supported. Use subscript syntax such as ``t[-1, :]`` for negative
+            integer indexing.
+        shape: Extent of the view, with one entry per dimension of ``t``. Entries must be
+            compile-time constants, and for every dimension ``d``,
+            ``offset[d] + shape[d]`` must not exceed ``t.shape[d]``. Only valid when
+            ``offset`` contains no slices.
 
     Returns:
-        A tile view with dimensions given by ``shape``, the remaining source tile
-        dimensions, or the inferred slice extents."""
+        A non-owning tile that aliases ``t``, with dimensions given by ``shape``, by the
+        inferred slice extents, or by the source dimensions that ``offset`` did not name.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def replace_rows(a: wp.array2d[float], out: wp.array2d[float]):
+                t = wp.tile_load(a, shape=(4, 4))
+
+                # the view aliases t, so writing through it updates t
+                rows = wp.tile_view(t, offset=(2, 0), shape=(2, 4))
+                values = wp.tile_arange(100.0, 108.0, 1.0, dtype=float)
+                wp.tile_assign(rows, wp.tile_reshape(values, shape=(2, 4)))
+
+                wp.tile_store(out, t)
+
+            a = wp.array(np.arange(16, dtype=np.float32).reshape(4, 4), dtype=float)
+            out = wp.zeros((4, 4), dtype=float)
+
+            wp.launch_tiled(replace_rows, dim=1, inputs=[a], outputs=[out], block_dim=8)
+
+            print(out.numpy())
+
+        .. testoutput::
+
+            [[  0.   1.   2.   3.]
+             [  4.   5.   6.   7.]
+             [100. 101. 102. 103.]
+             [104. 105. 106. 107.]]"""
     ...
 
 def tile_slice_indexed(t: Tile[Any, tuple[int, ...]], indices: tuple) -> Tile[Any, tuple[int, ...]]:
     """Gather elements of a tile along a single axis using a 1D tile of integer indices.
 
-    This lowers the advanced-indexing syntax ``t[indices, :]``, gathering elements of
-    ``t`` along one axis given by ``indices``. All other axes must be selected in full.
+    This implements the advanced-indexing syntax ``t[indices, :]``.
+
+    The current implementation places the source and index tiles in shared memory, where
+    they count against the block's shared-memory budget (see
+    :ref:`tile_shared_memory_budget`).
+
+    Unlike :func:`~warp.tile_view`, the result is a copy, so writing to it leaves ``t``
+    unchanged. Negative indices count from the end of the indexed axis
+    (``-1`` selects the last element); indices beyond either end are invalid. Indices may
+    repeat; duplicate indices accumulate their gradients atomically in the backward pass.
 
     Args:
         t: Input tile to gather from
-        indices: A 1D tile of integer indices selecting elements along one axis
+        indices: Advanced-indexing subscript tuple. Exactly one entry must be a non-empty
+            1D integer index tile; every other entry must be a full ``:`` slice. Trailing
+            axes may be omitted.
 
     Returns:
-        A register tile whose extent along the indexed axis equals the number of indices."""
+        A tile with the shape of ``t``, except along the gathered axis where the extent
+        equals the number of indices.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def gather_rows(a: wp.array2d[float], indices: wp.array[int], out: wp.array2d[float]):
+                t = wp.tile_load(a, shape=(4, 4))
+                i = wp.tile_load(indices, shape=3)
+
+                wp.tile_store(out, t[i, :])
+
+            a = wp.array(np.arange(1, 17, dtype=np.float32).reshape(4, 4), dtype=float)
+            indices = wp.array([3, 0, -1], dtype=int)
+            out = wp.zeros((3, 4), dtype=float)
+
+            wp.launch_tiled(gather_rows, dim=1, inputs=[a, indices], outputs=[out], block_dim=8)
+
+            print(out.numpy())
+
+        .. testoutput::
+
+            [[13. 14. 15. 16.]
+             [ 1.  2.  3.  4.]
+             [13. 14. 15. 16.]]"""
     ...
 
 def tile_squeeze(t: Tile[Any, tuple[int, ...]], axis: tuple[int, ...] = ...) -> Tile[Any, tuple[int, ...]]:
-    """Create a squeezed view of a tile with the same data.
+    """Return a view of a tile with dimensions of length one removed.
+
+    The view aliases the source tile, so writing through it modifies ``t``. Taking the
+    view requires shared storage, but the view itself is non-owning and allocates no
+    additional storage.
 
     Args:
         t: Input tile to squeeze
-        axis: A subset of the entries of length one in the shape (optional)
+        axis: Axis or axes to remove, as a compile-time constant. If omitted, all
+            dimensions of ``t`` with extent one are removed. Each specified axis must
+            refer to a dimension of ``t`` with extent one. Negative axes count from the
+            end.
 
     Returns:
-        The input tile but with all or a subset of the dimensions of length one removed."""
+        A non-owning tile that aliases ``t`` with all, or the selected, dimensions of
+        length one removed.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def remove_singleton_dims(a: wp.array3d[float], out: wp.array[float]):
+                t = wp.tile_load(a, shape=(1, 4, 1))
+                s = wp.tile_squeeze(t)
+
+                wp.tile_store(out, s)
+
+            a = wp.array(np.arange(1, 5, dtype=np.float32).reshape(1, 4, 1), dtype=float)
+            out = wp.zeros(4, dtype=float)
+
+            wp.launch_tiled(remove_singleton_dims, dim=1, inputs=[a], outputs=[out], block_dim=2)
+
+            print(out.numpy())
+
+        .. testoutput::
+
+            [1. 2. 3. 4.]"""
     ...
 
 def tile_reshape(t: Tile[Any, tuple[int, ...]], shape: tuple[int, ...]) -> Tile[Any, tuple[int, ...]]:
-    """Create a reshaped view of a tile with the same data.
+    """Return a view of a tile with a new shape.
+
+    The view aliases the source tile, so writing through it modifies ``t``. Taking the
+    view requires shared storage, but the view itself is non-owning and allocates no
+    additional storage.
+
+    Elements keep their order in memory, which for a row-major layout matches
+    :func:`numpy.reshape`.
 
     Args:
-        t: Input tile to reshape
-        shape: New shape for the tile
+        t: Input tile to reshape. Must be contiguous in memory, not a strided or reversed
+            view. Copy it into a new tile with :func:`~warp.tile_assign` first if needed.
+        shape: New shape, whose total number of elements must match ``t``. Entries must
+            be compile-time constants; at most one may be ``-1``, which is inferred from
+            the others.
 
     Returns:
-        A tile containing the same data as the input tile, but arranged in a new shape."""
+        A non-owning tile that aliases ``t`` with the requested shape.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def reshape_matrix(a: wp.array2d[float], out: wp.array2d[float]):
+                t = wp.tile_load(a, shape=(2, 4))
+                r = wp.tile_reshape(t, shape=(4, -1))
+
+                wp.tile_store(out, r)
+
+            a = wp.array(np.arange(1, 9, dtype=np.float32).reshape(2, 4), dtype=float)
+            out = wp.zeros((4, 2), dtype=float)
+
+            wp.launch_tiled(reshape_matrix, dim=1, inputs=[a], outputs=[out], block_dim=4)
+
+            print(out.numpy())
+
+        .. testoutput::
+
+            [[1. 2.]
+             [3. 4.]
+             [5. 6.]
+             [7. 8.]]"""
     ...
 
 def tile_astype(t: Tile[Scalar, tuple[int, ...]], dtype: type[DTypeScalar]) -> Tile[DTypeScalar, tuple[int, ...]]:
-    """Create a new tile with the same data as the input tile, but with a different data type.
+    """Return a tile converted to a different scalar type.
+
+    Floating-point values converted to integers are truncated toward zero when the
+    truncated value is representable by the destination type.
+
+    Gradients only propagate when both the source and destination types are
+    floating-point; a conversion involving an integer type contributes no gradient.
 
     Args:
-        t: Input tile
-        dtype: New data type for the tile
+        t: Input tile, whose element type must be a scalar
+        dtype: Scalar data type of the returned tile
 
     Returns:
-        A tile with the same data as the input tile, but with a different data type."""
+        A new tile with the same shape as ``t``, holding the converted values.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def truncate_values(a: wp.array[float], out: wp.array[int]):
+                t = wp.tile_load(a, shape=4)
+                i = wp.tile_astype(t, dtype=wp.int32)
+
+                wp.tile_store(out, i)
+
+            a = wp.array([-1.7, -0.5, 0.5, 2.7], dtype=float)
+            out = wp.zeros(4, dtype=int)
+
+            wp.launch_tiled(truncate_values, dim=1, inputs=[a], outputs=[out], block_dim=2)
+
+            print(out.numpy())
+
+        .. testoutput::
+
+            [-1  0  0  2]"""
     ...
 
 def tile_assign(
@@ -4518,12 +4696,48 @@ def tile_assign(
     src: Tile[Any, tuple[int, ...]],
     offset: tuple[int, ...] = ...,
 ) -> None:
-    """Assign a tile to a subrange of a destination tile.
+    """Copy a tile into a subrange of a destination tile.
+
+    ``dst`` is modified in place and requires shared storage.
+
+    When ``src`` and ``dst`` have different element types, each element is converted
+    following C++ conversion rules. Overlapping source and destination regions assign
+    like NumPy; ``t[1:] = t[:-1]`` shifts the tile.
+
+    In a backward pass, gradients from the overwritten region of ``dst`` are accumulated
+    into the adjoint of ``src``, then cleared from that region of ``dst``.
 
     Args:
-        dst: The destination tile to assign to
-        src: The source tile to read values from
-        offset: Offset in the destination tile to write to."""
+        dst: Destination tile, modified in place. Must have the same number of dimensions
+            as ``src``.
+        src: Source tile. Must fit inside ``dst`` at ``offset`` along every axis.
+        offset: Coordinate in ``dst`` at which to write ``src``. If omitted, ``src`` is
+            written at the origin. Must have one entry per dimension of ``dst`` and may
+            contain runtime values.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def insert_values(a: wp.array[float], out: wp.array[float]):
+                dst = wp.tile_full(shape=6, value=-1.0, dtype=float)
+                src = wp.tile_load(a, shape=3)
+
+                wp.tile_assign(dst, src, offset=(2,))
+
+                wp.tile_store(out, dst)
+
+            a = wp.array([1.0, 2.0, 3.0], dtype=float)
+            out = wp.zeros(6, dtype=float)
+
+            wp.launch_tiled(insert_values, dim=1, inputs=[a], outputs=[out], block_dim=4)
+
+            print(out.numpy())
+
+        .. testoutput::
+
+            [-1. -1.  1.  2.  3. -1.]"""
     ...
 
 def tile(x: Any, preserve_type: bool | _builtins.bool = False) -> Tile[Any, tuple]:
@@ -4630,72 +4844,118 @@ def untile(a: Tile[Any, tuple[int, ...]]) -> Any:
 
 @over
 def tile_extract(a: Tile[Any, tuple[int]], i: int32 | int) -> Any:
-    """Extract a single element from the tile.
+    """Extract a single element from a tile.
 
-    This function will extract an element from the tile and broadcast its value to all threads in the block.
+    Each calling thread receives the element at the index it passes, so a block-uniform
+    index gives every thread the same value while a per-thread index gives each thread its
+    own element. The current implementation places ``a`` in shared memory before
+    extraction, where it counts against the block's shared-memory budget (see
+    :ref:`tile_shared_memory_budget`).
 
-    Note that this may incur additional synchronization if the source tile is a register tile.
+    Pass one index per tile dimension to read the element itself. A tile of vectors
+    accepts one extra index, which selects a scalar component. A tile of matrices accepts
+    one extra index, which returns the corresponding row as a vector, or two, which select
+    a scalar element.
 
     Args:
-        a: Tile to extract the element from
-        i: Coordinate of element on first dimension
+        a: Tile to extract the element from. All index arguments may be runtime values.
+        i: Index along the first dimension of ``a``. May be a runtime value. It must be
+            non-negative and less than that dimension's extent.
 
     Returns:
-        The value of the element at the specified tile location with the same data type as the input tile."""
+        The element at index ``i`` of a 1D tile, with the same data type as the tile's
+        elements.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def shift_right(a: wp.array[float], out: wp.array[float]):
+                block, lane = wp.tid()
+                t = wp.tile_load(a, shape=5)
+
+                # the index is block-uniform and may differ between blocks
+                value = wp.tile_extract(t, block + 1)
+                if lane == 0:
+                    out[block] = value
+
+            a = wp.array(np.arange(5, dtype=np.float32) * 10.0, dtype=float)
+            out = wp.zeros(4, dtype=float)
+
+            wp.launch_tiled(shift_right, dim=4, inputs=[a], outputs=[out], block_dim=4)
+
+            print(out.numpy())
+
+        .. testoutput::
+
+            [10. 20. 30. 40.]"""
     ...
 
 @over
 def tile_extract(a: Tile[Any, tuple[int, ...]], i: int32 | int, j: int32 | int) -> Any:
-    """Extract a single element from the tile.
+    """Extract a single element from a tile.
 
-    This function will extract an element from the tile and broadcast its value to all threads in the block.
-
-    Note that this may incur additional synchronization if the source tile is a register tile.
+    Two-index overload: both indices select an element of a 2D tile, or ``i`` indexes a
+    1D tile of vectors and ``j`` selects a component of that vector, or ``i`` indexes a
+    1D tile of matrices and ``j`` selects a row of that
+    matrix. See the one-index overload for the shared contract and a usage example.
 
     Args:
-        a: Tile to extract the element from
-        i: Coordinate of element on first dimension
-        j: Coordinate of element on the second dimension, or vector index
+        a: Tile to extract the element from. All index arguments may be runtime values.
+        i: Index along the first dimension
+        j: Index along the second dimension, or vector component index,
+            or matrix row index
 
     Returns:
-        The value of the element at the specified tile location with the same data type as the input tile."""
+        The element at ``(i, j)`` of a 2D tile, with the same data type as the tile's
+        elements; the scalar component ``j`` of the vector element at ``i``; or row ``j``
+        of the matrix element at ``i``, as a vector."""
     ...
 
 @over
 def tile_extract(a: Tile[Any, tuple[int, ...]], i: int32 | int, j: int32 | int, k: int32 | int) -> Any:
-    """Extract a single element from the tile.
+    """Extract a single element from a tile.
 
-    This function will extract an element from the tile and broadcast its value to all threads in the block.
-
-    Note that this may incur additional synchronization if the source tile is a register tile.
+    Three-index overload: the indices select an element of a 3D tile, a component from a
+    2D tile of vectors, a row from a 2D tile of matrices, or an entry from a 1D tile of
+    matrices. See the one-index overload for the
+    shared contract and a usage example.
 
     Args:
-        a: Tile to extract the element from
-        i: Coordinate of element on first dimension
-        j: Coordinate of element on the second dimension, or first matrix index
-        k: Coordinate of element on the third dimension, or vector index, or second matrix index
+        a: Tile to extract the element from. All index arguments may be runtime values.
+        i: Index along the first dimension
+        j: Index along the second dimension, or first matrix index
+        k: Index along the third dimension, or vector index, or second
+            matrix index
 
     Returns:
-        The value of the element at the specified tile location with the same data type as the input tile."""
+        The selected tile element, vector component, matrix row, or matrix entry. A matrix
+        row is returned as a vector; a vector component or matrix entry is returned as a
+        scalar."""
     ...
 
 @over
 def tile_extract(a: Tile[Any, tuple[int, ...]], i: int32 | int, j: int32 | int, k: int32 | int, l: int32 | int) -> Any:
-    """Extract a single element from the tile.
+    """Extract a single element from a tile.
 
-    This function will extract an element from the tile and broadcast its value to all threads in the block.
-
-    Note that this may incur additional synchronization if the source tile is a register tile.
+    Four-index overload: the indices select an element of a 4D tile, a component from a
+    3D tile of vectors, a row from a 3D tile of matrices, or an entry from a 2D tile of
+    matrices. See the one-index overload for the shared
+    contract and a usage example.
 
     Args:
-        a: Tile to extract the element from
-        i: Coordinate of element on first dimension
-        j: Coordinate of element on the second dimension
-        k: Coordinate of element on the third dimension, or first matrix index
-        l: Coordinate of element on the fourth dimension, or vector index, or second matrix index
+        a: Tile to extract the element from. All index arguments may be runtime values.
+        i: Index along the first dimension
+        j: Index along the second dimension
+        k: Index along the third dimension, or first matrix index
+        l: Index along the fourth dimension, or vector index, or second
+            matrix index
 
     Returns:
-        The value of the element at the specified tile location, with the same data type as the input tile."""
+        The selected tile element, vector component, matrix row, or matrix entry. A matrix
+        row is returned as a vector; a vector component or matrix entry is returned as a
+        scalar."""
     ...
 
 @over
@@ -4707,22 +4967,25 @@ def tile_extract(
     l: int32 | int,
     m: int32 | int,
 ) -> Any:
-    """Extract a single element from the tile.
+    """Extract a single element from a tile.
 
-    This function will extract an element from the tile and broadcast its value to all threads in the block.
-
-    Note that this may incur additional synchronization if the source tile is a register tile.
+    Five-index overload: the indices select an element of a 5D tile, a component from a
+    4D tile of vectors, a row from a 4D tile of matrices, or an entry from a 3D tile of
+    matrices. See the one-index overload for the
+    shared contract and a usage example.
 
     Args:
-        a: Tile to extract the element from
-        i: Coordinate of element on first dimension
-        j: Coordinate of element on the second dimension
-        k: Coordinate of element on the third dimension
-        l: Coordinate of element on the fourth dimension, or first matrix index
+        a: Tile to extract the element from. All index arguments may be runtime values.
+        i: Index along the first dimension
+        j: Index along the second dimension
+        k: Index along the third dimension
+        l: Index along the fourth dimension, or first matrix index
         m: Vector index, or second matrix index
 
     Returns:
-        The value of the element at the specified tile location, with the same data type as the input tile."""
+        The selected tile element, vector component, matrix row, or matrix entry. A matrix
+        row is returned as a vector; a vector component or matrix entry is returned as a
+        scalar."""
     ...
 
 @over
@@ -4735,23 +4998,24 @@ def tile_extract(
     m: int32 | int,
     n: int32 | int,
 ) -> Any:
-    """Extract a single element from the tile.
+    """Extract a single element from a tile.
 
-    This function will extract an element from the tile and broadcast its value to all threads in the block.
-
-    Note that this may incur additional synchronization if the source tile is a register tile.
+    Six-index overload: the indices select an element of a 4D tile of matrices,
+    followed by a row and a column index. See the one-index overload for the shared
+    contract and a usage example.
 
     Args:
         a: Tile to extract the element from
-        i: Coordinate of element on first dimension
-        j: Coordinate of element on the second dimension
-        k: Coordinate of element on the third dimension
-        l: Coordinate of element on the fourth dimension
-        m: Vector index, or first matrix index
+        i: Index along the first dimension
+        j: Index along the second dimension
+        k: Index along the third dimension
+        l: Index along the fourth dimension
+        m: First matrix index
         n: Second matrix index
 
     Returns:
-        The value of the element at the specified tile location, with the same data type as the input tile."""
+        The scalar component ``(m, n)`` of the matrix element at the specified tile
+        indices."""
     ...
 
 @over
@@ -4961,30 +5225,87 @@ def tile_scatter_masked(
     ...
 
 def tile_transpose(a: Tile[Any, tuple[int, int]]) -> Tile[Any, tuple[int, int]]:
-    """Transpose a tile.
+    """Transpose a 2D tile.
 
-    For shared memory tiles, this operation will alias the input tile.
-    Register tiles will first be transferred to shared memory before transposition.
+    The result aliases ``a`` with reversed shape, so writing through it modifies ``a``.
+    The current implementation places ``a`` in shared memory before transposing. The
+    result is non-owning and allocates no additional storage.
 
     Args:
-        a: Tile to transpose with ``shape=(M,N)``
+        a: 2D tile to transpose with ``shape=(M,N)``
 
     Returns:
-        Tile with ``shape=(N,M)``."""
+        A non-owning tile with ``shape=(N,M)`` that aliases ``a``.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def transpose_matrix(a: wp.array2d[float], out: wp.array2d[float]):
+                t = wp.tile_load(a, shape=(2, 3))
+
+                wp.tile_store(out, wp.tile_transpose(t))
+
+            a = wp.array(np.arange(1, 7, dtype=np.float32).reshape(2, 3), dtype=float)
+            out = wp.zeros((3, 2), dtype=float)
+
+            wp.launch_tiled(transpose_matrix, dim=1, inputs=[a], outputs=[out], block_dim=4)
+
+            print(out.numpy())
+
+        .. testoutput::
+
+            [[1. 4.]
+             [2. 5.]
+             [3. 6.]]"""
     ...
 
 def tile_broadcast(a: Tile[Any, tuple[int, ...]], shape: tuple[int, ...]) -> Tile[Any, tuple[int, ...]]:
-    """Broadcast a tile.
+    """Broadcast a tile to a larger shape.
 
-    Broadcasts the input tile ``a`` to the destination shape.
-    Broadcasting follows NumPy broadcast rules.
+    Broadcasting follows :func:`numpy.broadcast_to`: the shapes are aligned from the
+    right, each source dimension must either match the target or have length one, and
+    leading dimensions may be added. It is one-way, to the explicit target ``shape``,
+    which must have between one and four dimensions.
+
+    The result aliases ``a`` instead of copying it. The current implementation places
+    ``a`` in shared memory; the result is non-owning and allocates no additional storage.
+    The result is writable, but every position along a broadcast dimension refers to the
+    same element of ``a``, so a write updates all of them. Concurrent or collective
+    writes of different values through aliased positions race; treat the view as read-only
+    unless each underlying element has exactly one writer.
 
     Args:
         a: Tile to broadcast
-        shape: The shape to broadcast to
+        shape: The shape to broadcast to, whose entries must be compile-time constants
+            and which must have at least as many dimensions as ``a``
 
     Returns:
-        Tile with broadcast shape."""
+        A non-owning tile with the broadcast shape that aliases ``a``.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def repeat_row(a: wp.array[float], out: wp.array2d[float]):
+                t = wp.tile_load(a, shape=3)
+                b = wp.tile_broadcast(t, shape=(2, 3))
+
+                wp.tile_store(out, b)
+
+            a = wp.array([1.0, 2.0, 3.0], dtype=float)
+            out = wp.zeros((2, 3), dtype=float)
+
+            wp.launch_tiled(repeat_row, dim=1, inputs=[a], outputs=[out], block_dim=4)
+
+            print(out.numpy())
+
+        .. testoutput::
+
+            [[1. 2. 3.]
+             [1. 2. 3.]]"""
     ...
 
 @over
