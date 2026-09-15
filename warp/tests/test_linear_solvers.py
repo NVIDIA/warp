@@ -1,14 +1,23 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import contextlib
+import io
 import itertools
 import unittest
+import warnings
 
 import numpy as np
 
 import warp as wp
-from warp._src.optim.linear import TiledDot, _create_segmented_tiled_dot_kernels, _run_solver_loop
+from warp._src.optim.linear import (
+    _BLOCK_JACOBI_DIRECT_MAX_BLOCK_SIZE,
+    TiledDot,
+    _create_segmented_tiled_dot_kernels,
+    _run_solver_loop,
+)
 from warp.optim.linear import CG, CR, GMRES, BiCGSTAB, aslinearoperator, bicgstab, cg, cr, gmres, preconditioner
+from warp.sparse import bsr_from_triplets, bsr_identity, bsr_mv, bsr_set_from_triplets, bsr_zeros
 from warp.tests.unittest_utils import *
 
 
@@ -940,6 +949,476 @@ def test_functor_compat_errors(test, device):
             bic_state(M=M2)
 
 
+def _make_block_spd_system(num_blocks, block_size, seed, dtype, device, coupling=0.05):
+    """Build a block-tridiagonal SPD BSR system.
+
+    Diagonal blocks are individually SPD; off-diagonal coupling to neighboring blocks is small
+    relative to the diagonal, so block-Jacobi is both a valid (SPD diagonal blocks) and effective
+    (block-diagonally dominant) preconditioner.
+    """
+    rng = np.random.default_rng(seed)
+
+    diag_blocks = []
+    for _ in range(num_blocks):
+        C = rng.uniform(low=-1.0, high=1.0, size=(block_size, block_size))
+        diag_blocks.append(C @ C.T + block_size * np.eye(block_size))
+
+    rows, cols, vals = [], [], []
+    for i in range(num_blocks):
+        rows.append(i)
+        cols.append(i)
+        vals.append(diag_blocks[i])
+        if i + 1 < num_blocks:
+            off = coupling * rng.uniform(low=-1.0, high=1.0, size=(block_size, block_size))
+            rows.append(i)
+            cols.append(i + 1)
+            vals.append(off)
+            rows.append(i + 1)
+            cols.append(i)
+            vals.append(off.T)
+
+    rows_wp = wp.array(rows, dtype=int, device=device)
+    cols_wp = wp.array(cols, dtype=int, device=device)
+    vals_wp = wp.array(np.stack(vals), dtype=dtype, device=device)
+
+    A = bsr_from_triplets(num_blocks, num_blocks, rows_wp, cols_wp, vals_wp)
+
+    b_np = rng.uniform(low=-1.0, high=1.0, size=(num_blocks * block_size,))
+    b = wp.array(b_np, dtype=dtype, device=device)
+
+    return A, b, diag_blocks
+
+
+# All ptype strings that build a block-Jacobi preconditioner: the three explicit strategies, and
+# "auto" (which dispatches to one of them by block size).
+_BLOCK_JACOBI_EXPLICIT_PTYPES = ("block_jacobi_direct", "block_jacobi_sequential", "block_jacobi_tile")
+_BLOCK_JACOBI_ALL_PTYPES = (*_BLOCK_JACOBI_EXPLICIT_PTYPES, "block_jacobi_auto")
+
+
+def test_block_jacobi_preconditioner_correctness(test, device):
+    """Verify each block-Jacobi strategy's matvec matches a direct dense per-block solve.
+
+    Uses a representative block size for each strategy.
+    """
+    for ptype, block_size in (
+        ("block_jacobi_direct", 3),
+        ("block_jacobi_sequential", 8),
+        ("block_jacobi_tile", 16),
+    ):
+        A, _b, diag_blocks = _make_block_spd_system(
+            num_blocks=6, block_size=block_size, seed=100 + block_size, dtype=wp.float32, device=device
+        )
+        M = preconditioner(A, ptype)
+
+        x_np = np.random.default_rng(7).uniform(low=-1.0, high=1.0, size=(A.shape[0],)).astype(np.float32)
+        x = wp.array(x_np, dtype=wp.float32, device=device)
+        z = wp.zeros_like(x)
+
+        M.matvec(x, z, z, alpha=1.0, beta=0.0)
+
+        expected = np.concatenate(
+            [np.linalg.solve(diag_blocks[i], x_np[i * block_size : (i + 1) * block_size]) for i in range(6)]
+        )
+        assert_np_equal(z.numpy(), expected, tol=1.0e-4)
+
+
+def test_block_jacobi_preconditioner_auto_dispatch(test, device):
+    """Verify "block_jacobi_auto" matches the explicit strategy it should dispatch to.
+
+    Checked at each boundary block size (2-6 -> direct, 7-11 -> sequential, >=12 -> tile).
+    """
+    for block_size, expected_ptype in (
+        (2, "block_jacobi_direct"),
+        (6, "block_jacobi_direct"),
+        (7, "block_jacobi_sequential"),
+        (11, "block_jacobi_sequential"),
+        (12, "block_jacobi_tile"),
+    ):
+        A, _b, _diag_blocks = _make_block_spd_system(
+            num_blocks=5, block_size=block_size, seed=200 + block_size, dtype=wp.float32, device=device
+        )
+        x_np = np.random.default_rng(3).uniform(low=-1.0, high=1.0, size=(A.shape[0],)).astype(np.float32)
+        x = wp.array(x_np, dtype=wp.float32, device=device)
+
+        z_auto = wp.zeros_like(x)
+        preconditioner(A, "block_jacobi_auto").matvec(x, z_auto, z_auto, alpha=1.0, beta=0.0)
+
+        z_expected = wp.zeros_like(x)
+        preconditioner(A, expected_ptype).matvec(x, z_expected, z_expected, alpha=1.0, beta=0.0)
+
+        assert_np_equal(z_auto.numpy(), z_expected.numpy(), tol=1.0e-5)
+
+
+def test_block_jacobi_preconditioner_convergence(test, device):
+    """Verify every block-Jacobi strategy converges in no more iterations than "diag".
+
+    Uses a block-diagonally-dominant system.
+    """
+    for ptype, block_size in (
+        ("block_jacobi_direct", 4),
+        ("block_jacobi_sequential", 8),
+        ("block_jacobi_tile", 12),
+        ("block_jacobi_auto", 12),
+    ):
+        A, b, _diag_blocks = _make_block_spd_system(
+            num_blocks=8, block_size=block_size, seed=99, dtype=wp.float64, device=device, coupling=0.2
+        )
+
+        x_diag = wp.zeros_like(b)
+        niter_diag, _err, _atol = cg(A, b, x_diag, M=preconditioner(A, "diag"), maxiter=1000, use_cuda_graph=False)
+
+        x_bj = wp.zeros_like(b)
+        niter_bj, _err, _atol = cg(A, b, x_bj, M=preconditioner(A, ptype), maxiter=1000, use_cuda_graph=False)
+
+        test.assertLessEqual(niter_bj, niter_diag, msg=ptype)
+
+        residual = wp.clone(b)
+        bsr_mv(A, x_bj, residual, alpha=1.0, beta=-1.0)
+        test.assertLessEqual(np.linalg.norm(residual.numpy()), 1.0e-6 * np.linalg.norm(b.numpy()), msg=ptype)
+
+
+def test_block_jacobi_preconditioner_scalar_fallback(test, device):
+    """Verify 1x1-block (CSR) matrices fall back to scalar Jacobi, for every ptype string."""
+    A, _b, _diag_blocks = _make_block_spd_system(num_blocks=16, block_size=1, seed=321, dtype=wp.float32, device=device)
+    M_diag = preconditioner(A, "diag")
+
+    x = wp.array(np.ones(16, dtype=np.float32), device=device)
+    z_diag = wp.zeros_like(x)
+    M_diag.matvec(x, z_diag, z_diag, alpha=1.0, beta=0.0)
+
+    for ptype in _BLOCK_JACOBI_ALL_PTYPES:
+        M_bj = preconditioner(A, ptype)
+        z_bj = wp.zeros_like(x)
+        M_bj.matvec(x, z_bj, z_bj, alpha=1.0, beta=0.0)
+        assert_np_equal(z_bj.numpy(), z_diag.numpy(), tol=1.0e-6)
+
+
+def test_block_jacobi_preconditioner_dtype_coverage(test, device):
+    """Verify "direct"/"sequential" succeed for float16, unlike "block_jacobi_tile".
+
+    They perform plain scalar arithmetic (no ``wp.tile_cholesky`` involved), so they support any
+    floating scalar type, including ``float16``, in addition to ``float32``/``float64``.
+    """
+    for ptype, block_size in (("block_jacobi_direct", 3), ("block_jacobi_sequential", 8)):
+        for dtype in (wp.float16, wp.float32, wp.float64):
+            A, _b, _diag_blocks = _make_block_spd_system(
+                num_blocks=4, block_size=block_size, seed=55, dtype=dtype, device=device
+            )
+            M = preconditioner(A, ptype)
+            x = wp.full(A.shape[0], 1.0, dtype=dtype, device=device)
+            z = wp.zeros_like(x)
+            M.matvec(x, z, z, alpha=1.0, beta=0.0)
+            z_np = z.numpy().astype(np.float32)
+            test.assertTrue(np.all(np.isfinite(z_np)), msg=f"{ptype}/{dtype}")
+
+
+def test_block_jacobi_preconditioner_singular_block(test, device):
+    """Verify singular/non-SPD blocks fall back to the identity instead of raising or NaN-ing.
+
+    Covers a singular block for "block_jacobi_direct" and "block_jacobi_sequential", and a
+    non-SPD block for "block_jacobi_sequential", per the documented zero-safe convention that
+    mirrors scalar Jacobi.
+    """
+    mat33 = wp.types.matrix(shape=(3, 3), dtype=wp.float64)
+    rows = wp.array(np.array([0, 1, 2], dtype=np.int32), dtype=int, device=device)
+    cols = wp.array(np.array([0, 1, 2], dtype=np.int32), dtype=int, device=device)
+    x = wp.array(np.arange(1, 10, dtype=np.float64), dtype=wp.float64, device=device)
+
+    # A numerically singular (all-zero) block: both strategies fall back to identity.
+    blocks_singular = np.stack([np.zeros((3, 3)), np.eye(3), np.eye(3)])
+    A_singular = bsr_zeros(3, 3, mat33, device=device)
+    bsr_set_from_triplets(A_singular, rows, cols, wp.array(blocks_singular, dtype=mat33, device=device))
+
+    for ptype in ("block_jacobi_direct", "block_jacobi_sequential"):
+        M = preconditioner(A_singular, ptype)
+        z = wp.zeros_like(x)
+        M.matvec(x, z, z, alpha=1.0, beta=0.0)
+        z_np = z.numpy()
+        test.assertTrue(np.all(np.isfinite(z_np)), msg=f"{ptype}: non-finite output on singular block")
+        assert_np_equal(z_np, x.numpy(), tol=0.0)
+
+    # A negative-definite (non-SPD, but non-singular) block: only "sequential" requires SPD
+    # input, so it alone needs to fall back here.
+    blocks_non_spd = np.stack([-np.eye(3), np.eye(3), np.eye(3)])
+    A_non_spd = bsr_zeros(3, 3, mat33, device=device)
+    bsr_set_from_triplets(A_non_spd, rows, cols, wp.array(blocks_non_spd, dtype=mat33, device=device))
+
+    M = preconditioner(A_non_spd, "block_jacobi_sequential")
+    z = wp.zeros_like(x)
+    M.matvec(x, z, z, alpha=1.0, beta=0.0)
+    z_np = z.numpy()
+    test.assertTrue(np.all(np.isfinite(z_np)), msg="sequential: non-finite output on non-SPD block")
+    assert_np_equal(z_np[:3], x.numpy()[:3], tol=0.0)
+
+
+def test_block_jacobi_preconditioner_rank_deficient_block(test, device):
+    """Verify a rank-deficient (but not exactly-zero) block falls back to the identity.
+
+    ``[[1, 2], [2, 4]]`` is exactly rank-1: QR factorization leaves a tiny nonzero pivot on
+    ``R``'s diagonal instead of an exact zero, which an exact-zero singularity check misses and
+    then divides by. "block_jacobi_direct" is also what "block_jacobi_auto"/"block_jacobi"
+    selects for 2x2 blocks, so this covers the default dispatch too.
+    """
+    mat22 = wp.types.matrix(shape=(2, 2), dtype=wp.float64)
+    rows = wp.array(np.array([0], dtype=np.int32), dtype=int, device=device)
+    cols = wp.array(np.array([0], dtype=np.int32), dtype=int, device=device)
+    blocks = np.array([[[1.0, 2.0], [2.0, 4.0]]])
+
+    for dtype in (wp.float16, wp.float32, wp.float64):
+        mat22_t = wp.types.matrix(shape=(2, 2), dtype=dtype)
+        A = bsr_zeros(1, 1, mat22_t, device=device)
+        bsr_set_from_triplets(A, rows, cols, wp.array(blocks, dtype=mat22_t, device=device))
+
+        x = wp.array(np.array([1.0, 1.0]), dtype=dtype, device=device)
+        for ptype in ("block_jacobi_direct", "block_jacobi_auto"):
+            z = wp.zeros_like(x)
+            preconditioner(A, ptype).matvec(x, z, z, alpha=1.0, beta=0.0)
+            z_np = z.numpy().astype(np.float64)
+            test.assertTrue(
+                np.all(np.isfinite(z_np)), msg=f"{ptype}/{dtype.__name__}: non-finite output on rank-deficient block"
+            )
+            assert_np_equal(z_np, x.numpy().astype(np.float64), tol=0.0)
+
+
+def test_block_jacobi_preconditioner_rank_deficient_ldlt_block(test, device):
+    """Verify a rank-deficient (but not exactly non-positive) block falls back to the identity.
+
+    Under "block_jacobi_sequential"'s LDL^T factorization: ``[[9, 21], [21, 49]]`` is exactly rank-1 (PSD, singular): LDL^T roundoff leaves a tiny
+    positive residual pivot instead of an exact non-positive value, which a ``<= 0`` singularity
+    check misses and then divides by. Also covers a size-7 rank-1 block (an outer product, same
+    singularity pattern) through "block_jacobi_auto"/"block_jacobi", which dispatches block
+    sizes 7-11 to "block_jacobi_sequential".
+    """
+    mat22 = wp.types.matrix(shape=(2, 2), dtype=wp.float64)
+    rows2 = wp.array(np.array([0], dtype=np.int32), dtype=int, device=device)
+    cols2 = wp.array(np.array([0], dtype=np.int32), dtype=int, device=device)
+    blocks2 = np.array([[[9.0, 21.0], [21.0, 49.0]]])
+
+    for dtype in (wp.float16, wp.float32, wp.float64):
+        mat22_t = wp.types.matrix(shape=(2, 2), dtype=dtype)
+        A = bsr_zeros(1, 1, mat22_t, device=device)
+        bsr_set_from_triplets(A, rows2, cols2, wp.array(blocks2, dtype=mat22_t, device=device))
+
+        x = wp.array(np.array([1.0, 1.0]), dtype=dtype, device=device)
+        z = wp.zeros_like(x)
+        preconditioner(A, "block_jacobi_sequential").matvec(x, z, z, alpha=1.0, beta=0.0)
+        z_np = z.numpy().astype(np.float64)
+        test.assertTrue(
+            np.all(np.isfinite(z_np)), msg=f"sequential/{dtype.__name__}: non-finite output on rank-1 block"
+        )
+        assert_np_equal(z_np, x.numpy().astype(np.float64), tol=0.0)
+
+    # A size-7 rank-1 (outer product) block, to confirm "block_jacobi_auto"'s default dispatch
+    # (block sizes 7-11 use "sequential") also benefits from the fix.
+    block_size = 7
+    v = np.array([3.0, 7.0, 1.0, 2.0, 0.5, 4.0, 6.0])
+    block7 = np.outer(v, v)
+    mat7 = wp.types.matrix(shape=(block_size, block_size), dtype=wp.float32)
+    rows7 = wp.array(np.array([0], dtype=np.int32), dtype=int, device=device)
+    cols7 = wp.array(np.array([0], dtype=np.int32), dtype=int, device=device)
+    A7 = bsr_zeros(1, 1, mat7, device=device)
+    bsr_set_from_triplets(A7, rows7, cols7, wp.array(block7[None, ...], dtype=mat7, device=device))
+
+    x7 = wp.array(np.ones(block_size), dtype=wp.float32, device=device)
+    z7 = wp.zeros_like(x7)
+    preconditioner(A7, "block_jacobi_auto").matvec(x7, z7, z7, alpha=1.0, beta=0.0)
+    z7_np = z7.numpy()
+    test.assertTrue(np.all(np.isfinite(z7_np)), msg="auto/size-7: non-finite output on rank-1 block")
+    assert_np_equal(z7_np, x7.numpy(), tol=0.0)
+
+
+def test_block_jacobi_preconditioner_well_conditioned_scaled_block(test, device):
+    """Verify a well-conditioned but differently-scaled block is inverted, not mistaken for singular.
+
+    A relative-pivot tolerance that isn't dtype-aware rejects invertible, merely differently
+    scaled blocks as singular and silently falls back to the identity. The scale each dtype can
+    resolve differs: float16's tolerance is already ~1 ulp, so ``diag(1, 1e-4)`` is genuinely
+    below its noise floor and ``diag(1, 1e-2)`` is used there instead. Covers both the QR
+    ("direct") and LDL^T ("sequential") strategies.
+    """
+    rows = wp.array(np.array([0], dtype=np.int32), dtype=int, device=device)
+    cols = wp.array(np.array([0], dtype=np.int32), dtype=int, device=device)
+
+    for ptype in ("block_jacobi_direct", "block_jacobi_sequential"):
+        for dtype, scale in ((wp.float16, 1.0e-2), (wp.float32, 1.0e-4), (wp.float64, 1.0e-4)):
+            block = np.array([[1.0, 0.0], [0.0, scale]])
+            expected_inv = np.diag(1.0 / np.diag(block))
+            mat22_t = wp.types.matrix(shape=(2, 2), dtype=dtype)
+            A = bsr_zeros(1, 1, mat22_t, device=device)
+            bsr_set_from_triplets(A, rows, cols, wp.array(block[None, ...], dtype=mat22_t, device=device))
+
+            x = wp.array(np.array([1.0, 1.0]), dtype=dtype, device=device)
+            z = wp.zeros_like(x)
+            preconditioner(A, ptype).matvec(x, z, z, alpha=1.0, beta=0.0)
+            z_np = z.numpy().astype(np.float64)
+
+            expected = expected_inv @ np.array([1.0, 1.0])
+            test.assertFalse(
+                np.allclose(z_np, [1.0, 1.0]),
+                msg=f"{ptype}/{dtype.__name__}: well-conditioned scaled block was treated as singular",
+            )
+            # atol scaled to the inverse's magnitude and the dtype's precision: float32 carries
+            # ~7 decimal digits, so a few 1e-3 of absolute error at 1e4 is roundoff, not a bug.
+            tol = {wp.float16: 1.0e-2, wp.float32: 1.0e-2, wp.float64: 1.0e-8}[dtype]
+            assert_np_equal(z_np, expected, tol=tol)
+
+
+def test_block_jacobi_preconditioner_concurrent_streams(test, device):
+    """Verify a preconditioner reused across concurrent CUDA streams never corrupts an output.
+
+    Two priority streams apply the same preconditioner to different inputs with no host
+    synchronization between the launches; reusing a preconditioner this way must not share
+    mutable scratch state or corrupt either output. Covers all three explicit strategies plus
+    "auto".
+    """
+    num_blocks = 50_000
+    block_size = 12
+    num_values = num_blocks * block_size
+
+    mat12f = wp.types.matrix(shape=(block_size, block_size), dtype=wp.float32)
+    A = bsr_identity(num_blocks, block_type=mat12f, device=device)
+
+    stream0 = wp.Stream(device, priority=0)
+    stream1 = wp.Stream(device, priority=-1)
+
+    for ptype in (*_BLOCK_JACOBI_EXPLICIT_PTYPES, "block_jacobi_auto"):
+        M = preconditioner(A, ptype)
+
+        x0 = wp.full(num_values, 1.0, dtype=wp.float32, device=device)
+        x1 = wp.full(num_values, 2.0, dtype=wp.float32, device=device)
+        z0 = wp.zeros_like(x0)
+        z1 = wp.zeros_like(x1)
+
+        # Warm up JIT compilation and complete setup work.
+        M.matvec(x0, z0, z0, alpha=1.0, beta=0.0)
+        wp.synchronize_device(device)
+
+        for _ in range(20):
+            z0.zero_()
+            z1.zero_()
+            with wp.ScopedStream(stream0, sync_enter=False, sync_exit=False):
+                M.matvec(x0, z0, z0, alpha=1.0, beta=0.0)
+            with wp.ScopedStream(stream1, sync_enter=False, sync_exit=False):
+                M.matvec(x1, z1, z1, alpha=1.0, beta=0.0)
+            wp.synchronize_device(device)
+
+            assert_np_equal(z0.numpy(), x0.numpy())
+            assert_np_equal(z1.numpy(), x1.numpy())
+
+
+def test_block_jacobi_preconditioner_errors(test, device):
+    """Verify non-square blocks, non-BsrMatrix input, and unsupported ptype strings are rejected."""
+    A_dense, _b = _make_spd_system(n=16, seed=321, dtype=wp.float32, device=device)
+    for ptype in _BLOCK_JACOBI_ALL_PTYPES:
+        with test.assertRaises(ValueError):
+            preconditioner(A_dense, ptype)
+
+    mat23 = wp.types.matrix(shape=(2, 3), dtype=wp.float64)
+    A_rect = bsr_zeros(3, 4, mat23, device=device)
+    for ptype in _BLOCK_JACOBI_ALL_PTYPES:
+        with test.assertRaises(ValueError):
+            preconditioner(A_rect, ptype)
+
+    with test.assertRaises(ValueError):
+        preconditioner(A_dense, "block_jacobi_bogus_strategy")
+
+
+def test_block_jacobi_direct_size_cap_falls_back_to_tile(test, device):
+    """Verify "block_jacobi_direct" above the size cap warns and falls back to "block_jacobi_tile".
+
+    "block_jacobi_direct"'s QR kernel has a compile-time cost that grows sharply with block
+    size, so requesting it above ``_BLOCK_JACOBI_DIRECT_MAX_BLOCK_SIZE`` must fall back to
+    "block_jacobi_tile" (with a warning) instead of compiling the expensive kernel.
+    """
+    block_size = _BLOCK_JACOBI_DIRECT_MAX_BLOCK_SIZE + 4
+    A, b, _diag_blocks = _make_block_spd_system(
+        num_blocks=4, block_size=block_size, seed=99, device=device, dtype=wp.float32
+    )
+
+    # Warp's default logger routes warnings through its own `warnings.showwarning` override
+    # (see LoggerBasic.warning), which bypasses `assertWarns`' recorder; capture stderr instead,
+    # matching the pattern used elsewhere in this repo for warp-logger-emitted warnings.
+    original_log_level = wp.config.log_level
+    wp.config.log_level = wp.LOG_WARNING
+    try:
+        with warnings.catch_warnings(), contextlib.redirect_stderr(io.StringIO()) as stderr:
+            warnings.simplefilter("always", UserWarning)
+            M_fallback = preconditioner(A, "block_jacobi_direct")
+    finally:
+        wp.config.log_level = original_log_level
+    test.assertRegex(stderr.getvalue(), r"block_jacobi_direct.*falling back to 'block_jacobi_tile'")
+    M_tile = preconditioner(A, "block_jacobi_tile")
+
+    x_fallback = wp.zeros_like(b)
+    x_tile = wp.zeros_like(b)
+    M_fallback.matvec(b, x_fallback, x_fallback, alpha=1.0, beta=0.0)
+    M_tile.matvec(b, x_tile, x_tile, alpha=1.0, beta=0.0)
+
+    # Falling back to "tile" must produce "tile"'s actual output, not merely avoid an error.
+    assert_np_equal(x_fallback.numpy(), x_tile.numpy(), tol=1.0e-5)
+
+
+def test_block_jacobi_direct_size_cap_preserved_for_unsupported_dtype(test, device):
+    """Verify "block_jacobi_direct" above the size cap keeps "direct" for a dtype "tile" rejects.
+
+    The size-cap fallback to "block_jacobi_tile" only applies when the input's scalar type is
+    one "tile" actually supports (``float32``/``float64``). For ``float16`` (or any other
+    unsupported scalar type), falling back would just trade the QR kernel's slow compile for an
+    immediate ``ValueError`` from "tile" -- and would silently break "block_jacobi_direct"'s
+    documented ``float16`` support. So above the size cap with ``float16`` input, "direct" must
+    still be used (no warning, no fallback), producing the same result as calling it below the
+    cap would.
+    """
+    block_size = _BLOCK_JACOBI_DIRECT_MAX_BLOCK_SIZE + 4
+    A, b, _diag_blocks = _make_block_spd_system(
+        num_blocks=4, block_size=block_size, seed=98, device=device, dtype=wp.float16
+    )
+
+    original_log_level = wp.config.log_level
+    wp.config.log_level = wp.LOG_WARNING
+    try:
+        with warnings.catch_warnings(), contextlib.redirect_stderr(io.StringIO()) as stderr:
+            warnings.simplefilter("always", UserWarning)
+            M_direct = preconditioner(A, "block_jacobi_direct")
+    finally:
+        wp.config.log_level = original_log_level
+    test.assertEqual(stderr.getvalue(), "")
+
+    x_direct = wp.zeros_like(b)
+    M_direct.matvec(b, x_direct, x_direct, alpha=1.0, beta=0.0)
+
+    with test.assertRaises(ValueError):
+        preconditioner(A, "block_jacobi_tile")
+
+
+def test_block_jacobi_preconditioner_unsupported_dtype(test, device):
+    """Verify "block_jacobi_tile" fails fast on an unsupported scalar type, and "auto" avoids it.
+
+    ``wp.tile_cholesky`` only supports ``float32``/``float64``, so explicitly requesting
+    "block_jacobi_tile" for any other scalar type must raise a clear ``ValueError`` rather than
+    a kernel-compile error. "block_jacobi_auto" must not hit that error at all: for a block size
+    that would otherwise dispatch to "tile" (12 and up), an unsupported dtype instead routes to
+    "block_jacobi_sequential" (which accepts any floating scalar type), so "auto" succeeds and
+    its result matches calling "block_jacobi_sequential" directly. "direct"/"sequential" are
+    scoped out of the dtype restriction; see :func:`test_block_jacobi_preconditioner_dtype_coverage`.
+    """
+    A, _b, _diag_blocks = _make_block_spd_system(num_blocks=4, block_size=16, seed=321, dtype=wp.float16, device=device)
+
+    with test.assertRaises(ValueError):
+        preconditioner(A, "block_jacobi_tile")
+
+    x_np = np.random.default_rng(4).uniform(low=-1.0, high=1.0, size=(A.shape[0],)).astype(np.float16)
+    x = wp.array(x_np, dtype=wp.float16, device=device)
+
+    z_auto = wp.zeros_like(x)
+    preconditioner(A, "block_jacobi_auto").matvec(x, z_auto, z_auto, alpha=1.0, beta=0.0)
+
+    z_sequential = wp.zeros_like(x)
+    preconditioner(A, "block_jacobi_sequential").matvec(x, z_sequential, z_sequential, alpha=1.0, beta=0.0)
+
+    assert_np_equal(z_auto.numpy(), z_sequential.numpy())
+
+
 class TestLinearSolvers(unittest.TestCase):
     pass
 
@@ -1037,6 +1516,90 @@ add_function_test(
 )
 add_function_test(TestLinearSolvers, "test_functor_preconditioner", test_functor_preconditioner, devices=devices)
 add_function_test(TestLinearSolvers, "test_functor_compat_errors", test_functor_compat_errors, devices=devices)
+add_function_test(
+    TestLinearSolvers,
+    "test_block_jacobi_preconditioner_correctness",
+    test_block_jacobi_preconditioner_correctness,
+    devices=devices,
+)
+add_function_test(
+    TestLinearSolvers,
+    "test_block_jacobi_preconditioner_auto_dispatch",
+    test_block_jacobi_preconditioner_auto_dispatch,
+    devices=devices,
+)
+add_function_test(
+    TestLinearSolvers,
+    "test_block_jacobi_preconditioner_convergence",
+    test_block_jacobi_preconditioner_convergence,
+    devices=devices,
+)
+add_function_test(
+    TestLinearSolvers,
+    "test_block_jacobi_preconditioner_scalar_fallback",
+    test_block_jacobi_preconditioner_scalar_fallback,
+    devices=devices,
+)
+add_function_test(
+    TestLinearSolvers,
+    "test_block_jacobi_preconditioner_dtype_coverage",
+    test_block_jacobi_preconditioner_dtype_coverage,
+    devices=devices,
+)
+add_function_test(
+    TestLinearSolvers,
+    "test_block_jacobi_preconditioner_singular_block",
+    test_block_jacobi_preconditioner_singular_block,
+    devices=devices,
+)
+add_function_test(
+    TestLinearSolvers,
+    "test_block_jacobi_preconditioner_rank_deficient_block",
+    test_block_jacobi_preconditioner_rank_deficient_block,
+    devices=devices,
+)
+add_function_test(
+    TestLinearSolvers,
+    "test_block_jacobi_preconditioner_rank_deficient_ldlt_block",
+    test_block_jacobi_preconditioner_rank_deficient_ldlt_block,
+    devices=devices,
+)
+add_function_test(
+    TestLinearSolvers,
+    "test_block_jacobi_preconditioner_well_conditioned_scaled_block",
+    test_block_jacobi_preconditioner_well_conditioned_scaled_block,
+    devices=devices,
+)
+add_function_test(
+    TestLinearSolvers,
+    "test_block_jacobi_preconditioner_concurrent_streams",
+    test_block_jacobi_preconditioner_concurrent_streams,
+    devices=get_cuda_test_devices(),
+)
+add_function_test(
+    TestLinearSolvers,
+    "test_block_jacobi_preconditioner_errors",
+    test_block_jacobi_preconditioner_errors,
+    devices=devices,
+)
+add_function_test(
+    TestLinearSolvers,
+    "test_block_jacobi_preconditioner_unsupported_dtype",
+    test_block_jacobi_preconditioner_unsupported_dtype,
+    devices=devices,
+)
+add_function_test(
+    TestLinearSolvers,
+    "test_block_jacobi_direct_size_cap_falls_back_to_tile",
+    test_block_jacobi_direct_size_cap_falls_back_to_tile,
+    devices=devices,
+)
+add_function_test(
+    TestLinearSolvers,
+    "test_block_jacobi_direct_size_cap_preserved_for_unsupported_dtype",
+    test_block_jacobi_direct_size_cap_preserved_for_unsupported_dtype,
+    devices=devices,
+)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
