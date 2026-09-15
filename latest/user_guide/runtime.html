@@ -3182,9 +3182,11 @@ addressing modes (wrap, clamp, mirror, border), making them ideal for efficientl
 </pre></div>
 </div>
 <p>Supported data types include <code class="docutils literal notranslate"><span class="pre">wp.uint8</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.uint16</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.uint32</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.int8</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.int16</span></code>,
-<code class="docutils literal notranslate"><span class="pre">wp.int32</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.float16</span></code>, and <code class="docutils literal notranslate"><span class="pre">wp.float32</span></code>. Unsigned integer textures are automatically
-normalized to the [0, 1] range when sampled; signed integer textures are normalized to [-1, 1];
-float types are returned as-is.</p>
+<code class="docutils literal notranslate"><span class="pre">wp.int32</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.float16</span></code>, and <code class="docutils literal notranslate"><span class="pre">wp.float32</span></code>. Unsigned 8- and 16-bit integer textures are
+automatically normalized to the [0, 1] range when sampled; signed 8- and 16-bit integer textures are
+normalized to [-1, 1]; float types are returned as-is. Sampling a <code class="docutils literal notranslate"><span class="pre">wp.uint32</span></code> or <code class="docutils literal notranslate"><span class="pre">wp.int32</span></code>
+texture causes kernel execution to fail, but these dtypes remain usable for storage, copies, and
+interop.</p>
 <div class="admonition seealso">
 <p class="admonition-title">See also</p>
 <p><a class="reference internal" href="../language_reference/builtins.html#builtins-textures"><span class="std std-ref">Reference</span></a> for the texture sampling functions available in kernels.</p>

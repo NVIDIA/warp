@@ -593,9 +593,9 @@ each level used in the blend. The <code class="docutils literal notranslate"><sp
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The sampled value of the specified <code class="docutils literal notranslate"><span class="pre">dtype</span></code>. The CPU backend normalizes unsigned integer
-data to <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code> and signed integer data to <code class="docutils literal notranslate"><span class="pre">[-1,</span> <span class="pre">1]</span></code>. On CUDA devices, normalized
-integer sampling is supported only for 8- and 16-bit formats; use an 8- or 16-bit integer
+<dd class="field-even"><p>The sampled value of the specified <code class="docutils literal notranslate"><span class="pre">dtype</span></code>. The backends normalize unsigned 8- and 16-bit
+integer data to <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code> and signed 8- and 16-bit integer data to <code class="docutils literal notranslate"><span class="pre">[-1,</span> <span class="pre">1]</span></code>. Sampling an
+<code class="docutils literal notranslate"><span class="pre">int32</span></code> or <code class="docutils literal notranslate"><span class="pre">uint32</span></code> texture causes kernel execution to fail; use an 8- or 16-bit integer
 or floating-point texture. Floating-point texture data is returned as <code class="docutils literal notranslate"><span class="pre">float32</span></code> channel
 values without normalization.</p>
 </dd>
@@ -672,9 +672,9 @@ each level used in the blend. The <code class="docutils literal notranslate"><sp
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The sampled value of the specified <code class="docutils literal notranslate"><span class="pre">dtype</span></code>. The CPU backend normalizes unsigned integer
-data to <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code> and signed integer data to <code class="docutils literal notranslate"><span class="pre">[-1,</span> <span class="pre">1]</span></code>. On CUDA devices, normalized
-integer sampling is supported only for 8- and 16-bit formats; use an 8- or 16-bit integer
+<dd class="field-even"><p>The sampled value of the specified <code class="docutils literal notranslate"><span class="pre">dtype</span></code>. The backends normalize unsigned 8- and 16-bit
+integer data to <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code> and signed 8- and 16-bit integer data to <code class="docutils literal notranslate"><span class="pre">[-1,</span> <span class="pre">1]</span></code>. Sampling an
+<code class="docutils literal notranslate"><span class="pre">int32</span></code> or <code class="docutils literal notranslate"><span class="pre">uint32</span></code> texture causes kernel execution to fail; use an 8- or 16-bit integer
 or floating-point texture. Floating-point texture data is returned as <code class="docutils literal notranslate"><span class="pre">float32</span></code> channel
 values without normalization.</p>
 </dd>
@@ -729,9 +729,9 @@ each level used in the blend. The <code class="docutils literal notranslate"><sp
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The sampled value of the specified <code class="docutils literal notranslate"><span class="pre">dtype</span></code>. The CPU backend normalizes unsigned integer
-data to <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code> and signed integer data to <code class="docutils literal notranslate"><span class="pre">[-1,</span> <span class="pre">1]</span></code>. On CUDA devices, normalized
-integer sampling is supported only for 8- and 16-bit formats; use an 8- or 16-bit integer
+<dd class="field-even"><p>The sampled value of the specified <code class="docutils literal notranslate"><span class="pre">dtype</span></code>. The backends normalize unsigned 8- and 16-bit
+integer data to <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code> and signed 8- and 16-bit integer data to <code class="docutils literal notranslate"><span class="pre">[-1,</span> <span class="pre">1]</span></code>. Sampling an
+<code class="docutils literal notranslate"><span class="pre">int32</span></code> or <code class="docutils literal notranslate"><span class="pre">uint32</span></code> texture causes kernel execution to fail; use an 8- or 16-bit integer
 or floating-point texture. Floating-point texture data is returned as <code class="docutils literal notranslate"><span class="pre">float32</span></code> channel
 values without normalization.</p>
 </dd>
@@ -783,9 +783,9 @@ each level used in the blend. The <code class="docutils literal notranslate"><sp
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The sampled value of the specified <code class="docutils literal notranslate"><span class="pre">dtype</span></code>. The CPU backend normalizes unsigned integer
-data to <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code> and signed integer data to <code class="docutils literal notranslate"><span class="pre">[-1,</span> <span class="pre">1]</span></code>. On CUDA devices, normalized
-integer sampling is supported only for 8- and 16-bit formats; use an 8- or 16-bit integer
+<dd class="field-even"><p>The sampled value of the specified <code class="docutils literal notranslate"><span class="pre">dtype</span></code>. The backends normalize unsigned 8- and 16-bit
+integer data to <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code> and signed 8- and 16-bit integer data to <code class="docutils literal notranslate"><span class="pre">[-1,</span> <span class="pre">1]</span></code>. Sampling an
+<code class="docutils literal notranslate"><span class="pre">int32</span></code> or <code class="docutils literal notranslate"><span class="pre">uint32</span></code> texture causes kernel execution to fail; use an 8- or 16-bit integer
 or floating-point texture. Floating-point texture data is returned as <code class="docutils literal notranslate"><span class="pre">float32</span></code> channel
 values without normalization.</p>
 </dd>
@@ -844,9 +844,9 @@ each level used in the blend. The <code class="docutils literal notranslate"><sp
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The sampled value of the specified <code class="docutils literal notranslate"><span class="pre">dtype</span></code>. The CPU backend normalizes unsigned integer
-data to <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code> and signed integer data to <code class="docutils literal notranslate"><span class="pre">[-1,</span> <span class="pre">1]</span></code>. On CUDA devices, normalized
-integer sampling is supported only for 8- and 16-bit formats; use an 8- or 16-bit integer
+<dd class="field-even"><p>The sampled value of the specified <code class="docutils literal notranslate"><span class="pre">dtype</span></code>. The backends normalize unsigned 8- and 16-bit
+integer data to <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code> and signed 8- and 16-bit integer data to <code class="docutils literal notranslate"><span class="pre">[-1,</span> <span class="pre">1]</span></code>. Sampling an
+<code class="docutils literal notranslate"><span class="pre">int32</span></code> or <code class="docutils literal notranslate"><span class="pre">uint32</span></code> texture causes kernel execution to fail; use an 8- or 16-bit integer
 or floating-point texture. Floating-point texture data is returned as <code class="docutils literal notranslate"><span class="pre">float32</span></code> channel
 values without normalization.</p>
 </dd>
