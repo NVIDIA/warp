@@ -307,6 +307,11 @@ class Function:
         self.is_differentiable = is_differentiable  # whether a corresponding adjoint exists for this builtin in Warp
         self.generic = generic
         self.mangled_name: str | None = None
+        # Parameter naming the scalar type to instantiate the native function with, for built-ins
+        # whose exported signature carries no argument implying it. See
+        # `get_template_scalar_param()`, and the scalar type it defaults to.
+        self.template_scalar_param: str | None = None
+        self.template_scalar_default: type | None = None
 
         # allow registering functions with a different name in Python and native code
         if native_func is None:
@@ -370,9 +375,21 @@ class Function:
                 for k, v in input_types.items():
                     self.input_types[k] = warp._src.types.type_to_warp(v)
 
-            # cache mangled name
+            self.template_scalar_param = get_template_scalar_param(self)
+            if self.template_scalar_param is not None:
+                # The scalar to instantiate with when the parameter is left out is the one carried
+                # by the result type the built-in falls back to, or that type itself when it is
+                # already a scalar.
+                default_type = self.value_func(self.export_func(self.input_types), None)
+                self.template_scalar_default = getattr(default_type, "_wp_scalar_type_", default_type)
+
+            # Cache the mangled name, naming the instantiation that a call leaving the scalar type
+            # out resolves to, so that it always names a symbol the generated header defines.
             if self.export and self.is_simple():
-                self.mangled_name = self.mangle()
+                if self.template_scalar_param is None:
+                    self.mangled_name = self.mangle()
+                else:
+                    self.mangled_name = self.mangle(self.template_scalar_default)
 
         if not skip_adding_overload:
             self.add_overload(self)
@@ -507,8 +524,13 @@ class Function:
 
         return True
 
-    def mangle(self) -> str:
-        """Build a mangled name for the C-exported function, e.g.: `builtin_normalize_vec3()`."""
+    def mangle(self, *template_args: type) -> str:
+        """Build a mangled name for the C-exported function, e.g.: ``builtin_normalize_vec3()``.
+
+        A built-in that instantiates its native function from a parameter rather than from its
+        runtime arguments is exported once per instantiation, so ``template_args`` selects which of
+        those names to build.
+        """
 
         name = "wp_builtin_" + self.key
 
@@ -521,6 +543,8 @@ class Function:
         types = []
         for t in func_args.values():
             types.append(t.__name__)
+
+        types.extend(t.__name__ for t in template_args)
 
         return "_".join([name, *types])
 
@@ -668,12 +692,13 @@ class Function:
                 warp._src.codegen.apply_defaults(bound_args, default_args)
 
             bound_arg_types = tuple(type(x) for x in bound_args.arguments.values())
+            scalar = None if self.template_scalar_param is None else get_requested_scalar(self, bound_args)
 
             for overload in self.overloads:
                 if overload.generic:
                     continue
 
-                desc = get_builtin_call_desc(overload, bound_arg_types)
+                desc = get_builtin_call_desc(overload, bound_arg_types, scalar)
                 if desc is not None:
                     # Do not let primary-signature defaults satisfy required parameters on another overload.
                     if overload is not self and primary_supplied_arguments is not None:
@@ -694,7 +719,7 @@ class Function:
         # because many concrete type specializations share each call shape. The
         # primary shape was already exhausted above, whether its binding
         # succeeded or failed, so do not revisit its overloads.
-        bindings_by_call_shape: dict[tuple, tuple[tuple[type, ...], inspect.Signature] | None] = {
+        bindings_by_call_shape: dict[tuple, tuple[tuple[type, ...], inspect.Signature, type | None] | None] = {
             self._call_shape: None
         }
         for overload in self.overloads:
@@ -706,7 +731,7 @@ class Function:
                 cached_binding = bindings_by_call_shape[call_shape]
                 if cached_binding is None:
                     continue
-                bound_arg_types, binding_signature = cached_binding
+                bound_arg_types, binding_signature, scalar = cached_binding
             else:
                 try:
                     bound_args = overload.signature.bind(*args, **kwargs)
@@ -721,9 +746,10 @@ class Function:
 
                 bound_arg_types = tuple(type(x) for x in bound_args.arguments.values())
                 binding_signature = overload.signature
-                bindings_by_call_shape[call_shape] = (bound_arg_types, binding_signature)
+                scalar = None if overload.template_scalar_param is None else get_requested_scalar(overload, bound_args)
+                bindings_by_call_shape[call_shape] = (bound_arg_types, binding_signature, scalar)
 
-            desc = get_builtin_call_desc(overload, bound_arg_types)
+            desc = get_builtin_call_desc(overload, bound_arg_types, scalar)
             if desc is not None:
                 return desc._replace(binding_signature=binding_signature)
 
@@ -773,6 +799,24 @@ class Function:
     def __repr__(self):
         inputs_str = ", ".join([f"{k}: {warp._src.types.type_repr(v)}" for k, v in self.input_types.items()])
         return f"<Function {self.key}({inputs_str})>"
+
+
+class UnsupportedScalarType:
+    """Placeholder standing in for an argument that names no type at all."""
+
+
+def get_requested_scalar(f: Function, bound_args: inspect.BoundArguments) -> type | None:
+    """Return the argument naming a call's scalar type, as a type so that it can be cached.
+
+    Only for a built-in that has a ``template_scalar_param``; callers check that first so that
+    resolving the overloads of any other built-in costs nothing.
+    """
+    scalar = bound_args.arguments.get(f.template_scalar_param)
+    if scalar is None or isinstance(scalar, type):
+        return scalar
+
+    # Values that name no type at all still need a hashable stand-in for the descriptor cache.
+    return UnsupportedScalarType
 
 
 def get_builtin_type(return_type: type) -> type:
@@ -851,6 +895,7 @@ class BuiltinCallDesc(NamedTuple):
 def get_builtin_call_desc(
     func: Function,
     param_types: Sequence,
+    scalar: type | None = None,
 ) -> BuiltinCallDesc | None:
     """
     Extract any invariant that can be cached to optimize calls to a built-in
@@ -867,7 +912,21 @@ def get_builtin_call_desc(
     if len(func.input_types) != len(param_types):
         return None
 
-    exported_signature = resolve_exported_function_sig(func)
+    if func.template_scalar_param is None:
+        if scalar is not None:
+            return None
+    elif scalar is None:
+        # The built-in's own default applies.
+        scalar = func.template_scalar_default
+    else:
+        # A scalar type is spelled as a Warp type, or as one of Python's `float`, `int`, and `bool`
+        # standing in for its Warp counterpart as in kernels. Anything else, or a type this
+        # built-in cannot be instantiated with, matches no overload.
+        scalar = warp._src.types.type_to_warp(scalar)
+        if scalar not in get_template_scalars(func):
+            return None
+
+    exported_signature = resolve_exported_function_sig(func, scalar)
     if exported_signature is None:
         return None
 
@@ -918,8 +977,12 @@ def get_builtin_call_desc(
         param_kinds.append(param_kind)
 
     # Retrieve the built-in function from Warp's dll only after confirming that
-    # this overload is exported and compatible with the given parameters.
-    c_func = getattr(warp._src.context.runtime.core, func.mangled_name)
+    # this overload is exported and compatible with the given parameters. A built-in that names
+    # the scalar type to instantiate with has one symbol per type, named after the scalar that
+    # `export_builtin()` instantiated it with rather than after the result type, which is free to
+    # be anything.
+    symbol = func.mangled_name if func.template_scalar_param is None else func.mangle(scalar)
+    c_func = getattr(warp._src.context.runtime.core, symbol)
 
     overload_defaults_by_index = tuple(
         (index, func.defaults[name]) for index, name in enumerate(func.signature.parameters) if name in func.defaults
@@ -14871,10 +14934,59 @@ def format_default_value(value) -> str:
 
 
 def ctype_ret_str(t):
-    return get_builtin_type(t).__name__
+    try:
+        return get_builtin_type(t).__name__
+    except RuntimeError:
+        # Composite types without a named alias, such as `bfloat16` quaternions, are spelled with
+        # the native template they instantiate, the way code generation already spells them. Doing
+        # it here by hand would drop the length or the shape the template also carries.
+        return warp._src.codegen.Var.dtype_to_ctype(t)
 
 
-def resolve_exported_function_sig(f):
+def get_template_scalar_param(f: Function) -> str | None:
+    """Return the parameter naming the scalar type to instantiate the native function with.
+
+    The native function of a built-in is a template, and its scalar type normally comes from the
+    runtime arguments the exported signature carries. When ``export_func`` leaves that signature
+    empty, nothing implies it, so a parameter has to name it: ``wp.quat_identity(dtype=wp.float64)``
+    passes no value, only a type. Such a parameter is spelled as a template argument in the
+    generated header and mangled into the symbol name, one symbol per scalar type it accepts.
+
+    This is the export layer's counterpart to the ``template_args`` that a ``dispatch_func`` hands
+    to code generation, which is where kernels have always taken the same type from.
+    """
+    if not f.export or f.export_func is None or f.export_func(f.input_types):
+        return None
+
+    params = tuple(f.input_types)
+    if not params:
+        return None
+
+    # Exporting a built-in instantiates its native function ahead of time, once per combination of
+    # the parameters left compile-time, so a single one naming a scalar type is the only shape with
+    # few enough of them. A built-in taking a length or a shape has no such bound, which is why
+    # `wp.vector()` and `wp.zeros()` are registered with `export=False`.
+    if len(params) != 1 or not warp._src.types.type_is_generic_scalar(f.input_types[params[0]]):
+        raise RuntimeError(
+            f"Built-in '{f.key}' exports no runtime argument but takes {', '.join(params)}. Give it a single "
+            "parameter naming a scalar type, or register it with `export=False`."
+        )
+
+    return params[0]
+
+
+def get_template_scalars(f: Function) -> tuple[type, ...]:
+    """Return the scalar types a built-in's template scalar parameter accepts."""
+    generic_type = f.input_types[f.template_scalar_param]
+    if generic_type is warp._src.types.Float:
+        return warp._src.types.float_types
+    if generic_type is warp._src.types.Int:
+        return warp._src.types.int_types
+
+    return warp._src.types.scalar_types
+
+
+def resolve_exported_function_sig(f, scalar=None):
     if not f.export or f.generic:
         return None
 
@@ -14890,7 +15002,10 @@ def resolve_exported_function_sig(f):
 
     # todo: construct a default value for each of the functions args
     # so we can generate the return type for overloaded functions
-    return_type = f.value_func(func_args, None)
+    if scalar is None:
+        return_type = f.value_func(func_args, None)
+    else:
+        return_type = f.value_func({**func_args, f.template_scalar_param: scalar}, None)
 
     if return_type is None or (isinstance(return_type, tuple) and len(return_type) > 1):
         return (func_args, return_type)
@@ -15887,7 +16002,13 @@ def export_stubs(file):  # pragma: no cover
         raise RuntimeError(f"Registered built-in defaults were not emitted in the stub: {rendered}")
 
 
-def export_builtins(file: io.TextIOBase):  # pragma: no cover
+def export_builtin(file: io.TextIOBase, f: Function, scalar: type | None):  # pragma: no cover
+    """Write the C wrapper exposing one built-in overload to the Python interpreter.
+
+    ``scalar`` names the type to instantiate the native function with, for built-ins whose runtime
+    arguments do not imply it; it is spelled as a template argument since nothing else supplies it.
+    """
+
     def ctype_arg_str(t):
         if isinstance(t, int):
             return "int"
@@ -15898,48 +16019,52 @@ def export_builtins(file: io.TextIOBase):  # pragma: no cover
         else:
             return t.__name__
 
+    sig = resolve_exported_function_sig(f, scalar)
+    if sig is None:
+        return
+
+    func_args, return_type = sig
+
+    name = f.mangle() if scalar is None else f.mangle(scalar)
+    call = f"wp::{f.key}" if scalar is None else f"wp::{f.key}<{scalar.__name__}>"
+    args = ", ".join(f"{ctype_arg_str(v)} {k}" for k, v in func_args.items())
+    params = ", ".join(func_args.keys())
+
+    if return_type is None:
+        # void function
+        file.write(f"WP_API void {name}({args}) {{ {call}({params}); }}\n")
+    elif isinstance(return_type, tuple) and len(return_type) > 1:
+        # multiple return value function using output parameters
+        outputs = tuple(f"{ctype_ret_str(x)}& ret_{i}" for i, x in enumerate(return_type))
+        output_params = ", ".join(f"ret_{i}" for i in range(len(outputs)))
+        if args:
+            file.write(f"WP_API void {name}({args}, {', '.join(outputs)}) {{ {call}({params}, {output_params}); }}\n")
+        else:
+            file.write(f"WP_API void {name}({', '.join(outputs)}) {{ {call}({params}, {output_params}); }}\n")
+    else:
+        # single return value function
+        return_str = ctype_ret_str(return_type)
+        if args:
+            file.write(f"WP_API void {name}({args}, {return_str}* ret) {{ *ret = {call}({params}); }}\n")
+        else:
+            file.write(f"WP_API void {name}({return_str}* ret) {{ *ret = {call}({params}); }}\n")
+
+
+def export_builtins(file: io.TextIOBase):  # pragma: no cover
     file.write("// This file is auto-generated by build_lib.py - do not edit manually\n")
     file.write("// clang-format off\n\n")
     file.write("namespace wp {\n\n")
     file.write('extern "C" {\n\n')
 
-    for k, g in builtin_functions.items():
+    for g in builtin_functions.values():
         if not hasattr(g, "overloads"):
             continue
         for f in g.overloads:
-            sig = resolve_exported_function_sig(f)
-            if sig is None:
-                continue
-
-            func_args, return_type = sig
-
-            args = ", ".join(f"{ctype_arg_str(v)} {k}" for k, v in func_args.items())
-            params = ", ".join(func_args.keys())
-
-            if return_type is None:
-                # void function
-                file.write(f"WP_API void {f.mangled_name}({args}) {{ wp::{f.key}({params}); }}\n")
-            elif isinstance(return_type, tuple) and len(return_type) > 1:
-                # multiple return value function using output parameters
-                outputs = tuple(f"{ctype_ret_str(x)}& ret_{i}" for i, x in enumerate(return_type))
-                output_params = ", ".join(f"ret_{i}" for i in range(len(outputs)))
-                if args:
-                    file.write(
-                        f"WP_API void {f.mangled_name}({args}, {', '.join(outputs)}) {{ wp::{f.key}({params}, {output_params}); }}\n"
-                    )
-                else:
-                    file.write(
-                        f"WP_API void {f.mangled_name}({', '.join(outputs)}) {{ wp::{f.key}({params}, {output_params}); }}\n"
-                    )
-            else:
-                # single return value function
-                return_str = ctype_ret_str(return_type)
-                if args:
-                    file.write(
-                        f"WP_API void {f.mangled_name}({args}, {return_str}* ret) {{ *ret = wp::{f.key}({params}); }}\n"
-                    )
-                else:
-                    file.write(f"WP_API void {f.mangled_name}({return_str}* ret) {{ *ret = wp::{f.key}({params}); }}\n")
+            # A built-in that names the scalar type to instantiate its native function with is
+            # exported once per scalar type, since no runtime argument implies it.
+            scalars = (None,) if f.template_scalar_param is None else get_template_scalars(f)
+            for scalar in scalars:
+                export_builtin(file, f, scalar)
 
     file.write('\n}  // extern "C"\n\n')
     file.write("}  // namespace wp\n")

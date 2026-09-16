@@ -913,7 +913,10 @@ WP_API void wp_builtin_qr3_mat33d(mat33d& A, mat33d& ret_0, mat33d& ret_1) { wp:
 WP_API void wp_builtin_eig3_mat33h(mat33h& A, mat33h& ret_0, vec3h& ret_1) { wp::eig3(A, ret_0, ret_1); }
 WP_API void wp_builtin_eig3_mat33f(mat33f& A, mat33f& ret_0, vec3f& ret_1) { wp::eig3(A, ret_0, ret_1); }
 WP_API void wp_builtin_eig3_mat33d(mat33d& A, mat33d& ret_0, vec3d& ret_1) { wp::eig3(A, ret_0, ret_1); }
-WP_API void wp_builtin_quat_identity(quatf* ret) { *ret = wp::quat_identity(); }
+WP_API void wp_builtin_quat_identity_float16(quath* ret) { *ret = wp::quat_identity<float16>(); }
+WP_API void wp_builtin_quat_identity_bfloat16(wp::quat_t<wp::bfloat16>* ret) { *ret = wp::quat_identity<bfloat16>(); }
+WP_API void wp_builtin_quat_identity_float32(quatf* ret) { *ret = wp::quat_identity<float32>(); }
+WP_API void wp_builtin_quat_identity_float64(quatd* ret) { *ret = wp::quat_identity<float64>(); }
 WP_API void wp_builtin_quat_from_axis_angle_vec3h_float16(vec3h& axis, float16 angle, quath* ret) { *ret = wp::quat_from_axis_angle(axis, angle); }
 WP_API void wp_builtin_quat_from_axis_angle_vec3f_float32(vec3f& axis, float32 angle, quatf* ret) { *ret = wp::quat_from_axis_angle(axis, angle); }
 WP_API void wp_builtin_quat_from_axis_angle_vec3d_float64(vec3d& axis, float64 angle, quatd* ret) { *ret = wp::quat_from_axis_angle(axis, angle); }
@@ -944,7 +947,10 @@ WP_API void wp_builtin_quat_slerp_quatd_quatd_float64(quatd& a, quatd& b, float6
 WP_API void wp_builtin_quat_to_matrix_quath(quath& quat, mat33h* ret) { *ret = wp::quat_to_matrix(quat); }
 WP_API void wp_builtin_quat_to_matrix_quatf(quatf& quat, mat33f* ret) { *ret = wp::quat_to_matrix(quat); }
 WP_API void wp_builtin_quat_to_matrix_quatd(quatd& quat, mat33d* ret) { *ret = wp::quat_to_matrix(quat); }
-WP_API void wp_builtin_transform_identity(transformf* ret) { *ret = wp::transform_identity(); }
+WP_API void wp_builtin_transform_identity_float16(transformh* ret) { *ret = wp::transform_identity<float16>(); }
+WP_API void wp_builtin_transform_identity_bfloat16(wp::transform_t<wp::bfloat16>* ret) { *ret = wp::transform_identity<bfloat16>(); }
+WP_API void wp_builtin_transform_identity_float32(transformf* ret) { *ret = wp::transform_identity<float32>(); }
+WP_API void wp_builtin_transform_identity_float64(transformd* ret) { *ret = wp::transform_identity<float64>(); }
 WP_API void wp_builtin_transform_get_translation_transformh(transformh& xform, vec3h* ret) { *ret = wp::transform_get_translation(xform); }
 WP_API void wp_builtin_transform_get_translation_transformf(transformf& xform, vec3f* ret) { *ret = wp::transform_get_translation(xform); }
 WP_API void wp_builtin_transform_get_translation_transformd(transformd& xform, vec3d* ret) { *ret = wp::transform_get_translation(xform); }

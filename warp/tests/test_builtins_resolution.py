@@ -32,6 +32,19 @@ def make_mul_builtin(input_types, value_type, defaults=None, export_func=None):
     )
 
 
+def make_probe_builtin(input_types):
+    """Create an isolated built-in exporting no runtime argument, whatever its parameters are."""
+    return Function(
+        func=None,
+        key="probe",
+        namespace="wp::",
+        input_types=input_types,
+        value_func=lambda arg_types, arg_values: wp.float32,
+        export_func=lambda input_types: {},
+        export=True,
+    )
+
+
 def nps(dtype, value):
     """Create a NumPy scalar value based on the given data type."""
     # Workaround to avoid deprecation warning messages for integer overflows.
@@ -104,6 +117,38 @@ def test_int_int_args_support(test, device, dtype):
             wp.mul(value, nps(np_type, value))
 
 
+def make_identity_kernel(dtype):
+    """Create a kernel writing the identity quaternion and transform of a given scalar type."""
+    quat_type = wp._src.types.quaternion(dtype=dtype)
+    transform_type = wp._src.types.transformation(dtype=dtype)
+
+    def identity_kernel(quats: wp.array[quat_type], transforms: wp.array[transform_type]):
+        quats[0] = wp.quat_identity(dtype=dtype)
+        transforms[0] = wp.transform_identity(dtype=dtype)
+
+    return wp.Kernel(
+        func=identity_kernel,
+        key=f"identity_kernel_{dtype.__name__}",
+        options={"enable_backward": False},
+    )
+
+
+identity_kernels = {dtype: make_identity_kernel(dtype) for dtype in wp._src.types.float_types}
+
+
+def test_identity_builtins_match_kernel_scope(test, device):
+    """Build the same identity values at Python scope as inside a kernel."""
+    for dtype in wp._src.types.float_types:
+        quats = wp.zeros(1, dtype=wp._src.types.quaternion(dtype=dtype), device=device)
+        transforms = wp.zeros(1, dtype=wp._src.types.transformation(dtype=dtype), device=device)
+
+        wp.launch(identity_kernels[dtype], dim=1, outputs=[quats, transforms], device=device)
+
+        # Compare the raw bytes so that every scalar type is checked bit for bit.
+        test.assertEqual(bytes(wp.quat_identity(dtype=dtype)), quats.numpy()[0].tobytes())
+        test.assertEqual(bytes(wp.transform_identity(dtype=dtype)), transforms.numpy()[0].tobytes())
+
+
 class TestBuiltinsResolution(unittest.TestCase):
     def test_builtin_fallback_does_not_retry_primary_shape(self):
         """Evaluate primary-shape overloads only once before falling back."""
@@ -173,6 +218,139 @@ class TestBuiltinsResolution(unittest.TestCase):
             with self.subTest(name="runtime arguments", dtype_kwargs=dtype_kwargs):
                 result = multiply(wp.vec3f(1.0, 1.0, 1.0), 4.0, **dtype_kwargs)
                 np.testing.assert_allclose(result, (4.0, 4.0, 4.0))
+
+    def test_builtin_dtype_argument_selects_result_type(self):
+        """Return the scalar type requested through a built-in's ``dtype`` argument."""
+        cases = (
+            (wp.quat_identity, wp.types.type_is_quaternion, (0.0, 0.0, 0.0, 1.0)),
+            (wp.transform_identity, wp.types.type_is_transformation, (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0)),
+        )
+
+        for builtin, type_matches, expected in cases:
+            for dtype in wp._src.types.float_types:
+                # `dtype` names the same type whether it is passed by keyword or by position.
+                for form, result in (
+                    ("keyword", builtin(dtype=dtype)),
+                    ("positional", builtin(dtype)),
+                ):
+                    with self.subTest(builtin=builtin.key, dtype=dtype.__name__, form=form):
+                        self.assertTrue(type_matches(type(result)))
+                        self.assertIs(result._wp_scalar_type_, dtype)
+                        self.assertEqual(tuple(float(x) for x in result), expected)
+
+            # Omitting `dtype`, passing `None`, and passing Python's `float` all mean `float32`,
+            # matching how kernels resolve the same calls.
+            for name, kwargs in (("omitted", {}), ("none", {"dtype": None}), ("float", {"dtype": float})):
+                with self.subTest(builtin=builtin.key, dtype=name):
+                    result = builtin(**kwargs)
+                    self.assertTrue(type_matches(type(result)))
+                    self.assertIs(result._wp_scalar_type_, wp.float32)
+                    self.assertEqual(tuple(float(x) for x in result), expected)
+
+            # Foreign dtype names cross the interoperability boundary explicitly. The converted
+            # result is a Warp type, so it is accepted just like spelling `wp.bfloat16` directly.
+            ml_bfloat16 = wp._src.types._get_ml_dtypes_bfloat16()
+            if ml_bfloat16 is not None:
+                with self.subTest(builtin=builtin.key, dtype="converted ml_dtypes.bfloat16"):
+                    result = builtin(dtype=wp.dtype_from_numpy(ml_bfloat16))
+                    self.assertTrue(type_matches(type(result)))
+                    self.assertIs(result._wp_scalar_type_, wp.bfloat16)
+                    self.assertEqual(tuple(float(x) for x in result), expected)
+
+    def test_builtin_exporting_no_runtime_argument_needs_one_scalar_parameter(self):
+        """Reject a built-in the export layer could not instantiate ahead of time.
+
+        With nothing left in the exported signature, every parameter is a compile-time one and the
+        native function is instantiated once per combination of their values, before any call.
+        Only a single parameter naming a scalar type has few enough of them.
+        """
+        cases = (
+            ("two scalar types", {"a": wp._src.types.Float, "b": wp._src.types.Float}),
+            ("a value rather than a type", {"n": int, "dtype": wp._src.types.Float}),
+            ("no type at all", {"n": int}),
+        )
+
+        for name, input_types in cases:
+            with self.subTest(name=name):
+                with self.assertRaisesRegex(RuntimeError, r"^Built-in 'probe' exports no runtime argument but takes "):
+                    make_probe_builtin(input_types)
+
+        # One parameter naming a scalar type is the shape the export layer supports.
+        self.assertEqual(make_probe_builtin({"dtype": wp._src.types.Float}).template_scalar_param, "dtype")
+
+    def test_builtin_template_scalar_symbol_matches_the_generated_export(self):
+        """Look up the symbols the header generator wrote, for every scalar type it wrote them for.
+
+        The name comes from the scalar the native function is instantiated with on both sides, so
+        a built-in whose result type says something else cannot send the lookup to another symbol.
+        """
+        for builtin in (wp.quat_identity, wp.transform_identity):
+            overload = builtin.overloads[0]
+            scalars = wp._src.context.get_template_scalars(overload)
+
+            for scalar in scalars:
+                with self.subTest(builtin=builtin.key, scalar=scalar.__name__):
+                    self.assertTrue(hasattr(wp._src.context.runtime.core, overload.mangle(scalar)))
+
+            # Leaving the parameter out instantiates one of those same types.
+            self.assertIn(overload.template_scalar_default, scalars)
+
+    def test_exported_return_type_is_spelled_like_kernel_scope(self):
+        """Spell an exported result type the way the generated header needs it spelled.
+
+        A type with a named alias keeps it, which is what the rest of the header uses. Anything
+        else falls back to the native template, which has to carry the length or the shape the
+        type was built with and not just its scalar.
+        """
+        cases = (
+            (wp.vec3f, "vec3f"),
+            (wp.quatd, "quatd"),
+            (wp._src.types.quaternion(dtype=wp.bfloat16), "wp::quat_t<wp::bfloat16>"),
+            (wp._src.types.transformation(dtype=wp.bfloat16), "wp::transform_t<wp::bfloat16>"),
+            (wp._src.types.vector(length=5, dtype=wp.float32), "wp::vec_t<5, wp::float32>"),
+            (wp._src.types.matrix(shape=(5, 5), dtype=wp.float32), "wp::mat_t<5, 5, wp::float32>"),
+        )
+
+        for dtype, expected in cases:
+            with self.subTest(expected=expected):
+                self.assertEqual(wp._src.context.ctype_ret_str(dtype), expected)
+
+    def test_builtin_dtype_argument_rejects_unsupported_types(self):
+        """Reject ``dtype`` arguments that are not supported Warp floating-point types.
+
+        Foreign dtype names require an explicit interoperability conversion. A value naming no
+        type at all is rejected the same way, including one that cannot be hashed, which the
+        descriptor cache would otherwise choke on.
+        """
+        unsupported_dtypes = (
+            wp.int32,
+            wp.bool,
+            wp.vec3f,
+            int,
+            np.int32,
+            np.dtype("int32"),
+            np.float16,
+            np.float32,
+            np.float64,
+            np.dtype("float16"),
+            np.dtype("float32"),
+            np.dtype("float64"),
+            "float64",
+            7,
+            [wp.float64],
+        )
+        ml_bfloat16 = wp._src.types._get_ml_dtypes_bfloat16()
+        if ml_bfloat16 is not None:
+            unsupported_dtypes += (ml_bfloat16, np.dtype(ml_bfloat16))
+
+        for builtin in (wp.quat_identity, wp.transform_identity):
+            for dtype in unsupported_dtypes:
+                with self.subTest(builtin=builtin.key, dtype=str(dtype)):
+                    with self.assertRaisesRegex(
+                        RuntimeError,
+                        rf"^Couldn't find a function '{builtin.key}' compatible with the arguments ",
+                    ):
+                        builtin(dtype=dtype)
 
     def test_builtin_overloads_with_different_default_values(self):
         """Apply default values from the selected Python-scope built-in overload."""
@@ -978,6 +1156,13 @@ class TestBuiltinsResolution(unittest.TestCase):
         self.assertAlmostEqual(float(result[2]), expected_z, places=1)
         self.assertAlmostEqual(float(result[3]), expected_w, places=1)
 
+
+add_function_test(
+    TestBuiltinsResolution,
+    "test_identity_builtins_match_kernel_scope",
+    test_identity_builtins_match_kernel_scope,
+    devices=get_test_devices(),
+)
 
 for dtype in wp._src.types.int_types:
     add_function_test(
