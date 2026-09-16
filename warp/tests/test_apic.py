@@ -918,6 +918,7 @@ def test_array_slicing(test, device):
     # All should map to the same region
     test.assertEqual(region_id_base, region_id_1)
     test.assertEqual(region_id_base, region_id_2)
+    test.assertEqual(set(apic._regions), {("warp", id(base_arr))})
 
     # Offsets
     test.assertEqual(offset_base, 0)

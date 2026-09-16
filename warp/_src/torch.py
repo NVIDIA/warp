@@ -305,11 +305,22 @@ def from_torch(
         return array_ctype
 
     else:
+        ptr = t.data_ptr()
+        capacity = 0
+        if ptr:
+            # A view's data pointer includes its storage offset. Warp capacity
+            # is measured from ptr, so exclude the preceding storage bytes.
+            storage = t.untyped_storage()
+            storage_base_ptr = storage.data_ptr()
+            storage_nbytes = storage.nbytes()
+            capacity = storage_nbytes - (ptr - storage_base_ptr)
+
         a = warp.array(
-            ptr=t.data_ptr(),
+            ptr=ptr,
             dtype=dtype,
             shape=shape,
             strides=strides,
+            capacity=capacity,
             device=device_from_torch(t.device),
             copy=False,
             grad=grad,
@@ -319,6 +330,11 @@ def from_torch(
 
         # save a reference to the source tensor, otherwise it may get deallocated
         a._tensor = t
+        if ptr:
+            # APIC uses allocation-wide bounds to recognize independently
+            # converted views of the same PyTorch storage as one memory region.
+            a._storage_base_ptr = storage_base_ptr
+            a._storage_nbytes = storage_nbytes
 
         return a
 
