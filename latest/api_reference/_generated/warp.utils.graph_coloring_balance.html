@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.utils.graph_coloring_balance &#8212; Warp 1.18.0.dev4</title>
+    <title>warp.utils.graph_coloring_balance &#8212; Warp 1.18.0.dev5</title>
   
   
   
@@ -44,7 +44,7 @@
 
 
 
-    <script src="../../_static/documentation_options.js?v=37cfc7f0"></script>
+    <script src="../../_static/documentation_options.js?v=93b743e9"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -70,7 +70,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.18.0.dev4" />
+  <meta name="docsearch:version" content="1.18.0.dev5" />
   
     
     <script src="../../_static/searchtools.js"></script>
@@ -147,11 +147,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.18.0.dev4 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.18.0.dev4 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.18.0.dev5 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.18.0.dev5 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.18.0.dev4</p>
+    <p class="title logo__title">Warp 1.18.0.dev5</p>
   
 </a></div>
     
@@ -291,11 +291,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.18.0.dev4 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.18.0.dev4 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.18.0.dev5 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.18.0.dev5 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.18.0.dev4</p>
+    <p class="title logo__title">Warp 1.18.0.dev5</p>
   
 </a>
 
@@ -516,9 +516,11 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">node_colors</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">color_count</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">target_max_min_ratio</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_iterations</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/coloring.py#L93-L168"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.utils.graph_coloring_balance" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/coloring.py#L96-L203"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.utils.graph_coloring_balance" title="Link to this definition">#</a></dt>
 <dd><p>Balance the sizes of color groups in a graph coloring.</p>
 <p>This function adjusts the color assignments to make the color groups more
 balanced in size, which improves load balancing when processing nodes in
@@ -536,13 +538,18 @@ Must be a CPU array with <code class="docutils literal notranslate"><span class=
 <li><p><strong>color_count</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – The number of colors in the current coloring (as returned by
 <a class="reference internal" href="warp.utils.graph_coloring_assign.html#warp.utils.graph_coloring_assign" title="warp.utils.graph_coloring_assign"><code class="xref py py-func docutils literal notranslate"><span class="pre">graph_coloring_assign()</span></code></a>).</p></li>
 <li><p><strong>target_max_min_ratio</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – The target ratio between the largest and smallest color
-group sizes. The algorithm will stop when this ratio is achieved or when
-no further improvements are possible.</p></li>
+group sizes. The algorithm will stop when this ratio is achieved, when no
+further improvements are possible, or when <code class="docutils literal notranslate"><span class="pre">max_iterations</span></code> is reached.</p></li>
+<li><p><strong>max_iterations</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – The non-negative maximum number of node recolorings to perform.
+If <code class="docutils literal notranslate"><span class="pre">None</span></code>, the number of graph nodes is used. Values must fit in a
+signed 32-bit integer. A warning is emitted if balancing stops because
+this limit is reached.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>The actual max/min ratio achieved after balancing. This may be higher than
-the target if the graph structure prevents further balancing.</p>
+the target if the graph structure prevents further balancing or the iteration
+limit is reached.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)">float</a></p>
