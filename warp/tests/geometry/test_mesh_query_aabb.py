@@ -529,7 +529,7 @@ def test_tile_mesh_query_aabb_large(test, device):
         )
 
 
-# Tests for new mesh_query_aabb_tiled() API (primary naming convention)
+# Compatibility tests for the deprecated mesh_query_aabb_tiled() aliases.
 @wp.kernel
 def mesh_query_aabb_tiled_kernel(
     mesh_id: wp.uint64,
@@ -549,7 +549,7 @@ def mesh_query_aabb_tiled_kernel(
 
 
 def test_mesh_query_aabb_tiled(test, device):
-    """Test mesh_query_aabb_tiled() API (new primary naming convention)."""
+    """Test the deprecated mesh_query_aabb_tiled() alias."""
     # Create a simple mesh (two triangles forming a quad)
     points = np.array(
         [

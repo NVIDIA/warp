@@ -9100,11 +9100,36 @@ add_builtin(
     is_differentiable=False,
 )
 
-# Primary naming convention (grouped with other geometry functions)
+
+def _deprecated_tiled_alias_value_func(deprecated: str, replacement: str, value_func):
+    """Return a value function that warns when a deprecated ``*_tiled`` alias is compiled.
+
+    The warning is emitted from the value function rather than a dispatch function so that the
+    aliases remain usable as :class:`warp.Function` callable parameters, which
+    ``is_regular_builtin_callable_target()`` rejects for any built-in carrying a dispatch function.
+    """
+
+    def wrapper(arg_types, arg_values):
+        # ``arg_types`` is None when the return type is queried outside of code generation, such as
+        # during stub generation, so only warn for a real call site.
+        if arg_types is not None:
+            log_warning(
+                f"wp.{deprecated}() is deprecated in Warp 1.18 and is targeted for removal in Warp 1.22. "
+                f"Use wp.{replacement}() instead.",
+                category=DeprecationWarning,
+            )
+        return value_func(arg_types, arg_values)
+
+    return wrapper
+
+
+# Deprecated aliases for the canonical tile_* query built-ins
 add_builtin(
     "bvh_query_aabb_tiled",
     input_types={"id": uint64, "low": vec3, "high": vec3},
-    value_type=BvhQueryTiled,
+    value_func=_deprecated_tiled_alias_value_func(
+        "bvh_query_aabb_tiled", "tile_bvh_query_aabb", lambda arg_types, arg_values: BvhQueryTiled
+    ),
     group="Geometry",
     doc="""Construct an axis-aligned bounding box (AABB) query against a BVH for thread-block parallel traversal.
 
@@ -9145,7 +9170,10 @@ add_builtin(
 
         .. testoutput::
 
-            [[0.5, 0.5, 0.5], [2.5, 0.5, 0.5], [4.5, 0.5, 0.5]]""",
+            [[0.5, 0.5, 0.5], [2.5, 0.5, 0.5], [4.5, 0.5, 0.5]]
+
+    .. deprecated:: 1.18
+        Use :func:`~warp.tile_bvh_query_aabb` instead.""",
     native_func="tile_bvh_query_aabb",
     export=False,
     is_differentiable=False,
@@ -9154,7 +9182,9 @@ add_builtin(
 add_builtin(
     "bvh_query_ray_tiled",
     input_types={"id": uint64, "start": vec3, "dir": vec3},
-    value_type=BvhQueryTiled,
+    value_func=_deprecated_tiled_alias_value_func(
+        "bvh_query_ray_tiled", "tile_bvh_query_ray", lambda arg_types, arg_values: BvhQueryTiled
+    ),
     group="Geometry",
     doc="""Construct a ray query against a BVH for thread-block parallel traversal.
 
@@ -9195,7 +9225,10 @@ add_builtin(
 
         .. testoutput::
 
-            [[0.5, 0.5, 0.5], [2.5, 0.5, 0.5], [4.5, 0.5, 0.5]]""",
+            [[0.5, 0.5, 0.5], [2.5, 0.5, 0.5], [4.5, 0.5, 0.5]]
+
+    .. deprecated:: 1.18
+        Use :func:`~warp.tile_bvh_query_ray` instead.""",
     native_func="tile_bvh_query_ray",
     export=False,
     is_differentiable=False,
@@ -9224,7 +9257,9 @@ def bvh_query_next_tiled_dispatch_func(input_types: Mapping[str, type], return_t
 add_builtin(
     "bvh_query_next_tiled",
     input_types={"query": BvhQueryTiled},
-    value_func=bvh_query_next_tiled_value_func,
+    value_func=_deprecated_tiled_alias_value_func(
+        "bvh_query_next_tiled", "tile_bvh_query_next", bvh_query_next_tiled_value_func
+    ),
     dispatch_func=bvh_query_next_tiled_dispatch_func,
     group="Geometry",
     doc="""Move to the next bound in a thread-block parallel BVH query and return results as a tile.
@@ -9269,13 +9304,16 @@ add_builtin(
 
         .. testoutput::
 
-            [[0.5, 0.5, 0.5], [2.5, 0.5, 0.5], [4.5, 0.5, 0.5]]""",
+            [[0.5, 0.5, 0.5], [2.5, 0.5, 0.5], [4.5, 0.5, 0.5]]
+
+    .. deprecated:: 1.18
+        Use :func:`~warp.tile_bvh_query_next` instead.""",
     native_func="tile_bvh_query_next",
     export=False,
     is_differentiable=False,
 )
 
-# Aliases for backward compatibility (tile_* naming convention)
+# Canonical tile query built-ins
 add_builtin(
     "tile_bvh_query_aabb",
     input_types={"id": uint64, "low": vec3, "high": vec3},
@@ -10944,11 +10982,13 @@ add_builtin(
     is_differentiable=False,
 )
 
-# Primary naming convention (grouped with other geometry functions)
+# Deprecated aliases for the canonical tile_* query built-ins
 add_builtin(
     "mesh_query_aabb_tiled",
     input_types={"id": uint64, "low": vec3, "high": vec3},
-    value_type=MeshQueryAABBTiled,
+    value_func=_deprecated_tiled_alias_value_func(
+        "mesh_query_aabb_tiled", "tile_mesh_query_aabb", lambda arg_types, arg_values: MeshQueryAABBTiled
+    ),
     group="Geometry",
     doc="""Construct an axis-aligned bounding box (AABB) query against a :class:`warp.Mesh` for thread-block parallel traversal.
 
@@ -10989,7 +11029,10 @@ add_builtin(
 
         .. testoutput::
 
-            overlapping faces: 12""",
+            overlapping faces: 12
+
+    .. deprecated:: 1.18
+        Use :func:`~warp.tile_mesh_query_aabb` instead.""",
     native_func="tile_mesh_query_aabb",
     export=False,
     is_differentiable=False,
@@ -11020,7 +11063,9 @@ def mesh_query_aabb_next_tiled_dispatch_func(
 add_builtin(
     "mesh_query_aabb_next_tiled",
     input_types={"query": MeshQueryAABBTiled},
-    value_func=mesh_query_aabb_next_tiled_value_func,
+    value_func=_deprecated_tiled_alias_value_func(
+        "mesh_query_aabb_next_tiled", "tile_mesh_query_aabb_next", mesh_query_aabb_next_tiled_value_func
+    ),
     dispatch_func=mesh_query_aabb_next_tiled_dispatch_func,
     group="Geometry",
     doc="""Move to the next triangle in a thread-block parallel mesh AABB query and return results as a tile.
@@ -11063,13 +11108,16 @@ add_builtin(
 
         .. testoutput::
 
-            overlapping faces: 12""",
+            overlapping faces: 12
+
+    .. deprecated:: 1.18
+        Use :func:`~warp.tile_mesh_query_aabb_next` instead.""",
     native_func="tile_mesh_query_aabb_next",
     export=False,
     is_differentiable=False,
 )
 
-# Aliases for backward compatibility (tile_* naming convention)
+# Canonical tile query built-ins
 add_builtin(
     "tile_mesh_query_aabb",
     input_types={"id": uint64, "low": vec3, "high": vec3},

@@ -6189,7 +6189,10 @@ def bvh_query_aabb_tiled(id: uint64, low: vec3f, high: vec3f) -> BvhQueryTiled:
 
         .. testoutput::
 
-            [[0.5, 0.5, 0.5], [2.5, 0.5, 0.5], [4.5, 0.5, 0.5]]"""
+            [[0.5, 0.5, 0.5], [2.5, 0.5, 0.5], [4.5, 0.5, 0.5]]
+
+    .. deprecated:: 1.18
+        Use :func:`~warp.tile_bvh_query_aabb` instead."""
     ...
 
 def bvh_query_ray_tiled(id: uint64, start: vec3f, dir: vec3f) -> BvhQueryTiled:
@@ -6232,7 +6235,10 @@ def bvh_query_ray_tiled(id: uint64, start: vec3f, dir: vec3f) -> BvhQueryTiled:
 
         .. testoutput::
 
-            [[0.5, 0.5, 0.5], [2.5, 0.5, 0.5], [4.5, 0.5, 0.5]]"""
+            [[0.5, 0.5, 0.5], [2.5, 0.5, 0.5], [4.5, 0.5, 0.5]]
+
+    .. deprecated:: 1.18
+        Use :func:`~warp.tile_bvh_query_ray` instead."""
     ...
 
 def bvh_query_next_tiled(query: BvhQueryTiled) -> Tile[int32, tuple[int]]:
@@ -6278,7 +6284,10 @@ def bvh_query_next_tiled(query: BvhQueryTiled) -> Tile[int32, tuple[int]]:
 
         .. testoutput::
 
-            [[0.5, 0.5, 0.5], [2.5, 0.5, 0.5], [4.5, 0.5, 0.5]]"""
+            [[0.5, 0.5, 0.5], [2.5, 0.5, 0.5], [4.5, 0.5, 0.5]]
+
+    .. deprecated:: 1.18
+        Use :func:`~warp.tile_bvh_query_next` instead."""
     ...
 
 def tile_bvh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> BvhQueryTiled:
@@ -7321,7 +7330,10 @@ def mesh_query_aabb_tiled(id: uint64, low: vec3f, high: vec3f) -> MeshQueryAABBT
 
         .. testoutput::
 
-            overlapping faces: 12"""
+            overlapping faces: 12
+
+    .. deprecated:: 1.18
+        Use :func:`~warp.tile_mesh_query_aabb` instead."""
     ...
 
 def mesh_query_aabb_next_tiled(query: MeshQueryAABBTiled) -> Tile[int32, tuple[int]]:
@@ -7365,7 +7377,10 @@ def mesh_query_aabb_next_tiled(query: MeshQueryAABBTiled) -> Tile[int32, tuple[i
 
         .. testoutput::
 
-            overlapping faces: 12"""
+            overlapping faces: 12
+
+    .. deprecated:: 1.18
+        Use :func:`~warp.tile_mesh_query_aabb_next` instead."""
     ...
 
 def tile_mesh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> MeshQueryAABBTiled:
