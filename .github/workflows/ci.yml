@@ -916,10 +916,10 @@ jobs:
           flags: test-warp-gpu-linux-${{ matrix.gpu-name }}
           token: ${{ secrets.CODECOV_TOKEN }}
 
-  test-warp-gpu-linux-gb300:
-    # GB300 capacity is intentionally limited to one scheduled nightly job.
+  test-warp-gpu-linux-gh200:
+    # GH200 capacity is intentionally limited to one scheduled nightly job.
     if: github.repository == 'NVIDIA/warp' && github.event_name == 'schedule'
-    runs-on: linux-arm64-gpu-gb300-latest-1
+    runs-on: linux-arm64-gpu-gh200-latest-1
     needs: [build-warp]
     permissions:
       contents: read
@@ -987,7 +987,7 @@ jobs:
           disable_search: true
           files: ./rspec.xml
           report_type: test_results
-          flags: test-warp-gpu-linux-gb300
+          flags: test-warp-gpu-linux-gh200
           token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Upload coverage reports to Codecov
@@ -997,7 +997,7 @@ jobs:
         with:
           disable_search: true
           files: ./coverage.xml
-          flags: test-warp-gpu-linux-gb300
+          flags: test-warp-gpu-linux-gh200
           token: ${{ secrets.CODECOV_TOKEN }}
 
   test-warp-gpu-linux-python-free-threaded:
