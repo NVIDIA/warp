@@ -550,7 +550,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">inline_hint</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L223-L776"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Function" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L223-L802"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Function" title="Link to this definition">#</a></dt>
 <dd><p>Represents a Warp function decorated with <a class="reference internal" href="warp.func.html#warp.func" title="warp.func"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;warp.func</span></code></a>.</p>
 <p>Functions can be called from kernels or other Warp functions.</p>
 <p class="rubric">Methods</p>
@@ -577,8 +577,8 @@
 <tr class="row-odd"><td><p><a class="reference internal" href="#warp.Function.is_simple" title="warp.Function.is_simple"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_simple</span></code></a>()</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.Function.mangle" title="warp.Function.mangle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mangle</span></code></a>()</p></td>
-<td><p>Build a mangled name for the C-exported function, e.g.: <cite>builtin_normalize_vec3()</cite>.</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.Function.mangle" title="warp.Function.mangle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mangle</span></code></a>(*template_args)</p></td>
+<td><p>Build a mangled name for the C-exported function, e.g.: <code class="docutils literal notranslate"><span class="pre">builtin_normalize_vec3()</span></code>.</p></td>
 </tr>
 </tbody>
 </table>
@@ -646,13 +646,23 @@
 <dd></dd></dl>
 
 <dl class="py attribute">
+<dt class="sig sig-object py" id="warp.Function.template_scalar_param">
+<span class="sig-name descname"><span class="pre">template_scalar_param</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><a class="headerlink" href="#warp.Function.template_scalar_param" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.Function.template_scalar_default">
+<span class="sig-name descname"><span class="pre">template_scalar_default</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><a class="headerlink" href="#warp.Function.template_scalar_default" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Function.mangled_name">
 <span class="sig-name descname"><span class="pre">mangled_name</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><a class="headerlink" href="#warp.Function.mangled_name" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Function.is_builtin">
-<span class="sig-name descname"><span class="pre">is_builtin</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L496-L498"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Function.is_builtin" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">is_builtin</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L513-L515"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Function.is_builtin" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool">bool</a></p>
@@ -662,7 +672,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Function.is_simple">
-<span class="sig-name descname"><span class="pre">is_simple</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L499-L509"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Function.is_simple" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">is_simple</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L516-L526"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Function.is_simple" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool">bool</a></p>
@@ -672,18 +682,24 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Function.mangle">
-<span class="sig-name descname"><span class="pre">mangle</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L510-L526"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Function.mangle" title="Link to this definition">#</a></dt>
-<dd><p>Build a mangled name for the C-exported function, e.g.: <cite>builtin_normalize_vec3()</cite>.</p>
+<span class="sig-name descname"><span class="pre">mangle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">template_args</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L527-L550"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Function.mangle" title="Link to this definition">#</a></dt>
+<dd><p>Build a mangled name for the C-exported function, e.g.: <code class="docutils literal notranslate"><span class="pre">builtin_normalize_vec3()</span></code>.</p>
+<p>A built-in that instantiates its native function from a parameter rather than from its
+runtime arguments is exported once per instantiation, so <code class="docutils literal notranslate"><span class="pre">template_args</span></code> selects which of
+those names to build.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>template_args</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.14)"><em>type</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Function.add_overload">
-<span class="sig-name descname"><span class="pre">add_overload</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L535-L574"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Function.add_overload" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">add_overload</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L559-L598"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Function.add_overload" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>f</strong> (<a class="reference internal" href="#warp.Function" title="warp._src.context.Function"><em>Function</em></a>)</p>
@@ -696,7 +712,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Function.get_overload">
-<span class="sig-name descname"><span class="pre">get_overload</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg_types</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kwarg_types</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L575-L653"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Function.get_overload" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_overload</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg_types</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kwarg_types</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L599-L677"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Function.get_overload" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -712,7 +728,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Function.get_builtin">
-<span class="sig-name descname"><span class="pre">get_builtin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L654-L735"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Function.get_builtin" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_builtin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L678-L761"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Function.get_builtin" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><em>BuiltinCallDesc</em></p>
@@ -722,7 +738,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Function.call_builtin">
-<span class="sig-name descname"><span class="pre">call_builtin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">desc</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L736-L753"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Function.call_builtin" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">call_builtin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">desc</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L762-L779"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Function.call_builtin" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>desc</strong> (<em>BuiltinCallDesc</em>)</p>
@@ -735,7 +751,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Function.build">
-<span class="sig-name descname"><span class="pre">build</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">builder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_builder_options</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L754-L772"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Function.build" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">build</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">builder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_builder_options</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L780-L798"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Function.build" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>builder</strong> (<em>ModuleBuilder</em><em> | </em><em>None</em>)</p>
@@ -801,6 +817,8 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Function.user_templates"><code class="docutils literal notranslate"><span class="pre">user_templates</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Function.user_overloads"><code class="docutils literal notranslate"><span class="pre">user_overloads</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Function.overloads"><code class="docutils literal notranslate"><span class="pre">overloads</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Function.template_scalar_param"><code class="docutils literal notranslate"><span class="pre">template_scalar_param</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Function.template_scalar_default"><code class="docutils literal notranslate"><span class="pre">template_scalar_default</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Function.mangled_name"><code class="docutils literal notranslate"><span class="pre">mangled_name</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Function.is_builtin"><code class="docutils literal notranslate"><span class="pre">is_builtin()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Function.is_simple"><code class="docutils literal notranslate"><span class="pre">is_simple()</span></code></a></li>
