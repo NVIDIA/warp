@@ -944,7 +944,13 @@ WP_API void wp_cuda_timing_end(timing_result_t* results, int size);
 // graph coloring
 WP_API int wp_graph_coloring(int num_nodes, wp::array_t<int> edges, int algorithm, wp::array_t<int> node_colors);
 WP_API float wp_balance_coloring(
-    int num_nodes, wp::array_t<int> edges, int num_colors, float target_max_min_ratio, wp::array_t<int> node_colors
+    int num_nodes,
+    wp::array_t<int> edges,
+    int num_colors,
+    float target_max_min_ratio,
+    int max_iterations,
+    wp::array_t<int> node_colors,
+    int* iteration_limit_reached
 );
 
 // allocation tracking

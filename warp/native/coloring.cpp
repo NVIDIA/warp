@@ -198,22 +198,33 @@ void change_color(
     }
 }
 
-float balance_color_groups(float target_max_min_ratio, Graph& graph, std::vector<std::vector<int>>& color_groups)
+float balance_color_groups(
+    float target_max_min_ratio,
+    int max_iterations,
+    Graph& graph,
+    std::vector<std::vector<int>>& color_groups,
+    int* iteration_limit_reached
+)
 {
     float max_min_ratio = -1.f;
+    int last_changed_node = -1;
+    int last_changed_color = -1;
+    int iteration = 0;
 
-    do {
+    while (true) {
         int biggest_group = -1, smallest_group = -1;
         float prev_max_min_ratio = max_min_ratio;
         max_min_ratio = find_largest_smallest_groups(color_groups, biggest_group, smallest_group);
 
-        if (prev_max_min_ratio > 0 && prev_max_min_ratio < max_min_ratio) {
-            return max_min_ratio;
+        if (prev_max_min_ratio > 0.f && prev_max_min_ratio < max_min_ratio) {
+            // Ratios do not increase before the first regression, so undoing the last move restores the best coloring.
+            graph.node_colors[last_changed_node] = last_changed_color;
+            return prev_max_min_ratio;
         }
 
         // graph is not optimizable anymore or target ratio reached
         if (color_groups[biggest_group].size() - color_groups[smallest_group].size() <= 2
-            || max_min_ratio < target_max_min_ratio) {
+            || max_min_ratio <= target_max_min_ratio) {
             return max_min_ratio;
         }
 
@@ -242,13 +253,20 @@ float balance_color_groups(float target_max_min_ratio, Graph& graph, std::vector
             // reaching the target ratio: %f\n", max_min_ratio, target_max_min_ratio);
             return max_min_ratio;
         }
+
+        if (iteration == max_iterations) {
+            if (iteration_limit_reached) {
+                *iteration_limit_reached = 1;
+            }
+            return max_min_ratio;
+        }
+
         // change the color of changeable_color_idx in group changeable_color_group_idx to
+        last_changed_node = color_groups[changeable_color_group_idx][changeable_node_idx];
+        last_changed_color = changeable_color_group_idx;
         change_color(changeable_color_group_idx, changeable_node_idx, smallest_group, graph.node_colors, color_groups);
-
-
-    } while (max_min_ratio > target_max_min_ratio);
-
-    return max_min_ratio;
+        ++iteration;
+    }
 }
 
 int graph_coloring_ordered_greedy(const std::vector<int>& order, Graph& graph)
@@ -560,10 +578,30 @@ int wp_graph_coloring(int num_nodes, wp::array_t<int> edges, int algorithm, wp::
     return num_colors;
 }
 
-float wp_balance_coloring(
-    int num_nodes, wp::array_t<int> edges, int num_colors, float target_max_min_ratio, wp::array_t<int> node_colors
+float balance_coloring(
+    int num_nodes,
+    wp::array_t<int> edges,
+    int num_colors,
+    float target_max_min_ratio,
+    int max_iterations,
+    wp::array_t<int> node_colors,
+    int* iteration_limit_reached
 )
 {
+    if (iteration_limit_reached) {
+        *iteration_limit_reached = 0;
+    }
+
+    if (num_nodes < 0) {
+        wp::set_error_string("The num_nodes value must be non-negative, got %d!", num_nodes);
+        return -1.f;
+    }
+
+    if (max_iterations < 0) {
+        wp::set_error_string("The max_iterations value must be non-negative, got %d!", max_iterations);
+        return -1.f;
+    }
+
     Graph graph(num_nodes, edges);
     if (!graph.valid) {
         // Ratios are non-negative, so use -1.f to signal failure.
@@ -576,12 +614,28 @@ float wp_balance_coloring(
         std::vector<std::vector<int>> color_groups;
         convert_to_color_groups(num_colors, graph.node_colors, color_groups);
 
-        float max_min_ratio = balance_color_groups(target_max_min_ratio, graph, color_groups);
+        float max_min_ratio
+            = balance_color_groups(target_max_min_ratio, max_iterations, graph, color_groups, iteration_limit_reached);
         memcpy(node_colors.data, graph.node_colors.data(), num_nodes * sizeof(int));
 
         return max_min_ratio;
     } else {
         return 1.f;
     }
+}
+
+float wp_balance_coloring(
+    int num_nodes,
+    wp::array_t<int> edges,
+    int num_colors,
+    float target_max_min_ratio,
+    int max_iterations,
+    wp::array_t<int> node_colors,
+    int* iteration_limit_reached
+)
+{
+    return balance_coloring(
+        num_nodes, edges, num_colors, target_max_min_ratio, max_iterations, node_colors, iteration_limit_reached
+    );
 }
 }

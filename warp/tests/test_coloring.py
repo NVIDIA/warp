@@ -1,7 +1,10 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import contextlib
+import io
 import itertools
+import subprocess
 
 import numpy as np
 
@@ -173,7 +176,255 @@ def create_lattice_grid(N):
     return vs, fs
 
 
+def _check_coloring_balance_equal_ratio_cycle():
+    """Run the equal-ratio cycle regression in an isolated process."""
+    edges = wp.array(
+        [
+            [0, 5],
+            [1, 5],
+            [2, 5],
+            [4, 5],
+            [0, 6],
+            [1, 6],
+            [2, 6],
+            [4, 6],
+            [5, 6],
+        ],
+        dtype=wp.int32,
+        device="cpu",
+    )
+    initial_colors = np.array([0, 0, 0, 1, 0, 2, 1], dtype=np.int32)
+    node_colors = wp.array(initial_colors, dtype=wp.int32, device="cpu")
+
+    max_min_ratio = wp.utils.graph_coloring_balance(
+        edges,
+        node_colors,
+        color_count=3,
+        target_max_min_ratio=1.1,
+    )
+
+    balanced_colors = node_colors.numpy()
+    invalid_edge_count = validate_graph_coloring(edges.numpy(), balanced_colors)
+    np.testing.assert_equal(invalid_edge_count, 0)
+    np.testing.assert_array_equal(np.sort(np.bincount(balanced_colors, minlength=3)), [1, 2, 4])
+    np.testing.assert_allclose(max_min_ratio, 4.0)
+
+
+def _check_coloring_balance_rejects_negative_num_nodes():
+    """Run negative native node-count validation in an isolated process."""
+    wp.init()
+    runtime = wp._src.context.runtime
+    edges = wp.empty((0, 2), dtype=wp.int32, device="cpu")
+    node_colors = wp.empty(0, dtype=wp.int32, device="cpu")
+
+    with suppress_native_error_output():
+        max_min_ratio = runtime.core.wp_balance_coloring(
+            -1,
+            edges.__ctype__(),
+            0,
+            1.1,
+            0,
+            node_colors.__ctype__(),
+            None,
+        )
+
+    if max_min_ratio != -1.0:
+        raise AssertionError(f"Expected -1.0, got {max_min_ratio}")
+    if runtime.get_error_string() != "The num_nodes value must be non-negative, got -1!":
+        raise AssertionError(f"Unexpected error: {runtime.get_error_string()}")
+
+
 class TestColoring(unittest.TestCase):
+    def test_coloring_balance_terminates_equal_ratio_cycle(self):
+        """Verify balancing terminates when valid colorings form an equal-ratio cycle."""
+        try:
+            result = run_python_subprocess(
+                "from warp.tests.test_coloring import _check_coloring_balance_equal_ratio_cycle; "
+                "_check_coloring_balance_equal_ratio_cycle()",
+                timeout=30,
+                hide_gpu=True,
+            )
+        except subprocess.TimeoutExpired:
+            self.fail("Graph coloring balance did not terminate within 30 seconds")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_coloring_balance_zero_iterations_preserves_coloring(self):
+        """Verify a zero iteration limit leaves the input coloring unchanged."""
+        edges = wp.array(
+            [(0, 1), (0, 2), (0, 3), (0, 4), (0, 6), (1, 6), (2, 5), (4, 6)],
+            dtype=wp.int32,
+            device="cpu",
+        )
+        initial_colors = np.array([0, 1, 1, 1, 1, 2, 2], dtype=np.int32)
+        node_colors = wp.array(initial_colors, dtype=wp.int32, device="cpu")
+
+        with contextlib.redirect_stderr(io.StringIO()) as warning_output:
+            max_min_ratio = wp.utils.graph_coloring_balance(
+                edges,
+                node_colors,
+                color_count=3,
+                target_max_min_ratio=1.1,
+                max_iterations=0,
+            )
+
+        self.assertEqual(
+            warning_output.getvalue(),
+            "Warp UserWarning: Graph coloring stopped because it reached the 0-iteration limit "
+            "(achieved ratio 4, target 1.1).\n",
+        )
+        np.testing.assert_array_equal(node_colors.numpy(), initial_colors)
+        np.testing.assert_allclose(max_min_ratio, 4.0)
+
+    def test_coloring_balance_restores_best_coloring_after_regression(self):
+        """Verify a worsening recoloring is not returned to the caller."""
+        edges = wp.array(
+            [(0, 2), (1, 2), (1, 4), (2, 3), (2, 5), (3, 4), (4, 5)],
+            dtype=wp.int32,
+            device="cpu",
+        )
+        initial_colors = np.array([1, 1, 0, 1, 2, 1], dtype=np.int32)
+        node_colors = wp.array(initial_colors, dtype=wp.int32, device="cpu")
+
+        max_min_ratio = wp.utils.graph_coloring_balance(
+            edges,
+            node_colors,
+            color_count=3,
+            target_max_min_ratio=1.1,
+        )
+
+        np.testing.assert_array_equal(node_colors.numpy(), initial_colors)
+        np.testing.assert_allclose(max_min_ratio, 4.0)
+
+    def test_coloring_balance_evaluates_final_iteration(self):
+        """Verify the final permitted recoloring can become the best coloring."""
+        edges = wp.array(
+            [(0, 1), (0, 2), (0, 3), (0, 4), (0, 6), (1, 6), (2, 5), (4, 6)],
+            dtype=wp.int32,
+            device="cpu",
+        )
+        node_colors = wp.array([0, 1, 1, 1, 1, 2, 2], dtype=wp.int32, device="cpu")
+
+        max_min_ratio = wp.utils.graph_coloring_balance(
+            edges,
+            node_colors,
+            color_count=3,
+            target_max_min_ratio=1.1,
+            max_iterations=2,
+        )
+
+        np.testing.assert_array_equal(node_colors.numpy(), [0, 1, 2, 1, 1, 0, 2])
+        np.testing.assert_allclose(max_min_ratio, 1.5)
+
+    def test_coloring_balance_final_iteration_reaches_target_without_warning(self):
+        """Verify reaching the target on the final permitted recoloring does not warn."""
+        edges = wp.empty((0, 2), dtype=wp.int32, device="cpu")
+        node_colors = wp.array([0, 0, 0, 0, 0, 1], dtype=wp.int32, device="cpu")
+
+        with contextlib.redirect_stderr(io.StringIO()) as warning_output:
+            max_min_ratio = wp.utils.graph_coloring_balance(
+                edges,
+                node_colors,
+                color_count=2,
+                target_max_min_ratio=2.0,
+                max_iterations=1,
+            )
+
+        self.assertEqual(warning_output.getvalue(), "")
+        np.testing.assert_array_equal(node_colors.numpy(), [1, 0, 0, 0, 0, 1])
+        np.testing.assert_allclose(max_min_ratio, 2.0)
+
+    def test_coloring_balance_final_iteration_exhausts_available_moves_without_warning(self):
+        """Verify exhausting legal moves on the final permitted recoloring does not warn."""
+        edges = wp.array([(1, 5), (2, 5), (3, 5), (4, 5), (5, 6)], dtype=wp.int32, device="cpu")
+        node_colors = wp.array([1, 1, 1, 1, 1, 0, 1], dtype=wp.int32, device="cpu")
+
+        with contextlib.redirect_stderr(io.StringIO()) as warning_output:
+            max_min_ratio = wp.utils.graph_coloring_balance(
+                edges,
+                node_colors,
+                color_count=2,
+                target_max_min_ratio=1.01,
+                max_iterations=1,
+            )
+
+        self.assertEqual(warning_output.getvalue(), "")
+        np.testing.assert_array_equal(node_colors.numpy(), [0, 1, 1, 1, 1, 0, 1])
+        np.testing.assert_allclose(max_min_ratio, 2.5)
+
+    def test_coloring_balance_rejects_invalid_max_iterations(self):
+        """Verify iteration limits are non-negative integers or None."""
+        edges = wp.array([[0, 1]], dtype=wp.int32, device="cpu")
+        node_colors = wp.array([0, 1], dtype=wp.int32, device="cpu")
+
+        with self.assertRaises(ValueError):
+            wp.utils.graph_coloring_balance(edges, node_colors, 2, 1.1, max_iterations=-1)
+        with self.assertRaises(ValueError):
+            wp.utils.graph_coloring_balance(edges, node_colors, 2, 1.1, max_iterations=2**31)
+
+        for max_iterations in (True, 1.5, "1"):
+            with self.subTest(max_iterations=max_iterations):
+                with self.assertRaises(TypeError):
+                    wp.utils.graph_coloring_balance(
+                        edges,
+                        node_colors,
+                        2,
+                        1.1,
+                        max_iterations=max_iterations,
+                    )
+
+    def test_coloring_balance_native_rejects_negative_max_iterations(self):
+        """Verify the bounded native entry point rejects negative iteration limits."""
+        wp.init()
+        runtime = wp._src.context.runtime
+        edges = wp.array([[0, 1]], dtype=wp.int32, device="cpu")
+        node_colors = wp.array([0, 1], dtype=wp.int32, device="cpu")
+
+        with suppress_native_error_output():
+            max_min_ratio = runtime.core.wp_balance_coloring(
+                2,
+                edges.__ctype__(),
+                2,
+                1.1,
+                -1,
+                node_colors.__ctype__(),
+                None,
+            )
+
+        self.assertEqual(max_min_ratio, -1.0)
+        self.assertEqual(
+            runtime.get_error_string(),
+            "The max_iterations value must be non-negative, got -1!",
+        )
+
+    def test_coloring_balance_native_rejects_negative_num_nodes(self):
+        """Verify a negative native node count returns an error without terminating."""
+        result = run_python_subprocess(
+            "from warp.tests.test_coloring import _check_coloring_balance_rejects_negative_num_nodes; "
+            "_check_coloring_balance_rejects_negative_num_nodes()",
+            timeout=30,
+            hide_gpu=True,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_coloring_balance_stops_at_exact_target_ratio(self):
+        """Verify balancing does not recolor after reaching the exact target ratio."""
+        edges = wp.empty((0, 2), dtype=wp.int32, device="cpu")
+        initial_colors = np.array([0, 0, 0, 0, 1], dtype=np.int32)
+        node_colors = wp.array(initial_colors, dtype=wp.int32, device="cpu")
+
+        max_min_ratio = wp.utils.graph_coloring_balance(
+            edges,
+            node_colors,
+            color_count=2,
+            target_max_min_ratio=4.0,
+            max_iterations=1,
+        )
+
+        np.testing.assert_array_equal(node_colors.numpy(), initial_colors)
+        np.testing.assert_allclose(max_min_ratio, 4.0)
+
     def test_coloring_native_rejects_invalid_edge_shapes(self):
         """Verify native graph coloring rejects malformed edge array shapes."""
         # Direct runtime binding access requires explicitly initializing Warp.
@@ -215,7 +466,9 @@ class TestColoring(unittest.TestCase):
                         edges.__ctype__(),
                         2,
                         1.1,
+                        2,
                         node_colors.__ctype__(),
+                        None,
                     )
                     self.assertEqual(max_min_ratio, -1.0)
                     self.assertEqual(runtime.get_error_string(), "The edges array must have shape (edge_count, 2)!")

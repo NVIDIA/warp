@@ -8207,7 +8207,9 @@ class Runtime:
                 warp._src.types.array_t,
                 ctypes.c_int,
                 ctypes.c_float,
+                ctypes.c_int,
                 warp._src.types.array_t,
+                ctypes.POINTER(ctypes.c_int),
             ]
             self.core.wp_balance_coloring.restype = ctypes.c_float
 
