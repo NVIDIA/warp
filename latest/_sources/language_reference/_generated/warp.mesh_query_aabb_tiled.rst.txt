@@ -47,3 +47,5 @@
    
        overlapping faces: 12
    
+   .. deprecated:: 1.18
+       Use :func:`~warp.tile_mesh_query_aabb` instead.
