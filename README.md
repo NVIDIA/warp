@@ -55,7 +55,9 @@ print(positions.numpy())
 
 ## Installing
 
-Warp requires Python 3.10 or newer. We publish `warp-lang` wheels on PyPI for Windows (x86-64), Linux (x86-64 and AArch64), and macOS (Apple Silicon). The Windows x86-64 and Linux wheels support CPU execution and CUDA acceleration. CUDA acceleration requires a supported NVIDIA GPU and driver. The macOS wheels support CPU execution but not Metal acceleration.
+Warp requires Python 3.10 or newer. We publish `warp-lang` wheels on PyPI for Windows (x86-64), Linux (x86-64 and AArch64), and macOS (Apple Silicon). The Windows x86-64 and Linux wheels support CPU execution and CUDA acceleration. The macOS wheels support CPU execution but not Metal acceleration.
+
+PyPI and nightly wheels for Linux and Windows use CUDA Toolkit 13.4. They require an NVIDIA R580-series or newer driver and a Turing (`sm_75`) or newer GPU for CUDA acceleration. For CUDA 12 environments, download a `+cu12` wheel from [GitHub Releases](https://github.com/NVIDIA/warp/releases) or build Warp from source with CUDA 12.
 
 The easiest way to install Warp is from [PyPI](https://pypi.org/project/warp-lang/):
 
@@ -65,7 +67,7 @@ pip install warp-lang
 
 You can also use `pip install warp-lang[examples]` to install additional dependencies for running examples and USD-related features.
 
-For nightly builds, conda, CUDA 13 builds, building from source, and CUDA driver requirements, see the
+For nightly builds, conda, CUDA 12 compatibility wheels, building from source, and CUDA driver requirements, see the
 [Installation Guide](https://nvidia.github.io/warp/stable/user_guide/installation.html).
 
 ## Tutorial Notebooks
