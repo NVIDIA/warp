@@ -148,18 +148,35 @@ Warp supports Python versions 3.10 onwards. Note that :ref:`some optional depend
 
 `NumPy <https://numpy.org>`_ must be installed.
 
-The following optional dependencies are required to support certain features:
+The ``warp-lang[examples]`` extra installs dependencies used by many Warp examples. Install it with:
 
-* `usd-core <https://pypi.org/project/usd-core>`_: Required for some Warp examples, tests, and the :class:`warp.render.UsdRenderer`.
-  On Linux aarch64 systems where ``usd-core`` wheels are not available,
-  `usd-exchange <https://pypi.org/project/usd-exchange>`_ can be installed as a drop-in replacement.
-  The ``[examples]`` extra handles this automatically.
-* `pyglet <https://pyglet.org/>`_: Required for some Warp examples and the :class:`warp.render.OpenGLRenderer`.
-* `JAX <https://docs.jax.dev/en/latest/installation.html>`_: Required for JAX interoperability (see :ref:`jax-interop`).
-* `PyTorch <https://pytorch.org/get-started/locally/>`_: Required for PyTorch interoperability (see :ref:`pytorch-interop`).
-* `Paddle <https://github.com/PaddlePaddle/Paddle>`_: Required for Paddle interoperability (see :ref:`paddle-interop`).
-* `NVTX for Python <https://github.com/NVIDIA/NVTX#python>`_: Required to use :class:`wp.ScopedTimer(use_nvtx=True) <warp.ScopedTimer>`.
-* `psutil <https://psutil.io/>`_: Required to query CPU memory info (`get_device("cpu").total_memory`, `get_device("cpu").free_memory`).
+.. code-block:: sh
+
+    $ pip install "warp-lang[examples]"
+
+.. _openusd-dependencies:
+
+**OpenUSD dependencies**
+
+Some Warp examples and USD rendering features import the OpenUSD ``pxr`` modules. If those modules
+are missing, Python may report ``ModuleNotFoundError: No module named 'pxr'``. The error reports the
+import name; the PyPI distributions that provide these modules are ``usd-core`` and ``usd-exchange``.
+
+The ``warp-lang[examples]`` extra uses platform markers to install ``usd-core`` where supported and
+``usd-exchange`` on supported platforms without a compatible ``usd-core`` wheel.
+
+``usd-exchange`` includes its own OpenUSD runtime and ``pxr`` modules. Do not install it alongside
+``usd-core``. Both packages install files to the same locations, which can cause import or runtime
+failures.
+
+``usd-exchange`` has its own release version, separate from the version of the OpenUSD runtime it
+includes. After installation, call ``pxr.Usd.GetVersion()`` to query the OpenUSD version.
+
+Some examples need extra packages. Check the example's source file to see what else you need to
+install. For JAX and PyTorch, follow the official
+`JAX installation guide <https://docs.jax.dev/en/latest/installation.html>`__ or
+`PyTorch installation guide <https://pytorch.org/get-started/locally/>`__ to choose a version and
+build for your system.
 
 .. _building-from-source:
 
