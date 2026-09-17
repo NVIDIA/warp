@@ -53,8 +53,8 @@ variables:
   # Warp builder images are pinned per architecture for supply chain security.
   WARP_BUILDER_IMAGE_CU12_X86_64: "${CI_REGISTRY_IMAGE}/warp-builder:manylinux_2_28-cuda12.9.2-uv0.12.13-x86_64@sha256:9dc7ec97802cbabb8f5f9bfa0ecd85ee33564711816606bb23f329b598770de6"
   WARP_BUILDER_IMAGE_CU12_AARCH64: "${CI_REGISTRY_IMAGE}/warp-builder:manylinux_2_34-cuda12.9.2-uv0.12.13-aarch64@sha256:336f5726094d9f4edf19739093e95cb223058c76bf88bdf56410326314d11977"
-  WARP_BUILDER_IMAGE_CU13_X86_64: "${CI_REGISTRY_IMAGE}/warp-builder:manylinux_2_28-cuda13.4.1-uv0.12.13-x86_64@sha256:ca5dc708314be5975d87d8be6e6d2bb93e9173cd35b7ffc4361b767ce7274685"
-  WARP_BUILDER_IMAGE_CU13_AARCH64: "${CI_REGISTRY_IMAGE}/warp-builder:manylinux_2_34-cuda13.4.1-uv0.12.13-aarch64@sha256:f8a57aeb92a622db0cca203f5b413db97fedbe78dc33b5a33a4e73763dcc0e40"
+  WARP_BUILDER_IMAGE_CU13_X86_64: "${CI_REGISTRY_IMAGE}/warp-builder:manylinux_2_28-cuda13.4.2-uv0.12.13-x86_64@sha256:f20945f4d6f72ac9ebb3200fa4720233fc040c51e0ae5cb3bbd181cfd06418a4"
+  WARP_BUILDER_IMAGE_CU13_AARCH64: "${CI_REGISTRY_IMAGE}/warp-builder:manylinux_2_34-cuda13.4.2-uv0.12.13-aarch64@sha256:7971084a055c77ebe1d68c6e5e9b8c0ab76f7c1eed0506b32b0ce9a40c628349"
   
   UV_PYTHON:
     value: "3.12"
@@ -867,7 +867,7 @@ linux-x86_64 cu13 python-matrix test:
 # Ensure cpp examples compile and run
 linux-x86_64 cu13 cpp-examples test:
   stage: test
-  image: ${CI_REGISTRY_IMAGE}/warp-cpp-test-env:cuda13.4.1-ubuntu24.04-b291af1fdd25@sha256:3a26bf865de50aebbe854f2db88d62726f48046af29228153da582fb527a7f22
+  image: ${CI_REGISTRY_IMAGE}/warp-cpp-test-env:cuda13.4.2-ubuntu24.04-66cf86262aab@sha256:6d55a2df846632c0c11b271f402bd2f1a6e016e11611bbb58f84a5ac3bea3d97
   needs: [linux-x86_64 cu13 build]
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
