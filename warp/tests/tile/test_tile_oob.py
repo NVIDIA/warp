@@ -121,8 +121,10 @@ def _trigger_register_tile_oob(device):
 )
 def test_cuda_shared_tile_oob_reports_tile_index(test, device):
     # Warp reports this CUDA error as output in the subprocess, so assert
-    # on the diagnostic text instead of the process exit status.
-    _returncode, stdout, stderr = _run_in_subprocess("_trigger_shared_tile_oob_cuda", device)
+    # on the diagnostic text instead of the process exit status. Allow extra
+    # time because the device assert leaves the CUDA context unusable, and
+    # synchronization or teardown can be delayed on a loaded CI runner.
+    _returncode, stdout, stderr = _run_in_subprocess("_trigger_shared_tile_oob_cuda", device, timeout=120)
 
     output = stdout + stderr
     test.assertRegex(output, r"Warp tile index out of bounds in shared tile")

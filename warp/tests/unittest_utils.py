@@ -412,6 +412,10 @@ def run_python_subprocess(
 
     Returns:
         The completed child process with captured text output.
+
+    Raises:
+        subprocess.TimeoutExpired: If the child exceeds ``timeout``. Any
+            partial captured output is written to the parent process first.
     """
     env = os.environ.copy()
     if env_updates:
@@ -430,14 +434,29 @@ def run_python_subprocess(
     elif os.name == "posix":
         source = f"import resource as _resource; _resource.setrlimit(_resource.RLIMIT_CORE, (0, 0));\n{source}"
 
-    return subprocess.run(
-        [sys.executable, "-u", "-c", source, *args],
-        check=False,
-        capture_output=True,
-        text=True,
-        timeout=timeout,
-        env=env,
-    )
+    try:
+        return subprocess.run(
+            [sys.executable, "-u", "-c", source, *args],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            env=env,
+        )
+    except subprocess.TimeoutExpired as error:
+        for stream_name, output in (("stdout", error.stdout), ("stderr", error.stderr)):
+            if not output:
+                continue
+            if isinstance(output, bytes):
+                output_text = output.decode(errors="replace")
+            else:
+                output_text = output
+            print(
+                f"Subprocess {stream_name} before timeout:\n{output_text}",
+                file=sys.stderr,
+                end="" if output_text.endswith("\n") else "\n",
+            )
+        raise
 
 
 def run_test_in_subprocess(
