@@ -9131,46 +9131,18 @@ add_builtin(
         "bvh_query_aabb_tiled", "tile_bvh_query_aabb", lambda arg_types, arg_values: BvhQueryTiled
     ),
     group="Geometry",
-    doc="""Construct an axis-aligned bounding box (AABB) query against a BVH for thread-block parallel traversal.
+    doc="""Construct an axis-aligned bounding box query against a :class:`warp.Bvh` for thread-block parallel traversal.
 
-    For use in tiled kernels: all threads in the block cooperatively traverse the BVH. Advance the
-    query with :func:`bvh_query_next_tiled` (one result index per thread per step) in a loop guarded
-    by :func:`tile_query_valid`. ``low`` and ``high`` must be identical across all threads in the
-    block and are given in BVH space (the space of the arrays passed to :class:`warp.Bvh`).
+    Alias for :func:`~warp.tile_bvh_query_aabb`; see that function for usage details and
+    an example.
 
     Args:
-        id: The BVH identifier
+        id: The BVH identifier (must be the same for all threads in the block)
         low: The lower bound of the query box, in BVH space (must be the same for all threads in the block)
         high: The upper bound of the query box, in BVH space (must be the same for all threads in the block)
 
     Returns:
-        A :class:`warp.BvhQueryTiled` to advance with :func:`bvh_query_next_tiled`.
-
-    Example:
-
-        .. testcode::
-
-            @wp.kernel
-            def tiled_query(bvh_id: wp.uint64, lowers: wp.array[wp.vec3], uppers: wp.array[wp.vec3],
-                            lo: wp.vec3, hi: wp.vec3, centers: wp.array[wp.vec3]):
-                query = wp.bvh_query_aabb_tiled(bvh_id, lo, hi)
-                while wp.tile_query_valid(query):
-                    result = wp.bvh_query_next_tiled(query)
-                    item = wp.untile(result)
-                    if item >= 0:
-                        centers[item] = 0.5 * (lowers[item] + uppers[item])
-
-            lowers = wp.array([[0, 0, 0], [2, 0, 0], [4, 0, 0]], dtype=wp.vec3)
-            uppers = wp.array([[1, 1, 1], [3, 1, 1], [5, 1, 1]], dtype=wp.vec3)
-            bvh = wp.Bvh(lowers=lowers, uppers=uppers)
-
-            centers = wp.zeros(3, dtype=wp.vec3)
-            wp.launch_tiled(tiled_query, dim=[1], inputs=[bvh.id, lowers, uppers, wp.vec3(0.5, 0.5, 0.5), wp.vec3(4.5, 0.5, 0.5)], outputs=[centers], block_dim=32)
-            print(centers.numpy().tolist())
-
-        .. testoutput::
-
-            [[0.5, 0.5, 0.5], [2.5, 0.5, 0.5], [4.5, 0.5, 0.5]]
+        A :class:`warp.BvhQueryTiled`.
 
     .. deprecated:: 1.18
         Use :func:`~warp.tile_bvh_query_aabb` instead.""",
@@ -9186,46 +9158,18 @@ add_builtin(
         "bvh_query_ray_tiled", "tile_bvh_query_ray", lambda arg_types, arg_values: BvhQueryTiled
     ),
     group="Geometry",
-    doc="""Construct a ray query against a BVH for thread-block parallel traversal.
+    doc="""Construct a ray query against a :class:`warp.Bvh` for thread-block parallel traversal.
 
-    For use in tiled kernels: all threads in the block cooperatively traverse the BVH. Advance the
-    query with :func:`bvh_query_next_tiled` (one result index per thread per step) in a loop guarded
-    by :func:`tile_query_valid`. ``start`` and ``dir`` must be identical across all threads in the
-    block and are given in BVH space (the space of the arrays passed to :class:`warp.Bvh`).
+    Alias for :func:`~warp.tile_bvh_query_ray`; see that function for usage details and
+    an example.
 
     Args:
-        id: The BVH identifier
+        id: The BVH identifier (must be the same for all threads in the block)
         start: The ray origin, in BVH space (must be the same for all threads in the block)
-        dir: The ray direction, in BVH space (must be the same for all threads in the block)
+        dir: A nonzero ray direction in BVH space (must be the same for all threads in the block)
 
     Returns:
-        A :class:`warp.BvhQueryTiled` to advance with :func:`bvh_query_next_tiled`.
-
-    Example:
-
-        .. testcode::
-
-            @wp.kernel
-            def tiled_cast(bvh_id: wp.uint64, lowers: wp.array[wp.vec3], uppers: wp.array[wp.vec3],
-                           origin: wp.vec3, dir: wp.vec3, centers: wp.array[wp.vec3]):
-                query = wp.bvh_query_ray_tiled(bvh_id, origin, dir)
-                while wp.tile_query_valid(query):
-                    result = wp.bvh_query_next_tiled(query)
-                    item = wp.untile(result)
-                    if item >= 0:
-                        centers[item] = 0.5 * (lowers[item] + uppers[item])
-
-            lowers = wp.array([[0, 0, 0], [2, 0, 0], [4, 0, 0]], dtype=wp.vec3)
-            uppers = wp.array([[1, 1, 1], [3, 1, 1], [5, 1, 1]], dtype=wp.vec3)
-            bvh = wp.Bvh(lowers=lowers, uppers=uppers)
-
-            centers = wp.zeros(3, dtype=wp.vec3)
-            wp.launch_tiled(tiled_cast, dim=[1], inputs=[bvh.id, lowers, uppers, wp.vec3(-1.0, 0.5, 0.5), wp.vec3(1.0, 0.0, 0.0)], outputs=[centers], block_dim=32)
-            print(centers.numpy().tolist())
-
-        .. testoutput::
-
-            [[0.5, 0.5, 0.5], [2.5, 0.5, 0.5], [4.5, 0.5, 0.5]]
+        A :class:`warp.BvhQueryTiled`.
 
     .. deprecated:: 1.18
         Use :func:`~warp.tile_bvh_query_ray` instead.""",
@@ -9262,49 +9206,16 @@ add_builtin(
     ),
     dispatch_func=bvh_query_next_tiled_dispatch_func,
     group="Geometry",
-    doc="""Move to the next bound in a thread-block parallel BVH query and return results as a tile.
+    doc="""Advance a thread-block parallel BVH query and return the next batch of results as a tile.
 
-    Each thread in the block receives one result index in the returned tile, or -1 if no result for that thread.
-    The function returns a register tile of shape ``(block_dim,)`` containing the result indices,
-    where ``block_dim`` is the kernel's block dimension. All threads in the block must call this
-    function cooperatively.
-
-    Call it in a loop guarded by :func:`tile_query_valid` (which returns ``False`` once the query
-    is exhausted); within an iteration, check whether any tile element is >= 0 to see if this step
-    produced any results.
+    Alias for :func:`~warp.tile_bvh_query_next`; see that function for usage details and
+    an example.
 
     Args:
-        query: The thread-block BVH query object, from :func:`bvh_query_aabb_tiled` or :func:`bvh_query_ray_tiled`
+        query: A thread-block BVH query.
 
     Returns:
-        A register tile of shape ``(block_dim,)`` with dtype int, where each element contains
-            the result index for that thread (-1 if no result)
-
-    Example:
-
-        .. testcode::
-
-            @wp.kernel
-            def tiled_query(bvh_id: wp.uint64, lowers: wp.array[wp.vec3], uppers: wp.array[wp.vec3],
-                            lo: wp.vec3, hi: wp.vec3, centers: wp.array[wp.vec3]):
-                query = wp.bvh_query_aabb_tiled(bvh_id, lo, hi)
-                while wp.tile_query_valid(query):
-                    result = wp.bvh_query_next_tiled(query)
-                    item = wp.untile(result)
-                    if item >= 0:
-                        centers[item] = 0.5 * (lowers[item] + uppers[item])
-
-            lowers = wp.array([[0, 0, 0], [2, 0, 0], [4, 0, 0]], dtype=wp.vec3)
-            uppers = wp.array([[1, 1, 1], [3, 1, 1], [5, 1, 1]], dtype=wp.vec3)
-            bvh = wp.Bvh(lowers=lowers, uppers=uppers)
-
-            centers = wp.zeros(3, dtype=wp.vec3)
-            wp.launch_tiled(tiled_query, dim=[1], inputs=[bvh.id, lowers, uppers, wp.vec3(0.5, 0.5, 0.5), wp.vec3(4.5, 0.5, 0.5)], outputs=[centers], block_dim=32)
-            print(centers.numpy().tolist())
-
-        .. testoutput::
-
-            [[0.5, 0.5, 0.5], [2.5, 0.5, 0.5], [4.5, 0.5, 0.5]]
+        A register tile with one result index per thread. Test each index for ``>= 0``.
 
     .. deprecated:: 1.18
         Use :func:`~warp.tile_bvh_query_next` instead.""",
@@ -9319,16 +9230,48 @@ add_builtin(
     input_types={"id": uint64, "low": vec3, "high": vec3},
     value_type=BvhQueryTiled,
     group="Tile Primitives",
-    doc="""Construct an axis-aligned bounding box query against a BVH object for thread-block parallel traversal.
+    doc="""Construct an axis-aligned bounding box query against a :class:`warp.Bvh` for thread-block parallel traversal.
 
-    This query can be used in tiled kernels to cooperatively traverse a BVH across a thread block.
+    The whole block traverses one query cooperatively. Advance it with
+    :func:`~warp.tile_bvh_query_next`, which hands every thread one result index per step
+    in unspecified order. Guard the traversal loop with :func:`~warp.tile_query_valid`.
 
-    .. note:: This is an alias for :func:`bvh_query_aabb_tiled`.
+    Only one BVH query may be active per block; exhaust it before constructing another.
 
     Args:
-        id: The BVH identifier
-        low: The lower bound of the bounding box in BVH space (must be the same for all threads in the block)
-        high: The upper bound of the bounding box in BVH space (must be the same for all threads in the block)""",
+        id: The BVH identifier (must be the same for all threads in the block)
+        low: The lower bound of the query box, in BVH space (must be the same for all threads in the block)
+        high: The upper bound of the query box, in BVH space (must be the same for all threads in the block)
+
+    Returns:
+        A :class:`warp.BvhQueryTiled` to advance with :func:`~warp.tile_bvh_query_next`.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def overlapping_bounds(bvh_id: wp.uint64, lo: wp.vec3, hi: wp.vec3, counts: wp.array[wp.int32]):
+                query = wp.tile_bvh_query_aabb(bvh_id, lo, hi)
+                while wp.tile_query_valid(query):
+                    # one bound index per thread, negative where this thread has no result
+                    bound = wp.untile(wp.tile_bvh_query_next(query))
+                    if bound >= 0:
+                        wp.atomic_add(counts, bound, 1)
+
+            lowers = wp.array([[0, 0, 0], [2, 0, 0], [4, 0, 0]], dtype=wp.vec3)
+            uppers = wp.array([[1, 1, 1], [3, 1, 1], [5, 1, 1]], dtype=wp.vec3)
+            bvh = wp.Bvh(lowers=lowers, uppers=uppers)
+
+            counts = wp.zeros(3, dtype=wp.int32)
+            wp.launch_tiled(overlapping_bounds, dim=1,
+                            inputs=[bvh.id, wp.vec3(-1.0, -1.0, -1.0), wp.vec3(2.5, 2.0, 2.0)],
+                            outputs=[counts], block_dim=4)
+            print("times each bound was reported:", counts.numpy().tolist())
+
+        .. testoutput::
+
+            times each bound was reported: [1, 1, 0]""",
     native_func="tile_bvh_query_aabb",
     export=False,
     is_differentiable=False,
@@ -9339,16 +9282,51 @@ add_builtin(
     input_types={"id": uint64, "start": vec3, "dir": vec3},
     value_type=BvhQueryTiled,
     group="Tile Primitives",
-    doc="""Construct a ray query against a BVH object for thread-block parallel traversal.
+    doc="""Construct a ray query against a :class:`warp.Bvh` for thread-block parallel traversal.
 
-    This query can be used in tiled kernels to cooperatively traverse a BVH across a thread block.
+    The whole block traverses one query cooperatively: advance it with
+    :func:`~warp.tile_bvh_query_next` in a loop guarded by :func:`~warp.tile_query_valid`.
+    Results are returned in unspecified order and are not sorted along the ray. The ray is
+    one-sided and unbounded, so bounds entirely behind ``start`` are never reported and there is
+    no maximum distance.
 
-    .. note:: This is an alias for :func:`bvh_query_ray_tiled`.
+    Only one BVH query may be active per block; exhaust it before constructing another.
 
     Args:
-        id: The BVH identifier
-        start: The ray origin (must be the same for all threads in the block)
-        dir: The ray direction (must be the same for all threads in the block)""",
+        id: The BVH identifier (must be the same for all threads in the block)
+        start: The ray origin, in BVH space (must be the same for all threads in the block)
+        dir: A nonzero ray direction in BVH space; normalization is not required. Must be
+            the same for all threads in the block.
+
+    Returns:
+        A :class:`warp.BvhQueryTiled` to advance with :func:`~warp.tile_bvh_query_next`.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def bounds_along_ray(bvh_id: wp.uint64, start: wp.vec3, dir: wp.vec3, counts: wp.array[wp.int32]):
+                query = wp.tile_bvh_query_ray(bvh_id, start, dir)
+                while wp.tile_query_valid(query):
+                    bound = wp.untile(wp.tile_bvh_query_next(query))
+                    if bound >= 0:
+                        wp.atomic_add(counts, bound, 1)
+
+            lowers = wp.array([[0, 0, 0], [2, 0, 0], [4, 0, 0]], dtype=wp.vec3)
+            uppers = wp.array([[1, 1, 1], [3, 1, 1], [5, 1, 1]], dtype=wp.vec3)
+            bvh = wp.Bvh(lowers=lowers, uppers=uppers)
+
+            counts = wp.zeros(3, dtype=wp.int32)
+            # an unnormalized ray that only meets the middle box
+            wp.launch_tiled(bounds_along_ray, dim=1,
+                            inputs=[bvh.id, wp.vec3(2.5, 0.5, -4.0), wp.vec3(0.0, 0.0, 8.0)],
+                            outputs=[counts], block_dim=4)
+            print("times each bound was reported:", counts.numpy().tolist())
+
+        .. testoutput::
+
+            times each bound was reported: [0, 1, 0]""",
     native_func="tile_bvh_query_ray",
     export=False,
     is_differentiable=False,
@@ -9360,21 +9338,22 @@ add_builtin(
     value_func=bvh_query_next_tiled_value_func,
     dispatch_func=bvh_query_next_tiled_dispatch_func,
     group="Tile Primitives",
-    doc="""Move to the next bound in a thread-block parallel BVH query and return results as a tile.
+    doc="""Advance a thread-block parallel BVH query and return the next batch of results as a tile.
 
-    Each thread in the block receives one result index in the returned tile, or -1 if no result for that thread.
-    The function returns a register tile of shape ``(block_dim,)`` containing the result indices.
-
-    To check if any results were found, check if any element in the tile is >= 0.
-
-    .. note:: This is an alias for :func:`bvh_query_next_tiled`.
+    Every thread in the block must call this on each loop iteration. Guard the traversal
+    loop with :func:`~warp.tile_query_valid` and test each returned index for ``>= 0``.
 
     Args:
-        query: The thread-block BVH query object
+        query: The query to advance, from :func:`~warp.tile_bvh_query_aabb` or
+            :func:`~warp.tile_bvh_query_ray`
 
     Returns:
-        A register tile of shape ``(block_dim,)`` with dtype int, where each element contains
-            the result index for that thread (-1 if no result)""",
+        A register tile of shape ``(block_dim,)`` and dtype ``int`` holding one result
+        index per thread: the index of an overlapping bound into the ``lowers``/``uppers``
+        arrays passed to :class:`warp.Bvh`, or a negative value when that thread has no
+        result.
+
+    See :func:`~warp.tile_bvh_query_aabb` for a usage example.""",
     native_func="tile_bvh_query_next",
     export=False,
     is_differentiable=False,
@@ -9385,27 +9364,48 @@ add_builtin(
     input_types={"query": BvhQueryTiled},
     value_type=bool,
     group="Tile Primitives",
-    doc="""Return whether there are remaining results in a thread-block parallel BVH query.
+    doc="""Return whether a thread-block parallel BVH query should continue.
 
-    This function returns ``True`` when the query has more results to process, and ``False``
-    when the query is fully exhausted. The value is uniform across all threads in the block.
+    Guard the traversal loop with this function and test every index returned by
+    :func:`~warp.tile_bvh_query_next` for ``>= 0``. Every thread must execute the same
+    traversal loop.
 
-    This can be used as a loop condition instead of :func:`tile_max`:
-
-    .. code-block:: python
-
-        query = wp.tile_bvh_query_aabb(bvh_id, lower, upper)
-        while wp.tile_query_valid(query):
-            result_tile = wp.tile_bvh_query_next(query)
-            result_idx = wp.untile(result_tile)
-            if result_idx >= 0:
-                ...
+    This built-in is also defined for the mesh queries built by :func:`~warp.tile_mesh_query_aabb`.
 
     Args:
-        query: The thread-block BVH query object
+        query: The query to test, from :func:`~warp.tile_bvh_query_aabb` or
+            :func:`~warp.tile_bvh_query_ray`
 
     Returns:
-        ``True`` if more results are available, ``False`` if exhausted""",
+        The same value for every thread in the block. ``True`` initially and after a
+        result batch containing at least one nonnegative index; ``False`` after an
+        all-negative batch.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def mark_overlaps(bvh_id: wp.uint64, lo: wp.vec3, hi: wp.vec3, hits: wp.array[wp.int32]):
+                query = wp.tile_bvh_query_aabb(bvh_id, lo, hi)
+                while wp.tile_query_valid(query):
+                    bound = wp.untile(wp.tile_bvh_query_next(query))
+                    if bound >= 0:
+                        hits[bound] = 1
+
+            lowers = wp.array([[0, 0, 0], [2, 0, 0], [4, 0, 0]], dtype=wp.vec3)
+            uppers = wp.array([[1, 1, 1], [3, 1, 1], [5, 1, 1]], dtype=wp.vec3)
+            bvh = wp.Bvh(lowers=lowers, uppers=uppers)
+
+            hits = wp.zeros(3, dtype=wp.int32)
+            wp.launch_tiled(mark_overlaps, dim=1,
+                            inputs=[bvh.id, wp.vec3(-1.0, -1.0, -1.0), wp.vec3(2.5, 2.0, 2.0)],
+                            outputs=[hits], block_dim=4)
+            print("overlaps:", hits.numpy().tolist())
+
+        .. testoutput::
+
+            overlaps: [1, 1, 0]""",
     native_func="tile_query_valid",
     export=False,
     is_differentiable=False,
@@ -9466,45 +9466,66 @@ add_builtin(
     is_differentiable=False,
     doc="""Allocate a cooperative thread-block stack in shared memory.
 
+    Every thread of the block sees the same stack: :func:`~warp.tile_stack_push` and
+    :func:`~warp.tile_stack_pop` move up to one element per thread per call, and the element count
+    is shared. Storage comes from the same block shared memory as tiles (see
+    :ref:`tile_shared_memory_budget`). Every thread must reach the stack declaration, push, pop,
+    and clear together. Only :func:`~warp.tile_stack_count` may be called from a single thread.
+
+    Each push stores up to one value per thread; each pop returns up to one value per
+    thread. Which thread gets which slot within a push or pop is unspecified.
+
+    Values from a later push are popped before, or during the same pop as, values from an
+    earlier push. Values from the same push may be popped in any order. When fewer elements
+    remain than threads, one pop may return elements from more than one push together.
+
     Args:
-        capacity: Maximum number of elements (must be a compile-time constant)
-        dtype: Data type of stack elements
+        capacity: Maximum number of elements for the whole block (must be a positive compile-time
+            constant)
+        dtype: Data type of the stack elements
 
     Returns:
-        A tile stack object for use with :func:`tile_stack_push`, :func:`tile_stack_pop`,
-        :func:`tile_stack_clear`, and :func:`tile_stack_count`.
+        An empty tile stack.
 
     Example:
 
-        .. code-block:: python
+        .. testcode::
 
-            BLOCK = 8
-            CAP = wp.constant(8)
+            CAPACITY = wp.constant(8)
+            NUM_ITEMS = wp.constant(8)
 
             @wp.kernel
-            def compact_kernel(data: wp.array[int], out: wp.array[int], out_count: wp.array[int]):
-                _i, j = wp.tid()
-                s = wp.tile_stack(capacity=CAP, dtype=int)
+            def compact_values(data: wp.array[int], out: wp.array[int], num: wp.array[int]):
+                _i, lane = wp.tid()
+                s = wp.tile_stack(capacity=CAPACITY, dtype=int)
 
-                val = data[j]
-                wp.tile_stack_push(s, val, val > 5)
+                # one item per lane per step, so the kernel works for any block size
+                for base in range(0, NUM_ITEMS, wp.block_dim()):
+                    i = base + lane
+                    value = int(-1)
+                    keep = False
+                    if i < NUM_ITEMS:
+                        value = data[i]
+                        keep = value > 5
+                    wp.tile_stack_push(s, value, keep)
 
-                if j == 0:
-                    out_count[0] = wp.tile_stack_count(s)
+                if lane == 0:
+                    num[0] = wp.tile_stack_count(s)
 
-                result, slot = wp.tile_stack_pop(s)
-                if slot != -1:
-                    out[slot] = result
+                while wp.tile_stack_count(s) > 0:
+                    value, slot = wp.tile_stack_pop(s)
+                    if slot >= 0:
+                        out[slot] = value
 
             data = wp.array([1, 8, 3, 7, 2, 9, 4, 6], dtype=int)
-            out = wp.zeros(BLOCK, dtype=int)
-            out_count = wp.zeros(1, dtype=int)
-            wp.launch_tiled(compact_kernel, dim=[1], inputs=[data, out, out_count], block_dim=BLOCK)
+            out = wp.zeros(8, dtype=int)
+            num = wp.zeros(1, dtype=int)
+            wp.launch_tiled(compact_values, dim=1, inputs=[data], outputs=[out, num], block_dim=4)
 
-            n = out_count.numpy()[0]
+            n = num.numpy()[0]
             print(sorted(out.numpy()[:n].tolist()))
 
-        .. code-block:: text
+        .. testoutput::
 
             [6, 7, 8, 9]""",
     group="Tile Primitives",
@@ -9541,44 +9562,27 @@ add_builtin(
     dispatch_func=tile_stack_push_dispatch_func,
     variadic=False,
     is_differentiable=False,
-    doc="""Push a value onto a tile stack (cooperative).
+    doc="""Push a value onto a tile stack.
 
-    All threads in the block must call this function. Only threads with
-    ``has_value=True`` write to the stack.
+    Every thread in the block must reach this call. Pushed values are visible to the whole block
+    afterward.
+
+    If more values are offered than the stack has room for, the surplus is dropped and the count
+    saturates at ``capacity``.
 
     Args:
-        s: The tile stack
-        value: The value to push
-        has_value: Whether this thread has a value to push
+        s: The tile stack, from :func:`~warp.tile_stack`
+        value: The value to push, of the stack's element type
+        has_value: Whether this thread contributes a value
 
     Returns:
-        The slot index where the value was written, or ``-1`` if
-        ``has_value`` is ``False`` or the stack overflowed.
+        The slot the value was written to, in ``[0, capacity - 1]``, or ``-1`` if ``has_value`` was
+        ``False`` or the stack was full. While the stack has room, each contributing
+        thread receives a distinct free slot, but which slot a given thread receives is
+        unspecified. A thread that passed ``has_value=True`` and received ``-1`` had its
+        value dropped.
 
-    Example:
-
-        .. code-block:: python
-
-            CAP = wp.constant(8)
-
-            @wp.kernel
-            def push_kernel(out_idx: wp.array[int]):
-                _i, j = wp.tid()
-                s = wp.tile_stack(capacity=CAP, dtype=int)
-                idx = wp.tile_stack_push(s, j * 10, j < 4)
-                out_idx[j] = idx
-
-            out_idx = wp.full(8, -1, dtype=int)
-            wp.launch_tiled(push_kernel, dim=[1], inputs=[out_idx], block_dim=8)
-
-            idxs = out_idx.numpy()
-            print(sorted(idxs[idxs >= 0].tolist()))
-            print(sum(idxs == -1))
-
-        .. code-block:: text
-
-            [0, 1, 2, 3]
-            4""",
+    See :func:`~warp.tile_stack` for a usage example.""",
     group="Tile Primitives",
     export=False,
 )
@@ -9607,47 +9611,21 @@ add_builtin(
     dispatch_func=tile_stack_pop_dispatch_func,
     variadic=False,
     is_differentiable=False,
-    doc="""Pop a value from a tile stack (cooperative).
+    doc="""Pop a value from a tile stack.
 
-    All threads in the block must call this function. Each calling thread
-    races for a slot.
+    Every thread in the block must reach this call. Popping an empty stack is harmless.
 
     Args:
-        s: The tile stack
+        s: The tile stack, from :func:`~warp.tile_stack`
 
     Returns:
-        A tuple ``(value, slot)`` where ``value`` is the popped element
-        (or the default value if the stack was empty) and ``slot`` is the
-        index of the popped element (the slot it previously occupied), or
-        ``-1`` if the stack was empty. When non-negative, ``slot`` lies in
-        ``[0, capacity-1]``. Consistent with :func:`tile_stack_push`
-        which also uses ``-1`` to indicate failure.
+        A tuple ``(value, slot)``. Each thread receives at most one element. ``slot`` is
+        the index of the slot the element was taken from, in ``[0, capacity - 1]``, or
+        ``-1`` if the stack is empty or has no element left for that thread. Test ``slot``
+        for ``>= 0`` before using ``value``. Which thread receives which element is
+        unspecified; use ``slot`` rather than the thread index to place the result.
 
-    Example:
-
-        .. code-block:: python
-
-            CAP = wp.constant(8)
-
-            @wp.kernel
-            def pop_kernel(out: wp.array[int]):
-                _i, j = wp.tid()
-                s = wp.tile_stack(capacity=CAP, dtype=int)
-                wp.tile_stack_push(s, j * 10, j < 4)
-
-                val, slot = wp.tile_stack_pop(s)
-                if slot != -1:
-                    out[slot] = val
-
-            out = wp.full(8, -1, dtype=int)
-            wp.launch_tiled(pop_kernel, dim=[1], inputs=[out], block_dim=8)
-
-            vals = out.numpy()
-            print(sorted(vals[vals >= 0].tolist()))
-
-        .. code-block:: text
-
-            [0, 10, 20, 30]""",
+    See :func:`~warp.tile_stack` for a usage example.""",
     group="Tile Primitives",
     export=False,
 )
@@ -9676,39 +9654,14 @@ add_builtin(
     dispatch_func=tile_stack_clear_dispatch_func,
     variadic=False,
     is_differentiable=False,
-    doc="""Clear a tile stack, resetting the count to zero (cooperative).
+    doc="""Reset a tile stack to empty.
 
-    All threads in the block must call this function.
+    The next push starts at slot 0. Every thread in the block must reach this call.
 
     Args:
-        s: The tile stack
+        s: The tile stack, from :func:`~warp.tile_stack`
 
-    Example:
-
-        .. code-block:: python
-
-            CAP = wp.constant(8)
-
-            @wp.kernel
-            def clear_kernel(before: wp.array[int], after: wp.array[int]):
-                _i, j = wp.tid()
-                s = wp.tile_stack(capacity=CAP, dtype=int)
-                wp.tile_stack_push(s, j, True)
-                if j == 0:
-                    before[0] = wp.tile_stack_count(s)
-                wp.tile_stack_clear(s)
-                if j == 0:
-                    after[0] = wp.tile_stack_count(s)
-
-            before = wp.zeros(1, dtype=int)
-            after = wp.zeros(1, dtype=int)
-            wp.launch_tiled(clear_kernel, dim=[1], inputs=[before, after], block_dim=8)
-
-            print(f"before: {before.numpy()[0]}, after: {after.numpy()[0]}")
-
-        .. code-block:: text
-
-            before: 8, after: 0""",
+    See :func:`~warp.tile_stack` for a usage example.""",
     group="Tile Primitives",
     export=False,
 )
@@ -9739,43 +9692,17 @@ add_builtin(
     is_differentiable=False,
     doc="""Return the current number of elements in a tile stack.
 
-    Unlike the other tile stack operations this function is **not** cooperative
-    — it does not contain a synchronization barrier and may be called by a
-    single thread or from within a divergent branch. It is safe to call after
-    any :func:`tile_stack_push`, :func:`tile_stack_pop`, or
-    :func:`tile_stack_clear` *provided the preceding cooperative call has
-    completed on all threads in the block*. Those calls end with a barrier
-    that makes ``count`` stable and visible. Calling this after a divergent
-    push/pop/clear is undefined.
+    May be called by one thread or from divergent control flow. The value is uniform
+    across the block and always lies in ``[0, capacity]``. Call it only after every
+    thread has completed the same preceding push, pop, or clear.
 
     Args:
-        s: The tile stack
+        s: The tile stack, from :func:`~warp.tile_stack`
 
     Returns:
         The current number of elements in the stack.
 
-    Example:
-
-        .. code-block:: python
-
-            CAP = wp.constant(8)
-
-            @wp.kernel
-            def count_kernel(out_count: wp.array[int]):
-                _i, j = wp.tid()
-                s = wp.tile_stack(capacity=CAP, dtype=int)
-                wp.tile_stack_push(s, j, j % 2 == 0)
-                if j == 0:
-                    out_count[0] = wp.tile_stack_count(s)
-
-            out_count = wp.zeros(1, dtype=int)
-            wp.launch_tiled(count_kernel, dim=[1], inputs=[out_count], block_dim=8)
-
-            print(out_count.numpy()[0])
-
-        .. code-block:: text
-
-            4""",
+    See :func:`~warp.tile_stack` for a usage example.""",
     group="Tile Primitives",
     export=False,
 )
@@ -10990,46 +10917,18 @@ add_builtin(
         "mesh_query_aabb_tiled", "tile_mesh_query_aabb", lambda arg_types, arg_values: MeshQueryAABBTiled
     ),
     group="Geometry",
-    doc="""Construct an axis-aligned bounding box (AABB) query against a :class:`warp.Mesh` for thread-block parallel traversal.
+    doc="""Construct an axis-aligned bounding box query against a :class:`warp.Mesh` for thread-block parallel traversal.
 
-    For use in tiled kernels: all threads in the block cooperatively traverse the mesh's BVH.
-    Advance the query with :func:`mesh_query_aabb_next_tiled` (one face index per thread per step)
-    in a loop guarded by :func:`tile_query_valid`. ``low`` and ``high`` must be identical across all
-    threads in the block and are given in the mesh's local space.
+    Alias for :func:`~warp.tile_mesh_query_aabb`; see that function for usage details and
+    an example.
 
     Args:
-        id: The mesh identifier
+        id: The mesh identifier (must be the same for all threads in the block)
         low: The lower bound of the query box, in the mesh's local space (must be the same for all threads in the block)
         high: The upper bound of the query box, in the mesh's local space (must be the same for all threads in the block)
 
     Returns:
-        A :class:`warp.MeshQueryAABBTiled` to advance with :func:`mesh_query_aabb_next_tiled`.
-
-    Example:
-
-        .. testcode::
-
-            @wp.kernel
-            def tiled_faces(mesh_id: wp.uint64, lo: wp.vec3, hi: wp.vec3, out_count: wp.array[wp.int32]):
-                query = wp.mesh_query_aabb_tiled(mesh_id, lo, hi)
-                while wp.tile_query_valid(query):
-                    result = wp.mesh_query_aabb_next_tiled(query)
-                    face = wp.untile(result)
-                    if face >= 0:
-                        wp.atomic_add(out_count, 0, 1)
-
-            points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
-            indices = wp.array([0,3,2, 0,2,1,  4,5,6, 4,6,7,  0,1,5, 0,5,4,
-                                2,3,7, 2,7,6,  0,4,7, 0,7,3,  1,2,6, 1,6,5], dtype=wp.int32)
-            mesh = wp.Mesh(points=points, indices=indices)
-
-            out_count = wp.zeros(1, dtype=wp.int32)
-            wp.launch_tiled(tiled_faces, dim=[1], inputs=[mesh.id, wp.vec3(-1.0, -1.0, -1.0), wp.vec3(2.0, 2.0, 2.0)], outputs=[out_count], block_dim=32)
-            print("overlapping faces:", out_count.numpy()[0])
-
-        .. testoutput::
-
-            overlapping faces: 12
+        A :class:`warp.MeshQueryAABBTiled`.
 
     .. deprecated:: 1.18
         Use :func:`~warp.tile_mesh_query_aabb` instead.""",
@@ -11068,47 +10967,16 @@ add_builtin(
     ),
     dispatch_func=mesh_query_aabb_next_tiled_dispatch_func,
     group="Geometry",
-    doc="""Move to the next triangle in a thread-block parallel mesh AABB query and return results as a tile.
+    doc="""Advance a thread-block parallel mesh AABB query and return the next batch of results as a tile.
 
-    Each thread in the block receives one result index in the returned tile, or -1 if no result for that thread.
-    The function returns a register tile of shape ``(block_dim,)`` containing the result indices.
-
-    To check if any results were found, check if any element in the tile is >= 0. Call this in a
-    loop guarded by :func:`tile_query_valid`, which returns ``False`` once the query is exhausted.
-    All threads in the block must call it cooperatively.
+    Alias for :func:`~warp.tile_mesh_query_aabb_next`; see that function for usage details
+    and an example.
 
     Args:
-        query: The thread-block mesh query object, from :func:`mesh_query_aabb_tiled`
+        query: A thread-block mesh AABB query.
 
     Returns:
-        A register tile of shape ``(block_dim,)`` with dtype int, where each element contains
-            the result index for that thread (-1 if no result)
-
-    Example:
-
-        .. testcode::
-
-            @wp.kernel
-            def tiled_faces(mesh_id: wp.uint64, lo: wp.vec3, hi: wp.vec3, out_count: wp.array[wp.int32]):
-                query = wp.mesh_query_aabb_tiled(mesh_id, lo, hi)
-                while wp.tile_query_valid(query):
-                    result = wp.mesh_query_aabb_next_tiled(query)
-                    face = wp.untile(result)
-                    if face >= 0:
-                        wp.atomic_add(out_count, 0, 1)
-
-            points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
-            indices = wp.array([0,3,2, 0,2,1,  4,5,6, 4,6,7,  0,1,5, 0,5,4,
-                                2,3,7, 2,7,6,  0,4,7, 0,7,3,  1,2,6, 1,6,5], dtype=wp.int32)
-            mesh = wp.Mesh(points=points, indices=indices)
-
-            out_count = wp.zeros(1, dtype=wp.int32)
-            wp.launch_tiled(tiled_faces, dim=[1], inputs=[mesh.id, wp.vec3(-1.0, -1.0, -1.0), wp.vec3(2.0, 2.0, 2.0)], outputs=[out_count], block_dim=32)
-            print("overlapping faces:", out_count.numpy()[0])
-
-        .. testoutput::
-
-            overlapping faces: 12
+        A register tile with one face index per thread. Test each index for ``>= 0``.
 
     .. deprecated:: 1.18
         Use :func:`~warp.tile_mesh_query_aabb_next` instead.""",
@@ -11125,15 +10993,51 @@ add_builtin(
     group="Tile Primitives",
     doc="""Construct an axis-aligned bounding box query against a :class:`warp.Mesh` for thread-block parallel traversal.
 
-    This query can be used in tiled kernels to cooperatively traverse a mesh's BVH across a thread block.
+    The whole block traverses one query cooperatively. Advance it with
+    :func:`~warp.tile_mesh_query_aabb_next`, which hands every thread one face index per
+    step in unspecified order. Guard the traversal loop with
+    :func:`~warp.tile_query_valid`. This is a broad-phase test on bounding boxes: a
+    reported face's triangle may not actually intersect the box, so perform an exact test
+    yourself if required.
 
-
-    .. note:: This is an alias for :func:`mesh_query_aabb_tiled`.
+    Only one mesh query may be active per block; exhaust it before constructing another.
 
     Args:
-        id: The mesh identifier
-        low: The lower bound of the bounding box in mesh space (must be the same for all threads in the block)
-        high: The upper bound of the bounding box in mesh space (must be the same for all threads in the block)""",
+        id: The mesh identifier (must be the same for all threads in the block)
+        low: The lower bound of the query box, in the mesh's local space (must be the same for all
+            threads in the block)
+        high: The upper bound of the query box, in the mesh's local space (must be the same for all
+            threads in the block)
+
+    Returns:
+        A :class:`warp.MeshQueryAABBTiled` to advance with :func:`~warp.tile_mesh_query_aabb_next`.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def overlapping_faces(mesh_id: wp.uint64, lo: wp.vec3, hi: wp.vec3, counts: wp.array[wp.int32]):
+                query = wp.tile_mesh_query_aabb(mesh_id, lo, hi)
+                while wp.tile_query_valid(query):
+                    # one face index per thread, negative where this thread has no result
+                    face = wp.untile(wp.tile_mesh_query_aabb_next(query))
+                    if face >= 0:
+                        wp.atomic_add(counts, face, 1)
+
+            points = wp.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [2, 0, 0], [3, 0, 0], [2, 1, 0]], dtype=wp.vec3)
+            indices = wp.array([0, 1, 2, 3, 4, 5], dtype=wp.int32)
+            mesh = wp.Mesh(points=points, indices=indices)
+
+            counts = wp.zeros(2, dtype=wp.int32)
+            wp.launch_tiled(overlapping_faces, dim=1,
+                            inputs=[mesh.id, wp.vec3(-1.0, -1.0, -1.0), wp.vec3(0.5, 2.0, 1.0)],
+                            outputs=[counts], block_dim=4)
+            print("times each face was reported:", counts.numpy().tolist())
+
+        .. testoutput::
+
+            times each face was reported: [1, 0]""",
     native_func="tile_mesh_query_aabb",
     export=False,
     is_differentiable=False,
@@ -11145,22 +11049,21 @@ add_builtin(
     value_func=mesh_query_aabb_next_tiled_value_func,
     dispatch_func=mesh_query_aabb_next_tiled_dispatch_func,
     group="Tile Primitives",
-    doc="""Move to the next triangle in a thread-block parallel mesh AABB query and return results as a tile.
+    doc="""Advance a thread-block parallel mesh AABB query and return the next batch of results as a tile.
 
-    Each thread in the block receives one result index in the returned tile, or -1 if no result for that thread.
-    The function returns a register tile of shape ``(block_dim,)`` containing the result indices.
-
-    To check if any results were found, check if any element in the tile is >= 0.
-
-
-    .. note:: This is an alias for :func:`mesh_query_aabb_next_tiled`.
+    Every thread in the block must call this on each loop iteration. Guard the traversal
+    loop with :func:`~warp.tile_query_valid` and test each returned index for ``>= 0``.
 
     Args:
-        query: The thread-block mesh query object
+        query: The query to advance, from :func:`~warp.tile_mesh_query_aabb`
 
     Returns:
-        A register tile of shape ``(block_dim,)`` with dtype int, where each element contains
-            the result index for that thread (-1 if no result)""",
+        A register tile of shape ``(block_dim,)`` and dtype ``int`` holding one face index
+        per thread: the index of an overlapping face, i.e. the triangle built from
+        ``indices[3 * face]`` through ``indices[3 * face + 2]`` of the
+        :class:`warp.Mesh`, or a negative value when that thread has no result.
+
+    See :func:`~warp.tile_mesh_query_aabb` for a usage example.""",
     native_func="tile_mesh_query_aabb_next",
     export=False,
     is_differentiable=False,
@@ -11171,27 +11074,20 @@ add_builtin(
     input_types={"query": MeshQueryAABBTiled},
     value_type=bool,
     group="Tile Primitives",
-    doc="""Return whether there are remaining results in a thread-block parallel mesh AABB query.
+    doc="""Return whether a thread-block parallel mesh AABB query should continue.
 
-    This function returns ``True`` when the query has more results to process, and ``False``
-    when the query is fully exhausted. The value is uniform across all threads in the block.
-
-    This can be used as a loop condition instead of :func:`tile_max`:
-
-    .. code-block:: python
-
-        query = wp.tile_mesh_query_aabb(mesh_id, lower, upper)
-        while wp.tile_query_valid(query):
-            result_tile = wp.tile_mesh_query_aabb_next(query)
-            result_idx = wp.untile(result_tile)
-            if result_idx >= 0:
-                ...
+    This overload accepts a :class:`warp.MeshQueryAABBTiled`. The overload taking a
+    :class:`warp.BvhQueryTiled` documents the shared iteration protocol and includes a
+    usage example; use :func:`~warp.tile_mesh_query_aabb_next` to advance this query.
+    Always test each returned face index for ``>= 0``.
 
     Args:
-        query: The thread-block mesh query object
+        query: The query to test, from :func:`~warp.tile_mesh_query_aabb`
 
     Returns:
-        ``True`` if more results are available, ``False`` if exhausted""",
+        The same value for every thread in the block. ``True`` initially and after a
+        result batch containing at least one nonnegative index; ``False`` after an
+        all-negative batch.""",
     native_func="tile_query_valid",
     export=False,
     is_differentiable=False,
