@@ -41,13 +41,13 @@ single process as independent runs. Throughput gain is `reference / candidate - 
 | Pattern | Purpose |
 |---|---|
 | `stencil8`, `stencil32` | About 512K active blocks at two stencil widths. |
-| `dense` | Exercise the global-sort fallback. |
+| `dense` | Exercise a fully populated matrix. |
 | `overallocated` | Reserve S2/Q1 spaces for 64K cells, with 24K active blocks approximating a measured MPM contact map. |
 | `wide_hot_column` | Concentrate all entries in one output row. |
 | `shared_columns8` | Same dimensions and active count as `stencil8`, concentrated in eight output rows. |
 
 These are synthetic matrices, not full MPM simulations. Include the skewed
-patterns when reporting results: the experimental row-sort implementation has
-a known shared-column regression, tracked in [#1971](https://github.com/NVIDIA/warp/issues/1971).
+patterns when reporting results: their output-row distribution differs greatly
+from a regular stencil even at the same dimensions and active-entry count.
 Correctness is checked separately by the sparse transpose tests, including
 captured topology changes, padding, rectangular blocks, and exact value bytes.
