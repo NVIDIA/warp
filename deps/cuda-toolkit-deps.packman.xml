@@ -7,9 +7,9 @@
   </dependency>
 
   <dependency name="cuda-13" linkPath="../_build/target-deps/cuda" tags="cuda-13">
-    <package name="warp-cuda" version="13.4.1-0-windows-x86_64-release" platforms="windows-x86_64"/>
-    <package name="warp-cuda" version="13.4.1-0-manylinux_2_35_x86_64-release" platforms="linux-x86_64"/>
-    <package name="warp-cuda" version="13.4.1-0-manylinux_2_35_aarch64-release" platforms="linux-aarch64"/>
+    <package name="warp-cuda" version="13.4.2-0-windows-x86_64-release" platforms="windows-x86_64"/>
+    <package name="warp-cuda" version="13.4.2-0-manylinux_2_35_x86_64-release" platforms="linux-x86_64"/>
+    <package name="warp-cuda" version="13.4.2-0-manylinux_2_35_aarch64-release" platforms="linux-aarch64"/>
   </dependency>
 
 </project>
