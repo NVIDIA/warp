@@ -3,6 +3,7 @@
 
 """Tests for compiling CUDA kernels with the bundled Clang/LLVM compiler."""
 
+import tempfile
 import unittest
 
 import warp as wp
@@ -148,6 +149,46 @@ def test_slice_kernel(test, device):
     np.testing.assert_allclose(out.numpy(), expected, rtol=1e-5)
 
 
+def test_launch_bounds_kernel(test, device):
+    """Run kernels with launch bounds under Clang and check both bounds reach the PTX."""
+
+    # Codegen emits __launch_bounds__ for both option forms. NVRTC provides
+    # that macro itself; on this path it comes from cuda_crt.h, so only a test
+    # in this file catches the definition going missing.
+    @wp.kernel(launch_bounds=64, enable_backward=False, module="unique")
+    def launch_bounds_int_kernel(a: wp.array[float], b: wp.array[float]):
+        i = wp.tid()
+        b[i] = a[i] * 2.0
+
+    @wp.kernel(launch_bounds=(64, 2), enable_backward=False, module="unique")
+    def launch_bounds_tuple_kernel(a: wp.array[float], b: wp.array[float]):
+        i = wp.tid()
+        b[i] = a[i] * 2.0
+
+    n = 128
+    a_np = np.arange(n, dtype=np.float32)
+    a = wp.array(a_np, device=device)
+    for kernel in (launch_bounds_int_kernel, launch_bounds_tuple_kernel):
+        b = wp.zeros(n, dtype=float, device=device)
+        wp.launch(kernel, dim=n, inputs=[a, b], block_dim=64, device=device)
+        np.testing.assert_allclose(b.numpy(), a_np * 2.0)
+
+    # The bounds must reach the PTX rather than merely parse: a definition that
+    # expands to nothing, or that forwards only the first argument, would still
+    # compile. Compiling into a temporary directory keeps the check independent
+    # of the shared kernel cache.
+    with tempfile.TemporaryDirectory() as module_dir:
+        artifacts = wp.compile_aot_module(
+            launch_bounds_tuple_kernel.module, device=device, module_dir=module_dir, use_ptx=True
+        )
+        ptx_files = [p for p in artifacts if str(p).endswith(".ptx")]
+        test.assertEqual(len(ptx_files), 1, artifacts)
+        with open(ptx_files[0]) as f:
+            ptx = f.read()
+    directives = [line.strip() for line in ptx.splitlines() if line.startswith((".maxntid", ".minnctapersm"))]
+    test.assertEqual(directives, [".maxntid 64", ".minnctapersm 2"])
+
+
 def test_invalid_native_func_compile_error(test, device):
     @wp.func_native("""
         INVALID SOURCE;
@@ -182,6 +223,7 @@ add_function_test(TestClangCUDA, "test_math_kernel", test_math_kernel, devices=d
 add_function_test(TestClangCUDA, "test_vec_kernel", test_vec_kernel, devices=devices)
 add_function_test(TestClangCUDA, "test_conditional_kernel", test_conditional_kernel, devices=devices)
 add_function_test(TestClangCUDA, "test_slice_kernel", test_slice_kernel, devices=devices)
+add_function_test(TestClangCUDA, "test_launch_bounds_kernel", test_launch_bounds_kernel, devices=devices)
 bf16_devices = [d for d in devices if d.arch >= 80]
 add_function_test(TestClangCUDA, "test_bf16_round_trip", test_bf16_round_trip, devices=bf16_devices)
 add_function_test(TestClangCUDA, "test_bf16_arithmetic", test_bf16_arithmetic, devices=bf16_devices)
