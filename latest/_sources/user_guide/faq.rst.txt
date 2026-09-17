@@ -502,6 +502,14 @@ currently implement this themselves. The `fluid checkpointing example
 shows one implementation. See :doc:`differentiability` for the full overwrite
 and replay rules.
 
+For fixed linear operations, the derivative does not depend on the intermediate
+values. The `fluid checkpointing example with a custom pressure-solve backward
+pass
+<https://github.com/NVIDIA/warp/blob/main/warp/examples/optim/example_fluid_checkpoint_custom_backward.py>`__
+uses :meth:`warp.Tape.record_func` to differentiate a fixed number of pressure
+iterations with two reusable scratch grids. It preserves the gradient through
+the pressure warm start and combines this with checkpointing across time steps.
+
 Why can array overwrites produce unexpected gradients?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

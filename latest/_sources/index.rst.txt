@@ -195,7 +195,8 @@ warp/examples/optim
       - .. image:: ./img/examples/optim_navier_stokes_perturbation.png
            :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/optim/example_navier_stokes_perturbation.py
     * - diffray
-      - fluid checkpoint
+      - | fluid checkpoint
+        | `basic <https://github.com/NVIDIA/warp/blob/main/warp/examples/optim/example_fluid_checkpoint.py>`__ · `custom backward <https://github.com/NVIDIA/warp/blob/main/warp/examples/optim/example_fluid_checkpoint_custom_backward.py>`__
       - particle repulsion
       - navier-stokes perturbation
 
