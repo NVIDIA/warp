@@ -14,7 +14,7 @@ import time
 from pathlib import Path
 
 import warp.config
-from warp._src.logger import LOG_DEBUG
+from warp._src.logger import LOG_DEBUG, log_warning
 from warp._src.thirdparty import appdirs
 from warp._src.types import *
 
@@ -309,6 +309,9 @@ def clear_lto_cache() -> None:
         # Remove the lto directory and its contents
         shutil.rmtree(lto_path, ignore_errors=True)
 
+    # aligned GEMM variants rejected by cuBLASDx may be retried once the cache is rebuilt
+    _gemm_lto_alignment_unsupported.clear()
+
 
 def safe_rename(src, dst, attempts=5, delay=0.1):
     for i in range(attempts):
@@ -497,9 +500,105 @@ def _build_lto_base(lto_symbol, compile_func, builder, extra_files=None):
         return (result, outputs[".lto"], *[outputs[ext] for ext in extra_files.keys()])
 
 
+# cuBLASDx GEMM LTO symbols whose aligned variant failed to compile in this process; the
+# unaligned variant is used for them and the aligned compile is not retried until the process
+# restarts or the LTO cache is cleared.
+_gemm_lto_alignment_unsupported: set[str] = set()
+
+# Warp compiles one module variant per block_dim and launches with exactly that many threads,
+# so cuBLASDx may specialize its GEMMs on the block size instead of reading it at runtime.
+_GEMM_ENABLE_STATIC_BLOCK_DIM = True
+
+
+def _gemm_operand_alignments(
+    dense_lds: tuple[int, int, int],
+    native_lds: tuple[int, int, int],
+    elem_bytes: tuple[int, int, int],
+    aligned_bases: tuple[bool, bool, bool],
+) -> tuple[int, int, int]:
+    """Choose the cuBLASDx ``Alignment<A, B, C>`` operator values for a GEMM.
+
+    An operand is declared 16-byte aligned when its base pointer is known to be 16-byte
+    aligned and its dense leading dimension spans a multiple of 16 bytes, which lets cuBLASDx
+    vectorize its shared-memory accesses for that operand.
+
+    Args:
+        dense_lds: Dense leading dimensions of A, B, and C in elements.
+        native_lds: Leading dimensions passed to the LeadingDimension operator, or all zeros
+            when the GEMM is dense and the operator is left unset.
+        elem_bytes: Element size of A, B, and C in bytes.
+        aligned_bases: Whether the base pointer of A, B, and C is known to be 16-byte aligned.
+
+    Returns:
+        Alignment in bytes for A, B, and C. Operands that do not qualify keep their element size,
+        which is the cuBLASDx default, and a 16-bit C is capped at 8 bytes to sidestep a cuBLASDx
+        layout bug. All zeros means the operator is left unset, which is the case when no operand
+        qualifies or when ``native_lds`` is set.
+    """
+    if native_lds != (0, 0, 0):
+        return (0, 0, 0)
+    aligned = [
+        16 if (base and (ld * eb) % 16 == 0) else eb
+        for ld, eb, base in zip(dense_lds, elem_bytes, aligned_bases, strict=True)
+    ]
+    # cuBLASDx (through libmathdx 0.4.1) fails to compile some 16-bit GEMM layouts when C is
+    # declared 16-byte aligned (it pairs an 8-byte LDSM load with a 16-byte STSM store on sm_90 and
+    # newer); 8 bytes compiles everywhere tested. Remove once the cuBLASDx fix ships.
+    if elem_bytes[2] == 2 and aligned[2] == 16:
+        aligned[2] = 8
+    if all(al == eb for al, eb in zip(aligned, elem_bytes, strict=True)):
+        return (0, 0, 0)
+    return (aligned[0], aligned[1], aligned[2])
+
+
 def build_lto_dot(
-    M, N, K, adtype, bdtype, cdtype, alayout, blayout, clayout, arch, num_threads, builder, lda=None, ldb=None, ldc=None
+    M,
+    N,
+    K,
+    adtype,
+    bdtype,
+    cdtype,
+    alayout,
+    blayout,
+    clayout,
+    arch,
+    num_threads,
+    builder,
+    lda=None,
+    ldb=None,
+    ldc=None,
+    aligned_bases=(False, False, False),
 ):
+    """Compile (or fetch from the LTO cache) a cuBLASDx GEMM ``C = alpha * A @ B + beta * C``.
+
+    The operand alignment declared to cuBLASDx is chosen by :func:`_gemm_operand_alignments`.
+    If cuBLASDx rejects the aligned variant, the GEMM is rebuilt without the alignment operator
+    and a warning is logged; the returned symbol reflects the variant that compiled.
+
+    Args:
+        M: Rows of A and C.
+        N: Columns of B and C.
+        K: Columns of A and rows of B.
+        adtype: Element type of A.
+        bdtype: Element type of B.
+        cdtype: Element type of C.
+        alayout: ``"rowmajor"`` or ``"colmajor"`` arrangement of A.
+        blayout: Arrangement of B.
+        clayout: Arrangement of C.
+        arch: Target compute capability as an integer (for example ``120``).
+        num_threads: Threads per block the kernel is compiled and launched with.
+        builder: Module builder that records the LTO and its declaration.
+        lda: Leading dimension of A in elements, or ``None`` when dense.
+        ldb: Leading dimension of B in elements, or ``None`` when dense.
+        ldc: Leading dimension of C in elements, or ``None`` when dense.
+        aligned_bases: Whether the base pointer of A, B, and C is known to be 16-byte aligned.
+
+    Returns:
+        ``(lto_symbol, lto_code_data)`` for the variant that compiled.
+
+    Raises:
+        RuntimeError: If neither the aligned nor the unaligned variant compiles.
+    """
     arch = 120 if arch > 121 else arch
 
     # Maps Python/Warp types to C++ types and enums
@@ -558,59 +657,109 @@ def build_lto_dot(
     native_lds = (0, 0, 0) if (lda, ldb, ldc) == dense_lds else (lda, ldb, ldc)
 
     lto_symbol = f"dot_{M}_{N}_{K}_{arch}_{num_threads}_{a_arrangement}_{b_arrangement}_{c_arrangement}_{a_prec}_{b_prec}_{c_prec}_{element_type}"
-    # dense GEMMs keep the pre-existing symbol, so their cached LTOs stay valid
+    # explicit leading dimensions are part of the LTO identity
     if (lda, ldb, ldc) != dense_lds:
         lto_symbol += f"_{lda}_{ldb}_{ldc}"
 
-    def compile_lto_dot(temp_paths):
-        result = warp._src.context.runtime.core.wp_cuda_compile_dot(
-            temp_paths[".lto"].encode("utf-8"),
-            lto_symbol.encode("utf-8"),
-            0,
-            None,
-            None,
-            arch,
-            M,
-            N,
-            K,
-            a_prec,
-            b_prec,
-            c_prec,
-            element_type,
-            a_arrangement,
-            b_arrangement,
-            c_arrangement,
-            num_threads,
-            native_lds[0],
-            native_lds[1],
-            native_lds[2],
-        )
+    alignments = _gemm_operand_alignments(
+        dense_lds,
+        native_lds,
+        tuple(type_size_in_bytes(t) for t in (adtype, bdtype, cdtype)),
+        tuple(builtins.bool(b) for b in aligned_bases),
+    )
 
-        if result:
-            with open(temp_paths[".lto"], "rb") as f:
-                lto_code_data = f.read()
-            return True, {".lto": lto_code_data}
-        return False, {}
+    def operator_symbol(al):
+        """Return the LTO symbol with the cuBLASDx operator settings appended, so they are part of the cache identity."""
+        return f"{lto_symbol}_al{al[0]}_{al[1]}_{al[2]}_sb{int(_GEMM_ENABLE_STATIC_BLOCK_DIM)}"
 
-    # Early out if already cached in module
-    if lto_symbol in builder.ltoirs:
-        lto_code_data = builder.ltoirs[lto_symbol]
-    else:
-        (result, lto_code_data) = _build_lto_base(lto_symbol, compile_lto_dot, builder, {})
+    def make_compile_func(symbol, al, suppress_errors):
+        """Return the compile callback for one variant.
 
-        if not result:
-            raise RuntimeError(
-                f"Failed to compile LTO '{lto_symbol}'. "
-                "Set the environment variable LIBMATHDX_LOG_LEVEL=5 and rerun for more details."
+        Args:
+            symbol: LTO symbol to generate.
+            al: Alignment in bytes to declare for A, B, and C.
+            suppress_errors: Whether a rejected configuration is expected and must not be
+                printed as a native error.
+        """
+
+        def compile_lto_dot(temp_paths):
+            """Compile the GEMM LTO into ``temp_paths[".lto"]`` and return ``(success, {".lto": bytes})``."""
+            result = warp._src.context.runtime.core.wp_cuda_compile_dot(
+                temp_paths[".lto"].encode("utf-8"),
+                symbol.encode("utf-8"),
+                0,
+                None,
+                None,
+                arch,
+                M,
+                N,
+                K,
+                a_prec,
+                b_prec,
+                c_prec,
+                element_type,
+                a_arrangement,
+                b_arrangement,
+                c_arrangement,
+                num_threads,
+                native_lds[0],
+                native_lds[1],
+                native_lds[2],
+                al[0],
+                al[1],
+                al[2],
+                int(_GEMM_ENABLE_STATIC_BLOCK_DIM),
+                int(suppress_errors),
             )
 
-        # Update builder
-        builder.ltoirs[lto_symbol] = lto_code_data
-        builder.ltoirs_decl[lto_symbol] = (
-            f"void {lto_symbol}({c_dtype}*, {a_dtype}*, {b_dtype}*, {c_dtype}*, {c_dtype}*);"
-        )
+            if result:
+                with open(temp_paths[".lto"], "rb") as f:
+                    lto_code_data = f.read()
+                return True, {".lto": lto_code_data}
+            return False, {}
 
-    return lto_symbol, lto_code_data
+        return compile_lto_dot
+
+    # cuBLASDx rejects some layouts when an operand is declared 16-byte aligned (for example fp16
+    # GEMMs with N=16 on sm_90 and newer), so fall back to the unaligned variant if the aligned
+    # compile fails
+    attempts = [alignments] if alignments == (0, 0, 0) else [alignments, (0, 0, 0)]
+    rejected_symbol = None
+    for al in attempts:
+        symbol = operator_symbol(al)
+        if symbol in builder.ltoirs:
+            if rejected_symbol is not None:
+                # the fallback was already built for another GEMM in this module; remember the
+                # rejection so later GEMMs with the same shape skip the failing compile
+                _gemm_lto_alignment_unsupported.add(rejected_symbol)
+            return symbol, builder.ltoirs[symbol]
+        if symbol in _gemm_lto_alignment_unsupported:
+            continue
+
+        # a rejected aligned variant is expected and handled below, so its compile does not report errors
+        has_fallback = al != (0, 0, 0)
+        (result, lto_code_data) = _build_lto_base(symbol, make_compile_func(symbol, al, has_fallback), builder, {})
+        if result:
+            if rejected_symbol is not None:
+                # remember the rejection only once the fallback is known to work, so a transient
+                # failure does not disable the aligned variant for the rest of the process
+                _gemm_lto_alignment_unsupported.add(rejected_symbol)
+            builder.ltoirs[symbol] = lto_code_data
+            builder.ltoirs_decl[symbol] = f"void {symbol}({c_dtype}*, {a_dtype}*, {b_dtype}*, {c_dtype}*, {c_dtype}*);"
+            return symbol, lto_code_data
+
+        if has_fallback:
+            rejected_symbol = symbol
+            log_warning(
+                f"cuBLASDx rejected the 16-byte-aligned GEMM for tile_matmul ({adtype.__name__} {M}x{N}x{K}, "
+                f"{num_threads} threads, sm_{arch}); retrying without explicit alignment. Results are unaffected "
+                "but performance may be reduced. Please report this warning in a Warp GitHub issue."
+            )
+
+    raise RuntimeError(
+        f"Failed to compile LTO '{symbol}'. "
+        "Set the environment variable LIBMATHDX_LOG_LEVEL=5 and rerun for more details."
+    )
 
 
 def build_lto_solver(

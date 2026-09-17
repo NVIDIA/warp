@@ -1090,6 +1090,10 @@ class Var:
         # used to associate a view array Var with its parent array Var
         self.parent = None
 
+        # True for kernel and function parameters, whose type comes from the annotation rather
+        # than from the operation that produced the value
+        self.is_parameter = False
+
         # For Reference(T) vars, records the lvalue provenance used to derive
         # the adjoint storage pointer on demand.
         self.ref_origin: _LValueOrigin | None = None
@@ -1990,6 +1994,7 @@ class Adjoint:
 
             # add variable for argument
             arg = Var(name, type, requires_grad=False)
+            arg.is_parameter = True
             adj.args.append(arg)
 
             if is_reference(type):

@@ -8126,6 +8126,11 @@ class Runtime:
                 ctypes.c_int,  # lda
                 ctypes.c_int,  # ldb
                 ctypes.c_int,  # ldc
+                ctypes.c_int,  # alignment_A (bytes; the operator is set only when all three are > 0)
+                ctypes.c_int,  # alignment_B
+                ctypes.c_int,  # alignment_C
+                ctypes.c_int,  # enable_static_block_dim (0/1)
+                ctypes.c_int,  # suppress_errors (0/1): no error print when cuBLASDx rejects the configuration
             ]
             self.core.wp_cuda_compile_dot.restype = ctypes.c_bool
 

@@ -5107,7 +5107,12 @@ bool wp_cuda_compile_dot(
     int num_threads,
     int lda,
     int ldb,
-    int ldc
+    int ldc,
+    int alignment_A,
+    int alignment_B,
+    int alignment_C,
+    int enable_static_block_dim,
+    int suppress_errors
 )
 {
 
@@ -5158,10 +5163,31 @@ bool wp_cuda_compile_dot(
         ));
     }
 
+    // any non-positive value leaves cuBLASDx at its default (each value type's natural alignment)
+    if (alignment_A > 0 && alignment_B > 0 && alignment_C > 0) {
+        std::array<long long int, 3> align = { alignment_A, alignment_B, alignment_C };
+        CHECK_CUBLASDX(
+            cublasdxSetOperatorInt64s(h, cublasdxOperatorType::CUBLASDX_OPERATOR_ALIGNMENT, align.size(), align.data())
+        );
+    }
+
+    if (enable_static_block_dim) {
+        CHECK_CUBLASDX(cublasdxSetOperatorInt64(h, cublasdxOperatorType::CUBLASDX_OPERATOR_STATIC_BLOCK_DIM, 1));
+    }
+
     CHECK_CUBLASDX(cublasdxSetOptionStr(h, commondxOption::COMMONDX_OPTION_SYMBOL_NAME, symbol_name));
 
+    // generating the LTO is where cuBLASDx compiles the GEMM; a rejected configuration is
+    // expected when the caller probes an alignment it can fall back from, so do not report it then
     size_t lto_size = 0;
-    CHECK_CUBLASDX(cublasdxGetLTOIRSize(h, &lto_size));
+    commondxStatusType lto_status = cublasdxGetLTOIRSize(h, &lto_size);
+    if (lto_status != commondxStatusType::COMMONDX_SUCCESS) {
+        if (!suppress_errors) {
+            check_cublasdx(lto_status);
+        }
+        cublasdxDestroyDescriptor(h);
+        return false;
+    }
 
     std::vector<char> lto(lto_size);
     CHECK_CUBLASDX(cublasdxGetLTOIR(h, lto.size(), lto.data()));

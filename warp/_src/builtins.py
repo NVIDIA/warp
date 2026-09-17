@@ -17703,6 +17703,18 @@ def tile_matmul_lto_dispatch_func(
 
         (arr_a, ld_a), (arr_b, ld_b), (arr_c, ld_c) = operands
 
+        def base_aligned(t):
+            """Return whether the tile's shared-memory base pointer is known to be 16-byte aligned.
+
+            A tile that owns its shared storage comes from the 16-byte-aligned allocator, while
+            views, reshapes, and transposes alias an arbitrary offset. A ``@wp.func`` parameter's
+            type is the annotation, which cannot tell whether the caller passed an owner or a view,
+            so it is never treated as aligned.
+            """
+            return t.type.owner and not t.is_parameter
+
+        aligned_a, aligned_b, aligned_c = base_aligned(a), base_aligned(b), base_aligned(out)
+
         def dense_extent(arrangement, rows, cols):
             return cols if arrangement == "rowmajor" else rows
 
@@ -17751,6 +17763,7 @@ def tile_matmul_lto_dispatch_func(
                 lda=ld_a,
                 ldb=ld_b,
                 ldc=ld_c,
+                aligned_bases=(aligned_a, aligned_b, aligned_c),
             )
             if options["enable_backward"]:
                 # adjA += adjC * B^T - Transpose ~= flipped layout
@@ -17770,6 +17783,7 @@ def tile_matmul_lto_dispatch_func(
                     lda=ld_c,
                     ldb=ld_b,
                     ldc=ld_a,
+                    aligned_bases=(aligned_c, aligned_b, aligned_a),
                 )
                 # adjB += A^T * adjC - Transpose ~= flipped layout
                 (fun_backward_B, lto_backward_B) = warp._src.build.build_lto_dot(
@@ -17788,6 +17802,7 @@ def tile_matmul_lto_dispatch_func(
                     lda=ld_a,
                     ldb=ld_c,
                     ldc=ld_b,
+                    aligned_bases=(aligned_a, aligned_c, aligned_b),
                 )
             else:
                 # adjoints aren't computed, so we reuse fun_forward as a dummy arg
