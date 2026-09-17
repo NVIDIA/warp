@@ -732,10 +732,9 @@ Blackwell platforms when the system meets the current driver and runtime
 requirements. Run <a class="reference internal" href="../api_reference/_generated/warp.print_diagnostics.html#warp.print_diagnostics" title="warp.print_diagnostics"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.print_diagnostics()</span></code></a> to
 see the installed Warp build and the devices it detects.</p>
 <p>On DGX Spark, use <code class="docutils literal notranslate"><span class="pre">warp-lang[examples]</span></code> when the examples or Universal Scene
-Description (USD) rendering are needed. It installs <code class="docutils literal notranslate"><span class="pre">usd-exchange</span></code> because
-<code class="docutils literal notranslate"><span class="pre">usd-core</span></code> does not publish Linux AArch64 wheels. The core <code class="docutils literal notranslate"><span class="pre">warp-lang</span></code>
-package does not require either one. See <a class="reference internal" href="installation.html"><span class="doc">Installation</span></a> for the current
-package choices.</p>
+Description (USD) rendering are needed. The core <code class="docutils literal notranslate"><span class="pre">warp-lang</span></code> package does not
+require OpenUSD. See the <a class="reference internal" href="installation.html#openusd-dependencies"><span class="std std-ref">OpenUSD dependency guidance</span></a>
+for how the examples extra provides the <code class="docutils literal notranslate"><span class="pre">pxr</span></code> modules on supported platforms.</p>
 <p>CPU/GPU coherence does not make ordinary Warp CPU and CUDA arrays
 interchangeable. Standard Warp CUDA arrays are not managed-memory allocations.
 Warp supports opt-in CUDA managed-memory arrays through

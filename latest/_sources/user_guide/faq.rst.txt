@@ -202,10 +202,9 @@ requirements. Run :func:`wp.print_diagnostics() <warp.print_diagnostics>` to
 see the installed Warp build and the devices it detects.
 
 On DGX Spark, use ``warp-lang[examples]`` when the examples or Universal Scene
-Description (USD) rendering are needed. It installs ``usd-exchange`` because
-``usd-core`` does not publish Linux AArch64 wheels. The core ``warp-lang``
-package does not require either one. See :doc:`installation` for the current
-package choices.
+Description (USD) rendering are needed. The core ``warp-lang`` package does not
+require OpenUSD. See the :ref:`OpenUSD dependency guidance <openusd-dependencies>`
+for how the examples extra provides the ``pxr`` modules on supported platforms.
 
 CPU/GPU coherence does not make ordinary Warp CPU and CUDA arrays
 interchangeable. Standard Warp CUDA arrays are not managed-memory allocations.

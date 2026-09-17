@@ -658,19 +658,26 @@ CUDA 13.x requires Turing (<code class="docutils literal notranslate"><span clas
 <h2>Dependencies<a class="headerlink" href="#dependencies" title="Link to this heading">#</a></h2>
 <p>Warp supports Python versions 3.10 onwards. Note that <a class="reference internal" href="#conda"><span class="std std-ref">some optional dependencies may not support the latest version of Python</span></a>.</p>
 <p><a class="reference external" href="https://numpy.org">NumPy</a> must be installed.</p>
-<p>The following optional dependencies are required to support certain features:</p>
-<ul class="simple">
-<li><p><a class="reference external" href="https://pypi.org/project/usd-core">usd-core</a>: Required for some Warp examples, tests, and the <a class="reference internal" href="../api_reference/_generated/warp.render.UsdRenderer.html#warp.render.UsdRenderer" title="warp.render.UsdRenderer"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.render.UsdRenderer</span></code></a>.
-On Linux aarch64 systems where <code class="docutils literal notranslate"><span class="pre">usd-core</span></code> wheels are not available,
-<a class="reference external" href="https://pypi.org/project/usd-exchange">usd-exchange</a> can be installed as a drop-in replacement.
-The <code class="docutils literal notranslate"><span class="pre">[examples]</span></code> extra handles this automatically.</p></li>
-<li><p><a class="reference external" href="https://pyglet.org/">pyglet</a>: Required for some Warp examples and the <a class="reference internal" href="../api_reference/_generated/warp.render.OpenGLRenderer.html#warp.render.OpenGLRenderer" title="warp.render.OpenGLRenderer"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.render.OpenGLRenderer</span></code></a>.</p></li>
-<li><p><a class="reference external" href="https://docs.jax.dev/en/latest/installation.html">JAX</a>: Required for JAX interoperability (see <a class="reference internal" href="interoperability/jax.html#jax-interop"><span class="std std-ref">JAX Interoperability</span></a>).</p></li>
-<li><p><a class="reference external" href="https://pytorch.org/get-started/locally/">PyTorch</a>: Required for PyTorch interoperability (see <a class="reference internal" href="interoperability/pytorch.html#pytorch-interop"><span class="std std-ref">PyTorch Interoperability</span></a>).</p></li>
-<li><p><a class="reference external" href="https://github.com/PaddlePaddle/Paddle">Paddle</a>: Required for Paddle interoperability (see <a class="reference internal" href="interoperability.html#paddle-interop"><span class="std std-ref">Paddle</span></a>).</p></li>
-<li><p><a class="reference external" href="https://github.com/NVIDIA/NVTX#python">NVTX for Python</a>: Required to use <a class="reference internal" href="../api_reference/_generated/warp.ScopedTimer.html#warp.ScopedTimer" title="warp.ScopedTimer"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedTimer(use_nvtx=True)</span></code></a>.</p></li>
-<li><p><a class="reference external" href="https://psutil.io/">psutil</a>: Required to query CPU memory info (<cite>get_device(“cpu”).total_memory</cite>, <cite>get_device(“cpu”).free_memory</cite>).</p></li>
-</ul>
+<p>The <code class="docutils literal notranslate"><span class="pre">warp-lang[examples]</span></code> extra installs dependencies used by many Warp examples. Install it with:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">"warp-lang[examples]"</span>
+</pre></div>
+</div>
+<p id="openusd-dependencies"><strong>OpenUSD dependencies</strong></p>
+<p>Some Warp examples and USD rendering features import the OpenUSD <code class="docutils literal notranslate"><span class="pre">pxr</span></code> modules. If those modules
+are missing, Python may report <code class="docutils literal notranslate"><span class="pre">ModuleNotFoundError:</span> <span class="pre">No</span> <span class="pre">module</span> <span class="pre">named</span> <span class="pre">'pxr'</span></code>. The error reports the
+import name; the PyPI distributions that provide these modules are <code class="docutils literal notranslate"><span class="pre">usd-core</span></code> and <code class="docutils literal notranslate"><span class="pre">usd-exchange</span></code>.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">warp-lang[examples]</span></code> extra uses platform markers to install <code class="docutils literal notranslate"><span class="pre">usd-core</span></code> where supported and
+<code class="docutils literal notranslate"><span class="pre">usd-exchange</span></code> on supported platforms without a compatible <code class="docutils literal notranslate"><span class="pre">usd-core</span></code> wheel.</p>
+<p><code class="docutils literal notranslate"><span class="pre">usd-exchange</span></code> includes its own OpenUSD runtime and <code class="docutils literal notranslate"><span class="pre">pxr</span></code> modules. Do not install it alongside
+<code class="docutils literal notranslate"><span class="pre">usd-core</span></code>. Both packages install files to the same locations, which can cause import or runtime
+failures.</p>
+<p><code class="docutils literal notranslate"><span class="pre">usd-exchange</span></code> has its own release version, separate from the version of the OpenUSD runtime it
+includes. After installation, call <code class="docutils literal notranslate"><span class="pre">pxr.Usd.GetVersion()</span></code> to query the OpenUSD version.</p>
+<p>Some examples need extra packages. Check the example’s source file to see what else you need to
+install. For JAX and PyTorch, follow the official
+<a class="reference external" href="https://docs.jax.dev/en/latest/installation.html">JAX installation guide</a> or
+<a class="reference external" href="https://pytorch.org/get-started/locally/">PyTorch installation guide</a> to choose a version and
+build for your system.</p>
 </section>
 <section id="building-from-source">
 <span id="id2"></span><h2>Building from Source<a class="headerlink" href="#building-from-source" title="Link to this heading">#</a></h2>
