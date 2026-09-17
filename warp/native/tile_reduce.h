@@ -357,7 +357,14 @@ template <typename Tile, typename Op> CUDA_CALLABLE_DEVICE auto tile_reduce_impl
             output.data[0] = block_sum;
     } else {
         // multi-warp path: cross-warp reduction via shared memory
-        __shared__ T partials[warp_count];
+        // CUDA ignores the constructor a __shared__ array of T would run, and
+        // NVRTC diagnoses it, so reserve raw storage and view it as T.
+        static_assert(
+            __is_trivially_copyable(T) && __is_trivially_destructible(T),
+            "tile element type must be trivially copyable and destructible"
+        );
+        __shared__ alignas(T) char partials_storage[warp_count * sizeof(T)];
+        T* partials = reinterpret_cast<T*>(partials_storage);
         __shared__ int active_warps;
 
         if (threadIdx.x == 0)
@@ -397,7 +404,14 @@ tile_reduce_axis_impl(Op f, Tile& t, typename Tile::Type empty_identity, bool ha
     }
 
     // shared memory buffer for the output (used by all tiers)
-    __shared__ T output_buffer[output_size];
+    // CUDA ignores the constructor a __shared__ array of T would run, and NVRTC
+    // diagnoses it, so reserve raw storage and view it as T.
+    static_assert(
+        __is_trivially_copyable(T) && __is_trivially_destructible(T),
+        "tile element type must be trivially copyable and destructible"
+    );
+    __shared__ alignas(T) char output_buffer_storage[output_size * sizeof(T)];
+    T* output_buffer = reinterpret_cast<T*>(output_buffer_storage);
 
     // create output layout for coordinate conversion (used by all tiers)
     using OutputLayout = tile_layout_strided_t<OutputShape>;
@@ -433,7 +447,14 @@ tile_reduce_axis_impl(Op f, Tile& t, typename Tile::Type empty_identity, bool ha
         constexpr int chunks_per_slice = (reduce_dim_size + WP_TILE_WARP_SIZE - 1) / WP_TILE_WARP_SIZE;
 
         // shared memory: one accumulator per warp
-        __shared__ T warp_partials[warp_count];
+        // CUDA ignores the constructor a __shared__ array of T would run, and NVRTC
+        // diagnoses it, so reserve raw storage and view it as T.
+        static_assert(
+            __is_trivially_copyable(T) && __is_trivially_destructible(T),
+            "tile element type must be trivially copyable and destructible"
+        );
+        __shared__ alignas(T) char warp_partials_storage[warp_count * sizeof(T)];
+        T* warp_partials = reinterpret_cast<T*>(warp_partials_storage);
 
         // each warp processes output slices
         for (int out_idx = warp_index; out_idx < output_size; out_idx += warp_count) {
@@ -478,7 +499,14 @@ tile_reduce_axis_impl(Op f, Tile& t, typename Tile::Type empty_identity, bool ha
         constexpr int warp_count = (WP_TILE_BLOCK_DIM + WP_TILE_WARP_SIZE - 1) / WP_TILE_WARP_SIZE;
 
         // shared memory for cross-warp reduction (only needed for multi-warp)
-        __shared__ T partials[warp_count];
+        // CUDA ignores the constructor a __shared__ array of T would run, and
+        // NVRTC diagnoses it, so reserve raw storage and view it as T.
+        static_assert(
+            __is_trivially_copyable(T) && __is_trivially_destructible(T),
+            "tile element type must be trivially copyable and destructible"
+        );
+        __shared__ alignas(T) char partials_storage[warp_count * sizeof(T)];
+        T* partials = reinterpret_cast<T*>(partials_storage);
         __shared__ int active_warps;
 
         // process each output element sequentially with full block cooperation
@@ -587,7 +615,14 @@ CUDA_CALLABLE_DEVICE auto tile_arg_reduce_impl(Op f, OpTrack track, Tile& t)
         warp_sum = warp_reduce_tracked(thread_sum, champion_index, f, track, mask);
 
     // fixed size scratch pad for partial results in shared memory
-    __shared__ T partials[warp_count];
+    // CUDA ignores the constructor a __shared__ array of T would run, and
+    // NVRTC diagnoses it, so reserve raw storage and view it as T.
+    static_assert(
+        __is_trivially_copyable(T) && __is_trivially_destructible(T),
+        "tile element type must be trivially copyable and destructible"
+    );
+    __shared__ alignas(T) char partials_storage[warp_count * sizeof(T)];
+    T* partials = reinterpret_cast<T*>(partials_storage);
     __shared__ int partials_idx[warp_count];
 
     // count of active warps
@@ -969,7 +1004,14 @@ template <typename Tile, typename AdjTile> CUDA_CALLABLE void adj_tile_sum(Tile&
 
 #if defined(__CUDA_ARCH__)
     // broadcast incoming adjoint to block
-    __shared__ T scratch;
+    // CUDA ignores the constructor a __shared__ T would run, and NVRTC
+    // diagnoses it, so reserve raw storage and view it as T.
+    static_assert(
+        __is_trivially_copyable(T) && __is_trivially_destructible(T),
+        "tile element type must be trivially copyable and destructible"
+    );
+    __shared__ alignas(T) char scratch_storage[sizeof(T)];
+    T& scratch = *reinterpret_cast<T*>(scratch_storage);
     if (WP_TILE_THREAD_IDX == 0)
         scratch = adj_reg.data[0];
 
@@ -1051,7 +1093,14 @@ template <typename TileA, typename TileB> CUDA_CALLABLE auto tile_dot(TileA& a, 
         if (threadIdx.x == first_active)
             output.data[0] = result;
     } else {
-        __shared__ ScalarT partials[warp_count];
+        // CUDA ignores the constructor a __shared__ array of ScalarT would run, and
+        // NVRTC diagnoses it, so reserve raw storage and view it as ScalarT.
+        static_assert(
+            __is_trivially_copyable(ScalarT) && __is_trivially_destructible(ScalarT),
+            "tile element type must be trivially copyable and destructible"
+        );
+        __shared__ alignas(ScalarT) char partials_storage[warp_count * sizeof(ScalarT)];
+        ScalarT* partials = reinterpret_cast<ScalarT*>(partials_storage);
         __shared__ int active_warps;
 
         if (threadIdx.x == 0)
@@ -1113,7 +1162,14 @@ CUDA_CALLABLE void adj_tile_dot(TileA& a, TileB& b, AdjTileA& adj_a, AdjTileB& a
 
 #if defined(__CUDA_ARCH__)
     // broadcast incoming adjoint to block
-    __shared__ ScalarT scratch;
+    // CUDA ignores the constructor a __shared__ ScalarT would run, and NVRTC
+    // diagnoses it, so reserve raw storage and view it as ScalarT.
+    static_assert(
+        __is_trivially_copyable(ScalarT) && __is_trivially_destructible(ScalarT),
+        "tile element type must be trivially copyable and destructible"
+    );
+    __shared__ alignas(ScalarT) char scratch_storage[sizeof(ScalarT)];
+    ScalarT& scratch = *reinterpret_cast<ScalarT*>(scratch_storage);
     if (WP_TILE_THREAD_IDX == 0)
         scratch = adj_reg.data[0];
     WP_TILE_SYNC();

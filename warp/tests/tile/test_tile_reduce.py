@@ -1,11 +1,14 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import subprocess
+import sys
 import unittest
 
 import numpy as np
 
 import warp as wp
+from warp.tests import aux_test_tile_reduce_warnings as warning_kernels
 from warp.tests.unittest_utils import *
 
 TILE_M = wp.constant(8)
@@ -18,6 +21,42 @@ TILE_DIM = 64
 PARTIAL_BLOCK_DIM = 64
 PARTIAL_ACTIVE_DIM = 32
 PARTIAL_SCAN_DIM = 128
+
+
+def _nvrtc_log(python_module, kernel_name, arch):
+    """Compile a module through NVRTC and return its compiler log."""
+    script = """
+import importlib
+import os
+import sys
+import tempfile
+
+import warp as wp
+
+python_module = importlib.import_module(sys.argv[1])
+kernel = getattr(python_module, sys.argv[2])
+arch = int(sys.argv[3])
+
+with wp.ScopedLogLevel(wp.LOG_DEBUG):
+    with tempfile.TemporaryDirectory() as build_dir:
+        wp.compile_aot_module(
+            kernel.module,
+            device=None,
+            arch=arch,
+            module_dir=os.path.join(build_dir, "module"),
+            use_ptx=True,
+        )
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", script, python_module.__name__, kernel_name, str(arch)],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"NVRTC subprocess failed:\nstdout:\n{result.stdout}\nstderr:\n{result.stderr}")
+    return result.stdout
 
 
 @wp.kernel
@@ -1197,7 +1236,20 @@ cpu_devices = get_cpu_test_devices()
 
 
 class TestTileReduce(unittest.TestCase):
-    pass
+    def test_tile_reduce_has_no_dynamic_shared_initialization(self):
+        """Compile a vector reduction without dynamic shared-memory initialization."""
+        supported_archs = wp.get_cuda_supported_archs()
+        if not supported_archs:
+            self.skipTest("NVRTC not available")
+        arch = supported_archs[0]
+
+        diagnostic = "dynamic initialization is not supported for a function-scope static __shared__ variable"
+
+        control = _nvrtc_log(warning_kernels, "compiler_warning_control", arch)
+        self.assertIn(diagnostic, control, "the NVRTC diagnostic log is not reaching the test")
+
+        log = _nvrtc_log(warning_kernels, "reduce_vec3_tile", arch)
+        self.assertNotIn(diagnostic, log)
 
 
 add_function_test(TestTileReduce, "test_tile_reduce_sum", test_tile_reduce_sum, devices=devices)
