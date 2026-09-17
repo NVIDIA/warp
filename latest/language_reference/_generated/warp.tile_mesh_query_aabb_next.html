@@ -562,26 +562,21 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tile</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><span class="pre">int32</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#warp._src.lang.tile_mesh_query_aabb_next" title="Link to this definition">#</a></dt>
-<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="differentiable" data-wp-value="false"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li></ul><p>Move to the next triangle in a thread-block parallel mesh AABB query and return results as a tile.</p>
-<p>Each thread in the block receives one result index in the returned tile, or -1 if no result for that thread.
-The function returns a register tile of shape <code class="docutils literal notranslate"><span class="pre">(block_dim,)</span></code> containing the result indices.</p>
-<p>To check if any results were found, check if any element in the tile is &gt;= 0.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>This is an alias for <a class="reference internal" href="warp.mesh_query_aabb_next_tiled.html#warp._src.lang.mesh_query_aabb_next_tiled" title="warp._src.lang.mesh_query_aabb_next_tiled"><code class="xref py py-func docutils literal notranslate"><span class="pre">mesh_query_aabb_next_tiled()</span></code></a>.</p>
-</div>
+<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="differentiable" data-wp-value="false"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li></ul><p>Advance a thread-block parallel mesh AABB query and return the next batch of results as a tile.</p>
+<p>Every thread in the block must call this on each loop iteration. Guard the traversal
+loop with <a class="reference internal" href="warp.tile_query_valid.html#warp._src.lang.tile_query_valid" title="warp._src.lang.tile_query_valid"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_query_valid()</span></code></a> and test each returned index for <code class="docutils literal notranslate"><span class="pre">&gt;=</span> <span class="pre">0</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>query</strong> – The thread-block mesh query object</p>
+<dd class="field-odd"><p><strong>query</strong> – The query to advance, from <a class="reference internal" href="warp.tile_mesh_query_aabb.html#warp._src.lang.tile_mesh_query_aabb" title="warp._src.lang.tile_mesh_query_aabb"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_mesh_query_aabb()</span></code></a></p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p><dl class="simple">
-<dt>A register tile of shape <code class="docutils literal notranslate"><span class="pre">(block_dim,)</span></code> with dtype int, where each element contains</dt><dd><p>the result index for that thread (-1 if no result)</p>
+<dd class="field-even"><p>A register tile of shape <code class="docutils literal notranslate"><span class="pre">(block_dim,)</span></code> and dtype <code class="docutils literal notranslate"><span class="pre">int</span></code> holding one face index
+per thread: the index of an overlapping face, i.e. the triangle built from
+<code class="docutils literal notranslate"><span class="pre">indices[3</span> <span class="pre">*</span> <span class="pre">face]</span></code> through <code class="docutils literal notranslate"><span class="pre">indices[3</span> <span class="pre">*</span> <span class="pre">face</span> <span class="pre">+</span> <span class="pre">2]</span></code> of the
+<a class="reference internal" href="../../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a>, or a negative value when that thread has no result.</p>
 </dd>
 </dl>
-</p>
-</dd>
-</dl>
+<p>See <a class="reference internal" href="warp.tile_mesh_query_aabb.html#warp._src.lang.tile_mesh_query_aabb" title="warp._src.lang.tile_mesh_query_aabb"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_mesh_query_aabb()</span></code></a> for a usage example.</p>
 </dd></dl>
 
 </section>

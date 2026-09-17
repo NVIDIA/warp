@@ -557,42 +557,18 @@
 <dt class="sig sig-object py" id="warp._src.lang.tile_stack_count">
 <span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">tile_stack_count</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#warp._src.lang.tile_stack_count" title="Link to this definition">#</a></dt>
 <dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="differentiable" data-wp-value="false"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li></ul><p>Return the current number of elements in a tile stack.</p>
-<p>Unlike the other tile stack operations this function is <strong>not</strong> cooperative
-— it does not contain a synchronization barrier and may be called by a
-single thread or from within a divergent branch. It is safe to call after
-any <a class="reference internal" href="warp.tile_stack_push.html#warp._src.lang.tile_stack_push" title="warp._src.lang.tile_stack_push"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_stack_push()</span></code></a>, <a class="reference internal" href="warp.tile_stack_pop.html#warp._src.lang.tile_stack_pop" title="warp._src.lang.tile_stack_pop"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_stack_pop()</span></code></a>, or
-<a class="reference internal" href="warp.tile_stack_clear.html#warp._src.lang.tile_stack_clear" title="warp._src.lang.tile_stack_clear"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_stack_clear()</span></code></a> <em>provided the preceding cooperative call has
-completed on all threads in the block</em>. Those calls end with a barrier
-that makes <code class="docutils literal notranslate"><span class="pre">count</span></code> stable and visible. Calling this after a divergent
-push/pop/clear is undefined.</p>
+<p>May be called by one thread or from divergent control flow. The value is uniform
+across the block and always lies in <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">capacity]</span></code>. Call it only after every
+thread has completed the same preceding push, pop, or clear.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>s</strong> – The tile stack</p>
+<dd class="field-odd"><p><strong>s</strong> – The tile stack, from <a class="reference internal" href="../../api_reference/_generated/warp.tile_stack.html#warp.tile_stack" title="warp.tile_stack"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_stack()</span></code></a></p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>The current number of elements in the stack.</p>
 </dd>
 </dl>
-<p class="rubric">Example</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">CAP</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mi">8</span><span class="p">)</span>
-
-<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">count_kernel</span><span class="p">(</span><span class="n">out_count</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">int</span><span class="p">]):</span>
-    <span class="n">_i</span><span class="p">,</span> <span class="n">j</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
-    <span class="n">s</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_stack</span><span class="p">(</span><span class="n">capacity</span><span class="o">=</span><span class="n">CAP</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
-    <span class="n">wp</span><span class="o">.</span><span class="n">tile_stack_push</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">j</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">j</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="n">out_count</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_stack_count</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
-
-<span class="n">out_count</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
-<span class="n">wp</span><span class="o">.</span><span class="n">launch_tiled</span><span class="p">(</span><span class="n">count_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">out_count</span><span class="p">],</span> <span class="n">block_dim</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="n">out_count</span><span class="o">.</span><span class="n">numpy</span><span class="p">()[</span><span class="mi">0</span><span class="p">])</span>
-</pre></div>
-</div>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>4
-</pre></div>
-</div>
+<p>See <a class="reference internal" href="../../api_reference/_generated/warp.tile_stack.html#warp.tile_stack" title="warp.tile_stack"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_stack()</span></code></a> for a usage example.</p>
 </dd></dl>
 
 </section>

@@ -10,43 +10,64 @@
 
    Allocate a cooperative thread-block stack in shared memory.
    
-   :param capacity: Maximum number of elements (must be a compile-time constant)
-   :param dtype: Data type of stack elements
+   Every thread of the block sees the same stack: :func:`~warp.tile_stack_push` and
+   :func:`~warp.tile_stack_pop` move up to one element per thread per call, and the element count
+   is shared. Storage comes from the same block shared memory as tiles (see
+   :ref:`tile_shared_memory_budget`). Every thread must reach the stack declaration, push, pop,
+   and clear together. Only :func:`~warp.tile_stack_count` may be called from a single thread.
    
-   :returns: A tile stack object for use with :func:`tile_stack_push`, :func:`tile_stack_pop`,
-             :func:`tile_stack_clear`, and :func:`tile_stack_count`.
+   Each push stores up to one value per thread; each pop returns up to one value per
+   thread. Which thread gets which slot within a push or pop is unspecified.
+   
+   Values from a later push are popped before, or during the same pop as, values from an
+   earlier push. Values from the same push may be popped in any order. When fewer elements
+   remain than threads, one pop may return elements from more than one push together.
+   
+   :param capacity: Maximum number of elements for the whole block (must be a positive compile-time
+                    constant)
+   :param dtype: Data type of the stack elements
+   
+   :returns: An empty tile stack.
    
    .. rubric:: Example
    
-   .. code-block:: python
+   .. testcode::
    
-       BLOCK = 8
-       CAP = wp.constant(8)
+       CAPACITY = wp.constant(8)
+       NUM_ITEMS = wp.constant(8)
    
        @wp.kernel
-       def compact_kernel(data: wp.array[int], out: wp.array[int], out_count: wp.array[int]):
-           _i, j = wp.tid()
-           s = wp.tile_stack(capacity=CAP, dtype=int)
+       def compact_values(data: wp.array[int], out: wp.array[int], num: wp.array[int]):
+           _i, lane = wp.tid()
+           s = wp.tile_stack(capacity=CAPACITY, dtype=int)
    
-           val = data[j]
-           wp.tile_stack_push(s, val, val > 5)
+           # one item per lane per step, so the kernel works for any block size
+           for base in range(0, NUM_ITEMS, wp.block_dim()):
+               i = base + lane
+               value = int(-1)
+               keep = False
+               if i < NUM_ITEMS:
+                   value = data[i]
+                   keep = value > 5
+               wp.tile_stack_push(s, value, keep)
    
-           if j == 0:
-               out_count[0] = wp.tile_stack_count(s)
+           if lane == 0:
+               num[0] = wp.tile_stack_count(s)
    
-           result, slot = wp.tile_stack_pop(s)
-           if slot != -1:
-               out[slot] = result
+           while wp.tile_stack_count(s) > 0:
+               value, slot = wp.tile_stack_pop(s)
+               if slot >= 0:
+                   out[slot] = value
    
        data = wp.array([1, 8, 3, 7, 2, 9, 4, 6], dtype=int)
-       out = wp.zeros(BLOCK, dtype=int)
-       out_count = wp.zeros(1, dtype=int)
-       wp.launch_tiled(compact_kernel, dim=[1], inputs=[data, out, out_count], block_dim=BLOCK)
+       out = wp.zeros(8, dtype=int)
+       num = wp.zeros(1, dtype=int)
+       wp.launch_tiled(compact_values, dim=1, inputs=[data], outputs=[out, num], block_dim=4)
    
-       n = out_count.numpy()[0]
+       n = num.numpy()[0]
        print(sorted(out.numpy()[:n].tolist()))
    
-   .. code-block:: text
+   .. testoutput::
    
        [6, 7, 8, 9]
    

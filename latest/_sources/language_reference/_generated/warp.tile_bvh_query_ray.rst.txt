@@ -8,13 +8,47 @@
       :python: false
       :differentiable: false
 
-   Construct a ray query against a BVH object for thread-block parallel traversal.
+   Construct a ray query against a :class:`warp.Bvh` for thread-block parallel traversal.
    
-   This query can be used in tiled kernels to cooperatively traverse a BVH across a thread block.
+   The whole block traverses one query cooperatively: advance it with
+   :func:`~warp.tile_bvh_query_next` in a loop guarded by :func:`~warp.tile_query_valid`.
+   Results are returned in unspecified order and are not sorted along the ray. The ray is
+   one-sided and unbounded, so bounds entirely behind ``start`` are never reported and there is
+   no maximum distance.
    
-   .. note:: This is an alias for :func:`bvh_query_ray_tiled`.
+   Only one BVH query may be active per block; exhaust it before constructing another.
    
-   :param id: The BVH identifier
-   :param start: The ray origin (must be the same for all threads in the block)
-   :param dir: The ray direction (must be the same for all threads in the block)
+   :param id: The BVH identifier (must be the same for all threads in the block)
+   :param start: The ray origin, in BVH space (must be the same for all threads in the block)
+   :param dir: A nonzero ray direction in BVH space; normalization is not required. Must be
+               the same for all threads in the block.
+   
+   :returns: A :class:`warp.BvhQueryTiled` to advance with :func:`~warp.tile_bvh_query_next`.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def bounds_along_ray(bvh_id: wp.uint64, start: wp.vec3, dir: wp.vec3, counts: wp.array[wp.int32]):
+           query = wp.tile_bvh_query_ray(bvh_id, start, dir)
+           while wp.tile_query_valid(query):
+               bound = wp.untile(wp.tile_bvh_query_next(query))
+               if bound >= 0:
+                   wp.atomic_add(counts, bound, 1)
+   
+       lowers = wp.array([[0, 0, 0], [2, 0, 0], [4, 0, 0]], dtype=wp.vec3)
+       uppers = wp.array([[1, 1, 1], [3, 1, 1], [5, 1, 1]], dtype=wp.vec3)
+       bvh = wp.Bvh(lowers=lowers, uppers=uppers)
+   
+       counts = wp.zeros(3, dtype=wp.int32)
+       # an unnormalized ray that only meets the middle box
+       wp.launch_tiled(bounds_along_ray, dim=1,
+                       inputs=[bvh.id, wp.vec3(2.5, 0.5, -4.0), wp.vec3(0.0, 0.0, 8.0)],
+                       outputs=[counts], block_dim=4)
+       print("times each bound was reported:", counts.numpy().tolist())
+   
+   .. testoutput::
+   
+       times each bound was reported: [0, 1, 0]
    

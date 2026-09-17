@@ -564,44 +564,28 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#warp._src.lang.tile_stack_push" title="Link to this definition">#</a></dt>
-<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="differentiable" data-wp-value="false"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li></ul><p>Push a value onto a tile stack (cooperative).</p>
-<p>All threads in the block must call this function. Only threads with
-<code class="docutils literal notranslate"><span class="pre">has_value=True</span></code> write to the stack.</p>
+<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="differentiable" data-wp-value="false"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li></ul><p>Push a value onto a tile stack.</p>
+<p>Every thread in the block must reach this call. Pushed values are visible to the whole block
+afterward.</p>
+<p>If more values are offered than the stack has room for, the surplus is dropped and the count
+saturates at <code class="docutils literal notranslate"><span class="pre">capacity</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>s</strong> – The tile stack</p></li>
-<li><p><strong>value</strong> – The value to push</p></li>
-<li><p><strong>has_value</strong> – Whether this thread has a value to push</p></li>
+<li><p><strong>s</strong> – The tile stack, from <a class="reference internal" href="../../api_reference/_generated/warp.tile_stack.html#warp.tile_stack" title="warp.tile_stack"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_stack()</span></code></a></p></li>
+<li><p><strong>value</strong> – The value to push, of the stack’s element type</p></li>
+<li><p><strong>has_value</strong> – Whether this thread contributes a value</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The slot index where the value was written, or <code class="docutils literal notranslate"><span class="pre">-1</span></code> if
-<code class="docutils literal notranslate"><span class="pre">has_value</span></code> is <code class="docutils literal notranslate"><span class="pre">False</span></code> or the stack overflowed.</p>
+<dd class="field-even"><p>The slot the value was written to, in <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">capacity</span> <span class="pre">-</span> <span class="pre">1]</span></code>, or <code class="docutils literal notranslate"><span class="pre">-1</span></code> if <code class="docutils literal notranslate"><span class="pre">has_value</span></code> was
+<code class="docutils literal notranslate"><span class="pre">False</span></code> or the stack was full. While the stack has room, each contributing
+thread receives a distinct free slot, but which slot a given thread receives is
+unspecified. A thread that passed <code class="docutils literal notranslate"><span class="pre">has_value=True</span></code> and received <code class="docutils literal notranslate"><span class="pre">-1</span></code> had its
+value dropped.</p>
 </dd>
 </dl>
-<p class="rubric">Example</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">CAP</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mi">8</span><span class="p">)</span>
-
-<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">push_kernel</span><span class="p">(</span><span class="n">out_idx</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">int</span><span class="p">]):</span>
-    <span class="n">_i</span><span class="p">,</span> <span class="n">j</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
-    <span class="n">s</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_stack</span><span class="p">(</span><span class="n">capacity</span><span class="o">=</span><span class="n">CAP</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
-    <span class="n">idx</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_stack_push</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">j</span> <span class="o">*</span> <span class="mi">10</span><span class="p">,</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="mi">4</span><span class="p">)</span>
-    <span class="n">out_idx</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">idx</span>
-
-<span class="n">out_idx</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
-<span class="n">wp</span><span class="o">.</span><span class="n">launch_tiled</span><span class="p">(</span><span class="n">push_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">out_idx</span><span class="p">],</span> <span class="n">block_dim</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
-
-<span class="n">idxs</span> <span class="o">=</span> <span class="n">out_idx</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
-<span class="nb">print</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">idxs</span><span class="p">[</span><span class="n">idxs</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()))</span>
-<span class="nb">print</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">idxs</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
-</pre></div>
-</div>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>[0, 1, 2, 3]
-4
-</pre></div>
-</div>
+<p>See <a class="reference internal" href="../../api_reference/_generated/warp.tile_stack.html#warp.tile_stack" title="warp.tile_stack"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_stack()</span></code></a> for a usage example.</p>
 </dd></dl>
 
 </section>

@@ -8,19 +8,17 @@
       :python: false
       :differentiable: false
 
-   Move to the next bound in a thread-block parallel BVH query and return results as a tile.
+   Advance a thread-block parallel BVH query and return the next batch of results as a tile.
    
-   Each thread in the block receives one result index in the returned tile, or -1 if no result for that thread.
-   The function returns a register tile of shape ``(block_dim,)`` containing the result indices.
+   Every thread in the block must call this on each loop iteration. Guard the traversal
+   loop with :func:`~warp.tile_query_valid` and test each returned index for ``>= 0``.
    
-   To check if any results were found, check if any element in the tile is >= 0.
+   :param query: The query to advance, from :func:`~warp.tile_bvh_query_aabb` or
+                 :func:`~warp.tile_bvh_query_ray`
    
-   .. note:: This is an alias for :func:`bvh_query_next_tiled`.
+   :returns: A register tile of shape ``(block_dim,)`` and dtype ``int`` holding one result
+             index per thread: the index of an overlapping bound into the ``lowers``/``uppers``
+             arrays passed to :class:`warp.Bvh`, or a negative value when that thread has no
+             result.
    
-   :param query: The thread-block BVH query object
-   
-   :returns:
-   
-             A register tile of shape ``(block_dim,)`` with dtype int, where each element contains
-                 the result index for that thread (-1 if no result)
-   
+   See :func:`~warp.tile_bvh_query_aabb` for a usage example.

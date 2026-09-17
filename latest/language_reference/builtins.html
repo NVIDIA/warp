@@ -980,13 +980,13 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <td><p>Broadcast a tile to a larger shape.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_bvh_query_aabb.html#warp._src.lang.tile_bvh_query_aabb" title="warp._src.lang.tile_bvh_query_aabb"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_bvh_query_aabb</span></code></a></p></td>
-<td><p>Construct an axis-aligned bounding box query against a BVH object for thread-block parallel traversal.</p></td>
+<td><p>Construct an axis-aligned bounding box query against a <a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh" title="warp.Bvh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Bvh</span></code></a> for thread-block parallel traversal.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_bvh_query_next.html#warp._src.lang.tile_bvh_query_next" title="warp._src.lang.tile_bvh_query_next"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_bvh_query_next</span></code></a></p></td>
-<td><p>Move to the next bound in a thread-block parallel BVH query and return results as a tile.</p></td>
+<td><p>Advance a thread-block parallel BVH query and return the next batch of results as a tile.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_bvh_query_ray.html#warp._src.lang.tile_bvh_query_ray" title="warp._src.lang.tile_bvh_query_ray"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_bvh_query_ray</span></code></a></p></td>
-<td><p>Construct a ray query against a BVH object for thread-block parallel traversal.</p></td>
+<td><p>Construct a ray query against a <a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh" title="warp.Bvh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Bvh</span></code></a> for thread-block parallel traversal.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_cholesky.html#warp._src.lang.tile_cholesky" title="warp._src.lang.tile_cholesky"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_cholesky</span></code></a></p></td>
 <td><p>Compute the Cholesky factorization of a symmetric positive-definite matrix <code class="docutils literal notranslate"><span class="pre">A</span></code>.</p></td>
@@ -1049,7 +1049,7 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <td><p>Construct an axis-aligned bounding box query against a <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a> for thread-block parallel traversal.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_mesh_query_aabb_next.html#warp._src.lang.tile_mesh_query_aabb_next" title="warp._src.lang.tile_mesh_query_aabb_next"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_mesh_query_aabb_next</span></code></a></p></td>
-<td><p>Move to the next triangle in a thread-block parallel mesh AABB query and return results as a tile.</p></td>
+<td><p>Advance a thread-block parallel mesh AABB query and return the next batch of results as a tile.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_min.html#warp._src.lang.tile_min" title="warp._src.lang.tile_min"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_min</span></code></a></p></td>
 <td><p>Cooperatively compute the minimum of the tile elements using all threads in the block.</p></td>
@@ -1058,7 +1058,7 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <td><p>Allocate a tile of one-initialized items.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_query_valid.html#warp._src.lang.tile_query_valid" title="warp._src.lang.tile_query_valid"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_query_valid</span></code></a></p></td>
-<td><p>Return whether there are remaining results in a thread-block parallel BVH query.</p></td>
+<td><p>Return whether a thread-block parallel BVH query should continue.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_randf.html#warp._src.lang.tile_randf" title="warp._src.lang.tile_randf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_randf</span></code></a></p></td>
 <td><p>Generate a tile of random floats.</p></td>
@@ -1103,16 +1103,16 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <td><p>Allocate a cooperative thread-block stack in shared memory.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_stack_clear.html#warp._src.lang.tile_stack_clear" title="warp._src.lang.tile_stack_clear"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_stack_clear</span></code></a></p></td>
-<td><p>Clear a tile stack, resetting the count to zero (cooperative).</p></td>
+<td><p>Reset a tile stack to empty.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_stack_count.html#warp._src.lang.tile_stack_count" title="warp._src.lang.tile_stack_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_stack_count</span></code></a></p></td>
 <td><p>Return the current number of elements in a tile stack.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_stack_pop.html#warp._src.lang.tile_stack_pop" title="warp._src.lang.tile_stack_pop"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_stack_pop</span></code></a></p></td>
-<td><p>Pop a value from a tile stack (cooperative).</p></td>
+<td><p>Pop a value from a tile stack.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_stack_push.html#warp._src.lang.tile_stack_push" title="warp._src.lang.tile_stack_push"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_stack_push</span></code></a></p></td>
-<td><p>Push a value onto a tile stack (cooperative).</p></td>
+<td><p>Push a value onto a tile stack.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_store.html#warp._src.lang.tile_store" title="warp._src.lang.tile_store"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_store</span></code></a></p></td>
 <td><p>Store a tile to a global memory array.</p></td>
@@ -1156,7 +1156,7 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <td><p>Construct an axis-aligned bounding box (AABB) query against a BVH.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.bvh_query_aabb_tiled.html#warp._src.lang.bvh_query_aabb_tiled" title="warp._src.lang.bvh_query_aabb_tiled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bvh_query_aabb_tiled</span></code></a></p></td>
-<td><p>Construct an axis-aligned bounding box (AABB) query against a BVH for thread-block parallel traversal.</p></td>
+<td><p>Construct an axis-aligned bounding box query against a <a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh" title="warp.Bvh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Bvh</span></code></a> for thread-block parallel traversal.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.bvh_query_capsule.html#warp._src.lang.bvh_query_capsule" title="warp._src.lang.bvh_query_capsule"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bvh_query_capsule</span></code></a></p></td>
 <td><p>Construct a conservative capsule sweep query against a BVH.</p></td>
@@ -1165,13 +1165,13 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <td><p>Advance a BVH query to the next overlapping item and report whether one was found.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.bvh_query_next_tiled.html#warp._src.lang.bvh_query_next_tiled" title="warp._src.lang.bvh_query_next_tiled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bvh_query_next_tiled</span></code></a></p></td>
-<td><p>Move to the next bound in a thread-block parallel BVH query and return results as a tile.</p></td>
+<td><p>Advance a thread-block parallel BVH query and return the next batch of results as a tile.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.bvh_query_ray.html#warp._src.lang.bvh_query_ray" title="warp._src.lang.bvh_query_ray"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bvh_query_ray</span></code></a></p></td>
 <td><p>Construct a ray query against a BVH.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.bvh_query_ray_tiled.html#warp._src.lang.bvh_query_ray_tiled" title="warp._src.lang.bvh_query_ray_tiled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bvh_query_ray_tiled</span></code></a></p></td>
-<td><p>Construct a ray query against a BVH for thread-block parallel traversal.</p></td>
+<td><p>Construct a ray query against a <a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh" title="warp.Bvh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Bvh</span></code></a> for thread-block parallel traversal.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.bvh_query_sphere.html#warp._src.lang.bvh_query_sphere" title="warp._src.lang.bvh_query_sphere"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bvh_query_sphere</span></code></a></p></td>
 <td><p>Construct a sphere query against a BVH object.</p></td>
@@ -1225,10 +1225,10 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <td><p>Advance an AABB or sphere mesh query to the next matching triangle.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.mesh_query_aabb_next_tiled.html#warp._src.lang.mesh_query_aabb_next_tiled" title="warp._src.lang.mesh_query_aabb_next_tiled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_query_aabb_next_tiled</span></code></a></p></td>
-<td><p>Move to the next triangle in a thread-block parallel mesh AABB query and return results as a tile.</p></td>
+<td><p>Advance a thread-block parallel mesh AABB query and return the next batch of results as a tile.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.mesh_query_aabb_tiled.html#warp._src.lang.mesh_query_aabb_tiled" title="warp._src.lang.mesh_query_aabb_tiled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_query_aabb_tiled</span></code></a></p></td>
-<td><p>Construct an axis-aligned bounding box (AABB) query against a <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a> for thread-block parallel traversal.</p></td>
+<td><p>Construct an axis-aligned bounding box query against a <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a> for thread-block parallel traversal.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.mesh_query_furthest_point_no_sign.html#warp._src.lang.mesh_query_furthest_point_no_sign" title="warp._src.lang.mesh_query_furthest_point_no_sign"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_query_furthest_point_no_sign</span></code></a></p></td>
 <td><p>Compute the furthest point on the <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a> with identifier <code class="docutils literal notranslate"><span class="pre">id</span></code> to the given point in space.</p></td>
