@@ -28,7 +28,7 @@
         "linux-aarch64"
       ]
     },
-    "13.4.1": {
+    "13.4.2": {
       "component_set": "cuda13-warp-build",
       "platforms": [
         "windows-x86_64",

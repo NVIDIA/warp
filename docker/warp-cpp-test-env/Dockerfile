@@ -5,7 +5,7 @@
 # Pre-configured environment for testing Warp C++ examples and integrations
 # Uses parse_redist.py to install only required CUDA components
 
-ARG CUDA_VERSION=13.4.1
+ARG CUDA_VERSION=13.4.2
 ARG UBUNTU_VERSION=24.04
 FROM ubuntu:${UBUNTU_VERSION} AS base
 

@@ -98,205 +98,205 @@
         }
       ]
     },
-    "13.4.1": {
+    "13.4.2": {
       "linux-sbsa": [
         {
           "component": "cccl",
-          "relative_path": "cccl/linux-sbsa/cccl-linux-sbsa-13.3.4.2.1-archive.tar.xz",
-          "sha256": "36fe2aa9e58a6c924c609e41b466d4ec5c7f66db2f171a7b0ecdd8482274213e",
-          "size": 1402700
+          "relative_path": "cccl/linux-sbsa/cccl-linux-sbsa-13.3.4.3.1-archive.tar.xz",
+          "sha256": "e36cc409c7ef4c3da18f0dd7f301b0df826121924cf817a7ff2ae508c944c6a1",
+          "size": 1403880
         },
         {
           "component": "cuda_crt",
-          "relative_path": "cuda_crt/linux-sbsa/cuda_crt-linux-sbsa-13.4.59-archive.tar.xz",
-          "sha256": "157f1a3ee38d1bd690c7461b5db4981414e39025dcc8a0c7dd2076cc48887ff1",
-          "size": 102024
+          "relative_path": "cuda_crt/linux-sbsa/cuda_crt-linux-sbsa-13.4.92-archive.tar.xz",
+          "sha256": "0358db52257885611664240e030e45528f052aa1360c886f55dbaf2b2d61f87d",
+          "size": 102008
         },
         {
           "component": "cuda_cudart",
-          "relative_path": "cuda_cudart/linux-sbsa/cuda_cudart-linux-sbsa-13.4.49-archive.tar.xz",
-          "sha256": "da5ded04df3c0714c26e4c2167cd5ce56f85e7216ffde753ded9f363818aa659",
-          "size": 1702124
+          "relative_path": "cuda_cudart/linux-sbsa/cuda_cudart-linux-sbsa-13.4.92-archive.tar.xz",
+          "sha256": "47e65e60d0f7cf832bff7992bd7a87ba4888195c31210392b5f23c607fe6c2a8",
+          "size": 1694356
         },
         {
           "component": "cuda_nvcc",
-          "relative_path": "cuda_nvcc/linux-sbsa/cuda_nvcc-linux-sbsa-13.4.59-archive.tar.xz",
-          "sha256": "8b98a77f0a4b34bf4eee30154ceb3dc9d4099129f886ed42d7d49c2c969514bc",
-          "size": 28520612
+          "relative_path": "cuda_nvcc/linux-sbsa/cuda_nvcc-linux-sbsa-13.4.92-archive.tar.xz",
+          "sha256": "8aebd451afb3984bc0019e803ae8a01a3837b7c69f36db779a7ce77e70831f5f",
+          "size": 28527044
         },
         {
           "component": "cuda_nvrtc",
-          "relative_path": "cuda_nvrtc/linux-sbsa/cuda_nvrtc-linux-sbsa-13.4.59-archive.tar.xz",
-          "sha256": "f20e869d3524c7871bea7bab969bfe13084373352efd165216b0bdc771777b9b",
-          "size": 66724376
+          "relative_path": "cuda_nvrtc/linux-sbsa/cuda_nvrtc-linux-sbsa-13.4.92-archive.tar.xz",
+          "sha256": "8acb2d675715488782aa1f4cb80cc8c77be01def1142fe90d8b5ed1b0b8786a6",
+          "size": 66655064
         },
         {
           "component": "libnvvm",
-          "relative_path": "libnvvm/linux-sbsa/libnvvm-linux-sbsa-13.4.59-archive.tar.xz",
-          "sha256": "2f7804334b784f75ddd7f47bb4827e82c1e19c7d2123936178e4c5ec85e16940",
-          "size": 44831932
+          "relative_path": "libnvvm/linux-sbsa/libnvvm-linux-sbsa-13.4.92-archive.tar.xz",
+          "sha256": "483085a4f52d272ea2c5a6cb4727b24efc2cecab4c4df99e80dfc6548e5b7929",
+          "size": 44886544
         },
         {
           "component": "libnvptxcompiler",
-          "relative_path": "libnvptxcompiler/linux-sbsa/libnvptxcompiler-linux-sbsa-13.4.59-archive.tar.xz",
-          "sha256": "398f1bfd0e0d904b68b74d99878ff3a2561061ec370777eca491d22a1cb401e7",
-          "size": 10237428
+          "relative_path": "libnvptxcompiler/linux-sbsa/libnvptxcompiler-linux-sbsa-13.4.92-archive.tar.xz",
+          "sha256": "e19aa8b63d6e6a90eea08e9801e7f0aef0c48bd81377b3e43c604ee84937f4fe",
+          "size": 10216284
         },
         {
           "component": "libnvjitlink",
-          "relative_path": "libnvjitlink/linux-sbsa/libnvjitlink-linux-sbsa-13.4.52-archive.tar.xz",
-          "sha256": "7df6c86848d6c91e7dab374016d8060d18a6f1be65b11639c73eec3f030c82e2",
-          "size": 53043196
+          "relative_path": "libnvjitlink/linux-sbsa/libnvjitlink-linux-sbsa-13.4.92-archive.tar.xz",
+          "sha256": "e253a1f1a1582e2221737391cccf272bf722e44b05be1ed58ebfaefe6dd79315",
+          "size": 53020236
         }
       ],
       "linux-x86_64": [
         {
           "component": "cccl",
-          "relative_path": "cccl/linux-x86_64/cccl-linux-x86_64-13.3.4.2.1-archive.tar.xz",
-          "sha256": "7c973e70d8f8d732f801fe2297c9cb5a541f22824fa6ad64ac4f0e183f9c4397",
-          "size": 1403032
+          "relative_path": "cccl/linux-x86_64/cccl-linux-x86_64-13.3.4.3.1-archive.tar.xz",
+          "sha256": "6b7516074f42f80dd3feb9c11318c8e1c5ab56cdd9f18fff4c5ace2e7e0a8209",
+          "size": 1404324
         },
         {
           "component": "cuda_crt",
-          "relative_path": "cuda_crt/linux-x86_64/cuda_crt-linux-x86_64-13.4.59-archive.tar.xz",
-          "sha256": "0a62d47788ffc1ec9d85c248d61a0941b8f0c47c6eeba9a26e27c01955094d3c",
-          "size": 101972
+          "relative_path": "cuda_crt/linux-x86_64/cuda_crt-linux-x86_64-13.4.92-archive.tar.xz",
+          "sha256": "c969e61ded12dbf0cf20ace72867f1622ec0e8ea1e1d305e27761012025f7aaa",
+          "size": 101980
         },
         {
           "component": "cuda_cudart",
-          "relative_path": "cuda_cudart/linux-x86_64/cuda_cudart-linux-x86_64-13.4.49-archive.tar.xz",
-          "sha256": "ec3df9f91560db23a064c6b395d4fde17b2893f5bf954c6bd193dd03a44de522",
-          "size": 1702296
+          "relative_path": "cuda_cudart/linux-x86_64/cuda_cudart-linux-x86_64-13.4.92-archive.tar.xz",
+          "sha256": "0ac5dbc538d04e9983bc493b410cce4b459e1ee9f5f6654b6464ef7b3e14a8b5",
+          "size": 1704640
         },
         {
           "component": "cuda_nvcc",
-          "relative_path": "cuda_nvcc/linux-x86_64/cuda_nvcc-linux-x86_64-13.4.59-archive.tar.xz",
-          "sha256": "0c08d1df80b5d0bd081778d392446ab50a6a54b047c0136b39c8dbfdf2cfed3f",
-          "size": 33303216
+          "relative_path": "cuda_nvcc/linux-x86_64/cuda_nvcc-linux-x86_64-13.4.92-archive.tar.xz",
+          "sha256": "60998f40cc9df5826b2a846e2dcc328133fbc5ef539398ce0a21cf5dcac7193d",
+          "size": 33304524
         },
         {
           "component": "cuda_nvrtc",
-          "relative_path": "cuda_nvrtc/linux-x86_64/cuda_nvrtc-linux-x86_64-13.4.59-archive.tar.xz",
-          "sha256": "fe5de48fa0eb8aaf3f72cb2a86f913c727bf684f9d59072d359285dde32de783",
-          "size": 72322908
+          "relative_path": "cuda_nvrtc/linux-x86_64/cuda_nvrtc-linux-x86_64-13.4.92-archive.tar.xz",
+          "sha256": "defc747cfa5953b86f4c67414fc349d21149e9d513c096cb89c64b8ec4c0c932",
+          "size": 72311456
         },
         {
           "component": "libnvvm",
-          "relative_path": "libnvvm/linux-x86_64/libnvvm-linux-x86_64-13.4.59-archive.tar.xz",
-          "sha256": "8966b24692ef664b77a3d3411a0c82b4960a2d6a179e0281dac0752c5c1518c7",
-          "size": 51311984
+          "relative_path": "libnvvm/linux-x86_64/libnvvm-linux-x86_64-13.4.92-archive.tar.xz",
+          "sha256": "0e619cf3d5b27f7c812665599ca9761fc296e56129b24a85d822a5d8a1a3bd75",
+          "size": 51321404
         },
         {
           "component": "libnvptxcompiler",
-          "relative_path": "libnvptxcompiler/linux-x86_64/libnvptxcompiler-linux-x86_64-13.4.59-archive.tar.xz",
-          "sha256": "a2a48ace110c24515c3862a87f3bc22d2427e06085442c66e3d826d49e7c5d4c",
-          "size": 10773544
+          "relative_path": "libnvptxcompiler/linux-x86_64/libnvptxcompiler-linux-x86_64-13.4.92-archive.tar.xz",
+          "sha256": "6b40eb5833c745568f575633381e1fec369f6fa1313b3efe3dd7783f353819cd",
+          "size": 10772844
         },
         {
           "component": "libnvjitlink",
-          "relative_path": "libnvjitlink/linux-x86_64/libnvjitlink-linux-x86_64-13.4.52-archive.tar.xz",
-          "sha256": "564b6f0c17b119e3f37930aec8d30a2373f39cad3ac1d4c4cae57976734c8c25",
-          "size": 58227760
+          "relative_path": "libnvjitlink/linux-x86_64/libnvjitlink-linux-x86_64-13.4.92-archive.tar.xz",
+          "sha256": "e24557473e5e2e1dc591209558523deaca48b32123fe2b822f994b8e691c8ae3",
+          "size": 58209588
         }
       ],
       "windows-arm64": [
         {
           "component": "cccl",
-          "relative_path": "cccl/windows-arm64/cccl-windows-arm64-13.3.4.2.1-archive.zip",
-          "sha256": "e8a7c96268ae6c52a7b8b07d96e1f84ab8eae5619c3b989024ce712dda5c2cc2",
-          "size": 3958211
+          "relative_path": "cccl/windows-arm64/cccl-windows-arm64-13.3.4.3.1-archive.zip",
+          "sha256": "e298fc4546a889a4d8329657eac567d93a082c0480d7c9b23690d28d8753d21d",
+          "size": 3970221
         },
         {
           "component": "cuda_crt",
-          "relative_path": "cuda_crt/windows-arm64/cuda_crt-windows-arm64-13.4.59-archive.zip",
-          "sha256": "a84f570d06497cf14187ddf9a2d656d752aaf66b2025c11eb93af01a8a1ce5ff",
+          "relative_path": "cuda_crt/windows-arm64/cuda_crt-windows-arm64-13.4.92-archive.zip",
+          "sha256": "3fa09349f4af5a39ffb806ce48db9c406f81fcd3366e066fdca6eba97927764a",
           "size": 167814
         },
         {
           "component": "cuda_cudart",
-          "relative_path": "cuda_cudart/windows-arm64/cuda_cudart-windows-arm64-13.4.49-archive.zip",
-          "sha256": "d48085b557db615f1095d4a6f96d4d1fcc8ba0c4fd16ad40f30f953b6ae422cf",
-          "size": 2772062
+          "relative_path": "cuda_cudart/windows-arm64/cuda_cudart-windows-arm64-13.4.92-archive.zip",
+          "sha256": "d3cec2717ba3c2c714c5869a5374365d087c698d87c0ddd3bd41715447112891",
+          "size": 2772086
         },
         {
           "component": "cuda_nvcc",
-          "relative_path": "cuda_nvcc/windows-arm64/cuda_nvcc-windows-arm64-13.4.59-archive.zip",
-          "sha256": "4d26510f9d5b644e784a02b13423f9c8b79f8b15613ea0bb325bad42ed3443c4",
-          "size": 30382453
+          "relative_path": "cuda_nvcc/windows-arm64/cuda_nvcc-windows-arm64-13.4.92-archive.zip",
+          "sha256": "8ca6e46052dba9e1a3e72d071ce83079e7edf70020f94eac54de55689b0d2141",
+          "size": 30382921
         },
         {
           "component": "cuda_nvrtc",
-          "relative_path": "cuda_nvrtc/windows-arm64/cuda_nvrtc-windows-arm64-13.4.59-archive.zip",
-          "sha256": "0ec1a6746f552284430a92a58d1aabc91210947db0923bcac6a8d928b7c536fd",
-          "size": 317859088
+          "relative_path": "cuda_nvrtc/windows-arm64/cuda_nvrtc-windows-arm64-13.4.92-archive.zip",
+          "sha256": "fee31ad3a953e56a52015f29c237fb15bcd2ddc14676c1aec03a9384aa807383",
+          "size": 317900832
         },
         {
           "component": "libnvvm",
-          "relative_path": "libnvvm/windows-arm64/libnvvm-windows-arm64-13.4.59-archive.zip",
-          "sha256": "2d051ea3fffddf67458fe66004e7045015409709c57f8cdcdade88d479b62e47",
-          "size": 55596302
+          "relative_path": "libnvvm/windows-arm64/libnvvm-windows-arm64-13.4.92-archive.zip",
+          "sha256": "3bd0c42bca5f16a6055b32a10535e48c23e8701eb9c9fbb7e6eff655841cfe9d",
+          "size": 55595465
         },
         {
           "component": "libnvptxcompiler",
-          "relative_path": "libnvptxcompiler/windows-arm64/libnvptxcompiler-windows-arm64-13.4.59-archive.zip",
-          "sha256": "1bdbb15fb706d0b1dea0104382696636f567eede0378c201f6f3f76c731672b4",
-          "size": 29749955
+          "relative_path": "libnvptxcompiler/windows-arm64/libnvptxcompiler-windows-arm64-13.4.92-archive.zip",
+          "sha256": "fdc12e1e583f8058edc7960b137cf9acabe8f8bee655b972a34204d9c699a1e2",
+          "size": 29747325
         },
         {
           "component": "libnvjitlink",
-          "relative_path": "libnvjitlink/windows-arm64/libnvjitlink-windows-arm64-13.4.52-archive.zip",
-          "sha256": "459bc370a1a9ad836906a53e53b0f5e642feb8f533af904f3082a92805bd0e0e",
-          "size": 280449735
+          "relative_path": "libnvjitlink/windows-arm64/libnvjitlink-windows-arm64-13.4.92-archive.zip",
+          "sha256": "73451f44a7afb46cfbdc8d2ef8b6b1d321ad03cdf38242d7099f53c488c3ec24",
+          "size": 280417103
         }
       ],
       "windows-x86_64": [
         {
           "component": "cccl",
-          "relative_path": "cccl/windows-x86_64/cccl-windows-x86_64-13.3.4.2.1-archive.zip",
-          "sha256": "ea3ebdd98d4d98819cc26b66bc5a0931004ed35ff18eea8b93e0bd2c8bfa5d7c",
-          "size": 4022245
+          "relative_path": "cccl/windows-x86_64/cccl-windows-x86_64-13.3.4.3.1-archive.zip",
+          "sha256": "17d0ca1592c0dfc974a5fc39f470a6b7bae40da239e3e19bd0752017735acbca",
+          "size": 4034377
         },
         {
           "component": "cuda_crt",
-          "relative_path": "cuda_crt/windows-x86_64/cuda_crt-windows-x86_64-13.4.59-archive.zip",
-          "sha256": "f969a0e3b086a48f940563cd1b965cb5197fd9540c79cc952b1abfa479f9ede7",
+          "relative_path": "cuda_crt/windows-x86_64/cuda_crt-windows-x86_64-13.4.92-archive.zip",
+          "sha256": "a38e3aa75e259128a1c7fb46e706182e4babca407cd3f3c447d21ab7fb14c7fd",
           "size": 166601
         },
         {
           "component": "cuda_cudart",
-          "relative_path": "cuda_cudart/windows-x86_64/cuda_cudart-windows-x86_64-13.4.49-archive.zip",
-          "sha256": "e6663f3d3e8949eedc2d5ab92c7c5b9fa3f2a222086d91c42bfc5a38bf2b0225",
-          "size": 2736140
+          "relative_path": "cuda_cudart/windows-x86_64/cuda_cudart-windows-x86_64-13.4.92-archive.zip",
+          "sha256": "621a70c4778287b1abf8c27c61b841d797fda2aeff01033374dd19624bcfa249",
+          "size": 2737397
         },
         {
           "component": "cuda_nvcc",
-          "relative_path": "cuda_nvcc/windows-x86_64/cuda_nvcc-windows-x86_64-13.4.59-archive.zip",
-          "sha256": "06a4fe6ec543030c5e5a7b85493cda90612015d9fff2a54ed0227162c937ea46",
-          "size": 32989100
+          "relative_path": "cuda_nvcc/windows-x86_64/cuda_nvcc-windows-x86_64-13.4.92-archive.zip",
+          "sha256": "23950047aa5405993129a982a99924b4e6d5eb9bc312300030f3afd9b3b49ea4",
+          "size": 32991192
         },
         {
           "component": "cuda_nvrtc",
-          "relative_path": "cuda_nvrtc/windows-x86_64/cuda_nvrtc-windows-x86_64-13.4.59-archive.zip",
-          "sha256": "cfbc01669d2059b7fdeff242082223d23bd6a7605bc398bdc77fc77de5c310f0",
-          "size": 319932890
+          "relative_path": "cuda_nvrtc/windows-x86_64/cuda_nvrtc-windows-x86_64-13.4.92-archive.zip",
+          "sha256": "92e4db6e79550665e1dbdc6cc09c934452a667881f5ed49a51681429874a8f0d",
+          "size": 319966721
         },
         {
           "component": "libnvvm",
-          "relative_path": "libnvvm/windows-x86_64/libnvvm-windows-x86_64-13.4.59-archive.zip",
-          "sha256": "a7a07bcc21cc05bce83eedebcbcd9b9f5418c58316b0fa28a57cb2c548b29841",
-          "size": 60031482
+          "relative_path": "libnvvm/windows-x86_64/libnvvm-windows-x86_64-13.4.92-archive.zip",
+          "sha256": "64fa39ad6332d6c40a02115d64827272f6befbc86e50568254f44d37d924e10b",
+          "size": 60031433
         },
         {
           "component": "libnvptxcompiler",
-          "relative_path": "libnvptxcompiler/windows-x86_64/libnvptxcompiler-windows-x86_64-13.4.59-archive.zip",
-          "sha256": "4de2e70b56ae5296b39317ebd55dbb814f2ac31506c4d3ef97bfbded1cdf8cc9",
-          "size": 31089614
+          "relative_path": "libnvptxcompiler/windows-x86_64/libnvptxcompiler-windows-x86_64-13.4.92-archive.zip",
+          "sha256": "1e9d858c2f16e18b8399fbb6f762560d3e8bd30b36dfd15c968d3cd59736e4e7",
+          "size": 31091629
         },
         {
           "component": "libnvjitlink",
-          "relative_path": "libnvjitlink/windows-x86_64/libnvjitlink-windows-x86_64-13.4.52-archive.zip",
-          "sha256": "6888654b437de57775f23fc00fb51456399e22d3f795e30a9b6ce6f6ee787f8e",
-          "size": 281017372
+          "relative_path": "libnvjitlink/windows-x86_64/libnvjitlink-windows-x86_64-13.4.92-archive.zip",
+          "sha256": "7cef0ee32d2221d07b122ba32e38898a9ecbdb256524f2c1f7b5c61a7f32b6ce",
+          "size": 281015727
         }
       ]
     }

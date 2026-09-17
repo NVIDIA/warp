@@ -2,7 +2,7 @@
 
 Pre-configured Docker image for testing Warp C++ examples in CI/CD pipelines.
 
-**Contents**: Ubuntu 24.04 + CUDA 13.4.1 (selective components via `parse_redist.py`) + CMake +
+**Contents**: Ubuntu 24.04 + CUDA 13.4.2 (selective components via `parse_redist.py`) + CMake +
 `build-essential` + uv 0.12.13
 
 **Architecture**: x86_64/amd64 only (ARM64 support can be added later if needed)
@@ -11,7 +11,7 @@ Pre-configured Docker image for testing Warp C++ examples in CI/CD pipelines.
 
 The [Build Warp C++ Test Environment Image](../../.github/workflows/build-warp-cpp-test-env-image.yml)
 workflow builds and verifies the canonical `linux/amd64` image in GitHub Container Registry (GHCR). The
-workflow passes CUDA 13.4.1 and Ubuntu 24.04 explicitly, independently of the Dockerfile defaults, and
+workflow passes CUDA 13.4.2 and Ubuntu 24.04 explicitly, independently of the Dockerfile defaults, and
 publishes revision, date, CUDA-major, CUDA-version, and `latest` tags.
 
 After validation, a maintainer promotes the runnable image manifest to the internal GitLab registry. GitLab
@@ -29,7 +29,7 @@ cd docker/warp-cpp-test-env
 ./build.sh
 ```
 
-The default command builds `warp-cpp-test-env:cuda13.4.1-ubuntu24.04` locally.
+The default command builds `warp-cpp-test-env:cuda13.4.2-ubuntu24.04` locally.
 
 ## What's Inside
 
@@ -44,7 +44,7 @@ against pre-built Warp libraries. It also avoids a Packman download in the C++ e
 
 ## Building
 
-### Default (CUDA 13.4.1, Ubuntu 24.04)
+### Default (CUDA 13.4.2, Ubuntu 24.04)
 
 ```bash
 ./build.sh
@@ -68,9 +68,9 @@ See `./build.sh --help` for all options.
 
 ```bash
 docker build \
-  --build-arg CUDA_VERSION=13.4.1 \
+  --build-arg CUDA_VERSION=13.4.2 \
   --build-arg UBUNTU_VERSION=24.04 \
-  --tag warp-cpp-test-env:cuda13.4.1-ubuntu24.04 \
+  --tag warp-cpp-test-env:cuda13.4.2-ubuntu24.04 \
   .
 ```
 
@@ -81,7 +81,7 @@ Pin the promoted runnable manifest, retaining the revision tag for readability:
 ```yaml
 linux-x86_64 cpp examples test:
   stage: test
-  image: ${CI_REGISTRY_IMAGE}/warp-cpp-test-env:cuda13.4.1-ubuntu24.04-<source-revision>@sha256:<promoted-manifest-digest>
+  image: ${CI_REGISTRY_IMAGE}/warp-cpp-test-env:cuda13.4.2-ubuntu24.04-<source-revision>@sha256:<promoted-manifest-digest>
   needs: [linux-x86_64 build]
   before_script:
     - mv warp/bin/linux-x86_64/*.so warp/bin/
@@ -97,7 +97,7 @@ determines the image pulled by the runner.
 
 Available build arguments:
 
-- `CUDA_VERSION` (default: `13.4.1`) - CUDA version from NVIDIA redistrib
+- `CUDA_VERSION` (default: `13.4.2`) - CUDA version from NVIDIA redistrib
 - `UBUNTU_VERSION` (default: `24.04`) - Ubuntu base version
 
 The image is built for x86_64 only. See `warp-builder` for architecture-specific x86_64 and ARM64 images.

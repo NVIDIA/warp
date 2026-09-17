@@ -54,9 +54,9 @@ Tags describe the compatibility boundary, CUDA and uv releases, and architecture
 
 ```text
 ghcr.io/nvidia/warp-builder:manylinux_2_28-cuda12.9.2-uv0.12.13-x86_64
-ghcr.io/nvidia/warp-builder:manylinux_2_28-cuda13.4.1-uv0.12.13-x86_64
+ghcr.io/nvidia/warp-builder:manylinux_2_28-cuda13.4.2-uv0.12.13-x86_64
 ghcr.io/nvidia/warp-builder:manylinux_2_34-cuda12.9.2-uv0.12.13-aarch64
-ghcr.io/nvidia/warp-builder:manylinux_2_34-cuda13.4.1-uv0.12.13-aarch64
+ghcr.io/nvidia/warp-builder:manylinux_2_34-cuda13.4.2-uv0.12.13-aarch64
 ```
 
 The tags can move when an image is rebuilt with the same contract. Consumers must pin the image digest for
@@ -74,7 +74,7 @@ promotion outside GitLab CI.
 
 ```bash
 SOURCE_IMAGE="ghcr.io/nvidia/warp-builder"
-SOURCE_TAG="manylinux_2_28-cuda13.4.1-uv0.12.13-x86_64"
+SOURCE_TAG="manylinux_2_28-cuda13.4.2-uv0.12.13-x86_64"
 SOURCE_DIGEST="<validated-source-digest>"
 DESTINATION_IMAGE="${CI_REGISTRY_IMAGE}/warp-builder"
 TARGET_OS="linux"
@@ -142,9 +142,9 @@ docker build \
   --build-context cuda_toolkit="$WARP_CUDA_PATH" \
   --build-arg MANYLINUX_IMAGE=quay.io/pypa/manylinux_2_28_x86_64@sha256:53390351aeb4688114b02c36a23b3e6ce1166ee9b7afc5df1a4f776354fc764c \
   --build-arg MANYLINUX_POLICY=manylinux_2_28 \
-  --build-arg CUDA_VERSION=13.4.1 \
+  --build-arg CUDA_VERSION=13.4.2 \
   --build-arg TARGETARCH=x86_64 \
-  --tag warp-builder:manylinux_2_28-cuda13.4.1-uv0.12.13-x86_64 \
+  --tag warp-builder:manylinux_2_28-cuda13.4.2-uv0.12.13-x86_64 \
   docker/warp-builder
 ```
 
@@ -156,9 +156,9 @@ Verify the embedded Toolkit and preinstalled Python runtimes without network acc
 ```bash
 docker run --rm --network=none \
   -e EXPECTED_CUDA_PLATFORM=linux-x86_64 \
-  -e EXPECTED_CUDA_VERSION=13.4.1 \
+  -e EXPECTED_CUDA_VERSION=13.4.2 \
   -v "$(pwd):/workspace:ro" \
-  warp-builder:manylinux_2_28-cuda13.4.1-uv0.12.13-x86_64 \
+  warp-builder:manylinux_2_28-cuda13.4.2-uv0.12.13-x86_64 \
   bash /workspace/docker/warp-builder/verify-image.sh
 ```
 
@@ -168,7 +168,7 @@ To build Warp with the embedded Toolkit:
 docker run --rm \
   -v "$(pwd):/workspace" \
   -e WARP_CACHE_PATH=/workspace/.cache/warp-builder \
-  warp-builder:manylinux_2_28-cuda13.4.1-uv0.12.13-x86_64 \
+  warp-builder:manylinux_2_28-cuda13.4.2-uv0.12.13-x86_64 \
   uv run --no-python-downloads --python 3.12 build_lib.py --cuda-path=/opt/cuda
 ```
 

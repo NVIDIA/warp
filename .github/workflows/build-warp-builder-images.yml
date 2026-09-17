@@ -74,11 +74,11 @@ jobs:
           cache-read: "true"
           cache-write: "true"
 
-      - name: Set up CUDA Toolkit 13.4.1
+      - name: Set up CUDA Toolkit 13.4.2
         id: cuda13
         uses: ./.github/actions/setup-warp-cuda
         with:
-          version: "13.4.1"
+          version: "13.4.2"
           platform: ${{ matrix.cuda13_platform }}
           cache-read: "true"
           cache-write: "true"
@@ -95,7 +95,7 @@ jobs:
           {
             echo "created_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
             echo "image_cuda12=${IMAGE_BASE}:${MANYLINUX_POLICY}-cuda12.9.2-uv${UV_VERSION}-${TARGET_ARCH}"
-            echo "image_cuda13=${IMAGE_BASE}:${MANYLINUX_POLICY}-cuda13.4.1-uv${UV_VERSION}-${TARGET_ARCH}"
+            echo "image_cuda13=${IMAGE_BASE}:${MANYLINUX_POLICY}-cuda13.4.2-uv${UV_VERSION}-${TARGET_ARCH}"
           } >> "${GITHUB_OUTPUT}"
 
       - name: Build CUDA Toolkit 12.9.2 image
@@ -122,7 +122,7 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
 
-      - name: Build CUDA Toolkit 13.4.1 image
+      - name: Build CUDA Toolkit 13.4.2 image
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
         with:
           context: docker/warp-builder
@@ -131,7 +131,7 @@ jobs:
           build-contexts: |
             cuda_toolkit=${{ steps.cuda13.outputs.cuda-path }}
           build-args: |
-            CUDA_VERSION=13.4.1
+            CUDA_VERSION=13.4.2
             MANYLINUX_IMAGE=${{ matrix.manylinux_image }}
             MANYLINUX_POLICY=${{ matrix.policy }}
             TARGETARCH=${{ matrix.arch }}
@@ -159,10 +159,10 @@ jobs:
             "${IMAGE}" \
             bash /workspace/docker/warp-builder/verify-image.sh
 
-      - name: Verify CUDA Toolkit 13.4.1 image offline
+      - name: Verify CUDA Toolkit 13.4.2 image offline
         env:
           EXPECTED_CUDA_PLATFORM: ${{ matrix.cuda13_platform }}
-          EXPECTED_CUDA_VERSION: "13.4.1"
+          EXPECTED_CUDA_VERSION: "13.4.2"
           IMAGE: ${{ steps.meta.outputs.image_cuda13 }}
         run: |
           docker run --rm --network=none \
@@ -182,7 +182,7 @@ jobs:
             "${IMAGE}" \
             uv run --no-python-downloads --python 3.12 build_lib.py --cuda-path=/opt/cuda
 
-      - name: Build Warp with embedded CUDA Toolkit 13.4.1
+      - name: Build Warp with embedded CUDA Toolkit 13.4.2
         env:
           IMAGE: ${{ steps.meta.outputs.image_cuda13 }}
         run: |
