@@ -739,6 +739,7 @@ def make_test_bsr_transpose(block_shape, scalar_type):
     def test_bsr_transpose(test, device):
         rng = np.random.default_rng(123)
 
+        # Both dimensions exceed the CUDA row-path cutoff; keep the matrix rectangular.
         nrow = 65
         ncol = 67
         nnz = 6
@@ -797,7 +798,10 @@ def make_test_bsr_transpose(block_shape, scalar_type):
 
 def make_test_bsr_transpose_rebuild(block_shape, scalar_type):
     def test_bsr_transpose_rebuild(test, device):
-        rng = np.random.default_rng(17)
+        rng = np.random.default_rng(17)  # Fixed seed makes topology changes reproducible.
+        # A single output row can require three merge passes after sorting 256-entry tiles.
+        # These rectangular dimensions also keep nrow * 16 below the CUDA path's
+        # capacity cutoff (64 * ncol), so the intended path is exercised.
         nrow, ncol = 1025, 257
         block_type = wp.types.matrix(shape=block_shape, dtype=scalar_type)
         transpose_type = wp.types.matrix(shape=block_shape[::-1], dtype=scalar_type)
@@ -816,11 +820,14 @@ def make_test_bsr_transpose_rebuild(block_shape, scalar_type):
                         bsr_set_transpose(dest, src)
                     graph = capture.graph
 
-                for count in (1, 600, 0, 31, 32, 33, 255, 256, 257, nrow, 120):
-                    # Include a long output row, changing topology, and poisoned padding.
+                # Cross warp/tile boundaries and both odd and even merge-pass counts.
+                boundary_counts = (31, 32, 33, 255, 256, 257, 511, 512, 513, 1023, 1024, nrow)
+                # The non-boundary counts are arbitrary occupancies: grow, empty, then
+                # shrink the captured topology to detect stale entries and padding reads.
+                for count in (1, 600, 0, *boundary_counts, 120):
                     positions = (
                         np.arange(count) * ncol
-                        if count in (31, 32, 33, 255, 256, 257, nrow)
+                        if count in boundary_counts
                         else np.sort(rng.choice(nrow * ncol, count, replace=False))
                     )
                     rows, columns = np.divmod(positions, ncol)
