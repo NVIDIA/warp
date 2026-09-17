@@ -427,6 +427,10 @@ def _get_architectures_cu12(
     gencode_opts = []
     clang_arch_flags = []
 
+    # Clang 24 rejects targets below sm_60 because it lowers generic CUDA atomics with system scope.
+    # See https://github.com/llvm/llvm-project/issues/224420.
+    # Keep sm_52 and sm_53 in the nvcc flags because production builds still support Maxwell.
+
     if quick_build:
         gencode_opts = ["-gencode=arch=compute_75,code=compute_75"]
         clang_arch_flags = ["--cuda-gpu-arch=sm_75"]
@@ -449,7 +453,6 @@ def _get_architectures_cu12(
             )
             clang_arch_flags.extend(
                 [
-                    "--cuda-gpu-arch=sm_52",
                     "--cuda-gpu-arch=sm_60",
                     "--cuda-gpu-arch=sm_61",
                     "--cuda-gpu-arch=sm_70",
@@ -494,7 +497,6 @@ def _get_architectures_cu12(
             clang_arch_flags.extend(
                 [
                     "--cuda-gpu-arch=sm_87",
-                    "--cuda-gpu-arch=sm_53",
                     "--cuda-gpu-arch=sm_62",
                     "--cuda-gpu-arch=sm_72",
                 ]
