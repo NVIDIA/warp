@@ -306,7 +306,21 @@ add_example_test(
     TestOptimExamples,
     name="optim.example_fluid_checkpoint",
     devices=cuda_test_devices_with_mempool,
-    test_options={"headless": True, "train_iters": 5, "num_frames": 300, "pillow_required": True},
+    test_options={"headless": True, "train_iters": 5, "num_frames": 301, "pillow_required": True},
+)
+add_example_test(
+    TestOptimExamples,
+    name="optim.example_fluid_checkpoint_custom_backward",
+    devices=test_devices,
+    test_options={
+        # Exercise a shorter final segment, both scratch buffers, and repeated execution.
+        "headless": True,
+        "train_iters": 2,
+        "num_frames": 5,
+        "pressure_iterations": 3,
+        "segment_size": 3,
+        "pillow_required": True,
+    },
 )
 add_example_test(
     TestOptimExamples,

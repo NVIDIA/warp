@@ -1,30 +1,36 @@
-# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-"""A differentiable 2-D fluid solver with manual gradient checkpointing.
+"""A checkpointed fluid solver with a custom pressure-solve backward pass.
 
-The example optimizes the solver's initial velocity field so the final density
-forms the NVIDIA logo. Warp does not currently provide automatic gradient
-checkpointing, so this example shows how to implement it manually to reduce
-memory use.
+This variant uses the simulation and checkpointing scheme from
+``example_fluid_checkpoint.py``. For each pressure solve, the
+:class:`warp.Tape` records one ``JacobiSolver`` callback instead of every
+Jacobi iteration.
 
-``example_fluid_checkpoint_custom_backward.py`` uses the same simulation and
-checkpointing scheme, but adds a custom backward pass for the pressure solve.
-By avoiding storage of the intermediate Jacobi states, it can use
-substantially less memory than checkpointing alone.
+Each damped iteration has the form
 
-Projection uses a backward finite-difference stencil for divergence and a
-forward finite-difference stencil for the pressure gradient, so the projected
-velocity's divergence equals the pressure-solve residual. Both spatial
-discretizations are first order on the collocated grid, and the solver runs a
-fixed number of damped Jacobi iterations without a convergence check.
+    p_next = J p + c div
+
+Here, ``J = (1 - omega) I + omega A``, ``A`` is the four-neighbor average,
+and ``c = -omega * DH**2 / 4``, where ``omega = JACOBI_RELAXATION`` and
+``DH`` is the grid spacing. Because ``J`` and ``c`` are fixed, the backward
+pass computes the gradients of ``p`` and ``div`` directly from the gradient of
+``p_next``.
+
+The solver stores one pressure field at each simulation-step boundary within a
+checkpoint segment and reuses two scratch grids for the intermediate Jacobi
+iterates and their gradients. Its per-segment pressure storage is
+``O(segment_size)`` regardless of the number of Jacobi iterations. The forward
+and backward passes still execute every configured iteration.
+
+The callback differentiates the finite iteration sequence, including its warm
+start, exactly up to roundoff.
 
 Usage:
-    python example_fluid_checkpoint.py --headless
+    python example_fluid_checkpoint_custom_backward.py --headless
 
-Run ``python example_fluid_checkpoint.py --help`` for available options.
-
-References:
-    https://github.com/HIPS/autograd/blob/master/examples/fluidsim/fluidsim.py
+Run ``python example_fluid_checkpoint_custom_backward.py --help`` for
+available options.
 """
 
 import os
@@ -57,16 +63,17 @@ JACOBI_RELAXATION = wp.constant(2.0 / 3.0)
 FLUID_COLUMN_WIDTH = N_GRID / 10.0
 
 
-def estimate_segment_size(sim_steps: int, pressure_iterations: int) -> int:
+def estimate_segment_size(sim_steps: int) -> int:
     """Estimate a checkpoint segment size from the number of stored grids.
 
-    A segment of ``S`` steps stores ``6 * S`` grids for velocity and density
-    values and gradients, ``6 * S`` for advection and projection
-    intermediates, and ``2 * pressure_iterations * S`` for the unrolled
-    pressure values and gradients. Saving four start-state grids per segment
-    adds ``4 * ceil(sim_steps / S)``. The estimate is
+    For segment size ``S``, velocity and density values and gradients
+    contribute ``6 * S`` grids, advection and projection intermediates
+    contribute another ``6 * S``, and timestep-boundary pressure values and
+    gradients contribute ``2 * S``. The solver reuses two scratch grids, so
+    their storage does not depend on ``S``. Saving four start-state grids per
+    segment adds ``4 * ceil(sim_steps / S)``. The estimate is
 
-        ``(12 + 2 * pressure_iterations) * S + 4 * ceil(sim_steps / S)``.
+        ``14 * S + 4 * ceil(sim_steps / S)``.
 
     The function checks every valid segment size and returns the one with the
     smallest estimate. The count covers simulation arrays only; it excludes
@@ -76,7 +83,7 @@ def estimate_segment_size(sim_steps: int, pressure_iterations: int) -> int:
 
     def estimate_storage(segment_size: int) -> int:
         num_segments = (sim_steps + segment_size - 1) // segment_size
-        return (12 + 2 * pressure_iterations) * segment_size + 4 * num_segments
+        return 14 * segment_size + 4 * num_segments
 
     # When storage ties, prefer fewer segments to reduce checkpoint transfers
     # and the number of Tape objects.
@@ -151,7 +158,7 @@ def divergence(wx: wp.array2d[float], wy: wp.array2d[float], div: wp.array2d[flo
     div[i, j] = (wx[i, j] - wx[cyclic_index(i - 1), j] + wy[i, j] - wy[i, cyclic_index(j - 1)]) / DH
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def jacobi_iter(div: wp.array2d[float], p0: wp.array2d[float], p1: wp.array2d[float]):
     """Calculate a single damped Jacobi iteration for the pressure Poisson equation."""
 
@@ -164,6 +171,125 @@ def jacobi_iter(div: wp.array2d[float], p0: wp.array2d[float], p1: wp.array2d[fl
         + p0[i, cyclic_index(j - 1)]
         + p0[i, cyclic_index(j + 1)]
     )
+
+
+@wp.kernel(enable_backward=False)
+def jacobi_iter_adjoint(div_grad: wp.array2d[float], p1_grad: wp.array2d[float], p0_grad: wp.array2d[float]):
+    """Apply the adjoint of one damped Jacobi iteration.
+
+    Because ``div`` enters the forward iteration pointwise with coefficient
+    ``-0.25 * JACOBI_RELAXATION * DH**2``, its adjoint adds that coefficient
+    times ``p1_grad`` to ``div_grad``.
+
+    Each ``p0`` cell affects ``p1`` at the same cell and at its four neighbors.
+    Periodic boundaries make these neighbor relationships symmetric, so the
+    chain rule applies the same weighted stencil to ``p1_grad`` to compute
+    ``p0_grad``. Each thread gathers its five contributions without atomic
+    operations.
+    """
+    i, j = wp.tid()
+
+    div_grad[i, j] += -0.25 * JACOBI_RELAXATION * DH * DH * p1_grad[i, j]
+    p0_grad[i, j] = (1.0 - JACOBI_RELAXATION) * p1_grad[i, j] + 0.25 * JACOBI_RELAXATION * (
+        p1_grad[cyclic_index(i - 1), j]
+        + p1_grad[cyclic_index(i + 1), j]
+        + p1_grad[i, cyclic_index(j - 1)]
+        + p1_grad[i, cyclic_index(j + 1)]
+    )
+
+
+@wp.kernel(enable_backward=False)
+def accumulate_pressure_grad(
+    pressure_grad_increment: wp.array2d[float],
+    pressure_grad: wp.array2d[float],
+):
+    i, j = wp.tid()
+    pressure_grad[i, j] += pressure_grad_increment[i, j]
+
+
+# Record one Tape callback for the whole solve and reuse its scratch grids.
+class JacobiSolver:
+    """Solve for pressure with two reusable scratch grids and a custom Tape adjoint.
+
+    The solver allocates its scratch grids on the current device and reuses them
+    for each solve and backward callback on the current stream. The inputs and
+    output must be separate ``N_GRID`` by ``N_GRID`` grids on the same device.
+
+    Args:
+        iterations: Positive number of Jacobi iterations per pressure solve.
+    """
+
+    def __init__(self, iterations: int):
+        if iterations < 1:
+            raise ValueError("The number of Jacobi iterations must be positive.")
+        self.iterations = iterations
+        self.scratch0 = wp.empty((N_GRID, N_GRID), dtype=float)
+        self.scratch1 = wp.empty((N_GRID, N_GRID), dtype=float)
+
+    def solve(
+        self, div: wp.array2d[float], p0: wp.array2d[float], p1: wp.array2d[float], tape: wp.Tape | None = None
+    ) -> None:
+        """Advance ``p0`` to ``p1``, optionally recording an adjoint on ``tape``.
+
+        Pass the enclosing Tape explicitly when recording a differentiable
+        simulation. The callback uses only the input and output gradients;
+        all intermediate pressures can be overwritten.
+        """
+        iterations = self.iterations
+        # record_tape=False skips the Tape's array access checks, so mark the
+        # custom operation's inputs and output here.
+        if tape is not None and wp.config.verify_autograd_array_access:
+            div.mark_read()
+            p0.mark_read()
+            p1.mark_write()
+
+        pressure = p0
+        scratch0, scratch1 = self.scratch0, self.scratch1
+        for k in range(iterations):
+            next_pressure = p1 if k == iterations - 1 else scratch0
+            wp.launch(
+                jacobi_iter,
+                (N_GRID, N_GRID),
+                inputs=[div, pressure],
+                outputs=[next_pressure],
+                device=p0.device,
+                record_tape=False,
+            )
+            pressure = next_pressure
+            scratch0, scratch1 = scratch1, scratch0
+
+        if tape is not None:
+
+            def pressure_solve_backward():
+                # Copy the seed so the output gradient stays available to other
+                # users. The scratch contents from earlier solves are irrelevant.
+                g0, g1 = self.scratch0, self.scratch1
+                wp.copy(g0, p1.grad)
+                for _ in range(iterations):
+                    wp.launch(
+                        jacobi_iter_adjoint,
+                        (N_GRID, N_GRID),
+                        inputs=[div.grad, g0],
+                        outputs=[g1],
+                        device=p0.device,
+                        record_tape=False,
+                    )
+                    g0, g1 = g1, g0
+
+                # The initial guess is the previous step's final pressure.
+                # Accumulate its gradient to preserve that path through time.
+                wp.launch(
+                    accumulate_pressure_grad,
+                    (N_GRID, N_GRID),
+                    inputs=[g0],
+                    outputs=[p0.grad],
+                    device=p0.device,
+                    record_tape=False,
+                )
+
+            # Register every differentiable boundary array so tape.zero() also
+            # clears gradients that are only accessed by this callback.
+            tape.record_func(pressure_solve_backward, arrays=[div, p0, p1])
 
 
 @wp.kernel
@@ -212,10 +338,10 @@ class Example:
 
         # To keep the example compact, the pressure solve always runs the configured
         # number of iterations instead of testing for convergence.
-        self.pressure_iterations = pressure_iterations
+        self.pressure_solver = JacobiSolver(pressure_iterations)
 
         if segment_size is None:
-            segment_size = estimate_segment_size(sim_steps, pressure_iterations)
+            segment_size = estimate_segment_size(sim_steps)
         self.segment_size = segment_size
         self.segment_lengths = [min(segment_size, sim_steps - start) for start in range(0, sim_steps, segment_size)]
         self.num_segments = len(self.segment_lengths)
@@ -234,8 +360,9 @@ class Example:
             self.wy_arrays.append(wp.zeros((N_GRID, N_GRID), dtype=float, requires_grad=True))
             self.div_arrays.append(wp.zeros((N_GRID, N_GRID), dtype=float, requires_grad=True))
 
-            for _iter in range(self.pressure_iterations):
-                self.pressure_arrays.append(wp.zeros((N_GRID, N_GRID), dtype=float, requires_grad=True))
+            # Keep only timestep boundary pressures and their gradients. The
+            # solver shares its two scratch grids across the entire segment.
+            self.pressure_arrays.append(wp.zeros((N_GRID, N_GRID), dtype=float, requires_grad=True))
 
         # Allocate one more pressure array for the final time step
         self.pressure_arrays.append(wp.zeros((N_GRID, N_GRID), dtype=float, requires_grad=True))
@@ -291,7 +418,7 @@ class Example:
                 self.tape.zero()
             self.zero_tape_graph = capture.graph
 
-    def step(self, step_index) -> None:
+    def step(self, step_index, tape: wp.Tape | None = None) -> None:
         """Perform a single time step from t=step_index-1 to t=step_index.
 
         1. Self-advection of velocity components (store output in wx_arrays and wy_arrays)
@@ -330,23 +457,19 @@ class Example:
             outputs=[self.div_arrays[step_index - 1]],
         )
 
-        # NOTE: Uses previous step's final pressure as the initial guess
-        for k in range(self.pressure_iterations):
-            input_index = self.pressure_iterations * (step_index - 1) + k
-            output_index = input_index + 1
+        # Use the previous step's final pressure as the initial guess and record
+        # one custom backward operation for the entire solve.
+        self.pressure_solver.solve(
+            self.div_arrays[step_index - 1],
+            self.pressure_arrays[step_index - 1],
+            self.pressure_arrays[step_index],
+            tape,
+        )
 
-            wp.launch(
-                jacobi_iter,
-                (N_GRID, N_GRID),
-                inputs=[self.div_arrays[step_index - 1], self.pressure_arrays[input_index]],
-                outputs=[self.pressure_arrays[output_index]],
-            )
-
-        # NOTE: output_index should be self.pressure_iterations*step_index at this point
         wp.launch(
             update_velocities,
             (N_GRID, N_GRID),
-            inputs=[self.pressure_arrays[output_index], self.wx_arrays[step_index - 1], self.wy_arrays[step_index - 1]],
+            inputs=[self.pressure_arrays[step_index], self.wx_arrays[step_index - 1], self.wy_arrays[step_index - 1]],
             outputs=[self.vx_arrays[step_index], self.vy_arrays[step_index]],
         )
 
@@ -385,7 +508,7 @@ class Example:
                 wp.copy(self.vx_arrays[0], self.vx_arrays[segment_steps])
                 wp.copy(self.vy_arrays[0], self.vy_arrays[segment_steps])
                 wp.copy(self.density_arrays[0], self.density_arrays[segment_steps])
-                wp.copy(self.pressure_arrays[0], self.pressure_arrays[self.pressure_iterations * segment_steps])
+                wp.copy(self.pressure_arrays[0], self.pressure_arrays[segment_steps])
 
         final_step_index = self.segment_lengths[-1]
         wp.launch(
@@ -416,7 +539,7 @@ class Example:
             # Record operations on tape
             with wp.Tape() as self.tape:
                 for t in range(1, segment_steps + 1):
-                    self.step(t)
+                    self.step(t, self.tape)
 
             if segment_index == self.num_segments - 1:
                 self.loss.grad.fill_(1.0)
@@ -435,8 +558,7 @@ class Example:
                 wp.copy(self.vx_arrays[segment_steps].grad, self.vx_array_grad_saved)
                 wp.copy(self.vy_arrays[segment_steps].grad, self.vy_array_grad_saved)
                 wp.copy(self.density_arrays[segment_steps].grad, self.density_array_grad_saved)
-                pressure_index = self.pressure_iterations * segment_steps
-                wp.copy(self.pressure_arrays[pressure_index].grad, self.pressure_array_grad_saved)
+                wp.copy(self.pressure_arrays[segment_steps].grad, self.pressure_array_grad_saved)
 
             self.tape.backward()
 
@@ -576,8 +698,8 @@ if __name__ == "__main__":
                     example.density_arrays[1],
                     example.density_arrays[0],
                 )
-                (example.pressure_arrays[0], example.pressure_arrays[example.pressure_iterations]) = (
-                    example.pressure_arrays[example.pressure_iterations],
+                (example.pressure_arrays[0], example.pressure_arrays[1]) = (
+                    example.pressure_arrays[1],
                     example.pressure_arrays[0],
                 )
 

@@ -233,7 +233,7 @@ python -m warp.examples.browse
         </tr>
         <tr>
             <td align="center">diffray</td>
-            <td align="center">fluid checkpoint</td>
+            <td align="center">fluid checkpoint<br><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/optim/example_fluid_checkpoint.py">basic</a> · <a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/optim/example_fluid_checkpoint_custom_backward.py">custom backward</a></td>
             <td align="center">particle repulsion</td>
             <td align="center">navier-stokes perturbation</td>
         </tr>
