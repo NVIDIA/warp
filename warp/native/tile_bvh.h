@@ -176,7 +176,6 @@ bvh_get_node_index_at_depth(bvh_query_thread_block_t& query, int node_index, int
     return node_index;
 }
 
-// block_size should be a power of 2. 2^num_expansion_steps should be less than or equal to block_size.
 CUDA_CALLABLE inline bool bvh_query_next_thread_block_impl(bvh_query_thread_block_t& query, int& index)
 {
     int block_size = blockDim.x;
@@ -196,9 +195,15 @@ CUDA_CALLABLE inline bool bvh_query_next_thread_block_impl(bvh_query_thread_bloc
         return true;
     }
 
+    // Every path enumerated by the expansion below must be owned by a lane, so
+    // 2^num_expansion_steps has to be less than or equal to block_size: round the
+    // lane count down to a power of two. Rounding up instead would leave the paths
+    // of the missing lanes unvisited and silently drop their subtrees when
+    // block_size is not a power of two. Lanes beyond the last power of two get
+    // their work from the stack via the recovery branch further down.
     int num_expansion_steps = 0;
     int pow_2 = 1;
-    while (pow_2 < block_size) {
+    while (pow_2 * 2 <= block_size) {
         pow_2 *= 2;
         num_expansion_steps += 1;
     }
