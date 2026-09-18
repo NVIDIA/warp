@@ -1673,6 +1673,26 @@ class quatd(quaternion(dtype=float64)):
 
 
 @functools.cache
+def _named_type(base_type):
+    """Return the named counterpart of a vector or quaternion base type, if there is one.
+
+    ``vector()`` and ``quaternion()`` build the base classes that named types such as ``vec3f``
+    and ``quatf`` derive from, so handing out a base class where a named one exists would break
+    ``isinstance(x, wp.vec3f)`` for callers. Combinations without a named counterpart, such as
+    ``bfloat16`` components, fall back to ``base_type``.
+
+    The lookup covers every entry of ``vector_types``, so it also resolves matrix, transform and
+    spatial base types. ``vector_types`` is declared further down this module, which is why the
+    lookup cannot run any earlier than the first call.
+    """
+    for cls in vector_types:
+        if base_type in cls.__bases__:
+            return cls
+
+    return base_type
+
+
+@functools.cache
 def transformation(dtype=Any):
     """Create a rigid-body transformation type with the given data type."""
 
@@ -1777,9 +1797,9 @@ def transformation(dtype=Any):
 
         def __getattr__(self, name):
             if name == "p":
-                return vec3(self[0:3])
+                return _named_type(vector(length=3, dtype=dtype))(self[0:3])
             elif name == "q":
-                return quat(self[3:7])
+                return _named_type(quaternion(dtype=dtype))(self[3:7])
             else:
                 return self.__getattribute__(name)
 
