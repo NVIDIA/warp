@@ -1,0 +1,21 @@
+﻿warp.cw\_mul
+============
+
+.. function:: warp._src.lang.cw_mul(a: Vector[Scalar, Any], b: Vector[Scalar, Any]) -> Vector[Scalar, Any]
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Compute the component-wise product of ``a`` and ``b``.
+
+.. function:: warp._src.lang.cw_mul(a: Matrix[Scalar, Any, Any], b: Matrix[Scalar, Any, Any]) -> Matrix[Scalar, Any, Any]
+   :noindex:
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Compute the component-wise product of ``a`` and ``b``.

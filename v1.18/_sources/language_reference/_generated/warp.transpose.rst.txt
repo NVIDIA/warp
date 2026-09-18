@@ -1,0 +1,11 @@
+﻿warp.transpose
+==============
+
+.. function:: warp._src.lang.transpose(a: Matrix[Scalar, Any, Any]) -> Matrix[Scalar, Any, Any]
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Compute the transpose of matrix ``a``.

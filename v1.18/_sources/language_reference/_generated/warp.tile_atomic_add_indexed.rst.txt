@@ -1,0 +1,86 @@
+﻿warp.tile\_atomic\_add\_indexed
+===============================
+
+.. function:: warp._src.lang.tile_atomic_add_indexed(a: Array[Any], indices: Tile[int32, tuple[int]], t: Tile[Any, tuple[int, ...]], offset: tuple[int, ...] = ..., axis: int32 = 0) -> Tile[Any, tuple[int, ...]]
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
+
+   Atomically add a tile onto a global memory array, scattering along one axis through a 1D tile of indices.
+   
+   Cooperative operation: every thread of the block must reach the call. Element ``c``
+   of ``t`` is added atomically to ``a`` at ``offset[d] + c[d]`` along every dimension
+   ``d`` other than ``axis``, and at
+   ``offset[axis] + indices[c[axis]]`` along ``axis``, and the destination's previous
+   value is placed in the returned tile. Every coordinate is checked against both the
+   lower and upper array bounds: an element whose destination index is negative or past
+   the end of ``a`` is skipped.
+   
+   Repeated indices are allowed and accumulate, which is what makes this useful for
+   segmented or row-wise reductions. Only the individual element updates are atomic.
+   When repeated indices or concurrent updates target the same destination, their order
+   is unspecified. In those cases, the returned values — and, for floating-point types,
+   the rounding of the accumulated result — are not reproducible.
+   
+   For Warp struct elements, only fields whose underlying scalar type supports atomic
+   addition are updated. Boolean, narrow-integer, array, and other non-atomic fields
+   remain unchanged, although their previous values are still present in the returned
+   tile.
+   
+   In a backward pass the gradients of the updated elements of ``a`` are accumulated
+   into the adjoint of ``t`` and left in place in ``a.grad``; the adjoint of the returned
+   tile is not propagated.
+   
+   :param a: The destination array in global memory, must have the same ``dtype`` as the
+             input tile. Its underlying scalar type must be one that supports atomic
+             addition: ``int32``, ``uint32``, ``int64``, ``uint64``, ``float16``,
+             ``bfloat16``, ``float32``, or ``float64``.
+   :param indices: A 1D tile of ``int32`` indices into ``a`` along ``axis``. It must hold
+                   exactly ``t.shape[axis]`` values and is always placed in shared memory (a
+                   register tile passed here is promoted).
+   :param t: The source tile to add to the destination array, must have the same data type
+             and number of dimensions as the destination array, and along ``axis`` the same
+             number of elements as the ``indices`` tile
+   :param offset: Offset in the destination array, one value per dimension of ``a``. The
+                  entry for ``axis`` is added to each index; may be a runtime value.
+   :param axis: Axis of ``a`` that the indices refer to. Must be a compile-time constant.
+   
+   :returns: A tile with the same shape, data type and storage as ``t``, holding the value each
+             updated destination element had before the addition. Passing a shared ``t``
+             therefore allocates a second shared-memory tile for the result.
+   
+   .. rubric:: Example
+   
+   This example accumulates the rows of a tile into the even-numbered rows of a 2D array.
+   
+   .. testcode::
+   
+       TILE_M, TILE_N = 2, 4
+       TILE_THREADS = 4
+   
+       @wp.kernel
+       def accumulate_even_rows(x: wp.array2d[float], y: wp.array2d[float], previous: wp.array2d[float]):
+           t = wp.tile_load(x, shape=(TILE_M, TILE_N))
+           # tile row k accumulates into row 2*k of `y`
+           rows = wp.tile_arange(TILE_M, dtype=int) * 2
+           p = wp.tile_atomic_add_indexed(y, indices=rows, t=t, axis=0)
+           wp.tile_store(previous, p)
+   
+       x = wp.array(np.arange(1, 9, dtype=np.float32).reshape(2, 4), dtype=float)
+       y = wp.array(np.arange(16, dtype=np.float32).reshape(4, 4), dtype=float)
+       previous = wp.zeros((2, 4), dtype=float)
+       wp.launch_tiled(accumulate_even_rows, dim=1, inputs=[x], outputs=[y, previous], block_dim=TILE_THREADS)
+       print(y.numpy())
+       print(previous.numpy())
+   
+   .. testoutput::
+   
+       [[ 1.  3.  5.  7.]
+        [ 4.  5.  6.  7.]
+        [13. 15. 17. 19.]
+        [12. 13. 14. 15.]]
+       [[ 0.  1.  2.  3.]
+        [ 8.  9. 10. 11.]]
+   

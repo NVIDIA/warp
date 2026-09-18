@@ -1,0 +1,24 @@
+﻿warp.mat22f
+===========
+
+.. currentmodule:: warp
+
+.. autoclass:: mat22f
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~mat22f.from_ptr
+      ~mat22f.get_col
+      ~mat22f.get_row
+      ~mat22f.scalar_export
+      ~mat22f.scalar_import
+      ~mat22f.set_col
+      ~mat22f.set_row
+   
+   
+   
+   
+   

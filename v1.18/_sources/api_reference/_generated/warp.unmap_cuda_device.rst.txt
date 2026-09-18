@@ -1,0 +1,6 @@
+﻿warp.unmap\_cuda\_device
+========================
+
+.. currentmodule:: warp
+
+.. autofunction:: unmap_cuda_device

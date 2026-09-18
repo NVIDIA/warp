@@ -1,0 +1,11 @@
+﻿warp.erf
+========
+
+.. function:: warp._src.lang.erf(x: Float) -> Float
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Compute the error function of ``x``.

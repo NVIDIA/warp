@@ -1,0 +1,23 @@
+﻿warp.tile\_stack\_pop
+=====================
+
+.. function:: warp._src.lang.tile_stack_pop(s: Any) -> tuple[Any, int]
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
+
+   Pop a value from a tile stack.
+   
+   Every thread in the block must reach this call. Popping an empty stack is harmless.
+   
+   :param s: The tile stack, from :func:`~warp.tile_stack`
+   
+   :returns: A tuple ``(value, slot)``. Each thread receives at most one element. ``slot`` is
+             the index of the slot the element was taken from, in ``[0, capacity - 1]``, or
+             ``-1`` if the stack is empty or has no element left for that thread. Test ``slot``
+             for ``>= 0`` before using ``value``. Which thread receives which element is
+             unspecified; use ``slot`` rather than the thread index to place the result.
+   
+   See :func:`~warp.tile_stack` for a usage example.

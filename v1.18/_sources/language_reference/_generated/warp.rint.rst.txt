@@ -1,0 +1,14 @@
+﻿warp.rint
+=========
+
+.. function:: warp._src.lang.rint(x: Float) -> Float
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+
+   Compute the nearest integer value to ``x``, rounding halfway cases to nearest even integer.
+   
+   It is generally faster than :func:`~warp._src.lang.round`.
+   Equivalent to :obj:`numpy.rint`.

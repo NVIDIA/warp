@@ -1,0 +1,6 @@
+﻿warp.config.cache\_kernels
+==========================
+
+.. currentmodule:: warp.config
+
+.. autodata:: cache_kernels

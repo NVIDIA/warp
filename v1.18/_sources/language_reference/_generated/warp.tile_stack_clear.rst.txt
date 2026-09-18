@@ -1,0 +1,17 @@
+﻿warp.tile\_stack\_clear
+=======================
+
+.. function:: warp._src.lang.tile_stack_clear(s: Any) -> None
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
+
+   Reset a tile stack to empty.
+   
+   The next push starts at slot 0. Every thread in the block must reach this call.
+   
+   :param s: The tile stack, from :func:`~warp.tile_stack`
+   
+   See :func:`~warp.tile_stack` for a usage example.

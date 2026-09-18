@@ -1,0 +1,6 @@
+﻿warp.record\_event
+==================
+
+.. currentmodule:: warp
+
+.. autofunction:: record_event

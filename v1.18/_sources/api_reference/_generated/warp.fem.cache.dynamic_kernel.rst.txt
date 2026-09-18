@@ -1,0 +1,6 @@
+﻿warp.fem.cache.dynamic\_kernel
+==============================
+
+.. currentmodule:: warp.fem.cache
+
+.. autofunction:: dynamic_kernel

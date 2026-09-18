@@ -1,0 +1,11 @@
+﻿warp.ceil
+=========
+
+.. function:: warp._src.lang.ceil(x: Float) -> Float
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+
+   Compute the smallest integer that is greater than or equal to ``x``.

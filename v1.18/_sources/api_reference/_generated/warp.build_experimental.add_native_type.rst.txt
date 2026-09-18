@@ -1,0 +1,6 @@
+﻿warp.build\_experimental.add\_native\_type
+==========================================
+
+.. currentmodule:: warp.build_experimental
+
+.. autofunction:: add_native_type

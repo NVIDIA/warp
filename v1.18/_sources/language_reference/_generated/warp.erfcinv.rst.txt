@@ -1,0 +1,11 @@
+﻿warp.erfcinv
+============
+
+.. function:: warp._src.lang.erfcinv(x: Float) -> Float
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Compute the inverse complementary error function of ``x``.

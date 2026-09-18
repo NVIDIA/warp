@@ -1,0 +1,6 @@
+﻿warp.config.enable\_mathdx\_gemm
+================================
+
+.. currentmodule:: warp.config
+
+.. autodata:: enable_mathdx_gemm

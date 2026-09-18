@@ -1,0 +1,20 @@
+﻿warp.volume\_lookup\_v
+======================
+
+.. function:: warp._src.lang.volume_lookup_v(id: uint64, i: int32, j: int32, k: int32) -> vec3f
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+
+   Return the :class:`warp.vec3f` value of the voxel at integer index-space coordinates ``i``,
+   ``j``, ``k``, without interpolation.
+   
+   ``id`` must identify a ``vec3f`` volume. This function is not differentiable. In kernels,
+   ``volume_lookup_v()`` is equivalent to :func:`~warp.volume_lookup` with ``dtype=warp.vec3f``.
+   
+   See :func:`~warp.volume_lookup` for shared behavior and a usage example.
+   
+   :returns: The resolved :class:`warp.vec3f` voxel value.
+   

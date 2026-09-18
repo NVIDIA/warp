@@ -1,0 +1,20 @@
+﻿warp.norm\_l1
+=============
+
+.. function:: warp._src.lang.norm_l1(v: Any) -> float
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
+
+   Compute the L1 norm of a vector v.
+   
+   .. math:: \|v\|_1 = \sum_i |v_i|
+   
+   :param v: The vector to compute the L1 norm of.
+   :type v: Vector[Float, Any]
+   
+   :returns: The L1 norm of the vector.
+   :rtype: float
+   

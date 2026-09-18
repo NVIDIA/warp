@@ -1,0 +1,20 @@
+﻿warp.quat
+=========
+
+.. currentmodule:: warp
+
+.. autoclass:: quat
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~quat.from_ptr
+      ~quat.scalar_export
+      ~quat.scalar_import
+   
+   
+   
+   
+   

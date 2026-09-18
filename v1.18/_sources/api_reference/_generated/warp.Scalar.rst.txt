@@ -1,0 +1,6 @@
+﻿warp.Scalar
+===========
+
+.. currentmodule:: warp
+
+.. autodata:: Scalar

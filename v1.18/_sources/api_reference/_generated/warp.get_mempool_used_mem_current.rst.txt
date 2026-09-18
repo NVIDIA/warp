@@ -1,0 +1,6 @@
+﻿warp.get\_mempool\_used\_mem\_current
+=====================================
+
+.. currentmodule:: warp
+
+.. autofunction:: get_mempool_used_mem_current

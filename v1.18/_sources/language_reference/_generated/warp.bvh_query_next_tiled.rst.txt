@@ -1,0 +1,21 @@
+﻿warp.bvh\_query\_next\_tiled
+============================
+
+.. function:: warp._src.lang.bvh_query_next_tiled(query: BvhQueryTiled) -> Tile[int32, tuple[int]]
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
+
+   Advance a thread-block parallel BVH query and return the next batch of results as a tile.
+   
+   Alias for :func:`~warp.tile_bvh_query_next`; see that function for usage details and
+   an example.
+   
+   :param query: A thread-block BVH query.
+   
+   :returns: A register tile with one result index per thread. Test each index for ``>= 0``.
+   
+   .. deprecated:: 1.18
+       Use :func:`~warp.tile_bvh_query_next` instead.

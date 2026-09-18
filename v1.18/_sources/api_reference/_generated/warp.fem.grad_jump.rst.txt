@@ -1,0 +1,6 @@
+﻿warp.fem.grad\_jump
+===================
+
+.. currentmodule:: warp.fem
+
+.. autodata:: grad_jump

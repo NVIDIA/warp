@@ -1,0 +1,27 @@
+﻿warp.Graph
+==========
+
+.. currentmodule:: warp
+
+.. autoclass:: Graph
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Graph.get_param
+      ~Graph.get_param_ptr
+      ~Graph.set_param
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Graph.is_loaded
+      ~Graph.params
+   
+   

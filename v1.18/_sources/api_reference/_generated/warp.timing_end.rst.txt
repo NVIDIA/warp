@@ -1,0 +1,6 @@
+﻿warp.timing\_end
+================
+
+.. currentmodule:: warp
+
+.. autofunction:: timing_end

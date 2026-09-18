@@ -1,0 +1,6 @@
+﻿warp.fem.deformation\_gradient
+==============================
+
+.. currentmodule:: warp.fem
+
+.. autodata:: deformation_gradient

@@ -1,0 +1,12 @@
+﻿warp.optim.linear.LinearSolverState
+===================================
+
+.. currentmodule:: warp.optim.linear
+
+.. autoclass:: LinearSolverState
+   
+   
+   
+   
+   
+   

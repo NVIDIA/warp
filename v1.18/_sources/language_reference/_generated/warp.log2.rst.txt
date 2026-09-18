@@ -1,0 +1,11 @@
+﻿warp.log2
+=========
+
+.. function:: warp._src.lang.log2(x: Float) -> Float
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Compute the binary logarithm (base-2) of ``x``, where ``x`` is positive.

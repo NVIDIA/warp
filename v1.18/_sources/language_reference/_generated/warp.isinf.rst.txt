@@ -1,0 +1,41 @@
+﻿warp.isinf
+==========
+
+.. function:: warp._src.lang.isinf(a: Float) -> bool
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+
+   Check if ``a`` is positive or negative infinity.
+
+.. function:: warp._src.lang.isinf(a: Vector[Float, Any]) -> bool
+   :noindex:
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+
+   Check if any element of ``a`` is positive or negative infinity.
+
+.. function:: warp._src.lang.isinf(a: Quaternion[Float]) -> bool
+   :noindex:
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+
+   Check if any element of ``a`` is positive or negative infinity.
+
+.. function:: warp._src.lang.isinf(a: Matrix[Float, Any, Any]) -> bool
+   :noindex:
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+
+   Check if any element of ``a`` is positive or negative infinity.

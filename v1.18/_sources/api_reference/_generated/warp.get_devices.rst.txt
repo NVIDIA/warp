@@ -1,0 +1,6 @@
+﻿warp.get\_devices
+=================
+
+.. currentmodule:: warp
+
+.. autofunction:: get_devices

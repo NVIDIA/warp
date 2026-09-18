@@ -1,0 +1,24 @@
+﻿warp.spatial\_matrix
+====================
+
+.. currentmodule:: warp
+
+.. autoclass:: spatial_matrix
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~spatial_matrix.from_ptr
+      ~spatial_matrix.get_col
+      ~spatial_matrix.get_row
+      ~spatial_matrix.scalar_export
+      ~spatial_matrix.scalar_import
+      ~spatial_matrix.set_col
+      ~spatial_matrix.set_row
+   
+   
+   
+   
+   

@@ -1,0 +1,11 @@
+﻿warp.quat\_rotate
+=================
+
+.. function:: warp._src.lang.quat_rotate(quat: Quaternion[Float], vec: Vector[Float, Literal[3]]) -> Vector[Float, Literal[3]]
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Rotate a vector by a quaternion.

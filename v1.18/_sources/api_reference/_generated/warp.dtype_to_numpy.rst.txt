@@ -1,0 +1,6 @@
+﻿warp.dtype\_to\_numpy
+=====================
+
+.. currentmodule:: warp
+
+.. autofunction:: dtype_to_numpy

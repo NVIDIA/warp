@@ -1,0 +1,19 @@
+﻿warp.Allocator
+==============
+
+.. currentmodule:: warp
+
+.. autoclass:: Allocator
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Allocator.allocate
+      ~Allocator.deallocate
+   
+   
+   
+   
+   

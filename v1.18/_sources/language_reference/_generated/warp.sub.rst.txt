@@ -1,0 +1,61 @@
+﻿warp.sub
+========
+
+.. function:: warp._src.lang.sub(a: Scalar, b: Scalar) -> Scalar
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Subtract ``b`` from ``a``.
+
+.. function:: warp._src.lang.sub(a: Vector[Scalar, Any], b: Vector[Scalar, Any]) -> Vector[Scalar, Any]
+   :noindex:
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Subtract ``b`` from ``a``.
+
+.. function:: warp._src.lang.sub(a: Matrix[Scalar, Any, Any], b: Matrix[Scalar, Any, Any]) -> Matrix[Scalar, Any, Any]
+   :noindex:
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Subtract ``b`` from ``a``.
+
+.. function:: warp._src.lang.sub(a: Quaternion[Float], b: Quaternion[Float]) -> Quaternion[Float]
+   :noindex:
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Subtract ``b`` from ``a``.
+
+.. function:: warp._src.lang.sub(a: Transformation[Float], b: Transformation[Float]) -> Transformation[Float]
+   :noindex:
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Subtract ``b`` from ``a``.
+
+.. function:: warp._src.lang.sub(a: Tile[Any, tuple[int, ...]], b: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[int, ...]]
+   :noindex:
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
+
+   Subtract ``b`` from ``a``.

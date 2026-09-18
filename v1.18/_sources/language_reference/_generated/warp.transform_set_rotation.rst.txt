@@ -1,0 +1,19 @@
+﻿warp.transform\_set\_rotation
+=============================
+
+.. function:: warp._src.lang.transform_set_rotation(xform: Transformation[Float], q: Quaternion[Float]) -> None
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Set the rotational part of the transform ``xform`` in place, leaving its translation unchanged.
+   
+   ``q`` is not normalized. In a kernel, ``xform.q = q`` is equivalent. See
+   :func:`~warp.transform_set_translation` for the array-element caveat.
+   
+   :param xform: Transformation to modify in place.
+   :param q: New rotation, expected to be a unit quaternion in ``(x, y, z, w)`` order.
+   
+   See :func:`~warp.transform_set_translation` for a usage example.

@@ -1,0 +1,28 @@
+﻿warp.tile
+=========
+
+.. currentmodule:: warp
+
+.. autoclass:: tile
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~tile.align
+      ~tile.cinit
+      ~tile.ctype
+      ~tile.round_up
+      ~tile.size_in_bytes
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~tile.alignment
+   
+   

@@ -1,0 +1,31 @@
+﻿warp.fem.space.shape.TetrahedronNonConformingPolynomialShapeFunctions
+=====================================================================
+
+.. currentmodule:: warp.fem.space.shape
+
+.. autoclass:: TetrahedronNonConformingPolynomialShapeFunctions
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~TetrahedronNonConformingPolynomialShapeFunctions.make_element_inner_weight
+      ~TetrahedronNonConformingPolynomialShapeFunctions.make_element_inner_weight_gradient
+      ~TetrahedronNonConformingPolynomialShapeFunctions.make_node_coords_in_element
+      ~TetrahedronNonConformingPolynomialShapeFunctions.make_node_quadrature_weight
+      ~TetrahedronNonConformingPolynomialShapeFunctions.make_trace_node_quadrature_weight
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~TetrahedronNonConformingPolynomialShapeFunctions.name
+      ~TetrahedronNonConformingPolynomialShapeFunctions.value
+      ~TetrahedronNonConformingPolynomialShapeFunctions.ORDER
+      ~TetrahedronNonConformingPolynomialShapeFunctions.NODES_PER_ELEMENT
+   
+   

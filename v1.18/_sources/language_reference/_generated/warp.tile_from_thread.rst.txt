@@ -1,0 +1,96 @@
+﻿warp.tile\_from\_thread
+=======================
+
+.. function:: warp._src.lang.tile_from_thread(shape: tuple[int, ...], value: Any, thread_idx: int32, storage: str = "register") -> Tile[Any, tuple[int, ...]]
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
+
+   Allocate a tile filled with a value from a specific thread.
+   
+   This function broadcasts one thread's value to all threads in the block, then
+   creates a tile filled with that broadcast value. It is useful for sharing a
+   computed result (e.g. from an atomic operation) with the whole block. Every thread
+   in the block must call this function.
+   
+   ``thread_idx`` is block-local: each block broadcasts from its own lane
+   ``thread_idx``, and it must satisfy ``0 <= thread_idx < wp.block_dim()``. The
+   resulting tile's data type is the type of ``value``.
+   
+   On CPU the effective block width is ``1`` unless
+   ``wp.config.enable_cpu_blocks`` is enabled. When enabled, the requested block
+   width is honored and this function broadcasts from the selected CPU lane.
+   
+   On a partial CPU block, ``thread_idx`` must identify an active lane. If the
+   selected lane is inactive, no producer executes and the result is undefined.
+   See :ref:`CPU Tile Semantics <cpu_tile_semantics>` for definitions of partial
+   CPU blocks and active lanes.
+   
+   :param shape: Shape of the output tile. Must be a compile-time constant.
+   :param value: Per-thread value; only the value from ``thread_idx`` is used.
+   :param thread_idx: Block-local index of the thread whose value should fill the tile.
+                      Must have the same value in every thread of the block.
+   :param storage: The storage location for the tile: ``"register"`` for registers or
+                   ``"shared"`` for shared memory. Must be a compile-time constant.
+   
+   :returns: A tile with the requested shape, with the data type of ``value``, in which
+             every element holds the value broadcast from ``thread_idx``.
+   
+   .. rubric:: Example
+   
+   Broadcasting a per-block scale factor read by a single thread. Because the
+   value is read by thread ``0``, this kernel produces the same result on CPU
+   and GPU.
+   
+   .. testcode::
+   
+       TILE_SIZE = 4
+       TILE_THREADS = 2
+   
+       @wp.kernel
+       def scale_block(scales: wp.array[float], out: wp.array[float]):
+           block, lane = wp.tid()
+   
+           # only thread 0 reads the per-block scale factor
+           s = float(0.0)
+           if lane == 0:
+               s = scales[block]
+   
+           # broadcast thread 0's value to the whole block
+           scale = wp.tile_from_thread(shape=(TILE_SIZE,), value=s, thread_idx=0)
+           t = wp.tile_arange(TILE_SIZE, dtype=float)
+   
+           wp.tile_store(out, scale * t, offset=(block * TILE_SIZE,))
+   
+       scales = wp.array([1.0, 10.0], dtype=float)
+       out = wp.zeros(8, dtype=float)
+   
+       wp.launch_tiled(scale_block, dim=[2], inputs=[scales], outputs=[out], block_dim=TILE_THREADS)
+   
+       print(out.numpy())
+   
+   .. testoutput::
+   
+       [ 0.  1.  2.  3.  0. 10. 20. 30.]
+   
+
+.. function:: warp._src.lang.tile_from_thread(shape: int32, value: Any, thread_idx: int32, storage: str = "register") -> Tile[Any, tuple[int, ...]]
+   :noindex:
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
+
+   Allocate a tile filled with a value from a specific thread.
+   
+   Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
+   ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument for usage
+   details and an example.
+   
+   On a partial CPU block, ``thread_idx`` must identify an active lane. If the
+   selected lane is inactive, no producer executes and the result is undefined.
+   See :ref:`CPU Tile Semantics <cpu_tile_semantics>` for definitions of partial
+   CPU blocks and active lanes.

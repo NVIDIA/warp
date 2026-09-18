@@ -1,0 +1,6 @@
+﻿warp.utils.segmented\_sort\_pairs
+=================================
+
+.. currentmodule:: warp.utils
+
+.. autofunction:: segmented_sort_pairs

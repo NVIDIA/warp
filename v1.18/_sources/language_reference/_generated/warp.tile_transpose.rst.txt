@@ -1,0 +1,43 @@
+﻿warp.tile\_transpose
+====================
+
+.. function:: warp._src.lang.tile_transpose(a: Tile[Any, tuple[int, int]]) -> Tile[Any, tuple[int, int]]
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
+
+   Transpose a 2D tile.
+   
+   The result aliases ``a`` with reversed shape, so writing through it modifies ``a``.
+   The current implementation places ``a`` in shared memory before transposing. The
+   result is non-owning and allocates no additional storage.
+   
+   :param a: 2D tile to transpose with ``shape=(M,N)``
+   
+   :returns: A non-owning tile with ``shape=(N,M)`` that aliases ``a``.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def transpose_matrix(a: wp.array2d[float], out: wp.array2d[float]):
+           t = wp.tile_load(a, shape=(2, 3))
+   
+           wp.tile_store(out, wp.tile_transpose(t))
+   
+       a = wp.array(np.arange(1, 7, dtype=np.float32).reshape(2, 3), dtype=float)
+       out = wp.zeros((3, 2), dtype=float)
+   
+       wp.launch_tiled(transpose_matrix, dim=1, inputs=[a], outputs=[out], block_dim=4)
+   
+       print(out.numpy())
+   
+   .. testoutput::
+   
+       [[1. 4.]
+        [2. 5.]
+        [3. 6.]]
+   

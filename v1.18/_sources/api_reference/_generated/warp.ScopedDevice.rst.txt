@@ -1,0 +1,12 @@
+﻿warp.ScopedDevice
+=================
+
+.. currentmodule:: warp
+
+.. autoclass:: ScopedDevice
+   
+   
+   
+   
+   
+   

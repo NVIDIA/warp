@@ -1,0 +1,55 @@
+﻿warp.tile\_matmul
+=================
+
+.. function:: warp._src.lang.tile_matmul(a: Tile[Float, tuple[int, int]], b: Tile[Float, tuple[int, int]], out: Tile[Float, tuple[int, int]], alpha: Float = 1.0, beta: Float = 1.0) -> None
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
+
+   Compute the matrix product ``a*b``.
+   
+   Compute ``out = alpha * a*b + beta * out``.
+   
+   Supported datatypes are:
+       * fp16, bf16, fp32, fp64
+   
+   All input and output tiles must have the same datatype. Tile data will automatically be migrated
+   to shared memory if necessary and will use TensorCore operations when available.
+   
+   Note that computing the adjoints of alpha and beta are not yet supported.
+   
+   :param a: A tile with ``shape=(M, K)``
+   :param b: A tile with ``shape=(K, N)``
+   :param out: A tile with ``shape=(M, N)``
+   :param alpha: Scaling factor
+   :param beta: Accumulator factor
+   
+
+.. function:: warp._src.lang.tile_matmul(a: Tile[Float, tuple[int, int]], b: Tile[Float, tuple[int, int]], alpha: Float = 1.0) -> Tile[Float, tuple[int, int]]
+   :noindex:
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
+
+   Compute the matrix product ``a*b``.
+   
+   Compute ``out = alpha * a*b``.
+   
+   Supported datatypes are:
+       * fp16, bf16, fp32, fp64
+   
+   Both input tiles must have the same datatype. Tile data will automatically be migrated
+   to shared memory if necessary and will use TensorCore operations when available.
+   
+   Note that computing the adjoints of alpha is not yet supported.
+   
+   :param a: A tile with ``shape=(M, K)``
+   :param b: A tile with ``shape=(K, N)``
+   :param alpha: Scaling factor
+   
+   :returns: A tile with ``shape=(M, N)``
+   

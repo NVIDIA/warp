@@ -1,0 +1,6 @@
+﻿warp.TIMING\_MEMSET
+===================
+
+.. currentmodule:: warp
+
+.. autodata:: TIMING_MEMSET

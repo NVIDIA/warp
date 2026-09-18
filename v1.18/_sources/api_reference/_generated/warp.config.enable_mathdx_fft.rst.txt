@@ -1,0 +1,6 @@
+﻿warp.config.enable\_mathdx\_fft
+===============================
+
+.. currentmodule:: warp.config
+
+.. autodata:: enable_mathdx_fft

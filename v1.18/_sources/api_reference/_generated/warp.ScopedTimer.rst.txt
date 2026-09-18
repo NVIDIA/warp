@@ -1,0 +1,18 @@
+﻿warp.ScopedTimer
+================
+
+.. currentmodule:: warp
+
+.. autoclass:: ScopedTimer
+   
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ScopedTimer.enabled
+   
+   

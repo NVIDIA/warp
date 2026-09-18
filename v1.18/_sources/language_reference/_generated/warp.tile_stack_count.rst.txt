@@ -1,0 +1,21 @@
+﻿warp.tile\_stack\_count
+=======================
+
+.. function:: warp._src.lang.tile_stack_count(s: Any) -> int
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
+
+   Return the current number of elements in a tile stack.
+   
+   May be called by one thread or from divergent control flow. The value is uniform
+   across the block and always lies in ``[0, capacity]``. Call it only after every
+   thread has completed the same preceding push, pop, or clear.
+   
+   :param s: The tile stack, from :func:`~warp.tile_stack`
+   
+   :returns: The current number of elements in the stack.
+   
+   See :func:`~warp.tile_stack` for a usage example.

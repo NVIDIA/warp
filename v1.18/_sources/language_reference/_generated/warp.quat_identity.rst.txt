@@ -1,0 +1,11 @@
+﻿warp.quat\_identity
+===================
+
+.. function:: warp._src.lang.quat_identity(dtype: Float = ...) -> quatf
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+
+   Construct an identity quaternion with zero imaginary part and real part of 1.0.

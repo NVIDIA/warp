@@ -1,0 +1,6 @@
+﻿warp.autograd.gradcheck\_tape
+=============================
+
+.. currentmodule:: warp.autograd
+
+.. autofunction:: gradcheck_tape

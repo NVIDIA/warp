@@ -1,0 +1,38 @@
+﻿warp.fem.space.shape.TriangleShapeFunction
+==========================================
+
+.. currentmodule:: warp.fem.space.shape
+
+.. autoclass:: TriangleShapeFunction
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~TriangleShapeFunction.make_element_inner_weight
+      ~TriangleShapeFunction.make_element_inner_weight_gradient
+      ~TriangleShapeFunction.make_node_coords_in_element
+      ~TriangleShapeFunction.make_node_quadrature_weight
+      ~TriangleShapeFunction.make_trace_node_quadrature_weight
+      ~TriangleShapeFunction.node_type_and_index
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~TriangleShapeFunction.EDGE
+      ~TriangleShapeFunction.INTERIOR
+      ~TriangleShapeFunction.VERTEX
+      ~TriangleShapeFunction.name
+      ~TriangleShapeFunction.value
+      ~TriangleShapeFunction.VERTEX_NODE_COUNT
+      ~TriangleShapeFunction.EDGE_NODE_COUNT
+      ~TriangleShapeFunction.INTERIOR_NODE_COUNT
+      ~TriangleShapeFunction.ORDER
+      ~TriangleShapeFunction.NODES_PER_ELEMENT
+   
+   

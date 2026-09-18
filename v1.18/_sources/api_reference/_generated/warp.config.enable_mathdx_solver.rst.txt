@@ -1,0 +1,6 @@
+﻿warp.config.enable\_mathdx\_solver
+==================================
+
+.. currentmodule:: warp.config
+
+.. autodata:: enable_mathdx_solver

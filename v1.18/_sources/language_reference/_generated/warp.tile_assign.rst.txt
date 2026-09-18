@@ -1,0 +1,52 @@
+﻿warp.tile\_assign
+=================
+
+.. function:: warp._src.lang.tile_assign(dst: Tile[Any, tuple[int, ...]], src: Tile[Any, tuple[int, ...]], offset: tuple[int, ...] = ...) -> None
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
+
+   Copy a tile into a subrange of a destination tile.
+   
+   ``dst`` is modified in place and requires shared storage.
+   
+   When ``src`` and ``dst`` have different element types, each element is converted
+   following C++ conversion rules. Overlapping source and destination regions assign
+   like NumPy; ``t[1:] = t[:-1]`` shifts the tile.
+   
+   In a backward pass, gradients from the overwritten region of ``dst`` are accumulated
+   into the adjoint of ``src``, then cleared from that region of ``dst``.
+   
+   :param dst: Destination tile, modified in place. Must have the same number of dimensions
+               as ``src``.
+   :param src: Source tile. Must fit inside ``dst`` at ``offset`` along every axis.
+   :param offset: Coordinate in ``dst`` at which to write ``src``. If omitted, ``src`` is
+                  written at the origin. Must have one entry per dimension of ``dst`` and may
+                  contain runtime values.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def insert_values(a: wp.array[float], out: wp.array[float]):
+           dst = wp.tile_full(shape=6, value=-1.0, dtype=float)
+           src = wp.tile_load(a, shape=3)
+   
+           wp.tile_assign(dst, src, offset=(2,))
+   
+           wp.tile_store(out, dst)
+   
+       a = wp.array([1.0, 2.0, 3.0], dtype=float)
+       out = wp.zeros(6, dtype=float)
+   
+       wp.launch_tiled(insert_values, dim=1, inputs=[a], outputs=[out], block_dim=4)
+   
+       print(out.numpy())
+   
+   .. testoutput::
+   
+       [-1. -1.  1.  2.  3. -1.]
+   

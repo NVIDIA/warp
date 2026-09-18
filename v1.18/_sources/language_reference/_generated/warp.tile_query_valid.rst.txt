@@ -1,0 +1,73 @@
+﻿warp.tile\_query\_valid
+=======================
+
+.. function:: warp._src.lang.tile_query_valid(query: BvhQueryTiled) -> bool
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
+
+   Return whether a thread-block parallel BVH query should continue.
+   
+   Guard the traversal loop with this function and test every index returned by
+   :func:`~warp.tile_bvh_query_next` for ``>= 0``. Every thread must execute the same
+   traversal loop.
+   
+   This built-in is also defined for the mesh queries built by :func:`~warp.tile_mesh_query_aabb`.
+   
+   :param query: The query to test, from :func:`~warp.tile_bvh_query_aabb` or
+                 :func:`~warp.tile_bvh_query_ray`
+   
+   :returns: The same value for every thread in the block. ``True`` initially and after a
+             result batch containing at least one nonnegative index; ``False`` after an
+             all-negative batch.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def mark_overlaps(bvh_id: wp.uint64, lo: wp.vec3, hi: wp.vec3, hits: wp.array[wp.int32]):
+           query = wp.tile_bvh_query_aabb(bvh_id, lo, hi)
+           while wp.tile_query_valid(query):
+               bound = wp.untile(wp.tile_bvh_query_next(query))
+               if bound >= 0:
+                   hits[bound] = 1
+   
+       lowers = wp.array([[0, 0, 0], [2, 0, 0], [4, 0, 0]], dtype=wp.vec3)
+       uppers = wp.array([[1, 1, 1], [3, 1, 1], [5, 1, 1]], dtype=wp.vec3)
+       bvh = wp.Bvh(lowers=lowers, uppers=uppers)
+   
+       hits = wp.zeros(3, dtype=wp.int32)
+       wp.launch_tiled(mark_overlaps, dim=1,
+                       inputs=[bvh.id, wp.vec3(-1.0, -1.0, -1.0), wp.vec3(2.5, 2.0, 2.0)],
+                       outputs=[hits], block_dim=4)
+       print("overlaps:", hits.numpy().tolist())
+   
+   .. testoutput::
+   
+       overlaps: [1, 1, 0]
+   
+
+.. function:: warp._src.lang.tile_query_valid(query: MeshQueryAABBTiled) -> bool
+   :noindex:
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
+
+   Return whether a thread-block parallel mesh AABB query should continue.
+   
+   This overload accepts a :class:`warp.MeshQueryAABBTiled`. The overload taking a
+   :class:`warp.BvhQueryTiled` documents the shared iteration protocol and includes a
+   usage example; use :func:`~warp.tile_mesh_query_aabb_next` to advance this query.
+   Always test each returned face index for ``>= 0``.
+   
+   :param query: The query to test, from :func:`~warp.tile_mesh_query_aabb`
+   
+   :returns: The same value for every thread in the block. ``True`` initially and after a
+             result batch containing at least one nonnegative index; ``False`` after an
+             all-negative batch.
+   

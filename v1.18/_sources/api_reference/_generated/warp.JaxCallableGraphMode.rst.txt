@@ -1,0 +1,38 @@
+﻿warp.JaxCallableGraphMode
+=========================
+
+.. currentmodule:: warp
+
+.. autoclass:: JaxCallableGraphMode
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~JaxCallableGraphMode.conjugate
+      ~JaxCallableGraphMode.bit_length
+      ~JaxCallableGraphMode.bit_count
+      ~JaxCallableGraphMode.to_bytes
+      ~JaxCallableGraphMode.from_bytes
+      ~JaxCallableGraphMode.as_integer_ratio
+      ~JaxCallableGraphMode.is_integer
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~JaxCallableGraphMode.real
+      ~JaxCallableGraphMode.imag
+      ~JaxCallableGraphMode.numerator
+      ~JaxCallableGraphMode.denominator
+      ~JaxCallableGraphMode.NONE
+      ~JaxCallableGraphMode.JAX
+      ~JaxCallableGraphMode.WARP
+      ~JaxCallableGraphMode.WARP_STAGED
+      ~JaxCallableGraphMode.WARP_STAGED_EX
+   
+   

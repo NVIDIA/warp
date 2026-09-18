@@ -1,0 +1,20 @@
+﻿warp.volume\_lookup\_f
+======================
+
+.. function:: warp._src.lang.volume_lookup_f(id: uint64, i: int32, j: int32, k: int32) -> float
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+
+   Return the :class:`warp.float32` value of the voxel at integer index-space coordinates
+   ``i``, ``j``, ``k``, without interpolation.
+   
+   ``id`` must identify a ``float32`` volume. This function is not differentiable. In kernels,
+   ``volume_lookup_f()`` is equivalent to :func:`~warp.volume_lookup` with ``dtype=float``.
+   
+   See :func:`~warp.volume_lookup` for shared behavior and a usage example.
+   
+   :returns: The resolved :class:`warp.float32` voxel value.
+   

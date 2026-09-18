@@ -1,0 +1,6 @@
+﻿warp.geometry.find\_triangle\_neighbor\_edge\_index
+===================================================
+
+.. currentmodule:: warp.geometry
+
+.. autodata:: find_triangle_neighbor_edge_index

@@ -1,0 +1,11 @@
+﻿warp.trace
+==========
+
+.. function:: warp._src.lang.trace(a: Matrix[Scalar, Any, Any]) -> Scalar
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Compute the trace of matrix ``a``.

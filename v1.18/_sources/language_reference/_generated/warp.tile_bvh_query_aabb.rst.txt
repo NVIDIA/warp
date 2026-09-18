@@ -1,0 +1,51 @@
+﻿warp.tile\_bvh\_query\_aabb
+===========================
+
+.. function:: warp._src.lang.tile_bvh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> BvhQueryTiled
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
+
+   Construct an axis-aligned bounding box query against a :class:`warp.Bvh` for thread-block parallel traversal.
+   
+   The whole block traverses one query cooperatively. Advance it with
+   :func:`~warp.tile_bvh_query_next`, which hands every thread one result index per step
+   in unspecified order. Guard the traversal loop with :func:`~warp.tile_query_valid`.
+   
+   Only one BVH query may be active per block; exhaust it before constructing another.
+   
+   :param id: The BVH identifier (must be the same for all threads in the block)
+   :param low: The lower bound of the query box, in BVH space (must be the same for all threads in the block)
+   :param high: The upper bound of the query box, in BVH space (must be the same for all threads in the block)
+   
+   :returns: A :class:`warp.BvhQueryTiled` to advance with :func:`~warp.tile_bvh_query_next`.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def overlapping_bounds(bvh_id: wp.uint64, lo: wp.vec3, hi: wp.vec3, counts: wp.array[wp.int32]):
+           query = wp.tile_bvh_query_aabb(bvh_id, lo, hi)
+           while wp.tile_query_valid(query):
+               # one bound index per thread, negative where this thread has no result
+               bound = wp.untile(wp.tile_bvh_query_next(query))
+               if bound >= 0:
+                   wp.atomic_add(counts, bound, 1)
+   
+       lowers = wp.array([[0, 0, 0], [2, 0, 0], [4, 0, 0]], dtype=wp.vec3)
+       uppers = wp.array([[1, 1, 1], [3, 1, 1], [5, 1, 1]], dtype=wp.vec3)
+       bvh = wp.Bvh(lowers=lowers, uppers=uppers)
+   
+       counts = wp.zeros(3, dtype=wp.int32)
+       wp.launch_tiled(overlapping_bounds, dim=1,
+                       inputs=[bvh.id, wp.vec3(-1.0, -1.0, -1.0), wp.vec3(2.5, 2.0, 2.0)],
+                       outputs=[counts], block_dim=4)
+       print("times each bound was reported:", counts.numpy().tolist())
+   
+   .. testoutput::
+   
+       times each bound was reported: [1, 1, 0]
+   

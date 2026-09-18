@@ -1,0 +1,24 @@
+﻿warp.tile\_bvh\_query\_next
+===========================
+
+.. function:: warp._src.lang.tile_bvh_query_next(query: BvhQueryTiled) -> Tile[int32, tuple[int]]
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
+
+   Advance a thread-block parallel BVH query and return the next batch of results as a tile.
+   
+   Every thread in the block must call this on each loop iteration. Guard the traversal
+   loop with :func:`~warp.tile_query_valid` and test each returned index for ``>= 0``.
+   
+   :param query: The query to advance, from :func:`~warp.tile_bvh_query_aabb` or
+                 :func:`~warp.tile_bvh_query_ray`
+   
+   :returns: A register tile of shape ``(block_dim,)`` and dtype ``int`` holding one result
+             index per thread: the index of an overlapping bound into the ``lowers``/``uppers``
+             arrays passed to :class:`warp.Bvh`, or a negative value when that thread has no
+             result.
+   
+   See :func:`~warp.tile_bvh_query_aabb` for a usage example.

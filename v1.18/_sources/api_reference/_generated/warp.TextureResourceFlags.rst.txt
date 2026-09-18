@@ -1,0 +1,38 @@
+﻿warp.TextureResourceFlags
+=========================
+
+.. currentmodule:: warp
+
+.. autoclass:: TextureResourceFlags
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~TextureResourceFlags.conjugate
+      ~TextureResourceFlags.bit_length
+      ~TextureResourceFlags.bit_count
+      ~TextureResourceFlags.to_bytes
+      ~TextureResourceFlags.from_bytes
+      ~TextureResourceFlags.as_integer_ratio
+      ~TextureResourceFlags.is_integer
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~TextureResourceFlags.real
+      ~TextureResourceFlags.imag
+      ~TextureResourceFlags.numerator
+      ~TextureResourceFlags.denominator
+      ~TextureResourceFlags.NONE
+      ~TextureResourceFlags.READ_ONLY
+      ~TextureResourceFlags.WRITE_DISCARD
+      ~TextureResourceFlags.SURFACE_LDST
+      ~TextureResourceFlags.TEXTURE_GATHER
+   
+   

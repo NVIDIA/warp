@@ -1,0 +1,14 @@
+﻿warp.argmax
+===========
+
+.. function:: warp._src.lang.argmax(a: Vector[Scalar, Any]) -> uint32
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+
+   Compute the index of the maximum element of vector ``a``.
+   
+   On float types, NaN elements are skipped; the result is the index of the
+   largest non-NaN element. If every element is NaN, returns ``0``.

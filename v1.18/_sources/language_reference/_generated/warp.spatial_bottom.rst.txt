@@ -1,0 +1,20 @@
+﻿warp.spatial\_bottom
+====================
+
+.. function:: warp._src.lang.spatial_bottom(svec: Vector[Float, Literal[6]]) -> Vector[Float, Literal[3]]
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Return the linear velocity or force stored in ``svec``.
+   
+   See :func:`~warp.spatial_top` to access the angular velocity or torque stored in components 0
+   through 2.
+   
+   :param svec: Spatial vector to read from.
+   
+   :returns: Components 3 through 5 of ``svec``, as a 3D vector of the same scalar type.
+   
+   See :func:`~warp.spatial_top` for a usage example.

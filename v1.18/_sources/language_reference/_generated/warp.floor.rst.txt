@@ -1,0 +1,11 @@
+﻿warp.floor
+==========
+
+.. function:: warp._src.lang.floor(x: Float) -> Float
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+
+   Compute the largest integer that is less than or equal to ``x``.

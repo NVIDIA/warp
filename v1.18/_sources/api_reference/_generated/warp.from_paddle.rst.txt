@@ -1,0 +1,6 @@
+﻿warp.from\_paddle
+=================
+
+.. currentmodule:: warp
+
+.. autofunction:: from_paddle

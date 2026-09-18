@@ -1,0 +1,6 @@
+﻿warp.build\_experimental.add\_builtin
+=====================================
+
+.. currentmodule:: warp.build_experimental
+
+.. autofunction:: add_builtin

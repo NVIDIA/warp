@@ -1,0 +1,29 @@
+﻿warp.tile\_stack\_push
+======================
+
+.. function:: warp._src.lang.tile_stack_push(s: Any, value: Any, has_value: bool) -> int
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
+
+   Push a value onto a tile stack.
+   
+   Every thread in the block must reach this call. Pushed values are visible to the whole block
+   afterward.
+   
+   If more values are offered than the stack has room for, the surplus is dropped and the count
+   saturates at ``capacity``.
+   
+   :param s: The tile stack, from :func:`~warp.tile_stack`
+   :param value: The value to push, of the stack's element type
+   :param has_value: Whether this thread contributes a value
+   
+   :returns: The slot the value was written to, in ``[0, capacity - 1]``, or ``-1`` if ``has_value`` was
+             ``False`` or the stack was full. While the stack has room, each contributing
+             thread receives a distinct free slot, but which slot a given thread receives is
+             unspecified. A thread that passed ``has_value=True`` and received ``-1`` had its
+             value dropped.
+   
+   See :func:`~warp.tile_stack` for a usage example.

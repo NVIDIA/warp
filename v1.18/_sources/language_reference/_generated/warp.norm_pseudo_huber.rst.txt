@@ -1,0 +1,26 @@
+﻿warp.norm\_pseudo\_huber
+========================
+
+.. function:: warp._src.lang.norm_pseudo_huber(v: Any, delta: float = 1.0) -> float
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
+
+   Compute the "pseudo" Huber norm of a vector v with a given delta.
+   
+   .. math::
+       H^\prime(v) = \delta \sqrt{1 + \frac{\|v\|^2}{\delta^2}}
+   
+   .. image:: /img/norm_pseudo_huber.svg
+       :align: center
+   
+   :param v: The vector to compute the Huber norm of.
+   :type v: Vector[Float, Any]
+   :param delta: The threshold value.
+   :type delta: float
+   
+   :returns: The Huber norm of the vector.
+   :rtype: float
+   

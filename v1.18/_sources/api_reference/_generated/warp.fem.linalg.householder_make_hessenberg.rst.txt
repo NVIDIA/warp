@@ -1,0 +1,6 @@
+﻿warp.fem.linalg.householder\_make\_hessenberg
+=============================================
+
+.. currentmodule:: warp.fem.linalg
+
+.. autodata:: householder_make_hessenberg

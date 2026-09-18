@@ -1,0 +1,12 @@
+﻿warp.fem.field.FieldRestriction
+===============================
+
+.. currentmodule:: warp.fem.field
+
+.. autoclass:: FieldRestriction
+   
+   
+   
+   
+   
+   

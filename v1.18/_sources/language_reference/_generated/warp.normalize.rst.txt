@@ -1,0 +1,25 @@
+﻿warp.normalize
+==============
+
+.. function:: warp._src.lang.normalize(a: Vector[Float, Any]) -> Vector[Float, Any]
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Compute the normalized value of ``a``.
+   
+   If ``length(a)`` is 0, the zero vector is returned.
+
+.. function:: warp._src.lang.normalize(a: Quaternion[Float]) -> Quaternion[Float]
+   :noindex:
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Compute the normalized value of ``a``.
+   
+   If ``length(a)`` is 0, the zero quaternion is returned.

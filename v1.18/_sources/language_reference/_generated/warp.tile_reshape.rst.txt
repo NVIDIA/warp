@@ -1,0 +1,52 @@
+﻿warp.tile\_reshape
+==================
+
+.. function:: warp._src.lang.tile_reshape(t: Tile[Any, tuple[int, ...]], shape: tuple[int, ...]) -> Tile[Any, tuple[int, ...]]
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
+
+   Return a view of a tile with a new shape.
+   
+   The view aliases the source tile, so writing through it modifies ``t``. Taking the
+   view requires shared storage, but the view itself is non-owning and allocates no
+   additional storage.
+   
+   Elements keep their order in memory, which for a row-major layout matches
+   :func:`numpy.reshape`.
+   
+   :param t: Input tile to reshape. Must be contiguous in memory, not a strided or reversed
+             view. Copy it into a new tile with :func:`~warp.tile_assign` first if needed.
+   :param shape: New shape, whose total number of elements must match ``t``. Entries must
+                 be compile-time constants; at most one may be ``-1``, which is inferred from
+                 the others.
+   
+   :returns: A non-owning tile that aliases ``t`` with the requested shape.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def reshape_matrix(a: wp.array2d[float], out: wp.array2d[float]):
+           t = wp.tile_load(a, shape=(2, 4))
+           r = wp.tile_reshape(t, shape=(4, -1))
+   
+           wp.tile_store(out, r)
+   
+       a = wp.array(np.arange(1, 9, dtype=np.float32).reshape(2, 4), dtype=float)
+       out = wp.zeros((4, 2), dtype=float)
+   
+       wp.launch_tiled(reshape_matrix, dim=1, inputs=[a], outputs=[out], block_dim=4)
+   
+       print(out.numpy())
+   
+   .. testoutput::
+   
+       [[1. 2.]
+        [3. 4.]
+        [5. 6.]
+        [7. 8.]]
+   

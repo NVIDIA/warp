@@ -1,0 +1,23 @@
+﻿warp.bvh\_query\_ray\_tiled
+===========================
+
+.. function:: warp._src.lang.bvh_query_ray_tiled(id: uint64, start: vec3f, dir: vec3f) -> BvhQueryTiled
+
+   .. wp-builtin-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
+
+   Construct a ray query against a :class:`warp.Bvh` for thread-block parallel traversal.
+   
+   Alias for :func:`~warp.tile_bvh_query_ray`; see that function for usage details and
+   an example.
+   
+   :param id: The BVH identifier (must be the same for all threads in the block)
+   :param start: The ray origin, in BVH space (must be the same for all threads in the block)
+   :param dir: A nonzero ray direction in BVH space (must be the same for all threads in the block)
+   
+   :returns: A :class:`warp.BvhQueryTiled`.
+   
+   .. deprecated:: 1.18
+       Use :func:`~warp.tile_bvh_query_ray` instead.

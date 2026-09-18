@@ -1,0 +1,6 @@
+﻿warp.geometry.delaunay\_edge\_flip
+==================================
+
+.. currentmodule:: warp.geometry
+
+.. autofunction:: delaunay_edge_flip

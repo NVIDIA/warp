@@ -1,0 +1,6 @@
+﻿warp.fem.node\_partition\_index
+===============================
+
+.. currentmodule:: warp.fem
+
+.. autodata:: node_partition_index

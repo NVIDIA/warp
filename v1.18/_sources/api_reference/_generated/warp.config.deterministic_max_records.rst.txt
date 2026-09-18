@@ -1,0 +1,6 @@
+﻿warp.config.deterministic\_max\_records
+=======================================
+
+.. currentmodule:: warp.config
+
+.. autodata:: deterministic_max_records

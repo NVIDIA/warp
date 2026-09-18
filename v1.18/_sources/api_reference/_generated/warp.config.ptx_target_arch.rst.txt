@@ -1,0 +1,6 @@
+﻿warp.config.ptx\_target\_arch
+=============================
+
+.. currentmodule:: warp.config
+
+.. autodata:: ptx_target_arch

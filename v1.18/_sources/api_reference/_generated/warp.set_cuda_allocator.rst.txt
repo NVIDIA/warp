@@ -1,0 +1,6 @@
+﻿warp.set\_cuda\_allocator
+=========================
+
+.. currentmodule:: warp
+
+.. autofunction:: set_cuda_allocator
