@@ -51,8 +51,8 @@ variables:
   UV_TRIXIE_SLIM_ARM_IMAGE: "ghcr.io/astral-sh/uv:0.12.7-trixie-slim@sha256:f0c9e8c3b86decaa94dbb7e134d3a3241b7cf4c8c66da2f1bc257d8036bca972"
   MINIFORGE_IMAGE: "condaforge/miniforge3:25.11.0-0@sha256:d2fadb08950045962fd1cfb1eeb6224442027f03095862e725f4c1c7b17a3caf"
   # Warp builder images are pinned per architecture for supply chain security.
-  WARP_BUILDER_IMAGE_CU12_X86_64: "${CI_REGISTRY_IMAGE}/warp-builder:manylinux_2_28-cuda12.9.2-uv0.12.13-x86_64@sha256:9dc7ec97802cbabb8f5f9bfa0ecd85ee33564711816606bb23f329b598770de6"
-  WARP_BUILDER_IMAGE_CU12_AARCH64: "${CI_REGISTRY_IMAGE}/warp-builder:manylinux_2_34-cuda12.9.2-uv0.12.13-aarch64@sha256:336f5726094d9f4edf19739093e95cb223058c76bf88bdf56410326314d11977"
+  WARP_BUILDER_IMAGE_CU12_X86_64: "${CI_REGISTRY_IMAGE}/warp-builder:manylinux_2_28-cuda12.9.2-uv0.12.13-x86_64@sha256:6a00ce1bb59bfc350e121fb74641c15bcc423986253cc0462d99e9d25e7c2b0a"
+  WARP_BUILDER_IMAGE_CU12_AARCH64: "${CI_REGISTRY_IMAGE}/warp-builder:manylinux_2_34-cuda12.9.2-uv0.12.13-aarch64@sha256:63f474a9fd38dfc14e48194e54b34592460f4f6adb84637373ba4f2443fc11a3"
   WARP_BUILDER_IMAGE_CU13_X86_64: "${CI_REGISTRY_IMAGE}/warp-builder:manylinux_2_28-cuda13.4.2-uv0.12.13-x86_64@sha256:f20945f4d6f72ac9ebb3200fa4720233fc040c51e0ae5cb3bbd181cfd06418a4"
   WARP_BUILDER_IMAGE_CU13_AARCH64: "${CI_REGISTRY_IMAGE}/warp-builder:manylinux_2_34-cuda13.4.2-uv0.12.13-aarch64@sha256:7971084a055c77ebe1d68c6e5e9b8c0ab76f7c1eed0506b32b0ce9a40c628349"
   
