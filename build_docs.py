@@ -8,6 +8,8 @@ import re
 import shutil
 import subprocess
 import sys
+import time
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TextIO
 
@@ -25,6 +27,18 @@ _EXCLUDED_DOCS_DIRECTORIES = frozenset(("_build", "_src", "_templates", "superpo
 # Patterns used to estimate each source file's doctest workload.
 _DOCTEST_DIRECTIVE_RE = re.compile(r"^\s*\.\.\s+(?:doctest|testcode)::", re.MULTILINE)
 _DOCTEST_PROMPT_RE = re.compile(r"^\s*>>>\s", re.MULTILINE)
+
+
+@dataclass(eq=False)
+class DoctestProcess:
+    """State for one running doctest shard."""
+
+    shard_index: int
+    process: subprocess.Popen
+    manifest_path: Path
+    output_path: Path
+    log_path: Path
+    log_file: TextIO
 
 
 def positive_int(value: str) -> int:
@@ -56,7 +70,7 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--doctest-jobs",
         type=positive_int,
-        default=1,
+        default=4,
         help="Number of concurrent Sphinx doctest processes",
     )
     parser.add_argument(
@@ -115,9 +129,10 @@ def sphinx_args(
     builder: str,
     warnings_as_errors: bool = False,
     config_overrides: tuple[str, ...] = (),
+    jobs: str | int = "auto",
 ) -> list[str]:
     """Build a Sphinx argument list."""
-    args = ["-j", "auto", "-b", builder]
+    args = ["-j", str(jobs), "-b", builder]
     if warnings_as_errors:
         args.insert(0, "-W")
     for config_override in config_overrides:
@@ -228,6 +243,27 @@ def combine_doctest_output(output_dir: Path, job_count: int) -> None:
             output_file.write("\n")
 
 
+def stop_doctest_processes(processes: list[DoctestProcess]) -> None:
+    """Stop running doctest shards and close their log files."""
+    for shard in processes:
+        if shard.process.poll() is None:
+            try:
+                shard.process.terminate()
+            except ProcessLookupError:
+                pass
+
+    for shard in processes:
+        try:
+            if shard.process.poll() is None:
+                try:
+                    shard.process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    shard.process.kill()
+                    shard.process.wait()
+        finally:
+            shard.log_file.close()
+
+
 def run_parallel_doctests(
     source_dir: Path,
     output_dir: Path,
@@ -259,7 +295,7 @@ def run_parallel_doctests(
     if len(assigned_sources) != len(sources) or set(assigned_sources) != set(sources):
         raise RuntimeError("Doctest sharding must assign every documentation source exactly once")
 
-    processes: list[tuple[int, subprocess.Popen, Path, TextIO]] = []
+    processes: list[DoctestProcess] = []
     try:
         for shard_index, shard in enumerate(shards):
             shard_output = output_dir / f"shard-{shard_index}"
@@ -279,12 +315,14 @@ def run_parallel_doctests(
                 sys.executable,
                 "-m",
                 "sphinx",
+                "-q",
                 *sphinx_args(
                     source_dir,
                     shard_output,
                     "doctest-shard",
                     warnings_as_errors,
                     (f"warp_doctest_shard_manifest={manifest_path}",),
+                    jobs=1,
                 ),
             ]
             logger.info("Starting doctest shard %d/%d", shard_index + 1, job_count)
@@ -295,42 +333,64 @@ def run_parallel_doctests(
             except Exception:
                 log_file.close()
                 raise
-            processes.append((shard_index, process, log_path, log_file))
-    except Exception:
-        for _, process, _, _ in processes:
-            process.terminate()
-        for _, process, _, log_file in processes:
-            try:
-                process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.wait()
-            finally:
-                log_file.close()
-        raise
-
-    failed_shards = []
-    for shard_index, process, log_path, log_file in processes:
-        try:
-            result = process.wait()
-        finally:
-            log_file.close()
-        if result == 0:
-            logger.info("Doctest shard %d/%d completed successfully", shard_index + 1, job_count)
-        else:
-            failed_shards.append((shard_index, result))
-            logger.error("Doctest shard %d/%d failed with exit code %d", shard_index + 1, job_count, result)
-            logger.error(
-                "Doctest shard %d/%d output:\n%s",
-                shard_index + 1,
-                job_count,
-                log_path.read_text(encoding="utf-8", errors="replace").rstrip(),
+            processes.append(
+                DoctestProcess(
+                    shard_index=shard_index,
+                    process=process,
+                    manifest_path=manifest_path,
+                    output_path=shard_output / "output.txt",
+                    log_path=log_path,
+                    log_file=log_file,
+                )
             )
 
-    combine_doctest_output(output_dir, job_count)
-    if failed_shards:
-        failed_summary = ", ".join(f"{index + 1} (exit code {result})" for index, result in failed_shards)
-        raise RuntimeError(f"Sphinx doctest shard(s) failed: {failed_summary}")
+        failed_shards = []
+        pending_processes = processes.copy()
+        while pending_processes:
+            completed_processes = []
+            for shard in pending_processes:
+                result = shard.process.poll()
+                if result is None:
+                    continue
+                shard.log_file.close()
+                if result == 0:
+                    logger.info("Doctest shard %d/%d completed successfully", shard.shard_index + 1, job_count)
+                else:
+                    failed_shards.append((shard.shard_index, result))
+                    logger.error(
+                        "Doctest shard %d/%d failed with exit code %d", shard.shard_index + 1, job_count, result
+                    )
+                    details_path = shard.output_path if shard.output_path.exists() else shard.log_path
+                    details = details_path.read_text(encoding="utf-8", errors="replace").rstrip()
+                    if details_path == shard.log_path:
+                        log_lines = details.splitlines()
+                        if len(log_lines) > 80:
+                            omitted_count = len(log_lines) - 80
+                            details = f"... {omitted_count} earlier log lines omitted ...\n" + "\n".join(
+                                log_lines[-80:]
+                            )
+                    logger.error(
+                        "Doctest shard %d/%d details from %s (full log: %s; manifest: %s):\n%s",
+                        shard.shard_index + 1,
+                        job_count,
+                        details_path,
+                        shard.log_path,
+                        shard.manifest_path,
+                        details,
+                    )
+                completed_processes.append(shard)
+
+            for completed_process in completed_processes:
+                pending_processes.remove(completed_process)
+            if pending_processes and not completed_processes:
+                time.sleep(0.1)
+
+        combine_doctest_output(output_dir, job_count)
+        if failed_shards:
+            failed_summary = ", ".join(f"{index + 1} (exit code {result})" for index, result in failed_shards)
+            raise RuntimeError(f"Sphinx doctest shard(s) failed: {failed_summary}")
+    finally:
+        stop_doctest_processes(processes)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -339,8 +399,6 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
     if not args.html and not args.doctest:
         parser.error("At least one of --html or --doctest must be enabled")
-    if not args.doctest and args.doctest_jobs != 1:
-        parser.error("--doctest-jobs requires --doctest")
 
     log_level = logging.DEBUG if args.verbose else logging.INFO
     logging.basicConfig(
