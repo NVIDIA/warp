@@ -1361,7 +1361,26 @@ class TestUtils(unittest.TestCase):
         self.assertGreaterEqual(result.elapsed, 0.0)
 
 
+def test_map_single_output_list(test, device):
+    """``wp.map`` accepts a one-element list for a single-output function (GH-1913)."""
+    a = wp.array(np.arange(8, dtype=np.float32) - 4.0, dtype=float, device=device)
+    out = wp.zeros(8, dtype=float, device=device)
+
+    result = wp.map(wp.clamp, a, -2.0, 2.0, out=[out])
+    test.assertIs(result, out)
+    np.testing.assert_allclose(out.numpy(), np.clip(np.arange(8, dtype=np.float32) - 4.0, -2.0, 2.0))
+
+    # a wrong-length list still fails with the count-mismatch message
+    with test.assertRaisesRegex(TypeError, "does not match expected number of function outputs"):
+        wp.map(wp.clamp, a, -2.0, 2.0, out=[out, wp.zeros(8, dtype=float, device=device)])
+
+    # a non-array output gets a clear TypeError instead of UnboundLocalError
+    with test.assertRaisesRegex(TypeError, "Invalid output provided"):
+        wp.map(wp.clamp, a, -2.0, 2.0, out=5)
+
+
 add_function_test(TestUtils, "test_array_scan", test_array_scan, devices=devices)
+add_function_test(TestUtils, "test_map_single_output_list", test_map_single_output_list, devices=devices)
 add_function_test(TestUtils, "test_array_scan_vector", test_array_scan_vector, devices=devices)
 add_function_test(TestUtils, "test_array_scan_strided_views", test_array_scan_strided_views, devices=devices)
 add_function_test(TestUtils, "test_array_scan_empty", test_array_scan_empty, devices=devices)

@@ -5739,7 +5739,7 @@ def tile_scan_max_inclusive(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Scalar, tu
     This function cooperatively performs an inclusive max scan (cumulative maximum) across the tile.
 
     Args:
-        a: The input tile. Must be a tile of type float32, int32, or uint32.
+        a: The input tile. Must be a tile of type float32 or int32.
 
     Returns:
         A new tile containing the inclusive max scan result.
@@ -5768,7 +5768,7 @@ def tile_scan_min_inclusive(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Scalar, tu
     This function cooperatively performs an inclusive min scan (cumulative minimum) across the tile.
 
     Args:
-        a: The input tile. Must be a tile of type float32, int32, or uint32.
+        a: The input tile. Must be a tile of type float32 or int32.
 
     Returns:
         A new tile containing the inclusive min scan result.

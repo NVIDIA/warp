@@ -6291,6 +6291,15 @@ class Adjoint:
                 else:
                     current = adj.add_builtin_call("extract", [target, *indices])
 
+                # Reads like ``address`` produce a reference that is only loaded
+                # at the point of use, which would defer the read until after the
+                # RHS is evaluated. Materialize the value now so the slot's current
+                # contents are captured before the RHS runs. ``copy`` (unlike
+                # ``load``) keeps the read-side adjoint chain back to the
+                # underlying storage intact (same pattern as ``emit_Assign``).
+                if isinstance(current, Var) and is_reference(current.type):
+                    current = adj.add_builtin_call("copy", [current])
+
             # Snapshot the current value before evaluating a user operator's RHS.
             # An unrelated overload must still take the builtin atomic path.
             if resolve_user_operator(current) is None and adj.atomic_array_slot(slot, eval_rhs, node.op):
@@ -6309,6 +6318,11 @@ class Adjoint:
 
             with adj.suppress_read_tracking():
                 current = adj.emit_Attribute(lhs, aggregate=aggregate)
+                # ``emit_Attribute`` can return a reference to the attribute's
+                # storage rather than its value; materialize it now so the
+                # attribute's current contents are captured before the RHS runs.
+                if isinstance(current, Var) and is_reference(current.type):
+                    current = adj.add_builtin_call("copy", [current])
 
             if resolve_user_operator(current) is None and adj.atomic_array_slot(slot, eval_rhs, node.op):
                 return
@@ -6321,15 +6335,15 @@ class Adjoint:
             # wp.adjoint[var] appears in custom grad functions; handle the
             # adjoint store inline rather than through lower_subscript_augassign.
             if hasattr(lhs.value, "attr") and lhs.value.attr == "adjoint":
-                with adj.suppress_read_tracking():
-                    current = adj.eval(lhs)
-
-                result = apply_operator(current)
+                # Evaluate the target's index expression once, before the RHS,
+                # matching Python's evaluation order for augmented assignments.
                 lhs.slice.is_adjoint = True
-                src_var = adj.eval(lhs.slice)
-                adjoint_target = adj.make_adjoint_target_var(src_var)
+                with adj.suppress_read_tracking():
+                    src_var = adj.eval(lhs.slice)
+                    adjoint_target = adj.make_adjoint_target_var(src_var)
                 if adjoint_target is None:
                     return
+                result = apply_operator(adjoint_target)
                 adj.add_forward(f"{adjoint_target.emit()} = {result.emit()};")
                 return
 

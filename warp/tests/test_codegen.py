@@ -1644,6 +1644,53 @@ def test_assign_rhs_before_target_index(test, device):
     test.assertAlmostEqual(scratch.numpy()[0], 7.0)
 
 
+@wp.func
+def augassign_order_index(scratch: wp.array[float]) -> int:
+    # Side effect: overwrite scratch[0] before returning the target index.
+    scratch[0] = 7.0
+    return 0
+
+
+@wp.func
+def augassign_order_rhs(scratch: wp.array[float]) -> float:
+    return scratch[0]
+
+
+@wp.kernel
+def augassign_target_before_rhs_kernel(dst: wp.array[float], scratch: wp.array[float]):
+    scratch[0] = 3.0
+    # Python evaluates the augmented-assignment target (including its index
+    # expression) before the RHS, so the RHS must observe the mutated value.
+    dst[augassign_order_index(scratch)] += augassign_order_rhs(scratch)
+
+
+@wp.kernel
+def augassign_target_before_rhs_nonatomic_kernel(dst: wp.array[wp.int16], scratch: wp.array[float]):
+    scratch[0] = 3.0
+    # Same ordering requirement on the non-atomic subscript path.
+    dst[augassign_order_index(scratch)] += wp.int16(augassign_order_rhs(scratch))
+
+
+def test_augassign_target_before_rhs(test, device):
+    """Verify augmented assignment evaluates the target index before the RHS (GH-1947)."""
+    dst = wp.zeros(1, dtype=float, device=device)
+    scratch = wp.array([0.0], dtype=float, device=device)
+
+    wp.launch(augassign_target_before_rhs_kernel, dim=1, inputs=[dst, scratch], device=device)
+
+    test.assertAlmostEqual(
+        dst.numpy()[0], 7.0, msg="rhs was evaluated before the target index expression mutated scratch"
+    )
+
+    dst16 = wp.zeros(1, dtype=wp.int16, device=device)
+
+    wp.launch(augassign_target_before_rhs_nonatomic_kernel, dim=1, inputs=[dst16, scratch], device=device)
+
+    test.assertEqual(
+        int(dst16.numpy()[0]), 7, msg="rhs was evaluated before the target index expression mutated scratch"
+    )
+
+
 @wp.kernel
 def array_copy_grad_kernel(dst: wp.array[float], src: wp.array[float]):
     i = wp.tid()
@@ -2944,6 +2991,12 @@ add_function_test(
     TestCodeGen,
     "test_assign_rhs_before_target_index",
     test_assign_rhs_before_target_index,
+    devices=devices,
+)
+add_function_test(
+    TestCodeGen,
+    "test_augassign_target_before_rhs",
+    test_augassign_target_before_rhs,
     devices=devices,
 )
 add_function_test(

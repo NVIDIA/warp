@@ -40,6 +40,14 @@ from warp._src.logger import log_warning
 # https://github.com/numpy/numpy/issues/26037
 _ARRAY_INTERFACE_EMPTY_DATA = ctypes.c_byte()
 
+
+class _ArrayInterfaceWrapper:
+    """Exposes an ``__array_interface__`` dict to NumPy without invoking ``array.__array__``."""
+
+    def __init__(self, interface):
+        self.__array_interface__ = interface
+
+
 # type hints
 T = TypeVar("T")
 Length = TypeVar("Length", bound=int)
@@ -625,18 +633,26 @@ def constant(x):
 
 
 def float_to_half_bits(value):
+    if warp._src.context.runtime is None:
+        warp.init()
     return warp._src.context.runtime.core.wp_float_to_half_bits(value)
 
 
 def half_bits_to_float(value):
+    if warp._src.context.runtime is None:
+        warp.init()
     return warp._src.context.runtime.core.wp_half_bits_to_float(value)
 
 
 def float_to_bfloat16_bits(value):
+    if warp._src.context.runtime is None:
+        warp.init()
     return warp._src.context.runtime.core.wp_float_to_bfloat16_bits(value)
 
 
 def bfloat16_bits_to_float(value):
+    if warp._src.context.runtime is None:
+        warp.init()
     return warp._src.context.runtime.core.wp_bfloat16_bits_to_float(value)
 
 
@@ -4069,6 +4085,23 @@ class array(Array[DType, NDim]):
             }
 
         return self._array_interface
+
+    def __array__(self, dtype=None, copy=None):
+        # NumPy requires CPU-accessible memory; without __array__ it would fall back
+        # to the sequence protocol and fail with a misleading indexing error.
+        if self.device is not None and not self.device.is_cpu:
+            raise TypeError(
+                f"Cannot implicitly convert a Warp array on device '{self.device}' to a NumPy array. "
+                f"Call .numpy() to perform an explicit device-to-host copy."
+            )
+
+        # convert through __array_interface__ without re-entering __array__
+        result = np.asarray(_ArrayInterfaceWrapper(self.__array_interface__))
+        if dtype is not None:
+            result = result.astype(dtype, copy=False)
+        if copy:
+            result = result.copy()
+        return result
 
     def __dlpack__(self, stream=None):
         # See https://data-apis.org/array-api/2022.12/API_specification/generated/array_api.array.__dlpack__.html

@@ -350,6 +350,15 @@ class TestTypes(unittest.TestCase):
         const = wp.constant(wp.vec3i(1, 2, 3))
         self.assertEqual(const, wp.vec3i(1, 2, 3))
 
+    def test_half_precision_auto_init(self):
+        # Half-precision scalar types must work without an explicit wp.init() call (GH-972).
+        result = run_python_subprocess(
+            "import warp as wp; v = wp.vec2h(2.0, 3.0); print(float(v[0]), float(v[1]))",
+            hide_gpu=True,
+        )
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        self.assertIn("2.0 3.0", result.stdout)
+
     def test_constant_error_invalid_type(self):
         with self.assertRaisesRegex(TypeError, r"Invalid constant type: <class 'tuple'>$"):
             wp.constant((1, 2, 3))

@@ -1331,7 +1331,18 @@ def map(
         for dtype in out_dtypes:
             rg = requires_grad and Adjoint.is_differentiable_value_type(dtype)
             outputs.append(wp.empty(out_shape, dtype=dtype, requires_grad=rg, device=device))
-    elif len(out_dtypes) == 1 and is_array(out):
+    elif len(out_dtypes) == 1:
+        if isinstance(out, tuple) or isinstance(out, list):
+            # A single output may also be provided as a one-element list or tuple.
+            if len(out) != len(out_dtypes):
+                raise TypeError(
+                    f"Number of provided output arrays ({len(out)}) does not match expected number of function outputs ({len(out_dtypes)})"
+                )
+            out = out[0]
+        if not is_array(out):
+            raise TypeError(
+                f"Invalid output provided, expected 1 Warp array with shape {out_shape} and dtype {type_repr(out_dtypes[0])}"
+            )
         if not types_equal(out.dtype, out_dtypes[0]):
             raise TypeError(
                 f"Output array dtype {type_repr(out.dtype)} does not match expected dtype {type_repr(out_dtypes[0])}"
@@ -1357,6 +1368,10 @@ def map(
             raise TypeError(
                 f"Invalid output provided, expected {len(out_dtypes)} Warp arrays with shape {out_shape} and dtypes ({', '.join(type_repr(t) for t in out_dtypes)})"
             )
+    else:
+        raise TypeError(
+            f"Invalid output provided, expected {len(out_dtypes)} Warp arrays with shape {out_shape} and dtypes ({', '.join(type_repr(t) for t in out_dtypes)})"
+        )
 
     # Generate kernel if not cached
     if kernel is None:
