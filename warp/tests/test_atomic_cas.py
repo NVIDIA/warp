@@ -269,7 +269,10 @@ def test_atomic_cas_4d(test, device, dtype, register_kernels=False):
     assert_np_equal(counter_np, expected)
 
 
-devices = get_test_devices()
+# Pre-Volta CUDA does not provide independent thread scheduling, so a
+# spinlock contended by lanes in the same warp can deadlock. CPU launches
+# remain covered because Warp executes these kernels serially by default.
+devices = [d for d in get_test_devices() if not d.is_cuda or d.arch >= 70]
 
 
 class TestAtomicCAS(unittest.TestCase):
