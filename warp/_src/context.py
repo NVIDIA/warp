@@ -73,7 +73,15 @@ import warp.config
 from warp._src.codegen import WarpCodegenError, WarpCodegenTypeError, _codegen_lock, synchronized
 from warp._src.logger import get_logger, log_debug, log_error, log_info, log_warning
 from warp._src.texture import Texture1D, Texture2D, Texture3D, texture1d_t, texture2d_t, texture3d_t
-from warp._src.types import LAUNCH_MAX_DIMS, Array, LaunchBounds, array_t, launch_bounds_t, type_repr
+from warp._src.types import (
+    LAUNCH_BOUNDS_MAX_SIZE,
+    LAUNCH_MAX_DIMS,
+    Array,
+    LaunchBounds,
+    array_t,
+    launch_bounds_t,
+    type_repr,
+)
 
 _KERNEL_RETURN_ERROR = (
     "Warp kernels cannot return values. Write results to output arguments, "
@@ -7932,6 +7940,7 @@ class Runtime:
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.POINTER(ctypes.c_void_p),
+                ctypes.c_bool,
             ]
             self.core.wp_cuda_graph_end_capture.restype = ctypes.c_bool
 
@@ -11415,8 +11424,14 @@ def _build_launch_bounds_from_tuple(dim: tuple[int, ...], kernel_dim: int) -> La
         for extent in extras:
             coord_mult *= extent
 
+        total = bounds.size * coord_mult
+        if coord_mult > LAUNCH_BOUNDS_MAX_SIZE or total > LAUNCH_BOUNDS_MAX_SIZE:
+            raise ValueError(
+                f"Launch size {total} exceeds the maximum representable launch bounds size of {LAUNCH_BOUNDS_MAX_SIZE}"
+            )
+
         bounds.coord_mult = coord_mult
-        bounds.size *= coord_mult
+        bounds.size = total
 
     return bounds
 
@@ -13147,12 +13162,24 @@ def capture_begin(
     _register_capture(device, stream, graph, capture_id)
 
 
-def capture_end(device: DeviceLike = None, stream: Stream | None = None) -> Graph:
+def capture_end(device: DeviceLike = None, stream: Stream | None = None, skip_leaf_join: bool = False) -> Graph:
     """End the capture of a graph.
 
     Args:
         device: The device where capture began
         stream: The CUDA stream where capture began (CUDA only)
+        skip_leaf_join: Whether to skip joining the captured graph's leaf nodes
+          into the capture stream's dependency set before ending the capture
+          (CUDA only). By default, Warp adopts any outstanding leaf nodes so that
+          work forked onto sibling streams during capture does not fail
+          ``cudaStreamEndCapture`` with an unjoined-work error. When the capture
+          window is embedded in an externally-owned capture (see the ``external``
+          argument of :func:`capture_begin`) and the owning integration manages
+          the capture frontier itself, set this to ``True`` so that leaf nodes
+          belonging to other branches of the outer graph are not adopted, which
+          would inject false serialization edges. When the join is skipped and
+          the stream genuinely has unjoined work, ending the capture fails as
+          usual. Ignored on CPU devices.
 
     Returns:
         A :class:`Graph` object that can be launched with :func:`~warp.capture_launch()`
@@ -13187,7 +13214,7 @@ def capture_end(device: DeviceLike = None, stream: Stream | None = None) -> Grap
 
     # get the graph executable
     g = ctypes.c_void_p()
-    result = runtime.core.wp_cuda_graph_end_capture(device.context, stream.cuda_stream, ctypes.byref(g))
+    result = runtime.core.wp_cuda_graph_end_capture(device.context, stream.cuda_stream, ctypes.byref(g), skip_leaf_join)
 
     # End APIC recording regardless of capture success
     if graph._apic_capture is not None:

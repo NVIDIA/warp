@@ -3496,7 +3496,40 @@ bool wp_cuda_graph_begin_capture(void* context, void* stream, int external, int 
     return true;
 }
 
-bool wp_cuda_graph_end_capture(void* context, void* stream, void** graph_ret)
+// Ensure that all forked streams are joined to the main capture stream by manually
+// adding outstanding capture dependencies gathered from the graph leaf nodes.
+// Returns false if the join invalidated the capture graph. Used by both
+// wp_cuda_graph_end_capture() (which can opt out via skip_leaf_join) and
+// wp_cuda_graph_pause_capture() (which always joins, since pausing is internal
+// to Warp's own capture machinery).
+static bool join_capture_leaf_nodes(CUstream cuda_stream, cudaGraph_t graph)
+{
+    std::vector<cudaGraphNode_t> stream_dependencies;
+    std::vector<cudaGraphNode_t> leaf_nodes;
+    if (get_capture_dependencies(cuda_stream, stream_dependencies) && get_graph_leaf_nodes(graph, leaf_nodes)) {
+        // compute set difference to get unjoined dependencies
+        std::vector<cudaGraphNode_t> unjoined_dependencies;
+        std::sort(stream_dependencies.begin(), stream_dependencies.end());
+        std::sort(leaf_nodes.begin(), leaf_nodes.end());
+        std::set_difference(
+            leaf_nodes.begin(), leaf_nodes.end(), stream_dependencies.begin(), stream_dependencies.end(),
+            std::back_inserter(unjoined_dependencies)
+        );
+        if (!unjoined_dependencies.empty()) {
+            check_cu(cuStreamUpdateCaptureDependencies_f(
+                cuda_stream, unjoined_dependencies.data(), unjoined_dependencies.size(),
+                CU_STREAM_ADD_CAPTURE_DEPENDENCIES
+            ));
+            // ensure graph is still valid
+            if (get_capture_graph(cuda_stream) != graph) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+bool wp_cuda_graph_end_capture(void* context, void* stream, void** graph_ret, bool skip_leaf_join)
 {
     ContextGuard guard(context);
 
@@ -3563,29 +3596,13 @@ bool wp_cuda_graph_end_capture(void* context, void* stream, void** graph_ret)
     }
 
     // ensure that all forked streams are joined to the main capture stream by manually
-    // adding outstanding capture dependencies gathered from the graph leaf nodes
-    std::vector<cudaGraphNode_t> stream_dependencies;
-    std::vector<cudaGraphNode_t> leaf_nodes;
-    if (get_capture_dependencies(cuda_stream, stream_dependencies) && get_graph_leaf_nodes(graph, leaf_nodes)) {
-        // compute set difference to get unjoined dependencies
-        std::vector<cudaGraphNode_t> unjoined_dependencies;
-        std::sort(stream_dependencies.begin(), stream_dependencies.end());
-        std::sort(leaf_nodes.begin(), leaf_nodes.end());
-        std::set_difference(
-            leaf_nodes.begin(), leaf_nodes.end(), stream_dependencies.begin(), stream_dependencies.end(),
-            std::back_inserter(unjoined_dependencies)
-        );
-        if (!unjoined_dependencies.empty()) {
-            check_cu(cuStreamUpdateCaptureDependencies_f(
-                cuda_stream, unjoined_dependencies.data(), unjoined_dependencies.size(),
-                CU_STREAM_ADD_CAPTURE_DEPENDENCIES
-            ));
-            // ensure graph is still valid
-            if (get_capture_graph(cuda_stream) != graph) {
-                clean_up();
-                return false;
-            }
-        }
+    // adding outstanding capture dependencies gathered from the graph leaf nodes;
+    // callers that manage the capture frontier themselves (e.g. an externally-owned
+    // capture adopted with wp.capture_begin(external=True)) can opt out so that
+    // leaf nodes belonging to other branches are not adopted into this window
+    if (!skip_leaf_join && !join_capture_leaf_nodes(cuda_stream, graph)) {
+        clean_up();
+        return false;
     }
 
     // check if this graph has unfreed allocations, which require special handling
@@ -4055,6 +4072,22 @@ bool wp_cuda_graph_pause_capture(void* context, void* stream, void** graph_ret)
     ContextGuard guard(context);
 
     CUstream cuda_stream = static_cast<CUstream>(stream);
+
+    // join any forked capture streams back to the main stream so that
+    // cudaStreamEndCapture does not fail with cudaErrorStreamCaptureUnjoined,
+    // mirroring the leaf-join repair in wp_cuda_graph_end_capture(); resume
+    // re-seeds the frontier from the same leaf nodes via cudaStreamBeginCaptureToGraph
+    CUstreamCaptureStatus capture_status = CU_STREAM_CAPTURE_STATUS_NONE;
+    cudaGraph_t graph = NULL;
+    if (!check_cu(cuStreamGetCaptureInfo_f(cuda_stream, &capture_status, nullptr, &graph, nullptr, nullptr)))
+        return false;
+    if (!graph || capture_status != CU_STREAM_CAPTURE_STATUS_ACTIVE) {
+        wp::set_error_string("Warp error: pause_capture called on stream that is not capturing");
+        return false;
+    }
+    if (!join_capture_leaf_nodes(cuda_stream, graph))
+        return false;
+
     if (!check_cuda(cudaStreamEndCapture(cuda_stream, (cudaGraph_t*)graph_ret)))
         return false;
     return true;

@@ -2314,6 +2314,14 @@ def type_is_hash_grid_query(t):
 ARRAY_MAX_DIMS = 4
 LAUNCH_MAX_DIMS = 4
 
+# maximum per-dimension launch extent, must match the uint32_t shape field
+# of launch_bounds_t in builtin.h
+LAUNCH_BOUNDS_MAX_EXTENT = (1 << 32) - 1
+
+# maximum total launch size, must match the size_t size/coord_mult fields
+# of launch_bounds_t in builtin.h
+LAUNCH_BOUNDS_MAX_SIZE = (1 << 64) - 1
+
 # must match array.h
 ARRAY_TYPE_REGULAR = 0
 ARRAY_TYPE_INDEXED = 1
@@ -2331,8 +2339,21 @@ def _make_launch_bounds_class(ndim: int):
 
         size = 1
         for i, extent in enumerate(shape):
+            # reject extents that would silently wrap the uint32 shape field,
+            # which would corrupt both the live launch and any recorded
+            # (APIC) launch bounds
+            if extent < 0 or extent > LAUNCH_BOUNDS_MAX_EXTENT:
+                raise ValueError(
+                    f"Launch extent {extent} in dimension {i} is outside the representable "
+                    f"range [0, {LAUNCH_BOUNDS_MAX_EXTENT}]"
+                )
             self.shape[i] = extent
             size *= extent
+
+        if size > LAUNCH_BOUNDS_MAX_SIZE:
+            raise ValueError(
+                f"Launch size {size} exceeds the maximum representable launch bounds size of {LAUNCH_BOUNDS_MAX_SIZE}"
+            )
 
         self.size = size
         self.coord_mult = 1

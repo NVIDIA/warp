@@ -792,6 +792,25 @@ def test_launch_rejects_negative_dim(test, device):
         wp.launch_tiled(no_tid_counter, dim=np.int32(-1), inputs=[counter], block_dim=32, device=device)
 
 
+def test_launch_rejects_unrepresentable_extent(test, device):
+    """Reject extents that would silently wrap the uint32 launch-bounds shape (GH-1800)."""
+    out = wp.zeros(1, dtype=float, device=device)
+
+    # per-dimension extents must fit the uint32 shape field
+    with test.assertRaisesRegex(ValueError, r"Launch extent .* is outside the representable range"):
+        wp.launch(no_tid_kernel, dim=2**32, inputs=[out, 1.0], device=device, record_cmd=True)
+
+    launch = wp.launch(no_tid_kernel, dim=1, inputs=[out, 1.0], device=device, record_cmd=True)
+    with test.assertRaisesRegex(ValueError, r"Launch extent .* is outside the representable range"):
+        launch.set_dim((2**32,))
+
+    # extents beyond the kernel rank fold into coord_mult (uint64); reject only
+    # when the folded total exceeds the representable launch size
+    huge = 2**32 - 1
+    with test.assertRaisesRegex(ValueError, r"Launch size .* exceeds the maximum representable"):
+        wp.launch(no_tid_kernel, dim=(huge, huge, huge), inputs=[out, 1.0], device=device, record_cmd=True)
+
+
 @wp.kernel
 def manual_tiled_kernel(out: wp.array3d[int], m: int, n: int, block_dim: int):
     i, j, t = wp.tid()
@@ -1099,6 +1118,12 @@ add_function_test(
     "test_launch_rejects_negative_dim",
     test_launch_rejects_negative_dim,
     devices=["cpu"],
+)
+add_function_test(
+    TestTemplateLaunchBounds,
+    "test_launch_rejects_unrepresentable_extent",
+    test_launch_rejects_unrepresentable_extent,
+    devices=devices,
 )
 add_function_test(TestTemplateLaunchBounds, "test_manual_tiled", test_manual_tiled, devices=devices)
 add_function_test(TestTemplateLaunchBounds, "test_tiled_matrix_1d_user", test_tiled_matrix_1d_user, devices=devices)
