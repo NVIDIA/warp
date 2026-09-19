@@ -401,176 +401,176 @@ tile_reduce_axis_impl(Op f, Tile& t, typename Tile::Type empty_identity, bool ha
     // special case: 1D input delegates to block-wide tile_reduce_impl for optimal performance
     if constexpr (InputShape::N == 1) {
         return tile_reduce_impl(f, t);
-    }
-
-    // shared memory buffer for the output (used by all tiers)
-    // CUDA ignores the constructor a __shared__ array of T would run, and NVRTC
-    // diagnoses it, so reserve raw storage and view it as T.
-    static_assert(
-        __is_trivially_copyable(T) && __is_trivially_destructible(T),
-        "tile element type must be trivially copyable and destructible"
-    );
-    __shared__ alignas(T) char output_buffer_storage[output_size * sizeof(T)];
-    T* output_buffer = reinterpret_cast<T*>(output_buffer_storage);
-
-    // create output layout for coordinate conversion (used by all tiers)
-    using OutputLayout = tile_layout_strided_t<OutputShape>;
-
-    if constexpr (reduce_dim_size <= 32) {
-        // Tier 1: Single thread per output element (optimal for small reductions)
-
-        // each thread processes output elements, performing reduction along the axis
-        for (int out_idx = WP_TILE_THREAD_IDX; out_idx < output_size; out_idx += WP_TILE_BLOCK_DIM) {
-            // convert output linear index to output coordinates
-            auto out_coord = OutputLayout::coord_from_linear(out_idx);
-
-            // initialize accumulator with first element along the reduction axis
-            T accumulator = t.data(tile_coord_insert_axis<Axis>(out_coord, 0));
-
-            // reduce across the axis
-            for (int i = 1; i < reduce_dim_size; ++i) {
-                accumulator = f(accumulator, t.data(tile_coord_insert_axis<Axis>(out_coord, i)));
-            }
-
-            // store to output buffer
-            output_buffer[out_idx] = accumulator;
-        }
-
-        // sync before reading output
-        WP_TILE_SYNC();
-    } else if constexpr (reduce_dim_size <= 256) {
-        // Tier 2: Warp-based reduction (one warp per output element)
-        constexpr int warp_count = (WP_TILE_BLOCK_DIM + WP_TILE_WARP_SIZE - 1) / WP_TILE_WARP_SIZE;
-        const int warp_index = threadIdx.x / WP_TILE_WARP_SIZE;
-        const int lane_index = threadIdx.x % WP_TILE_WARP_SIZE;
-
-        constexpr int chunks_per_slice = (reduce_dim_size + WP_TILE_WARP_SIZE - 1) / WP_TILE_WARP_SIZE;
-
-        // shared memory: one accumulator per warp
+    } else {
+        // shared memory buffer for the output (used by all tiers)
         // CUDA ignores the constructor a __shared__ array of T would run, and NVRTC
         // diagnoses it, so reserve raw storage and view it as T.
         static_assert(
             __is_trivially_copyable(T) && __is_trivially_destructible(T),
             "tile element type must be trivially copyable and destructible"
         );
-        __shared__ alignas(T) char warp_partials_storage[warp_count * sizeof(T)];
-        T* warp_partials = reinterpret_cast<T*>(warp_partials_storage);
+        __shared__ alignas(T) char output_buffer_storage[output_size * sizeof(T)];
+        T* output_buffer = reinterpret_cast<T*>(output_buffer_storage);
 
-        // each warp processes output slices
-        for (int out_idx = warp_index; out_idx < output_size; out_idx += warp_count) {
-            auto out_coord = OutputLayout::coord_from_linear(out_idx);
+        // create output layout for coordinate conversion (used by all tiers)
+        using OutputLayout = tile_layout_strided_t<OutputShape>;
 
-            // process the reduction axis in chunks of 32
-            for (int chunk = 0; chunk < chunks_per_slice; ++chunk) {
-                int axis_idx = chunk * WP_TILE_WARP_SIZE + lane_index;
-                bool valid = axis_idx < reduce_dim_size;
+        if constexpr (reduce_dim_size <= 32) {
+            // Tier 1: Single thread per output element (optimal for small reductions)
 
-                T val;
-                if (valid) {
-                    auto in_coord = tile_coord_insert_axis<Axis>(out_coord, axis_idx);
-                    val = t.data(in_coord);
+            // each thread processes output elements, performing reduction along the axis
+            for (int out_idx = WP_TILE_THREAD_IDX; out_idx < output_size; out_idx += WP_TILE_BLOCK_DIM) {
+                // convert output linear index to output coordinates
+                auto out_coord = OutputLayout::coord_from_linear(out_idx);
+
+                // initialize accumulator with first element along the reduction axis
+                T accumulator = t.data(tile_coord_insert_axis<Axis>(out_coord, 0));
+
+                // reduce across the axis
+                for (int i = 1; i < reduce_dim_size; ++i) {
+                    accumulator = f(accumulator, t.data(tile_coord_insert_axis<Axis>(out_coord, i)));
                 }
 
-                // warp reduce this chunk (only valid lanes may call warp_reduce,
-                // because __shfl_down_sync requires all executing threads to be in the mask)
-                wp_tile_lane_mask_bits_t mask = __ballot_sync(WP_TILE_LANE_MASK_ALL, valid);
-                T chunk_result;
-                if (valid)
-                    chunk_result = warp_reduce(val, f, mask);
-
-                // lane 0 accumulates the chunk result
-                if (lane_index == 0) {
-                    if (chunk == 0)
-                        warp_partials[warp_index] = chunk_result;
-                    else
-                        warp_partials[warp_index] = f(warp_partials[warp_index], chunk_result);
-                }
+                // store to output buffer
+                output_buffer[out_idx] = accumulator;
             }
 
-            // lane 0 writes final result for this output element
-            if (lane_index == 0)
-                output_buffer[out_idx] = warp_partials[warp_index];
-        }
-
-        // sync before reading output
-        WP_TILE_SYNC();
-    } else {
-        // Tier 3: Block-level reduction (entire block collaborates on each output element)
-        constexpr int warp_count = (WP_TILE_BLOCK_DIM + WP_TILE_WARP_SIZE - 1) / WP_TILE_WARP_SIZE;
-
-        // shared memory for cross-warp reduction (only needed for multi-warp)
-        // CUDA ignores the constructor a __shared__ array of T would run, and
-        // NVRTC diagnoses it, so reserve raw storage and view it as T.
-        static_assert(
-            __is_trivially_copyable(T) && __is_trivially_destructible(T),
-            "tile element type must be trivially copyable and destructible"
-        );
-        __shared__ alignas(T) char partials_storage[warp_count * sizeof(T)];
-        T* partials = reinterpret_cast<T*>(partials_storage);
-        __shared__ int active_warps;
-
-        // process each output element sequentially with full block cooperation
-        for (int out_idx = 0; out_idx < output_size; ++out_idx) {
-            auto out_coord = OutputLayout::coord_from_linear(out_idx);
-
-            // step 1: each thread reduces its strided subset of the slice locally
-            bool thread_has_data = threadIdx.x < reduce_dim_size;
-            T thread_sum;
-
-            if (thread_has_data) {
-                // initialize with first element
-                auto in_coord = tile_coord_insert_axis<Axis>(out_coord, threadIdx.x);
-                thread_sum = t.data(in_coord);
-
-                // reduce remaining elements with stride
-                for (int i = threadIdx.x + WP_TILE_BLOCK_DIM; i < reduce_dim_size; i += WP_TILE_BLOCK_DIM) {
-                    auto in_coord = tile_coord_insert_axis<Axis>(out_coord, i);
-                    T val = t.data(in_coord);
-                    thread_sum = f(thread_sum, val);
-                }
-            }
-
-            // step 2: combine thread results across block
-            T block_sum;
-            if constexpr (warp_count == 1) {
-                // fast path: single warp, just do warp reduction
-                wp_tile_lane_mask_bits_t mask = __ballot_sync(WP_TILE_LANE_MASK_ALL, thread_has_data);
-                if (thread_has_data)
-                    block_sum = warp_reduce(thread_sum, f, mask);
-
-                // write from first active lane (warp_reduce result is only valid there)
-                int first_active = WP_TILE_LANE_MASK_FFS(mask) - 1;
-                if (threadIdx.x == first_active)
-                    output_buffer[out_idx] = block_sum;
-            } else {
-                // multi-warp path: cross-warp reduction via shared memory
-                if (threadIdx.x == 0)
-                    active_warps = 0;
-
-                WP_TILE_SYNC();
-
-                block_sum = block_combine_thread_results(thread_sum, thread_has_data, f, partials, active_warps);
-
-                if (threadIdx.x == 0)
-                    output_buffer[out_idx] = block_sum;
-            }
-
-            // sync before next output element
+            // sync before reading output
             WP_TILE_SYNC();
+        } else if constexpr (reduce_dim_size <= 256) {
+            // Tier 2: Warp-based reduction (one warp per output element)
+            constexpr int warp_count = (WP_TILE_BLOCK_DIM + WP_TILE_WARP_SIZE - 1) / WP_TILE_WARP_SIZE;
+            const int warp_index = threadIdx.x / WP_TILE_WARP_SIZE;
+            const int lane_index = threadIdx.x % WP_TILE_WARP_SIZE;
+
+            constexpr int chunks_per_slice = (reduce_dim_size + WP_TILE_WARP_SIZE - 1) / WP_TILE_WARP_SIZE;
+
+            // shared memory: one accumulator per warp
+            // CUDA ignores the constructor a __shared__ array of T would run, and NVRTC
+            // diagnoses it, so reserve raw storage and view it as T.
+            static_assert(
+                __is_trivially_copyable(T) && __is_trivially_destructible(T),
+                "tile element type must be trivially copyable and destructible"
+            );
+            __shared__ alignas(T) char warp_partials_storage[warp_count * sizeof(T)];
+            T* warp_partials = reinterpret_cast<T*>(warp_partials_storage);
+
+            // each warp processes output slices
+            for (int out_idx = warp_index; out_idx < output_size; out_idx += warp_count) {
+                auto out_coord = OutputLayout::coord_from_linear(out_idx);
+
+                // process the reduction axis in chunks of 32
+                for (int chunk = 0; chunk < chunks_per_slice; ++chunk) {
+                    int axis_idx = chunk * WP_TILE_WARP_SIZE + lane_index;
+                    bool valid = axis_idx < reduce_dim_size;
+
+                    T val;
+                    if (valid) {
+                        auto in_coord = tile_coord_insert_axis<Axis>(out_coord, axis_idx);
+                        val = t.data(in_coord);
+                    }
+
+                    // warp reduce this chunk (only valid lanes may call warp_reduce,
+                    // because __shfl_down_sync requires all executing threads to be in the mask)
+                    wp_tile_lane_mask_bits_t mask = __ballot_sync(WP_TILE_LANE_MASK_ALL, valid);
+                    T chunk_result;
+                    if (valid)
+                        chunk_result = warp_reduce(val, f, mask);
+
+                    // lane 0 accumulates the chunk result
+                    if (lane_index == 0) {
+                        if (chunk == 0)
+                            warp_partials[warp_index] = chunk_result;
+                        else
+                            warp_partials[warp_index] = f(warp_partials[warp_index], chunk_result);
+                    }
+                }
+
+                // lane 0 writes final result for this output element
+                if (lane_index == 0)
+                    output_buffer[out_idx] = warp_partials[warp_index];
+            }
+
+            // sync before reading output
+            WP_TILE_SYNC();
+        } else {
+            // Tier 3: Block-level reduction (entire block collaborates on each output element)
+            constexpr int warp_count = (WP_TILE_BLOCK_DIM + WP_TILE_WARP_SIZE - 1) / WP_TILE_WARP_SIZE;
+
+            // shared memory for cross-warp reduction (only needed for multi-warp)
+            // CUDA ignores the constructor a __shared__ array of T would run, and NVRTC
+            // diagnoses it, so reserve raw storage and view it as T.
+            static_assert(
+                __is_trivially_copyable(T) && __is_trivially_destructible(T),
+                "tile element type must be trivially copyable and destructible"
+            );
+            __shared__ alignas(T) char partials_storage[warp_count * sizeof(T)];
+            T* partials = reinterpret_cast<T*>(partials_storage);
+            __shared__ int active_warps;
+
+            // process each output element sequentially with full block cooperation
+            for (int out_idx = 0; out_idx < output_size; ++out_idx) {
+                auto out_coord = OutputLayout::coord_from_linear(out_idx);
+
+                // step 1: each thread reduces its strided subset of the slice locally
+                bool thread_has_data = threadIdx.x < reduce_dim_size;
+                T thread_sum;
+
+                if (thread_has_data) {
+                    // initialize with first element
+                    auto in_coord = tile_coord_insert_axis<Axis>(out_coord, threadIdx.x);
+                    thread_sum = t.data(in_coord);
+
+                    // reduce remaining elements with stride
+                    for (int i = threadIdx.x + WP_TILE_BLOCK_DIM; i < reduce_dim_size; i += WP_TILE_BLOCK_DIM) {
+                        auto in_coord = tile_coord_insert_axis<Axis>(out_coord, i);
+                        T val = t.data(in_coord);
+                        thread_sum = f(thread_sum, val);
+                    }
+                }
+
+                // step 2: combine thread results across block
+                T block_sum;
+                if constexpr (warp_count == 1) {
+                    // fast path: single warp, just do warp reduction
+                    wp_tile_lane_mask_bits_t mask = __ballot_sync(WP_TILE_LANE_MASK_ALL, thread_has_data);
+                    if (thread_has_data)
+                        block_sum = warp_reduce(thread_sum, f, mask);
+
+                    // write from first active lane (warp_reduce result is only valid there)
+                    int first_active = WP_TILE_LANE_MASK_FFS(mask) - 1;
+                    if (threadIdx.x == first_active)
+                        output_buffer[out_idx] = block_sum;
+                } else {
+                    // multi-warp path: cross-warp reduction via shared memory
+                    if (threadIdx.x == 0)
+                        active_warps = 0;
+
+                    WP_TILE_SYNC();
+
+                    block_sum = block_combine_thread_results(thread_sum, thread_has_data, f, partials, active_warps);
+
+                    if (threadIdx.x == 0)
+                        output_buffer[out_idx] = block_sum;
+                }
+
+                // sync before next output element
+                WP_TILE_SYNC();
+            }
         }
+
+        // copy from shared memory buffer to register tile (common to all tiers)
+        auto output = tile_register_t<T, tile_layout_register_t<OutputShape>>();
+        using OutputRegLayout = typename decltype(output)::Layout;
+
+        WP_PRAGMA_UNROLL
+        for (int i = 0; i < OutputRegLayout::NumRegs; ++i) {
+            int linear = OutputRegLayout::linear_from_register(i);
+            output.data[i] = OutputRegLayout::valid(linear) ? output_buffer[linear] : T {};
+        }
+
+        return output;
     }
-
-    // copy from shared memory buffer to register tile (common to all tiers)
-    auto output = tile_register_t<T, tile_layout_register_t<OutputShape>>();
-    using OutputRegLayout = typename decltype(output)::Layout;
-
-    WP_PRAGMA_UNROLL
-    for (int i = 0; i < OutputRegLayout::NumRegs; ++i) {
-        int linear = OutputRegLayout::linear_from_register(i);
-        output.data[i] = OutputRegLayout::valid(linear) ? output_buffer[linear] : T {};
-    }
-
-    return output;
 }
 
 // non-axis version which computes sum

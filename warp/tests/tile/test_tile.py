@@ -1485,6 +1485,56 @@ def test_tile_broadcast_rejects_invalid_rank(test, device):
         wp.launch_tiled(five_dimensional_shape_kernel, dim=1, inputs=[values], block_dim=TILE_DIM, device=device)
 
 
+def test_tile_broadcast_rejects_lower_rank_target(test, device):
+    """Test that tile_broadcast() rejects a target shape with fewer dimensions than the input."""
+
+    @wp.kernel(module="unique")
+    def lower_rank_target_kernel(values: wp.array2d[float], out: wp.array[float]):
+        t = wp.tile_load(values, shape=(2, 3), storage="shared")
+        b = wp.tile_broadcast(t, shape=(3,))
+        wp.tile_store(out, b)
+
+    values = wp.zeros((2, 3), dtype=float, device=device)
+    out = wp.zeros(3, dtype=float, device=device)
+    with test.assertRaisesRegex(ValueError, r"tile_broadcast\(\) target shape \(3,\) must have at least 2 dimensions"):
+        wp.launch_tiled(
+            lower_rank_target_kernel, dim=1, inputs=[values], outputs=[out], block_dim=TILE_DIM, device=device
+        )
+
+
+def test_tile_constructor_nonpositive_shape(test, device):
+    """Test that tile constructors reject zero and negative shape entries (GH-1776)."""
+
+    @wp.kernel(module="unique")
+    def zeros_kernel(out: wp.array[int]):
+        t = wp.tile_zeros(shape=0, dtype=int)
+        wp.tile_store(out, t)
+
+    @wp.kernel(module="unique")
+    def ones_kernel(out: wp.array[int]):
+        t = wp.tile_ones(shape=(-3, 4), dtype=int)
+        wp.tile_store(out, t)
+
+    @wp.kernel(module="unique")
+    def empty_kernel(out: wp.array[int]):
+        t = wp.tile_empty(shape=(4, 0), dtype=int)
+        wp.tile_store(out, t)
+
+    @wp.kernel(module="unique")
+    def load_kernel(a: wp.array[int], out: wp.array[int]):
+        t = wp.tile_load(a, shape=0)
+        wp.tile_store(out, t)
+
+    out = wp.zeros(4, dtype=int, device=device)
+    for kernel in (zeros_kernel, ones_kernel, empty_kernel, load_kernel):
+        with test.subTest(kernel=kernel.key):
+            with test.assertRaisesRegex(TypeError, r"Tile dimension .* must be a positive integer"):
+                if kernel is load_kernel:
+                    wp.launch_tiled(kernel, dim=1, inputs=[out], outputs=[out], block_dim=TILE_DIM, device=device)
+                else:
+                    wp.launch_tiled(kernel, dim=1, outputs=[out], block_dim=TILE_DIM, device=device)
+
+
 @wp.kernel
 def test_tile_squeeze_kernel(x: wp.array3d[float], y: wp.array[float]):
     a = wp.tile_load(x, shape=(1, TILE_M, 1), offset=(0, 0, 0))
@@ -2997,6 +3047,18 @@ add_function_test(
     TestTile,
     "test_tile_broadcast_rejects_invalid_rank",
     test_tile_broadcast_rejects_invalid_rank,
+    devices=devices,
+)
+add_function_test(
+    TestTile,
+    "test_tile_broadcast_rejects_lower_rank_target",
+    test_tile_broadcast_rejects_lower_rank_target,
+    devices=devices,
+)
+add_function_test(
+    TestTile,
+    "test_tile_constructor_nonpositive_shape",
+    test_tile_constructor_nonpositive_shape,
     devices=devices,
 )
 add_function_test(TestTile, "test_tile_squeeze", test_tile_squeeze, devices=devices)

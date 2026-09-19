@@ -1231,6 +1231,87 @@ def test_tile_reduce_vector(test, device, block_dim=TILE_DIM):
     assert_np_equal(out.numpy(), np.array([[8.0, 8.0, 8.0]]))
 
 
+def test_tile_reduce_sum_axis_1d(test, device):
+    """Verify tile_sum(a, axis=0) compiles and runs for a 1D tile (GH-1784)."""
+
+    @wp.kernel(module="unique")
+    def sum_axis0_1d_kernel(input: wp.array[float], output: wp.array[float]):
+        t = wp.tile_load(input, shape=TILE_N)
+        s = wp.tile_sum(t, axis=0)
+        wp.tile_store(output, s)
+
+    rng = np.random.default_rng(42)
+    input_np = rng.random(TILE_N, dtype=np.float32)
+
+    input_wp = wp.array(input_np, dtype=float, device=device)
+    output_wp = wp.zeros(1, dtype=float, device=device)
+
+    wp.launch_tiled(
+        sum_axis0_1d_kernel, dim=1, inputs=[input_wp], outputs=[output_wp], block_dim=TILE_DIM, device=device
+    )
+
+    np.testing.assert_allclose(output_wp.numpy(), np.sum(input_np))
+
+
+def test_tile_min_argmin_reject_nonscalar(test, device):
+    """Verify tile_min() and tile_argmin() reject non-scalar tile dtypes (GH-1782)."""
+
+    @wp.kernel(module="unique")
+    def min_vec_kernel(input: wp.array[wp.vec3], output: wp.array[wp.vec3]):
+        t = wp.tile_load(input, shape=TILE_N)
+        m = wp.tile_min(t)
+        wp.tile_store(output, m)
+
+    @wp.kernel(module="unique")
+    def argmin_vec_kernel(input: wp.array[wp.vec3], output: wp.array[int]):
+        t = wp.tile_load(input, shape=TILE_N)
+        i = wp.tile_argmin(t)
+        wp.tile_store(output, i)
+
+    vec_in = wp.zeros(TILE_N, dtype=wp.vec3, device=device)
+    vec_out = wp.zeros(1, dtype=wp.vec3, device=device)
+    int_out = wp.zeros(1, dtype=int, device=device)
+
+    with test.assertRaisesRegex(TypeError, r"tile_min\(\) argument must be a tile of scalar dtype"):
+        wp.launch_tiled(min_vec_kernel, dim=1, inputs=[vec_in], outputs=[vec_out], block_dim=TILE_DIM, device=device)
+
+    with test.assertRaisesRegex(TypeError, r"tile_argmin\(\) argument must be a tile of scalar dtype"):
+        wp.launch_tiled(argmin_vec_kernel, dim=1, inputs=[vec_in], outputs=[int_out], block_dim=TILE_DIM, device=device)
+
+
+def test_tile_scan_min_max_reject_uint32(test, device):
+    """Verify tile scans reject uint32 tiles, which have no native identity (GH-1781)."""
+
+    @wp.kernel(module="unique")
+    def scan_max_u32_kernel(input: wp.array[wp.uint32], output: wp.array[wp.uint32]):
+        t = wp.tile_load(input, shape=TILE_N)
+        s = wp.tile_scan_max_inclusive(t)
+        wp.tile_store(output, s)
+
+    @wp.kernel(module="unique")
+    def scan_min_u32_kernel(input: wp.array[wp.uint32], output: wp.array[wp.uint32]):
+        t = wp.tile_load(input, shape=TILE_N)
+        s = wp.tile_scan_min_inclusive(t)
+        wp.tile_store(output, s)
+
+    uint_in = wp.zeros(TILE_N, dtype=wp.uint32, device=device)
+    uint_out = wp.zeros(TILE_N, dtype=wp.uint32, device=device)
+
+    with test.assertRaisesRegex(
+        TypeError, r"tile_scan_max_inclusive\(\) argument must be a tile of type float32 or int32"
+    ):
+        wp.launch_tiled(
+            scan_max_u32_kernel, dim=1, inputs=[uint_in], outputs=[uint_out], block_dim=TILE_DIM, device=device
+        )
+
+    with test.assertRaisesRegex(
+        TypeError, r"tile_scan_min_inclusive\(\) argument must be a tile of type float32 or int32"
+    ):
+        wp.launch_tiled(
+            scan_min_u32_kernel, dim=1, inputs=[uint_in], outputs=[uint_out], block_dim=TILE_DIM, device=device
+        )
+
+
 devices = get_test_devices()
 cpu_devices = get_cpu_test_devices()
 
@@ -1357,6 +1438,19 @@ add_function_test(TestTileReduce, "test_tile_scan_inclusive", test_tile_scan_inc
 add_function_test(TestTileReduce, "test_tile_scan_exclusive", test_tile_scan_exclusive, devices=devices)
 add_function_test(TestTileReduce, "test_tile_scan_max_inclusive", test_tile_scan_max_inclusive, devices=devices)
 add_function_test(TestTileReduce, "test_tile_scan_min_inclusive", test_tile_scan_min_inclusive, devices=devices)
+add_function_test(TestTileReduce, "test_tile_reduce_sum_axis_1d", test_tile_reduce_sum_axis_1d, devices=devices)
+add_function_test(
+    TestTileReduce,
+    "test_tile_min_argmin_reject_nonscalar",
+    test_tile_min_argmin_reject_nonscalar,
+    devices=devices,
+)
+add_function_test(
+    TestTileReduce,
+    "test_tile_scan_min_max_reject_uint32",
+    test_tile_scan_min_max_reject_uint32,
+    devices=devices,
+)
 add_function_test(
     TestTileReduce,
     "test_tile_scan_partial_block",

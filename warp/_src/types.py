@@ -5682,6 +5682,12 @@ class tile(Tile):
             if len(shape) == 0:
                 raise RuntimeError("Empty shape specified, must have at least 1 dimension")
 
+            # Non-positive dimensions would leak into C++ template arguments and
+            # fail backend compilation with a cryptic error; reject them here.
+            for i, dim in enumerate(shape):
+                if isinstance(dim, (int, np.integer)) and dim <= 0:
+                    raise TypeError(f"Tile dimension {i} must be a positive integer, got {dim!r}")
+
             # compute total size
             self.size = 1
             for s in self.shape:

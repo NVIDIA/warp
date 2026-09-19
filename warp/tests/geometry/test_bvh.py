@@ -1047,6 +1047,36 @@ def tile_bvh_query_valid_ray_kernel(
             wp.atomic_add(bounds_intersected, result_idx, 1)
 
 
+def test_tile_bvh_query_next_rejects_nonpow2_block_dim(test, device):
+    """Reject non-power-of-two block_dim for tiled BVH queries (GH-1746)."""
+
+    @wp.kernel(module="unique")
+    def query_kernel(bvh_id: wp.uint64, lower: wp.vec3, upper: wp.vec3, counts: wp.array[int]):
+        query = wp.tile_bvh_query_aabb(bvh_id, lower, upper)
+        while wp.tile_query_valid(query):
+            result_tile = wp.tile_bvh_query_next(query)
+            result_idx = wp.untile(result_tile)
+            if result_idx >= 0:
+                wp.atomic_add(counts, result_idx, 1)
+
+    lowers = wp.array(np.zeros((4, 3), dtype=np.float32), dtype=wp.vec3, device=device)
+    uppers = wp.array(np.ones((4, 3), dtype=np.float32), dtype=wp.vec3, device=device)
+    bvh = wp.Bvh(lowers, uppers)
+    counts = wp.zeros(4, dtype=int, device=device)
+
+    for block_dim in (3, 48, 96):
+        with test.subTest(block_dim=block_dim):
+            with test.assertRaisesRegex(ValueError, r"requires block_dim to be a power of two"):
+                wp.launch_tiled(
+                    query_kernel,
+                    dim=1,
+                    inputs=[bvh.id, wp.vec3(-1.0, -1.0, -1.0), wp.vec3(2.0, 2.0, 2.0)],
+                    outputs=[counts],
+                    block_dim=block_dim,
+                    device=device,
+                )
+
+
 devices = get_test_devices()
 cuda_devices = get_cuda_test_devices()
 cuda_devices_with_mempool = get_cuda_test_devices_with_mempool()
@@ -1103,6 +1133,12 @@ add_function_test(
 add_function_test(TestBvh, "test_bvh_refit_root_leaves", test_bvh_refit_root_leaves, devices=cuda_devices)
 add_function_test(TestBvh, "test_tile_bvh_query_aabb", test_tile_bvh_query, devices=devices)
 add_function_test(TestBvh, "test_tile_bvh_query_ray", test_tile_bvh_query_ray, devices=devices)
+add_function_test(
+    TestBvh,
+    "test_tile_bvh_query_next_rejects_nonpow2_block_dim",
+    test_tile_bvh_query_next_rejects_nonpow2_block_dim,
+    devices=cuda_devices,
+)
 
 # Compatibility tests for the deprecated bvh_query_*_tiled() aliases.
 add_function_test(TestBvh, "test_bvh_query_aabb_tiled", test_bvh_query_aabb_tiled, devices=devices)

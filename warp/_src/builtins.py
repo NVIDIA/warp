@@ -5257,6 +5257,22 @@ def tile_view_value_func(arg_types, arg_values):
             raise ValueError(
                 f"tile_view() if shape is specified it must have same number of dimensions as source tile, expected {ndim}, got {len(shape)}"
             )
+
+        if None in shape:
+            raise ValueError("Tile functions require shape to be a compile time constant.")
+
+        for dim in range(ndim):
+            if shape[dim] <= 0:
+                raise ValueError(f"tile_view() shape entries must be positive, got {shape[dim]} for axis {dim}")
+            # when the offset for this axis is a constant, verify the view fits the parent;
+            # runtime offsets cannot be validated at code-gen time
+            if dim < len(offset):
+                off = offset[dim].constant if isinstance(offset[dim], Var) else offset[dim]
+                if isinstance(off, int) and off + shape[dim] > parent_shape[dim]:
+                    raise ValueError(
+                        f"tile_view() offset {off} plus shape {shape[dim]} exceeds the parent extent "
+                        f"{parent_shape[dim]} at axis {dim}"
+                    )
     else:
         # if not specified, then take output shape from unspecified src dimensions
         # e.g.: tile[i] will return a whole row of a 2D tile
@@ -7114,6 +7130,13 @@ def tile_broadcast_value_func(arg_types, arg_values):
     if not 1 <= len(target_shape) <= 4:
         raise ValueError(f"tile_broadcast() output must have between one and four dimensions, got {len(target_shape)}")
 
+    # as with np.broadcast_to(), the target must have at least as many dimensions as the input
+    if len(target_shape) < len(t.shape):
+        raise ValueError(
+            f"tile_broadcast() target shape {tuple(target_shape)} must have at least "
+            f"{len(t.shape)} dimensions for input shape {tuple(t.shape)}"
+        )
+
     target_strides = [0] * len(target_shape)
 
     offset = len(target_shape) - len(t.shape)
@@ -7529,6 +7552,24 @@ def tile_sort_value_func(arg_types, arg_values):
         if a.shape[i] != b.shape[i]:
             raise ValueError(f"tile_sort() shapes do not match on dimension {i}, got {a.shape} and {b.shape}")
 
+    # The CUDA implementations rely on full-warp shuffles, so block_dim must be a
+    # multiple of the warp size. Tiles larger than the bitonic-sort threshold with
+    # 32-bit keys take a radix path that additionally requires the warp count to be
+    # a power of two no larger than 16. The CPU path is serial and unconstrained.
+    if warp._src.codegen.options.get("output_arch") is not None:
+        block_dim = warp._src.codegen.options["block_dim"]
+
+        if block_dim % 32 != 0:
+            raise ValueError(f"tile_sort() requires block_dim to be a multiple of 32, got {block_dim}")
+
+        radix_path = a.size > 2048 and a.dtype in (warp.float32, warp.int32, warp.uint32)
+        num_warps = block_dim // 32
+        if radix_path and (num_warps > 16 or num_warps & (num_warps - 1) != 0):
+            raise ValueError(
+                f"tile_sort() on tiles larger than 2048 elements requires block_dim to be a power "
+                f"of two in [32, 512], got {block_dim}"
+            )
+
     return None
 
 
@@ -7588,10 +7629,11 @@ def tile_min_value_func(arg_types, arg_values):
         raise TypeError(f"tile_min() argument must be a tile, got {a!r}")
 
     # tile_min() is variadic, which bypasses the Scalar dtype constraint enforced by
-    # overload matching, so reject struct tiles explicitly: there is no canonical
-    # ordering for a struct and the native reduction would fail to compile.
-    if type_is_struct(a.dtype):
-        raise TypeError("tile_min() does not support Warp struct tile elements")
+    # overload matching, so reject non-scalar tiles explicitly: there is no canonical
+    # ordering for vector, matrix, or struct elements and the native reduction would
+    # fail to compile or silently produce a different (component-wise) result.
+    if not type_is_scalar(a.dtype):
+        raise TypeError(f"tile_min() argument must be a tile of scalar dtype, got {type_repr(a.dtype)}")
 
     return tile(dtype=a.dtype, shape=(1,))
 
@@ -7648,10 +7690,10 @@ def tile_argmin_value_func(arg_types, arg_values):
         raise TypeError(f"tile_argmin() argument must be a tile, got {a!r}")
 
     # tile_argmin() is variadic, which bypasses the Scalar dtype constraint enforced by
-    # overload matching, so reject struct tiles explicitly: there is no canonical
-    # ordering for a struct and the native reduction would fail to compile.
-    if type_is_struct(a.dtype):
-        raise TypeError("tile_argmin() does not support Warp struct tile elements")
+    # overload matching, so reject non-scalar tiles explicitly: a single index has no
+    # defined meaning for vector, matrix, or struct elements.
+    if not type_is_scalar(a.dtype):
+        raise TypeError(f"tile_argmin() argument must be a tile of scalar dtype, got {type_repr(a.dtype)}")
 
     return tile(dtype=warp.int32, shape=(1,))
 
@@ -8170,11 +8212,10 @@ def tile_scan_max_inclusive_value_func(arg_types, arg_values):
     if not is_tile(a):
         raise TypeError(f"tile_scan_max_inclusive() argument must be a tile, got {a!r}")
 
-    # Only allow float32, int32, or uint32 for scan
-    if not (a.dtype is warp.float32 or a.dtype is warp.int32 or a.dtype is warp.uint32):
-        raise TypeError(
-            f"tile_scan_max_inclusive() argument must be a tile of type float32, int32, or uint32, got {a.dtype}"
-        )
+    # Only allow float32 or int32 for scan; uint32 is unsupported because the
+    # native OpMax<T>::identity() has no unsigned specialization.
+    if not (a.dtype is warp.float32 or a.dtype is warp.int32):
+        raise TypeError(f"tile_scan_max_inclusive() argument must be a tile of type float32 or int32, got {a.dtype}")
 
     return tile(dtype=a.dtype, shape=a.shape)
 
@@ -8195,7 +8236,7 @@ add_builtin(
     This function cooperatively performs an inclusive max scan (cumulative maximum) across the tile.
 
     Args:
-        a: The input tile. Must be a tile of type float32, int32, or uint32.
+        a: The input tile. Must be a tile of type float32 or int32.
 
     Returns:
         A new tile containing the inclusive max scan result.
@@ -8238,11 +8279,10 @@ def tile_scan_min_inclusive_value_func(arg_types, arg_values):
     if not is_tile(a):
         raise TypeError(f"tile_scan_min_inclusive() argument must be a tile, got {a!r}")
 
-    # Only allow float32, int32, or uint32 for scan
-    if not (a.dtype is warp.float32 or a.dtype is warp.int32 or a.dtype is warp.uint32):
-        raise TypeError(
-            f"tile_scan_min_inclusive() argument must be a tile of type float32, int32, or uint32, got {a.dtype}"
-        )
+    # Only allow float32 or int32 for scan; uint32 is unsupported because the
+    # native OpMin<T>::identity() has no unsigned specialization.
+    if not (a.dtype is warp.float32 or a.dtype is warp.int32):
+        raise TypeError(f"tile_scan_min_inclusive() argument must be a tile of type float32 or int32, got {a.dtype}")
 
     return tile(dtype=a.dtype, shape=a.shape)
 
@@ -8263,7 +8303,7 @@ add_builtin(
     This function cooperatively performs an inclusive min scan (cumulative minimum) across the tile.
 
     Args:
-        a: The input tile. Must be a tile of type float32, int32, or uint32.
+        a: The input tile. Must be a tile of type float32 or int32.
 
     Returns:
         A new tile containing the inclusive min scan result.
@@ -9183,8 +9223,14 @@ def bvh_query_next_tiled_value_func(arg_types, arg_values):
     if arg_types is None:
         return tile(dtype=int, shape=tuple[int])
 
-    # Return a register tile of ints with shape (block_dim,)
+    # The CUDA traversal enumerates subtree paths per lane and requires the block
+    # to cover a power-of-two lane count; other values silently drop results.
+    # The CPU path aliases the serial query and is unaffected.
     block_dim = warp._src.codegen.options.get("block_dim", 256)
+    if warp._src.codegen.options.get("output_arch") is not None and block_dim & (block_dim - 1) != 0:
+        raise ValueError(f"tile_bvh_query_next() requires block_dim to be a power of two, got {block_dim}")
+
+    # Return a register tile of ints with shape (block_dim,)
     return tile(dtype=int, shape=(block_dim,), storage="register")
 
 
@@ -10942,8 +10988,14 @@ def mesh_query_aabb_next_tiled_value_func(arg_types, arg_values):
     if arg_types is None:
         return tile(dtype=int, shape=tuple[int])
 
-    # Return a register tile of ints with shape (block_dim,)
+    # The CUDA traversal enumerates subtree paths per lane and requires the block
+    # to cover a power-of-two lane count; other values silently drop results.
+    # The CPU path aliases the serial query and is unaffected.
     block_dim = warp._src.codegen.options.get("block_dim", 256)
+    if warp._src.codegen.options.get("output_arch") is not None and block_dim & (block_dim - 1) != 0:
+        raise ValueError(f"tile_mesh_query_aabb_next() requires block_dim to be a power of two, got {block_dim}")
+
+    # Return a register tile of ints with shape (block_dim,)
     return tile(dtype=int, shape=(block_dim,), storage="register")
 
 

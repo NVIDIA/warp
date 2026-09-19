@@ -289,6 +289,52 @@ def test_tile_sort_surviving_lane_heap_backed_cpu(test, device):
     test.assertIn("ok", result.stdout)
 
 
+def test_tile_sort_rejects_invalid_block_dim(test, device):
+    """Reject block_dim values the CUDA sort implementations cannot handle (GH-1748)."""
+
+    @wp.kernel(module="unique", enable_backward=False)
+    def small_sort_kernel(input_keys: wp.array[wp.float32], input_values: wp.array[wp.int32]):
+        keys = wp.tile_load(input_keys, shape=64, storage="shared")
+        values = wp.tile_load(input_values, shape=64, storage="shared")
+        wp.tile_sort(keys, values)
+
+    @wp.kernel(module="unique", enable_backward=False)
+    def large_sort_kernel(input_keys: wp.array[wp.float32], input_values: wp.array[wp.int32]):
+        keys = wp.tile_load(input_keys, shape=2100, storage="shared")
+        values = wp.tile_load(input_values, shape=2100, storage="shared")
+        wp.tile_sort(keys, values)
+
+    small_keys = wp.zeros(64, dtype=wp.float32, device=device)
+    small_values = wp.zeros(64, dtype=wp.int32, device=device)
+    large_keys = wp.zeros(2100, dtype=wp.float32, device=device)
+    large_values = wp.zeros(2100, dtype=wp.int32, device=device)
+
+    # Partial warps leave parts of the tile unsorted or fault
+    for block_dim in (8, 48, 100):
+        with test.subTest(block_dim=block_dim):
+            with test.assertRaisesRegex(ValueError, r"tile_sort\(\) requires block_dim to be a multiple of 32"):
+                wp.launch_tiled(
+                    small_sort_kernel,
+                    dim=1,
+                    inputs=[small_keys, small_values],
+                    block_dim=block_dim,
+                    device=device,
+                )
+
+    # The radix path used for >2048 elements with 32-bit keys requires a
+    # power-of-two warp count no larger than 16
+    for block_dim in (96, 1024):
+        with test.subTest(block_dim=block_dim):
+            with test.assertRaisesRegex(ValueError, r"requires block_dim to be a power of two in \[32, 512\]"):
+                wp.launch_tiled(
+                    large_sort_kernel,
+                    dim=1,
+                    inputs=[large_keys, large_values],
+                    block_dim=block_dim,
+                    device=device,
+                )
+
+
 devices = get_test_devices()
 
 
@@ -303,6 +349,12 @@ add_function_test(
     devices=devices,
 )
 add_function_test(TestTileSort, "test_tile_sort_bfloat16_payload", test_tile_sort_bfloat16_payload, devices=devices)
+add_function_test(
+    TestTileSort,
+    "test_tile_sort_rejects_invalid_block_dim",
+    test_tile_sort_rejects_invalid_block_dim,
+    devices=get_cuda_test_devices(),
+)
 add_function_test(
     TestTileSort,
     "test_tile_sort_heap_backed_cpu",

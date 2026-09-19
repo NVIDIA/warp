@@ -1046,6 +1046,26 @@ def test_tile_view_offset_oob_rejected(test, device):
         wp.launch_tiled(pos_kernel, dim=[1], inputs=[], block_dim=32, device=device)
 
 
+def test_tile_view_extent_oob_rejected(test, device):
+    """Reject views whose offset + shape extends past the parent tile (GH-1745)."""
+
+    @wp.kernel(module="unique", enable_backward=False)
+    def extent_kernel():
+        t = wp.tile_ones(shape=(TILE_M, TILE_N), dtype=float)
+        v = wp.tile_view(t, offset=(4, 0), shape=(TILE_M, TILE_N))  # rows 4..19 > 16 rows
+
+    with test.assertRaisesRegex((RuntimeError, ValueError), r"exceeds the parent extent"):
+        wp.launch_tiled(extent_kernel, dim=[1], inputs=[], block_dim=32, device=device)
+
+    @wp.kernel(module="unique", enable_backward=False)
+    def zero_shape_kernel():
+        t = wp.tile_ones(shape=(TILE_M, TILE_N), dtype=float)
+        v = wp.tile_view(t, offset=(0, 0), shape=(TILE_M, 0))
+
+    with test.assertRaisesRegex((RuntimeError, ValueError), r"shape entries must be positive"):
+        wp.launch_tiled(zero_shape_kernel, dim=[1], inputs=[], block_dim=32, device=device)
+
+
 def test_tile_view_runtime_slice_bound_rejected(test, device):
     """Reject runtime slice bounds whose tile-view shape cannot be inferred."""
 
@@ -1182,6 +1202,12 @@ add_function_test(TestTileView, "test_tile_row_assign", test_tile_row_assign, de
 add_function_test(TestTileView, "test_tile_chain_int_element", test_tile_chain_int_element, devices=devices)
 add_function_test(
     TestTileView, "test_tile_view_offset_oob_rejected", test_tile_view_offset_oob_rejected, devices=devices
+)
+add_function_test(
+    TestTileView,
+    "test_tile_view_extent_oob_rejected",
+    test_tile_view_extent_oob_rejected,
+    devices=devices,
 )
 add_function_test(
     TestTileView,
