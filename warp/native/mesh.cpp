@@ -152,7 +152,7 @@ uint64_t wp_mesh_create_host(
         // compute edge lengths
         sum += length(p0 - p1) + length(p0 - p2) + length(p2 - p1);
     }
-    m->average_edge_length = sum / (num_tris * 3);
+    m->average_edge_length = num_tris > 0 ? sum / (num_tris * 3) : 0.0f;
 
 #ifndef WP_DISABLE_CUBQL
     if (use_cubql) {
@@ -180,7 +180,7 @@ uint64_t wp_mesh_create_host(
         return 0;
     }
 
-    if (support_winding_number) {
+    if (support_winding_number && num_tris > 0) {
         int num_bvh_nodes = 2 * num_tris - 1;
         m->solid_angle_props
             = static_cast<SolidAngleProps*>(wp_alloc_host(sizeof(SolidAngleProps) * num_bvh_nodes, "(native:mesh)"));
@@ -210,6 +210,12 @@ void wp_mesh_destroy_host(uint64_t id)
 void wp_mesh_refit_host(uint64_t id)
 {
     Mesh* m = (Mesh*)(id);
+
+    if (m->num_tris == 0) {
+        // nothing to refit on an empty mesh; average_edge_length stays 0 and the
+        // empty BVH has no root to update
+        return;
+    }
 
     float sum = 0.0;
     for (int i = 0; i < m->num_tris; ++i) {

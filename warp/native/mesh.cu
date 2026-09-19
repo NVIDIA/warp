@@ -56,7 +56,7 @@ __global__ void compute_mesh_edge_lengths(int n, const vec3* points, const int* 
 
 __global__ void compute_average_mesh_edge_length(int n, float* sum_edge_lengths, Mesh* m)
 {
-    m->average_edge_length = sum_edge_lengths[n - 1] / (3 * n);
+    m->average_edge_length = n > 0 ? sum_edge_lengths[n - 1] / (3 * n) : 0.0f;
 }
 
 __global__ void bvh_refit_with_solid_angle_kernel(
@@ -273,17 +273,37 @@ uint64_t wp_mesh_create_device(
     wp::Mesh mesh(points, velocities, indices, num_points, num_tris);
     const bool use_cubql = (constructor_type == BVH_CONSTRUCTOR_CUBQL);
 
+#ifdef WP_DISABLE_CUBQL
+    if (use_cubql) {
+        wp::set_error_string("Warp error: cuBQL support disabled (WP_DISABLE_CUBQL)");
+        return 0;
+    }
+#endif
+
     mesh.context = context ? context : wp_cuda_context_get_current();
 
-    // create lower upper arrays expected by GPU BVH builder
-    mesh.lowers = (wp::vec3*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::vec3) * num_tris, "(native:mesh)");
-    mesh.uppers = (wp::vec3*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::vec3) * num_tris, "(native:mesh)");
+    if (num_tris > 0) {
+        // create lower upper arrays expected by GPU BVH builder
+        mesh.lowers = (wp::vec3*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::vec3) * num_tris, "(native:mesh)");
+        mesh.uppers = (wp::vec3*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::vec3) * num_tris, "(native:mesh)");
 
-    if (support_winding_number && !use_cubql) {
-        int num_bvh_nodes = 2 * num_tris;
-        mesh.solid_angle_props = (wp::SolidAngleProps*)wp_alloc_device(
-            WP_CURRENT_CONTEXT, sizeof(wp::SolidAngleProps) * num_bvh_nodes, "(native:mesh)"
-        );
+        if (support_winding_number && !use_cubql) {
+            int num_bvh_nodes = 2 * num_tris;
+            mesh.solid_angle_props = (wp::SolidAngleProps*)wp_alloc_device(
+                WP_CURRENT_CONTEXT, sizeof(wp::SolidAngleProps) * num_bvh_nodes, "(native:mesh)"
+            );
+        }
+    } else {
+        // no triangles: leave the BVH an empty tree (all node pointers NULL) and record
+        // the build parameters so the descriptor stays consistent with a
+        // bvh_create_device() result
+        mesh.bvh.context = mesh.context;
+        mesh.bvh.item_lowers = mesh.lowers;
+        mesh.bvh.item_uppers = mesh.uppers;
+        mesh.bvh.item_groups = groups;
+        mesh.bvh.num_items = num_tris;
+        mesh.bvh.leaf_size = bvh_leaf_size;
+        mesh.bvh.constructor_type = constructor_type;
     }
 
     wp::Mesh* mesh_device = (wp::Mesh*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::Mesh), "(native:mesh)");
@@ -291,6 +311,14 @@ uint64_t wp_mesh_create_device(
 
     // save descriptor
     uint64_t mesh_id = (uint64_t)mesh_device;
+
+    if (num_tris == 0) {
+        // no triangles: the edge-length, bounds, and BVH build steps below would
+        // operate on empty or NULL buffers (average_edge_length stays 0 and the
+        // BVH stays an empty tree), so just register the mesh and finish
+        mesh_add_descriptor(mesh_id, mesh);
+        return mesh_id;
+    }
 
     // we compute mesh the average edge length
     // for use in mesh_query_point_sign_normal()
@@ -321,12 +349,6 @@ uint64_t wp_mesh_create_device(
         }
         wp_memcpy_h2d(WP_CURRENT_CONTEXT, &(mesh_device->bvh), &mesh.bvh, sizeof(wp::BVH));
     } else
-#else
-    if (use_cubql) {
-        wp::set_error_string("Warp error: cuBQL support disabled (WP_DISABLE_CUBQL)");
-        wp_mesh_free_device_allocations(mesh, mesh_device);
-        return 0;
-    }
 #endif
     {
         wp::bvh_create_device(
@@ -371,6 +393,11 @@ int wp_mesh_refit_device(uint64_t id)
     wp::Mesh m;
     if (mesh_get_descriptor(id, m)) {
         ContextGuard guard(m.context);
+
+        if (m.num_tris == 0) {
+            // nothing to refit on an empty mesh; average_edge_length stays 0
+            return 1;
+        }
 
         // we compute mesh the average edge length
         // for use in mesh_query_point_sign_normal()

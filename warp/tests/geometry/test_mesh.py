@@ -383,6 +383,27 @@ def test_mesh_refit_graph(test, device):
         wp.synchronize_device(device)
 
 
+def test_mesh_empty(test, device):
+    """A mesh with zero triangles must create and refit cleanly (GH-1765)."""
+    if device.is_cpu:
+        constructors = ["sah", "median"]
+    else:
+        constructors = ["sah", "median", "lbvh"]
+
+    if wp.is_cubql_available():
+        constructors.append("cubql")
+
+    for constructor in constructors:
+        points = wp.array(np.zeros((4, 3), dtype=np.float32), dtype=wp.vec3, device=device)
+        indices = wp.zeros(0, dtype=int, device=device)
+        mesh = wp.Mesh(points=points, indices=indices, bvh_constructor=constructor)
+        mesh.refit()
+
+    # the device allocator must still be healthy after empty-mesh creation
+    a = wp.zeros(1024, dtype=float, device=device)
+    np.testing.assert_allclose(a.numpy(), np.zeros(1024, dtype=np.float32))
+
+
 def test_mesh_exceptions(test, device):
     """Reject mesh points and indices located on different devices."""
     with test.assertRaises(RuntimeError):
@@ -490,6 +511,7 @@ add_function_test(TestMesh, "test_mesh_query_point", test_mesh_query_point, devi
 add_function_test(TestMesh, "test_mesh_query_ray", test_mesh_query_ray, devices=devices)
 add_function_test(TestMesh, "test_grouped_mesh_query_ray", test_grouped_mesh_query_ray, devices=devices)
 add_function_test(TestMesh, "test_mesh_refit", test_mesh_refit, devices=devices)
+add_function_test(TestMesh, "test_mesh_empty", test_mesh_empty, devices=devices)
 add_function_test(TestMesh, "test_mesh_refit_graph", test_mesh_refit_graph, devices=cuda_devices_with_mempool)
 add_function_test(TestMesh, "test_mesh_exceptions", test_mesh_exceptions, devices=get_selected_cuda_test_devices())
 
