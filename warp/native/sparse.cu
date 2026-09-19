@@ -1490,12 +1490,20 @@ WP_API void wp_bsr_transpose_device(
         (nnz, row_count, bsr_offsets, bsr_row_counts, bsr_columns, d_keys.Current(), d_values.Current())
     );
 
-    // Sort blocks
+    // Source blocks already follow source-row order. CUB's stable sort only
+    // needs the destination-row bits; preserve one sentinel value above valid rows.
+    int row_bits = 1;
+    while ((uint64_t(1) << row_bits) <= uint64_t(col_count))
+        ++row_bits;
     {
         size_t buff_size = 0;
-        check_cuda(cub::DeviceRadixSort::SortPairs(nullptr, buff_size, d_values, d_keys, nnz, 0, 64, stream));
+        check_cuda(
+            cub::DeviceRadixSort::SortPairs(nullptr, buff_size, d_values, d_keys, nnz, 32, 32 + row_bits, stream)
+        );
         ScopedTemporary<> temp(context, buff_size);
-        check_cuda(cub::DeviceRadixSort::SortPairs(temp.buffer(), buff_size, d_values, d_keys, nnz, 0, 64, stream));
+        check_cuda(
+            cub::DeviceRadixSort::SortPairs(temp.buffer(), buff_size, d_values, d_keys, nnz, 32, 32 + row_bits, stream)
+        );
 
         // Depending on data size and GPU architecture buffers may have been swapped
         // or not. For compact output, ensure the sorted keys are available in
