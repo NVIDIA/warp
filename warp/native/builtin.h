@@ -1984,12 +1984,23 @@ template <int N> inline CUDA_CALLABLE launch_coord_t launch_coord(size_t linear,
     return coord;
 }
 
-// Builds the launch coord from the block-derived tile index instead of dividing that
-// index back out, then folds the intra-tile lane back in. Callers pass the linear index
-// built from blockIdx.x and threadIdx.x plus the intra-tile lane, and must guarantee the
-// launch holds whole tiles per block (blockDim.x a multiple of coord_mult); the CPU path
-// passes no lane because it has no threadIdx. The result equals
-// launch_coord(linear, bounds) for every thread of such a launch and every lane.
+// Builds the launch coord from the block-derived tile index, then folds the intra-tile
+// lane back in before deferring to launch_coord(). Callers pass the linear index built
+// from blockIdx.x and threadIdx.x plus the intra-tile lane, and must guarantee the launch
+// holds whole tiles per block (blockDim.x a multiple of coord_mult); the CPU path passes
+// no lane because it has no threadIdx.
+//
+// NOTE: for coord_mult > 1 this is algebraically the identity --
+//     (linear / coord_mult) * coord_mult + linear % coord_mult == linear
+// so it recomputes the coord launch_coord() would have produced from the same input and
+// the linear index it hands over is the one it received. It is a named step, not a
+// saving: it was screened on sm_89 (CUDA 12.8) and sm_120 (CUDA 13.0) and shows no
+// measurable gain over calling launch_coord() directly, so it is only worth keeping if
+// the tile/lane split is considered clearer at the call site.
+//
+// The lane is folded by re-wrapping the tile coord, never by adding it to coord.j: the
+// lane's magnitude is coord_mult, which overflows shape[1] and aliases tile rows for
+// every launch with more than one unraveled axis.
 template <int N>
 inline CUDA_CALLABLE launch_coord_t launch_coord_tile(size_t linear, int lane, const launch_bounds_t<N>& bounds)
 {
