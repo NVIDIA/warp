@@ -247,7 +247,9 @@ CUDA_CALLABLE inline uint32_t rebuild_find_lowest_on(uint64_t word)
         return 64u;
     }
 #if defined(__CUDA_ARCH__)
-    return uint32_t(__ffsll(word) - 1);
+    // Cast explicitly: uint64_t matches no __ffsll overload exactly, so the
+    // bare call relies on exactly one integer overload being visible.
+    return uint32_t(__ffsll(static_cast<unsigned long long>(word)) - 1);
 #else
     for (uint32_t i = 0; i < 64u; ++i) {
         if (word & (uint64_t(1) << i)) {
