@@ -1472,9 +1472,83 @@ add_builtin(
     input_types={"A": matrix(shape=(3, 3), dtype=Float)},
     value_func=svd3_value_func,
     group="Vector Math",
-    doc="""Compute the SVD of a 3x3 matrix ``A``.
+    doc="""Compute the singular value decomposition of a 3x3 matrix.
 
-    The singular values are returned in ``sigma``, while the left and right basis vectors are returned in ``U`` and ``V``.""",
+    Multiplying any two corresponding column pairs of ``U`` and ``V`` by
+    ``-1`` produces an equivalent factorization.
+
+    When components of ``sigma`` have equal magnitudes, the corresponding
+    singular vectors are not unique.
+
+    Derivatives of individual singular vectors are not uniquely defined at
+    repeated magnitudes and may be numerically unstable when the magnitudes are
+    close.
+
+    The decomposition is a finite-precision approximation. It currently uses a
+    fixed number of Jacobi iterations rather than a convergence tolerance.
+    Check the orthogonality of ``U`` and ``V`` and the reconstruction error
+    when accuracy is critical.
+
+    Args:
+        A: Matrix to decompose.
+
+    Returns:
+        A tuple ``(U, sigma, V)`` such that
+        ``A = U * wp.diag(sigma) * wp.transpose(V)``. ``U`` and ``V`` are
+        orthogonal matrices with determinant ``+1`` whose columns are the left
+        and right singular vectors, respectively. The components of ``sigma``
+        are sorted by decreasing magnitude. The first two components are
+        nonnegative; for a nonsingular matrix, ``sigma[2]`` has the sign of
+        ``wp.determinant(A)``.
+
+    Example:
+
+        Separate an orientation-reversing deformation gradient into signed
+        principal stretches and a proper rotation:
+
+        .. testcode::
+
+            @wp.kernel
+            def decompose_deformations(
+                deformation_gradients: wp.array[wp.mat33],
+                signed_stretches: wp.array[wp.vec3],
+                rotations: wp.array[wp.mat33],
+            ):
+                i = wp.tid()
+                U, sigma, V = wp.svd3(deformation_gradients[i])
+                signed_stretches[i] = sigma
+                rotations[i] = U * wp.transpose(V)
+
+            deformation_gradients = wp.array(
+                [
+                    wp.mat33(
+                        2.598076, -1.0, 0.0,
+                        1.5, 1.732051, 0.0,
+                        0.0, 0.0, -1.0,
+                    )
+                ],
+                dtype=wp.mat33,
+            )
+            signed_stretches = wp.empty(1, dtype=wp.vec3)
+            rotations = wp.empty(1, dtype=wp.mat33)
+
+            wp.launch(
+                decompose_deformations,
+                dim=1,
+                inputs=[deformation_gradients],
+                outputs=[signed_stretches, rotations],
+            )
+
+            print(f"Signed stretches: {np.round(signed_stretches.numpy()[0], 3)}")
+            print(f"Rotation:\\n{np.round(rotations.numpy()[0], 3)}")
+
+        .. testoutput::
+
+            Signed stretches: [ 3.  2. -1.]
+            Rotation:
+            [[ 0.866 -0.5    0.   ]
+             [ 0.5    0.866  0.   ]
+             [ 0.     0.     1.   ]]""",
 )
 
 add_builtin(
@@ -1488,9 +1562,31 @@ add_builtin(
     value_type=None,
     group="Vector Math",
     export=False,
-    doc="""Compute the SVD of a 3x3 matrix ``A``.
+    doc="""Compute the singular value decomposition of a 3x3 matrix and store the
+    factors in caller-provided output arguments.
 
-    The singular values are returned in ``sigma``, while the left and right basis vectors are returned in ``U`` and ``V``.""",
+    See the return-value overload for the factorization convention, numerical
+    behavior, and autodiff guidance.
+
+    Args:
+        A: Matrix to decompose.
+        U: Output matrix for the left singular vectors.
+        sigma: Output vector for the signed singular values.
+        V: Output matrix for the right singular vectors.
+
+    Example:
+
+        Store the singular value decomposition of ``A`` in ``U``, ``sigma``, and ``V``:
+
+        .. code-block:: python
+
+            @wp.kernel
+            def compute_svd3(A: wp.mat33):
+                U = wp.mat33()
+                sigma = wp.vec3()
+                V = wp.mat33()
+
+                wp.svd3(A, U, sigma, V)""",
 )
 
 
@@ -1515,9 +1611,63 @@ add_builtin(
     input_types={"A": matrix(shape=(2, 2), dtype=Float)},
     value_func=svd2_value_func,
     group="Vector Math",
-    doc="""Compute the SVD of a 2x2 matrix ``A``.
+    doc="""Compute the singular value decomposition of a 2x2 matrix.
 
-    The singular values are returned in ``sigma``, while the left and right basis vectors are returned in ``U`` and ``V``.""",
+    Singular values are nonnegative and sorted from largest to smallest.
+    Corresponding columns of ``U`` and ``V`` may be negated together without
+    changing the factorization. When singular values repeat, the associated
+    singular vectors are not uniquely determined.
+
+    Derivatives of individual singular vectors are not uniquely defined when
+    singular values repeat and may be numerically unstable when singular values
+    are close.
+
+    Args:
+        A: Matrix to decompose.
+
+    Returns:
+        A tuple ``(U, sigma, V)`` such that
+        ``A = U * wp.diag(sigma) * wp.transpose(V)``. ``U`` and ``V`` are
+        orthogonal matrices whose columns are the left and right singular vectors,
+        respectively, and ``sigma`` contains the singular values.
+
+    Example:
+
+        Compute the singular values and polar factor of a matrix:
+
+        .. testcode::
+
+            @wp.kernel
+            def compute_polar_factors(
+                matrices: wp.array[wp.mat22],
+                singular_values: wp.array[wp.vec2],
+                polar_factors: wp.array[wp.mat22],
+            ):
+                i = wp.tid()
+                U, sigma, V = wp.svd2(matrices[i])
+                singular_values[i] = sigma
+                polar_factors[i] = U * wp.transpose(V)
+
+            matrices = wp.array([wp.mat22(3.0, 0.0, 4.0, 5.0)], dtype=wp.mat22)
+            singular_values = wp.empty(1, dtype=wp.vec2)
+            polar_factors = wp.empty(1, dtype=wp.mat22)
+
+            wp.launch(
+                compute_polar_factors,
+                dim=1,
+                inputs=[matrices],
+                outputs=[singular_values, polar_factors],
+            )
+
+            print(f"Singular values: {np.round(singular_values.numpy()[0], 3)}")
+            print(f"Polar factor:\\n{np.round(polar_factors.numpy()[0], 3)}")
+
+        .. testoutput::
+
+            Singular values: [6.708 2.236]
+            Polar factor:
+            [[ 0.894 -0.447]
+             [ 0.447  0.894]]""",
 )
 
 add_builtin(
@@ -1531,9 +1681,31 @@ add_builtin(
     value_type=None,
     group="Vector Math",
     export=False,
-    doc="""Compute the SVD of a 2x2 matrix ``A``.
+    doc="""Compute the singular value decomposition of a 2x2 matrix and store the
+    factors in caller-provided output arguments.
 
-    The singular values are returned in ``sigma``, while the left and right basis vectors are returned in ``U`` and ``V``.""",
+    See the return-value overload for the factorization convention, numerical
+    behavior, and autodiff guidance.
+
+    Args:
+        A: Matrix to decompose.
+        U: Output matrix for the left singular vectors.
+        sigma: Output vector for the singular values.
+        V: Output matrix for the right singular vectors.
+
+    Example:
+
+        Store the singular value decomposition of ``A`` in ``U``, ``sigma``, and ``V``:
+
+        .. code-block:: python
+
+            @wp.kernel
+            def compute_svd2(A: wp.mat22):
+                U = wp.mat22()
+                sigma = wp.vec2()
+                V = wp.mat22()
+
+                wp.svd2(A, U, sigma, V)""",
 )
 
 
@@ -1556,9 +1728,76 @@ add_builtin(
     input_types={"A": matrix(shape=(3, 3), dtype=Float)},
     value_func=qr3_value_func,
     group="Vector Math",
-    doc="""Compute the QR decomposition of a 3x3 matrix ``A``.
+    doc="""Compute the QR decomposition of a 3x3 matrix.
 
-    The orthogonal matrix is returned in ``Q``, while the upper triangular matrix is returned in ``R``.""",
+    For rank-deficient ``A``, more than one pair of ``Q`` and ``R`` may
+    satisfy ``A = Q * R``.
+
+    Autodiff requires ``A`` to have full rank. Gradients involve the inverse of
+    ``R`` and may be numerically unstable when a diagonal entry of ``R`` is
+    small relative to the others.
+
+    The decomposition is a finite-precision approximation. Check the
+    orthogonality of ``Q``, triangularity of ``R``, and reconstruction error
+    when accuracy is critical.
+
+    Args:
+        A: Matrix to decompose.
+
+    Returns:
+        A tuple ``(Q, R)`` such that ``A = Q * R``. ``Q`` is an orthogonal
+        matrix with determinant ``+1``. ``R`` is upper triangular.
+        Because ``Q`` has determinant ``+1``, ``R`` may contain a negative
+        diagonal entry when ``A`` has negative determinant.
+
+    Example:
+
+        Orthonormalize the columns of a left-handed coordinate frame while
+        recording the reflection in ``R``:
+
+        .. testcode::
+
+            @wp.kernel
+            def orthonormalize_frames(
+                frames: wp.array[wp.mat33],
+                orthonormal_frames: wp.array[wp.mat33],
+                coefficients: wp.array[wp.mat33],
+            ):
+                i = wp.tid()
+                Q, R = wp.qr3(frames[i])
+                orthonormal_frames[i] = Q
+                coefficients[i] = R
+
+            frames = wp.array(
+                [
+                    wp.mat33(
+                        1.0, 1.0, 0.0,
+                        1.0, 0.0, 1.0,
+                        0.0, 1.0, 1.0,
+                    )
+                ],
+                dtype=wp.mat33,
+            )
+            orthonormal_frames = wp.empty(1, dtype=wp.mat33)
+            coefficients = wp.empty(1, dtype=wp.mat33)
+
+            wp.launch(
+                orthonormalize_frames,
+                dim=1,
+                inputs=[frames],
+                outputs=[orthonormal_frames, coefficients],
+            )
+
+            print(f"Orthonormal frame:\\n{np.round(orthonormal_frames.numpy()[0], 3)}")
+            print(f"R diagonal: {np.round(np.diag(coefficients.numpy()[0]), 3)}")
+
+        .. testoutput::
+
+            Orthonormal frame:
+            [[ 0.707  0.408  0.577]
+             [ 0.707 -0.408 -0.577]
+             [ 0.     0.816 -0.577]]
+            R diagonal: [ 1.414  1.225 -1.155]""",
 )
 
 add_builtin(
@@ -1571,9 +1810,29 @@ add_builtin(
     value_type=None,
     group="Vector Math",
     export=False,
-    doc="""Compute the QR decomposition of a 3x3 matrix ``A``.
+    doc="""Compute the QR decomposition of a 3x3 matrix and store the factors in
+    caller-provided output arguments.
 
-    The orthogonal matrix is returned in ``Q``, while the upper triangular matrix is returned in ``R``.""",
+    See the return-value overload for the factorization convention, numerical
+    behavior, and autodiff guidance.
+
+    Args:
+        A: Matrix to decompose.
+        Q: Output orthogonal matrix.
+        R: Output upper-triangular matrix.
+
+    Example:
+
+        Store the QR decomposition of ``A`` in ``Q`` and ``R``:
+
+        .. code-block:: python
+
+            @wp.kernel
+            def compute_qr3(A: wp.mat33):
+                Q = wp.mat33()
+                R = wp.mat33()
+
+                wp.qr3(A, Q, R)""",
 )
 
 
