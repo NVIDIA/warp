@@ -2984,6 +2984,10 @@ def transform_inverse(xform: Transformation[Float]) -> Transformation[Float]:
             [[1. 2. 3.]]"""
     ...
 
+def transform_normalize(xform: Transformation[Float]) -> Transformation[Float]:
+    """Normalize the rotational part of the transformation ``xform``, leaving its translation unchanged."""
+    ...
+
 @over
 def spatial_vector() -> Vector[Float, Literal[6]]:
     """Return a zero 6D spatial vector.
