@@ -8,9 +8,75 @@
       :python: true
       :differentiable: true
 
-   Compute the QR decomposition of a 3x3 matrix ``A``.
+   Compute the QR decomposition of a 3x3 matrix.
    
-   The orthogonal matrix is returned in ``Q``, while the upper triangular matrix is returned in ``R``.
+   For rank-deficient ``A``, more than one pair of ``Q`` and ``R`` may
+   satisfy ``A = Q * R``.
+   
+   Autodiff requires ``A`` to have full rank. Gradients involve the inverse of
+   ``R`` and may be numerically unstable when a diagonal entry of ``R`` is
+   small relative to the others.
+   
+   The decomposition is a finite-precision approximation. Check the
+   orthogonality of ``Q``, triangularity of ``R``, and reconstruction error
+   when accuracy is critical.
+   
+   :param A: Matrix to decompose.
+   
+   :returns: A tuple ``(Q, R)`` such that ``A = Q * R``. ``Q`` is an orthogonal
+             matrix with determinant ``+1``. ``R`` is upper triangular.
+             Because ``Q`` has determinant ``+1``, ``R`` may contain a negative
+             diagonal entry when ``A`` has negative determinant.
+   
+   .. rubric:: Example
+   
+   Orthonormalize the columns of a left-handed coordinate frame while
+   recording the reflection in ``R``:
+   
+   .. testcode::
+   
+       @wp.kernel
+       def orthonormalize_frames(
+           frames: wp.array[wp.mat33],
+           orthonormal_frames: wp.array[wp.mat33],
+           coefficients: wp.array[wp.mat33],
+       ):
+           i = wp.tid()
+           Q, R = wp.qr3(frames[i])
+           orthonormal_frames[i] = Q
+           coefficients[i] = R
+   
+       frames = wp.array(
+           [
+               wp.mat33(
+                   1.0, 1.0, 0.0,
+                   1.0, 0.0, 1.0,
+                   0.0, 1.0, 1.0,
+               )
+           ],
+           dtype=wp.mat33,
+       )
+       orthonormal_frames = wp.empty(1, dtype=wp.mat33)
+       coefficients = wp.empty(1, dtype=wp.mat33)
+   
+       wp.launch(
+           orthonormalize_frames,
+           dim=1,
+           inputs=[frames],
+           outputs=[orthonormal_frames, coefficients],
+       )
+   
+       print(f"Orthonormal frame:\n{np.round(orthonormal_frames.numpy()[0], 3)}")
+       print(f"R diagonal: {np.round(np.diag(coefficients.numpy()[0]), 3)}")
+   
+   .. testoutput::
+   
+       Orthonormal frame:
+       [[ 0.707  0.408  0.577]
+        [ 0.707 -0.408 -0.577]
+        [ 0.     0.816 -0.577]]
+       R diagonal: [ 1.414  1.225 -1.155]
+   
 
 .. function:: warp._src.lang.qr3(A: Matrix[Float, Literal[3], Literal[3]], Q: Matrix[Float, Literal[3], Literal[3]], R: Matrix[Float, Literal[3], Literal[3]]) -> None
    :noindex:
@@ -20,6 +86,26 @@
       :python: false
       :differentiable: true
 
-   Compute the QR decomposition of a 3x3 matrix ``A``.
+   Compute the QR decomposition of a 3x3 matrix and store the factors in
+   caller-provided output arguments.
    
-   The orthogonal matrix is returned in ``Q``, while the upper triangular matrix is returned in ``R``.
+   See the return-value overload for the factorization convention, numerical
+   behavior, and autodiff guidance.
+   
+   :param A: Matrix to decompose.
+   :param Q: Output orthogonal matrix.
+   :param R: Output upper-triangular matrix.
+   
+   .. rubric:: Example
+   
+   Store the QR decomposition of ``A`` in ``Q`` and ``R``:
+   
+   .. code-block:: python
+   
+       @wp.kernel
+       def compute_qr3(A: wp.mat33):
+           Q = wp.mat33()
+           R = wp.mat33()
+   
+           wp.qr3(A, Q, R)
+   

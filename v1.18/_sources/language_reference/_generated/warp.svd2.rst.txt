@@ -8,9 +8,62 @@
       :python: true
       :differentiable: true
 
-   Compute the SVD of a 2x2 matrix ``A``.
+   Compute the singular value decomposition of a 2x2 matrix.
    
-   The singular values are returned in ``sigma``, while the left and right basis vectors are returned in ``U`` and ``V``.
+   Singular values are nonnegative and sorted from largest to smallest.
+   Corresponding columns of ``U`` and ``V`` may be negated together without
+   changing the factorization. When singular values repeat, the associated
+   singular vectors are not uniquely determined.
+   
+   Derivatives of individual singular vectors are not uniquely defined when
+   singular values repeat and may be numerically unstable when singular values
+   are close.
+   
+   :param A: Matrix to decompose.
+   
+   :returns: A tuple ``(U, sigma, V)`` such that
+             ``A = U * wp.diag(sigma) * wp.transpose(V)``. ``U`` and ``V`` are
+             orthogonal matrices whose columns are the left and right singular vectors,
+             respectively, and ``sigma`` contains the singular values.
+   
+   .. rubric:: Example
+   
+   Compute the singular values and polar factor of a matrix:
+   
+   .. testcode::
+   
+       @wp.kernel
+       def compute_polar_factors(
+           matrices: wp.array[wp.mat22],
+           singular_values: wp.array[wp.vec2],
+           polar_factors: wp.array[wp.mat22],
+       ):
+           i = wp.tid()
+           U, sigma, V = wp.svd2(matrices[i])
+           singular_values[i] = sigma
+           polar_factors[i] = U * wp.transpose(V)
+   
+       matrices = wp.array([wp.mat22(3.0, 0.0, 4.0, 5.0)], dtype=wp.mat22)
+       singular_values = wp.empty(1, dtype=wp.vec2)
+       polar_factors = wp.empty(1, dtype=wp.mat22)
+   
+       wp.launch(
+           compute_polar_factors,
+           dim=1,
+           inputs=[matrices],
+           outputs=[singular_values, polar_factors],
+       )
+   
+       print(f"Singular values: {np.round(singular_values.numpy()[0], 3)}")
+       print(f"Polar factor:\n{np.round(polar_factors.numpy()[0], 3)}")
+   
+   .. testoutput::
+   
+       Singular values: [6.708 2.236]
+       Polar factor:
+       [[ 0.894 -0.447]
+        [ 0.447  0.894]]
+   
 
 .. function:: warp._src.lang.svd2(A: Matrix[Float, Literal[2], Literal[2]], U: Matrix[Float, Literal[2], Literal[2]], sigma: Vector[Float, Literal[2]], V: Matrix[Float, Literal[2], Literal[2]]) -> None
    :noindex:
@@ -20,6 +73,28 @@
       :python: false
       :differentiable: true
 
-   Compute the SVD of a 2x2 matrix ``A``.
+   Compute the singular value decomposition of a 2x2 matrix and store the
+   factors in caller-provided output arguments.
    
-   The singular values are returned in ``sigma``, while the left and right basis vectors are returned in ``U`` and ``V``.
+   See the return-value overload for the factorization convention, numerical
+   behavior, and autodiff guidance.
+   
+   :param A: Matrix to decompose.
+   :param U: Output matrix for the left singular vectors.
+   :param sigma: Output vector for the singular values.
+   :param V: Output matrix for the right singular vectors.
+   
+   .. rubric:: Example
+   
+   Store the singular value decomposition of ``A`` in ``U``, ``sigma``, and ``V``:
+   
+   .. code-block:: python
+   
+       @wp.kernel
+       def compute_svd2(A: wp.mat22):
+           U = wp.mat22()
+           sigma = wp.vec2()
+           V = wp.mat22()
+   
+           wp.svd2(A, U, sigma, V)
+   
