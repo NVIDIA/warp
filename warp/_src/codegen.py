@@ -7169,10 +7169,14 @@ cuda_module_header = """
 #define __debugbreak() __brkpt()
 #endif
 
-#define builtin_tid1d() wp::tid(_idx, dim)
-#define builtin_tid2d(x, y) wp::tid(x, y, _idx, dim)
-#define builtin_tid3d(x, y, z) wp::tid(x, y, z, _idx, dim)
-#define builtin_tid4d(x, y, z, w) wp::tid(x, y, z, w, _idx, dim)
+// Tiled launches reach the coord through launch_coord_tile, which keeps the fold on
+// the intra-tile lane only; every other launch form keeps wp::tid unchanged. The
+// template argument is deduced from dim, so no namespace qualification is needed.
+#define builtin_tid_lane() threadIdx.x
+#define builtin_tid1d() wp::launch_coord_tile(_idx, builtin_tid_lane(), dim).i
+#define builtin_tid2d(x, y) {{ wp::launch_coord_t coord = wp::launch_coord_tile(_idx, builtin_tid_lane(), dim); x = coord.i; y = coord.j; }}
+#define builtin_tid3d(x, y, z) {{ wp::launch_coord_t coord = wp::launch_coord_tile(_idx, builtin_tid_lane(), dim); x = coord.i; y = coord.j; z = coord.k; }}
+#define builtin_tid4d(x, y, z, w) {{ wp::launch_coord_t coord = wp::launch_coord_tile(_idx, builtin_tid_lane(), dim); x = coord.i; y = coord.j; z = coord.k; w = coord.l; }}
 
 #define builtin_block_dim() wp::block_dim()
 

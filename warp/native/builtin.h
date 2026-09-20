@@ -1984,6 +1984,59 @@ template <int N> inline CUDA_CALLABLE launch_coord_t launch_coord(size_t linear,
     return coord;
 }
 
+// Builds the launch coord from the block-derived tile index instead of dividing that
+// index back out, then folds the intra-tile lane back in. Callers pass the linear index
+// built from blockIdx.x and threadIdx.x plus the intra-tile lane, and must guarantee the
+// launch holds whole tiles per block (blockDim.x a multiple of coord_mult); the CPU path
+// passes no lane because it has no threadIdx. The result equals
+// launch_coord(linear, bounds) for every thread of such a launch and every lane.
+template <int N>
+inline CUDA_CALLABLE launch_coord_t launch_coord_tile(size_t linear, int lane, const launch_bounds_t<N>& bounds)
+{
+    if (bounds.coord_mult == 1)
+        return launch_coord(linear, bounds);
+
+    const size_t linear_tile = linear / bounds.coord_mult;
+    const size_t lane_in_tile = linear % bounds.coord_mult;
+
+    launch_coord_t coord = { 0, 0, 0, 0 };
+    size_t tiles = linear_tile;
+
+    if constexpr (N > 3) {
+        coord.l = static_cast<int>(tiles % bounds.shape[3]);
+        tiles /= bounds.shape[3];
+    }
+
+    if constexpr (N > 2) {
+        coord.k = static_cast<int>(tiles % bounds.shape[2]);
+        tiles /= bounds.shape[2];
+    }
+
+    if constexpr (N > 1) {
+        coord.j = static_cast<int>(tiles % bounds.shape[1]);
+        tiles /= bounds.shape[1];
+    }
+
+    coord.i = static_cast<int>(tiles);
+
+    // launch_coord() reads the coord off (linear / coord_mult) and only its last
+    // unraveled axis keeps a remainder from the folded lane, so re-wrap the tile coord
+    // and hand the lane back before unraveling. The lane must not be added to coord.j:
+    // its magnitude is coord_mult, which overflows shape[1] and aliases tile rows.
+    size_t folded = static_cast<size_t>(coord.i);
+    if constexpr (N > 1) {
+        folded = folded * bounds.shape[1] + static_cast<size_t>(coord.j);
+    }
+    if constexpr (N > 2) {
+        folded = folded * bounds.shape[2] + static_cast<size_t>(coord.k);
+    }
+    if constexpr (N > 3) {
+        folded = folded * bounds.shape[3] + static_cast<size_t>(coord.l);
+    }
+
+    return launch_coord(folded * bounds.coord_mult + lane_in_tile, bounds);
+}
+
 inline CUDA_CALLABLE int block_dim()
 {
 #if defined(__CUDA_ARCH__)
