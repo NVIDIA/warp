@@ -806,6 +806,12 @@ void bvh_rebuild_device(BVH& bvh)
 {
     ContextGuard guard(bvh.context);
 
+    if (bvh.num_items <= 0) {
+        // nothing to rebuild — the descriptor already describes a well-formed
+        // empty tree, and the builders below cannot handle zero items
+        return;
+    }
+
     if (bvh.constructor_type == BVH_CONSTRUCTOR_CUBQL) {
         cubql_bvh_rebuild_device(bvh);
         bvh.constructor_type = BVH_CONSTRUCTOR_CUBQL;

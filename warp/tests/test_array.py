@@ -3355,9 +3355,12 @@ def test_numpy_conversion_cpu_dtype_and_copy(test, device):
     nb[0] = -1.0
     test.assertNotEqual(nb[0], a.numpy()[0])
 
-    # copy=False with an unavoidable dtype copy must raise (NumPy 2 semantics)
-    with test.assertRaises(ValueError):
-        np.array(a, dtype=np.float64, copy=False)
+    # copy=False with an unavoidable dtype copy must raise (NumPy 2 semantics;
+    # NumPy 1.x still copies instead of raising, and NumPy is unconstrained in
+    # project metadata)
+    if np.lib.NumpyVersion(np.__version__) >= "2.0.0":
+        with test.assertRaises(ValueError):
+            np.array(a, dtype=np.float64, copy=False)
 
 
 def test_numpy_conversion_keeps_source_alive(test, device):

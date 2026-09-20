@@ -580,15 +580,20 @@ template <typename T, typename Shape> struct tile_vectorized_check_t {
             __trap();
 #endif
 
+        bool in_bounds = true;
+        for (int d = 0; d < Shape::N; ++d) {
+            in_bounds = in_bounds && global.offset[d] >= 0 && global.offset[d] + Shape::dim(d) <= global.data.shape[d];
+        }
+        // Debug: assert fires with a diagnostic message.
+        // Release: assert is compiled out but __trap() is still active.
+        assert(in_bounds && "aligned=True but tile extends past array bounds");
+#if defined(__CUDA_ARCH__)
+        if (!in_bounds)
+            __trap();
+#endif
+
 #ifndef NDEBUG
         constexpr int lastdim = Shape::N - 1;
-
-        for (int d = 0; d < Shape::N; ++d) {
-            assert(
-                global.offset[d] >= 0 && global.offset[d] + Shape::dim(d) <= global.data.shape[d]
-                && "aligned=True but tile extends past array bounds"
-            );
-        }
 
         int expected = sizeof(T);
         for (int d = lastdim; d >= 0; --d) {

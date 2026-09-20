@@ -1671,6 +1671,21 @@ def augassign_target_before_rhs_nonatomic_kernel(dst: wp.array[wp.int16], scratc
     dst[augassign_order_index(scratch)] += wp.int16(augassign_order_rhs(scratch))
 
 
+@wp.func
+def augassign_rhs_overwrite_slot(arr: wp.array[wp.int16], val: wp.int16) -> wp.int16:
+    # Overwrites the slot the augmented assignment targets, then returns 1.
+    arr[0] = val
+    return wp.int16(1)
+
+
+@wp.kernel
+def augassign_snapshot_slot_kernel(dst: wp.array[wp.int16]):
+    # The non-atomic path materializes the slot's current value before the RHS
+    # runs, so the update must combine the pre-RHS value (5) rather than the
+    # value written by the RHS side effect (99).
+    dst[0] += augassign_rhs_overwrite_slot(dst, wp.int16(99))
+
+
 def test_augassign_target_before_rhs(test, device):
     """Verify augmented assignment evaluates the target index before the RHS (GH-1947)."""
     dst = wp.zeros(1, dtype=float, device=device)
@@ -1688,6 +1703,16 @@ def test_augassign_target_before_rhs(test, device):
 
     test.assertEqual(
         int(dst16.numpy()[0]), 7, msg="rhs was evaluated before the target index expression mutated scratch"
+    )
+
+    snap = wp.array([5], dtype=wp.int16, device=device)
+
+    wp.launch(augassign_snapshot_slot_kernel, dim=1, inputs=[snap], device=device)
+
+    test.assertEqual(
+        int(snap.numpy()[0]),
+        6,
+        msg="augmented assignment combined the value written by the RHS instead of the pre-RHS slot value",
     )
 
 

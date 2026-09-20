@@ -11618,6 +11618,11 @@ def launch(
         if not module_exec:
             return
 
+        _validate_kernel_tid_extents(kernel, dim, total_dim_size, block_dim)
+        # Validate representability before the lean-grid capacity check so
+        # out-of-range dims raise ValueError consistently on every device.
+        bounds = _build_launch_bounds_from_tuple(dim, kernel.adj.kernel_dim)
+
         if not kernel.grid_stride and not device.is_cpu:
             if max_blocks > 0:
                 raise RuntimeError(
@@ -11636,9 +11641,6 @@ def launch(
                     f"exceeding the lean 3D grid capacity of {max_lean_blocks * block_dim} work items. Use "
                     f"@wp.kernel(grid_stride=True) to launch dimensions this large."
                 )
-
-        _validate_kernel_tid_extents(kernel, dim, total_dim_size, block_dim)
-        bounds = _build_launch_bounds_from_tuple(dim, kernel.adj.kernel_dim)
 
         # first param is the number of threads
         params = [bounds]

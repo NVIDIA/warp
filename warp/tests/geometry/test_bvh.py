@@ -198,6 +198,7 @@ def test_bvh_empty(test, device):
         uppers = wp.zeros(0, dtype=wp.vec3, device=device)
         bvh = wp.Bvh(lowers, uppers, constructor=constructor)
         bvh.refit()
+        bvh.rebuild()
 
         bounds_intersected = wp.zeros(4, dtype=int, device=device)
         wp.launch(
