@@ -449,7 +449,7 @@ linux-aarch64 cu12 test:
   image: $UV_TRIXIE_SLIM_ARM_IMAGE
   needs: [linux-aarch64 cu12 build]
   extends:
-    - .omni_rtx_gpu_arm
+    - .ipp_lnx_aarch64_gpu
     - .test_common_with_coverage
   before_script:
     - df -h
@@ -461,7 +461,7 @@ linux-aarch64 cu13 test:
   image: $UV_TRIXIE_SLIM_ARM_IMAGE
   needs: [linux-aarch64 cu13 build]
   extends:
-    - .omni_rtx_gpu_arm
+    - .ipp_lnx_aarch64_gpu
     - .test_common_with_coverage
   before_script:
     - df -h

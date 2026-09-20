@@ -73,7 +73,7 @@ windows-x86_64 cu13 build:
   image: $UV_TRIXIE_SLIM_ARM_IMAGE
   needs: [linux-aarch64 cu13 build]
   extends:
-    - .runner-test-linux-aarch64 # TODO: Change to .omni_devplat_arm_docker_gpu
+    - .ipp_lnx_aarch64_gpu
     - .save_test_report_artifact
   before_script:
     - df -h
