@@ -562,8 +562,59 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><span class="pre">Matrix</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../api_reference/_generated/warp.Float.html#warp.Float" title="warp.Float"><span class="pre">Float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="m"><span class="pre">2</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="m"><span class="pre">2</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Vector</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../api_reference/_generated/warp.Float.html#warp.Float" title="warp.Float"><span class="pre">Float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="m"><span class="pre">2</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Matrix</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../api_reference/_generated/warp.Float.html#warp.Float" title="warp.Float"><span class="pre">Float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="m"><span class="pre">2</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="m"><span class="pre">2</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#warp._src.lang.svd2" title="Link to this definition">#</a></dt>
-<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag" data-wp-tag="python" data-wp-value="true"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Compute the SVD of a 2x2 matrix <code class="docutils literal notranslate"><span class="pre">A</span></code>.</p>
-<p>The singular values are returned in <code class="docutils literal notranslate"><span class="pre">sigma</span></code>, while the left and right basis vectors are returned in <code class="docutils literal notranslate"><span class="pre">U</span></code> and <code class="docutils literal notranslate"><span class="pre">V</span></code>.</p>
+<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag" data-wp-tag="python" data-wp-value="true"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Compute the singular value decomposition of a 2x2 matrix.</p>
+<p>Singular values are nonnegative and sorted from largest to smallest.
+Corresponding columns of <code class="docutils literal notranslate"><span class="pre">U</span></code> and <code class="docutils literal notranslate"><span class="pre">V</span></code> may be negated together without
+changing the factorization. When singular values repeat, the associated
+singular vectors are not uniquely determined.</p>
+<p>Derivatives of individual singular vectors are not uniquely defined when
+singular values repeat and may be numerically unstable when singular values
+are close.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>A</strong> – Matrix to decompose.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A tuple <code class="docutils literal notranslate"><span class="pre">(U,</span> <span class="pre">sigma,</span> <span class="pre">V)</span></code> such that
+<code class="docutils literal notranslate"><span class="pre">A</span> <span class="pre">=</span> <span class="pre">U</span> <span class="pre">*</span> <span class="pre">wp.diag(sigma)</span> <span class="pre">*</span> <span class="pre">wp.transpose(V)</span></code>. <code class="docutils literal notranslate"><span class="pre">U</span></code> and <code class="docutils literal notranslate"><span class="pre">V</span></code> are
+orthogonal matrices whose columns are the left and right singular vectors,
+respectively, and <code class="docutils literal notranslate"><span class="pre">sigma</span></code> contains the singular values.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<p>Compute the singular values and polar factor of a matrix:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_polar_factors</span><span class="p">(</span>
+    <span class="n">matrices</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">mat22</span><span class="p">],</span>
+    <span class="n">singular_values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec2</span><span class="p">],</span>
+    <span class="n">polar_factors</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">mat22</span><span class="p">],</span>
+<span class="p">):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">U</span><span class="p">,</span> <span class="n">sigma</span><span class="p">,</span> <span class="n">V</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">svd2</span><span class="p">(</span><span class="n">matrices</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+    <span class="n">singular_values</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">sigma</span>
+    <span class="n">polar_factors</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">U</span> <span class="o">*</span> <span class="n">wp</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="n">V</span><span class="p">)</span>
+
+<span class="n">matrices</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">wp</span><span class="o">.</span><span class="n">mat22</span><span class="p">(</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">)],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">mat22</span><span class="p">)</span>
+<span class="n">singular_values</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec2</span><span class="p">)</span>
+<span class="n">polar_factors</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">mat22</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span>
+    <span class="n">compute_polar_factors</span><span class="p">,</span>
+    <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">matrices</span><span class="p">],</span>
+    <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">singular_values</span><span class="p">,</span> <span class="n">polar_factors</span><span class="p">],</span>
+<span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Singular values: </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">singular_values</span><span class="o">.</span><span class="n">numpy</span><span class="p">()[</span><span class="mi">0</span><span class="p">],</span><span class="w"> </span><span class="mi">3</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Polar factor:</span><span class="se">\n</span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">polar_factors</span><span class="o">.</span><span class="n">numpy</span><span class="p">()[</span><span class="mi">0</span><span class="p">],</span><span class="w"> </span><span class="mi">3</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>Singular values: [6.708 2.236]
+Polar factor:
+[[ 0.894 -0.447]
+ [ 0.447  0.894]]
+</pre></div>
+</div>
 </dd></dl>
 
 <dl class="py function">
@@ -578,8 +629,31 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span></dt>
-<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Compute the SVD of a 2x2 matrix <code class="docutils literal notranslate"><span class="pre">A</span></code>.</p>
-<p>The singular values are returned in <code class="docutils literal notranslate"><span class="pre">sigma</span></code>, while the left and right basis vectors are returned in <code class="docutils literal notranslate"><span class="pre">U</span></code> and <code class="docutils literal notranslate"><span class="pre">V</span></code>.</p>
+<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Compute the singular value decomposition of a 2x2 matrix and store the
+factors in caller-provided output arguments.</p>
+<p>See the return-value overload for the factorization convention, numerical
+behavior, and autodiff guidance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>A</strong> – Matrix to decompose.</p></li>
+<li><p><strong>U</strong> – Output matrix for the left singular vectors.</p></li>
+<li><p><strong>sigma</strong> – Output vector for the singular values.</p></li>
+<li><p><strong>V</strong> – Output matrix for the right singular vectors.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<p>Store the singular value decomposition of <code class="docutils literal notranslate"><span class="pre">A</span></code> in <code class="docutils literal notranslate"><span class="pre">U</span></code>, <code class="docutils literal notranslate"><span class="pre">sigma</span></code>, and <code class="docutils literal notranslate"><span class="pre">V</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_svd2</span><span class="p">(</span><span class="n">A</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">mat22</span><span class="p">):</span>
+    <span class="n">U</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">mat22</span><span class="p">()</span>
+    <span class="n">sigma</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec2</span><span class="p">()</span>
+    <span class="n">V</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">mat22</span><span class="p">()</span>
+
+    <span class="n">wp</span><span class="o">.</span><span class="n">svd2</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">U</span><span class="p">,</span> <span class="n">sigma</span><span class="p">,</span> <span class="n">V</span><span class="p">)</span>
+</pre></div>
+</div>
 </dd></dl>
 
 </section>

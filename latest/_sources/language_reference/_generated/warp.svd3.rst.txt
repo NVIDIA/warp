@@ -8,9 +8,82 @@
       :python: true
       :differentiable: true
 
-   Compute the SVD of a 3x3 matrix ``A``.
+   Compute the singular value decomposition of a 3x3 matrix.
    
-   The singular values are returned in ``sigma``, while the left and right basis vectors are returned in ``U`` and ``V``.
+   Multiplying any two corresponding column pairs of ``U`` and ``V`` by
+   ``-1`` produces an equivalent factorization.
+   
+   When components of ``sigma`` have equal magnitudes, the corresponding
+   singular vectors are not unique.
+   
+   Derivatives of individual singular vectors are not uniquely defined at
+   repeated magnitudes and may be numerically unstable when the magnitudes are
+   close.
+   
+   The decomposition is a finite-precision approximation. It currently uses a
+   fixed number of Jacobi iterations rather than a convergence tolerance.
+   Check the orthogonality of ``U`` and ``V`` and the reconstruction error
+   when accuracy is critical.
+   
+   :param A: Matrix to decompose.
+   
+   :returns: A tuple ``(U, sigma, V)`` such that
+             ``A = U * wp.diag(sigma) * wp.transpose(V)``. ``U`` and ``V`` are
+             orthogonal matrices with determinant ``+1`` whose columns are the left
+             and right singular vectors, respectively. The components of ``sigma``
+             are sorted by decreasing magnitude. The first two components are
+             nonnegative; for a nonsingular matrix, ``sigma[2]`` has the sign of
+             ``wp.determinant(A)``.
+   
+   .. rubric:: Example
+   
+   Separate an orientation-reversing deformation gradient into signed
+   principal stretches and a proper rotation:
+   
+   .. testcode::
+   
+       @wp.kernel
+       def decompose_deformations(
+           deformation_gradients: wp.array[wp.mat33],
+           signed_stretches: wp.array[wp.vec3],
+           rotations: wp.array[wp.mat33],
+       ):
+           i = wp.tid()
+           U, sigma, V = wp.svd3(deformation_gradients[i])
+           signed_stretches[i] = sigma
+           rotations[i] = U * wp.transpose(V)
+   
+       deformation_gradients = wp.array(
+           [
+               wp.mat33(
+                   2.598076, -1.0, 0.0,
+                   1.5, 1.732051, 0.0,
+                   0.0, 0.0, -1.0,
+               )
+           ],
+           dtype=wp.mat33,
+       )
+       signed_stretches = wp.empty(1, dtype=wp.vec3)
+       rotations = wp.empty(1, dtype=wp.mat33)
+   
+       wp.launch(
+           decompose_deformations,
+           dim=1,
+           inputs=[deformation_gradients],
+           outputs=[signed_stretches, rotations],
+       )
+   
+       print(f"Signed stretches: {np.round(signed_stretches.numpy()[0], 3)}")
+       print(f"Rotation:\n{np.round(rotations.numpy()[0], 3)}")
+   
+   .. testoutput::
+   
+       Signed stretches: [ 3.  2. -1.]
+       Rotation:
+       [[ 0.866 -0.5    0.   ]
+        [ 0.5    0.866  0.   ]
+        [ 0.     0.     1.   ]]
+   
 
 .. function:: warp._src.lang.svd3(A: Matrix[Float, Literal[3], Literal[3]], U: Matrix[Float, Literal[3], Literal[3]], sigma: Vector[Float, Literal[3]], V: Matrix[Float, Literal[3], Literal[3]]) -> None
    :noindex:
@@ -20,6 +93,28 @@
       :python: false
       :differentiable: true
 
-   Compute the SVD of a 3x3 matrix ``A``.
+   Compute the singular value decomposition of a 3x3 matrix and store the
+   factors in caller-provided output arguments.
    
-   The singular values are returned in ``sigma``, while the left and right basis vectors are returned in ``U`` and ``V``.
+   See the return-value overload for the factorization convention, numerical
+   behavior, and autodiff guidance.
+   
+   :param A: Matrix to decompose.
+   :param U: Output matrix for the left singular vectors.
+   :param sigma: Output vector for the signed singular values.
+   :param V: Output matrix for the right singular vectors.
+   
+   .. rubric:: Example
+   
+   Store the singular value decomposition of ``A`` in ``U``, ``sigma``, and ``V``:
+   
+   .. code-block:: python
+   
+       @wp.kernel
+       def compute_svd3(A: wp.mat33):
+           U = wp.mat33()
+           sigma = wp.vec3()
+           V = wp.mat33()
+   
+           wp.svd3(A, U, sigma, V)
+   
