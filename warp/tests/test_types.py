@@ -359,6 +359,15 @@ class TestTypes(unittest.TestCase):
         self.assertEqual(result.returncode, 0, msg=result.stderr)
         self.assertIn("2.0 3.0", result.stdout)
 
+        # the same lazy init must cover the bfloat16 conversion helpers, and
+        # converting a half-precision scalar back to float must work too
+        result = run_python_subprocess(
+            "import warp as wp; print(float(wp.float16(1.5)), float(wp.bfloat16(1.5)))",
+            hide_gpu=True,
+        )
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        self.assertIn("1.5 1.5", result.stdout)
+
     def test_constant_error_invalid_type(self):
         with self.assertRaisesRegex(TypeError, r"Invalid constant type: <class 'tuple'>$"):
             wp.constant((1, 2, 3))

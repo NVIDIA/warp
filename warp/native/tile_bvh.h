@@ -106,8 +106,13 @@ bvh_query_thread_block(uint64_t id, bool is_ray, const vec3& lower, const vec3& 
 
     // optimization: make the latest
     if (threadIdx.x == 0) {
-        query.stack_shared_mem[0] = *bvh.root;
-        query.count_shared_mem[0] = 1;
+        if (bvh.root) {
+            query.stack_shared_mem[0] = *bvh.root;
+            query.count_shared_mem[0] = 1;
+        } else {
+            // empty BVH — nothing to traverse
+            query.count_shared_mem[0] = 0;
+        }
         query.result_counter_shared_mem[0] = 0;
         // Pre-seed as "valid" so the first tile_query_valid() check (which happens after
         // the first tile_bvh_query_next()) doesn't return false before the query runs.

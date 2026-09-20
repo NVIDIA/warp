@@ -312,7 +312,7 @@ uint64_t wp_mesh_create_device(
     // save descriptor
     uint64_t mesh_id = (uint64_t)mesh_device;
 
-    if (num_tris == 0) {
+    if (num_tris <= 0) {
         // no triangles: the edge-length, bounds, and BVH build steps below would
         // operate on empty or NULL buffers (average_edge_length stays 0 and the
         // BVH stays an empty tree), so just register the mesh and finish

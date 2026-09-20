@@ -92,8 +92,13 @@ mesh_query_aabb_thread_block(uint64_t id, const vec3& lower, const vec3& upper)
 
     // optimization: make the latest
     if (threadIdx.x == 0) {
-        query.stack_shared_mem[0] = *mesh.bvh.root;
-        query.count_shared_mem[0] = 1;
+        if (mesh.bvh.root) {
+            query.stack_shared_mem[0] = *mesh.bvh.root;
+            query.count_shared_mem[0] = 1;
+        } else {
+            // empty mesh — nothing to traverse
+            query.count_shared_mem[0] = 0;
+        }
         query.result_counter_shared_mem[0] = 0;
         // Pre-seed as "valid" so the first tile_query_valid() check (which happens after
         // the first tile_mesh_query_aabb_next()) doesn't return false before the query runs.

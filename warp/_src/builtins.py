@@ -5264,15 +5264,20 @@ def tile_view_value_func(arg_types, arg_values):
         for dim in range(ndim):
             if shape[dim] <= 0:
                 raise ValueError(f"tile_view() shape entries must be positive, got {shape[dim]} for axis {dim}")
-            # when the offset for this axis is a constant, verify the view fits the parent;
-            # runtime offsets cannot be validated at code-gen time
+            # the offset for an axis is implicitly 0 when omitted; when it is a
+            # constant, verify the view fits the parent (runtime offsets cannot
+            # be validated at code-gen time)
             if dim < len(offset):
                 off = offset[dim].constant if isinstance(offset[dim], Var) else offset[dim]
-                if isinstance(off, int) and off + shape[dim] > parent_shape[dim]:
-                    raise ValueError(
-                        f"tile_view() offset {off} plus shape {shape[dim]} exceeds the parent extent "
-                        f"{parent_shape[dim]} at axis {dim}"
-                    )
+                if not isinstance(off, int):
+                    continue
+            else:
+                off = 0
+            if off + shape[dim] > parent_shape[dim]:
+                raise ValueError(
+                    f"tile_view() offset {off} plus shape {shape[dim]} exceeds the parent extent "
+                    f"{parent_shape[dim]} at axis {dim}"
+                )
     else:
         # if not specified, then take output shape from unspecified src dimensions
         # e.g.: tile[i] will return a whole row of a 2D tile

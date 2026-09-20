@@ -3639,8 +3639,10 @@ bool wp_cuda_graph_end_capture(void* context, void* stream, void** graph_ret, bo
         return true;
 
     // end the capture
-    if (!check_cuda(cudaStreamEndCapture(cuda_stream, &graph)))
+    if (!check_cuda(cudaStreamEndCapture(cuda_stream, &graph))) {
+        clean_up();
         return false;
+    }
 
     // process deferred free list if no more captures are ongoing
     if (g_captures.empty()) {
@@ -4085,8 +4087,10 @@ bool wp_cuda_graph_pause_capture(void* context, void* stream, void** graph_ret)
         wp::set_error_string("Warp error: pause_capture called on stream that is not capturing");
         return false;
     }
-    if (!join_capture_leaf_nodes(cuda_stream, graph))
+    if (!join_capture_leaf_nodes(cuda_stream, graph)) {
+        wp::set_error_string("Warp error: pause_capture failed to join capture leaf nodes");
         return false;
+    }
 
     if (!check_cuda(cudaStreamEndCapture(cuda_stream, (cudaGraph_t*)graph_ret)))
         return false;

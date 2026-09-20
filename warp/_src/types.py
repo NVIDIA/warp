@@ -44,8 +44,10 @@ _ARRAY_INTERFACE_EMPTY_DATA = ctypes.c_byte()
 class _ArrayInterfaceWrapper:
     """Exposes an ``__array_interface__`` dict to NumPy without invoking ``array.__array__``."""
 
-    def __init__(self, interface):
-        self.__array_interface__ = interface
+    def __init__(self, array):
+        # keep the source array alive for as long as the produced NumPy view lives
+        self._owner = array
+        self.__array_interface__ = array.__array_interface__
 
 
 # type hints
@@ -4096,8 +4098,10 @@ class array(Array[DType, NDim]):
             )
 
         # convert through __array_interface__ without re-entering __array__
-        result = np.asarray(_ArrayInterfaceWrapper(self.__array_interface__))
-        if dtype is not None:
+        result = np.asarray(_ArrayInterfaceWrapper(self))
+        if dtype is not None and result.dtype != np.dtype(dtype):
+            if copy is False:
+                raise ValueError("Unable to avoid copy while creating an array as requested")
             result = result.astype(dtype, copy=False)
         if copy:
             result = result.copy()
@@ -5711,7 +5715,7 @@ class tile(Tile):
         shape = tuple(_unwrap_literal(s) for s in rest)
 
         for i, dim in enumerate(shape):
-            if not isinstance(dim, int) or dim <= 0:
+            if not isinstance(dim, (int, np.integer)) or dim <= 0:
                 raise TypeError(f"Tile dimension {i} must be a positive integer, got {dim!r}")
 
         return cls(dtype=dtype, shape=shape)

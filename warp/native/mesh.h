@@ -145,7 +145,7 @@ CUDA_CALLABLE inline float mesh_query_point_core(
     uint64_t node = 0;
     bool have_node = false;
 
-    {
+    if (mesh.bvh.root) {
         const int root_index = *mesh.bvh.root;
         const BVHPackedNodeHalf root_lower = bvh_load_node(mesh.bvh.node_lowers, root_index);
         const BVHPackedNodeHalf root_upper = bvh_load_node(mesh.bvh.node_uppers, root_index);
@@ -344,9 +344,11 @@ mesh_query_furthest_point_no_sign(uint64_t id, const vec3& point, float min_dist
     Mesh mesh = mesh_get(id);
 
     int stack[BVH_QUERY_STACK_SIZE];
-    stack[0] = *mesh.bvh.root;
-
-    int count = 1;
+    int count = 0;
+    if (mesh.bvh.root) {
+        stack[0] = *mesh.bvh.root;
+        count = 1;
+    }
 
     float min_dist_sq = min_dist * min_dist;
     int max_face;
@@ -469,8 +471,11 @@ CUDA_CALLABLE inline bool mesh_query_point_sign_normal(
     Mesh mesh = mesh_get(id);
 
     int stack[BVH_QUERY_STACK_SIZE];
-    stack[0] = *mesh.bvh.root;
-    int count = 1;
+    int count = 0;
+    if (mesh.bvh.root) {
+        stack[0] = *mesh.bvh.root;
+        count = 1;
+    }
     float min_dist = max_dist;
     int min_face;
     float min_v;
@@ -644,10 +649,13 @@ CUDA_CALLABLE inline float solid_angle_iterative(uint64_t id, const vec3& p, con
     int stack[BVH_QUERY_STACK_SIZE];
     int at_child[BVH_QUERY_STACK_SIZE];  // 0 for left, 1 for right, 2 for done
     float angle[BVH_QUERY_STACK_SIZE];
-    stack[0] = *mesh.bvh.root;
-    at_child[0] = 0;
 
-    int count = 1;
+    int count = 0;
+    if (mesh.bvh.root) {
+        stack[0] = *mesh.bvh.root;
+        at_child[0] = 0;
+        count = 1;
+    }
     angle[0] = 0.0f;
 
     while (count) {
@@ -1175,6 +1183,9 @@ CUDA_CALLABLE inline bool mesh_query_ray(
 {
     Mesh mesh = mesh_get(id);
 
+    if (root == -1 && mesh.bvh.root == nullptr)
+        return false;
+
     uint64_t stack[BVH_QUERY_STACK_SIZE];
     int stack_size = 0;
     uint64_t cur_node = bvh_query_node_load(mesh.bvh, (root == -1) ? *mesh.bvh.root : root);
@@ -1289,6 +1300,9 @@ mesh_query_ray_anyhit(uint64_t id, const vec3& start, const vec3& dir, float max
 {
     Mesh mesh = mesh_get(id);
 
+    if (root == -1 && mesh.bvh.root == nullptr)
+        return false;
+
     uint64_t stack[BVH_QUERY_STACK_SIZE];
     int stack_size = 0;
     uint64_t cur_node = bvh_query_node_load(mesh.bvh, (root == -1) ? *mesh.bvh.root : root);
@@ -1373,6 +1387,9 @@ CUDA_CALLABLE inline int mesh_query_ray_count_intersections(uint64_t id, const v
 
     int stack[BVH_QUERY_STACK_SIZE];
 
+    if (root == -1 && mesh.bvh.root == nullptr)
+        return 0;
+
     stack[0] = root == -1 ? *mesh.bvh.root : root;
     int count = 1;
 
@@ -1450,6 +1467,9 @@ CUDA_CALLABLE inline bool mesh_query_ray_ordered(
 
     int stack[BVH_QUERY_STACK_SIZE];
     float stack_dist[BVH_QUERY_STACK_SIZE];
+
+    if (root == -1 && mesh.bvh.root == nullptr)
+        return false;
 
     stack[0] = root == -1 ? *mesh.bvh.root : root;
     stack_dist[0] = -FLT_MAX;
@@ -1680,6 +1700,9 @@ CUDA_CALLABLE inline void adj_mesh_query_ray(
 CUDA_CALLABLE inline bool
 mesh_query_ray_closest_sign(const Mesh& mesh, const vec3& start, const vec3& dir, float& out_sign)
 {
+    if (!mesh.bvh.root)
+        return false;
+
     int stack[BVH_QUERY_STACK_SIZE];
     int stack_size = 0;
     int node_index = *mesh.bvh.root;
@@ -1888,8 +1911,13 @@ CUDA_CALLABLE inline mesh_query_aabb_t mesh_query_impl(uint64_t id, const vec3& 
     query.stack.ptr = &mesh_query_shared_stack()[linear_thread_idx];
 #endif
 
-    query.stack[0] = *mesh.bvh.root;
-    query.count = 1;
+    if (mesh.bvh.root) {
+        query.stack[0] = *mesh.bvh.root;
+        query.count = 1;
+    } else {
+        // empty mesh — nothing to traverse
+        query.count = 0;
+    }
     query.input_lower = a;
     query.input_upper = b;
 

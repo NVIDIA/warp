@@ -183,6 +183,38 @@ def count_sphere_hits(bvh_id: wp.uint64, center: wp.vec3, radius: float, hits: w
         wp.atomic_add(hits, 0, 1)
 
 
+def test_bvh_empty(test, device):
+    """A zero-item BVH must create, refit, and answer queries with no hits (GH-1765)."""
+    if device.is_cpu:
+        constructors = ["sah", "median"]
+    else:
+        constructors = ["sah", "median", "lbvh"]
+
+    if wp.is_cubql_available() and not device.is_cpu:
+        constructors.append("cubql")
+
+    for constructor in constructors:
+        lowers = wp.zeros(0, dtype=wp.vec3, device=device)
+        uppers = wp.zeros(0, dtype=wp.vec3, device=device)
+        bvh = wp.Bvh(lowers, uppers, constructor=constructor)
+        bvh.refit()
+
+        bounds_intersected = wp.zeros(4, dtype=int, device=device)
+        wp.launch(
+            bvh_query_aabb,
+            dim=1,
+            inputs=[bvh.id, wp.vec3(-1.0, -1.0, -1.0), wp.vec3(1.0, 1.0, 1.0), bounds_intersected],
+            device=device,
+        )
+        wp.launch(
+            bvh_query_ray,
+            dim=1,
+            inputs=[bvh.id, wp.vec3(0.0, 0.0, 0.0), wp.vec3(0.0, 1.0, 0.0), bounds_intersected],
+            device=device,
+        )
+        test.assertTrue(np.all(bounds_intersected.numpy() == 0), msg=f"constructor={constructor}")
+
+
 def test_bvh(test, type, device, leaf_size, constructor=None):
     rng = np.random.default_rng(123)
 
@@ -1117,6 +1149,7 @@ class TestBvh(unittest.TestCase):
             wp.Bvh(lowers, uppers, constructor="cubql", groups=groups)
 
 
+add_function_test(TestBvh, "test_bvh_empty", test_bvh_empty, devices=devices)
 add_function_test(TestBvh, "test_bvh_aabb", test_bvh_query_aabb, devices=devices)
 add_function_test(TestBvh, "test_bvh_ray", test_bvh_query_ray, devices=devices)
 add_function_test(TestBvh, "test_bvh_sphere", test_bvh_query_sphere, devices=devices)

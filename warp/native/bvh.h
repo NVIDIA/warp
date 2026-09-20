@@ -536,8 +536,13 @@ CUDA_CALLABLE inline bvh_query_t bvh_query(uint64_t id, const vec3& lower, const
 
     query.bvh = bvh;
 
-    query.stack[0] = root == -1 ? *bvh.root : root;
-    query.count = 1;
+    if (root == -1 && bvh.root == nullptr) {
+        // empty BVH — nothing to traverse
+        query.count = 0;
+    } else {
+        query.stack[0] = root == -1 ? *bvh.root : root;
+        query.count = 1;
+    }
     query.input_lower = lower;
     query.input_upper = upper;
 

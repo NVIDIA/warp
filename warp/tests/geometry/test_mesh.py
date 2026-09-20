@@ -383,8 +383,39 @@ def test_mesh_refit_graph(test, device):
         wp.synchronize_device(device)
 
 
+@wp.kernel(enable_backward=False)
+def query_empty_mesh_kernel(
+    mesh_id: wp.uint64,
+    results: wp.array[int],
+):
+    start = wp.vec3(0.0, 0.0, 0.0)
+    dir = wp.vec3(0.0, 1.0, 0.0)
+
+    t = float(0.0)
+    bary_u = float(0.0)
+    bary_v = float(0.0)
+    sign = float(0.0)
+    normal = wp.vec3(0.0, 0.0, 0.0)
+    face = int(0)
+
+    hit = wp.mesh_query_ray(mesh_id, start, dir, 1e6, t, bary_u, bary_v, sign, normal, face)
+    results[0] = wp.where(hit, 1, 0)
+    results[1] = wp.where(wp.mesh_query_ray_anyhit(mesh_id, start, dir, 1e6), 1, 0)
+    results[2] = wp.mesh_query_ray_count_intersections(mesh_id, start, dir)
+
+    res = wp.mesh_query_point(mesh_id, start, 1e6)
+    results[3] = wp.where(res.result, 1, 0)
+
+    query = wp.mesh_query_aabb(mesh_id, wp.vec3(-1.0, -1.0, -1.0), wp.vec3(1.0, 1.0, 1.0))
+    index = int(0)
+    count = int(0)
+    while wp.mesh_query_aabb_next(query, index):
+        count += 1
+    results[4] = count
+
+
 def test_mesh_empty(test, device):
-    """A mesh with zero triangles must create and refit cleanly (GH-1765)."""
+    """A mesh with zero triangles must create, refit, and answer queries cleanly (GH-1765)."""
     if device.is_cpu:
         constructors = ["sah", "median"]
     else:
@@ -398,6 +429,11 @@ def test_mesh_empty(test, device):
         indices = wp.zeros(0, dtype=int, device=device)
         mesh = wp.Mesh(points=points, indices=indices, bvh_constructor=constructor)
         mesh.refit()
+
+        # queries on an empty mesh must report no hits instead of dereferencing a NULL root
+        results = wp.zeros(8, dtype=int, device=device)
+        wp.launch(query_empty_mesh_kernel, dim=1, inputs=[mesh.id, results], device=device)
+        test.assertTrue(np.all(results.numpy() == 0), msg=f"constructor={constructor}")
 
     # the device allocator must still be healthy after empty-mesh creation
     a = wp.zeros(1024, dtype=float, device=device)

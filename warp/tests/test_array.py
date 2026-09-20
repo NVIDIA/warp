@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import gc
 import sys
 import unittest
 from functools import cache
@@ -3354,6 +3355,17 @@ def test_numpy_conversion_cpu_dtype_and_copy(test, device):
     nb[0] = -1.0
     test.assertNotEqual(nb[0], a.numpy()[0])
 
+    # copy=False with an unavoidable dtype copy must raise (NumPy 2 semantics)
+    with test.assertRaises(ValueError):
+        np.array(a, dtype=np.float64, copy=False)
+
+
+def test_numpy_conversion_keeps_source_alive(test, device):
+    """np.asarray() on a temporary Warp array must not leave a dangling view."""
+    na = np.asarray(wp.full(4, 7.0, dtype=wp.float32, device="cpu"))
+    gc.collect()
+    np.testing.assert_allclose(na, np.full(4, 7.0, dtype=np.float32))
+
 
 @wp.kernel
 def kernel_indexing_types(
@@ -4276,6 +4288,12 @@ add_function_test(
     TestArray,
     "test_numpy_conversion_cpu_dtype_and_copy",
     test_numpy_conversion_cpu_dtype_and_copy,
+    devices=["cpu"],
+)
+add_function_test(
+    TestArray,
+    "test_numpy_conversion_keeps_source_alive",
+    test_numpy_conversion_keeps_source_alive,
     devices=["cpu"],
 )
 

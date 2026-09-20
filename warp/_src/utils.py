@@ -1357,6 +1357,10 @@ def map(
                     f"Number of provided output arrays ({len(out)}) does not match expected number of function outputs ({len(out_dtypes)})"
                 )
             for i, a in enumerate(out):
+                if not is_array(a):
+                    raise TypeError(
+                        f"Invalid output provided, expected {len(out_dtypes)} Warp arrays with shape {out_shape} and dtypes ({', '.join(type_repr(t) for t in out_dtypes)})"
+                    )
                 if not types_equal(a.dtype, out_dtypes[i]):
                     raise TypeError(
                         f"Output array {i} dtype {type_repr(a.dtype)} does not match expected dtype {type_repr(out_dtypes[i])}"
