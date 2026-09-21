@@ -814,7 +814,7 @@ def make_test_bsr_transpose_rebuild(block_shape, scalar_type):
                 bsr_set_transpose(dest, src)
                 graph = None
                 if wp.get_device(device).is_cuda:
-                    with wp.ScopedCapture() as capture:
+                    with wp.ScopedCapture(force_module_load=False) as capture:
                         bsr_set_transpose(dest, src)
                     graph = capture.graph
 
@@ -883,7 +883,7 @@ def test_bsr_transpose_padded_column_bounds(test, device):
                 bsr_set_transpose(dest, src)
                 graph = None
                 if wp.get_device(device).is_cuda:
-                    with wp.ScopedCapture() as capture:
+                    with wp.ScopedCapture(force_module_load=False) as capture:
                         bsr_set_transpose(dest, src)
                     graph = capture.graph
                 for alternating in (False, True):

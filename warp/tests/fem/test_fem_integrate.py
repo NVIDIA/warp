@@ -552,10 +552,12 @@ def test_interpolate_first_row_compression(test, device):
                 kernel_options={"enable_backward": False},
             )
 
+        # Warm both operations so capture never needs to load generated modules.
+        restriction.rebuild(temporary_store=store)
         interpolate(candidate, "row_compress")
         graph = None
         if wp.get_device(device).is_cuda:
-            with wp.ScopedCapture() as capture:
+            with wp.ScopedCapture(force_module_load=False) as capture:
                 restriction.rebuild(temporary_store=store)
                 interpolate(candidate, "row_compress", "reuse")
             graph = capture.graph

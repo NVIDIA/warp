@@ -63,7 +63,7 @@ class BsrSetTransposeCompact:
             wp.copy(self.src.columns, wp.array(columns, dtype=int), count=nnz)
             self.dest = wps.bsr_zeros(ncol, nrow, float)
             wps.bsr_set_transpose(self.dest, self.src)
-            with wp.ScopedCapture() as capture:
+            with wp.ScopedCapture(force_module_load=False) as capture:
                 for _ in range(self.transposes_per_batch):
                     wps.bsr_set_transpose(self.dest, self.src)
             self.graph = capture.graph
@@ -85,11 +85,9 @@ def main():
     args = parser.parse_args()
     if args.samples < 2:
         parser.error("--samples must be at least two")
-    wp.init()
     result = {
         "warp_version": wp.__version__,
         "warp_path": str(Path(wp.__file__).resolve()),
-        "device": wp.get_device("cuda:0").name,
         "platform": platform.platform(),
         "transposes_per_batch": BsrSetTransposeCompact.transposes_per_batch,
         "patterns": {},
@@ -97,6 +95,7 @@ def main():
     for pattern in args.patterns:
         benchmark = BsrSetTransposeCompact()
         benchmark.setup(pattern)
+        result["device"] = benchmark.device.name
         # Warm the captured graph before sampling; setup/compilation are excluded.
         benchmark.time_100_transposes(pattern)
         samples = []
