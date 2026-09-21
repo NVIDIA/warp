@@ -72,6 +72,38 @@ def _msvc_environment_script(vs_path: str, arch: Architecture) -> tuple[str, lis
     return os.path.join(vs_path, "VC", "Auxiliary", "Build", "vcvars64.bat"), []
 
 
+def _find_vswhere() -> str:
+    """Locate ``vswhere.exe`` using multiple discovery strategies.
+
+    Search order:
+    1. ``PATH`` (covers Chocolatey, Scoop, winget, or manual installs)
+    2. Default Visual Studio Installer location under ``%ProgramFiles(x86)%``
+    3. Fallback under ``%ProgramFiles%`` (32-bit Windows or older setups)
+
+    Returns:
+        Absolute path to ``vswhere.exe``, or empty string if not found.
+    """
+    path_result = shutil.which("vswhere")
+    if path_result:
+        if verbose_cmd:
+            print(f"Using vswhere from PATH: {path_result}")
+        return path_result
+
+    for raw_candidate in (
+        r"%ProgramFiles(x86)%/Microsoft Visual Studio/Installer/vswhere.exe",
+        r"%ProgramFiles%/Microsoft Visual Studio/Installer/vswhere.exe",
+    ):
+        candidate = os.path.expandvars(raw_candidate)
+        if os.path.isfile(candidate):
+            if verbose_cmd:
+                print(f"Using vswhere at: {candidate}")
+            return candidate
+
+    if verbose_cmd:
+        print("Warning: Could not locate vswhere.exe")
+    return ""
+
+
 def packman_llvm_platform(arch: str) -> str:
     """Map a Warp architecture string to the Packman platform token for the prebuilt Clang/LLVM SDK.
 
@@ -177,18 +209,20 @@ def find_host_compiler(host_arch: Architecture | None = None) -> str:
                 if verbose_cmd:
                     print("Warning: VS environment is not configured for native ARM64, attempting auto-configuration")
 
-        vswhere_path = r"%ProgramFiles(x86)%/Microsoft Visual Studio/Installer/vswhere.exe"
-        vswhere_path = os.path.expandvars(vswhere_path)
-        if not os.path.isfile(vswhere_path):
-            return ""  # Signal to caller that VS not found
+        vswhere_path = _find_vswhere()
+        if not vswhere_path:
+            return ""  # Signal to caller that vswhere.exe was not found
 
         component = (
             "Microsoft.VisualStudio.Component.VC.Tools.ARM64"
             if host_arch == "aarch64"
             else "Microsoft.VisualStudio.Component.VC.Tools.x86.x64"
         )
+        # vswhere omits Build Tools-only installations unless all products are queried
         vs_path = (
-            run_cmd(f'"{vswhere_path}" -latest -requires {component} -property installationPath').decode().rstrip()
+            run_cmd(f'"{vswhere_path}" -latest -products * -requires {component} -property installationPath')
+            .decode()
+            .rstrip()
         )
         vsvars_path, vsvars_arguments = _msvc_environment_script(vs_path, host_arch)
 

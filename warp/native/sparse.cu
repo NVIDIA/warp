@@ -451,6 +451,7 @@ void launch_bsr_fill_triplet_key_values(
 __global__ void bsr_transpose_fill_row_col(
     const int nnz_upper_bound,
     const int row_count,
+    const int col_count,
     const int* bsr_offsets,
     const int* bsr_row_counts,
     const int* bsr_columns,
@@ -493,7 +494,10 @@ __global__ void bsr_transpose_fill_row_col(
         return;
     }
 
-    const int col = bsr_columns[i];
+    // Clamp out-of-range columns into the "past all rows" bucket so that the
+    // masked radix sort cannot wrap a malformed column index into a valid
+    // destination row group (uint32_t compare covers negatives as well).
+    const int col = int(min(uint32_t(bsr_columns[i]), uint32_t(col_count)));
     BsrRowCol row_col = bsr_combine_row_col(col, row);
     transposed_row_col[i] = row_col;
 }
@@ -1487,15 +1491,25 @@ WP_API void wp_bsr_transpose_device(
 
     wp_launch_device(
         WP_CURRENT_CONTEXT, bsr_transpose_fill_row_col, nnz,
-        (nnz, row_count, bsr_offsets, bsr_row_counts, bsr_columns, d_keys.Current(), d_values.Current())
+        (nnz, row_count, col_count, bsr_offsets, bsr_row_counts, bsr_columns, d_keys.Current(), d_values.Current())
     );
 
-    // Sort blocks
+    // Source blocks already follow source-row order. CUB's stable sort only
+    // needs the destination-row bits; preserve one sentinel value above valid rows.
+    // The row_bits < 32 cap keeps out-of-contract col_count values on the old
+    // [32, 64) sort range (and avoids shifting uint64_t(1) by 64).
+    int row_bits = 1;
+    while (row_bits < 32 && (uint64_t(1) << row_bits) <= uint64_t(col_count))
+        ++row_bits;
     {
         size_t buff_size = 0;
-        check_cuda(cub::DeviceRadixSort::SortPairs(nullptr, buff_size, d_values, d_keys, nnz, 0, 64, stream));
+        check_cuda(
+            cub::DeviceRadixSort::SortPairs(nullptr, buff_size, d_values, d_keys, nnz, 32, 32 + row_bits, stream)
+        );
         ScopedTemporary<> temp(context, buff_size);
-        check_cuda(cub::DeviceRadixSort::SortPairs(temp.buffer(), buff_size, d_values, d_keys, nnz, 0, 64, stream));
+        check_cuda(
+            cub::DeviceRadixSort::SortPairs(temp.buffer(), buff_size, d_values, d_keys, nnz, 32, 32 + row_bits, stream)
+        );
 
         // Depending on data size and GPU architecture buffers may have been swapped
         // or not. For compact output, ensure the sorted keys are available in

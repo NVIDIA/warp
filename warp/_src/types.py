@@ -40,6 +40,16 @@ from warp._src.logger import log_warning
 # https://github.com/numpy/numpy/issues/26037
 _ARRAY_INTERFACE_EMPTY_DATA = ctypes.c_byte()
 
+
+class _ArrayInterfaceWrapper:
+    """Exposes an ``__array_interface__`` dict to NumPy without invoking ``array.__array__``."""
+
+    def __init__(self, array):
+        # keep the source array alive for as long as the produced NumPy view lives
+        self._owner = array
+        self.__array_interface__ = array.__array_interface__
+
+
 # type hints
 T = TypeVar("T")
 Length = TypeVar("Length", bound=int)
@@ -625,18 +635,26 @@ def constant(x):
 
 
 def float_to_half_bits(value):
+    if warp._src.context.runtime is None:
+        warp.init()
     return warp._src.context.runtime.core.wp_float_to_half_bits(value)
 
 
 def half_bits_to_float(value):
+    if warp._src.context.runtime is None:
+        warp.init()
     return warp._src.context.runtime.core.wp_half_bits_to_float(value)
 
 
 def float_to_bfloat16_bits(value):
+    if warp._src.context.runtime is None:
+        warp.init()
     return warp._src.context.runtime.core.wp_float_to_bfloat16_bits(value)
 
 
 def bfloat16_bits_to_float(value):
+    if warp._src.context.runtime is None:
+        warp.init()
     return warp._src.context.runtime.core.wp_bfloat16_bits_to_float(value)
 
 
@@ -2314,6 +2332,14 @@ def type_is_hash_grid_query(t):
 ARRAY_MAX_DIMS = 4
 LAUNCH_MAX_DIMS = 4
 
+# maximum per-dimension launch extent, must match the uint32_t shape field
+# of launch_bounds_t in builtin.h
+LAUNCH_BOUNDS_MAX_EXTENT = (1 << 32) - 1
+
+# maximum total launch size, must match the size_t size/coord_mult fields
+# of launch_bounds_t in builtin.h
+LAUNCH_BOUNDS_MAX_SIZE = (1 << 64) - 1
+
 # must match array.h
 ARRAY_TYPE_REGULAR = 0
 ARRAY_TYPE_INDEXED = 1
@@ -2331,8 +2357,21 @@ def _make_launch_bounds_class(ndim: int):
 
         size = 1
         for i, extent in enumerate(shape):
+            # reject extents that would silently wrap the uint32 shape field,
+            # which would corrupt both the live launch and any recorded
+            # (APIC) launch bounds
+            if extent < 0 or extent > LAUNCH_BOUNDS_MAX_EXTENT:
+                raise ValueError(
+                    f"Launch extent {extent} in dimension {i} is outside the representable "
+                    f"range [0, {LAUNCH_BOUNDS_MAX_EXTENT}]"
+                )
             self.shape[i] = extent
             size *= extent
+
+        if size > LAUNCH_BOUNDS_MAX_SIZE:
+            raise ValueError(
+                f"Launch size {size} exceeds the maximum representable launch bounds size of {LAUNCH_BOUNDS_MAX_SIZE}"
+            )
 
         self.size = size
         self.coord_mult = 1
@@ -4049,6 +4088,25 @@ class array(Array[DType, NDim]):
 
         return self._array_interface
 
+    def __array__(self, dtype=None, copy=None):
+        # NumPy requires CPU-accessible memory; without __array__ it would fall back
+        # to the sequence protocol and fail with a misleading indexing error.
+        if self.device is not None and not self.device.is_cpu:
+            raise TypeError(
+                f"Cannot implicitly convert a Warp array on device '{self.device}' to a NumPy array. "
+                f"Call .numpy() to perform an explicit device-to-host copy."
+            )
+
+        # convert through __array_interface__ without re-entering __array__
+        result = np.asarray(_ArrayInterfaceWrapper(self))
+        if dtype is not None and result.dtype != np.dtype(dtype):
+            if copy is False:
+                raise ValueError("Unable to avoid copy while creating an array as requested")
+            result = result.astype(dtype, copy=False)
+        if copy:
+            result = result.copy()
+        return result
+
     def __dlpack__(self, stream=None):
         # See https://data-apis.org/array-api/2022.12/API_specification/generated/array_api.array.__dlpack__.html
 
@@ -5657,7 +5715,7 @@ class tile(Tile):
         shape = tuple(_unwrap_literal(s) for s in rest)
 
         for i, dim in enumerate(shape):
-            if not isinstance(dim, int) or dim <= 0:
+            if not isinstance(dim, (int, np.integer)) or dim <= 0:
                 raise TypeError(f"Tile dimension {i} must be a positive integer, got {dim!r}")
 
         return cls(dtype=dtype, shape=shape)
@@ -5681,6 +5739,12 @@ class tile(Tile):
         if isinstance(self.shape, (list, tuple)):
             if len(shape) == 0:
                 raise RuntimeError("Empty shape specified, must have at least 1 dimension")
+
+            # Non-positive dimensions would leak into C++ template arguments and
+            # fail backend compilation with a cryptic error; reject them here.
+            for i, dim in enumerate(shape):
+                if isinstance(dim, (int, np.integer)) and dim <= 0:
+                    raise TypeError(f"Tile dimension {i} must be a positive integer, got {dim!r}")
 
             # compute total size
             self.size = 1

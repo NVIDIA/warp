@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import gc
 import sys
 import unittest
 from functools import cache
@@ -3330,6 +3331,45 @@ def test_numpy_array_interface_empty(test, device):
     test.assertEqual(na.strides, (0, 8, 4))
 
 
+def test_numpy_conversion_rejects_cuda_array(test, device):
+    """Verify np.asarray() on a CUDA array raises an actionable TypeError (GH-1972)."""
+    a = wp.zeros((2, 3), dtype=wp.float32, device=device)
+
+    with test.assertRaisesRegex(TypeError, r"Cannot implicitly convert a Warp array on device"):
+        np.asarray(a)
+
+    with test.assertRaisesRegex(TypeError, r"Cannot implicitly convert a Warp array on device"):
+        np.asarray(a, dtype=np.float64)
+
+
+def test_numpy_conversion_cpu_dtype_and_copy(test, device):
+    """Verify np.asarray() dtype conversion still works for CPU Warp arrays."""
+    a = wp.array(np.arange(6, dtype=np.float32), dtype=wp.float32, device="cpu")
+
+    na = np.asarray(a, dtype=np.float64)
+    test.assertEqual(na.dtype, np.dtype(np.float64))
+    np.testing.assert_allclose(na, np.arange(6, dtype=np.float64))
+
+    # copy=True must return an array that does not alias the Warp array
+    nb = np.array(a, copy=True)
+    nb[0] = -1.0
+    test.assertNotEqual(nb[0], a.numpy()[0])
+
+    # copy=False with an unavoidable dtype copy must raise (NumPy 2 semantics;
+    # NumPy 1.x still copies instead of raising, and NumPy is unconstrained in
+    # project metadata)
+    if np.lib.NumpyVersion(np.__version__) >= "2.0.0":
+        with test.assertRaises(ValueError):
+            np.array(a, dtype=np.float64, copy=False)
+
+
+def test_numpy_conversion_keeps_source_alive(test, device):
+    """np.asarray() on a temporary Warp array must not leave a dangling view."""
+    na = np.asarray(wp.full(4, 7.0, dtype=wp.float32, device="cpu"))
+    gc.collect()
+    np.testing.assert_allclose(na, np.full(4, 7.0, dtype=np.float32))
+
+
 @wp.kernel
 def kernel_indexing_types(
     arr_1d: wp.array[wp.int32],
@@ -4241,6 +4281,24 @@ add_function_test(TestArray, "test_array_from_numpy", test_array_from_numpy, dev
 add_function_test(TestArray, "test_array_aliasing_from_numpy", test_array_aliasing_from_numpy, devices=["cpu"])
 add_function_test(TestArray, "test_numpy_array_interface", test_numpy_array_interface, devices=["cpu"])
 add_function_test(TestArray, "test_numpy_array_interface_empty", test_numpy_array_interface_empty, devices=["cpu"])
+add_function_test(
+    TestArray,
+    "test_numpy_conversion_rejects_cuda_array",
+    test_numpy_conversion_rejects_cuda_array,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestArray,
+    "test_numpy_conversion_cpu_dtype_and_copy",
+    test_numpy_conversion_cpu_dtype_and_copy,
+    devices=["cpu"],
+)
+add_function_test(
+    TestArray,
+    "test_numpy_conversion_keeps_source_alive",
+    test_numpy_conversion_keeps_source_alive,
+    devices=["cpu"],
+)
 
 add_function_test(TestArray, "test_array_inplace_diff_ops", test_array_inplace_diff_ops, devices=devices)
 add_function_test(TestArray, "test_array_inplace_non_diff_ops", test_array_inplace_non_diff_ops, devices=devices)

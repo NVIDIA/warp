@@ -675,6 +675,21 @@ void bvh_create_device(
         return;
     }
 
+    if (num_items <= 0) {
+        // The GPU and host-copy constructors cannot handle zero items (e.g. LBVH
+        // would size buffers as 2 * num_items - 1); produce a well-formed empty
+        // BVH instead, mirroring cubql_bvh_create_device.
+        memset(&bvh_device_on_host, 0, sizeof(BVH));
+        bvh_device_on_host.context = context ? context : wp_cuda_context_get_current();
+        bvh_device_on_host.item_lowers = lowers;
+        bvh_device_on_host.item_uppers = uppers;
+        bvh_device_on_host.item_groups = groups;
+        bvh_device_on_host.num_items = num_items;
+        bvh_device_on_host.leaf_size = leaf_size;
+        bvh_device_on_host.constructor_type = constructor_type;
+        return;
+    }
+
     if (constructor_type == BVH_CONSTRUCTOR_SAH || constructor_type == BVH_CONSTRUCTOR_MEDIAN)
     // CPU based constructors
     {
@@ -790,6 +805,12 @@ void bvh_refit_device(BVH& bvh)
 void bvh_rebuild_device(BVH& bvh)
 {
     ContextGuard guard(bvh.context);
+
+    if (bvh.num_items <= 0) {
+        // nothing to rebuild — the descriptor already describes a well-formed
+        // empty tree, and the builders below cannot handle zero items
+        return;
+    }
 
     if (bvh.constructor_type == BVH_CONSTRUCTOR_CUBQL) {
         cubql_bvh_rebuild_device(bvh);

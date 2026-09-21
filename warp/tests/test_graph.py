@@ -343,6 +343,74 @@ def test_graph_fill_drives_capture_while(test, device):
     np.testing.assert_array_equal(out.numpy(), np.array([fill_value * K], dtype=np.int32))
 
 
+def test_graph_capture_end_skip_leaf_join(test, device):
+    """Verify ``capture_end(skip_leaf_join=True)`` does not adopt outstanding leaf nodes (GH-1787)."""
+    main_stream = device.stream
+    side_stream = wp.Stream(device)
+    fork_event = wp.Event(device)
+    join_event = wp.Event(device)
+
+    a = wp.zeros(16, dtype=float, device=device)
+    b = wp.zeros(16, dtype=float, device=device)
+
+    # when all forked work is joined back to the capture stream, skipping the
+    # leaf join still produces a valid graph
+    wp.capture_begin(device, stream=main_stream, force_module_load=False)
+    side_stream.wait_stream(main_stream, event=fork_event)
+    with wp.ScopedStream(side_stream):
+        wp.launch(write_tid_kernel, dim=16, inputs=[a], device=device)
+    main_stream.wait_stream(side_stream, event=join_event)
+    wp.launch(copy_kernel, dim=16, inputs=[a, b], device=device)
+    graph = wp.capture_end(device, stream=main_stream, skip_leaf_join=True)
+
+    wp.capture_launch(graph)
+    np.testing.assert_allclose(b.numpy(), np.arange(16, dtype=np.float32))
+
+    # with genuinely unjoined work, ending the capture must fail as usual
+    wp.capture_begin(device, stream=main_stream, force_module_load=False)
+    side_stream.wait_stream(main_stream, event=fork_event)
+    with wp.ScopedStream(side_stream):
+        wp.launch(write_tid_kernel, dim=16, inputs=[a], device=device)
+    try:
+        with test.assertRaisesRegex(RuntimeError, "CUDA graph capture failed"):
+            wp.capture_end(device, stream=main_stream, skip_leaf_join=True)
+    finally:
+        main_stream.wait_stream(side_stream)
+
+
+def test_graph_capture_while_unjoined_sibling_stream(test, device):
+    """Verify ``capture_while`` bodies may leave sibling streams unjoined (GH-1469)."""
+    if not wp.is_conditional_graph_supported():
+        test.skipTest("Conditional graph nodes not supported")
+
+    counter = wp.full(1, 3, dtype=wp.int32, device=device)
+    out = wp.zeros(16, dtype=float, device=device)
+
+    side_stream = wp.Stream(device)
+    fork_event = wp.Event(device)
+    main_stream = device.stream
+
+    @wp.kernel
+    def decrement(c: wp.array[wp.int32]):
+        wp.atomic_sub(c, 0, 1)
+
+    def body():
+        # fork work onto a sibling stream without joining it back; pausing the
+        # body sub-capture must repair the capture frontier first
+        side_stream.wait_stream(main_stream, event=fork_event)
+        with wp.ScopedStream(side_stream):
+            wp.launch(write_tid_kernel, dim=16, inputs=[out], device=device)
+        wp.launch(decrement, dim=1, inputs=[counter], device=device)
+
+    with wp.ScopedCapture(device=device) as capture:
+        wp.capture_while(counter, while_body=body)
+
+    wp.capture_launch(capture.graph)
+
+    np.testing.assert_allclose(out.numpy(), np.arange(16, dtype=np.float32))
+    np.testing.assert_array_equal(counter.numpy(), np.zeros(1, dtype=np.int32))
+
+
 def test_graph_launch_array_access_mode_checked_cuda_capture(test, device):
     n = 64
     input_arr = wp.array(np.arange(n, dtype=np.float32), device=device)
@@ -1465,6 +1533,18 @@ add_function_test(
     "test_graph_fill_drives_capture_while",
     test_graph_fill_drives_capture_while,
     devices=devices_with_cuda_graph_module_load,
+)
+add_function_test(
+    TestGraph,
+    "test_graph_capture_end_skip_leaf_join",
+    test_graph_capture_end_skip_leaf_join,
+    devices=cuda_devices_with_cuda_graph_module_load,
+)
+add_function_test(
+    TestGraph,
+    "test_graph_capture_while_unjoined_sibling_stream",
+    test_graph_capture_while_unjoined_sibling_stream,
+    devices=cuda_devices_with_cuda_graph_module_load,
 )
 add_function_test(
     TestGraph,

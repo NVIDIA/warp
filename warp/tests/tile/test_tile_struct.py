@@ -1215,10 +1215,10 @@ def test_tile_struct_reduction_ops_rejected(test, device):
     struct_out = wp.empty(TILE_M, dtype=TileMapStruct, device=device)
     int_out = wp.empty(TILE_M, dtype=int, device=device)
 
-    with test.assertRaisesRegex((RuntimeError, TypeError), "tile_min.*Warp struct"):
+    with test.assertRaisesRegex((RuntimeError, TypeError), "tile_min.*scalar dtype"):
         wp.launch_tiled(tile_min_kernel, dim=[1], inputs=[input_wp], outputs=[struct_out], block_dim=8, device=device)
 
-    with test.assertRaisesRegex((RuntimeError, TypeError), "tile_argmin.*Warp struct"):
+    with test.assertRaisesRegex((RuntimeError, TypeError), "tile_argmin.*scalar dtype"):
         wp.launch_tiled(tile_argmin_kernel, dim=[1], inputs=[input_wp], outputs=[int_out], block_dim=8, device=device)
 
     with test.assertRaisesRegex((RuntimeError, TypeError), "tile_reduce.*overload.*Warp struct"):

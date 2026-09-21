@@ -516,6 +516,41 @@ def test_tile_store_sliced_scalar(kernel, ndim, tile_size=TILE_NPOT):
     return test
 
 
+@wp.kernel(enable_backward=False, module="unique")
+def tile_load_negative_offset_kernel(input: wp.array1d[float], out: wp.array1d[float]):
+    t = wp.tile_load(input, shape=4, offset=-2, storage="shared")
+    wp.tile_store(out, t)
+
+
+@wp.kernel(enable_backward=False, module="unique")
+def tile_store_negative_offset_kernel(input: wp.array1d[float]):
+    t = wp.tile_arange(9.0, 5.0, -1.0, dtype=wp.float32)
+    wp.tile_store(input, t, offset=-2)
+
+
+def test_tile_load_store_negative_offset(test, device):
+    """Negative offsets count as out-of-bounds under bounds_check (GH-1744)."""
+
+    # The 4-element view sits in the middle of an 8-element allocation so an
+    # out-of-bounds access would land on sentinel values instead of unmapped memory.
+    backing = wp.array([101.0, 102.0, 0.0, 1.0, 2.0, 3.0, 103.0, 104.0], dtype=wp.float32, device=device)
+    src = backing[2:6]
+    out = wp.full(4, -1.0, dtype=wp.float32, device=device)
+
+    wp.launch_tiled(tile_load_negative_offset_kernel, dim=1, inputs=[src, out], block_dim=TILE_DIM, device=device)
+
+    # Elements before the view start are out of bounds and load as zero padding
+    np.testing.assert_allclose(out.numpy(), np.array([0.0, 0.0, 0.0, 1.0], dtype=np.float32))
+
+    wp.launch_tiled(tile_store_negative_offset_kernel, dim=1, inputs=[src], block_dim=TILE_DIM, device=device)
+
+    # Tile elements landing at negative indices are skipped; the in-bounds tail
+    # writes through and the sentinels outside the view are untouched.
+    np.testing.assert_allclose(
+        backing.numpy(), np.array([101.0, 102.0, 7.0, 6.0, 2.0, 3.0, 103.0, 104.0], dtype=np.float32)
+    )
+
+
 devices = get_test_devices()
 
 
@@ -583,6 +618,12 @@ add_function_test(TestTileLoad, "test_tile_load_stride_unaligned", test_tile_loa
 add_function_test(TestTileLoad, "test_tile_load_fortran", test_tile_load_fortran, devices=devices)
 
 add_function_test(TestTileLoad, "test_tile_load_scoped", test_tile_load_scoped, devices=devices)
+add_function_test(
+    TestTileLoad,
+    "test_tile_load_store_negative_offset",
+    test_tile_load_store_negative_offset,
+    devices=devices,
+)
 
 
 if __name__ == "__main__":
