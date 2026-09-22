@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-"""Benchmark CUDA Graph BSR transposes; see transpose.md for reproduction."""
+"""Benchmark CUDA Graph BSR transposes with ASV or a standalone JSON exporter."""
 
 import argparse
 import json

@@ -1,1 +1,1 @@
-Fix gradients through first-sample sparse FEM interpolation and preserve gradient tracking in interpolation triplet storage.
+Fix missing gradients in triplet-based sparse FEM interpolation with `reduction="first"`.
