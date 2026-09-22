@@ -2369,7 +2369,7 @@ def get_interpolate_jacobian_at_nodes_kernel(
         return vol_sum
 
     @wp.func
-    def first_sample_element_end(
+    def first_sample_element_index(
         element_beg: int,
         element_end: int,
         trial_node: int,
@@ -2392,7 +2392,7 @@ def get_interpolate_jacobian_at_nodes_kernel(
                     node_element_index.node_index_in_element,
                 )
                 if coords[0] != OUTSIDE:
-                    return n + 1
+                    return n
         return element_end
 
     dof_value_fn = _get_dof_value_function(dest_space)
@@ -2437,8 +2437,8 @@ def get_interpolate_jacobian_at_nodes_kernel(
         node_weight = local_scalar_type(1.0)
 
         if wp.static(reduction == "first"):
-            # Bound the loop before evaluation: a break also skips its backward replay.
-            element_end = first_sample_element_end(
+            # Evaluate only the selected entry; a break would skip its backward replay.
+            element_beg = first_sample_element_index(
                 element_beg,
                 element_end,
                 trial_node,
@@ -2449,6 +2449,7 @@ def get_interpolate_jacobian_at_nodes_kernel(
                 dest_topo_arg,
                 trial_topo_arg,
             )
+            element_end = wp.min(element_beg + 1, element_end)
 
         for n in range(element_beg, element_end):
             node_element_index = space_restriction.node_element_index(dest_node_arg, n)

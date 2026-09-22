@@ -78,6 +78,16 @@ def scaled_bilinear_form(s: Sample, u: Field, v: Field, scale: wp.array[float]):
     return u(s) * v(s) * scale[0]
 
 
+@wp.func
+def constant_point_kernel(distance_squared: float, point_index: int):
+    return 1.0
+
+
+@integrand
+def indexed_scaled_linear_form(s: Sample, u: Field, scale: wp.array[float]):
+    return u(s) * scale[0] * (1.0 + 0.125 * float(s.qp_index))
+
+
 @integrand
 def vector_component_form(s: Sample, v: Field):
     return v(s)[0]
@@ -598,34 +608,53 @@ def test_interpolate_first_gradient(test, device):
         space = fem.make_polynomial_space(geo, degree=3, element_basis=fem.ElementBasis.SERENDIPITY)
         trial_space = fem.make_polynomial_space(geo, degree=1, discontinuous=True)
         restriction = fem.make_space_restriction(space_topology=space.topology, domain=domain)
-        trial = fem.make_trial(trial_space, domain=domain)
         # Q1 basis functions sum to one at every selected destination node.
         expected = restriction.node_count_sync()
-        for construction in ("triplets", "row_compress"):
-            for topology in ("compact", "padded"):
-                with test.subTest(construction=construction, topology=topology):
-                    matrix = bsr_zeros(space.node_count(), trial_space.node_count(), block_type=float)
-                    matrix.values = wp.empty(0, dtype=float, requires_grad=True)
-                    scale = wp.array([2.0], dtype=float, requires_grad=True)
-                    loss = wp.zeros(1, dtype=float, requires_grad=True)
-                    with wp.Tape() as tape:
-                        fem.interpolate(
-                            scaled_linear_form,
-                            dest=matrix,
-                            dest_space=space,
-                            at=restriction,
-                            fields={"u": trial},
-                            values={"scale": scale},
-                            reduction="first",
-                            bsr_options={"construction": construction, "topology": topology},
-                            kernel_options={"enable_backward": True},
-                        )
-                        compact = bsr_copy(matrix) if topology == "padded" else matrix
-                        count = compact.nnz_sync()
-                        wp.launch(atomic_sum, dim=count, inputs=[compact.values[:count], loss])
-                    tape.backward(loss=loss)
-                    assert_np_equal(loss.numpy(), np.array([2.0 * expected]), tol=1.0e-4)
-                    assert_np_equal(scale.grad.numpy(), np.array([expected]), tol=1.0e-4)
+        # Sparse point trials force selection past empty neighbors and allow no eligible sample.
+        point_cells = [21, 21, 42]
+        quadrature = fem.PicQuadrature(
+            fem.Cells(geo),
+            positions=(wp.array(point_cells, dtype=int), wp.full(len(point_cells), wp.vec3(0.5), dtype=wp.vec3)),
+        )
+        point_trial_space = fem.make_collocated_function_space(
+            fem.PointBasisSpace(quadrature, kernel_func=constant_point_kernel, max_nodes_per_element=3)
+        )
+        element_nodes = space.topology.element_node_indices().numpy()
+        point_expected = sum(np.sum(1.0 + 0.125 * np.unique(element_nodes[cells])) for cells in ([21, 42], [21]))
+        full_restriction = fem.make_space_restriction(space_topology=space.topology, domain=fem.Cells(geo))
+        cases = (
+            (trial_space, restriction, scaled_linear_form, expected),
+            (point_trial_space, full_restriction, indexed_scaled_linear_form, point_expected),
+        )
+        for current_trial_space, current_restriction, form, expected in cases:
+            trial = fem.make_trial(current_trial_space, domain=current_restriction.domain)
+            for construction in ("triplets", "row_compress"):
+                for topology in ("compact", "padded"):
+                    with test.subTest(
+                        trial_space=current_trial_space.name, construction=construction, topology=topology
+                    ):
+                        matrix = bsr_zeros(space.node_count(), current_trial_space.node_count(), block_type=float)
+                        matrix.values = wp.empty(0, dtype=float, requires_grad=True)
+                        scale = wp.array([2.0], dtype=float, requires_grad=True)
+                        loss = wp.zeros(1, dtype=float, requires_grad=True)
+                        with wp.Tape() as tape:
+                            fem.interpolate(
+                                form,
+                                dest=matrix,
+                                dest_space=space,
+                                at=current_restriction,
+                                fields={"u": trial},
+                                values={"scale": scale},
+                                reduction="first",
+                                bsr_options={"construction": construction, "topology": topology},
+                                kernel_options={"enable_backward": True},
+                            )
+                            compact = bsr_copy(matrix) if topology == "padded" else matrix
+                            count = compact.nnz_sync()
+                            wp.launch(atomic_sum, dim=count, inputs=[compact.values[:count], loss])
+                        tape.backward(loss=loss)
+                        assert_np_equal(loss.numpy(), np.array([2.0 * expected]), tol=1.0e-4)
+                        assert_np_equal(scale.grad.numpy(), np.array([expected]), tol=1.0e-4)
 
 
 def test_padded_sparse_assembly(test, device):
