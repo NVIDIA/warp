@@ -18,7 +18,7 @@ from warp.fem import (
     integrand,
     normal,
 )
-from warp.sparse import bsr_set_zero, bsr_zeros
+from warp.sparse import bsr_copy, bsr_set_zero, bsr_zeros
 from warp.tests.fem.utils import (
     bilinear_field,
     bilinear_form,
@@ -526,9 +526,9 @@ def test_integrate_high_order(test, device):
 
 
 def test_interpolate_first_row_compression(test, device):
-    """Preserve first-sample Jacobians for changing, noncontiguous restrictions."""
+    """Pack active rows and preserve first samples across restriction rebuilds."""
     with wp.ScopedDevice(device):
-        geo = fem.Grid3D(res=wp.vec3i(2))
+        geo = fem.Grid3D(res=wp.vec3i(4))
         indices = wp.array([1, 3, 5, 6], dtype=int)
         domain = fem.Subdomain(fem.Cells(geo), element_indices=indices)
         space = fem.make_polynomial_space(geo, degree=3, element_basis=fem.ElementBasis.SERENDIPITY)
@@ -537,9 +537,8 @@ def test_interpolate_first_row_compression(test, device):
         store = fem.TemporaryStore()
         restriction = fem.make_space_restriction(space_topology=space.topology, domain=domain, temporary_store=store)
         reference = bsr_zeros(space.node_count(), trial_space.node_count(), block_type=float)
-        candidate = bsr_zeros(space.node_count(), trial_space.node_count(), block_type=float)
 
-        def interpolate(matrix, construction, capacity="auto"):
+        def interpolate(matrix, construction, capacity="auto", output_topology="compact"):
             fem.interpolate(
                 first_sample_form,
                 dest=matrix,
@@ -548,32 +547,47 @@ def test_interpolate_first_row_compression(test, device):
                 fields={"u": trial},
                 reduction="first",
                 temporary_store=store,
-                bsr_options={"construction": construction, "capacity": capacity},
+                bsr_options={"construction": construction, "capacity": capacity, "topology": output_topology},
                 kernel_options={"enable_backward": False},
             )
 
-        # Warm both operations so capture never needs to load generated modules.
-        restriction.rebuild(temporary_store=store)
-        interpolate(candidate, "row_compress")
-        graph = None
-        if wp.get_device(device).is_cuda:
-            with wp.ScopedCapture(force_module_load=False) as capture:
+        for topology in ("compact", "padded"):
+            with test.subTest(topology=topology):
+                candidate = bsr_zeros(space.node_count(), trial_space.node_count(), block_type=float)
+                # Warm both operations so capture never needs to load generated modules.
                 restriction.rebuild(temporary_store=store)
-                interpolate(candidate, "row_compress", "reuse")
-            graph = capture.graph
-        for elements in ([1, 3, 5, 6], [0, 2, 4, 7], [-1, -1, -1, -1], [7, 6, 5, 4]):
-            indices.assign(np.array(elements, dtype=np.int32))
-            if graph is None:
-                restriction.rebuild(temporary_store=store)
-                interpolate(candidate, "row_compress", "reuse")
-            else:
-                wp.capture_launch(graph)
-            interpolate(reference, "triplets")
-            count = reference.nnz_sync()
-            test.assertEqual(candidate.nnz_sync(), count)
-            test.assertEqual(candidate.offsets.numpy().tobytes(), reference.offsets.numpy().tobytes())
-            test.assertEqual(candidate.columns.numpy()[:count].tobytes(), reference.columns.numpy()[:count].tobytes())
-            test.assertEqual(candidate.values.numpy()[:count].tobytes(), reference.values.numpy()[:count].tobytes())
+                interpolate(candidate, "row_compress", output_topology=topology)
+                capacity_bound = restriction.node_count() * trial_space.topology.MAX_NODES_PER_ELEMENT
+                test.assertLessEqual(candidate.values.size, capacity_bound)
+                graph = None
+                if wp.get_device(device).is_cuda:
+                    with wp.ScopedCapture(force_module_load=False) as capture:
+                        restriction.rebuild(temporary_store=store)
+                        interpolate(candidate, "row_compress", "reuse", topology)
+                    graph = capture.graph
+                for elements in ([1, 3, 5, 6], [0, 2, 4, 7], [-1, -1, -1, -1], [63, 62, 61, 60]):
+                    indices.assign(np.array(elements, dtype=np.int32))
+                    if graph is None:
+                        restriction.rebuild(temporary_store=store)
+                        interpolate(candidate, "row_compress", "reuse", topology)
+                    else:
+                        wp.capture_launch(graph)
+                    interpolate(reference, "triplets")
+                    count = reference.nnz_sync()
+                    if topology == "padded":
+                        expected_capacity = (
+                            np.diff(reference.offsets.numpy()) > 0
+                        ) * trial_space.topology.MAX_NODES_PER_ELEMENT
+                        assert_np_equal(np.diff(candidate.offsets.numpy()), expected_capacity)
+                    actual = bsr_copy(candidate) if topology == "padded" else candidate
+                    test.assertEqual(actual.nnz_sync(), count)
+                    test.assertEqual(actual.offsets.numpy().tobytes(), reference.offsets.numpy().tobytes())
+                    test.assertEqual(
+                        actual.columns.numpy()[:count].tobytes(), reference.columns.numpy()[:count].tobytes()
+                    )
+                    test.assertEqual(
+                        actual.values.numpy()[:count].tobytes(), reference.values.numpy()[:count].tobytes()
+                    )
 
 
 def test_padded_sparse_assembly(test, device):
