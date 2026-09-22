@@ -590,6 +590,44 @@ def test_interpolate_first_row_compression(test, device):
                     )
 
 
+def test_interpolate_first_gradient(test, device):
+    """Differentiate the selected sample through compact and padded assembly."""
+    with wp.ScopedDevice(device):
+        geo = fem.Grid3D(res=wp.vec3i(4))
+        domain = fem.Subdomain(fem.Cells(geo), element_indices=wp.array([1, 3, 5, 6], dtype=int))
+        space = fem.make_polynomial_space(geo, degree=3, element_basis=fem.ElementBasis.SERENDIPITY)
+        trial_space = fem.make_polynomial_space(geo, degree=1, discontinuous=True)
+        restriction = fem.make_space_restriction(space_topology=space.topology, domain=domain)
+        trial = fem.make_trial(trial_space, domain=domain)
+        # Q1 basis functions sum to one at every selected destination node.
+        expected = restriction.node_count_sync()
+        for construction in ("triplets", "row_compress"):
+            for topology in ("compact", "padded"):
+                with test.subTest(construction=construction, topology=topology):
+                    matrix = bsr_zeros(space.node_count(), trial_space.node_count(), block_type=float)
+                    matrix.values = wp.empty(0, dtype=float, requires_grad=True)
+                    scale = wp.array([2.0], dtype=float, requires_grad=True)
+                    loss = wp.zeros(1, dtype=float, requires_grad=True)
+                    with wp.Tape() as tape:
+                        fem.interpolate(
+                            scaled_linear_form,
+                            dest=matrix,
+                            dest_space=space,
+                            at=restriction,
+                            fields={"u": trial},
+                            values={"scale": scale},
+                            reduction="first",
+                            bsr_options={"construction": construction, "topology": topology},
+                            kernel_options={"enable_backward": True},
+                        )
+                        compact = bsr_copy(matrix) if topology == "padded" else matrix
+                        count = compact.nnz_sync()
+                        wp.launch(atomic_sum, dim=count, inputs=[compact.values[:count], loss])
+                    tape.backward(loss=loss)
+                    assert_np_equal(loss.numpy(), np.array([2.0 * expected]), tol=1.0e-4)
+                    assert_np_equal(scale.grad.numpy(), np.array([expected]), tol=1.0e-4)
+
+
 def test_padded_sparse_assembly(test, device):
     with wp.ScopedDevice(device):
         geo = fem.Grid3D(res=(4, 4, 4))
@@ -914,6 +952,7 @@ class TestFemIntegrate(unittest.TestCase):
 
 add_function_test(TestFemIntegrate, "test_integrate_gradient", test_integrate_gradient, devices=devices)
 add_function_test(TestFemIntegrate, "test_interpolate_gradient", test_interpolate_gradient, devices=devices)
+add_function_test(TestFemIntegrate, "test_interpolate_first_gradient", test_interpolate_first_gradient, devices=devices)
 add_function_test(TestFemIntegrate, "test_vector_divergence_theorem", test_vector_divergence_theorem, devices=devices)
 add_function_test(TestFemIntegrate, "test_tensor_divergence_theorem", test_tensor_divergence_theorem, devices=devices)
 add_function_test(TestFemIntegrate, "test_grad_decomposition", test_grad_decomposition, devices=devices)

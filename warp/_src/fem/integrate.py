@@ -2368,6 +2368,33 @@ def get_interpolate_jacobian_at_nodes_kernel(
 
         return vol_sum
 
+    @wp.func
+    def first_sample_element_end(
+        element_beg: int,
+        element_end: int,
+        trial_node: int,
+        domain_arg: domain.ElementArg,
+        domain_index_arg: domain.ElementIndexArg,
+        dest_node_arg: space_restriction.NodeArg,
+        dest_basis_arg: dest_space.basis.BasisArg,
+        dest_topo_arg: dest_space.topology.TopologyArg,
+        trial_topo_arg: trial.space.topology.TopologyArg,
+    ):
+        for n in range(element_beg, element_end):
+            node_element_index = space_restriction.node_element_index(dest_node_arg, n)
+            element_index = domain.element_index(domain_index_arg, node_element_index.domain_element_index)
+            if trial_node < trial.space.topology.element_node_count(domain_arg, trial_topo_arg, element_index):
+                coords = dest_space.basis.node_coords_in_element(
+                    domain_arg,
+                    dest_topo_arg,
+                    dest_basis_arg,
+                    element_index,
+                    node_element_index.node_index_in_element,
+                )
+                if coords[0] != OUTSIDE:
+                    return n + 1
+        return element_end
+
     dof_value_fn = _get_dof_value_function(dest_space)
 
     def interpolate_jacobian_kernel_fn(
@@ -2408,6 +2435,20 @@ def get_interpolate_jacobian_at_nodes_kernel(
         trial_dof_index = DofIndex(trial_node, trial_dof)
         trial_topo_arg = _get_trial_arg().topo_arg
         node_weight = local_scalar_type(1.0)
+
+        if wp.static(reduction == "first"):
+            # Bound the loop before evaluation: a break also skips its backward replay.
+            element_end = first_sample_element_end(
+                element_beg,
+                element_end,
+                trial_node,
+                domain_arg,
+                domain_index_arg,
+                dest_node_arg,
+                dest_basis_arg,
+                dest_topo_arg,
+                trial_topo_arg,
+            )
 
         for n in range(element_beg, element_end):
             node_element_index = space_restriction.node_element_index(dest_node_arg, n)
@@ -2484,9 +2525,6 @@ def get_interpolate_jacobian_at_nodes_kernel(
                 if triplet_rows:
                     triplet_rows[block_offset] = partition_node_index
                 triplet_cols[block_offset] = trial_node_index
-
-            if wp.static(reduction == "first"):
-                break
 
     return interpolate_jacobian_kernel_fn
 
@@ -2840,6 +2878,7 @@ def _allocate_interpolate_jacobian_triplets(
         dtype=dest.scalar_type,
         shape=(nnz, *dest.block_shape),
         device=device,
+        requires_grad=dest.values.requires_grad,
     )
     triplet_rows.fill_(-1)
     return triplet_rows, triplet_cols, triplet_values
