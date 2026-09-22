@@ -2368,6 +2368,33 @@ def get_interpolate_jacobian_at_nodes_kernel(
 
         return vol_sum
 
+    @wp.func
+    def first_sample_element_index(
+        element_beg: int,
+        element_end: int,
+        trial_node: int,
+        domain_arg: domain.ElementArg,
+        domain_index_arg: domain.ElementIndexArg,
+        dest_node_arg: space_restriction.NodeArg,
+        dest_basis_arg: dest_space.basis.BasisArg,
+        dest_topo_arg: dest_space.topology.TopologyArg,
+        trial_topo_arg: trial.space.topology.TopologyArg,
+    ):
+        for n in range(element_beg, element_end):
+            node_element_index = space_restriction.node_element_index(dest_node_arg, n)
+            element_index = domain.element_index(domain_index_arg, node_element_index.domain_element_index)
+            if trial_node < trial.space.topology.element_node_count(domain_arg, trial_topo_arg, element_index):
+                coords = dest_space.basis.node_coords_in_element(
+                    domain_arg,
+                    dest_topo_arg,
+                    dest_basis_arg,
+                    element_index,
+                    node_element_index.node_index_in_element,
+                )
+                if coords[0] != OUTSIDE:
+                    return n
+        return element_end
+
     dof_value_fn = _get_dof_value_function(dest_space)
 
     def interpolate_jacobian_kernel_fn(
@@ -2381,6 +2408,7 @@ def get_interpolate_jacobian_at_nodes_kernel(
         fields: FieldStruct,
         values: ValueStruct,
         triplet_rows: wp.array(dtype=int),
+        row_offsets: wp.array[int],
         triplet_cols: wp.array(dtype=int),
         triplet_values: wp.array3d(dtype=value_type),
     ):
@@ -2407,6 +2435,21 @@ def get_interpolate_jacobian_at_nodes_kernel(
         trial_dof_index = DofIndex(trial_node, trial_dof)
         trial_topo_arg = _get_trial_arg().topo_arg
         node_weight = local_scalar_type(1.0)
+
+        if wp.static(reduction == "first"):
+            # Evaluate only the selected entry; a break would skip its backward replay.
+            element_beg = first_sample_element_index(
+                element_beg,
+                element_end,
+                trial_node,
+                domain_arg,
+                domain_index_arg,
+                dest_node_arg,
+                dest_basis_arg,
+                dest_topo_arg,
+                trial_topo_arg,
+            )
+            element_end = wp.min(element_beg + 1, element_end)
 
         for n in range(element_beg, element_end):
             node_element_index = space_restriction.node_element_index(dest_node_arg, n)
@@ -2458,7 +2501,11 @@ def get_interpolate_jacobian_at_nodes_kernel(
             )
 
             if wp.static(reduction == "first"):
-                block_offset = local_node_index * max_nodes_per_element + trial_node
+                # COO storage is restriction-ordered; BSR capacity is packed by partition row.
+                row_offset = (
+                    local_node_index * max_nodes_per_element if triplet_rows else row_offsets[partition_node_index]
+                )
+                block_offset = row_offset + trial_node
             else:
                 if wp.static(reduction == "weighted_average"):
                     vol = domain.element_measure(domain_arg, sample)
@@ -2479,9 +2526,6 @@ def get_interpolate_jacobian_at_nodes_kernel(
                 if triplet_rows:
                     triplet_rows[block_offset] = partition_node_index
                 triplet_cols[block_offset] = trial_node_index
-
-            if wp.static(reduction == "first"):
-                break
 
     return interpolate_jacobian_kernel_fn
 
@@ -2835,6 +2879,7 @@ def _allocate_interpolate_jacobian_triplets(
         dtype=dest.scalar_type,
         shape=(nnz, *dest.block_shape),
         device=device,
+        requires_grad=dest.values.requires_grad,
     )
     triplet_rows.fill_(-1)
     return triplet_rows, triplet_cols, triplet_values
@@ -2851,6 +2896,17 @@ def _validate_interpolate_jacobian_dest(
         )
     if dest.block_shape[1] != trial.node_dof_count:
         raise RuntimeError(f"'dest' matrix blocks must have {trial.node_dof_count} columns")
+
+
+@wp.kernel(enable_backward=False)
+def _fill_interpolate_bsr_row_capacities(
+    partition_node_indices: wp.array[int],
+    max_nodes_per_element: int,
+    row_capacities: wp.array[int],
+):
+    row = partition_node_indices[wp.tid()]
+    if row != NULL_NODE_INDEX:
+        row_capacities[row] = max_nodes_per_element
 
 
 def _interpolate_jacobian_row_compress_storage(
@@ -2940,35 +2996,44 @@ def _launch_interpolate_kernel(
                 space_restriction.node_count() if reduction == "first" else space_restriction.total_node_element_count()
             )
 
-            if row_compress_bsr and reduction == "first":
-                if construction_policy == _BSR_CONSTRUCTION_AUTO:
-                    row_compress_bsr = False
-                else:
-                    raise RuntimeError(
-                        "fem.interpolate() with bsr_options['construction']='row_compress' does not support "
-                        "reduction='first' with a space restriction"
-                    )
-
             if row_compress_bsr:
                 _validate_interpolate_jacobian_dest(
                     point_index_count=space_restriction.space_partition.node_count(),
                     trial=trial,
                     dest=dest,
                 )
-                capacity_nnz = evaluation_point_count * max_nodes_per_element
-                bsr_set_zero(dest, topology="padded")
-                wp.launch(
-                    _fill_integrate_bsr_offsets_from_row_groups,
-                    dim=dest.nrow + 1,
-                    device=dest.device,
-                    inputs=[
-                        dest.nrow,
-                        space_restriction.partition_element_offsets(),
-                        max_nodes_per_element,
-                        dest.offsets,
-                        dest.row_counts,
-                    ],
-                )
+                if reduction == "first":
+                    capacity_nnz = evaluation_point_count * max_nodes_per_element
+                    if capacity_policy == _BSR_CAPACITY_REUSE:
+                        _require_bsr_capacity(dest, capacity_nnz, "fem.interpolate()")
+                    row_capacities = cache.borrow_temporary(temporary_store, shape=dest.nrow, dtype=int, device=device)
+                    row_capacities.zero_()
+                    wp.launch(
+                        _fill_interpolate_bsr_row_capacities,
+                        dim=interpolation_point_count,
+                        inputs=[space_restriction.node_partition_indices(), max_nodes_per_element],
+                        outputs=[row_capacities],
+                        device=device,
+                        record_tape=False,
+                    )
+                    bsr_set_zero(dest, topology="padded", row_capacity=row_capacities, nnz_capacity=capacity_nnz)
+                    wp.copy(dest.row_counts, row_capacities)
+                    row_capacities.release()
+                else:
+                    capacity_nnz = evaluation_point_count * max_nodes_per_element
+                    bsr_set_zero(dest, topology="padded")
+                    wp.launch(
+                        _fill_integrate_bsr_offsets_from_row_groups,
+                        dim=dest.nrow + 1,
+                        device=dest.device,
+                        inputs=[
+                            dest.nrow,
+                            space_restriction.partition_element_offsets(),
+                            max_nodes_per_element,
+                            dest.offsets,
+                            dest.row_counts,
+                        ],
+                    )
                 triplet_rows, triplet_cols, triplet_values = _interpolate_jacobian_row_compress_storage(
                     dest=dest,
                     capacity_nnz=capacity_nnz,
@@ -3006,6 +3071,11 @@ def _launch_interpolate_kernel(
                 elif capacity_policy == _BSR_CAPACITY_REUSE:
                     _require_bsr_capacity(dest, evaluation_point_count * max_nodes_per_element, "fem.interpolate()")
 
+            row_offsets = None
+            if row_compress_bsr and reduction == "first":
+                # Compression rewrites offsets; retain the candidate layout for backward.
+                row_offsets = wp.clone(dest.offsets) if dest_values_require_grad else dest.offsets
+
             wp.launch(
                 kernel=kernel,
                 dim=(interpolation_point_count, max_nodes_per_element, trial.node_dof_count),
@@ -3020,6 +3090,7 @@ def _launch_interpolate_kernel(
                     field_arg_values,
                     value_struct_values,
                     triplet_rows,
+                    row_offsets,
                     triplet_cols,
                     triplet_values,
                 ],
@@ -3230,7 +3301,10 @@ def interpolate(
           ``construction="triplets"`` forces temporary COO triplet construction, while
           ``construction="row_compress"`` forces row-ordered candidate writes followed by
           :func:`warp.sparse.bsr_compress()`. Non-differentiable outputs use in-place compression for the
-          lowest memory overhead. Row compression for quadrature interpolation requires matching evaluation and
+          lowest memory overhead. At nodes, ``reduction="first"`` evaluates the same owning element as triplet
+          construction and packs one trial-element stencil per active restriction node. Storage is bounded by
+          the restriction node-count upper bound times the trial stencil size, without a device readback.
+          Row compression for quadrature interpolation requires matching evaluation and
           indexed point counts.
     """
 

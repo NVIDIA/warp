@@ -18,7 +18,7 @@ from warp.fem import (
     integrand,
     normal,
 )
-from warp.sparse import bsr_set_zero, bsr_zeros
+from warp.sparse import bsr_copy, bsr_set_zero, bsr_zeros
 from warp.tests.fem.utils import (
     bilinear_field,
     bilinear_form,
@@ -78,9 +78,24 @@ def scaled_bilinear_form(s: Sample, u: Field, v: Field, scale: wp.array[float]):
     return u(s) * v(s) * scale[0]
 
 
+@wp.func
+def constant_point_kernel(distance_squared: float, point_index: int):
+    return 1.0
+
+
+@integrand
+def indexed_scaled_linear_form(s: Sample, u: Field, scale: wp.array[float]):
+    return u(s) * scale[0] * (1.0 + 0.125 * float(s.qp_index))
+
+
 @integrand
 def vector_component_form(s: Sample, v: Field):
     return v(s)[0]
+
+
+@integrand
+def first_sample_form(s: Sample, u: Field):
+    return u(s) * float(s.element_index + 1)
 
 
 # -- Test functions --
@@ -520,6 +535,128 @@ def test_integrate_high_order(test, device):
         assert_np_equal(h0.values[:h0_nnz].numpy(), h1.values[:h1_nnz].numpy(), tol=1.0e-6)
 
 
+def test_interpolate_first_row_compression(test, device):
+    """Pack active rows and preserve first samples across restriction rebuilds."""
+    with wp.ScopedDevice(device):
+        geo = fem.Grid3D(res=wp.vec3i(4))
+        indices = wp.array([1, 3, 5, 6], dtype=int)
+        domain = fem.Subdomain(fem.Cells(geo), element_indices=indices)
+        space = fem.make_polynomial_space(geo, degree=3, element_basis=fem.ElementBasis.SERENDIPITY)
+        trial_space = fem.make_polynomial_space(geo, degree=1, discontinuous=True)
+        trial = fem.make_trial(trial_space, domain=domain)
+        store = fem.TemporaryStore()
+        restriction = fem.make_space_restriction(space_topology=space.topology, domain=domain, temporary_store=store)
+        reference = bsr_zeros(space.node_count(), trial_space.node_count(), block_type=float)
+
+        def interpolate(matrix, construction, capacity="auto", output_topology="compact"):
+            fem.interpolate(
+                first_sample_form,
+                dest=matrix,
+                dest_space=space,
+                at=restriction,
+                fields={"u": trial},
+                reduction="first",
+                temporary_store=store,
+                bsr_options={"construction": construction, "capacity": capacity, "topology": output_topology},
+                kernel_options={"enable_backward": False},
+            )
+
+        for topology in ("compact", "padded"):
+            with test.subTest(topology=topology):
+                candidate = bsr_zeros(space.node_count(), trial_space.node_count(), block_type=float)
+                # Warm both operations so capture never needs to load generated modules.
+                restriction.rebuild(temporary_store=store)
+                interpolate(candidate, "row_compress", output_topology=topology)
+                capacity_bound = restriction.node_count() * trial_space.topology.MAX_NODES_PER_ELEMENT
+                test.assertLessEqual(candidate.values.size, capacity_bound)
+                graph = None
+                if wp.get_device(device).is_cuda:
+                    with wp.ScopedCapture(force_module_load=False) as capture:
+                        restriction.rebuild(temporary_store=store)
+                        interpolate(candidate, "row_compress", "reuse", topology)
+                    graph = capture.graph
+                for elements in ([1, 3, 5, 6], [0, 2, 4, 7], [-1, -1, -1, -1], [63, 62, 61, 60]):
+                    indices.assign(np.array(elements, dtype=np.int32))
+                    if graph is None:
+                        restriction.rebuild(temporary_store=store)
+                        interpolate(candidate, "row_compress", "reuse", topology)
+                    else:
+                        wp.capture_launch(graph)
+                    interpolate(reference, "triplets")
+                    count = reference.nnz_sync()
+                    if topology == "padded":
+                        expected_capacity = (
+                            np.diff(reference.offsets.numpy()) > 0
+                        ) * trial_space.topology.MAX_NODES_PER_ELEMENT
+                        assert_np_equal(np.diff(candidate.offsets.numpy()), expected_capacity)
+                    actual = bsr_copy(candidate) if topology == "padded" else candidate
+                    test.assertEqual(actual.nnz_sync(), count)
+                    test.assertEqual(actual.offsets.numpy().tobytes(), reference.offsets.numpy().tobytes())
+                    test.assertEqual(
+                        actual.columns.numpy()[:count].tobytes(), reference.columns.numpy()[:count].tobytes()
+                    )
+                    test.assertEqual(
+                        actual.values.numpy()[:count].tobytes(), reference.values.numpy()[:count].tobytes()
+                    )
+
+
+def test_interpolate_first_gradient(test, device):
+    """Differentiate the selected sample through compact and padded assembly."""
+    with wp.ScopedDevice(device):
+        geo = fem.Grid3D(res=wp.vec3i(4))
+        domain = fem.Subdomain(fem.Cells(geo), element_indices=wp.array([1, 3, 5, 6], dtype=int))
+        space = fem.make_polynomial_space(geo, degree=3, element_basis=fem.ElementBasis.SERENDIPITY)
+        trial_space = fem.make_polynomial_space(geo, degree=1, discontinuous=True)
+        restriction = fem.make_space_restriction(space_topology=space.topology, domain=domain)
+        # Q1 basis functions sum to one at every selected destination node.
+        expected = restriction.node_count_sync()
+        # Sparse point trials force selection past empty neighbors and allow no eligible sample.
+        point_cells = [21, 21, 42]
+        quadrature = fem.PicQuadrature(
+            fem.Cells(geo),
+            positions=(wp.array(point_cells, dtype=int), wp.full(len(point_cells), wp.vec3(0.5), dtype=wp.vec3)),
+        )
+        point_trial_space = fem.make_collocated_function_space(
+            fem.PointBasisSpace(quadrature, kernel_func=constant_point_kernel, max_nodes_per_element=3)
+        )
+        element_nodes = space.topology.element_node_indices().numpy()
+        point_expected = sum(np.sum(1.0 + 0.125 * np.unique(element_nodes[cells])) for cells in ([21, 42], [21]))
+        full_restriction = fem.make_space_restriction(space_topology=space.topology, domain=fem.Cells(geo))
+        cases = (
+            (trial_space, restriction, scaled_linear_form, expected),
+            (point_trial_space, full_restriction, indexed_scaled_linear_form, point_expected),
+        )
+        for current_trial_space, current_restriction, form, expected in cases:
+            trial = fem.make_trial(current_trial_space, domain=current_restriction.domain)
+            for construction in ("triplets", "row_compress"):
+                for topology in ("compact", "padded"):
+                    with test.subTest(
+                        trial_space=current_trial_space.name, construction=construction, topology=topology
+                    ):
+                        matrix = bsr_zeros(space.node_count(), current_trial_space.node_count(), block_type=float)
+                        matrix.values = wp.empty(0, dtype=float, requires_grad=True)
+                        scale = wp.array([2.0], dtype=float, requires_grad=True)
+                        loss = wp.zeros(1, dtype=float, requires_grad=True)
+                        with wp.Tape() as tape:
+                            fem.interpolate(
+                                form,
+                                dest=matrix,
+                                dest_space=space,
+                                at=current_restriction,
+                                fields={"u": trial},
+                                values={"scale": scale},
+                                reduction="first",
+                                bsr_options={"construction": construction, "topology": topology},
+                                kernel_options={"enable_backward": True},
+                            )
+                            compact = bsr_copy(matrix) if topology == "padded" else matrix
+                            count = compact.nnz_sync()
+                            wp.launch(atomic_sum, dim=count, inputs=[compact.values[:count], loss])
+                        tape.backward(loss=loss)
+                        assert_np_equal(loss.numpy(), np.array([2.0 * expected]), tol=1.0e-4)
+                        assert_np_equal(scale.grad.numpy(), np.array([expected]), tol=1.0e-4)
+
+
 def test_padded_sparse_assembly(test, device):
     with wp.ScopedDevice(device):
         geo = fem.Grid3D(res=(4, 4, 4))
@@ -844,6 +981,7 @@ class TestFemIntegrate(unittest.TestCase):
 
 add_function_test(TestFemIntegrate, "test_integrate_gradient", test_integrate_gradient, devices=devices)
 add_function_test(TestFemIntegrate, "test_interpolate_gradient", test_interpolate_gradient, devices=devices)
+add_function_test(TestFemIntegrate, "test_interpolate_first_gradient", test_interpolate_first_gradient, devices=devices)
 add_function_test(TestFemIntegrate, "test_vector_divergence_theorem", test_vector_divergence_theorem, devices=devices)
 add_function_test(TestFemIntegrate, "test_tensor_divergence_theorem", test_tensor_divergence_theorem, devices=devices)
 add_function_test(TestFemIntegrate, "test_grad_decomposition", test_grad_decomposition, devices=devices)
@@ -853,6 +991,9 @@ add_function_test(
 )
 add_function_test(TestFemIntegrate, "test_padded_sparse_assembly", test_padded_sparse_assembly, devices=cuda_devices)
 add_function_test(TestFemIntegrate, "test_interpolate_reduction", test_interpolate_reduction, devices=devices)
+add_function_test(
+    TestFemIntegrate, "test_interpolate_first_row_compression", test_interpolate_first_row_compression, devices=devices
+)
 add_function_test(TestFemIntegrate, "test_capturability", test_capturability, devices=cuda_devices_with_mempool)
 add_function_test(TestFemIntegrate, "test_restriction_rebuild", test_restriction_rebuild, devices=devices)
 
