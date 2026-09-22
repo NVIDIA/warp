@@ -526,7 +526,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">bsr_options</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/integrate.py#L3171-L3363"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.interpolate" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/integrate.py#L3242-L3437"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.interpolate" title="Link to this definition">#</a></dt>
 <dd><p>Interpolates a function at a finite set of sample points and optionally assigns the result to a discrete field, raw warp array, or sparse matrix.</p>
 <p>Interpolation can be performed either at nodes of a function space (or a restriction of), typically used to set values of a discrete field,
 or at arbitrary points in a domain, for instance using a quadrature formula.</p>
@@ -585,7 +585,10 @@ interpolation cases.
 <code class="docutils literal notranslate"><span class="pre">construction=&quot;triplets&quot;</span></code> forces temporary COO triplet construction, while
 <code class="docutils literal notranslate"><span class="pre">construction=&quot;row_compress&quot;</span></code> forces row-ordered candidate writes followed by
 <a class="reference internal" href="warp.sparse.bsr_compress.html#warp.sparse.bsr_compress" title="warp.sparse.bsr_compress"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.sparse.bsr_compress()</span></code></a>. Non-differentiable outputs use in-place compression for the
-lowest memory overhead. Row compression for quadrature interpolation requires matching evaluation and
+lowest memory overhead. At nodes, <code class="docutils literal notranslate"><span class="pre">reduction=&quot;first&quot;</span></code> evaluates the same owning element as triplet
+construction and packs one trial-element stencil per active restriction node. Storage is bounded by
+the restriction node-count upper bound times the trial stencil size, without a device readback.
+Row compression for quadrature interpolation requires matching evaluation and
 indexed point counts.</p></li>
 </ul>
 </dd>
