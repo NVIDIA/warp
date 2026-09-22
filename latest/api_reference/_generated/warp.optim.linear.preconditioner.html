@@ -512,7 +512,7 @@
 <h1>warp.optim.linear.preconditioner<a class="headerlink" href="#warp-optim-linear-preconditioner" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.optim.linear.preconditioner">
-<span class="sig-prename descclassname"><span class="pre">warp.optim.linear.</span></span><span class="sig-name descname"><span class="pre">preconditioner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ptype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'diag'</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/linear.py#L236-L254"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.preconditioner" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.optim.linear.</span></span><span class="sig-name descname"><span class="pre">preconditioner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ptype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'diag'</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/linear.py#L236-L282"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.preconditioner" title="Link to this definition">#</a></dt>
 <dd><p>Construct and return a preconditioner for an input matrix.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -522,10 +522,35 @@
 <ul>
 <li><p><code class="docutils literal notranslate"><span class="pre">&quot;diag&quot;</span></code>: Diagonal (a.k.a. Jacobi) preconditioner</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">&quot;diag_abs&quot;</span></code>: Similar to Jacobi, but using the absolute value of diagonal coefficients</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;block_jacobi_direct&quot;</span></code>: Block-Jacobi preconditioner that inverts each diagonal block
+via a dense Householder-QR-based inverse. Zero-safe: a numerically singular block
+falls back to the identity for that block instead of producing NaNs, mirroring the
+zero-safe convention of <code class="docutils literal notranslate"><span class="pre">&quot;diag&quot;</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;block_jacobi_sequential&quot;</span></code>: Block-Jacobi preconditioner that factorizes each
+diagonal block via a scalar LDL^T factorization. Requires the block to be symmetric
+positive-definite, but is zero-safe (a non-SPD block becomes identity). Supports any Warp floating
+scalar type.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;block_jacobi_tile&quot;</span></code>: Block-Jacobi preconditioner that factorizes each diagonal
+block via tile-parallel Cholesky (runs on both CPU and GPU). Blocks must be symmetric
+positive-definite, and <code class="docutils literal notranslate"><span class="pre">A</span></code>’s scalar type must be <code class="docutils literal notranslate"><span class="pre">float32</span></code> or <code class="docutils literal notranslate"><span class="pre">float64</span></code>. A
+non-symmetric block is zero-safe (becomes identity); a symmetric but non-positive-definite
+block is not (undefined, per <a class="reference internal" href="../../language_reference/_generated/warp.tile_cholesky.html#warp._src.lang.tile_cholesky" title="warp._src.lang.tile_cholesky"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.tile_cholesky()</span></code></a>).</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">&quot;id&quot;</span></code>: Identity (null) preconditioner</p></li>
 </ul>
+<p>All <code class="docutils literal notranslate"><span class="pre">&quot;block_jacobi*&quot;</span></code> variants require <code class="docutils literal notranslate"><span class="pre">A</span></code> to be a square <a class="reference internal" href="warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix" title="warp.sparse.BsrMatrix"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.sparse.BsrMatrix</span></code></a>
+with square blocks, and fall back to <code class="docutils literal notranslate"><span class="pre">&quot;diag&quot;</span></code> for 1x1-block (CSR) matrices.</p>
 </p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A <a class="reference internal" href="warp.optim.linear.LinearOperator.html#warp.optim.linear.LinearOperator" title="warp.optim.linear.LinearOperator"><code class="xref py py-class docutils literal notranslate"><span class="pre">LinearOperator</span></code></a> applying the requested preconditioner, or <code class="docutils literal notranslate"><span class="pre">None</span></code> for
+<code class="docutils literal notranslate"><span class="pre">ptype=&quot;id&quot;</span></code>.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – <code class="docutils literal notranslate"><span class="pre">ptype</span></code> is not one of the supported values, a <code class="docutils literal notranslate"><span class="pre">&quot;block_jacobi*&quot;</span></code>
+    <code class="docutils literal notranslate"><span class="pre">ptype</span></code> is requested with a non-<a class="reference internal" href="warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix" title="warp.sparse.BsrMatrix"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.sparse.BsrMatrix</span></code></a> <code class="docutils literal notranslate"><span class="pre">A</span></code>, one that
+    isn’t square, or one whose blocks aren’t square; or <code class="docutils literal notranslate"><span class="pre">ptype=&quot;block_jacobi_tile&quot;</span></code>
+    is requested with an <code class="docutils literal notranslate"><span class="pre">A</span></code> whose scalar type isn’t <code class="docutils literal notranslate"><span class="pre">float32</span></code>/<code class="docutils literal notranslate"><span class="pre">float64</span></code>.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><a class="reference internal" href="warp.optim.linear.LinearOperator.html#warp.optim.linear.LinearOperator" title="warp._src.optim.linear.LinearOperator"><em>LinearOperator</em></a></p>
