@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import inspect
 import io
 import sys
 import unittest
@@ -413,6 +414,118 @@ devices = get_test_devices()
 
 
 class TestMarchingCubes(unittest.TestCase):
+    def test_marching_cubes_deprecated_bound_argument_warning_location(self):
+        """Check that a deprecated bound argument warns at the caller's line."""
+        saved_verbose_warnings = wp.config.verbose_warnings
+        saved_warnings_seen = _logger_module._warnings_seen.copy()
+        _logger_module._warnings_seen.clear()
+        old_stderr = sys.stderr
+        sys.stderr = io.StringIO()
+        try:
+            wp.config.verbose_warnings = True
+            with warnings.catch_warnings():
+                warnings.simplefilter("always", DeprecationWarning)
+                expected_line = inspect.currentframe().f_lineno + 1
+                wp.geometry.IsoSurfaceMarchingCubes(8, 8, 8, domain_bounds_lower_corner=None)
+            stderr_output = sys.stderr.getvalue()
+        finally:
+            sys.stderr = old_stderr
+            wp.config.verbose_warnings = saved_verbose_warnings
+            _logger_module._warnings_seen.clear()
+            _logger_module._warnings_seen.update(saved_warnings_seen)
+
+        self.assertIn(f"{__file__}:{expected_line}", stderr_output)
+
+    def test_marching_cubes_deprecated_bound_arguments(self):
+        """Check that the legacy constructor bound names warn and forward."""
+        lower = (-1.0, -2.0, -3.0)
+        upper = (1.0, 2.0, 3.0)
+
+        saved_warnings_seen = _logger_module._warnings_seen.copy()
+        _logger_module._warnings_seen.clear()
+        old_stderr = sys.stderr
+        sys.stderr = io.StringIO()
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("always", DeprecationWarning)
+                try:
+                    iso = wp.geometry.IsoSurfaceMarchingCubes(
+                        8,
+                        8,
+                        8,
+                        domain_bounds_lower_corner=lower,
+                        domain_bounds_upper_corner=upper,
+                    )
+                except TypeError as error:
+                    self.fail(f"Legacy marching-cubes bound arguments were rejected: {error}")
+            stderr_output = sys.stderr.getvalue()
+        finally:
+            sys.stderr = old_stderr
+            _logger_module._warnings_seen.clear()
+            _logger_module._warnings_seen.update(saved_warnings_seen)
+
+        self.assertEqual(iso.lower, lower)
+        self.assertEqual(iso.upper, upper)
+        self.assertIn("argument `domain_bounds_lower_corner` is deprecated", stderr_output)
+        self.assertIn("Use `lower` instead", stderr_output)
+        self.assertIn("argument `domain_bounds_upper_corner` is deprecated", stderr_output)
+        self.assertIn("Use `upper` instead", stderr_output)
+
+    def test_marching_cubes_deprecated_bound_attributes(self):
+        """Check that the legacy bound attributes warn and forward."""
+        iso = wp.geometry.IsoSurfaceMarchingCubes(8, 8, 8, lower=(0.0, 0.0, 0.0), upper=(7.0, 7.0, 7.0))
+        lower = (-1.0, -2.0, -3.0)
+        upper = (1.0, 2.0, 3.0)
+
+        saved_warnings_seen = _logger_module._warnings_seen.copy()
+        _logger_module._warnings_seen.clear()
+        old_stderr = sys.stderr
+        sys.stderr = io.StringIO()
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("always", DeprecationWarning)
+                iso.domain_bounds_lower_corner = lower
+                iso.domain_bounds_upper_corner = upper
+                legacy_lower = iso.domain_bounds_lower_corner
+                legacy_upper = iso.domain_bounds_upper_corner
+            stderr_output = sys.stderr.getvalue()
+        finally:
+            sys.stderr = old_stderr
+            _logger_module._warnings_seen.clear()
+            _logger_module._warnings_seen.update(saved_warnings_seen)
+
+        self.assertEqual(iso.lower, lower)
+        self.assertEqual(iso.upper, upper)
+        self.assertEqual(legacy_lower, lower)
+        self.assertEqual(legacy_upper, upper)
+        self.assertIn("IsoSurfaceMarchingCubes.domain_bounds_lower_corner is deprecated", stderr_output)
+        self.assertIn("Use `lower` instead", stderr_output)
+        self.assertIn("IsoSurfaceMarchingCubes.domain_bounds_upper_corner is deprecated", stderr_output)
+        self.assertIn("Use `upper` instead", stderr_output)
+
+    def test_marching_cubes_bound_argument_conflicts(self):
+        """Check that callers cannot mix canonical and legacy bound names."""
+        cases = (
+            (
+                {"lower": (-1.0, -1.0, -1.0), "domain_bounds_lower_corner": (-2.0, -2.0, -2.0)},
+                "lower",
+                "domain_bounds_lower_corner",
+            ),
+            (
+                {"upper": (1.0, 1.0, 1.0), "domain_bounds_upper_corner": (2.0, 2.0, 2.0)},
+                "upper",
+                "domain_bounds_upper_corner",
+            ),
+        )
+
+        for arguments, canonical_name, legacy_name in cases:
+            with self.subTest(canonical_name=canonical_name):
+                with self.assertRaisesRegex(
+                    TypeError,
+                    f"Cannot specify both `{canonical_name}` and `{legacy_name}`",
+                ):
+                    wp.geometry.IsoSurfaceMarchingCubes(8, 8, 8, **arguments)
+
     def test_marching_cubes_iso_surface_base(self):
         """Check that IsoSurfaceMarchingCubes implements the wp.geometry.IsoSurfaceBase interface."""
         self.assertTrue(issubclass(wp.geometry.IsoSurfaceMarchingCubes, wp.geometry.IsoSurfaceBase))

@@ -519,6 +519,15 @@ def _warn_deprecated_attribute(attribute: str, guidance: str) -> None:
     )
 
 
+def _warn_deprecated_bound_attribute(attribute: str, replacement: str) -> None:
+    log_warning(
+        f"IsoSurfaceMarchingCubes.{attribute} is deprecated and will be removed in a future version of Warp. "
+        f"Use `{replacement}` instead.",
+        category=DeprecationWarning,
+        stacklevel=3,
+    )
+
+
 class IsoSurfaceMarchingCubes(IsoSurfaceBase):
     """A reusable context for marching cubes surface extraction.
 
@@ -552,6 +561,10 @@ class IsoSurfaceMarchingCubes(IsoSurfaceBase):
           argument from calls.
         lower: See the documentation in :meth:`~.extract`.
         upper: See the documentation in :meth:`~.extract`.
+        domain_bounds_lower_corner: Deprecated alias of ``lower`` retained for
+          compatibility with ``warp.MarchingCubes``.
+        domain_bounds_upper_corner: Deprecated alias of ``upper`` retained for
+          compatibility with ``warp.MarchingCubes``.
 
     Attributes:
         nx (int): The number of grid nodes in the x-direction.
@@ -609,9 +622,36 @@ class IsoSurfaceMarchingCubes(IsoSurfaceBase):
         max_verts: int = _DEFAULT_ZERO,
         max_tris: int = _DEFAULT_ZERO,
         device: wp.DeviceLike = _DEFAULT_NONE,
-        lower=None,
-        upper=None,
+        lower: wp.vec3 | tuple[float, float, float] | None = None,
+        upper: wp.vec3 | tuple[float, float, float] | None = None,
+        *,
+        domain_bounds_lower_corner: wp.vec3 | tuple[float, float, float] | None = _DEFAULT_NONE,
+        domain_bounds_upper_corner: wp.vec3 | tuple[float, float, float] | None = _DEFAULT_NONE,
     ):
+        if domain_bounds_lower_corner is not _DEFAULT_NONE:
+            if lower is not None and domain_bounds_lower_corner is not None:
+                raise TypeError("Cannot specify both `lower` and `domain_bounds_lower_corner`.")
+            log_warning(
+                "IsoSurfaceMarchingCubes() argument `domain_bounds_lower_corner` is deprecated and will be removed "
+                "in a future version of Warp. Use `lower` instead.",
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
+            if domain_bounds_lower_corner is not None:
+                lower = domain_bounds_lower_corner
+
+        if domain_bounds_upper_corner is not _DEFAULT_NONE:
+            if upper is not None and domain_bounds_upper_corner is not None:
+                raise TypeError("Cannot specify both `upper` and `domain_bounds_upper_corner`.")
+            log_warning(
+                "IsoSurfaceMarchingCubes() argument `domain_bounds_upper_corner` is deprecated and will be removed "
+                "in a future version of Warp. Use `upper` instead.",
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
+            if domain_bounds_upper_corner is not None:
+                upper = domain_bounds_upper_corner
+
         if max_verts is _DEFAULT_ZERO:
             max_verts = 0
         else:
@@ -653,6 +693,36 @@ class IsoSurfaceMarchingCubes(IsoSurfaceBase):
         self._id = 0
         self._device = wp.get_device(device)
         self._runtime = wp._src.context.runtime
+
+    @property
+    def domain_bounds_lower_corner(self):
+        """Deprecated alias of :attr:`lower`.
+
+        .. deprecated:: 1.18
+            Use :attr:`lower` instead.
+        """
+        _warn_deprecated_bound_attribute("domain_bounds_lower_corner", "lower")
+        return self.lower
+
+    @domain_bounds_lower_corner.setter
+    def domain_bounds_lower_corner(self, value):
+        _warn_deprecated_bound_attribute("domain_bounds_lower_corner", "lower")
+        self.lower = value
+
+    @property
+    def domain_bounds_upper_corner(self):
+        """Deprecated alias of :attr:`upper`.
+
+        .. deprecated:: 1.18
+            Use :attr:`upper` instead.
+        """
+        _warn_deprecated_bound_attribute("domain_bounds_upper_corner", "upper")
+        return self.upper
+
+    @domain_bounds_upper_corner.setter
+    def domain_bounds_upper_corner(self, value):
+        _warn_deprecated_bound_attribute("domain_bounds_upper_corner", "upper")
+        self.upper = value
 
     @property
     def max_verts(self):
