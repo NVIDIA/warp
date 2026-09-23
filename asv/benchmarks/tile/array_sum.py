@@ -80,21 +80,18 @@ class ArraySumSimt:
         wp.synchronize_device(self.device)
 
 
-class ArraySumTile:
-    """Atomically adds all array values using wp.tile_atomic_add with intermediate tile sum."""
-
-    number = 100
-
-    def setup(self):
-        self._initialize()
+class _ArraySumTile:
+    def _setup_benchmark(self, device_name, block_dim):
+        self._initialize(device_name, block_dim)
         self.result.zero_()
         wp.synchronize_device(self.device)
 
     @setup_once
-    def _initialize(self):
+    def _initialize(self, device_name, block_dim):
         wp.init()
-        self.device = wp.get_device("cuda:0")
-        wp.load_module(device=self.device)
+        self.device = wp.get_device(device_name)
+        block_dim_kwargs = {} if block_dim is None else {"block_dim": block_dim}
+        wp.load_module(device=self.device, **block_dim_kwargs)
 
         shape = (4096, 4096)
 
@@ -110,12 +107,35 @@ class ArraySumTile:
             outputs=[self.result],
             device=self.device,
             record_cmd=True,
+            **block_dim_kwargs,
         )
 
         self.cmd.launch()
 
         wp.synchronize_device(self.device)
 
+
+class ArraySumTileCUDA(_ArraySumTile):
+    """Atomically add all array values using an intermediate tile sum on CUDA."""
+
+    number = 100
+
+    def setup(self):
+        self._setup_benchmark("cuda:0", None)
+
     def time_cuda(self):
         self.cmd.launch()
         wp.synchronize_device(self.device)
+
+
+class ArraySumTileCPU(_ArraySumTile):
+    """Atomically add all array values using an intermediate tile sum on CPU."""
+
+    number = 1
+
+    def setup(self):
+        wp.config.enable_cpu_blocks = True
+        self._setup_benchmark("cpu", 64)
+
+    def time_cpu(self):
+        self.cmd.launch()

@@ -27,46 +27,61 @@ def create_mlp_kernel(m, n, k):
     return mlp
 
 
-class Gemm256:
+def _setup_gemm(benchmark, size, tile_m, tile_n, tile_k, block_dim, device_name):
+    benchmark.device = wp.get_device(device_name)
+    benchmark.tile_m = tile_m
+    benchmark.tile_n = tile_n
+    benchmark.tile_k = tile_k
+    benchmark.block_dim = block_dim
+    benchmark.mlp = create_mlp_kernel(tile_m, tile_n, tile_k)
+
+    rng = np.random.default_rng(42)
+
+    benchmark.output = wp.zeros((size, size), dtype=float, device=benchmark.device)
+    benchmark.a = wp.array(rng.random((size, size), dtype=np.float32), dtype=wp.float32, device=benchmark.device)
+    benchmark.b = wp.array(rng.random((size, size), dtype=np.float32), dtype=wp.float32, device=benchmark.device)
+
+    benchmark.cmd = wp.launch_tiled(
+        kernel=benchmark.mlp,
+        dim=[size // tile_m, size // tile_n],
+        inputs=[benchmark.a, benchmark.b, size // tile_k, benchmark.output],
+        block_dim=block_dim,
+        record_cmd=True,
+        device=benchmark.device,
+    )
+    benchmark.cmd.launch()
+    wp.synchronize_device(benchmark.device)
+
+
+class Gemm256CUDA:
     """Benchmark performance of M=N=K=256 GEMM."""
 
     @setup_once
     def setup(self):
         wp.init()
-        self.device = wp.get_device("cuda:0")
-
-        # Parameters found by auto-tuning for a 256x256 GEMM
-        self.tile_m = 16
-        self.tile_n = 16
-        self.tile_k = 64
-        self.block_dim = 64
-
-        self.mlp = create_mlp_kernel(self.tile_m, self.tile_n, self.tile_k)
-
-        rng = np.random.default_rng(42)
-
-        self.output = wp.zeros((256, 256), dtype=float, device=self.device)
-        self.a = wp.array(rng.random((256, 256), dtype=np.float32), dtype=wp.float32, device=self.device)
-        self.b = wp.array(rng.random((256, 256), dtype=np.float32), dtype=wp.float32, device=self.device)
-
-        self.cmd = wp.launch_tiled(
-            kernel=self.mlp,
-            dim=[256 // self.tile_m, 256 // self.tile_n],
-            inputs=[self.a, self.b, 256 // self.tile_k, self.output],
-            block_dim=self.block_dim,
-            record_cmd=True,
-            device=self.device,
-        )
-        # warm-up
-        self.cmd.launch()
-        wp.synchronize_device(self.device)
+        _setup_gemm(self, 256, 16, 16, 64, 64, "cuda:0")
 
     def time_cuda(self):
         self.cmd.launch()
         wp.synchronize_device(self.device)
 
 
-class Gemm1024:
+class Gemm256CPU:
+    """Benchmark performance of M=N=K=256 GEMM on CPU."""
+
+    number = 1
+
+    @setup_once
+    def setup(self):
+        wp.init()
+        wp.config.enable_cpu_blocks = True
+        _setup_gemm(self, 256, 16, 16, 64, 64, "cpu")
+
+    def time_cpu(self):
+        self.cmd.launch()
+
+
+class Gemm1024CUDA:
     """Benchmark performance of M=N=K=1024 GEMM."""
 
     number = 1000
@@ -75,35 +90,24 @@ class Gemm1024:
     def setup(self):
         wp.init()
         wp.set_module_options({"fast_math": True, "enable_backward": False})
-        self.device = wp.get_device("cuda:0")
-
-        self.tile_m = 64
-        self.tile_n = 64
-        self.tile_k = 64
-        self.block_dim = 128
-
-        self.mlp = create_mlp_kernel(self.tile_m, self.tile_n, self.tile_k)
-
-        rng = np.random.default_rng(42)
-
-        self.output = wp.zeros((1024, 1024), dtype=float, device=self.device)
-        self.a = wp.array(rng.random((1024, 1024), dtype=np.float32), dtype=wp.float32, device=self.device)
-        self.b = wp.array(rng.random((1024, 1024), dtype=np.float32), dtype=wp.float32, device=self.device)
-
-        self.cmd = wp.launch_tiled(
-            kernel=self.mlp,
-            dim=[1024 // self.tile_m, 1024 // self.tile_n],
-            inputs=[self.a, self.b, 1024 // self.tile_k, self.output],
-            block_dim=self.block_dim,
-            record_cmd=True,
-            device=self.device,
-        )
-
-        # warm-up
-        self.cmd.launch()
-
-        wp.synchronize_device(self.device)
+        _setup_gemm(self, 1024, 64, 64, 64, 128, "cuda:0")
 
     def time_cuda(self):
         self.cmd.launch()
         wp.synchronize_device(self.device)
+
+
+class Gemm1024CPU:
+    """Benchmark performance of M=N=K=1024 GEMM on CPU."""
+
+    number = 1
+
+    @setup_once
+    def setup(self):
+        wp.init()
+        wp.set_module_options({"fast_math": True, "enable_backward": False})
+        wp.config.enable_cpu_blocks = True
+        _setup_gemm(self, 1024, 64, 64, 64, 128, "cpu")
+
+    def time_cpu(self):
+        self.cmd.launch()
