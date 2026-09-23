@@ -341,6 +341,66 @@ def test_particle_quadratures(test, device):
     assert_np_equal(measures.grad.numpy(), np.full(3, 4.0))  # == 1.0 / cell_area
 
 
+def test_pic_quadrature_cache_across_geometries(test, device):
+    with wp.ScopedDevice(device):
+        geometries = (
+            (fem.Grid3D(res=wp.vec3i(2, 1, 1)), 0.5),
+            (fem.Grid2D(res=wp.vec2i(2, 1), bounds_hi=wp.vec2(2.0, 2.0)), 2.0),
+        )
+
+        for geometry, expected_integral in geometries:
+            domain = fem.Cells(geometry)
+            quadrature = fem.PicQuadrature(
+                domain,
+                positions=(
+                    wp.array([1], dtype=int, device=device),
+                    wp.full(1, wp.vec3(0.5), dtype=wp.vec3, device=device),
+                ),
+            )
+
+            basis = fem.PointBasisSpace(quadrature)
+            space = fem.make_collocated_function_space(basis)
+            restriction = fem.make_space_restriction(space_topology=space.topology, domain=domain)
+            test.assertEqual(restriction.node_count(), 1)
+            test.assertAlmostEqual(
+                fem.integrate(piecewise_constant, quadrature=quadrature, domain=domain, device=device),
+                expected_integral,
+            )
+
+
+def test_explicit_quadrature_cache_across_geometries(test, device):
+    geometries = (
+        (fem.Grid3D(res=wp.vec3i(2, 1, 1)), 0.5),
+        (fem.Grid2D(res=wp.vec2i(2, 1), bounds_hi=wp.vec2(2.0, 2.0)), 2.0),
+    )
+
+    for geometry, expected_integral in geometries:
+        domain = fem.Cells(geometry)
+        points = wp.full((geometry.cell_count(), 1), wp.vec3(0.5), dtype=wp.vec3, device=device)
+        weights = wp.full((geometry.cell_count(), 1), 1.0, dtype=float, device=device)
+        quadrature = fem.ExplicitQuadrature(domain, points, weights)
+
+        test.assertAlmostEqual(
+            fem.integrate(piecewise_constant, quadrature=quadrature, domain=domain, device=device),
+            expected_integral,
+        )
+
+
+def test_nodal_quadrature_cache_across_domains(test, device):
+    geometry = fem.Grid2D(res=wp.vec2i(2))
+    space = fem.make_polynomial_space(geometry, degree=1)
+    whole_domain = fem.Cells(geometry)
+    partition = fem.LinearGeometryPartition(geometry, 2, 4, device=device)
+    partition_domain = fem.Cells(partition)
+
+    for domain, expected_integral in ((whole_domain, 1.5), (partition_domain, 0.5)):
+        quadrature = fem.NodalQuadrature(domain, space)
+        test.assertAlmostEqual(
+            fem.integrate(piecewise_constant, quadrature=quadrature, domain=domain, device=device),
+            expected_integral,
+        )
+
+
 def test_gimp_quadrature(test, device):
     """Test GIMP quadrature for particles spanning multiple cells."""
 
@@ -481,7 +541,25 @@ devices = get_test_devices()
 
 add_function_test(TestFemQuadrature, "test_regular_quadrature", test_regular_quadrature)
 add_function_test(TestFemQuadrature, "test_nodal_quadrature", test_nodal_quadrature)
+add_function_test(
+    TestFemQuadrature,
+    "test_nodal_quadrature_cache_across_domains",
+    test_nodal_quadrature_cache_across_domains,
+    devices=devices,
+)
 add_function_test(TestFemQuadrature, "test_particle_quadratures", test_particle_quadratures)
+add_function_test(
+    TestFemQuadrature,
+    "test_pic_quadrature_cache_across_geometries",
+    test_pic_quadrature_cache_across_geometries,
+    devices=devices,
+)
+add_function_test(
+    TestFemQuadrature,
+    "test_explicit_quadrature_cache_across_geometries",
+    test_explicit_quadrature_cache_across_geometries,
+    devices=devices,
+)
 add_function_test(TestFemQuadrature, "test_gimp_quadrature", test_gimp_quadrature)
 add_function_test(TestFemQuadrature, "test_point_basis", test_point_basis)
 add_function_test(
