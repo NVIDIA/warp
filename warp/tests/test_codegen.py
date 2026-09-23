@@ -1947,6 +1947,54 @@ class TestCodeGen(unittest.TestCase):
         builder.codegen("cuda")
         return builder.build_meta()
 
+    def test_max_unroll_uses_range_trip_count(self):
+        """Verify ``max_unroll`` is compared against the exact trip count of constant ``range()`` loops."""
+
+        @wp.kernel(module="unique", module_options={"max_unroll": 4})
+        def dividing_ranges():
+            for _i in range(0, 8, 2):
+                pass
+            for _i in range(8, 0, -2):
+                pass
+
+        @wp.kernel(module="unique", module_options={"max_unroll": 4})
+        def nondividing_ranges():
+            for _i in range(0, 9, 2):
+                pass
+            for _i in range(8, -1, -2):
+                pass
+
+        @wp.kernel(module="unique", module_options={"max_unroll": 4})
+        def empty_ranges():
+            for _i in range(9, 0, 1):
+                pass
+            for _i in range(0, 9, -1):
+                pass
+
+        def count_dynamic_loops(kernel):
+            self._codegen_cpu_source(kernel)
+            return len([line for line in kernel.adj.blocks[0].body_forward if line.lstrip().startswith("start_for_")])
+
+        self.assertEqual(count_dynamic_loops(dividing_ranges), 0)
+        self.assertEqual(count_dynamic_loops(nondividing_ranges), 2)
+        self.assertEqual(count_dynamic_loops(empty_ranges), 0)
+
+    def test_empty_constant_loop_does_not_hide_outer_mutation(self):
+        """Verify an empty constant loop does not hide a constant mutated in an enclosing dynamic loop."""
+
+        @wp.kernel(module="unique")
+        def shadowed_by_empty_loop(n: int, out: wp.array[float]):
+            i = 5
+            for _j in range(n):
+                # the range is empty, so this loop never rebinds ``i``
+                for i in range(20, 0):
+                    out[0] = float(i)
+                i = i + 1
+            out[0] = float(i)
+
+        with self.assertRaisesRegex(wp.WarpCodegenError, r"Error mutating a constant i inside a dynamic loop"):
+            self._codegen_cpu_source(shadowed_by_empty_loop)
+
     def test_module_enable_backward_controls_function_adjoint_codegen(self):
         """Verify called-function adjoint codegen follows the effective ``enable_backward`` setting."""
 

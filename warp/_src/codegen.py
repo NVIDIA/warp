@@ -4082,26 +4082,10 @@ class Adjoint:
         if all(arg_is_numeric):
             # All argument are numeric constants
 
-            # range(end)
-            if len(loop.iter.args) == 1:
-                start = 0
-                end = arg_values[0]
-                step = 1
-
-            # range(start, end)
-            elif len(loop.iter.args) == 2:
-                start = arg_values[0]
-                end = arg_values[1]
-                step = 1
-
-            # range(start, end, step)
-            elif len(loop.iter.args) == 3:
-                start = arg_values[0]
-                end = arg_values[1]
-                step = arg_values[2]
-
-            # test if we're above max unroll count
-            max_iters = abs(end - start) // abs(step)
+            # len() gives the exact trip count, including for steps that don't divide the span
+            # and for empty ranges
+            constant_range = range(*arg_values)
+            max_iters = len(constant_range)
 
             max_unroll = adj.builder_options.get("max_unroll", 16)
 
@@ -4126,7 +4110,7 @@ class Adjoint:
                     log_debug(
                         f"Notice: Forcing unroll of loop with {max_iters} iterations because it contains wp.static expressions."
                     )
-                return range(start, end, step)
+                return constant_range
 
             # Apply max_unroll check only for regular loops (no static expressions)
             if max_iters > max_unroll:
@@ -4140,7 +4124,7 @@ class Adjoint:
                 ok_to_unroll = False
 
             if ok_to_unroll:
-                return range(start, end, step)
+                return constant_range
 
         # Unroll is not possible, range needs to be valuated dynamically
         range_call = adj.add_builtin_call(
@@ -4161,8 +4145,10 @@ class Adjoint:
 
         if isinstance(unroll_range, range):
             const_iter_sym = node.target.id
-            # prevent constant conflicts in `materialize_redefinitions()`
-            adj.record_constant_iter_symbol(const_iter_sym)
+            # prevent constant conflicts in `materialize_redefinitions()`; an empty range never
+            # binds its target, so recording it would hide mutations of a same-named constant
+            if unroll_range:
+                adj.record_constant_iter_symbol(const_iter_sym)
 
             # unroll static for-loop
             for i in unroll_range:
