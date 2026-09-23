@@ -55,24 +55,16 @@ _DTYPE_MAP = {
 _TARGET_BYTES = 256 * 1024 * 1024  # 256 MiB
 
 
-class LoadStoreRegister:
-    """Register tile load+store across dimensions and dtypes."""
-
-    number = 200
-    params = ([1, 2, 3], ["float32", "vec3", "mat22"])
-    param_names = ["ndim", "dtype"]
-
-    @setup_once
-    def setup(self, ndim, dtype_name):
+class _LoadStoreRegister:
+    def _setup_benchmark(self, ndim, dtype_name, device_name, block_dim):
         wp.init()
         wp.set_module_options({"fast_math": True, "enable_backward": False})
-        self.device = wp.get_device("cuda:0")
+        self.device = wp.get_device(device_name)
         wp.load_module(device=self.device)
 
         dtype = _DTYPE_MAP[dtype_name]
         elem_bytes = wp.types.type_size_in_bytes(dtype)
         elem_floats = elem_bytes // 4
-        block_dim = 64
         rng = np.random.default_rng(42)
 
         tile_dim = 64 if ndim == 1 else (32 if ndim == 2 else 8)
@@ -115,6 +107,34 @@ class LoadStoreRegister:
         self.cmd.launch()
         wp.synchronize_device(self.device)
 
+
+class LoadStoreRegisterCUDA(_LoadStoreRegister):
+    """Register tile load+store across dimensions and dtypes on CUDA."""
+
+    number = 200
+    params = ([1, 2, 3], ["float32", "vec3", "mat22"])
+    param_names = ["ndim", "dtype"]
+
+    @setup_once
+    def setup(self, ndim, dtype_name):
+        self._setup_benchmark(ndim, dtype_name, "cuda:0", 64)
+
     def time_cuda(self, ndim, dtype_name):
         self.cmd.launch()
         wp.synchronize_device(self.device)
+
+
+class LoadStoreRegisterCPU(_LoadStoreRegister):
+    """Register ``float32`` tile load+store across dimensions on CPU."""
+
+    number = 1
+    params = ([2, 3], [1, 64])
+    param_names = ["ndim", "block_dim"]
+
+    @setup_once
+    def setup(self, ndim, block_dim):
+        wp.config.enable_cpu_blocks = True
+        self._setup_benchmark(ndim, "float32", "cpu", block_dim)
+
+    def time_cpu(self, ndim, block_dim):
+        self.cmd.launch()

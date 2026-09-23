@@ -221,8 +221,11 @@ linux-x86_64 cu13 asv tile:
           - .gitlab/ci/asv.yml
           - asv.conf.json
           - asv/benchmarks/tile/**/*
+          - warp/native/cpu_block_runtime.*
+          - warp/native/cpu_fiber.*
           - warp/native/tile*
           - warp/native/tile/**/*
+          - warp/native/clang/**/*
           # libmathdx (cublasdx etc.) is pulled in by tile.compile_*  and
           # tile.gemm benchmarks at LTO time; bumping its pin in the deps
           # config is exactly the kind of change the tile bench is here to
