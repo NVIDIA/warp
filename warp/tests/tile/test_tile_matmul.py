@@ -928,6 +928,71 @@ def test_tile_matmul_alignment_fallback(test, device):
 
 
 class TestTileMatmul(unittest.TestCase):
+    def test_mathdx_arch_mapping(self):
+        """Map unsupported MathDx targets to compatible architectures."""
+        for arch, expected in ((75, 75), (88, 88), (103, 103), (107, 103), (120, 120), (121, 121), (122, 120)):
+            with self.subTest(arch=arch):
+                self.assertEqual(warp_build._get_mathdx_arch(arch), expected)
+
+    def test_mathdx_sm107_lto_target(self):
+        """Generate MathDx LTO for ``sm_103`` when the Warp target is ``sm_107``."""
+
+        gemm_symbols = (
+            "dot_8_4_8_103_32_1_1_1_5_5_5_0_al0_0_0_sb1",
+            "dot_8_4_8_107_32_1_1_1_5_5_5_0_al0_0_0_sb1",
+        )
+        solver_symbols = (
+            "potrf_8_8_1_103_32_1_1_6_x_x_1",
+            "potrf_8_8_1_107_32_1_1_6_x_x_1",
+        )
+        fft_symbols = ("fft_32_4_103_forward_6", "fft_32_4_107_forward_6")
+
+        class Builder:
+            def __init__(self):
+                self.fatbins = {}
+                self.ltoirs = dict.fromkeys((*gemm_symbols, *solver_symbols, *fft_symbols), b"lto")
+                self.ltoirs_decl = {}
+                self.shared_memory_bytes = dict.fromkeys(fft_symbols, 0)
+
+        builder = Builder()
+        gemm_symbol, _ = warp_build.build_lto_dot(
+            8,
+            4,
+            8,
+            wp.float32,
+            wp.float32,
+            wp.float32,
+            "rowmajor",
+            "rowmajor",
+            "rowmajor",
+            107,
+            32,
+            builder,
+        )
+        self.assertEqual(gemm_symbol, gemm_symbols[0])
+
+        solver_symbol, _ = warp_build.build_lto_solver(
+            8,
+            8,
+            1,
+            "potrf",
+            2,
+            -1,
+            -1,
+            "rowmajor",
+            "rowmajor",
+            1,
+            107,
+            6,
+            32,
+            "(double*)",
+            builder,
+        )
+        self.assertEqual(solver_symbol, solver_symbols[0])
+
+        fft_symbol, _, _ = warp_build.build_lto_fft(107, 32, 4, "forward", 0, 6, builder)
+        self.assertEqual(fft_symbol, fft_symbols[0])
+
     def test_gemm_operand_alignments(self):
         """Declare 16-byte cuBLASDx alignment per operand only for owning tiles whose leading dimension allows it.
 

@@ -510,6 +510,14 @@ _gemm_lto_alignment_unsupported: set[str] = set()
 _GEMM_ENABLE_STATIC_BLOCK_DIM = True
 
 
+def _get_mathdx_arch(arch: int) -> int:
+    # libmathdx 0.4.1 does not support sm_107, so generate compatible sm_103 LTO.
+    # Remove this fallback when the bundled libmathdx supports sm_107.
+    if arch == 107:
+        return 103
+    return 120 if arch > 121 else arch
+
+
 def _gemm_operand_alignments(
     dense_lds: tuple[int, int, int],
     native_lds: tuple[int, int, int],
@@ -599,7 +607,7 @@ def build_lto_dot(
     Raises:
         RuntimeError: If neither the aligned nor the unaligned variant compiles.
     """
-    arch = 120 if arch > 121 else arch
+    arch = _get_mathdx_arch(arch)
 
     # Maps Python/Warp types to C++ types and enums
     def cublasdx_type_map(dtype):
@@ -780,7 +788,7 @@ def build_lto_solver(
     builder,
     smem_estimate_bytes=None,
 ):
-    arch = 120 if arch > 121 else arch
+    arch = _get_mathdx_arch(arch)
 
     def cusolverdx_arrangement_map(layout):
         if layout == "colmajor":
@@ -876,7 +884,7 @@ def build_lto_solver(
 
 
 def build_lto_fft(arch, size, ept, direction, dir, precision, builder):
-    arch = 120 if arch > 121 else arch
+    arch = _get_mathdx_arch(arch)
 
     lto_symbol = f"fft_{size}_{ept}_{arch}_{direction}_{precision}"
     dtype_ctype = "wp::vec2f" if precision == 5 else "wp::vec2d"
