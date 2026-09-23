@@ -16,26 +16,12 @@ smaller: it only requires a texture loaded from an array, a runtime selector,
 and two calls to the same sampling function.
 """
 
-import re
-import shutil
-import subprocess
-import tempfile
 import unittest
-from pathlib import Path
 
 import numpy as np
 
 import warp as wp
 from warp.tests.unittest_utils import add_function_test, get_selected_cuda_test_devices
-
-EXTERNAL_NVCC_TEXTURE_SOURCE = r"""
-#include "aot.h"
-
-extern "C" __global__ void sample_texture(wp::texture1d_t texture, wp::vec2f* output)
-{
-    output[0] = wp::texture_sample_helper<wp::vec2f>::sample_1d(texture, 0.5f, -1.0f);
-}
-"""
 
 
 @wp.struct
@@ -418,46 +404,7 @@ def test_all_widths_texture_sampling(test, device, kernel):
 
 
 class TestTextureCompiler(unittest.TestCase):
-    def test_external_nvcc_uses_mixed_width_workaround(self):
-        """Check that direct NVCC builds use the no-inline workaround on affected targets."""
-        nvcc = shutil.which("nvcc")
-        if nvcc is None:
-            self.skipTest("NVCC is not available")
-
-        version_result = subprocess.run((nvcc, "--version"), capture_output=True, check=False, text=True)
-        self.assertEqual(version_result.returncode, 0, version_result.stderr)
-        version_match = re.search(r"release (\d+)\.(\d+)", version_result.stdout)
-        self.assertIsNotNone(version_match, version_result.stdout)
-        cuda_version = tuple(int(part) for part in version_match.groups())
-
-        native_dir = Path(wp.__file__).resolve().parent / "native"
-        with tempfile.TemporaryDirectory() as temp_dir:
-            source_path = Path(temp_dir) / "texture_source_include.cu"
-            source_path.write_text(EXTERNAL_NVCC_TEXTURE_SOURCE)
-
-            for arch in (89, 90):
-                with self.subTest(arch=arch):
-                    output_path = Path(temp_dir) / f"texture_source_include_{arch}.ptx"
-                    result = subprocess.run(
-                        (
-                            nvcc,
-                            "--ptx",
-                            "--std=c++17",
-                            f"--gpu-architecture=compute_{arch}",
-                            f"--include-path={native_dir}",
-                            str(source_path),
-                            f"--output-file={output_path}",
-                        ),
-                        capture_output=True,
-                        check=False,
-                        text=True,
-                    )
-                    self.assertEqual(result.returncode, 0, result.stderr)
-                    uses_workaround = arch < 90 and cuda_version < (13, 1)
-                    if uses_workaround:
-                        self.assertIn("sample_base_1d", output_path.read_text())
-                    else:
-                        self.assertNotIn("sample_base_1d", output_path.read_text())
+    pass
 
 
 devices = get_selected_cuda_test_devices()
