@@ -223,6 +223,68 @@ def test_bsr_from_triplets_prune_numerical_zeros(test, device):
     assert A.nnz_sync() == 0
 
 
+def test_bsr_from_triplets_packed_key_boundaries(test, device):
+    """Keep maximum valid coordinates ahead of every pruned triplet key."""
+    for nrow, ncol in ((1, 1), (4, 4), (3, 5)):
+        max_row = nrow - 1
+        max_col = ncol - 1
+        rows = wp.array(
+            [max_row, -1, max_row, nrow, max_row, 0, max_row, max_row, -7, max_row, max_row],
+            dtype=int,
+            device=device,
+        )
+        columns = wp.array(
+            [max_col, max_col, -1, max_col, ncol, 0, max_col, max_col, max_col, -3, max_col],
+            dtype=int,
+            device=device,
+        )
+        values = wp.array([1.0, 7.0, 8.0, 9.0, 10.0, 11.0, 2.0, 0.0, 13.0, 14.0, 32.0], dtype=float, device=device)
+        count = wp.array([10], dtype=int, device=device)
+
+        # The final duplicate is outside ``count``. Negative, out-of-range,
+        # and numerical-zero triplets must not split the max-coordinate run.
+        expected = np.zeros((nrow, ncol))
+        expected[0, 0] += 11.0
+        expected[max_row, max_col] += 3.0
+        expected_nnz = 1 if (nrow, ncol) == (1, 1) else 2
+        compact = bsr_zeros(nrow, ncol, float, device=device)
+        bsr_set_from_triplets(compact, rows, columns, values, count=count, prune_numerical_zeros=True)
+        test.assertEqual(compact.nnz_sync(), expected_nnz)
+        np.testing.assert_allclose(_bsr_to_dense(compact), expected)
+
+        padded = bsr_zeros(nrow, ncol, float, device=device, row_capacity=2)
+        bsr_set_from_triplets(padded, rows, columns, values, count=count, prune_numerical_zeros=True, topology="padded")
+        test.assertEqual(padded.status_sync(), BSR_STATUS_SUCCESS)
+        np.testing.assert_allclose(_bsr_to_dense(padded), expected)
+
+        # A topology mask admits only the maximum coordinate; the otherwise
+        # valid (0, 0) triplet is rejected before its key is encoded.
+        masked = bsr_zeros(nrow, ncol, float, device=device)
+        bsr_set_from_triplets(
+            masked,
+            wp.array([max_row], dtype=int, device=device),
+            wp.array([max_col], dtype=int, device=device),
+            values=None,
+        )
+        bsr_set_from_triplets(masked, rows, columns, values, count=count, prune_numerical_zeros=True, topology="masked")
+        test.assertEqual(masked.nnz_sync(), 1)
+        np.testing.assert_array_equal(masked.columns.numpy()[:1], np.array([max_col]))
+        np.testing.assert_allclose(masked.values.numpy()[:1], np.array([14.0 if (nrow, ncol) == (1, 1) else 3.0]))
+
+    # Empty dimensions retain no keys even with non-empty, otherwise positive
+    # triplet input.
+    for nrow, ncol in ((0, 3), (3, 0), (0, 0)):
+        matrix = bsr_zeros(nrow, ncol, float, device=device)
+        bsr_set_from_triplets(
+            matrix,
+            wp.array([0], dtype=int, device=device),
+            wp.array([0], dtype=int, device=device),
+            wp.array([1.0], dtype=float, device=device),
+        )
+        test.assertEqual(matrix.nnz_sync(), 0)
+        np.testing.assert_array_equal(matrix.offsets.numpy(), np.zeros(nrow + 1, dtype=np.int32))
+
+
 def test_bsr_stale_compact_tail(test, device):
     """Verify stale compact tails and their exclusion from BSR copies."""
     rows = wp.array([0, 0, 1, 1], dtype=int, device=device)
@@ -1685,6 +1747,12 @@ add_function_test(
     TestSparse,
     "test_bsr_from_triplets_prune_numerical_zeros",
     test_bsr_from_triplets_prune_numerical_zeros,
+    devices=devices,
+)
+add_function_test(
+    TestSparse,
+    "test_bsr_from_triplets_packed_key_boundaries",
+    test_bsr_from_triplets_packed_key_boundaries,
     devices=devices,
 )
 add_function_test(TestSparse, "test_bsr_stale_compact_tail", test_bsr_stale_compact_tail, devices=devices)

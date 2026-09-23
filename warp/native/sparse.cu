@@ -233,14 +233,31 @@ void bsr_select_compact_value_chunks(
     }
 }
 
-CUDA_CALLABLE BsrRowCol bsr_combine_row_col(uint32_t row, uint32_t col)
+// ``row_bits`` deliberately uses the bit width of row_count, rather than
+// row_count - 1.  This reserves an invalid row code above every valid row, so
+// the all-ones pruned key remains after valid coordinates even when CUB sorts
+// only the packed key range.
+inline int bsr_bit_width(uint32_t value)
 {
-    return (static_cast<uint64_t>(row) << 32) | col;
+    int width = 0;
+    while (value != 0) {
+        ++width;
+        value >>= 1;
+    }
+    return width;
 }
 
-CUDA_CALLABLE uint32_t bsr_get_row(const BsrRowCol& row_col) { return row_col >> 32; }
+CUDA_CALLABLE BsrRowCol bsr_combine_row_col(uint32_t row, uint32_t col, int col_bits)
+{
+    return (static_cast<uint64_t>(row) << col_bits) | col;
+}
 
-CUDA_CALLABLE uint32_t bsr_get_col(const BsrRowCol& row_col) { return row_col & INT_MAX; }
+CUDA_CALLABLE uint32_t bsr_get_row(const BsrRowCol& row_col, int col_bits) { return row_col >> col_bits; }
+
+CUDA_CALLABLE uint32_t bsr_get_col(const BsrRowCol& row_col, int col_bits)
+{
+    return static_cast<uint32_t>(row_col & ((BsrRowCol(1) << col_bits) - 1));
+}
 
 template <typename T> struct BsrBlockIsNotZero {
     int block_size;
@@ -318,6 +335,7 @@ __global__ void bsr_fill_triplet_key_values(
     const int* tpl_columns,
     const BsrBlockIsNotZero<T> nonZero,
     const BsrBlockInMask mask,
+    const int col_bits,
     int* block_indices,
     BsrRowCol* tpl_row_col
 )
@@ -329,15 +347,17 @@ __global__ void bsr_fill_triplet_key_values(
     const int row = tpl_rows[block];
     const int col = tpl_columns[block];
 
-    const BsrRowCol row_col = mask(block, row, col) && nonZero(block) ? bsr_combine_row_col(row, col) : PRUNED_ROWCOL;
+    const BsrRowCol row_col
+        = mask(block, row, col) && nonZero(block) ? bsr_combine_row_col(row, col, col_bits) : PRUNED_ROWCOL;
 
     tpl_row_col[block] = row_col;
     block_indices[block] = block;
 }
 
 template <typename T>
-__global__ void
-bsr_find_row_offsets(uint32_t row_count, const T* d_nnz, const BsrRowCol* unique_row_col, int* row_offsets)
+__global__ void bsr_find_row_offsets(
+    uint32_t row_count, int col_bits, const T* d_nnz, const BsrRowCol* unique_row_col, int* row_offsets
+)
 {
     const uint32_t row = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -350,7 +370,7 @@ bsr_find_row_offsets(uint32_t row_count, const T* d_nnz, const BsrRowCol* unique
         return;
     }
 
-    if (bsr_get_row(unique_row_col[nnz - 1]) < row) {
+    if (bsr_get_row(unique_row_col[nnz - 1], col_bits) < row) {
         row_offsets[row] = nnz;
         return;
     }
@@ -361,7 +381,7 @@ bsr_find_row_offsets(uint32_t row_count, const T* d_nnz, const BsrRowCol* unique
     while (lower < upper) {
         uint32_t mid = lower + (upper - lower) / 2;
 
-        if (bsr_get_row(unique_row_col[mid]) < row) {
+        if (bsr_get_row(unique_row_col[mid], col_bits) < row) {
             lower = mid + 1;
         } else {
             upper = mid;
@@ -371,13 +391,13 @@ bsr_find_row_offsets(uint32_t row_count, const T* d_nnz, const BsrRowCol* unique
     row_offsets[row] = lower;
 }
 
-__global__ void bsr_set_column(const int* d_nnz, const BsrRowCol* unique_row_cols, int* bsr_cols)
+__global__ void bsr_set_column(const int* d_nnz, const BsrRowCol* unique_row_cols, int col_bits, int* bsr_cols)
 {
     const uint32_t i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= *d_nnz)
         return;
     const BsrRowCol row_col = unique_row_cols[i];
-    bsr_cols[i] = bsr_get_col(row_col);
+    bsr_cols[i] = bsr_get_col(row_col, col_bits);
 }
 
 __global__ void bsr_transpose_scatter_padded(
@@ -420,7 +440,7 @@ __global__ void bsr_transpose_scatter_padded(
         const int local_block = block - dest_beg;
         if (local_block < block_count) {
             const int compact_block = compact_beg + local_block;
-            transposed_bsr_columns[block] = bsr_get_col(transposed_row_col[compact_block]);
+            transposed_bsr_columns[block] = bsr_get_col(transposed_row_col[compact_block], 32);
             src_block_indices[block] = sorted_src_block_indices[compact_block];
         } else {
             src_block_indices[block] = -1;
@@ -437,6 +457,7 @@ void launch_bsr_fill_triplet_key_values(
     const int* tpl_columns,
     const void* tpl_values,
     const uint64_t scalar_zero_mask,
+    const int col_bits,
     int* block_indices,
     BsrRowCol* row_col
 )
@@ -444,7 +465,7 @@ void launch_bsr_fill_triplet_key_values(
     BsrBlockIsNotZero<T> isNotZero { block_size, tpl_values, scalar_zero_mask };
     wp_launch_device(
         WP_CURRENT_CONTEXT, bsr_fill_triplet_key_values, nnz,
-        (nnz, tpl_rows, tpl_columns, isNotZero, mask, block_indices, row_col)
+        (nnz, tpl_rows, tpl_columns, isNotZero, mask, col_bits, block_indices, row_col)
     );
 }
 
@@ -494,18 +515,30 @@ __global__ void bsr_transpose_fill_row_col(
     }
 
     const int col = bsr_columns[i];
-    BsrRowCol row_col = bsr_combine_row_col(col, row);
+    BsrRowCol row_col = bsr_combine_row_col(col, row, 32);
     transposed_row_col[i] = row_col;
 }
 
-__global__ void
-bsr_count_active_blocks(const int row_count, const int* bsr_offsets, const int* bsr_row_counts, int* active_count)
+__global__ void bsr_count_active_blocks(const int row_count, const int* bsr_row_counts, int* active_count)
 {
-    int row = blockIdx.x * blockDim.x + threadIdx.x;
-    if (row >= row_count)
-        return;
+    __shared__ int block_active_count;
 
-    atomicAdd(active_count, bsr_active_row_end(bsr_offsets, bsr_row_counts, row) - bsr_offsets[row]);
+    if (threadIdx.x == 0) {
+        block_active_count = 0;
+    }
+    __syncthreads();
+
+    const int row = blockIdx.x * blockDim.x + threadIdx.x;
+    const int row_active_count = row < row_count ? bsr_row_counts[row] : 0;
+    if (row_active_count > 0) {
+        atomicAdd(&block_active_count, row_active_count);
+    }
+
+    __syncthreads();
+
+    if (threadIdx.x == 0 && block_active_count > 0) {
+        atomicAdd(active_count, block_active_count);
+    }
 }
 
 static constexpr int BSR_COMPRESS_MIN_INPLACE_THREADS = 64;
@@ -1254,6 +1287,10 @@ WP_API void wp_bsr_matrix_from_triplets_device(
 
     cudaStream_t stream = static_cast<cudaStream_t>(wp_cuda_stream_get_current());
 
+    const int col_bits = col_count <= 1 ? 0 : bsr_bit_width(static_cast<uint32_t>(col_count - 1));
+    const int row_bits = std::max(1, bsr_bit_width(static_cast<uint32_t>(row_count)));
+    const int radix_end_bit = row_bits + col_bits;
+
     ScopedTemporary<BsrRowCol> combined_row_col(context, 2 * size_t(nnz));
     ScopedTemporary<int> unique_triplet_count(context, 1);
 
@@ -1278,32 +1315,32 @@ WP_API void wp_bsr_matrix_from_triplets_device(
     switch (scalar_size) {
     case sizeof(uint8_t):
         launch_bsr_fill_triplet_key_values<uint8_t>(
-            block_size, nnz, mask, tpl_rows, tpl_columns, tpl_values, scalar_zero_mask, d_keys.Current(),
+            block_size, nnz, mask, tpl_rows, tpl_columns, tpl_values, scalar_zero_mask, col_bits, d_keys.Current(),
             d_values.Current()
         );
         break;
     case sizeof(uint16_t):
         launch_bsr_fill_triplet_key_values<uint16_t>(
-            block_size, nnz, mask, tpl_rows, tpl_columns, tpl_values, scalar_zero_mask, d_keys.Current(),
+            block_size, nnz, mask, tpl_rows, tpl_columns, tpl_values, scalar_zero_mask, col_bits, d_keys.Current(),
             d_values.Current()
         );
         break;
     case sizeof(uint32_t):
         launch_bsr_fill_triplet_key_values<uint32_t>(
-            block_size, nnz, mask, tpl_rows, tpl_columns, tpl_values, scalar_zero_mask, d_keys.Current(),
+            block_size, nnz, mask, tpl_rows, tpl_columns, tpl_values, scalar_zero_mask, col_bits, d_keys.Current(),
             d_values.Current()
         );
         break;
     case sizeof(uint64_t):
         launch_bsr_fill_triplet_key_values<uint64_t>(
-            block_size, nnz, mask, tpl_rows, tpl_columns, tpl_values, scalar_zero_mask, d_keys.Current(),
+            block_size, nnz, mask, tpl_rows, tpl_columns, tpl_values, scalar_zero_mask, col_bits, d_keys.Current(),
             d_values.Current()
         );
         break;
     default:
         // no scalar-level pruning
         launch_bsr_fill_triplet_key_values<void>(
-            block_size, nnz, mask, tpl_rows, tpl_columns, tpl_values, scalar_zero_mask, d_keys.Current(),
+            block_size, nnz, mask, tpl_rows, tpl_columns, tpl_values, scalar_zero_mask, col_bits, d_keys.Current(),
             d_values.Current()
         );
         break;
@@ -1312,9 +1349,13 @@ WP_API void wp_bsr_matrix_from_triplets_device(
     // Sort
     {
         size_t buff_size = 0;
-        check_cuda(cub::DeviceRadixSort::SortPairs(nullptr, buff_size, d_values, d_keys, nnz, 0, 64, stream));
+        check_cuda(
+            cub::DeviceRadixSort::SortPairs(nullptr, buff_size, d_values, d_keys, nnz, 0, radix_end_bit, stream)
+        );
         ScopedTemporary<> temp(context, buff_size);
-        check_cuda(cub::DeviceRadixSort::SortPairs(temp.buffer(), buff_size, d_values, d_keys, nnz, 0, 64, stream));
+        check_cuda(
+            cub::DeviceRadixSort::SortPairs(temp.buffer(), buff_size, d_values, d_keys, nnz, 0, radix_end_bit, stream)
+        );
 
         // Depending on data size and GPU architecture buffers may have been swapped
         // or not Ensures the sorted keys are available in summed_block_indices if
@@ -1347,12 +1388,12 @@ WP_API void wp_bsr_matrix_from_triplets_device(
     // Compute row offsets from sorted unique blocks
     wp_launch_device(
         WP_CURRENT_CONTEXT, bsr_find_row_offsets, row_count + 1,
-        (row_count, unique_triplet_count.buffer(), d_values.Alternate(), bsr_offsets)
+        (row_count, col_bits, unique_triplet_count.buffer(), d_values.Alternate(), bsr_offsets)
     );
 
     // Set column indices
     wp_launch_device(
-        WP_CURRENT_CONTEXT, bsr_set_column, nnz, (bsr_offsets + row_count, d_values.Alternate(), bsr_columns)
+        WP_CURRENT_CONTEXT, bsr_set_column, nnz, (bsr_offsets + row_count, d_values.Alternate(), col_bits, bsr_columns)
     );
 
     // Scan repeated block counts
@@ -1474,16 +1515,20 @@ WP_API void wp_bsr_transpose_device(
     const bool padded = transposed_bsr_row_counts != nullptr;
 
     ScopedTemporary<BsrRowCol> combined_row_col(context, 2 * nnz);
-    ScopedTemporary<int> active_count(context, 1);
-    check_cuda(cudaMemsetAsync(active_count.buffer(), 0, sizeof(int), stream));
+    std::optional<ScopedTemporary<int>> active_count_storage;
+    const int* active_count = bsr_offsets + row_count;
+    if (bsr_row_counts != nullptr) {
+        active_count_storage.emplace(context, 1);
+        active_count = active_count_storage->buffer();
+        check_cuda(cudaMemsetAsync(active_count_storage->buffer(), 0, sizeof(int), stream));
+        wp_launch_device(
+            WP_CURRENT_CONTEXT, bsr_count_active_blocks, row_count,
+            (row_count, bsr_row_counts, active_count_storage->buffer())
+        );
+    }
 
     cub::DoubleBuffer<int> d_keys(src_block_indices + nnz, src_block_indices);
     cub::DoubleBuffer<BsrRowCol> d_values(combined_row_col.buffer(), combined_row_col.buffer() + nnz);
-
-    wp_launch_device(
-        WP_CURRENT_CONTEXT, bsr_count_active_blocks, row_count,
-        (row_count, bsr_offsets, bsr_row_counts, active_count.buffer())
-    );
 
     wp_launch_device(
         WP_CURRENT_CONTEXT, bsr_transpose_fill_row_col, nnz,
@@ -1533,7 +1578,7 @@ WP_API void wp_bsr_transpose_device(
     // Compute row offsets from sorted unique blocks
     wp_launch_device(
         WP_CURRENT_CONTEXT, bsr_find_row_offsets, col_count + 1,
-        (col_count, active_count.buffer(), d_values.Current(), compact_offsets)
+        (col_count, 32, active_count, d_values.Current(), compact_offsets)
     );
 
     if (padded) {
@@ -1546,7 +1591,7 @@ WP_API void wp_bsr_transpose_device(
     }
 
     wp_launch_device(
-        WP_CURRENT_CONTEXT, bsr_set_column, nnz, (active_count.buffer(), d_values.Current(), transposed_bsr_columns)
+        WP_CURRENT_CONTEXT, bsr_set_column, nnz, (active_count, d_values.Current(), 32, transposed_bsr_columns)
     );
 }
 
