@@ -3882,9 +3882,10 @@ def make_bsr_mm_compute_values_tiled_outer(subblock_rows, subblock_cols, block_d
         col_count = (block_end - block_beg) * block_depth
 
         mm_col = mm_cols[mm_block]
+        # Column indices are nonnegative and block depth is positive, so truncating division is exact.
         if use_triplets:
             for col in range(lane, col_count, tile_size):
-                tpl_block = col // wp.static(block_depth)
+                tpl_block = col / wp.static(block_depth)
                 block_col = col - tpl_block * wp.static(block_depth)
                 tpl_block += block_beg
 
@@ -3897,7 +3898,7 @@ def make_bsr_mm_compute_values_tiled_outer(subblock_rows, subblock_cols, block_d
                     )
         else:
             for col in range(lane, col_count, tile_size):
-                x_block = col // wp.static(block_depth)
+                x_block = col / wp.static(block_depth)
                 block_col = col - x_block * wp.static(block_depth)
                 x_block += block_beg
 
@@ -3912,7 +3913,8 @@ def make_bsr_mm_compute_values_tiled_outer(subblock_rows, subblock_cols, block_d
         mm_val = wp.tile_sum(wp.tile(lane_val, preserve_type=True))[0]
 
         for coef in range(lane, wp.static(subblock_cols * subblock_rows), tile_size):
-            br = coef // subblock_cols
+            # Coefficient indices are nonnegative and the column count is positive.
+            br = coef / subblock_cols
             bc = coef - br * subblock_cols
             if br < brow_count and bc < bcol_count:
                 mm_values[mm_block, br + brow_off, bc + bcol_off] += mm_val[br, bc] * alpha
@@ -4701,7 +4703,8 @@ def make_bsr_mv_tiled_kernel(tile_size: int):
             lane_sum = y.dtype(0)
 
             for col in range(lane, col_count, tile_size):
-                block = col // block_cols
+                # Both operands are nonnegative, so truncating division is equivalent to floor division.
+                block = col / block_cols
                 block_col = col - block * block_cols
                 block += block_beg
 
