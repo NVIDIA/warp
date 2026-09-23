@@ -2960,10 +2960,11 @@ can be saved to a USD file using the :class:`warp.render.UsdRenderer`.
     :class:`wp.geometry.IsoSurfaceMarchingCubes
     <warp.geometry.IsoSurfaceMarchingCubes>` and will be removed in a future
     version of Warp. It is resolved lazily, so the two names refer to the same
-    class and accessing it emits a warning. Because it is resolved at runtime
-    rather than imported, it does not appear in ``warp/__init__.pyi``; annotate
-    with :class:`wp.geometry.IsoSurfaceMarchingCubes
-    <warp.geometry.IsoSurfaceMarchingCubes>` instead.
+    class and accessing it emits a warning.
+
+    The legacy ``domain_bounds_lower_corner`` and
+    ``domain_bounds_upper_corner`` constructor arguments and attributes remain
+    available as deprecated aliases of ``lower`` and ``upper``, respectively.
 
 .. testcode::
     :skipif: wp.get_cuda_device_count() == 0
