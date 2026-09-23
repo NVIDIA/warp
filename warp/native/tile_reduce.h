@@ -444,7 +444,13 @@ tile_reduce_axis_impl(Op f, Tile& t, typename Tile::Type empty_identity, bool ha
         const int warp_index = threadIdx.x / WP_TILE_WARP_SIZE;
         const int lane_index = threadIdx.x % WP_TILE_WARP_SIZE;
 
-        constexpr int chunks_per_slice = (reduce_dim_size + WP_TILE_WARP_SIZE - 1) / WP_TILE_WARP_SIZE;
+        // a block narrower than a warp leaves the upper lanes permanently inactive, so
+        // the axis must be walked in chunks of the participating lane count rather than
+        // of the architectural warp size, or the lanes that never run own axis elements
+        // that are then never read.
+        constexpr int active_lanes = WP_TILE_BLOCK_DIM < WP_TILE_WARP_SIZE ? WP_TILE_BLOCK_DIM : WP_TILE_WARP_SIZE;
+
+        constexpr int chunks_per_slice = (reduce_dim_size + active_lanes - 1) / active_lanes;
 
         // shared memory: one accumulator per warp
         // CUDA ignores the constructor a __shared__ array of T would run, and NVRTC
@@ -460,9 +466,9 @@ tile_reduce_axis_impl(Op f, Tile& t, typename Tile::Type empty_identity, bool ha
         for (int out_idx = warp_index; out_idx < output_size; out_idx += warp_count) {
             auto out_coord = OutputLayout::coord_from_linear(out_idx);
 
-            // process the reduction axis in chunks of 32
+            // process the reduction axis one chunk of active lanes at a time
             for (int chunk = 0; chunk < chunks_per_slice; ++chunk) {
-                int axis_idx = chunk * WP_TILE_WARP_SIZE + lane_index;
+                int axis_idx = chunk * active_lanes + lane_index;
                 bool valid = axis_idx < reduce_dim_size;
 
                 T val;
