@@ -3337,9 +3337,10 @@ can be saved to a USD file using the <a class="reference internal" href="../api_
 <p><span class="versionmodified deprecated">Deprecated since version 1.18: </span><code class="docutils literal notranslate"><span class="pre">wp.MarchingCubes</span></code> is a deprecated alias of
 <a class="reference internal" href="../api_reference/_generated/warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes" title="warp.geometry.IsoSurfaceMarchingCubes"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.geometry.IsoSurfaceMarchingCubes</span></code></a> and will be removed in a future
 version of Warp. It is resolved lazily, so the two names refer to the same
-class and accessing it emits a warning. Because it is resolved at runtime
-rather than imported, it does not appear in <code class="docutils literal notranslate"><span class="pre">warp/__init__.pyi</span></code>; annotate
-with <a class="reference internal" href="../api_reference/_generated/warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes" title="warp.geometry.IsoSurfaceMarchingCubes"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.geometry.IsoSurfaceMarchingCubes</span></code></a> instead.</p>
+class and accessing it emits a warning.</p>
+<p>The legacy <code class="docutils literal notranslate"><span class="pre">domain_bounds_lower_corner</span></code> and
+<code class="docutils literal notranslate"><span class="pre">domain_bounds_upper_corner</span></code> constructor arguments and attributes remain
+available as deprecated aliases of <code class="docutils literal notranslate"><span class="pre">lower</span></code> and <code class="docutils literal notranslate"><span class="pre">upper</span></code>, respectively.</p>
 </div>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp.geometry</span>
 
