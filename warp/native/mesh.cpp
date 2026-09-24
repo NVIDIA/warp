@@ -113,7 +113,7 @@ void bvh_refit_with_solid_angle_recursive_host(BVH& bvh, int index, Mesh& mesh)
     }
 }
 
-void bvh_refit_with_solid_angle_host(BVH& bvh, Mesh& mesh) { bvh_refit_with_solid_angle_recursive_host(bvh, 0, mesh); }
+void bvh_refit_with_solid_angle_host(BVH& bvh, Mesh& mesh) { bvh_refit_with_solid_angle_recursive_host(bvh, *bvh.root, mesh); }
 
 uint64_t wp_mesh_create_host(
     array_t<wp::vec3> points,
