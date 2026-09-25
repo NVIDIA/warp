@@ -106,9 +106,10 @@ class CubeTripolynomialShapeFunctions(CubeShapeFunction):
         def node_ijk(
             node_index_in_elt: int,
         ):
-            node_i = node_index_in_elt // (ORDER_PLUS_ONE * ORDER_PLUS_ONE)
+            # Element-local node indices are nonnegative and dimensions are positive, so truncating division is exact.
+            node_i = node_index_in_elt / (ORDER_PLUS_ONE * ORDER_PLUS_ONE)
             node_jk = node_index_in_elt - ORDER_PLUS_ONE * ORDER_PLUS_ONE * node_i
-            node_j = node_jk // ORDER_PLUS_ONE
+            node_j = node_jk / ORDER_PLUS_ONE
             node_k = node_jk - ORDER_PLUS_ONE * node_j
             return node_i, node_j, node_k
 
