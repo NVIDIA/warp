@@ -2123,7 +2123,7 @@ template <> inline CUDA_CALLABLE int64 atomic_add(int64* buf, int64 value)
     buf[0] += value;
     return old;
 #else  // CUDA compiled by NVRTC
-    unsigned long long int* buf_as_ull = (unsigned long long int*)buf;
+    unsigned long long int* buf_as_ull = reinterpret_cast<unsigned long long int*>(buf);
     unsigned long long int unsigned_value = static_cast<unsigned long long int>(value);
     unsigned long long int result = atomicAdd(buf_as_ull, unsigned_value);
     return static_cast<int64>(result);

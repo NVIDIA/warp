@@ -227,6 +227,7 @@ __asm__(
 );
 
 #else
+// cppcheck-suppress preprocessorErrorDirective
 #error "wp_fiber: unsupported architecture; supported: POSIX x86-64 SysV, POSIX AArch64, Windows."
 #endif
 

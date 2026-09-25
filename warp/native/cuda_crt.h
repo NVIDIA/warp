@@ -526,15 +526,15 @@ __device_forceinline__ float __fAtomicAdd_block(float* p, float v) { return __nv
 __device_forceinline__ float __fAtomicAdd_system(float* p, float v) { return __nvvm_atom_sys_add_gen_f(p, v); }
 __device_forceinline__ float __fAtomicExch(float* p, float v)
 {
-    return __nv_int_as_float(__nvvm_atom_xchg_gen_i((int*)p, __nv_float_as_int(v)));
+    return __nv_int_as_float(__nvvm_atom_xchg_gen_i(reinterpret_cast<int*>(p), __nv_float_as_int(v)));
 }
 __device_forceinline__ float __fAtomicExch_block(float* p, float v)
 {
-    return __nv_int_as_float(__nvvm_atom_cta_xchg_gen_i((int*)p, __nv_float_as_int(v)));
+    return __nv_int_as_float(__nvvm_atom_cta_xchg_gen_i(reinterpret_cast<int*>(p), __nv_float_as_int(v)));
 }
 __device_forceinline__ float __fAtomicExch_system(float* p, float v)
 {
-    return __nv_int_as_float(__nvvm_atom_sys_xchg_gen_i((int*)p, __nv_float_as_int(v)));
+    return __nv_int_as_float(__nvvm_atom_sys_xchg_gen_i(reinterpret_cast<int*>(p), __nv_float_as_int(v)));
 }
 __device_forceinline__ float __fadd_rd(float a, float b) { return __nv_fadd_rd(a, b); }
 __device_forceinline__ float __fadd_rn(float a, float b) { return __nv_fadd_rn(a, b); }
@@ -1237,7 +1237,7 @@ __device_forceinline__ unsigned int atomicCAS(unsigned int* address, unsigned in
 
 __device_forceinline__ __half atomicAdd(__half* const address, const __half val)
 {
-    unsigned short* address_as_us = (unsigned short*)address;
+    unsigned short* address_as_us = reinterpret_cast<unsigned short*>(address);
     unsigned short old = *address_as_us;
     unsigned short assumed;
 
@@ -1291,7 +1291,7 @@ __device_forceinline__ __nv_bfloat16 __hbf16add(const __nv_bfloat16 a, const __n
 
 __device_forceinline__ __nv_bfloat16 atomicAdd(__nv_bfloat16* const address, const __nv_bfloat16 val)
 {
-    unsigned short* address_as_us = (unsigned short*)address;
+    unsigned short* address_as_us = reinterpret_cast<unsigned short*>(address);
     unsigned short old = *address_as_us;
     unsigned short assumed;
 

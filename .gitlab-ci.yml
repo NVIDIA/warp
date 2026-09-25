@@ -373,17 +373,20 @@ cppcheck:
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - df -h
-    - conda install cppcheck --channel conda-forge
+    - conda install cppcheck=2.22.0 --channel conda-forge
     - python -m pip install -U cppcheck-codequality
     - mkdir -p _build/.cppcheck
     - cppcheck --version
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
+    # Cppcheck cannot evaluate Clang's __has_builtin or parse NVCC's unroll pragma.
     # Pass 1: For the CI log and job failure.
     - cppcheck_exit_code=0
     - >-
       cppcheck
       -UWP_API
+      -U__has_builtin
+      -D__INTELLISENSE__
       --inline-suppr
       --cppcheck-build-dir=_build/.cppcheck
       --enable=warning
@@ -399,6 +402,8 @@ cppcheck:
     - >-
       cppcheck
       -UWP_API
+      -U__has_builtin
+      -D__INTELLISENSE__
       --inline-suppr
       --cppcheck-build-dir=_build/.cppcheck
       --enable=warning

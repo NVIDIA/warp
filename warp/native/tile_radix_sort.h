@@ -887,14 +887,6 @@ inline CUDA_CALLABLE void radix_sort_thread_block_core(
                 values_tmp[j] = values_input[j];
             }
         }
-
-        auto tmp = keys_tmp;
-        keys_tmp = keys_input;
-        keys_input = tmp;
-
-        auto tmp2 = values_tmp;
-        values_tmp = values_input;
-        values_input = tmp2;
     }
 }
 

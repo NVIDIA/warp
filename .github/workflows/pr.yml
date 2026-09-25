@@ -60,7 +60,7 @@ jobs:
         run: |
           source "${HOME}/conda/etc/profile.d/conda.sh"
           conda activate
-          conda install cppcheck --channel conda-forge -y
+          conda install cppcheck=2.22.0 --channel conda-forge -y
           mkdir -p _build/.cppcheck
           cppcheck --version
       
@@ -69,8 +69,11 @@ jobs:
           source "${HOME}/conda/etc/profile.d/conda.sh"
           conda activate
           # api.h owns WP_API; avoid Cppcheck's invalid WP_API=1 configuration.
+          # Avoid configurations that misparse Clang builtins and NVCC pragmas.
           cppcheck \
             -UWP_API \
+            -U__has_builtin \
+            -D__INTELLISENSE__ \
             --inline-suppr \
             --cppcheck-build-dir=_build/.cppcheck \
             --enable=warning \
@@ -90,6 +93,8 @@ jobs:
           # Keep this configuration in sync with the gating command above.
           cppcheck \
             -UWP_API \
+            -U__has_builtin \
+            -D__INTELLISENSE__ \
             --inline-suppr \
             --cppcheck-build-dir=_build/.cppcheck \
             --enable=warning \

@@ -1994,7 +1994,7 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
                     char* dest_bytes = reinterpret_cast<char*>(dest.data.data) + base_bytes;
                     float4* dest128 = reinterpret_cast<float4*>(dest_bytes);
                     assert(((uint64_t)data.ptr) % sizeof(float4) == 0 && "shared tile pointer not 16-byte aligned");
-                    const float4* src128 = (const float4*)data.ptr;
+                    const float4* src128 = reinterpret_cast<const float4*>(data.ptr);
 
                     using F4Layout
                         = tile_layout_strided_t<typename tile_shape_f4<typename Layout::Shape, (int)sizeof(T)>::type>;
@@ -2153,7 +2153,7 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
                     const char* src_bytes = reinterpret_cast<const char*>(src.data.data) + base_bytes;
                     const float4* src128 = reinterpret_cast<const float4*>(src_bytes);
                     assert(((uint64_t)data.ptr) % sizeof(float4) == 0 && "shared tile pointer not 16-byte aligned");
-                    float4* dest128 = (float4*)data.ptr;
+                    float4* dest128 = reinterpret_cast<float4*>(data.ptr);
 
                     using F4Layout
                         = tile_layout_strided_t<typename tile_shape_f4<typename Layout::Shape, (int)sizeof(T)>::type>;
@@ -2535,7 +2535,8 @@ template <typename T, typename Shape, typename Strides, bool RequiresGrad> inlin
 
     // initialize tile to quiet nan
     uint32_t qnanbits = 0x7FC00000;
-    float qnan = *(float*)(&qnanbits);
+    float qnan;
+    memcpy(&qnan, &qnanbits, sizeof(qnan));
 
     for (int i = WP_TILE_THREAD_IDX; i < size; i += WP_TILE_BLOCK_DIM)
         data[i] = T(qnan);

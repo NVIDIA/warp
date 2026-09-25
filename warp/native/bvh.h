@@ -233,7 +233,7 @@ CUDA_CALLABLE inline void make_node(volatile BVHPackedNodeHalf* n, const vec3& b
 __device__ inline wp::BVHPackedNodeHalf bvh_load_node(const wp::BVHPackedNodeHalf* nodes, int index)
 {
 #ifdef USE_LOAD4
-    float4 f4 = __ldg((const float4*)(nodes) + index);
+    float4 f4 = __ldg(reinterpret_cast<const float4*>(nodes) + index);
     return (const wp::BVHPackedNodeHalf&)f4;
     // return  (const wp::BVHPackedNodeHalf&)(*((const float4*)(nodes)+index));
 #else

@@ -153,8 +153,7 @@ bvh_get_node_index_at_depth(bvh_query_thread_block_t& query, int node_index, int
             return -1;
     }
 
-    for (int i = 0; i < num_expansion_steps; ++i) {
-        int bit_position = num_expansion_steps - 1 - i;
+    for (int bit_position = num_expansion_steps - 1; bit_position >= 0; --bit_position) {
         int lower_upper_select = (lane_id >> bit_position) & 1;
 
         node_index = bvh_load_node(node_lowers_uppers[lower_upper_select], node_index).i;
