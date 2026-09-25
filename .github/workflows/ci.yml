@@ -54,6 +54,7 @@ env:
 jobs:
   prepare-build-metadata:
     runs-on: ubuntu-latest
+    permissions: {}
     outputs:
       cache-suffix: ${{ steps.metadata.outputs.cache-suffix }}
       snapshot-date: ${{ steps.metadata.outputs.snapshot-date }}
