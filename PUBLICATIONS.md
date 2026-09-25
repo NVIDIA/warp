@@ -7,6 +7,9 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 
 ## 2026
 
+- **Warp-Geo: Differentiable Geometry Representation for Dynamic-Boundary Simulation and Shape Optimization**. *W. Zhang, X. Fan, J. Wang*. September 2026. [arXiv:2609.20964](https://arxiv.org/abs/2609.20964)
+- **S4R: Scaling for Rigid-Body Interpenetration Resolution**. *Z. Dou, A. Zhao, C. Peng, M. Guo, H. Wu, C. Lin, Y. Liu, J. Yao, X. Guo, W. Wang, W. Matusik*. September 2026. [arXiv:2609.20524](https://arxiv.org/abs/2609.20524)
+- **EasyFashion: A Human-AI Co-Creation System for Personalized Fashion Design and Sewing Pattern Generation**. *H. Qu, Z. Xu, J. Luo, Y. Zhao, J. Zhang, Y. Yang*. September 2026. [arXiv:2609.18483](https://arxiv.org/abs/2609.18483)
 - **HairCS: Reconstructing Strand-Based Hair from Hair Cards**. *Z. Lu, T. Wang, Y. Shen, Z. Zheng, C. Jiang, Y. Yang, K. Wu*. September 2026. [arXiv:2609.16465](https://arxiv.org/abs/2609.16465)
 - **ESG: Generating Physically Consistent Dynamic 3D Scenes from Text Descriptions**. *X. Fang, Z. Fang, R. Xie, X. Zhang, G. An, Z. Liu, J. Zhang, J. Guo, Y. Huo*. September 2026. [arXiv:2609.15392](https://arxiv.org/abs/2609.15392)
 - **Size Doesn't Matter: Material-State Reinforcement Learning for Excavator Transferable Soil Manipulation**. *L. Werner, P. Eyschen, S. Costello, P. Micarelli, A. Cramariuc, M. Hutter*. September 2026. [arXiv:2609.12677](https://arxiv.org/abs/2609.12677)
