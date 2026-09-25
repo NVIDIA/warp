@@ -527,6 +527,7 @@ In the following, we increment an array index in each thread via :func:`wp.atomi
 the square root of an input array at the incremented index:
 
 .. testcode::
+    :skipif: wp.get_cuda_device_count() == 0
 
     @wp.kernel
     def test_add(counter: wp.array[int], input: wp.array[float], output: wp.array[float]):
@@ -558,6 +559,7 @@ the square root of an input array at the incremented index:
 The output of the above code is:
 
 .. testoutput::
+    :skipif: wp.get_cuda_device_count() == 0
 
     counter:     [8]
     thread_ids:  [0 0 0 0 0 0 0 0]
