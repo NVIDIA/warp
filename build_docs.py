@@ -4,11 +4,9 @@
 import argparse
 import logging
 import os
-import re
 import shutil
 import subprocess
 import sys
-import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TextIO
@@ -23,10 +21,6 @@ _DOCS_SOURCES_PREPARED_ENV = "WARP_DOCS_SOURCES_PREPARED"
 
 # Directories that do not contain standalone Sphinx documents to shard.
 _EXCLUDED_DOCS_DIRECTORIES = frozenset(("_build", "_src", "_templates", "superpowers"))
-
-# Patterns used to estimate each source file's doctest workload.
-_DOCTEST_DIRECTIVE_RE = re.compile(r"^\s*\.\.\s+(?:doctest|testcode)::", re.MULTILINE)
-_DOCTEST_PROMPT_RE = re.compile(r"^\s*>>>\s", re.MULTILINE)
 
 
 @dataclass(eq=False)
@@ -183,64 +177,17 @@ def discover_documentation_sources(source_dir: Path) -> tuple[Path, ...]:
     return tuple(sorted(sources))
 
 
-def estimate_doctest_weight(path: Path) -> int:
-    """Estimate a source file's doctest cost for deterministic sharding."""
-    source = path.read_text(encoding="utf-8")
-    weight = len(_DOCTEST_DIRECTIVE_RE.findall(source)) + len(_DOCTEST_PROMPT_RE.findall(source))
-
-    # Autosummary pages contain directives rather than their extracted docstrings,
-    # so their doctests are not visible until Sphinx reads the document.
-    if "_generated" in path.parts:
-        weight += 1
-
-    return max(1, weight)
-
-
 def partition_doctest_sources(sources: tuple[Path, ...], job_count: int) -> tuple[tuple[Path, ...], ...]:
-    """Partition Sphinx sources into deterministic, approximately balanced shards."""
+    """Distribute sorted Sphinx sources evenly across doctest shards."""
     if job_count < 1:
         raise ValueError("job_count must be at least 1")
     if job_count > len(sources):
         raise ValueError("job_count cannot exceed the number of documentation sources")
 
-    weighted_sources = sorted(
-        ((estimate_doctest_weight(source), source) for source in sources),
-        key=lambda item: (-item[0], os.fspath(item[1])),
-    )
-    shards: list[list[Path]] = [[] for _ in range(job_count)]
-    shard_weights = [0] * job_count
-
-    for weight, source in weighted_sources:
-        shard_index = min(range(job_count), key=lambda index: (shard_weights[index], index))
-        shards[shard_index].append(source)
-        shard_weights[shard_index] += weight
-
-    for index, (shard, weight) in enumerate(zip(shards, shard_weights, strict=True), start=1):
-        shard.sort()
-        logger.info(
-            "Planned doctest shard %d/%d with %d sources and estimated weight %d",
-            index,
-            job_count,
-            len(shard),
-            weight,
-        )
-
-    return tuple(tuple(shard) for shard in shards)
-
-
-def combine_doctest_output(output_dir: Path, job_count: int) -> None:
-    """Combine per-shard Sphinx summaries into the conventional output file."""
-    combined_output = output_dir / "output.txt"
-    with combined_output.open("w", encoding="utf-8") as output_file:
-        for shard_index in range(job_count):
-            shard_output = output_dir / f"shard-{shard_index}" / "output.txt"
-            output_file.write(f"Doctest shard {shard_index + 1}/{job_count}\n")
-            output_file.write("=" * 24 + "\n")
-            if shard_output.exists():
-                output_file.write(shard_output.read_text(encoding="utf-8"))
-            else:
-                output_file.write("No Sphinx doctest output was produced.\n")
-            output_file.write("\n")
+    shards = tuple(sources[index::job_count] for index in range(job_count))
+    for index, shard in enumerate(shards, start=1):
+        logger.info("Planned doctest shard %d/%d with %d sources", index, job_count, len(shard))
+    return shards
 
 
 def stop_doctest_processes(processes: list[DoctestProcess]) -> None:
@@ -291,9 +238,6 @@ def run_parallel_doctests(
     if not sources:
         raise RuntimeError(f"No Sphinx sources found under {source_dir}")
     shards = partition_doctest_sources(sources, job_count)
-    assigned_sources = [source for shard in shards for source in shard]
-    if len(assigned_sources) != len(sources) or set(assigned_sources) != set(sources):
-        raise RuntimeError("Doctest sharding must assign every documentation source exactly once")
 
     processes: list[DoctestProcess] = []
     try:
@@ -345,47 +289,32 @@ def run_parallel_doctests(
             )
 
         failed_shards = []
-        pending_processes = processes.copy()
-        while pending_processes:
-            completed_processes = []
-            for shard in pending_processes:
-                result = shard.process.poll()
-                if result is None:
-                    continue
-                shard.log_file.close()
-                if result == 0:
-                    logger.info("Doctest shard %d/%d completed successfully", shard.shard_index + 1, job_count)
-                else:
-                    failed_shards.append((shard.shard_index, result))
-                    logger.error(
-                        "Doctest shard %d/%d failed with exit code %d", shard.shard_index + 1, job_count, result
-                    )
-                    details_path = shard.output_path if shard.output_path.exists() else shard.log_path
-                    details = details_path.read_text(encoding="utf-8", errors="replace").rstrip()
-                    if details_path == shard.log_path:
-                        log_lines = details.splitlines()
-                        if len(log_lines) > 80:
-                            omitted_count = len(log_lines) - 80
-                            details = f"... {omitted_count} earlier log lines omitted ...\n" + "\n".join(
-                                log_lines[-80:]
-                            )
-                    logger.error(
-                        "Doctest shard %d/%d details from %s (full log: %s; manifest: %s):\n%s",
-                        shard.shard_index + 1,
-                        job_count,
-                        details_path,
-                        shard.log_path,
-                        shard.manifest_path,
-                        details,
-                    )
-                completed_processes.append(shard)
+        for shard in processes:
+            result = shard.process.wait()
+            shard.log_file.close()
+            if result == 0:
+                logger.info("Doctest shard %d/%d completed successfully", shard.shard_index + 1, job_count)
+                continue
 
-            for completed_process in completed_processes:
-                pending_processes.remove(completed_process)
-            if pending_processes and not completed_processes:
-                time.sleep(0.1)
+            failed_shards.append((shard.shard_index, result))
+            logger.error("Doctest shard %d/%d failed with exit code %d", shard.shard_index + 1, job_count, result)
+            details_path = shard.output_path if shard.output_path.exists() else shard.log_path
+            details = details_path.read_text(encoding="utf-8", errors="replace").rstrip()
+            if details_path == shard.log_path:
+                log_lines = details.splitlines()
+                if len(log_lines) > 80:
+                    omitted_count = len(log_lines) - 80
+                    details = f"... {omitted_count} earlier log lines omitted ...\n" + "\n".join(log_lines[-80:])
+            logger.error(
+                "Doctest shard %d/%d details from %s (full log: %s; manifest: %s):\n%s",
+                shard.shard_index + 1,
+                job_count,
+                details_path,
+                shard.log_path,
+                shard.manifest_path,
+                details,
+            )
 
-        combine_doctest_output(output_dir, job_count)
         if failed_shards:
             failed_summary = ", ".join(f"{index + 1} (exit code {result})" for index, result in failed_shards)
             raise RuntimeError(f"Sphinx doctest shard(s) failed: {failed_summary}")
