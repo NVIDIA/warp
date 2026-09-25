@@ -1169,6 +1169,85 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+  # Keep Python 3.15 coverage experimental until the final interpreter and a
+  # compatible usd-core distribution are available. Run after MuJoCo Warp,
+  # which follows the free-threaded test, to avoid competing for RTX PRO 6000 capacity.
+  test-warp-gpu-linux-python315:
+    runs-on: linux-amd64-gpu-rtxpro6000-latest-1
+    needs: [build-warp, test-mujoco-warp-gpu-linux]
+    if: |
+      always() &&
+      needs.build-warp.result == 'success' &&
+      (
+        needs.test-mujoco-warp-gpu-linux.result == 'success' ||
+        needs.test-mujoco-warp-gpu-linux.result == 'failure'
+      )
+    continue-on-error: true
+    permissions:
+      contents: read
+    container:
+      image: ubuntu:24.04
+      options: -u root --security-opt seccomp=unconfined --shm-size 16g
+      env:
+        NVIDIA_VISIBLE_DEVICES: ${{ env.NVIDIA_VISIBLE_DEVICES }}
+    timeout-minutes: 45
+    env:
+      UV_PYTHON: "3.15"
+      WARP_CACHE_PATH: /tmp/warp-cache-${{ github.run_id }}-${{ github.run_attempt }}-python315
+    steps:
+      - name: Display GPU information
+        run: nvidia-smi
+
+      - name: Setup proxy cache
+        uses: nv-gha-runners/setup-proxy-cache@main
+        with:
+          enable-apt: true
+
+      - name: Install system dependencies
+        run: |
+          apt-get update
+          apt-get install -y git git-lfs curl gpg build-essential
+          git lfs install
+
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+          lfs: true
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
+        with:
+          version: "0.12.7"
+
+      - name: Set up Python
+        run: uv python install 3.15
+
+      - name: Download Warp build artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          name: build-artifact-ubuntu-x86_64-cuda13
+          path: .
+
+      # usd-core does not yet publish a Python 3.15 distribution. Keep it out of
+      # this experimental environment until upstream support is available.
+      - name: Install Python dependencies
+        run: uv sync --python 3.15 --extra dev --extra torch-cu13 --no-install-package usd-core
+
+      - name: Report Warp diagnostics
+        # See the note in test-warp-gpu-linux; the Warp counterpart to nvidia-smi.
+        run: uv run --python 3.15 --no-sync --with "jax[cuda13]>=0.5" python -c "import warp as wp; wp.print_diagnostics(); assert wp.get_cuda_devices(), 'No CUDA device visible to Warp'"
+
+      - name: Run Tests
+        run: uv run --python 3.15 --no-sync --with "jax[cuda13]>=0.5" -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
+
+      - name: Test Summary
+        uses: test-summary/action@37b508cfee6d4d080eedd00b5bb240a6a784a6a5  # v2.6
+        with:
+          paths: "rspec.xml"
+          show: "fail"
+        if: always()
+
   test-warp-gpu-linux-mgpu-python310:
     runs-on: linux-amd64-gpu-rtxpro6000-latest-2
     needs: [build-warp, gpu-changes]

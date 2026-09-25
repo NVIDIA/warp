@@ -430,7 +430,7 @@ cppcheck:
 #
 # Comprehensive test suite across multiple platforms (Linux x86_64/aarch64,
 # Windows, specialized hardware like Orin/Thor/Blackwell), Python versions
-# (3.10-3.14), and optional integrations (MuJoCo, JAX, PyTorch). Some jobs
+# (3.10-3.15), and optional integrations (MuJoCo, JAX, PyTorch). Some jobs
 # compute code coverage, others focus on compatibility and performance (ASV).
 # ==============================================================================
 
@@ -628,6 +628,32 @@ linux-x86_64 cu13 free-threaded test:
     - !reference [.snippets, section-end-install-deps]
   script:
     - uv run --python 3.14t --no-sync -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
+
+linux-x86_64 python 3.15 test:
+  stage: test
+  needs: [linux-x86_64 cu13 build]
+  image: $UV_TRIXIE_SLIM_IMAGE
+  allow_failure: true
+  variables:
+    IPP_RUNNER_EXECUTION_DURATION: "3600"
+    UV_PYTHON: "3.15"
+  extends:
+    - .ipp_lnx_x86_64_gpu
+    - .save_test_report_artifact
+    - .basic_test_changes_rules
+  before_script:
+    - !reference [.snippets, section-start-install-deps]
+    - df -h
+    - apt-get update && apt-get install build-essential --no-install-recommends -y
+    - uv python install 3.15
+    - !reference [.snippets, move-linux-x86_64-binaries]
+    # usd-core does not yet publish a Python 3.15 distribution. Keep it out of
+    # this experimental environment until upstream support is available.
+    - uv sync --python 3.15 --extra dev --extra torch-cu13 --no-install-package usd-core
+    - !reference [.snippets, section-end-install-deps]
+  script:
+    - uv run --python 3.15 --no-sync --with "jax[cuda13]>=0.5" python -c "import warp as wp; wp.print_diagnostics(); assert wp.get_cuda_devices(), 'No CUDA device visible to Warp'"
+    - uv run --python 3.15 --no-sync --with "jax[cuda13]>=0.5" -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
 
 linux-x86_64 cu13 debug-mode test:
   stage: test
