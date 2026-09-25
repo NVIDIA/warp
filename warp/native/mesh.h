@@ -1432,10 +1432,14 @@ CUDA_CALLABLE inline bool mesh_query_ray(
             const int primitive_end = bvh_query_node_upper_payload(cur_node);
             // Leaf: test all primitives in the leaf.
             for (int pc = primitive_begin; pc < primitive_end; ++pc) {
-                int primitive_index = bvh_load_int(mesh.bvh.primitive_indices, pc);
-                int i = bvh_load_int(mesh.indices, primitive_index * 3 + 0);
-                int j = bvh_load_int(mesh.indices, primitive_index * 3 + 1);
-                int k = bvh_load_int(mesh.indices, primitive_index * 3 + 2);
+                // Keep ray-query triangle-index loads ordinary. With CUDA 13.0, the read-only path raises closest-hit
+                // from 62 to 69 registers on sm_100/sm_103/sm_110, reducing 256-thread residency from four blocks per
+                // SM to three. On sm_110 it also regresses any-hit and ordered without crossing a residency boundary,
+                // and count-intersections regresses for packed leaves.
+                int primitive_index = mesh.bvh.primitive_indices[pc];
+                int i = mesh.indices[primitive_index * 3 + 0];
+                int j = mesh.indices[primitive_index * 3 + 1];
+                int k = mesh.indices[primitive_index * 3 + 2];
 
                 vec3 p = mesh.points[i];
                 vec3 q = mesh.points[j];
@@ -1537,10 +1541,11 @@ mesh_query_ray_anyhit(uint64_t id, const vec3& start, const vec3& dir, float max
             const int primitive_begin = bvh_query_node_lower_payload(cur_node);
             const int primitive_end = bvh_query_node_upper_payload(cur_node);
             for (int pc = primitive_begin; pc < primitive_end; ++pc) {
-                int primitive_index = bvh_load_int(mesh.bvh.primitive_indices, pc);
-                int i = bvh_load_int(mesh.indices, primitive_index * 3 + 0);
-                int j = bvh_load_int(mesh.indices, primitive_index * 3 + 1);
-                int k = bvh_load_int(mesh.indices, primitive_index * 3 + 2);
+                // See mesh_query_ray() for the architecture-dependent load policy.
+                int primitive_index = mesh.bvh.primitive_indices[pc];
+                int i = mesh.indices[primitive_index * 3 + 0];
+                int j = mesh.indices[primitive_index * 3 + 1];
+                int k = mesh.indices[primitive_index * 3 + 2];
 
                 vec3 p = mesh.points[i];
                 vec3 q = mesh.points[j];
@@ -1632,10 +1637,11 @@ CUDA_CALLABLE inline int mesh_query_ray_count_intersections(uint64_t id, const v
                 const int end_index = upper.i;
                 // loops through primitives in the leaf
                 for (int primitive_counter = start_index; primitive_counter < end_index; primitive_counter++) {
-                    int primitive_index = bvh_load_int(mesh.bvh.primitive_indices, primitive_counter);
-                    int i = bvh_load_int(mesh.indices, primitive_index * 3 + 0);
-                    int j = bvh_load_int(mesh.indices, primitive_index * 3 + 1);
-                    int k = bvh_load_int(mesh.indices, primitive_index * 3 + 2);
+                    // See mesh_query_ray() for the architecture-dependent load policy.
+                    int primitive_index = mesh.bvh.primitive_indices[primitive_counter];
+                    int i = mesh.indices[primitive_index * 3 + 0];
+                    int j = mesh.indices[primitive_index * 3 + 1];
+                    int k = mesh.indices[primitive_index * 3 + 2];
 
                     vec3 p = mesh.points[i];
                     vec3 q = mesh.points[j];
@@ -1716,10 +1722,11 @@ CUDA_CALLABLE inline bool mesh_query_ray_ordered(
                 const int end_index = right_index;
                 // loops through primitives in the leaf
                 for (int primitive_counter = start_index; primitive_counter < end_index; primitive_counter++) {
-                    int primitive_index = bvh_load_int(mesh.bvh.primitive_indices, primitive_counter);
-                    int i = bvh_load_int(mesh.indices, primitive_index * 3 + 0);
-                    int j = bvh_load_int(mesh.indices, primitive_index * 3 + 1);
-                    int k = bvh_load_int(mesh.indices, primitive_index * 3 + 2);
+                    // See mesh_query_ray() for the architecture-dependent load policy.
+                    int primitive_index = mesh.bvh.primitive_indices[primitive_counter];
+                    int i = mesh.indices[primitive_index * 3 + 0];
+                    int j = mesh.indices[primitive_index * 3 + 1];
+                    int k = mesh.indices[primitive_index * 3 + 2];
 
                     vec3 p = mesh.points[i];
                     vec3 q = mesh.points[j];
