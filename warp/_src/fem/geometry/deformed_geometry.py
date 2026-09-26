@@ -292,12 +292,12 @@ class DeformedGeometry(Geometry):
         points = wp.matrix_from_rows(*[CoordsType(*p) for p in raw_points])
         point_count = len(points)
 
-        vec3_type = cache.cached_vec_type(3, self.scalar_type)
+        vec_type = cache.cached_vec_type(self.dimension, self.scalar_type)
 
         @cache.dynamic_func(suffix=self.name)
         def cell_bounds(cell_arg: self.CellArg, cell_index: ElementIndex):
-            lower = vec3_type(self.scalar_type(1.0e8))
-            upper = vec3_type(self.scalar_type(-1.0e8))
+            lower = vec_type(self.scalar_type(1.0e8))
+            upper = vec_type(self.scalar_type(-1.0e8))
             for k in range(point_count):
                 pos = self.cell_position(cell_arg, make_free_sample(cell_index, points[k]))
                 lower = wp.min(lower, pos)
