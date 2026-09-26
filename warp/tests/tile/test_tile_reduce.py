@@ -818,6 +818,15 @@ def tile_reduce_axis_tier2_sum_axis2_kernel(x: wp.array3d[float], y: wp.array2d[
     wp.tile_store(y, b)
 
 
+# Tier 2 with a block narrower than a warp. Small enough to stay well inside shared
+# memory on every architecture, so the only thing under test is axis coverage.
+@wp.kernel
+def tile_reduce_axis_tier2_sub_warp_kernel(x: wp.array2d[float], y: wp.array[float]):
+    a = wp.tile_load(x, shape=(100, 8), storage="shared")
+    b = wp.tile_sum(a, axis=0)
+    wp.tile_store(y, b)
+
+
 # Tier 3: axis size > 256
 @wp.kernel
 def tile_reduce_axis_tier3_sum_axis0_kernel(x: wp.array2d[float], y: wp.array[float]):
@@ -948,6 +957,33 @@ def test_tile_reduce_axis_lengths_33_to_256(test, device, block_dim=TILE_DIM):
 
     assert_np_equal(y.numpy(), np.ones((8, 8), dtype=float) * 128.0)
     assert_np_equal(x.grad.numpy(), np.ones((8, 8, 128), dtype=float))
+
+
+def test_tile_reduce_axis_sub_warp_block(test, device):
+    """Reduce a tier 2 axis from blocks narrower than a warp."""
+    # A block smaller than a warp leaves the upper lanes permanently inactive. If the
+    # reduction axis is walked in chunks of the architectural warp size instead of the
+    # number of lanes that actually run, the elements those lanes would have owned are
+    # never read, and the reduction quietly returns a smaller number.
+    x = wp.ones((100, 8), dtype=float, device=device)
+
+    for block_dim in (4, 8, 16, 32):
+        y = wp.zeros(8, dtype=float, device=device)
+
+        wp.launch_tiled(
+            tile_reduce_axis_tier2_sub_warp_kernel,
+            dim=[1],
+            inputs=[x],
+            outputs=[y],
+            block_dim=block_dim,
+            device=device,
+        )
+
+        np.testing.assert_allclose(
+            y.numpy(),
+            np.ones(8, dtype=float) * 100.0,
+            err_msg=f"axis of 100 elements was not fully reduced at block_dim={block_dim}",
+        )
 
 
 def test_tile_reduce_axis_lengths_over_256(test, device, block_dim=TILE_DIM):
@@ -1312,6 +1348,12 @@ add_function_test(
     test_tile_reduce_axis_lengths_33_to_256,
     devices=devices,
     block_dim=32,
+)
+add_function_test(
+    TestTileReduce,
+    "test_tile_reduce_axis_sub_warp_block",
+    test_tile_reduce_axis_sub_warp_block,
+    devices=devices,
 )
 add_function_test(
     TestTileReduce,
