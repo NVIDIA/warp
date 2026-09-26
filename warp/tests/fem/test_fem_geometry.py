@@ -816,6 +816,73 @@ def test_deformed_geometry(test, device):
         )
 
 
+@integrand
+def _rigid_deformation_field_2d(s: Sample, domain: Domain, translation: wp.vec2, rotation: float, scale: float):
+    """Compute rigid 2D deformation displacement."""
+    x = domain(s)
+    c = wp.cos(rotation)
+    s_rot = wp.sin(rotation)
+    rot_x = wp.vec2(c * x[0] - s_rot * x[1], s_rot * x[0] + c * x[1])
+    return translation + scale * rot_x - x
+
+
+@fem.integrand(kernel_options={"enable_backward": False})
+def _test_deformed_2d_cell_lookup(s: fem.Sample, domain: fem.Domain):
+    """Verify lookup queries with and without initial guess."""
+    pos = domain(s)
+
+    s_guess = fem.lookup(domain, pos, s)
+    wp.expect_eq(s_guess.element_index, s.element_index)
+    wp.expect_near(domain(s_guess), pos, 0.001)
+
+    s_noguess = fem.lookup(domain, pos)
+    wp.expect_eq(s_noguess.element_index, s.element_index)
+    wp.expect_near(domain(s_noguess), pos, 0.001)
+
+
+def test_deformed_geometry_2d(test, device):
+    """Verify BVH construction and cell lookups on two-dimensional deformed geometry."""
+    N = 3
+
+    translation = wp.vec2(1.0, 2.0)
+    rotation = math.pi / 4.0
+    scale = 2.0
+
+    with wp.ScopedDevice(device):
+        positions, tri_vidx = _gen_trimesh(N, N)
+        geo = fem.Trimesh2D(tri_vertex_indices=tri_vidx, positions=positions)
+
+        vector_space = fem.make_polynomial_space(geo, dtype=wp.vec2, degree=2)
+        pos_field = vector_space.make_field()
+        fem.interpolate(
+            _rigid_deformation_field_2d,
+            dest=pos_field,
+            values={"translation": translation, "rotation": rotation, "scale": scale},
+        )
+
+        deformed_geo = pos_field.make_deformed_geometry()
+
+        test.assertEqual(geo.cell_count(), 2 * N * N)
+        test.assertEqual(geo.vertex_count(), (N + 1) ** 2)
+
+        test.assertFalse(deformed_geo.supports_cell_lookup(device))
+        deformed_geo.build_bvh()
+        test.assertTrue(deformed_geo.supports_cell_lookup(device))
+
+        cell_measures = wp.zeros(dtype=float, device=device, shape=deformed_geo.cell_count())
+        cell_quadrature = fem.RegularQuadrature(fem.Cells(deformed_geo), order=2)
+        fem.interpolate(_test_geo_cells, at=cell_quadrature, values={"cell_measures": cell_measures})
+
+        test.assertAlmostEqual(
+            np.sum(cell_measures.numpy()), scale**2, places=4, msg=f"cell_measures = {cell_measures.numpy()}"
+        )
+
+        fem.interpolate(_test_deformed_2d_cell_lookup, at=cell_quadrature)
+
+        deformed_geo_auto = fem.geometry.DeformedGeometry(pos_field, build_bvh=True)
+        test.assertTrue(deformed_geo_auto.supports_cell_lookup(device))
+
+
 def test_deformed_geometry_codimensional(test, device):
     N = 3
 
@@ -1012,6 +1079,7 @@ add_function_test(
 )
 add_function_test(TestFemGeometry, "test_adaptive_nanogrid", test_adaptive_nanogrid, devices=cuda_devices)
 add_function_test(TestFemGeometry, "test_deformed_geometry", test_deformed_geometry, devices=devices)
+add_function_test(TestFemGeometry, "test_deformed_geometry_2d", test_deformed_geometry_2d, devices=devices)
 add_function_test(
     TestFemGeometry, "test_deformed_geometry_codimensional", test_deformed_geometry_codimensional, devices=devices
 )
