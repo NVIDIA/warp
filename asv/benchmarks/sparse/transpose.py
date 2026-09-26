@@ -20,9 +20,10 @@ class BsrSetTransposeCompact:
 
     params = ["stencil8", "stencil32", "dense", "overallocated", "wide_hot_column", "shared_columns8"]
     param_names = ["pattern"]
-    # Let ASV calibrate repetitions. Each call times 100 operations to amortize
-    # launch/synchronization overhead (about 1-300 ms per batch on an RTX 4090).
+    # Each timed call runs 100 transposes to amortize launch and synchronization overhead.
     transposes_per_batch = 100
+    number = 1
+    repeat = 10
 
     def setup(self, pattern):
         wp.init()
@@ -67,6 +68,8 @@ class BsrSetTransposeCompact:
                 for _ in range(self.transposes_per_batch):
                     wps.bsr_set_transpose(self.dest, self.src)
             self.graph = capture.graph
+            # ASV runs setup before each timed call, so warm each captured graph.
+            wp.capture_launch(self.graph)
         wp.synchronize_device(self.device)
 
     def time_100_transposes(self, pattern):
