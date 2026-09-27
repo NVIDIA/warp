@@ -17,12 +17,6 @@ from warp._src.generated_files import generate_stubs_file
 
 logger = logging.getLogger(__name__)
 
-# Environment flag telling doctest workers that generated sources are ready.
-_DOCS_SOURCES_PREPARED_ENV = "WARP_DOCS_SOURCES_PREPARED"
-
-# Directories that do not contain standalone Sphinx documents to shard.
-_EXCLUDED_DOCS_DIRECTORIES = frozenset(("_build", "_src", "_templates", "superpowers"))
-
 
 @dataclass(eq=False)
 class DoctestProcess:
@@ -31,7 +25,6 @@ class DoctestProcess:
     shard_index: int
     process: subprocess.Popen
     start_time: float
-    manifest_path: Path
     output_path: Path
     log_path: Path
     log_file: TextIO
@@ -166,32 +159,6 @@ def build_sphinx_docs(
         ) from err
 
 
-def discover_documentation_sources(source_dir: Path) -> tuple[Path, ...]:
-    """Return all Sphinx source files that are eligible for doctesting."""
-    sources = []
-    for path in source_dir.rglob("*"):
-        if not path.is_file() or path.suffix not in (".md", ".rst"):
-            continue
-        relative_path = path.relative_to(source_dir)
-        if any(part in _EXCLUDED_DOCS_DIRECTORIES for part in relative_path.parts):
-            continue
-        sources.append(path)
-    return tuple(sorted(sources))
-
-
-def partition_doctest_sources(sources: tuple[Path, ...], job_count: int) -> tuple[tuple[Path, ...], ...]:
-    """Distribute sorted Sphinx sources evenly across doctest shards."""
-    if job_count < 1:
-        raise ValueError("job_count must be at least 1")
-    if job_count > len(sources):
-        raise ValueError("job_count cannot exceed the number of documentation sources")
-
-    shards = tuple(sources[index::job_count] for index in range(job_count))
-    for index, shard in enumerate(shards, start=1):
-        logger.info("Planned doctest shard %d/%d with %d sources", index, job_count, len(shard))
-    return shards
-
-
 def stop_doctest_processes(processes: list[DoctestProcess]) -> None:
     """Stop running doctest shards and close their log files."""
     for shard in processes:
@@ -220,7 +187,10 @@ def run_parallel_doctests(
     warnings_as_errors: bool,
     sources_prepared: bool,
 ) -> None:
-    """Run filename-sharded Sphinx doctests in concurrent subprocesses."""
+    """Run Sphinx doctests in concurrent document shards."""
+    if job_count < 1:
+        raise ValueError("job_count must be at least 1")
+
     if output_dir.exists():
         logger.debug(f"Cleaning previous output directory: {output_dir}")
         shutil.rmtree(output_dir)
@@ -236,26 +206,15 @@ def run_parallel_doctests(
         )
         shutil.rmtree(preparation_output)
 
-    sources = discover_documentation_sources(source_dir)
-    if not sources:
-        raise RuntimeError(f"No Sphinx sources found under {source_dir}")
-    shards = partition_doctest_sources(sources, job_count)
-
     processes: list[DoctestProcess] = []
     try:
-        for shard_index, shard in enumerate(shards):
+        for shard_index in range(job_count):
             shard_output = output_dir / f"shard-{shard_index}"
             cache_path = output_dir / "warp-cache" / f"shard-{shard_index}"
-            manifest_path = output_dir / f"shard-{shard_index}.txt"
             shard_output.mkdir(parents=True)
             cache_path.mkdir(parents=True)
-            manifest_path.write_text(
-                "\n".join(path.relative_to(source_dir).with_suffix("").as_posix() for path in shard) + "\n",
-                encoding="utf-8",
-            )
 
             env = os.environ.copy()
-            env[_DOCS_SOURCES_PREPARED_ENV] = "1"
             env["WARP_CACHE_PATH"] = os.fspath(cache_path)
             command = [
                 sys.executable,
@@ -267,7 +226,12 @@ def run_parallel_doctests(
                     shard_output,
                     "doctest-shard",
                     warnings_as_errors,
-                    (f"warp_doctest_shard_manifest={manifest_path}",),
+                    (
+                        f"warp_doctest_shard_index={shard_index}",
+                        f"warp_doctest_shard_count={job_count}",
+                        "autosummary_generate=0",
+                        "doctest_show_successes=0",
+                    ),
                     jobs=1,
                 ),
             ]
@@ -285,7 +249,6 @@ def run_parallel_doctests(
                     shard_index=shard_index,
                     process=process,
                     start_time=start_time,
-                    manifest_path=manifest_path,
                     output_path=shard_output / "output.txt",
                     log_path=log_path,
                     log_file=log_file,
@@ -326,20 +289,22 @@ def run_parallel_doctests(
 
         failed_shards.sort(key=lambda failure: failure[0].shard_index)
         for shard, _ in failed_shards:
-            details_path = shard.output_path if shard.output_path.exists() else shard.log_path
-            details = details_path.read_text(encoding="utf-8", errors="replace").rstrip()
-            if details_path == shard.log_path:
-                log_lines = details.splitlines()
-                if len(log_lines) > 80:
-                    omitted_count = len(log_lines) - 80
-                    details = f"... {omitted_count} earlier log lines omitted ...\n" + "\n".join(log_lines[-80:])
+            log_lines = shard.log_path.read_text(encoding="utf-8", errors="replace").rstrip().splitlines()
+            if len(log_lines) > 80:
+                omitted_count = len(log_lines) - 80
+                log_details = f"... {omitted_count} earlier log lines omitted ...\n" + "\n".join(log_lines[-80:])
+            else:
+                log_details = "\n".join(log_lines)
+
+            details = f"Worker log:\n{log_details}"
+            if shard.output_path.exists():
+                report = shard.output_path.read_text(encoding="utf-8", errors="replace").rstrip()
+                details = f"Doctest report:\n{report}\n\n{details}"
             logger.error(
-                "Doctest shard %d/%d details from %s (full log: %s; manifest: %s):\n%s",
+                "Doctest shard %d/%d details (full log: %s):\n%s",
                 shard.shard_index + 1,
                 job_count,
-                details_path,
                 shard.log_path,
-                shard.manifest_path,
                 details,
             )
 
