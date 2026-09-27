@@ -7,6 +7,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TextIO
@@ -29,6 +30,7 @@ class DoctestProcess:
 
     shard_index: int
     process: subprocess.Popen
+    start_time: float
     manifest_path: Path
     output_path: Path
     log_path: Path
@@ -273,6 +275,7 @@ def run_parallel_doctests(
             log_path = shard_output / "log.txt"
             log_file = log_path.open("w", encoding="utf-8")
             try:
+                start_time = time.monotonic()
                 process = subprocess.Popen(command, env=env, stdout=log_file, stderr=subprocess.STDOUT)
             except Exception:
                 log_file.close()
@@ -281,6 +284,7 @@ def run_parallel_doctests(
                 DoctestProcess(
                     shard_index=shard_index,
                     process=process,
+                    start_time=start_time,
                     manifest_path=manifest_path,
                     output_path=shard_output / "output.txt",
                     log_path=log_path,
@@ -289,15 +293,39 @@ def run_parallel_doctests(
             )
 
         failed_shards = []
-        for shard in processes:
-            result = shard.process.wait()
-            shard.log_file.close()
-            if result == 0:
-                logger.info("Doctest shard %d/%d completed successfully", shard.shard_index + 1, job_count)
-                continue
+        pending = processes.copy()
+        while pending:
+            for shard in pending.copy():
+                result = shard.process.poll()
+                if result is None:
+                    continue
 
-            failed_shards.append((shard.shard_index, result))
-            logger.error("Doctest shard %d/%d failed with exit code %d", shard.shard_index + 1, job_count, result)
+                pending.remove(shard)
+                shard.log_file.close()
+                elapsed = time.monotonic() - shard.start_time
+                if result == 0:
+                    logger.info(
+                        "Doctest shard %d/%d completed successfully in %.1f seconds",
+                        shard.shard_index + 1,
+                        job_count,
+                        elapsed,
+                    )
+                    continue
+
+                failed_shards.append((shard, result))
+                logger.error(
+                    "Doctest shard %d/%d failed with exit code %d after %.1f seconds",
+                    shard.shard_index + 1,
+                    job_count,
+                    result,
+                    elapsed,
+                )
+
+            if pending:
+                time.sleep(0.1)
+
+        failed_shards.sort(key=lambda failure: failure[0].shard_index)
+        for shard, _ in failed_shards:
             details_path = shard.output_path if shard.output_path.exists() else shard.log_path
             details = details_path.read_text(encoding="utf-8", errors="replace").rstrip()
             if details_path == shard.log_path:
@@ -316,7 +344,9 @@ def run_parallel_doctests(
             )
 
         if failed_shards:
-            failed_summary = ", ".join(f"{index + 1} (exit code {result})" for index, result in failed_shards)
+            failed_summary = ", ".join(
+                f"{shard.shard_index + 1} (exit code {result})" for shard, result in failed_shards
+            )
             raise RuntimeError(f"Sphinx doctest shard(s) failed: {failed_summary}")
     finally:
         stop_doctest_processes(processes)
