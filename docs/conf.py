@@ -531,7 +531,7 @@ def linkcode_resolve(domain, info):
     This is used for the sphinx.ext.linkcode extension.
 
     References:
-        https://github.com/google/jax/blob/main/docs/conf.py
+        https://github.com/jax-ml/jax/blob/main/docs/conf.py
         https://www.sphinx-doc.org/en/master/usage/extensions/linkcode.html
     """
     if domain != "py":

@@ -356,7 +356,7 @@ def to_paddle(a: warp.array, requires_grad: bool | None = None) -> paddle.Tensor
         # Paddle has an issue wrapping CPU objects
         # that support the __array_interface__ protocol
         # in this case we need to workaround by going
-        # to an ndarray first, see https://pearu.github.io/array_interface_pypaddle.html
+        # to an ndarray first, see https://pearu.github.io/array_interface_pytorch.html
         t = paddle.to_tensor(numpy.asarray(a), place="cpu")
         t.stop_gradient = not requires_grad
         if requires_grad and a.requires_grad:

@@ -6,7 +6,7 @@ This software contains code adapted from Pixar's Universal Scene Description (US
 
 Source: GfMatrix4f::GetInverse()
 From: pxr/base/gf/matrix4f.cpp
-Repository: https://github.com/PixarAnimationStudios/USD
+Repository: https://github.com/PixarAnimationStudios/OpenUSD
 
 Adapted in Warp as:
 - warp/native/mat.h: determinant(), adj_determinant() for 4x4 matrices

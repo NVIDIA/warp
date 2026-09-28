@@ -266,7 +266,7 @@ class RmmAllocator:
         except ImportError as e:
             raise ImportError(
                 "Failed to import 'rmm'. Ensure it is installed and compatible with your CUDA version. "
-                "See https://docs.rapids.ai/install/ for installation instructions."
+                "See https://docs.nvidia.com/datascience/install/ for installation instructions."
             ) from e
         self._buffers: dict[int, object] = {}
 
