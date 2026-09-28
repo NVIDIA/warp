@@ -379,6 +379,21 @@ class TestBuiltinsResolution(unittest.TestCase):
                 result = overload_group(**kwargs)
                 np.testing.assert_allclose(result, expected)
 
+    def test_builtin_overloads_with_shared_parameter_names_use_selected_default(self):
+        """Apply each overload's default to positional and keyword calls."""
+        overload_group = make_mul_builtin({"a": wp.float32, "b": wp.float32}, wp.float32)
+        overload_group.add_overload(make_mul_builtin({"x": wp.vec2f, "s": wp.float32}, wp.vec2f, defaults={"s": 2.0}))
+        overload_group.add_overload(make_mul_builtin({"x": wp.vec3f, "s": wp.float32}, wp.vec3f, defaults={"s": 3.0}))
+
+        for vector, expected in (
+            (wp.vec2f(1.0, 1.0), (2.0, 2.0)),
+            (wp.vec3f(1.0, 1.0, 1.0), (3.0, 3.0, 3.0)),
+        ):
+            with self.subTest(vector=type(vector).__name__, call="keyword"):
+                np.testing.assert_allclose(overload_group(x=vector), expected)
+            with self.subTest(vector=type(vector).__name__, call="positional"):
+                np.testing.assert_allclose(overload_group(vector), expected)
+
     def test_builtin_overload_required_parameter(self):
         """Reject calls missing a parameter required by the selected Python-scope overload."""
         overload_group = make_mul_builtin(
