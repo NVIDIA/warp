@@ -590,6 +590,119 @@ def test_tile_scan_min_inclusive(test, device):
         np.testing.assert_allclose(scan_wp[i], scan_np, rtol=1e-5, atol=1e-6)
 
 
+def create_tile_scan_min_max_inclusive_kernel(dtype, tile_dim: int):
+    @wp.kernel(module="unique")
+    def tile_scan_min_max_inclusive_kernel(
+        input: wp.array2d[dtype],
+        max_output: wp.array2d[dtype],
+        min_output: wp.array2d[dtype],
+    ):
+        i = wp.tid()
+        t = wp.tile_load(input[i], shape=tile_dim)
+        wp.tile_store(max_output[i], wp.tile_scan_max_inclusive(t))
+        wp.tile_store(min_output[i], wp.tile_scan_min_inclusive(t))
+
+    return tile_scan_min_max_inclusive_kernel
+
+
+def run_tile_scan_min_max_inclusive(device, dtype, input_np, block_dim=TILE_DIM):
+    input_wp = wp.array2d(input_np, dtype=dtype, device=device)
+    max_output = wp.empty_like(input_wp)
+    min_output = wp.empty_like(input_wp)
+
+    wp.launch_tiled(
+        create_tile_scan_min_max_inclusive_kernel(dtype, input_np.shape[1]),
+        dim=[input_np.shape[0]],
+        inputs=[input_wp],
+        outputs=[max_output, min_output],
+        block_dim=block_dim,
+        device=device,
+    )
+
+    return max_output.numpy(), min_output.numpy()
+
+
+def test_tile_scan_min_max_inclusive_float_extremes(test, device):
+    # Each prefix must match a C fmax/fmin fold over the input elements alone, so
+    # values at or beyond any finite starting sentinel are returned unchanged.
+    # The odd length leaves a partially filled final pass over the tile.
+    N = 67
+    f32 = np.finfo(np.float32)
+
+    input_np = np.stack(
+        [
+            np.full(N, f32.min, dtype=np.float32),
+            np.full(N, f32.max, dtype=np.float32),
+            np.full(N, -np.inf, dtype=np.float32),
+            np.full(N, np.inf, dtype=np.float32),
+        ]
+    )
+
+    max_wp, min_wp = run_tile_scan_min_max_inclusive(device, wp.float32, input_np)
+
+    np.testing.assert_array_equal(max_wp, np.fmax.accumulate(input_np, axis=1))
+    np.testing.assert_array_equal(min_wp, np.fmin.accumulate(input_np, axis=1))
+
+
+def test_tile_scan_min_max_inclusive_nan(test, device, block_dim=TILE_DIM):
+    # NaN elements are missing: element i must equal the fmax/fmin of the non-NaN
+    # elements among 0..i, and be NaN only when all of them are NaN.
+    # The CUDA scan merges partial results every 32 elements (one warp) and every
+    # block_dim elements (one pass over the tile). NaN runs therefore end just
+    # before, on, and just after each such boundary for block_dim 32, 64, and 256,
+    # which would expose a merge step that lets a NaN partial result override a
+    # number, or that drops a number when the other side is NaN.
+    N = 300
+    boundaries = (1, 31, 32, 33, 63, 64, 65, 255, 256, 257, N - 1)
+
+    rng = np.random.default_rng(42)
+
+    def with_nan_run(start, stop):
+        row = rng.uniform(-100.0, 100.0, N).astype(np.float32)
+        row[start:stop] = np.nan
+        return row
+
+    rows = [np.full(N, np.nan, dtype=np.float32)]
+    for k in boundaries:
+        rows.append(with_nan_run(0, k))  # the first number is element k
+        rows.append(with_nan_run(k, N))  # numbers 0..k-1 carry through a NaN tail
+        rows.append(with_nan_run(1, k))  # element 0 carries across NaNs to element k
+
+    sparse = rng.uniform(-100.0, 100.0, N).astype(np.float32)
+    sparse[rng.random(N) < 0.2] = np.nan
+    rows.append(sparse)
+
+    # Infinities are values, not missing elements, even when surrounded by NaNs.
+    rows.append(rng.choice(np.array([np.nan, -np.inf, np.inf, -1.0, 1.0], dtype=np.float32), N))
+
+    input_np = np.stack(rows)
+
+    max_wp, min_wp = run_tile_scan_min_max_inclusive(device, wp.float32, input_np, block_dim)
+
+    np.testing.assert_array_equal(max_wp, np.fmax.accumulate(input_np, axis=1))
+    np.testing.assert_array_equal(min_wp, np.fmin.accumulate(input_np, axis=1))
+
+
+def test_tile_scan_min_max_inclusive_integer_extremes(test, device):
+    N = 67
+    rng = np.random.default_rng(42)
+
+    for dtype, np_dtype in ((wp.int32, np.int32), (wp.uint32, np.uint32)):
+        info = np.iinfo(np_dtype)
+        input_np = np.stack(
+            [
+                np.full(N, info.min, dtype=np_dtype),
+                np.full(N, info.max, dtype=np_dtype),
+                rng.integers(info.min, info.max, N, dtype=np_dtype, endpoint=True),
+            ]
+        )
+
+        max_wp, min_wp = run_tile_scan_min_max_inclusive(device, dtype, input_np)
+
+        np.testing.assert_array_equal(max_wp, np.maximum.accumulate(input_np, axis=1), err_msg=f"dtype={np_dtype}")
+        np.testing.assert_array_equal(min_wp, np.minimum.accumulate(input_np, axis=1), err_msg=f"dtype={np_dtype}")
+
+
 @wp.kernel
 def tile_scan_partial_block_kernel(
     add_input: wp.array2d[float],
@@ -1359,6 +1472,32 @@ add_function_test(TestTileReduce, "test_tile_scan_max_inclusive", test_tile_scan
 add_function_test(TestTileReduce, "test_tile_scan_min_inclusive", test_tile_scan_min_inclusive, devices=devices)
 add_function_test(
     TestTileReduce,
+    "test_tile_scan_min_max_inclusive_float_extremes",
+    test_tile_scan_min_max_inclusive_float_extremes,
+    devices=devices,
+)
+add_function_test(
+    TestTileReduce,
+    "test_tile_scan_min_max_inclusive_nan",
+    test_tile_scan_min_max_inclusive_nan,
+    devices=devices,
+)
+for block_dim in (32, 256):
+    add_function_test(
+        TestTileReduce,
+        f"test_tile_scan_min_max_inclusive_nan_block_{block_dim}",
+        test_tile_scan_min_max_inclusive_nan,
+        devices=get_cuda_test_devices(),
+        block_dim=block_dim,
+    )
+add_function_test(
+    TestTileReduce,
+    "test_tile_scan_min_max_inclusive_integer_extremes",
+    test_tile_scan_min_max_inclusive_integer_extremes,
+    devices=devices,
+)
+add_function_test(
+    TestTileReduce,
     "test_tile_scan_partial_block",
     test_tile_scan_partial_block,
     devices=cpu_devices,
@@ -1388,6 +1527,9 @@ for name, func in (
     ("scan_exclusive", test_tile_scan_exclusive),
     ("scan_max_inclusive", test_tile_scan_max_inclusive),
     ("scan_min_inclusive", test_tile_scan_min_inclusive),
+    ("scan_min_max_inclusive_float_extremes", test_tile_scan_min_max_inclusive_float_extremes),
+    ("scan_min_max_inclusive_nan", test_tile_scan_min_max_inclusive_nan),
+    ("scan_min_max_inclusive_integer_extremes", test_tile_scan_min_max_inclusive_integer_extremes),
 ):
     add_function_test(
         TestTileReduce,

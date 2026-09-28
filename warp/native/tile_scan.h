@@ -31,9 +31,15 @@ template <> inline CUDA_CALLABLE int OpMax<int>::identity() const
     return -2147483648;  // INT_MIN
 }
 
-template <> inline CUDA_CALLABLE float OpMax<float>::identity() const { return -1e38f; }
+template <> inline CUDA_CALLABLE unsigned int OpMax<unsigned int>::identity() const { return 0u; }
 
-template <> inline CUDA_CALLABLE double OpMax<double>::identity() const { return -1e308; }
+// Floating-point min/max follow fmin/fmax semantics, whose identity element is
+// NaN: max(NaN, x) returns x for every x, including infinities and NaN. Any
+// numeric seed would instead leak into prefixes whose elements all lie beyond
+// it, or consist only of NaNs.
+template <> inline CUDA_CALLABLE float OpMax<float>::identity() const { return NAN; }
+
+template <> inline CUDA_CALLABLE double OpMax<double>::identity() const { return NAN; }
 
 template <typename T> struct OpMin {
     inline CUDA_CALLABLE T operator()(const T& a, const T& b) const { return min(a, b); }
@@ -46,9 +52,14 @@ template <> inline CUDA_CALLABLE int OpMin<int>::identity() const
     return 2147483647;  // INT_MAX
 }
 
-template <> inline CUDA_CALLABLE float OpMin<float>::identity() const { return 1e38f; }
+template <> inline CUDA_CALLABLE unsigned int OpMin<unsigned int>::identity() const
+{
+    return 4294967295u;  // UINT_MAX
+}
 
-template <> inline CUDA_CALLABLE double OpMin<double>::identity() const { return 1e308; }
+template <> inline CUDA_CALLABLE float OpMin<float>::identity() const { return NAN; }
+
+template <> inline CUDA_CALLABLE double OpMin<double>::identity() const { return NAN; }
 
 #if defined(__CUDA_ARCH__)
 
