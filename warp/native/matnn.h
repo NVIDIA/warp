@@ -208,7 +208,7 @@ CUDA_CALLABLE inline void adj_dense_solve(
     const array_t<float>& adj_x
 )
 {
-    // see https://people.maths.ox.ac.uk/gilesm/files/NA-08-01.pwp, section 2.3.1
+    // see https://people.maths.ox.ac.uk/gilesm/files/NA-08-01.pdf, section 2.3.1
     dense_subs(n, L, adj_x, adj_b);
 
     // A* = -adj_b*x^T

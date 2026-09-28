@@ -5,7 +5,7 @@
 # Example Ray March
 #
 # Shows how to implement an SDF ray marching based renderer. Please see
-# https://iquilezles.org/www/articles/distfunctions/distfunctions.htm
+# https://iquilezles.org/articles/distfunctions/
 # for reference on different distance functions.
 #
 ###########################################################################

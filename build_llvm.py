@@ -180,7 +180,7 @@ def build_llvm_clang_from_source_for_arch(args, arch: str, llvm_source: str) -> 
         print(f"Cloning LLVM project from {repo_url} (branch llvmorg-{version})...")
 
         # Use shallow clone for faster download (depth=1, single branch only)
-        # See https://github.blog/2020-12-21-get-up-to-speed-with-partial-clone-and-shallow-clone/
+        # See https://github.blog/open-source/git/get-up-to-speed-with-partial-clone-and-shallow-clone/
         # For full clone: Remove --depth and --single-branch, then add:
         #   subprocess.run(["git", "checkout", f"tags/llvmorg-{version}", "-b", f"llvm-{version}"],
         #                  cwd=llvm_source, check=True)

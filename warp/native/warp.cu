@@ -4311,7 +4311,7 @@ static bool is_valid_child_graph(void* child_graph)
 }
 
 // check if a graph can be used as a conditional body graph
-// https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#condtional-node-body-graph-requirements
+// https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/cuda-graphs.html#conditional-node-body-graph-requirements
 bool wp_cuda_graph_check_conditional_body(void* body_graph)
 {
     static const std::unordered_set<CUgraphNodeType> allowed_nodes {
