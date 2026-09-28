@@ -707,23 +707,18 @@ inline CUDA_CALLABLE void adj_svd2(
 
     if (discriminant == Type(0)) {
         // _svd_2's duplicate-eigenvalue branch sets sigma = |A|_F / sqrt(2),
-        // U = A / sigma, and V = Id. U and V are not individually unique there,
-        // so a convention is required: recover the cotangent C of the smooth
-        // reconstruction U diag(sigma) V^T symmetrically from adj_U and adj_V
-        // (for a loss <C, U diag(sigma) V^T>, adj_U = sigma C and
-        // adj_V = sigma C^T U, so C = (adj_U + U adj_V^T) / (2 sigma)), then
-        // remove the part already carried by adj_sigma. Exact for losses of
-        // the reconstruction and of the singular values; the pure-gauge
-        // response is dropped.
-        Type inv_two_sigma = Type(0.5) / sigma[0];
-        Type c00
-            = (adj_U.data[0][0] + U.data[0][0] * adj_V.data[0][0] + U.data[0][1] * adj_V.data[0][1]) * inv_two_sigma;
-        Type c01
-            = (adj_U.data[0][1] + U.data[0][0] * adj_V.data[1][0] + U.data[0][1] * adj_V.data[1][1]) * inv_two_sigma;
-        Type c10
-            = (adj_U.data[1][0] + U.data[1][0] * adj_V.data[0][0] + U.data[1][1] * adj_V.data[0][1]) * inv_two_sigma;
-        Type c11
-            = (adj_U.data[1][1] + U.data[1][0] * adj_V.data[1][0] + U.data[1][1] * adj_V.data[1][1]) * inv_two_sigma;
+        // U = A / sigma, and V = Id. The generic VJP is singular for repeated
+        // singular values, and U and V are not individually unique there, so
+        // recover the cotangent C = (adj_U + U adj_V^T) / (2 sigma) of the
+        // reconstruction U diag(sigma) V^T and remove the part carried by
+        // adj_sigma; the pure-gauge response is dropped.
+        // Divide rather than multiply by 1 / (2 sigma), which overflows in
+        // float16 for tiny sigma.
+        Type two_sigma = Type(2) * sigma[0];
+        Type c00 = (adj_U.data[0][0] + U.data[0][0] * adj_V.data[0][0] + U.data[0][1] * adj_V.data[0][1]) / two_sigma;
+        Type c01 = (adj_U.data[0][1] + U.data[0][0] * adj_V.data[1][0] + U.data[0][1] * adj_V.data[1][1]) / two_sigma;
+        Type c10 = (adj_U.data[1][0] + U.data[1][0] * adj_V.data[0][0] + U.data[1][1] * adj_V.data[0][1]) / two_sigma;
+        Type c11 = (adj_U.data[1][1] + U.data[1][0] * adj_V.data[1][0] + U.data[1][1] * adj_V.data[1][1]) / two_sigma;
         Type d0 = adj_sigma[0] - (U.data[0][0] * c00 + U.data[1][0] * c10);
         Type d1 = adj_sigma[1] - (U.data[0][1] * c01 + U.data[1][1] * c11);
         adj_A.data[0][0] += c00 + U.data[0][0] * d0;

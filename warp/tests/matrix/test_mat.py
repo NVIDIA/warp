@@ -933,7 +933,7 @@ def test_svd_2D(test, device, dtype, register_kernels=False):
                 np.array([[1.0, 1.0], [-1.0, -1.0]]),
                 np.array([[3.0, 0.0], [4.0, 5.0]]),
                 np.eye(2) + tol * np.array([[1.0, 1.0], [-1.0, -1.0]]),
-                # scaled orthogonal inputs hit the repeated-singular-value path (GH-1734)
+                # scaled orthogonal inputs hit the repeated-singular-value path
                 np.array([[0.0, -1.0], [1.0, 0.0]]),  # rotation by 90 degrees
                 np.array([[np.cos(0.5), -np.sin(0.5)], [np.sin(0.5), np.cos(0.5)]]),  # rotation by 0.5 rad
                 2.0 * np.array([[np.cos(0.5), -np.sin(0.5)], [np.sin(0.5), np.cos(0.5)]]),  # scaled rotation
@@ -1079,8 +1079,24 @@ def test_svd_2D_repeated_grad(test, device, dtype, register_kernels=False):
         return
 
     if dtype == np.float16:
-        # Consistent with test_svd_2D: float16 rounding is too coarse for
-        # finite-difference gradient checks.
+        # float16 rounding is too coarse for finite-difference gradient checks,
+        # so only check the analytic gradient on a tiny scaled identity, where
+        # 1 / sigma overflows float16 and must not leak into the adjoint.
+        mats = np.array([5.0e-6 * np.eye(2)])
+        weights = np.array([[[0.0, 1.0], [0.0, 0.0]]])
+        m2 = wp.array(mats, dtype=mat22, requires_grad=True, device=device)
+        w = wp.array(weights, dtype=mat22, device=device)
+        outcomponents = wp.zeros(3, dtype=wptype, requires_grad=True, device=device)
+        out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
+        for idx, expected_grad in ((0, np.eye(2)), (1, weights[0])):
+            tape = wp.Tape()
+            with tape:
+                wp.launch(kernel, dim=1, inputs=[m2, w], outputs=[outcomponents], device=device)
+                wp.launch(output_select_kernel, dim=1, inputs=[outcomponents, idx], outputs=[out], device=device)
+            tape.backward(out)
+            test.assertTrue(outcomponents.numpy()[2] != 0)
+            assert_np_equal(tape.gradients[m2].numpy()[0].astype(np.float32), expected_grad, tol=1.0e-2)
+            tape.zero()
         return
 
     rng = np.random.default_rng(42)
