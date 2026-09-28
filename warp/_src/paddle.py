@@ -6,8 +6,6 @@ from __future__ import annotations
 import ctypes
 from typing import TYPE_CHECKING
 
-import numpy
-
 import warp
 import warp._src.context
 
@@ -353,15 +351,12 @@ def to_paddle(a: warp.array, requires_grad: bool | None = None) -> paddle.Tensor
         raise RuntimeError("Cannot convert structured Warp arrays to Paddle.")
 
     if a.device.is_cpu:
-        # Paddle has an issue wrapping CPU objects
-        # that support the __array_interface__ protocol
-        # in this case we need to workaround by going
-        # to an ndarray first, see https://pearu.github.io/array_interface_pytorch.html
-        t = paddle.to_tensor(numpy.asarray(a), place="cpu")
+        # Paddle copies CPU NumPy arrays in to_tensor(); DLPack preserves storage sharing.
+        t = paddle.utils.dlpack.from_dlpack(warp.to_dlpack(a))
         t.stop_gradient = not requires_grad
         if requires_grad and a.requires_grad:
-            # use .grad_ for zero-copy
-            t.grad_ = paddle.to_tensor(numpy.asarray(a.grad), place="cpu")
+            # Attach the shared gradient buffer through Paddle's grad_ attribute.
+            t.grad_ = paddle.utils.dlpack.from_dlpack(warp.to_dlpack(a.grad))
         return t
 
     elif a.device.is_cuda:

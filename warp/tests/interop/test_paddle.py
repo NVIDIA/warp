@@ -129,6 +129,10 @@ def test_paddle_zerocopy(test, device):
     t = wp.to_paddle(a)
     assert a.ptr == t.data_ptr()
 
+    a = wp.zeros(10, dtype=wp.float32, device=device, requires_grad=True)
+    t = wp.to_paddle(a)
+    test.assertEqual(a.grad.ptr, t.grad.data_ptr())
+
     paddle_device = wp.device_to_paddle(device)
 
     t = paddle.zeros([10], dtype=paddle.float32).to(device=paddle_device)
