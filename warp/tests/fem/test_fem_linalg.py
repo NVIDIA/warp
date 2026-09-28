@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import unittest
+from typing import Any
 
 import numpy as np
 
@@ -10,6 +11,11 @@ import warp.fem as fem
 from warp.fem.linalg import inverse_qr, symmetric_eigenvalues_qr
 from warp.tests.fem.utils import vec6f
 from warp.tests.unittest_utils import *
+
+mat55f = wp.types.matrix(shape=(5, 5), dtype=wp.float32)
+mat88f = wp.types.matrix(shape=(8, 8), dtype=wp.float32)
+mat99d = wp.types.matrix(shape=(9, 9), dtype=wp.float64)
+mat33bf = wp.types.matrix(shape=(3, 3), dtype=wp.bfloat16)
 
 
 @wp.kernel(enable_backward=False)
@@ -92,6 +98,188 @@ def test_qr_inverse():
         wp.expect_near(wp.ddot(Err, Err), 0.0, tol)
 
 
+@wp.kernel(enable_backward=False)
+def test_qr_small_scales():
+    base_h = wp.mat33h(3.0, 0.4, -0.2, 0.4, 2.0, 0.3, -0.2, 0.3, 1.5)
+    identity_h = wp.identity(n=3, dtype=wp.float16)
+    small_scale_h = wp.float16(1.0e-4)
+    small_h = small_scale_h * base_h
+    small_inverse_h = inverse_qr(small_h)
+    inverse_error_h = small_h * small_inverse_h - identity_h
+    wp.expect_near(wp.ddot(inverse_error_h, inverse_error_h), wp.float16(0.0), wp.float16(1.0e-2))
+
+    eigenvalues_h, eigenvectors_h = symmetric_eigenvalues_qr(small_h, wp.float16(0.0))
+    reconstruction_h = wp.transpose(eigenvectors_h) * wp.diag(eigenvalues_h) * eigenvectors_h / small_scale_h
+    reconstruction_error_h = reconstruction_h - base_h
+    wp.expect_near(wp.ddot(reconstruction_error_h, reconstruction_error_h), wp.float16(0.0), wp.float16(1.0e-2))
+
+    base = wp.mat33(3.0, 0.4, -0.2, 0.4, 2.0, 0.3, -0.2, 0.3, 1.5)
+    identity = wp.identity(n=3, dtype=float)
+    tol = 1.0e-10
+
+    small_scale = 1.0e-22
+    small = small_scale * base
+    small_inverse = inverse_qr(small)
+    inverse_error = small * small_inverse - identity
+    wp.expect_near(wp.ddot(inverse_error, inverse_error), 0.0, tol)
+
+    eigenvalues, eigenvectors = symmetric_eigenvalues_qr(small, 0.0)
+    reconstruction = wp.transpose(eigenvectors) * wp.diag(eigenvalues) * eigenvectors / small_scale
+    reconstruction_error = reconstruction - base
+    wp.expect_near(wp.ddot(reconstruction_error, reconstruction_error), 0.0, tol)
+
+    base_d = wp.mat33d(3.0, 0.4, -0.2, 0.4, 2.0, 0.3, -0.2, 0.3, 1.5)
+    identity_d = wp.identity(n=3, dtype=wp.float64)
+    small_scale_d = wp.float64(1.0e-180)
+    small_d = small_scale_d * base_d
+    small_inverse_d = inverse_qr(small_d)
+    inverse_error_d = small_d * small_inverse_d - identity_d
+    wp.expect_near(wp.ddot(inverse_error_d, inverse_error_d), 0.0, 1.0e-24)
+
+    eigenvalues_d, eigenvectors_d = symmetric_eigenvalues_qr(small_d, wp.float64(0.0))
+    reconstruction_d = wp.transpose(eigenvectors_d) * wp.diag(eigenvalues_d) * eigenvectors_d / small_scale_d
+    reconstruction_error_d = reconstruction_d - base_d
+    wp.expect_near(wp.ddot(reconstruction_error_d, reconstruction_error_d), 0.0, 1.0e-24)
+
+    # Routine-wide scaling cannot protect a tiny subblock in an otherwise order-one matrix.
+    tiny = 1.0e-25
+    graded = wp.mat33(1.0, 0.0, 0.0, 0.0, 0.0, tiny, 0.0, tiny, 0.0)
+    graded_inverse = inverse_qr(graded)
+    inverse_error = graded * graded_inverse - identity
+    wp.expect_near(wp.ddot(inverse_error, inverse_error), 0.0, tol)
+
+    eigenvalues, eigenvectors = symmetric_eigenvalues_qr(graded, 0.0)
+    reconstruction = wp.transpose(eigenvectors) * wp.diag(eigenvalues) * eigenvectors
+    wp.expect_near(reconstruction[1, 2] / tiny, 1.0, 1.0e-5)
+    wp.expect_near(reconstruction[2, 1] / tiny, 1.0, 1.0e-5)
+
+
+@wp.kernel(enable_backward=False)
+def test_qr_eigenvalues_small_coupled_to_large():
+    # Couplings below eps times the larger diagonal term still determine the small eigenvalue -c^2/a
+    A = wp.mat22(1.0e10, 1.0e3, 1.0e3, 0.0)
+    eigenvalues, eigenvectors = symmetric_eigenvalues_qr(A, 0.0)
+    wp.expect_near(wp.min(eigenvalues) / -1.0e-4, 1.0, 1.0e-4)
+    reconstruction = wp.transpose(eigenvectors) * wp.diag(eigenvalues) * eigenvectors
+    wp.expect_near(reconstruction[0, 1] / 1.0e3, 1.0, 1.0e-4)
+
+    A_d = wp.mat22d(1.0e20, 1.0e3, 1.0e3, 0.0)
+    eigenvalues_d, eigenvectors_d = symmetric_eigenvalues_qr(A_d, wp.float64(0.0))
+    wp.expect_near(wp.min(eigenvalues_d) / wp.float64(-1.0e-14), wp.float64(1.0), wp.float64(1.0e-10))
+    reconstruction_d = wp.transpose(eigenvectors_d) * wp.diag(eigenvalues_d) * eigenvectors_d
+    wp.expect_near(reconstruction_d[0, 1] / wp.float64(1.0e3), wp.float64(1.0), wp.float64(1.0e-10))
+
+
+def test_qr_bfloat16_small_scales(test, device):
+    @wp.kernel(module="unique", enable_backward=False)
+    def check():
+        base = mat33bf(
+            wp.bfloat16(3.0),
+            wp.bfloat16(0.4),
+            wp.bfloat16(-0.2),
+            wp.bfloat16(0.4),
+            wp.bfloat16(2.0),
+            wp.bfloat16(0.3),
+            wp.bfloat16(-0.2),
+            wp.bfloat16(0.3),
+            wp.bfloat16(1.5),
+        )
+        identity = wp.identity(n=3, dtype=wp.bfloat16)
+        small_scale = wp.bfloat16(1.0e-22)
+        small = small_scale * base
+        small_inverse = inverse_qr(small)
+        inverse_error = small * small_inverse - identity
+        wp.expect_near(wp.float32(wp.ddot(inverse_error, inverse_error)), 0.0, 1.0e-1)
+
+        eigenvalues, eigenvectors = symmetric_eigenvalues_qr(small, wp.bfloat16(0.0))
+        reconstruction = wp.transpose(eigenvectors) * wp.diag(eigenvalues) * eigenvectors / small_scale
+        reconstruction_error = reconstruction - base
+        wp.expect_near(wp.float32(wp.ddot(reconstruction_error, reconstruction_error)), 0.0, 1.0e-1)
+
+    wp.launch(check, dim=1, device=device)
+
+
+@wp.kernel(enable_backward=False)
+def reconstruct_qr_eigenvalues_zero_tolerance(matrices: wp.array[Any], reconstructions: wp.array[Any]):
+    i = wp.tid()
+    matrix = matrices[i]
+    eigenvalues, eigenvectors = symmetric_eigenvalues_qr(matrix, matrix.dtype(0.0))
+    reconstructions[i] = wp.transpose(eigenvectors) * wp.diag(eigenvalues) * eigenvectors
+
+
+def _zero_tolerance_reconstruction_errors(matrices, matrix_type, device):
+    matrices_device = wp.array(matrices, dtype=matrix_type, device=device)
+    reconstructions = wp.empty_like(matrices_device)
+    wp.launch(
+        reconstruct_qr_eigenvalues_zero_tolerance,
+        dim=matrices.shape[0],
+        inputs=[matrices_device, reconstructions],
+        device=device,
+    )
+    matrices = matrices.astype(np.float64)
+    errors = reconstructions.numpy().astype(np.float64) - matrices
+    return np.linalg.norm(errors, axis=(1, 2)) / np.linalg.norm(matrices, axis=(1, 2))
+
+
+def _tridiagonal(diagonals, off_diagonals):
+    n = diagonals.shape[-1]
+    matrices = np.zeros((*diagonals.shape, n), dtype=diagonals.dtype)
+    idx = np.arange(n)
+    matrices[..., idx, idx] = diagonals
+    matrices[..., idx[1:], idx[:-1]] = off_diagonals
+    matrices[..., idx[:-1], idx[1:]] = off_diagonals
+    return matrices
+
+
+def test_qr_eigenvalues_zero_tolerance(test, device):
+    rng = np.random.default_rng(20260922)
+    matrices = rng.standard_normal((40, 9, 9))
+    matrices += np.swapaxes(matrices, 1, 2)
+
+    errors = _zero_tolerance_reconstruction_errors(matrices, mat99d, device)
+    test.assertLess(np.max(errors), 1.0e-12)
+
+
+def test_qr_eigenvalues_zero_tolerance_graded(test, device):
+    # Graded couplings between exactly-zero diagonal terms, which stall deflation relative to the diagonal alone
+    diagonals = np.array([[0.0, 2.5e-15, 0.0, 0.8, 0.0], [0.0, 2.0e-15, 0.0, 0.8, 0.0]], dtype=np.float32)
+    off_diagonals = np.array(
+        [[-2.0e-19, -0.75, -4.0e-9, 1.0e-16], [-2.0e-19, -0.75, -3.0e-9, 1.1e-16]], dtype=np.float32
+    )
+    errors = _zero_tolerance_reconstruction_errors(_tridiagonal(diagonals, off_diagonals), mat55f, device)
+    test.assertLess(np.max(errors), 1.0e-5)
+
+    if device.is_cuda:
+        # Broader random coverage spanning 20 decades, kept off CPU to limit debug build test time
+        rng = np.random.default_rng(1)
+        count, n = 20000, 8
+        diagonals = rng.choice([-1.0, 1.0], (count, n)) * 10.0 ** rng.uniform(-20.0, 0.0, (count, n))
+        off_diagonals = rng.choice([-1.0, 1.0], (count, n - 1)) * 10.0 ** rng.uniform(-20.0, 0.0, (count, n - 1))
+        diagonals[rng.random((count, n)) < 0.2] = 0.0
+        off_diagonals[rng.random((count, n - 1)) < 0.1] = 0.0
+
+        matrices = _tridiagonal(diagonals, off_diagonals).astype(np.float32)
+        errors = _zero_tolerance_reconstruction_errors(matrices, mat88f, device)
+        test.assertLess(np.max(errors), 1.0e-5)
+
+
+def test_qr_eigenvalues_zero_tolerance_small_scale(test, device):
+    # Rotations within blocks of small magnitude underflow unless the matrix is normalized first
+    diagonals = np.array([[0.0, -1.5048e-26, -1.9483e-23, -2.3335e-22, -4.6156e-24, 0.0, 0.0, 0.0]], dtype=np.float32)
+    off_diagonals = np.array(
+        [[1.6187e-29, -8.7357e-24, 3.2934e-26, -2.7489e-21, 1.4257e-30, -1.9659e-27, 4.1052e-22]], dtype=np.float32
+    )
+    errors = _zero_tolerance_reconstruction_errors(_tridiagonal(diagonals, off_diagonals), mat88f, device)
+    test.assertLess(np.max(errors), 1.0e-5)
+
+    matrices = np.array(
+        [[[2.1613e-4, 1.1754e-4, 5.8472e-5], [1.1754e-4, -1.5986e-4, -9.9778e-5], [5.8472e-5, -9.9778e-5, -6.5744e-5]]],
+        dtype=np.float16,
+    )
+    errors = _zero_tolerance_reconstruction_errors(matrices, wp.mat33h, device)
+    test.assertLess(np.max(errors), 1.0e-2)
+
+
 def test_array_axpy(test, device):
     N = 10
     alpha = 0.5
@@ -115,6 +303,7 @@ def test_array_axpy(test, device):
 
 
 devices = get_test_devices()
+bfloat16_devices = [device for device in devices if device.is_cpu or device.arch >= 80]
 
 
 class TestFemLinalg(unittest.TestCase):
@@ -123,6 +312,26 @@ class TestFemLinalg(unittest.TestCase):
 
 add_kernel_test(TestFemLinalg, test_qr_eigenvalues, dim=1, devices=devices)
 add_kernel_test(TestFemLinalg, test_qr_inverse, dim=100, devices=devices)
+add_kernel_test(TestFemLinalg, test_qr_small_scales, dim=1, devices=devices)
+add_kernel_test(TestFemLinalg, test_qr_eigenvalues_small_coupled_to_large, dim=1, devices=devices)
+add_function_test(
+    TestFemLinalg, "test_qr_bfloat16_small_scales", test_qr_bfloat16_small_scales, devices=bfloat16_devices
+)
+add_function_test(
+    TestFemLinalg, "test_qr_eigenvalues_zero_tolerance", test_qr_eigenvalues_zero_tolerance, devices=devices
+)
+add_function_test(
+    TestFemLinalg,
+    "test_qr_eigenvalues_zero_tolerance_graded",
+    test_qr_eigenvalues_zero_tolerance_graded,
+    devices=devices,
+)
+add_function_test(
+    TestFemLinalg,
+    "test_qr_eigenvalues_zero_tolerance_small_scale",
+    test_qr_eigenvalues_zero_tolerance_small_scale,
+    devices=devices,
+)
 add_function_test(TestFemLinalg, "test_array_axpy", test_array_axpy)
 
 if __name__ == "__main__":

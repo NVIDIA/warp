@@ -196,6 +196,49 @@ def skew_part(x: wp.types.matrix((3, 3), wp.Scalar)):
 
 
 @wp.func
+def _sqrt_min_normal(_value: wp.float16):
+    # sqrt(HALF_MIN) = sqrt(2^-14) = 2^-7; below this, squaring may underflow.
+    return wp.float16(0.0078125)
+
+
+@wp.func
+def _sqrt_min_normal(_value: wp.bfloat16):
+    # sqrt(min normal) = sqrt(2^-126) = 2^-63; below this, squaring may underflow.
+    return wp.bfloat16(1.0842021724855044e-19)
+
+
+@wp.func
+def _sqrt_min_normal(_value: wp.float32):
+    # sqrt(FLT_MIN) = sqrt(2^-126) = 2^-63; below this, squaring may underflow.
+    return wp.float32(1.0842021724855044e-19)
+
+
+@wp.func
+def _sqrt_min_normal(_value: wp.float64):
+    # sqrt(DBL_MIN) = sqrt(2^-1022) = 2^-511; below this, squaring may underflow.
+    return wp.float64(1.4916681462400413e-154)
+
+
+@wp.func
+def _householder_reflection(x: Any, pivot: int):
+    """Build a Householder reflection, scaling only to avoid underflow."""
+    zero = x.dtype(0.0)
+    two = x.dtype(2.0)
+
+    norm = wp.length(x)
+    if norm < _sqrt_min_normal(x[0]):
+        scale = wp.max(wp.abs(x))
+        if scale == zero:
+            return x, zero
+        x /= scale
+        norm = wp.length(x)
+
+    alpha = norm * wp.sign(x[pivot])
+    x[pivot] += alpha
+    return x, two / wp.length_sq(x)
+
+
+@wp.func
 def householder_qr_decomposition(A: Any):
     """
     QR decomposition of a square matrix using Householder reflections
@@ -207,15 +250,11 @@ def householder_qr_decomposition(A: Any):
     Q = wp.identity(n=type(x).length, dtype=A.dtype)
 
     zero = x.dtype(0.0)
-    two = x.dtype(2.0)
-
     for i in range(type(x).length):
         for k in range(type(x).length):
             x[k] = wp.where(k < i, zero, A[k, i])
 
-        alpha = wp.length(x) * wp.sign(x[i])
-        x[i] += alpha
-        two_over_x_sq = wp.where(alpha == zero, zero, two / wp.length_sq(x))
+        x, two_over_x_sq = _householder_reflection(x, i)
 
         A -= wp.outer(two_over_x_sq * x, x * A)
         Q -= wp.outer(Q * x, two_over_x_sq * x)
@@ -236,15 +275,11 @@ def householder_make_hessenberg(A: Any):
     Q = wp.identity(n=type(x).length, dtype=A.dtype)
 
     zero = x.dtype(0.0)
-    two = x.dtype(2.0)
-
     for i in range(1, type(x).length):
         for k in range(type(x).length):
             x[k] = wp.where(k < i, zero, A[k, i - 1])
 
-        alpha = wp.length(x) * wp.sign(x[i])
-        x[i] += alpha
-        two_over_x_sq = wp.where(alpha == zero, zero, two / wp.length_sq(x))
+        x, two_over_x_sq = _householder_reflection(x, i)
 
         # apply on both sides
         A -= wp.outer(two_over_x_sq * x, x * A)
@@ -291,10 +326,21 @@ def inverse_qr(A: Any):
 
 
 @wp.func
-def _wilkinson_shift(a: Any, b: Any, c: Any, tol: Any):
+def _wilkinson_shift(a: Any, b: Any, c: Any):
     # Wilkinson shift: estimate eigenvalue of 2x2 symmetric matrix [a, c, c, b]
-    d = (a - b) * type(tol)(0.5)
-    return b + d - wp.sign(d) * wp.sqrt(d * d + c * c)
+    if c == type(a)(0.0):
+        return b
+
+    half = type(a)(0.5)
+    d = half * (a - b)
+    root = wp.sqrt(d * d + c * c)
+    if root < _sqrt_min_normal(a):
+        scale = wp.max(wp.abs(d), wp.abs(c))
+        d_scaled = d / scale
+        c_scaled = c / scale
+        root = scale * wp.sqrt(d_scaled * d_scaled + c_scaled * c_scaled)
+
+    return b - c * (c / (d + wp.copysign(root, d)))
 
 
 @wp.func
@@ -303,13 +349,53 @@ def _givens_rotation(a: Any, b: Any):
     zero = type(a)(0.0)
     one = type(a)(1.0)
 
-    b2 = b * b
-    if b2 == zero:
+    if b == zero:
         # id rotation
         return one, zero
 
-    scale = one / wp.sqrt(a * a + b2)
-    return a * scale, -b * scale
+    norm = wp.sqrt(a * a + b * b)
+    if norm < _sqrt_min_normal(a):
+        scale = wp.max(wp.abs(a), wp.abs(b))
+        a /= scale
+        b /= scale
+        norm = wp.sqrt(a * a + b * b)
+
+    inv_norm = one / norm
+    return a * inv_norm, -b * inv_norm
+
+
+@wp.func
+def _dtype_epsilon(_value: wp.float16):
+    return wp.float16(0.0009765625)
+
+
+@wp.func
+def _dtype_epsilon(_value: wp.bfloat16):
+    return wp.bfloat16(0.0078125)
+
+
+@wp.func
+def _dtype_epsilon(_value: wp.float32):
+    return wp.float32(1.1920928955078125e-7)
+
+
+@wp.func
+def _dtype_epsilon(_value: wp.float64):
+    return wp.float64(2.220446049250313e-16)
+
+
+@wp.func
+def _is_negligible_coupling(e: Any, a: Any, b: Any, tol: Any, eps: Any):
+    abs_e = wp.abs(e)
+    abs_sum = wp.abs(a) + wp.abs(b)
+    if abs_e <= tol * abs_sum:
+        return True
+    # The tests below are bounded by eps * abs_sum; exit early to skip the square roots
+    if abs_e > eps * abs_sum:
+        return False
+
+    # Relative to the diagonal geometric mean; the eps^2 floor lets couplings to exactly-zero diagonal terms deflate
+    return abs_e <= wp.max(eps * wp.sqrt(wp.abs(a)) * wp.sqrt(wp.abs(b)), eps * eps * abs_sum)
 
 
 @wp.func
@@ -322,7 +408,8 @@ def tridiagonal_symmetric_eigenvalues_qr(D: Any, L: Any, Q: Any, tol: Any):
         D: Main diagonal of the matrix
         L: Lower diagonal of the matrix, indexed such that L[i] = A[i+1, i]
         Q: Initialization for the eigenvectors, useful if a pre-transformation has been applied, otherwise may be identity
-        tol: Tolerance for the diagonalization residual (Linf norm of off-diagonal over diagonal terms)
+        tol: Tolerance on off-diagonal terms, relative to their neighboring diagonal terms. Tolerances below the
+            machine epsilon of the scalar type fall back to the tightest attainable criterion.
 
     Returns a tuple (D: vector of eigenvalues, P: matrix with one eigenvector per row) such that A = P^T D P
 
@@ -332,31 +419,53 @@ def tridiagonal_symmetric_eigenvalues_qr(D: Any, L: Any, Q: Any, tol: Any):
 
     two = D.dtype(2.0)
     m = int(D.length)
+    eps = _dtype_epsilon(D[0])
+
+    # Normalize so that rotations within blocks of small magnitude do not underflow;
+    # clamping to the smallest normal value keeps the inverse finite for subnormal inputs
+    scale = wp.max(wp.max(wp.abs(D)), wp.max(wp.abs(L)))
+    if scale == D.dtype(0.0):
+        return D, Q
+    scale = wp.max(scale, _sqrt_min_normal(scale) * _sqrt_min_normal(scale))
+    inv_scale = D.dtype(1.0) / scale
+    D = D * inv_scale
+    L = L * inv_scale
 
     start = int(0)
     y = D.dtype(0.0)  # moving buldge
     x = D.dtype(0.0)  # coeff atop buldge
 
     for _ in range(32 * m):  # failsafe, usually converges faster than that
+        # Zero negligible couplings; rotations never touch couplings outside their block, so these stay zero
+        converged = bool(True)
+        for k in range(m - 1):
+            if _is_negligible_coupling(L[k], D[k], D[k + 1], tol, eps):
+                L[k] = D.dtype(0.0)
+            else:
+                converged = False
+
+        if converged:
+            break
+
         # Iterate over all independent (deflated) blocks
         end = int(-1)
 
         for k in range(m - 1):
             if k >= end:
                 # Check if new block is starting
-                if k == end or wp.abs(L[k]) <= tol * (wp.abs(D[k]) + wp.abs(D[k + 1])):
+                if k == end or L[k] == D.dtype(0.0):
                     continue
 
                 # Find end of block
                 start = k
                 end = start + 1
                 while end + 1 < m:
-                    if wp.abs(L[end]) <= tol * (wp.abs(D[end + 1]) + wp.abs(D[end])):
+                    if L[end] == D.dtype(0.0):
                         break
                     end += 1
 
                 # Wilkinson shift (an eigenvalue of the last 2x2 block)
-                shift = _wilkinson_shift(D[end - 1], D[end], L[end - 1], tol)
+                shift = _wilkinson_shift(D[end - 1], D[end], L[end - 1])
 
                 # start with eliminating lower diag of first column of shifted matrix
                 # (i.e. first step of explicit QR factorization)
@@ -389,11 +498,7 @@ def tridiagonal_symmetric_eigenvalues_qr(D: Any, L: Any, Q: Any, tol: Any):
             Q[k] = c * Qk0 - s * Qk1
             Q[k + 1] = c * Qk1 + s * Qk0
 
-        if end <= 0:
-            # We did nothing, so diagonalization must have been achieved
-            break
-
-    return D, Q
+    return D * scale, Q
 
 
 @wp.func
@@ -403,7 +508,8 @@ def symmetric_eigenvalues_qr(A: Any, tol: Any):
 
     Args:
         A: square symmetric matrix
-        tol: Tolerance for the diagonalization residual (Linf norm of off-diagonal over diagonal terms)
+        tol: Tolerance on off-diagonal terms, relative to their neighboring diagonal terms. Tolerances below the
+            machine epsilon of the scalar type fall back to the tightest attainable criterion.
 
     Returns a tuple (D: vector of eigenvalues, P: matrix with one eigenvector per row) such that A = P^T D P
     """
@@ -456,6 +562,6 @@ def array_axpy(x: wp.array, y: wp.array, alpha: float = 1.0, beta: float = 1.0):
 
 
 @wp.kernel(enable_backward=False)
-def _array_axpy_kernel(x: wp.array(dtype=Any), y: wp.array(dtype=Any), alpha: Any, beta: Any):
+def _array_axpy_kernel(x: wp.array[Any], y: wp.array[Any], alpha: Any, beta: Any):
     i = wp.tid()
     y[i] = beta * y[i] + alpha * y.dtype(x[i])
