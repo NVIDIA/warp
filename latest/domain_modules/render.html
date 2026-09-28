@@ -561,7 +561,7 @@ a USD file that can then be rendered in an external 3D application or renderer o
 <h2>CUDA Graphics Interface<a class="headerlink" href="#cuda-graphics-interface" title="Link to this heading">#</a></h2>
 <p>Warp provides a CUDA graphics interface that allows you to access OpenGL buffers from CUDA kernels.
 This is useful for manipulating OpenGL array buffers without having to copy them back and forth between the CPU and GPU.</p>
-<p>See the <a class="reference external" href="https://docs.nvidia.com/cuda/cuda-driver-api/group__CUDA__GL.html">CUDA documentation on OpenGL Interoperability</a> for more information.</p>
+<p>See the <a class="reference external" href="https://docs.nvidia.com/cuda/cuda-driver-api/cuda_driver_api/group__CUDA__GL.html">CUDA documentation on OpenGL Interoperability</a> for more information.</p>
 <p>The <a class="reference internal" href="../api_reference/_generated/warp.RegisteredGLBuffer.html#warp.RegisteredGLBuffer" title="warp.RegisteredGLBuffer"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.RegisteredGLBuffer</span></code></a> class wraps an OpenGL buffer and registers it with CUDA, allowing it to be
 mapped as a Warp array for use in kernels without copying data between the CPU and GPU.</p>
 </section>

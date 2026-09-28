@@ -716,7 +716,7 @@ Additional References
 
 - `Optimizing Compile Times for CUDA C++ <https://developer.nvidia.com/blog/optimizing-compile-times-for-cuda-c/>`__
   - Background on CUDA compile-time tracing and compiler bottlenecks.
-- `CUDA Programming Guide: CUDA Environment Variables <https://docs.nvidia.com/cuda/cuda-c-programming-guide/#cuda-environment-variables>`__
+- `CUDA Programming Guide: CUDA Environment Variables <https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/environment-variables.html#cuda-environment-variables>`__
   - Authoritative reference for ``CUDA_CACHE_DISABLE``, ``CUDA_CACHE_PATH``, and other cache-related environment variables.
 - `CUDA Pro Tip: Understand Fat Binaries and JIT Caching <https://developer.nvidia.com/blog/cuda-pro-tip-understand-fat-binaries-jit-caching/>`__
   - Background on how the CUDA compute cache works.
