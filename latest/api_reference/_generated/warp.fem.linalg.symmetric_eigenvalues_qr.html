@@ -518,7 +518,8 @@
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>A</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>) – square symmetric matrix</p></li>
-<li><p><strong>tol</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>) – Tolerance for the diagonalization residual (Linf norm of off-diagonal over diagonal terms)</p></li>
+<li><p><strong>tol</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>) – Tolerance on off-diagonal terms, relative to their neighboring diagonal terms. Tolerances below the
+machine epsilon of the scalar type fall back to the tightest attainable criterion.</p></li>
 </ul>
 </dd>
 </dl>

@@ -521,7 +521,8 @@ Symmetric tridiagonal QR algorithm with implicit Wilkinson shift</p>
 <li><p><strong>D</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>) – Main diagonal of the matrix</p></li>
 <li><p><strong>L</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>) – Lower diagonal of the matrix, indexed such that L[i] = A[i+1, i]</p></li>
 <li><p><strong>Q</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>) – Initialization for the eigenvectors, useful if a pre-transformation has been applied, otherwise may be identity</p></li>
-<li><p><strong>tol</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>) – Tolerance for the diagonalization residual (Linf norm of off-diagonal over diagonal terms)</p></li>
+<li><p><strong>tol</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>) – Tolerance on off-diagonal terms, relative to their neighboring diagonal terms. Tolerances below the
+machine epsilon of the scalar type fall back to the tightest attainable criterion.</p></li>
 </ul>
 </dd>
 </dl>
