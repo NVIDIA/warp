@@ -1932,11 +1932,13 @@ def integrate(
         output: Sparse matrix or warp array into which to store the result of the integration.
           For linear forms the array must hold at least ``node_count`` rows, where ``node_count`` is the number of
           nodes in the test field's space partition. If the test field has ``node_dof_count`` degrees of freedom per
-          node, the accepted layouts are: a 1-D array of vectors of length ``node_dof_count``; a 2-D scalar array of
-          shape ``(node_count, node_dof_count)``; or a contiguous 1-D scalar array with at least
-          ``node_count * node_dof_count`` entries, which is interpreted as the flattened 2-D layout. Any other
-          scalar layout (a mismatched last dimension, an undersized or non-contiguous flat array, or more than two
-          dimensions) raises ``RuntimeError`` before the integration is launched.
+          node, the accepted layouts are: a contiguous 1-D array of vectors of length ``node_dof_count``; a 2-D
+          scalar array with at least ``node_count`` rows and exactly ``node_dof_count`` columns; or a contiguous 1-D
+          scalar array with at least ``node_count * node_dof_count`` entries, which is interpreted as the flattened
+          2-D layout. 1-D outputs are reinterpreted as a 2-D view of the underlying memory, so strided (non-contiguous)
+          1-D vector arrays are not supported. Any other scalar layout (a mismatched last dimension, an undersized or
+          non-contiguous flat array, or more than two dimensions) raises ``RuntimeError`` before the integration is
+          launched.
         output_dtype: Scalar type for returned results if `output` is not provided. If None, defaults to the geometry's scalar type (``wp.float32`` or ``wp.float64``)
         device: Device on which to perform the integration
         kernel_options: Overloaded options to be passed to the kernel builder (e.g, ``{"enable_backward": True}``)
