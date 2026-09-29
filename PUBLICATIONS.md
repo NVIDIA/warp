@@ -7,6 +7,7 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 
 ## 2026
 
+- **Bundled Contact Gradients: Stabilizing Differentiable Simulation for Deployable Dynamic Tasks**. *D. Aditya, J. Cheng, C. Schwarke, Q. Nguyen, G. Sukhatme, S. Coros, G. Fadini*. September 2026. [arXiv:2609.30951](https://arxiv.org/abs/2609.30951)
 - **Warp-Geo: Differentiable Geometry Representation for Dynamic-Boundary Simulation and Shape Optimization**. *W. Zhang, X. Fan, J. Wang*. September 2026. [arXiv:2609.20964](https://arxiv.org/abs/2609.20964)
 - **S4R: Scaling for Rigid-Body Interpenetration Resolution**. *Z. Dou, A. Zhao, C. Peng, M. Guo, H. Wu, C. Lin, Y. Liu, J. Yao, X. Guo, W. Wang, W. Matusik*. September 2026. [arXiv:2609.20524](https://arxiv.org/abs/2609.20524)
 - **EasyFashion: A Human-AI Co-Creation System for Personalized Fashion Design and Sewing Pattern Generation**. *H. Qu, Z. Xu, J. Luo, Y. Zhao, J. Zhang, Y. Yang*. September 2026. [arXiv:2609.18483](https://arxiv.org/abs/2609.18483)
@@ -19,6 +20,7 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 - **Adaptively Incorporating Directional Hints into Zeroth-Order Optimization**. *A. Ryabchenko, J. Qian, W. Mou*. September 2026. [arXiv:2609.08277](https://arxiv.org/abs/2609.08277)
 - **Phase-and-First-Arrival VLM Feedback for Sparse-Reward Reinforcement Learning in Surgical Manipulation**. *W. Liuchen, F. Wang, B. Li, A. Duan, Y. Liu, P. Zhou, D. Navarro-Alarcon*. September 2026. [arXiv:2609.07211](https://arxiv.org/abs/2609.07211)
 - **FALCON-S: Fixed-wing ground-effect Aerodynamics Simulator and Flight Control Learning Suite**. *M. E. Hariry, P. Lima, A. Orsula, M. Geist, M. Olivares-Mendez*. September 2026. [arXiv:2609.06046](https://arxiv.org/abs/2609.06046)
+- **GRADSOLVE: fast exact gradients for ODE ensembles on GPUs**. *A. Spurio Mancini*. September 2026. [arXiv:2609.02876](https://arxiv.org/abs/2609.02876)
 - **DarcyWarp: A graphics processing unit (GPU)-accelerated multigrid solver for repeated 2D fixed-transmissivity groundwater solves validated against reference solvers**. *P. Durney, J. Fourie*. September 2026. [DOI:10.1016/j.envsoft.2026.107081](https://doi.org/10.1016/j.envsoft.2026.107081)
 - **Learning Agile Perceptive Traversal of Sparse 3D Structures for Humanoids**. *E. Ongan, C. Zhang, B. Sun, A. Cramariuc, C. Cadena, M. Hutter*. August 2026. [arXiv:2608.29769](https://arxiv.org/abs/2608.29769)
 - **VersaGauss: A Versatile Framework for Generating Multiphase Dynamics with 3D Gaussians**. *R. Su, L. Yang, X. Xie, J. Lai*. August 2026. [arXiv:2608.28069](https://arxiv.org/abs/2608.28069)
