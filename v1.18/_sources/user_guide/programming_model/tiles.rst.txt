@@ -62,6 +62,7 @@ In the following example, we launch a grid of threads where each block is respon
     print(f"b = {b[:,0]}")
 
 .. testoutput::
+    :skipif: wp.get_cuda_device_count() == 0
 
     b = [   0.  256.  512.  768. 1024. 1280. 1536. 1792. 2048. 2304.]
     
@@ -916,6 +917,7 @@ On the CPU, ``block_dim`` is set to 1, which can change the behavior of kernels 
     print(output.numpy())
 
 .. testoutput::
+    :skipif: wp.get_device() == "cpu" or wp.get_cuda_device_count() == 0
 
     [ 6  0  0  0 22  0  0  0 38  0  0  0]
 
@@ -999,6 +1001,7 @@ a matrix tile reduction:
     print(y.numpy()[0])
 
 .. testoutput::
+    :skipif: wp.get_device() == "cpu" or wp.get_cuda_device_count() == 0
 
     [[496.   0.   0.]
      [  0. 496.   0.]
@@ -1607,6 +1610,7 @@ and then moves on. The next load cannot begin until the current store completes:
 
 .. testoutput::
     :options: +ELLIPSIS
+    :skipif: wp.get_cuda_device_count() == 0
 
     Sequential: ... ms
     Pipelined:  ... ms

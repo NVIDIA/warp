@@ -251,10 +251,10 @@ Pass the *data* array together with a list of :class:`wp.int32 <warp.int32>` ind
     import warp as wp
 
     # Base data.
-    arr = wp.array((1.23, 2.34, 3.45, 4.56, 5.67, 6.78), device="cuda")
+    arr = wp.array((1.23, 2.34, 3.45, 4.56, 5.67, 6.78))
 
     # Only view elements at odd indices.
-    idx = wp.array((1, 3, 5), dtype=wp.int32, device="cuda")
+    idx = wp.array((1, 3, 5), dtype=wp.int32)
     sub = wp.indexedarray(arr, [idx])  # Same as wp.indexedarray1d(...)
     print(sub)
 
@@ -421,7 +421,7 @@ Structured arrays fully support nested structs and Warp vector (and matrix) type
     na["f"][2] = 13.37
     na["bar"]["x"][4] = wp.vec3(1.0)
 
-    a = wp.array(na, dtype=Foo, device="cuda:0")
+    a = wp.array(na, dtype=Foo)
 
     print(a.numpy())
 

@@ -598,7 +598,7 @@ Install RMM for a CUDA 13 environment (Linux only):
 
 For CUDA 12, use ``rmm-cu12`` with a compatible Warp build, such as a ``+cu12``
 wheel from :ref:`GitHub Releases <github-release-wheels>`. Check the
-`RAPIDS installation guide <https://docs.rapids.ai/install/>`_ for RMM's Python,
+`RAPIDS installation guide <https://docs.nvidia.com/datascience/install/>`_ for RMM's Python,
 CUDA, driver, and GPU requirements.
 
 Set up a shared RMM pool for PyTorch and Warp:
