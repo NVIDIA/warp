@@ -851,7 +851,34 @@ add_builtin(
     input_types={"a": matrix(shape=(2, 2), dtype=Float)},
     value_func=inverse_value_func,
     group="Vector Math",
-    doc="""Compute the inverse of matrix ``a``.""",
+    doc="""Return the inverse of a matrix.
+
+    Nearly singular inputs can amplify rounding errors and produce large
+    gradients. Use a well-conditioned matrix for differentiation, and check
+    that the product of the input and returned matrix is close to the identity
+    when numerical accuracy is required.
+
+    Args:
+        a: Matrix to invert. Must be nonsingular.
+
+    Returns:
+        The inverse matrix, whose product with the input is the identity in
+        exact arithmetic.
+
+    Example:
+
+        Invert a matrix and inspect the result:
+
+        .. testcode::
+
+            matrix = wp.mat22(2.0, 1.0, 1.0, 2.0)
+            inverse = wp.inverse(matrix)
+            print(np.round(np.asarray(inverse).reshape(2, 2), 3))
+
+        .. testoutput::
+
+            [[ 0.667 -0.333]
+             [-0.333  0.667]]""",
     require_original_output_arg=True,
 )
 
@@ -860,7 +887,16 @@ add_builtin(
     input_types={"a": matrix(shape=(3, 3), dtype=Float)},
     value_func=inverse_value_func,
     group="Vector Math",
-    doc="""Compute the inverse of matrix ``a``.""",
+    doc="""Return the inverse of a 3x3 matrix.
+
+    See the 2x2 overload for numerical and autodiff guidance.
+
+    Args:
+        a: Matrix to invert. Must be nonsingular.
+
+    Returns:
+        The inverse matrix, whose product with the input is the identity in
+        exact arithmetic.""",
     require_original_output_arg=True,
 )
 
@@ -869,7 +905,16 @@ add_builtin(
     input_types={"a": matrix(shape=(4, 4), dtype=Float)},
     value_func=inverse_value_func,
     group="Vector Math",
-    doc="""Compute the inverse of matrix ``a``.""",
+    doc="""Return the inverse of a 4x4 matrix.
+
+    See the 2x2 overload for numerical and autodiff guidance.
+
+    Args:
+        a: Matrix to invert. Must be nonsingular.
+
+    Returns:
+        The inverse matrix, whose product with the input is the identity in
+        exact arithmetic.""",
     require_original_output_arg=True,
 )
 
@@ -879,9 +924,54 @@ add_builtin(
     value_func=inverse_value_func,
     native_func="approx_inverse",
     group="Vector Math",
-    doc="""Compute the inverse of matrix ``a`` using approximate GPU intrinsics.
+    doc="""Return an approximate inverse of a matrix.
 
-    Falls back to exact inverse on CPU.""",
+    On GPU, this function may be faster than :func:`warp.inverse`, but its
+    result and gradients may be less accurate. For double-precision matrices,
+    even well-conditioned inputs can yield roughly single-precision accuracy.
+    Use :func:`warp.inverse` when double-precision accuracy matters. On CPU,
+    both functions currently use the same inversion method.
+
+    Nearly singular inputs can amplify rounding errors and produce large
+    gradients. Use a well-conditioned matrix for differentiation, and check
+    that the product of the input and returned matrix is close to the identity
+    before relying on the result.
+
+    Args:
+        a: Matrix to invert. Must be nonsingular.
+
+    Returns:
+        A matrix whose product with the input approximates the identity.
+
+    Example:
+
+        Invert a matrix in a kernel and inspect the result:
+
+        .. testcode::
+
+            @wp.kernel
+            def approximate_matrix_inverses(
+                matrices: wp.array[wp.mat22],
+                inverses: wp.array[wp.mat22],
+            ):
+                i = wp.tid()
+                inverses[i] = wp.inverse_approx(matrices[i])
+
+            matrices = wp.array([wp.mat22(2.0, 1.0, 1.0, 2.0)], dtype=wp.mat22)
+            inverses = wp.empty_like(matrices)
+            wp.launch(
+                approximate_matrix_inverses,
+                dim=1,
+                inputs=[matrices],
+                outputs=[inverses],
+            )
+            inverse = inverses.numpy()[0]
+            print(np.round(inverse, 3))
+
+        .. testoutput::
+
+            [[ 0.667 -0.333]
+             [-0.333  0.667]]""",
     require_original_output_arg=True,
     export=False,
 )
@@ -892,9 +982,16 @@ add_builtin(
     value_func=inverse_value_func,
     native_func="approx_inverse",
     group="Vector Math",
-    doc="""Compute the inverse of matrix ``a`` using approximate GPU intrinsics.
+    doc="""Return an approximate inverse of a 3x3 matrix.
 
-    Falls back to exact inverse on CPU.""",
+    See the 2x2 overload for device behavior, numerical accuracy, and
+    autodiff guidance.
+
+    Args:
+        a: Matrix to invert. Must be nonsingular.
+
+    Returns:
+        A matrix whose product with the input approximates the identity.""",
     require_original_output_arg=True,
     export=False,
 )
@@ -905,9 +1002,16 @@ add_builtin(
     value_func=inverse_value_func,
     native_func="approx_inverse",
     group="Vector Math",
-    doc="""Compute the inverse of matrix ``a`` using approximate GPU intrinsics.
+    doc="""Return an approximate inverse of a 4x4 matrix.
 
-    Falls back to exact inverse on CPU.""",
+    See the 2x2 overload for device behavior, numerical accuracy, and
+    autodiff guidance.
+
+    Args:
+        a: Matrix to invert. Must be nonsingular.
+
+    Returns:
+        A matrix whose product with the input approximates the identity.""",
     require_original_output_arg=True,
     export=False,
 )
