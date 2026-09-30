@@ -21,6 +21,7 @@ struct bvh_query_thread_block_t {
         , is_ray(false)
         , input_lower()
         , input_upper()
+        , ray_direction_kind(BvhRayDirectionKind::FINITE)
     {
     }
 
@@ -47,6 +48,7 @@ struct bvh_query_thread_block_t {
     wp::vec3 input_lower;
     wp::vec3 input_upper;
     bool is_ray;
+    BvhRayDirectionKind ray_direction_kind;
 };
 
 
@@ -55,7 +57,9 @@ bvh_query_intersection_test(const bvh_query_thread_block_t& query, const vec3& n
 {
     if (query.is_ray) {
         float t = 0.0f;
-        return intersect_ray_aabb(query.input_lower, query.input_upper, node_lower, node_upper, t);
+        if (query.ray_direction_kind == BvhRayDirectionKind::OVERFLOW)
+            return bvh_ray_intersect_aabb_overflow(query.input_lower, query.input_upper, node_lower, node_upper, t);
+        return bvh_ray_intersect_aabb(query.input_lower, query.input_upper, node_lower, node_upper, t);
     } else {
         return intersect_aabb_aabb(query.input_lower, query.input_upper, node_lower, node_upper);
     }
@@ -369,7 +373,12 @@ CUDA_CALLABLE inline bvh_query_thread_block_t tile_bvh_query_aabb(uint64_t id, c
 // New tile-based ray query function
 CUDA_CALLABLE inline bvh_query_thread_block_t tile_bvh_query_ray(uint64_t id, const vec3& start, const vec3& dir)
 {
-    return bvh_query_thread_block(id, true, start, 1.0f / dir);
+    bvh_query_thread_block_t query = bvh_query_thread_block(id, true, start, 1.0f / dir);
+    if (bvh_ray_has_reciprocal_overflow(dir, query.input_upper)) {
+        query.ray_direction_kind = BvhRayDirectionKind::OVERFLOW;
+        query.input_upper = dir;
+    }
+    return query;
 }
 
 #else
