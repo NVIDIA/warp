@@ -4,29 +4,29 @@
 from typing import Any
 
 import warp as wp
-from warp._src.types import type_repr
+from warp._src.types import float_types, type_repr, type_scalar_type
 
 
 @wp.kernel
 def sgd_step_kernel(
     g: wp.array(dtype=Any),
     b: wp.array(dtype=Any),
-    lr: float,
-    momentum: float,
-    damping: float,
-    weight_decay: float,
+    lr: Any,
+    momentum: Any,
+    damping: Any,
+    weight_decay: Any,
     nesterov: int,
     t: int,
     params: wp.array(dtype=Any),
 ):
     i = wp.tid()
     gt = g[i]
-    if weight_decay != 0.0:
+    if weight_decay != type(weight_decay)(0.0):
         gt += weight_decay * params[i]
-    if momentum != 0.0:
+    if momentum != type(momentum)(0.0):
         bt = b[i]
         if t > 0:
-            bt = momentum * bt + (1.0 - damping) * gt
+            bt = momentum * bt + (type(damping)(1.0) - damping) * gt
         else:
             bt = gt
         if nesterov == 1:
@@ -35,6 +35,13 @@ def sgd_step_kernel(
             gt = bt
         b[i] = bt
     params[i] = params[i] - lr * gt
+
+
+def _sgd_scalar_type(dtype):
+    scalar_type = type_scalar_type(dtype)
+    if scalar_type not in float_types:
+        raise TypeError(f"SGD parameters must have a floating-point dtype, got {type_repr(dtype)}")
+    return scalar_type
 
 
 class SGD:
@@ -48,7 +55,9 @@ class SGD:
 
     Args:
         params: List of :class:`warp.array` objects to optimize. Can be ``None``
-            and set later via :meth:`set_params`.
+            and set later via :meth:`set_params`. Arrays may use any
+            floating-point scalar, vector, or matrix dtype; the update is computed
+            in the parameter's scalar precision.
         lr: Learning rate (step size).
         momentum: Momentum factor for accelerating SGD in relevant directions.
         dampening: Dampening factor applied to the momentum.
@@ -73,19 +82,34 @@ class SGD:
         Args:
             params: List of :class:`warp.array` objects to optimize, or ``None``.
         """
+        has_params = params is not None and isinstance(params, list) and len(params) > 0
+        # Check every dtype before touching any state, so a rejected list leaves the optimizer unchanged.
+        scalar_types = [_sgd_scalar_type(param.dtype) for param in params] if has_params else []
         self.params = params
-        if params is not None and isinstance(params, list) and len(params) > 0:
+        if has_params:
             if len(self.b) != len(params):
                 self.b = [None] * len(params)
             for i in range(len(params)):
                 param = params[i]
+                scalar_type = scalar_types[i]
                 if self.b[i] is None or self.b[i].shape != param.shape or self.b[i].dtype != param.dtype:
                     self.b[i] = wp.zeros_like(param)
                 elif self.b[i].device != param.device:
                     self.b[i] = self.b[i].to(param.device)
                 # Overload the kernel for each parameter so we can precompile the SGD kernel
                 if param is not None:
-                    wp.overload(sgd_step_kernel, {"g": param, "b": param, "params": param})
+                    wp.overload(
+                        sgd_step_kernel,
+                        {
+                            "g": param,
+                            "b": param,
+                            "lr": scalar_type,
+                            "momentum": scalar_type,
+                            "damping": scalar_type,
+                            "weight_decay": scalar_type,
+                            "params": param,
+                        },
+                    )
 
     def reset_internal_state(self):
         """Reset momentum buffers and timestep to zero."""
@@ -141,5 +165,16 @@ class SGD:
             )
         if params.shape != g.shape:
             raise ValueError(f"SGD gradient shape must match parameter shape {params.shape}, got {g.shape}")
-        kernel_inputs = (g, b, lr, momentum, dampening, weight_decay, int(nesterov), t, params)
+        scalar_type = _sgd_scalar_type(params.dtype)
+        kernel_inputs = (
+            g,
+            b,
+            scalar_type(lr),
+            scalar_type(momentum),
+            scalar_type(dampening),
+            scalar_type(weight_decay),
+            int(nesterov),
+            t,
+            params,
+        )
         wp.launch(sgd_step_kernel, dim=len(params), inputs=kernel_inputs, device=params.device)
