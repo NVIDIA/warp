@@ -5,57 +5,79 @@ import argparse
 import logging
 import os
 import shutil
+import subprocess
+import sys
+import time
+from dataclasses import dataclass
+from pathlib import Path
+from typing import TextIO
 
 import warp  # ensure all API functions are loaded  # noqa: F401
 from warp._src.generated_files import generate_stubs_file
 
-parser = argparse.ArgumentParser(
-    description="Warp Sphinx Documentation Builder",
-    formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-)
-parser.add_argument(
-    "--html",
-    action=argparse.BooleanOptionalAction,
-    default=True,
-    help="Build HTML documentation",
-)
-parser.add_argument(
-    "--doctest",
-    action=argparse.BooleanOptionalAction,
-    default=False,
-    help="Run doctest tests of code blocks",
-)
-parser.add_argument(
-    "--warnings-as-errors",
-    action=argparse.BooleanOptionalAction,
-    default=False,
-    help=(
-        "Treat Sphinx warnings as errors (passes -W). Off by default so local "
-        "builds stay lenient (e.g. unreachable intersphinx inventories when "
-        "offline do not abort the build). CI/CD opts in to enforce strictness."
-    ),
-)
-parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose logging")
-
-args = parser.parse_args()
-
-# Validate argument combinations
-if not args.html and not args.doctest:
-    parser.error("At least one of --html or --doctest must be enabled")
-
-# Configure logging
-log_level = logging.DEBUG if args.verbose else logging.INFO
-logging.basicConfig(
-    level=log_level,
-    format="[%(asctime)s] %(levelname)s: %(message)s",
-    datefmt="%H:%M:%S",
-    handlers=[logging.StreamHandler()],
-)
 logger = logging.getLogger(__name__)
 
 
+@dataclass(eq=False)
+class DoctestProcess:
+    """State for one running doctest shard."""
+
+    shard_index: int
+    process: subprocess.Popen
+    start_time: float
+    output_path: Path
+    log_path: Path
+    log_file: TextIO
+
+
+def positive_int(value: str) -> int:
+    """Parse a positive integer command-line value."""
+    parsed_value = int(value)
+    if parsed_value < 1:
+        raise argparse.ArgumentTypeError("must be at least 1")
+    return parsed_value
+
+
+def create_parser() -> argparse.ArgumentParser:
+    """Create the command-line argument parser."""
+    parser = argparse.ArgumentParser(
+        description="Warp Sphinx Documentation Builder",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument(
+        "--html",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Build HTML documentation",
+    )
+    parser.add_argument(
+        "--doctest",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Run doctest tests of code blocks",
+    )
+    parser.add_argument(
+        "--doctest-jobs",
+        type=positive_int,
+        default=4,
+        help="Number of concurrent Sphinx doctest processes",
+    )
+    parser.add_argument(
+        "--warnings-as-errors",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "Treat Sphinx warnings as errors (passes -W). Off by default so local "
+            "builds stay lenient (e.g. unreachable intersphinx inventories when "
+            "offline do not abort the build). CI/CD opts in to enforce strictness."
+        ),
+    )
+    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose logging")
+    return parser
+
+
 def format_file_with_ruff(file_path):
-    """Format file with ruff using pre-commit for version consistency."""
+    """Format a file with Ruff using pre-commit for version consistency."""
     try:
         import pre_commit.main  # noqa: PLC0415
 
@@ -82,32 +104,50 @@ def format_file_with_ruff(file_path):
                     f"File was modified but still has issues (exit code {result})"
                 )
         else:
-            # Exit code > 1: Unexpected error
             raise RuntimeError(f"pre-commit formatting failed for {file_path} with exit code {result}")
     except ImportError as err:
         raise ImportError(
-            f"Could not format {file_path}: pre-commit not available. "
+            "Could not format generated stubs: pre-commit is not available. "
             "Install with 'pip install warp-lang[docs]' or equivalent."
         ) from err
 
 
-def build_sphinx_docs(source_dir, output_dir, builder="html", warnings_as_errors=False):
+def sphinx_args(
+    source_dir: Path,
+    output_dir: Path,
+    builder: str,
+    warnings_as_errors: bool = False,
+    config_overrides: tuple[str, ...] = (),
+    jobs: str | int = "auto",
+) -> list[str]:
+    """Build a Sphinx argument list."""
+    args = ["-j", str(jobs), "-b", builder]
+    if warnings_as_errors:
+        args.insert(0, "-W")
+    for config_override in config_overrides:
+        args.extend(("-D", config_override))
+    args.extend((os.fspath(source_dir), os.fspath(output_dir)))
+    return args
+
+
+def build_sphinx_docs(
+    source_dir: Path,
+    output_dir: Path,
+    builder: str = "html",
+    warnings_as_errors: bool = False,
+) -> None:
     """Build Sphinx documentation programmatically."""
     logger.info(f"Building {builder} documentation: {source_dir} -> {output_dir}")
     try:
         from sphinx.cmd.build import build_main  # noqa: PLC0415
 
-        # Clean previous output
-        if os.path.exists(output_dir):
+        if output_dir.exists():
             logger.debug(f"Cleaning previous output directory: {output_dir}")
             shutil.rmtree(output_dir)
 
-        # sphinx-build [-W] -j auto -b <builder> source_dir output_dir
-        sphinx_args = ["-j", "auto", "-b", builder, source_dir, output_dir]
-        if warnings_as_errors:
-            sphinx_args.insert(0, "-W")
-        logger.debug(f"Running sphinx-build {' '.join(sphinx_args)}")
-        result = build_main(sphinx_args)
+        args = sphinx_args(source_dir, output_dir, builder, warnings_as_errors)
+        logger.debug(f"Running sphinx-build {' '.join(args)}")
+        result = build_main(args)
         if result != 0:
             raise RuntimeError(f"Sphinx build failed with exit code {result}")
 
@@ -115,36 +155,218 @@ def build_sphinx_docs(source_dir, output_dir, builder="html", warnings_as_errors
 
     except ImportError as err:
         raise ImportError(
-            "Could not build docs: sphinx not available. Install with 'pip install warp-lang[docs]' or equivalent."
+            "Could not build docs: Sphinx is not available. Install with 'pip install warp-lang[docs]' or equivalent."
         ) from err
 
 
-base_path = os.path.dirname(os.path.realpath(__file__))
+def stop_doctest_processes(processes: list[DoctestProcess]) -> None:
+    """Stop running doctest shards and close their log files."""
+    for shard in processes:
+        if shard.process.poll() is None:
+            try:
+                shard.process.terminate()
+            except ProcessLookupError:
+                pass
 
-logger.info("Starting Warp documentation build")
+    for shard in processes:
+        try:
+            if shard.process.poll() is None:
+                try:
+                    shard.process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    shard.process.kill()
+                    shard.process.wait()
+        finally:
+            shard.log_file.close()
 
-# generate stubs for autocomplete
-logger.info("Generating API stubs for autocomplete")
-stub_path = os.path.join(base_path, "warp", "__init__.pyi")
-if generate_stubs_file(base_path):
-    logger.info(f"Generated {stub_path}")
-    # code formatting of __init__.pyi
-    logger.info("Formatting __init__.pyi (a 'Failed' message in the output below is expected)")
-    format_file_with_ruff(stub_path)
-else:
-    logger.info(f"{stub_path} is up to date")
 
-source_dir = os.path.join(base_path, "docs")
+def run_parallel_doctests(
+    source_dir: Path,
+    output_dir: Path,
+    job_count: int,
+    warnings_as_errors: bool,
+    sources_prepared: bool,
+) -> None:
+    """Run Sphinx doctests in concurrent document shards."""
+    if job_count < 1:
+        raise ValueError("job_count must be at least 1")
 
-if args.html:
-    # Build HTML docs
-    html_output_dir = os.path.join(base_path, "docs", "_build", "html")
-    build_sphinx_docs(source_dir, html_output_dir, "html", warnings_as_errors=args.warnings_as_errors)
+    if output_dir.exists():
+        logger.debug(f"Cleaning previous output directory: {output_dir}")
+        shutil.rmtree(output_dir)
+    output_dir.mkdir(parents=True)
 
-if args.doctest:
-    # Run doctest
-    logger.info("Running doctest...")
-    doctest_output_dir = os.path.join(base_path, "docs", "_build", "doctest")
-    build_sphinx_docs(source_dir, doctest_output_dir, "doctest", warnings_as_errors=args.warnings_as_errors)
+    if not sources_prepared:
+        preparation_output = output_dir / "prepare"
+        build_sphinx_docs(
+            source_dir,
+            preparation_output,
+            "dummy",
+            warnings_as_errors=warnings_as_errors,
+        )
+        shutil.rmtree(preparation_output)
 
-logger.info("Documentation build completed successfully")
+    processes: list[DoctestProcess] = []
+    try:
+        for shard_index in range(job_count):
+            shard_output = output_dir / f"shard-{shard_index}"
+            cache_path = output_dir / "warp-cache" / f"shard-{shard_index}"
+            shard_output.mkdir(parents=True)
+            cache_path.mkdir(parents=True)
+
+            env = os.environ.copy()
+            env["WARP_CACHE_PATH"] = os.fspath(cache_path)
+            command = [
+                sys.executable,
+                "-m",
+                "sphinx",
+                "-q",
+                *sphinx_args(
+                    source_dir,
+                    shard_output,
+                    "doctest-shard",
+                    warnings_as_errors,
+                    (
+                        f"warp_doctest_shard_index={shard_index}",
+                        f"warp_doctest_shard_count={job_count}",
+                        "autosummary_generate=0",
+                        "doctest_show_successes=0",
+                    ),
+                    jobs=1,
+                ),
+            ]
+            logger.info("Starting doctest shard %d/%d", shard_index + 1, job_count)
+            log_path = shard_output / "log.txt"
+            log_file = log_path.open("w", encoding="utf-8")
+            try:
+                start_time = time.monotonic()
+                process = subprocess.Popen(command, env=env, stdout=log_file, stderr=subprocess.STDOUT)
+            except Exception:
+                log_file.close()
+                raise
+            processes.append(
+                DoctestProcess(
+                    shard_index=shard_index,
+                    process=process,
+                    start_time=start_time,
+                    output_path=shard_output / "output.txt",
+                    log_path=log_path,
+                    log_file=log_file,
+                )
+            )
+
+        failed_shards = []
+        pending = processes.copy()
+        while pending:
+            for shard in pending.copy():
+                result = shard.process.poll()
+                if result is None:
+                    continue
+
+                pending.remove(shard)
+                shard.log_file.close()
+                elapsed = time.monotonic() - shard.start_time
+                if result == 0:
+                    logger.info(
+                        "Doctest shard %d/%d completed successfully in %.1f seconds",
+                        shard.shard_index + 1,
+                        job_count,
+                        elapsed,
+                    )
+                    continue
+
+                failed_shards.append((shard, result))
+                logger.error(
+                    "Doctest shard %d/%d failed with exit code %d after %.1f seconds",
+                    shard.shard_index + 1,
+                    job_count,
+                    result,
+                    elapsed,
+                )
+
+            if pending:
+                time.sleep(0.1)
+
+        failed_shards.sort(key=lambda failure: failure[0].shard_index)
+        for shard, _ in failed_shards:
+            log_lines = shard.log_path.read_text(encoding="utf-8", errors="replace").rstrip().splitlines()
+            if len(log_lines) > 80:
+                omitted_count = len(log_lines) - 80
+                log_details = f"... {omitted_count} earlier log lines omitted ...\n" + "\n".join(log_lines[-80:])
+            else:
+                log_details = "\n".join(log_lines)
+
+            details = f"Worker log:\n{log_details}"
+            if shard.output_path.exists():
+                report = shard.output_path.read_text(encoding="utf-8", errors="replace").rstrip()
+                details = f"Doctest report:\n{report}\n\n{details}"
+            logger.error(
+                "Doctest shard %d/%d details (full log: %s):\n%s",
+                shard.shard_index + 1,
+                job_count,
+                shard.log_path,
+                details,
+            )
+
+        if failed_shards:
+            failed_summary = ", ".join(
+                f"{shard.shard_index + 1} (exit code {result})" for shard, result in failed_shards
+            )
+            raise RuntimeError(f"Sphinx doctest shard(s) failed: {failed_summary}")
+    finally:
+        stop_doctest_processes(processes)
+
+
+def main(argv: list[str] | None = None) -> None:
+    """Build the requested Warp documentation outputs."""
+    parser = create_parser()
+    args = parser.parse_args(argv)
+    if not args.html and not args.doctest:
+        parser.error("At least one of --html or --doctest must be enabled")
+
+    log_level = logging.DEBUG if args.verbose else logging.INFO
+    logging.basicConfig(
+        level=log_level,
+        format="[%(asctime)s] %(levelname)s: %(message)s",
+        datefmt="%H:%M:%S",
+        handlers=[logging.StreamHandler()],
+    )
+
+    base_path = Path(__file__).resolve().parent
+    source_dir = base_path / "docs"
+
+    logger.info("Starting Warp documentation build")
+    logger.info("Generating API stubs for autocomplete")
+    stub_path = base_path / "warp" / "__init__.pyi"
+    if generate_stubs_file(os.fspath(base_path)):
+        logger.info(f"Generated {stub_path}")
+        logger.info("Formatting __init__.pyi (a 'Failed' message in the output below is expected)")
+        format_file_with_ruff(os.fspath(stub_path))
+    else:
+        logger.info(f"{stub_path} is up to date")
+
+    sources_prepared = False
+    if args.html:
+        html_output_dir = source_dir / "_build" / "html"
+        build_sphinx_docs(source_dir, html_output_dir, "html", warnings_as_errors=args.warnings_as_errors)
+        sources_prepared = True
+
+    if args.doctest:
+        logger.info("Running doctest...")
+        doctest_output_dir = source_dir / "_build" / "doctest"
+        if args.doctest_jobs == 1:
+            build_sphinx_docs(source_dir, doctest_output_dir, "doctest", warnings_as_errors=args.warnings_as_errors)
+        else:
+            run_parallel_doctests(
+                source_dir,
+                doctest_output_dir,
+                args.doctest_jobs,
+                args.warnings_as_errors,
+                sources_prepared,
+            )
+
+    logger.info("Documentation build completed successfully")
+
+
+if __name__ == "__main__":
+    main()

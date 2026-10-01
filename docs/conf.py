@@ -31,7 +31,6 @@ _RE_WP_DOT = re.compile(r"\bwp\.")
 
 HERE = os.path.dirname(__file__)
 WARP_PATH = os.path.realpath(os.path.join(HERE, ".."))
-
 sys.path.insert(0, WARP_PATH)
 sys.path.insert(0, os.path.join(HERE, "_ext"))
 
@@ -77,6 +76,7 @@ extensions = [
     "sphinx_copybutton",  # Adds a copy button to code blocks.
     # Local extensions, from `docs/_ext`.
     "wp_builtin_tags",  # Renders the property tags of the built-ins.
+    "wp_doctest_shard",  # Runs selected doctest documents in isolated subprocess shards.
 ]
 
 # Generate targets for Markdown headings through level 2 so standard fragment
@@ -831,6 +831,9 @@ def resolve_public_builtin_aliases(app, env, node, contnode):
 
 def generate_reference_docs(app):
     """Generate API and language reference .rst files before Sphinx reads sources."""
+    # The coordinator prepares the shared source tree before starting workers.
+    if app.builder.name == "doctest-shard":
+        return
     docs.generate_reference.run()
 
 
