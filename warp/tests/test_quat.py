@@ -1557,6 +1557,28 @@ def test_quat_to_axis_angle_grad(test, device, dtype, register_kernels=False):
     assert_np_equal(edge_gradients_z, edge_gradients_z_auto, tol=tol)
     assert_np_equal(edge_gradients_w, edge_gradients_w_auto, tol=tol)
 
+    small_angle = {np.float16: 3.0e-2, np.float32: 1.0e-13, np.float64: 1.0e-13}[dtype]
+    small_quat = wp.array(
+        [
+            (
+                np.sin(0.5 * small_angle),
+                0.0,
+                0.0,
+                np.cos(0.5 * small_angle),
+            )
+        ],
+        dtype=quat_type,
+        device=device,
+        requires_grad=True,
+    )
+    _, small_gradients = compute_gradients(small_quat, quat_to_axis_angle_kernel, 1, 3)
+    np.testing.assert_allclose(
+        small_gradients,
+        np.array([[2.0, 0.0, 0.0, -small_angle]], dtype=dtype),
+        rtol=tol,
+        atol=tol,
+    )
+
 
 ############################################################
 
