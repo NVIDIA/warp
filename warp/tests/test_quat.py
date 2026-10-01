@@ -1571,6 +1571,14 @@ def test_quat_to_axis_angle_grad(test, device, dtype, register_kernels=False):
         device=device,
         requires_grad=True,
     )
+    _, small_axis_gradients = compute_gradients(small_quat, quat_to_axis_angle_kernel, 1, 1)
+    np.testing.assert_allclose(
+        small_axis_gradients,
+        np.array([[0.0, 1.0 / np.sin(0.5 * small_angle), 0.0, 0.0]], dtype=dtype),
+        rtol=tol,
+        atol=tol,
+    )
+
     _, small_gradients = compute_gradients(small_quat, quat_to_axis_angle_kernel, 1, 3)
     np.testing.assert_allclose(
         small_gradients,
