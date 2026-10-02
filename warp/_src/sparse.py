@@ -4916,3 +4916,15 @@ def bsr_mv(
         )
 
     return y
+
+
+# register API functions so they appear in the documentation
+
+wp._src.context.register_api_function(
+    bsr_block_index,
+    module="warp.sparse",
+)
+wp._src.context.register_api_function(
+    bsr_row_index,
+    module="warp.sparse",
+)

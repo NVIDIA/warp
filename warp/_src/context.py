@@ -2382,6 +2382,26 @@ def overload(kernel: Kernel | Callable, arg_types: dict[str, Any] | list[Any] | 
 builtin_functions: dict[str, Function] = {}
 
 
+class ApiFunctionRegistration(NamedTuple):
+    """Describe where a Python-implemented Warp function is documented.
+
+    Signatures and implementation remain owned by ``function``. A ``None``
+    capability makes no support claim.
+    """
+
+    public_name: str
+    function: Function
+    module: str | None
+    """Public module exporting the function, or ``None`` for a built-in."""
+    python_callable: bool | None = None
+    differentiable: bool | None = None
+
+
+# Documentation records of Python-implemented Warp functions, keyed by public name.
+# Compiler lookup continues to use builtin_functions exclusively.
+api_functions: dict[str, ApiFunctionRegistration] = {}
+
+
 def get_generic_vtypes():
     # get a list of existing generic vector types (includes matrices and stuff)
     # so we can match arguments against them:
@@ -2648,20 +2668,55 @@ def add_builtin(
 
 def register_api_function(
     function: Function,
-    group: str = "Other",
+    group: str | None = None,
     hidden: bool = False,
+    *,
+    module: str | None = None,
+    python_callable: bool | None = None,
+    differentiable: bool | None = None,
 ):
-    """Main entry point to register a Warp Python function to be part of the Warp API and appear in the documentation.
+    """Register a Warp function as part of the Warp API so that it appears in the documentation.
+
+    By default, the function is registered as a built-in: the Built-Ins page lists it
+    under ``group``, and kernels can also call it by its bare name. An existing
+    built-in with the same key is replaced.
+
+    If ``module`` is given, the function is documented on that module's API reference
+    page instead, and kernels call it through the module like any other imported Warp
+    function. The caller must export the function from ``module`` under its key.
 
     Args:
-        function: Warp function to be registered.
-        group: Classification used for the documentation.
-        hidden: Whether to add that function into the documentation.
-    """
-    function.group = group
-    function.hidden = hidden
+        function: Warp function to register.
+        group: Built-Ins section listing the function, ``"Other"`` if omitted.
+            Only applies to built-ins.
+        hidden: Whether to omit the function from the documentation. Only applies
+            to built-ins.
+        module: Public module exporting the function, such as ``"warp.geometry"``.
+        python_callable: Whether every overload can be called at the Python scope.
+            ``None`` makes no claim.
+        differentiable: Whether every overload propagates gradients in reverse mode.
+            ``None`` makes no claim. This does not change code generation.
 
-    builtin_functions[function.key] = function
+    Raises:
+        ValueError: If ``group`` or ``hidden`` is combined with ``module``, or if
+            ``module`` is given for a function without a Python implementation.
+        RuntimeError: If the function is already registered for ``module``.
+    """
+    if module is None:
+        function.group = "Other" if group is None else group
+        function.hidden = hidden
+        builtin_functions[function.key] = function
+        public_name = f"warp.{function.key}"
+    else:
+        if group is not None or hidden:
+            raise ValueError("The `group` and `hidden` arguments only apply to built-ins, registered without `module`.")
+        if function.func is None:
+            raise ValueError(f"The function '{function.key}' has no Python implementation to document.")
+        public_name = f"{module}.{function.key}"
+        if public_name in api_functions:
+            raise RuntimeError(f"An API function named '{public_name}' is already registered.")
+
+    api_functions[public_name] = ApiFunctionRegistration(public_name, function, module, python_callable, differentiable)
 
 
 # global dictionary of modules

@@ -10,7 +10,12 @@ matrix inversion, and array operations commonly needed in finite element computa
 
 # isort: skip_file
 
+# category: Python API
+
 from warp._src.fem.linalg import array_axpy as array_axpy
+
+# category: Kernel API
+
 from warp._src.fem.linalg import generalized_inner as generalized_inner
 from warp._src.fem.linalg import generalized_outer as generalized_outer
 from warp._src.fem.linalg import householder_make_hessenberg as householder_make_hessenberg

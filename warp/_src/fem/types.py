@@ -179,3 +179,11 @@ class Domain:
 
     call_operator: "warp._src.fem.operator.Operator" = None  # noqa: F821 Set in operator.py
     """Current operator being resolved for this domain argument."""
+
+
+# register API functions so they appear in the documentation
+
+wp._src.context.register_api_function(
+    make_free_sample,
+    module="warp.fem",
+)

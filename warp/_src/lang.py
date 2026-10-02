@@ -13,6 +13,10 @@ apply. The tags indicate where a function can be called and whether it is differ
 - **Python** - Can be called at the Python scope
 - **Differentiable** - Propagates gradients when used in reverse mode automatic differentiation
 
+A missing tag means that the capability is not guaranteed for that overload: it may be
+unsupported, or supported only for some arguments. See the function description for
+details.
+
 For a listing of the API that is exclusively intended to be used at the Python scope
 and run inside the CPython interpreter, see :doc:`/api_reference/warp`.
 """

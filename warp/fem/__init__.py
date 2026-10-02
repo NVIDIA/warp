@@ -27,6 +27,8 @@ See Also:
 # The source-to-public Warp module declarations for `warp.fem` live in the
 # top-level `warp/__init__.py`, so they are in effect before these imports run.
 
+# category: Python API
+
 from warp._src.fem.geometry.adaptive_nanogrid import AdaptiveNanogrid as AdaptiveNanogrid
 from warp._src.fem.space.basis_space import BasisSpace as BasisSpace
 from warp._src.fem.domain import BoundarySides as BoundarySides
@@ -87,10 +89,40 @@ from warp._src.fem.geometry.trimesh import Trimesh3D as Trimesh3D
 from warp._src.fem.field.field import UniformField as UniformField
 from warp._src.fem.adaptivity import adaptive_nanogrid_from_field as adaptive_nanogrid_from_field
 from warp._src.fem.adaptivity import adaptive_nanogrid_from_hierarchy as adaptive_nanogrid_from_hierarchy
-from warp._src.fem.operator import at_node as at_node
-from warp._src.fem.operator import average as average
 from warp._src.fem.cache import borrow_temporary as borrow_temporary
 from warp._src.fem.cache import borrow_temporary_like as borrow_temporary_like
+from warp._src.fem.operator import integrand as integrand
+from warp._src.fem.integrate import integrate as integrate
+from warp._src.fem.integrate import interpolate as interpolate
+from warp._src.fem.space import make_collocated_function_space as make_collocated_function_space
+from warp._src.fem.space import make_contravariant_function_space as make_contravariant_function_space
+from warp._src.fem.space import make_covariant_function_space as make_covariant_function_space
+from warp._src.fem.field import make_discrete_field as make_discrete_field
+from warp._src.fem.space import make_element_based_space_topology as make_element_based_space_topology
+from warp._src.fem.space.shape import make_element_shape_function as make_element_shape_function
+from warp._src.fem.space import make_polynomial_basis_space as make_polynomial_basis_space
+from warp._src.fem.space import make_polynomial_space as make_polynomial_space
+from warp._src.fem.field import make_restriction as make_restriction
+from warp._src.fem.space.partition import make_space_partition as make_space_partition
+from warp._src.fem.space import make_space_restriction as make_space_restriction
+from warp._src.fem.field import make_test as make_test
+from warp._src.fem.field import make_trial as make_trial
+from warp._src.fem.dirichlet import normalize_dirichlet_projector as normalize_dirichlet_projector
+from warp._src.fem.dirichlet import project_linear_system as project_linear_system
+from warp._src.fem.dirichlet import project_system_matrix as project_system_matrix
+from warp._src.fem.dirichlet import project_system_rhs as project_system_rhs
+from warp._src.fem.types import Sample as Sample
+from warp._src.fem.types import Sample_f64 as Sample_f64
+from warp._src.fem.cache import set_default_temporary_store as set_default_temporary_store
+from warp._src.fem.types import NULL_ELEMENT_INDEX as NULL_ELEMENT_INDEX
+from warp._src.fem.types import NULL_NODE_INDEX as NULL_NODE_INDEX
+from warp._src.fem.types import NULL_QP_INDEX as NULL_QP_INDEX
+from warp._src.fem.types import OUTSIDE as OUTSIDE
+
+# category: Integrand API
+
+from warp._src.fem.operator import at_node as at_node
+from warp._src.fem.operator import average as average
 from warp._src.fem.operator import cells as cells
 from warp._src.fem.operator import curl as curl
 from warp._src.fem.operator import D as D
@@ -108,25 +140,8 @@ from warp._src.fem.operator import grad_average as grad_average
 from warp._src.fem.operator import grad_jump as grad_jump
 from warp._src.fem.operator import grad_outer as grad_outer
 from warp._src.fem.operator import inner as inner
-from warp._src.fem.operator import integrand as integrand
-from warp._src.fem.integrate import integrate as integrate
-from warp._src.fem.integrate import interpolate as interpolate
 from warp._src.fem.operator import jump as jump
 from warp._src.fem.operator import lookup as lookup
-from warp._src.fem.space import make_collocated_function_space as make_collocated_function_space
-from warp._src.fem.space import make_contravariant_function_space as make_contravariant_function_space
-from warp._src.fem.space import make_covariant_function_space as make_covariant_function_space
-from warp._src.fem.field import make_discrete_field as make_discrete_field
-from warp._src.fem.space import make_element_based_space_topology as make_element_based_space_topology
-from warp._src.fem.space.shape import make_element_shape_function as make_element_shape_function
-from warp._src.fem.types import make_free_sample as make_free_sample
-from warp._src.fem.space import make_polynomial_basis_space as make_polynomial_basis_space
-from warp._src.fem.space import make_polynomial_space as make_polynomial_space
-from warp._src.fem.field import make_restriction as make_restriction
-from warp._src.fem.space.partition import make_space_partition as make_space_partition
-from warp._src.fem.space import make_space_restriction as make_space_restriction
-from warp._src.fem.field import make_test as make_test
-from warp._src.fem.field import make_trial as make_trial
 from warp._src.fem.operator import measure as measure
 from warp._src.fem.operator import measure_ratio as measure_ratio
 from warp._src.fem.operator import node_count as node_count
@@ -137,24 +152,17 @@ from warp._src.fem.operator import node_outer_weight as node_outer_weight
 from warp._src.fem.operator import node_outer_weight_gradient as node_outer_weight_gradient
 from warp._src.fem.operator import node_partition_index as node_partition_index
 from warp._src.fem.operator import normal as normal
-from warp._src.fem.dirichlet import normalize_dirichlet_projector as normalize_dirichlet_projector
 from warp._src.fem.operator import outer as outer
 from warp._src.fem.operator import partition_lookup as partition_lookup
 from warp._src.fem.operator import position as position
 from warp._src.fem.operator import scalar_type as scalar_type
-from warp._src.fem.dirichlet import project_linear_system as project_linear_system
-from warp._src.fem.dirichlet import project_system_matrix as project_system_matrix
-from warp._src.fem.dirichlet import project_system_rhs as project_system_rhs
-from warp._src.fem.types import Sample as Sample
-from warp._src.fem.types import Sample_f64 as Sample_f64
-from warp._src.fem.cache import set_default_temporary_store as set_default_temporary_store
 from warp._src.fem.operator import to_cell_side as to_cell_side
 from warp._src.fem.operator import to_inner_cell as to_inner_cell
 from warp._src.fem.operator import to_outer_cell as to_outer_cell
-from warp._src.fem.types import NULL_ELEMENT_INDEX as NULL_ELEMENT_INDEX
-from warp._src.fem.types import NULL_NODE_INDEX as NULL_NODE_INDEX
-from warp._src.fem.types import NULL_QP_INDEX as NULL_QP_INDEX
-from warp._src.fem.types import OUTSIDE as OUTSIDE
+
+# category: Kernel API
+
+from warp._src.fem.types import make_free_sample as make_free_sample
 
 from . import cache as cache
 from . import field as field
