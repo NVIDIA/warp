@@ -2416,3 +2416,11 @@ class ScopedMemoryTracker:
         from warp._src.context import runtime  # noqa: PLC0415
 
         runtime.core.wp_alloc_tracker_reset()
+
+
+# register API functions so they appear in the documentation
+
+context.register_api_function(
+    quat_between_vectors,
+    module="warp",
+)

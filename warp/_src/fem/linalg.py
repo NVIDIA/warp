@@ -565,3 +565,51 @@ def array_axpy(x: wp.array, y: wp.array, alpha: float = 1.0, beta: float = 1.0):
 def _array_axpy_kernel(x: wp.array[Any], y: wp.array[Any], alpha: Any, beta: Any):
     i = wp.tid()
     y[i] = beta * y[i] + alpha * y.dtype(x[i])
+
+
+# register API functions so they appear in the documentation
+
+wp._src.context.register_api_function(
+    generalized_inner,
+    module="warp.fem.linalg",
+)
+wp._src.context.register_api_function(
+    generalized_outer,
+    module="warp.fem.linalg",
+)
+wp._src.context.register_api_function(
+    householder_make_hessenberg,
+    module="warp.fem.linalg",
+)
+wp._src.context.register_api_function(
+    householder_qr_decomposition,
+    module="warp.fem.linalg",
+)
+wp._src.context.register_api_function(
+    inverse_qr,
+    module="warp.fem.linalg",
+)
+wp._src.context.register_api_function(
+    skew_part,
+    module="warp.fem.linalg",
+)
+wp._src.context.register_api_function(
+    solve_triangular,
+    module="warp.fem.linalg",
+)
+wp._src.context.register_api_function(
+    spherical_part,
+    module="warp.fem.linalg",
+)
+wp._src.context.register_api_function(
+    symmetric_eigenvalues_qr,
+    module="warp.fem.linalg",
+)
+wp._src.context.register_api_function(
+    symmetric_part,
+    module="warp.fem.linalg",
+)
+wp._src.context.register_api_function(
+    tridiagonal_symmetric_eigenvalues_qr,
+    module="warp.fem.linalg",
+)

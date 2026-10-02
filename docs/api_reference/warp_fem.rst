@@ -30,8 +30,8 @@ These modules are automatically available when you ``import warp.fem``.
 - :mod:`warp.fem.space`
 - :mod:`warp.fem.utils`
 
-API
----
+Python API
+----------
 
 .. autosummary::
    :nosignatures:
@@ -97,13 +97,46 @@ API
    Trimesh2D
    Trimesh3D
    UniformField
-   D
    adaptive_nanogrid_from_field
    adaptive_nanogrid_from_hierarchy
-   at_node
-   average
    borrow_temporary
    borrow_temporary_like
+   integrand
+   integrate
+   interpolate
+   make_collocated_function_space
+   make_contravariant_function_space
+   make_covariant_function_space
+   make_discrete_field
+   make_element_based_space_topology
+   make_element_shape_function
+   make_polynomial_basis_space
+   make_polynomial_space
+   make_restriction
+   make_space_partition
+   make_space_restriction
+   make_test
+   make_trial
+   normalize_dirichlet_projector
+   project_linear_system
+   project_system_matrix
+   project_system_rhs
+   set_default_temporary_store
+   NULL_ELEMENT_INDEX
+   NULL_NODE_INDEX
+   NULL_QP_INDEX
+   OUTSIDE
+
+Integrand API
+-------------
+
+.. autosummary::
+   :nosignatures:
+   :toctree: _generated
+
+   D
+   at_node
+   average
    cells
    curl
    deformation_gradient
@@ -120,25 +153,8 @@ API
    grad_jump
    grad_outer
    inner
-   integrand
-   integrate
-   interpolate
    jump
    lookup
-   make_collocated_function_space
-   make_contravariant_function_space
-   make_covariant_function_space
-   make_discrete_field
-   make_element_based_space_topology
-   make_element_shape_function
-   make_free_sample
-   make_polynomial_basis_space
-   make_polynomial_space
-   make_restriction
-   make_space_partition
-   make_space_restriction
-   make_test
-   make_trial
    measure
    measure_ratio
    node_count
@@ -149,19 +165,19 @@ API
    node_outer_weight_gradient
    node_partition_index
    normal
-   normalize_dirichlet_projector
    outer
    partition_lookup
    position
-   project_linear_system
-   project_system_matrix
-   project_system_rhs
    scalar_type
-   set_default_temporary_store
    to_cell_side
    to_inner_cell
    to_outer_cell
-   NULL_ELEMENT_INDEX
-   NULL_NODE_INDEX
-   NULL_QP_INDEX
-   OUTSIDE
+
+Kernel API
+----------
+
+.. autosummary::
+   :nosignatures:
+   :toctree: _generated
+
+   make_free_sample

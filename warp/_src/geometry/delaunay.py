@@ -1244,3 +1244,16 @@ def swept_volume_mesh(
         lower=lower,
         upper=upper,
     )
+
+
+# register API functions so they appear in the documentation
+
+wp._src.context.register_api_function(
+    find_triangle_neighbor_edge_index,
+    module="warp.geometry",
+)
+wp._src.context.register_api_function(
+    swept_volume_sdf,
+    module="warp.geometry",
+    differentiable=False,
+)

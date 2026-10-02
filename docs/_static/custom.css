@@ -2,10 +2,10 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 
 /*
-Tweak the display of the built-ins annotations (kernel, python, differentiable).
+Tweak the display of the Warp function annotations (kernel, python, differentiable).
 */
 
-section[id^=warp-] dl.function ul.wp-builtin-tags
+section[id^=warp-] dl.function ul.wp-function-tags
 {
     display: flex;
     flex-wrap: wrap;
@@ -14,7 +14,7 @@ section[id^=warp-] dl.function ul.wp-builtin-tags
     padding: 0;
 }
 
-section[id^=warp-] dl.function ul.wp-builtin-tags li.wp-builtin-tag
+section[id^=warp-] dl.function ul.wp-function-tags li.wp-function-tag
 {
     border-color: var(--pst-color-border);
     border-radius: 1rem;
@@ -27,7 +27,7 @@ section[id^=warp-] dl.function ul.wp-builtin-tags li.wp-builtin-tag
 
 /*
 No rule hides the tags whose value is false, or the value of every tag: they carry the
-theme's `visually-hidden` class, emitted by `docs/_ext/wp_builtin_tags.py`. Clipping
+theme's `visually-hidden` class, emitted by `docs/_ext/wp_function_tags.py`. Clipping
 them rather than removing them keeps them in the accessibility tree and in the text
 extraction tools read, so an omitted pill is never mistaken for a missing property.
 */

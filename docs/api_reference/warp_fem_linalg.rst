@@ -6,14 +6,22 @@ warp.fem.linalg
 
 .. currentmodule:: warp.fem.linalg
 
-API
----
+Python API
+----------
 
 .. autosummary::
    :nosignatures:
    :toctree: _generated
 
    array_axpy
+
+Kernel API
+----------
+
+.. autosummary::
+   :nosignatures:
+   :toctree: _generated
+
    generalized_inner
    generalized_outer
    householder_make_hessenberg
