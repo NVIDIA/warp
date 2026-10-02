@@ -511,6 +511,28 @@ def test_batched_nonuniform(test, device, dtype=wp.float32):
     _run_batched_spd_solver(test, device, cg, seed_base=300, dtype=dtype, batch_sizes=[8, 15, 10, 12])
 
 
+def test_batched_default_maxiter_uses_largest_subproblem(test, device):
+    batch_sizes = [1, 9]
+    diagonal = np.concatenate([np.array([1.0]), np.arange(1.0, 10.0)])
+    A_full = wp.array(np.diag(diagonal), dtype=wp.float64, device=device)
+    b_full = wp.ones(len(diagonal), dtype=wp.float64, device=device)
+    offsets = _batch_offsets(batch_sizes, device)
+
+    for max_batch_length in (max(batch_sizes), None):
+        x_full = wp.zeros_like(b_full)
+        operator_kwargs = {"batch_offsets": offsets}
+        if max_batch_length is not None:
+            operator_kwargs["max_batch_length"] = max_batch_length
+        A_op = aslinearoperator(A_full, **operator_kwargs)
+        test.assertEqual(A_op.max_batch_length, max_batch_length)
+
+        niter, err, atol = cg(A_op, b_full, x_full, tol=1.0e-12, check_every=1, use_cuda_graph=False)
+
+        test.assertGreaterEqual(niter, max(batch_sizes))
+        test.assertLessEqual(err, atol)
+        np.testing.assert_allclose(x_full.numpy(), 1.0 / diagonal, rtol=1.0e-10, atol=1.0e-10)
+
+
 def test_batched_vector_offsets(test, device):
     diag = wp.array(((2.0, 2.0), (5.0, 5.0)), dtype=wp.vec2, device=device)
     b = wp.array(((2.0, 4.0), (10.0, 15.0)), dtype=wp.vec2, device=device)
@@ -1444,6 +1466,12 @@ add_function_test(TestLinearSolvers, "test_batched_gmres_f32", test_batched_gmre
 add_function_test(TestLinearSolvers, "test_batched_gmres_f64", test_batched_gmres, devices=devices, dtype=wp.float64)
 add_function_test(TestLinearSolvers, "test_batched_gmres_nonuniform", test_batched_gmres_nonuniform, devices=devices)
 add_function_test(TestLinearSolvers, "test_batched_nonuniform", test_batched_nonuniform, devices=devices)
+add_function_test(
+    TestLinearSolvers,
+    "test_batched_default_maxiter_uses_largest_subproblem",
+    test_batched_default_maxiter_uses_largest_subproblem,
+    devices=[wp.get_device("cpu")],
+)
 add_function_test(TestLinearSolvers, "test_batched_vector_offsets", test_batched_vector_offsets, devices=devices)
 add_function_test(TestLinearSolvers, "test_batched_inactive_tail", test_batched_inactive_tail, devices=devices)
 add_function_test(
