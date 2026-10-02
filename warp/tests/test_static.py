@@ -48,6 +48,14 @@ def static_global_variable_kernel(results: wp.array[int]):
     results[1] = static_func_result
 
 
+def make_static_builtin_kernel(op):
+    @wp.kernel
+    def static_builtin_kernel(result: wp.array[float]):
+        result[0] = wp.static(op)(0.5)
+
+    return static_builtin_kernel
+
+
 @wp.struct
 class StaticallyConstructableStruct:
     mat: wp.mat33
@@ -110,6 +118,13 @@ def test_static_global_variable(test, device):
     results = wp.zeros(2, dtype=int, device=device)
     wp.launch(static_global_variable_kernel, 1, [results], device=device)
     assert_np_equal(results.numpy(), np.array([5, 8], dtype=int))
+
+
+def test_static_builtin(test, device):
+    for op, expected in [(wp.tanh, np.tanh), (wp.neg, np.negative)]:
+        result = wp.zeros(1, dtype=float, device=device)
+        wp.launch(make_static_builtin_kernel(op), 1, [result], device=device)
+        np.testing.assert_allclose(result.numpy(), np.array([expected(0.5)]))
 
 
 def test_construct_static_struct(test, device):
@@ -734,6 +749,7 @@ class TestStatic(unittest.TestCase):
 
 
 add_function_test(TestStatic, "test_static_global_variable", test_static_global_variable, devices=devices)
+add_function_test(TestStatic, "test_static_builtin", test_static_builtin, devices=devices)
 add_function_test(TestStatic, "test_construct_static_struct", test_construct_static_struct, devices=devices)
 add_function_test(
     TestStatic, "test_construct_static_nested_struct", test_construct_static_nested_struct, devices=devices
