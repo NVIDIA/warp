@@ -3,4 +3,16 @@
 
 .. currentmodule:: warp.fem.linalg
 
-.. autodata:: householder_make_hessenberg
+.. function:: householder_make_hessenberg(A: Any)
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: unknown
+      :differentiable: unknown
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/linalg.py#L265-L289
+
+   Transform a square matrix to Hessenberg form (single lower diagonal) using Householder reflections.
+   
+   :returns: Q and H such that Q H Q^T = A, Q orthonormal, H under Hessenberg form
+             If A is symmetric, H will be tridiagonal
+   

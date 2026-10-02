@@ -1,9 +1,11 @@
 ﻿warp.tile\_sum
 ==============
 
-.. function:: warp._src.lang.tile_sum(a: Tile[Any, tuple[int, ...]], axis: int32) -> Tile[Any, tuple[int, ...]]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: tile_sum(a: Tile[Any, tuple[int, ...]], axis: int32) -> Tile[Any, tuple[int, ...]]
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -36,10 +38,10 @@
        [8 8 8 8 8 8 8 8] = tile(shape=(8), storage=register)
    
 
-.. function:: warp._src.lang.tile_sum(a: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[Literal[1]]]
+.. function:: tile_sum(a: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[Literal[1]]]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true

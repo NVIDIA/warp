@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=e5bdcd64" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=ca94f457" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
@@ -509,7 +509,7 @@
 <h1>warp.utils.AllocatorRmm<a class="headerlink" href="#warp-utils-allocatorrmm" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.utils.AllocatorRmm">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.utils.</span></span><span class="sig-name descname"><span class="pre">AllocatorRmm</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/rmm_allocator.py#L5-L90"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.utils.AllocatorRmm" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.utils.</span></span><span class="sig-name descname"><span class="pre">AllocatorRmm</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/rmm_allocator.py#L5-L89"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.utils.AllocatorRmm" title="Link to this definition">#</a></dt>
 <dd><p>Allocator that routes Warp device memory through RAPIDS Memory Manager (RMM).</p>
 <p>Each allocation delegates to <code class="docutils literal notranslate"><span class="pre">rmm.DeviceBuffer</span></code>, which uses whichever
 <code class="docutils literal notranslate"><span class="pre">DeviceMemoryResource</span></code> is active at the time of allocation (as set by
@@ -548,7 +548,7 @@ behavior with stream-ordered memory resources (e.g.,
 </div>
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.utils.AllocatorRmm.allocate">
-<span class="sig-name descname"><span class="pre">allocate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size_in_bytes</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/rmm_allocator.py#L64-L74"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.utils.AllocatorRmm.allocate" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">allocate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size_in_bytes</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/rmm_allocator.py#L64-L73"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.utils.AllocatorRmm.allocate" title="Link to this definition">#</a></dt>
 <dd><p>Allocate device memory via RMM and return a device pointer.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -562,7 +562,7 @@ behavior with stream-ordered memory resources (e.g.,
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.utils.AllocatorRmm.deallocate">
-<span class="sig-name descname"><span class="pre">deallocate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ptr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size_in_bytes</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/rmm_allocator.py#L75-L87"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.utils.AllocatorRmm.deallocate" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">deallocate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ptr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size_in_bytes</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/rmm_allocator.py#L75-L86"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.utils.AllocatorRmm.deallocate" title="Link to this definition">#</a></dt>
 <dd><p>Free device memory by releasing the RMM DeviceBuffer.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>

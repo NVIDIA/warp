@@ -1,9 +1,11 @@
 ﻿warp.cbrt
 =========
 
-.. function:: warp._src.lang.cbrt(x: Float) -> Float
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: cbrt(x: Float) -> Float
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true

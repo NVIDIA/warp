@@ -1,12 +1,15 @@
 ﻿warp.quat\_twist\_angle\_signed
 ===============================
 
-.. function:: warp._src.lang.quat_twist_angle_signed(axis: vec3f, q: quatf) -> float
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: quat_twist_angle_signed(axis: vec3f, q: quatf) -> float
+
+   .. wp-function-tags::
       :kernel: true
-      :python: false
+      :python: true
       :differentiable: true
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/math.py#L196-L217
 
    Return the signed twist angle of ``q`` around ``axis``.
    

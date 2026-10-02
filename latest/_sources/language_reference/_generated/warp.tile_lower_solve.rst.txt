@@ -1,9 +1,11 @@
 ﻿warp.tile\_lower\_solve
 =======================
 
-.. function:: warp._src.lang.tile_lower_solve(L: Tile[Float, tuple[int, int]], y: Tile[Float, tuple[int]]) -> Tile[Float, tuple[int]]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: tile_lower_solve(L: Tile[Float, tuple[int, int]], y: Tile[Float, tuple[int]]) -> Tile[Float, tuple[int]]
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true

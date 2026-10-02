@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=e5bdcd64" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=ca94f457" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
@@ -64,8 +64,8 @@
 
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="warp.fem.make_polynomial_basis_space" href="warp.fem.make_polynomial_basis_space.html" />
-    <link rel="prev" title="warp.fem.make_element_shape_function" href="warp.fem.make_element_shape_function.html" />
+    <link rel="next" title="warp.fem.cache" href="../warp_fem_cache.html" />
+    <link rel="prev" title="warp.fem.to_outer_cell" href="warp.fem.to_outer_cell.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -507,18 +507,16 @@
                   
   <section id="warp-fem-make-free-sample">
 <h1>warp.fem.make_free_sample<a class="headerlink" href="#warp-fem-make-free-sample" title="Link to this heading">#</a></h1>
-<dl class="py data">
+<dl class="py function">
 <dt class="sig sig-object py" id="warp.fem.make_free_sample">
-<span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">make_free_sample</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">make_free_sample(element_index:</span> <span class="pre">int,</span> <span class="pre">element_coords:</span> <span class="pre">vec3f)&gt;</span></span><a class="headerlink" href="#warp.fem.make_free_sample" title="Link to this definition">#</a></dt>
-<dd><p>Return a <a class="reference internal" href="warp.fem.Sample_f64.html#warp.fem.Sample_f64" title="warp.fem.Sample_f64"><code class="xref py py-class docutils literal notranslate"><span class="pre">Sample_f64</span></code></a> that is not associated to any quadrature point or dof.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>element_index</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
-<li><p><strong>element_coords</strong> (<a class="reference internal" href="warp.vec3d.html#warp.vec3d" title="warp._src.types.vec3d"><em>vec3d</em></a>)</p></li>
-</ul>
-</dd>
-</dl>
+<span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">make_free_sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">element_index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">element_coords</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="warp.vec3f.html#warp.vec3f" title="warp.vec3f"><span class="pre">vec3f</span></a></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/types.py#L149-L152"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.make_free_sample" title="Link to this definition">#</a></dt>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Return a <a class="reference internal" href="warp.fem.Sample.html#warp.fem.Sample" title="warp.fem.Sample"><code class="xref py py-class docutils literal notranslate"><span class="pre">Sample</span></code></a> that is not associated to any quadrature point or dof.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">make_free_sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">element_index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">element_coords</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="warp.vec3d.html#warp.vec3d" title="warp.vec3d"><span class="pre">vec3d</span></a></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/types.py#L155-L158"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Return a <a class="reference internal" href="warp.fem.Sample_f64.html#warp.fem.Sample_f64" title="warp.fem.Sample_f64"><code class="xref py py-class docutils literal notranslate"><span class="pre">Sample_f64</span></code></a> that is not associated to any quadrature point or dof.</p>
 </dd></dl>
 
 </section>
@@ -534,20 +532,20 @@
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.fem.make_element_shape_function.html"
+       href="warp.fem.to_outer_cell.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.fem.make_element_shape_function</p>
+        <p class="prev-next-title">warp.fem.to_outer_cell</p>
       </div>
     </a>
     <a class="right-next"
-       href="warp.fem.make_polynomial_basis_space.html"
+       href="../warp_fem_cache.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.fem.make_polynomial_basis_space</p>
+        <p class="prev-next-title">warp.fem.cache</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -572,7 +570,7 @@
   </div>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.make_free_sample"><code class="docutils literal notranslate"><span class="pre">make_free_sample</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.make_free_sample"><code class="docutils literal notranslate"><span class="pre">make_free_sample()</span></code></a></li>
 </ul>
   </nav></div>
 

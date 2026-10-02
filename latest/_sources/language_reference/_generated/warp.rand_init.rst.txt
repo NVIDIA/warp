@@ -1,9 +1,11 @@
 ﻿warp.rand\_init
 ===============
 
-.. function:: warp._src.lang.rand_init(seed: int32) -> uint32
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: rand_init(seed: int32) -> uint32
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: false
@@ -36,10 +38,10 @@
    :returns: A 32-bit unsigned integer holding the initial RNG state.
    
 
-.. function:: warp._src.lang.rand_init(seed: int32, offset: int32) -> uint32
+.. function:: rand_init(seed: int32, offset: int32) -> uint32
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: false

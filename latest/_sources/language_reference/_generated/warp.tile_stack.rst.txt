@@ -1,9 +1,11 @@
 ﻿warp.tile\_stack
 ================
 
-.. function:: warp._src.lang.tile_stack(capacity: int32, dtype: Any) -> TileStack[Any, Any]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: tile_stack(capacity: int32, dtype: Any) -> TileStack[Any, Any]
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

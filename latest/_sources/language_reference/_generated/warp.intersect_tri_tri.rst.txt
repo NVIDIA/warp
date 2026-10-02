@@ -1,9 +1,11 @@
 ﻿warp.intersect\_tri\_tri
 ========================
 
-.. function:: warp._src.lang.intersect_tri_tri(v0: vec3f, v1: vec3f, v2: vec3f, u0: vec3f, u1: vec3f, u2: vec3f) -> int
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: intersect_tri_tri(v0: vec3f, v1: vec3f, v2: vec3f, u0: vec3f, u1: vec3f, u2: vec3f) -> int
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -36,10 +38,10 @@
        intersect: 1
    
 
-.. function:: warp._src.lang.intersect_tri_tri(v0: vec3d, v1: vec3d, v2: vec3d, u0: vec3d, u1: vec3d, u2: vec3d) -> int
+.. function:: intersect_tri_tri(v0: vec3d, v1: vec3d, v2: vec3d, u0: vec3d, u1: vec3d, u2: vec3d) -> int
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

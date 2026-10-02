@@ -1,9 +1,11 @@
 ﻿warp.volume\_world\_to\_index\_dir
 ==================================
 
-.. function:: warp._src.lang.volume_world_to_index_dir(id: uint64, xyz: vec3f) -> vec3f
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: volume_world_to_index_dir(id: uint64, xyz: vec3f) -> vec3f
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
@@ -21,10 +23,10 @@
    
    See :func:`~warp.volume_index_to_world` for a usage example.
 
-.. function:: warp._src.lang.volume_world_to_index_dir(id: uint64, xyz: vec3d) -> vec3d
+.. function:: volume_world_to_index_dir(id: uint64, xyz: vec3d) -> vec3d
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true

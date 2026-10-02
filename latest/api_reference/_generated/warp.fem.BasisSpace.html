@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=e5bdcd64" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=ca94f457" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
@@ -509,7 +509,7 @@
 <h1>warp.fem.BasisSpace<a class="headerlink" href="#warp-fem-basisspace" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.fem.BasisSpace">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">BasisSpace</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">topology</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/basis_space.py#L26-L190"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.BasisSpace" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">BasisSpace</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">topology</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/basis_space.py#L26-L189"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.BasisSpace" title="Link to this definition">#</a></dt>
 <dd><p>Interface class for defining shape functions over a geometry.</p>
 <p>A basis space is a component of a function space, and is responsible for defining the node positions
 and their weights over individual elements of the geometry.
@@ -592,36 +592,36 @@ space for multiple value types (e.g, scalar, vector, or tensor).</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.BasisSpace.topology">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">topology</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.fem.SpaceTopology.html#warp.fem.SpaceTopology" title="warp._src.fem.space.topology.SpaceTopology"><span class="pre">SpaceTopology</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/basis_space.py#L58-L62"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.BasisSpace.topology" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">topology</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.fem.SpaceTopology.html#warp.fem.SpaceTopology" title="warp._src.fem.space.topology.SpaceTopology"><span class="pre">SpaceTopology</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/basis_space.py#L58-L61"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.BasisSpace.topology" title="Link to this definition">#</a></dt>
 <dd><p>Underlying topology of the basis space</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.BasisSpace.geometry">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">geometry</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.fem.Geometry.html#warp.fem.Geometry" title="warp._src.fem.geometry.geometry.Geometry"><span class="pre">Geometry</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/basis_space.py#L63-L67"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.BasisSpace.geometry" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">geometry</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.fem.Geometry.html#warp.fem.Geometry" title="warp._src.fem.geometry.geometry.Geometry"><span class="pre">Geometry</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/basis_space.py#L63-L66"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.BasisSpace.geometry" title="Link to this definition">#</a></dt>
 <dd><p>Underlying geometry of the basis space</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.BasisSpace.value">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">value</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.fem.ShapeFunction.html#warp.fem.ShapeFunction.Value" title="warp._src.fem.space.shape.shape_function.ShapeFunction.Value"><span class="pre">Value</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/basis_space.py#L68-L72"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.BasisSpace.value" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">value</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.fem.ShapeFunction.html#warp.fem.ShapeFunction.Value" title="warp._src.fem.space.shape.shape_function.ShapeFunction.Value"><span class="pre">Value</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/basis_space.py#L68-L71"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.BasisSpace.value" title="Link to this definition">#</a></dt>
 <dd><p>Value type for the underlying shape functions</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.BasisSpace.basis_arg_value">
-<span class="sig-name descname"><span class="pre">basis_arg_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/cache.py#L341-L352"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.BasisSpace.basis_arg_value" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">basis_arg_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/cache.py#L341-L351"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.BasisSpace.basis_arg_value" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.BasisSpace.fill_basis_arg">
-<span class="sig-name descname"><span class="pre">fill_basis_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/basis_space.py#L80-L83"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.BasisSpace.fill_basis_arg" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">fill_basis_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/basis_space.py#L80-L82"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.BasisSpace.fill_basis_arg" title="Link to this definition">#</a></dt>
 <dd><p>Fill the arguments to be passed to basis-related device functions</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.BasisSpace.node_positions">
-<span class="sig-name descname"><span class="pre">node_positions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">out</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/basis_space.py#L86-L137"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.BasisSpace.node_positions" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">node_positions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">out</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/basis_space.py#L86-L136"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.BasisSpace.node_positions" title="Link to this definition">#</a></dt>
 <dd><p>Return a temporary array containing the world position for each node.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -635,49 +635,49 @@ space for multiple value types (e.g, scalar, vector, or tensor).</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.BasisSpace.make_node_coords_in_element">
-<span class="sig-name descname"><span class="pre">make_node_coords_in_element</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/basis_space.py#L138-L141"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.BasisSpace.make_node_coords_in_element" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">make_node_coords_in_element</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/basis_space.py#L138-L140"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.BasisSpace.make_node_coords_in_element" title="Link to this definition">#</a></dt>
 <dd><p>Create a device function returning node coordinates within an element.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.BasisSpace.make_node_quadrature_weight">
-<span class="sig-name descname"><span class="pre">make_node_quadrature_weight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/basis_space.py#L142-L145"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.BasisSpace.make_node_quadrature_weight" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">make_node_quadrature_weight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/basis_space.py#L142-L144"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.BasisSpace.make_node_quadrature_weight" title="Link to this definition">#</a></dt>
 <dd><p>Create a device function returning node quadrature weights.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.BasisSpace.make_element_inner_weight">
-<span class="sig-name descname"><span class="pre">make_element_inner_weight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/basis_space.py#L146-L149"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.BasisSpace.make_element_inner_weight" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">make_element_inner_weight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/basis_space.py#L146-L148"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.BasisSpace.make_element_inner_weight" title="Link to this definition">#</a></dt>
 <dd><p>Create a device function returning inner element shape weights.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.BasisSpace.make_element_outer_weight">
-<span class="sig-name descname"><span class="pre">make_element_outer_weight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/basis_space.py#L150-L153"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.BasisSpace.make_element_outer_weight" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">make_element_outer_weight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/basis_space.py#L150-L152"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.BasisSpace.make_element_outer_weight" title="Link to this definition">#</a></dt>
 <dd><p>Create a device function returning outer element shape weights.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.BasisSpace.make_element_inner_weight_gradient">
-<span class="sig-name descname"><span class="pre">make_element_inner_weight_gradient</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/basis_space.py#L154-L157"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.BasisSpace.make_element_inner_weight_gradient" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">make_element_inner_weight_gradient</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/basis_space.py#L154-L156"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.BasisSpace.make_element_inner_weight_gradient" title="Link to this definition">#</a></dt>
 <dd><p>Create a device function returning gradients of inner element weights.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.BasisSpace.make_element_outer_weight_gradient">
-<span class="sig-name descname"><span class="pre">make_element_outer_weight_gradient</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/basis_space.py#L158-L161"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.BasisSpace.make_element_outer_weight_gradient" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">make_element_outer_weight_gradient</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/basis_space.py#L158-L160"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.BasisSpace.make_element_outer_weight_gradient" title="Link to this definition">#</a></dt>
 <dd><p>Create a device function returning gradients of outer element weights.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.BasisSpace.make_trace_node_quadrature_weight">
-<span class="sig-name descname"><span class="pre">make_trace_node_quadrature_weight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/basis_space.py#L162-L165"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.BasisSpace.make_trace_node_quadrature_weight" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">make_trace_node_quadrature_weight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/basis_space.py#L162-L164"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.BasisSpace.make_trace_node_quadrature_weight" title="Link to this definition">#</a></dt>
 <dd><p>Create a device function returning trace node quadrature weights.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.BasisSpace.trace">
-<span class="sig-name descname"><span class="pre">trace</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/basis_space.py#L166-L169"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.BasisSpace.trace" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">trace</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/basis_space.py#L166-L168"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.BasisSpace.trace" title="Link to this definition">#</a></dt>
 <dd><p>Return a trace basis space on lower-dimensional elements.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -688,13 +688,13 @@ space for multiple value types (e.g, scalar, vector, or tensor).</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.BasisSpace.weight_type">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">weight_type</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/basis_space.py#L170-L178"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.BasisSpace.weight_type" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">weight_type</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/basis_space.py#L170-L177"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.BasisSpace.weight_type" title="Link to this definition">#</a></dt>
 <dd><p>Data type of node weights returned by the basis.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.BasisSpace.weight_gradient_type">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">weight_gradient_type</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/basis_space.py#L179-L190"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.BasisSpace.weight_gradient_type" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">weight_gradient_type</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/basis_space.py#L179-L189"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.BasisSpace.weight_gradient_type" title="Link to this definition">#</a></dt>
 <dd><p>Data type of node weight gradients returned by the basis.</p>
 </dd></dl>
 

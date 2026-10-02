@@ -1,9 +1,11 @@
 ﻿warp.quaternion
 ===============
 
-.. function:: warp._src.lang.quaternion(dtype: Float = ...) -> Quaternion[Float]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: quaternion(dtype: Float = ...) -> Quaternion[Float]
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -13,10 +15,10 @@
    Zero-initialize the quaternion. Quaternions are laid out as
    ``[ix, iy, iz, r]``, where ``ix``, ``iy``, ``iz`` are the imaginary part, and ``r`` the real part.
 
-.. function:: warp._src.lang.quaternion(x: Float, y: Float, z: Float, w: Float, dtype: Float = ...) -> Quaternion[Float]
+.. function:: quaternion(x: Float, y: Float, z: Float, w: Float, dtype: Float = ...) -> Quaternion[Float]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -25,10 +27,10 @@
    
    Use the supplied components (type inferred from component type).
 
-.. function:: warp._src.lang.quaternion(ijk: Vector[Float, Literal[3]], real: Float, dtype: Float = ...) -> Quaternion[Float]
+.. function:: quaternion(ijk: Vector[Float, Literal[3]], real: Float, dtype: Float = ...) -> Quaternion[Float]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -37,10 +39,10 @@
    
    Use the supplied vector/scalar (type inferred from scalar type).
 
-.. function:: warp._src.lang.quaternion(quat: Quaternion[Float], dtype: Float = ...) -> Quaternion[Float]
+.. function:: quaternion(quat: Quaternion[Float], dtype: Float = ...) -> Quaternion[Float]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true

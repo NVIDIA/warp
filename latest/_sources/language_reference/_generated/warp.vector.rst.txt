@@ -1,9 +1,11 @@
 ﻿warp.vector
 ===========
 
-.. function:: warp._src.lang.vector(*args: Scalar, length: int32 = ..., dtype: Scalar = ...) -> Vector[Scalar, Any]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: vector(*args: Scalar, length: int32 = ..., dtype: Scalar = ...) -> Vector[Scalar, Any]
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true

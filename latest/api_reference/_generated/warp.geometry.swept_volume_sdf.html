@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=e5bdcd64" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=ca94f457" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
@@ -65,8 +65,8 @@
 
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="warp.geometry.tri_tri_adjacency" href="warp.geometry.tri_tri_adjacency.html" />
-    <link rel="prev" title="warp.geometry.swept_volume_mesh" href="warp.geometry.swept_volume_mesh.html" />
+    <link rel="next" title="warp.optim" href="../warp_optim.html" />
+    <link rel="prev" title="warp.geometry.find_triangle_neighbor_edge_index" href="warp.geometry.find_triangle_neighbor_edge_index.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -508,10 +508,20 @@
                   
   <section id="warp-geometry-swept-volume-sdf">
 <h1>warp.geometry.swept_volume_sdf<a class="headerlink" href="#warp-geometry-swept-volume-sdf" title="Link to this heading">#</a></h1>
-<dl class="py data">
+<dl class="py function">
 <dt class="sig sig-object py" id="warp.geometry.swept_volume_sdf">
-<span class="sig-prename descclassname"><span class="pre">warp.geometry.</span></span><span class="sig-name descname"><span class="pre">swept_volume_sdf</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">swept_volume_sdf(point:</span> <span class="pre">vec3f,</span> <span class="pre">mesh_ids:</span> <span class="pre">array(ndim=1,</span> <span class="pre">dtype=uint64),</span> <span class="pre">transforms:</span> <span class="pre">array(ndim=2,</span> <span class="pre">dtype=transformf),</span> <span class="pre">max_dist:</span> <span class="pre">float32,</span> <span class="pre">sign_mode:</span> <span class="pre">int32)&gt;</span></span><a class="headerlink" href="#warp.geometry.swept_volume_sdf" title="Link to this definition">#</a></dt>
-<dd><p>Evaluate the swept-volume pseudo signed distance at a single point.</p>
+<span class="sig-prename descclassname"><span class="pre">warp.geometry.</span></span><span class="sig-name descname"><span class="pre">swept_volume_sdf</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">point</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="warp.vec3f.html#warp.vec3f" title="warp.vec3f"><span class="pre">vec3f</span></a></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">mesh_ids</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Array</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="warp.uint64.html#warp.uint64" title="warp.uint64"><span class="pre">uint64</span></a><span class="p"><span class="pre">]</span></span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">transforms</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Array</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="warp.transformf.html#warp.transformf" title="warp.transformf"><span class="pre">transformf</span></a><span class="p"><span class="pre">]</span></span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_dist</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="warp.float32.html#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">sign_mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="warp.int32.html#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="warp.float32.html#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/delaunay.py#L716-L780"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.swept_volume_sdf" title="Link to this definition">#</a></dt>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="differentiable" data-wp-value="false"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: false</span></li></ul><p>Evaluate the swept-volume pseudo signed distance at a single point.</p>
 <p>Returns <span class="math notranslate nohighlight">\(\min_m \min_s \mathrm{sdf}_m(X_{m,s}^{-1} p)\)</span>, the minimum
 over every mesh <span class="math notranslate nohighlight">\(m\)</span> and every sampled pose <span class="math notranslate nohighlight">\(s\)</span>. The motion is
 rigid, so instead of transforming the geometry the query point is pushed
@@ -521,24 +531,21 @@ not differentiable.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>point</strong> (<a class="reference internal" href="warp.vec3f.html#warp.vec3f" title="warp._src.types.vec3f"><em>vec3f</em></a>) – Query point, in world space.</p></li>
-<li><p><strong>mesh_ids</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>warp.array</em></a><em>[</em><a class="reference internal" href="warp.uint64.html#warp.uint64" title="warp.uint64"><em>warp.uint64</em></a><em>]</em>) – Identifiers of the rest-pose meshes.</p></li>
-<li><p><strong>transforms</strong> (<a class="reference internal" href="warp.array2d.html#warp.array2d" title="warp.array2d"><em>warp.array2d</em></a><em>[</em><a class="reference internal" href="warp.transformf.html#warp.transformf" title="warp.transformf"><em>warp.transformf</em></a><em>]</em>) – Per-mesh, per-sample rigid poses, mapping rest space to
+<li><p><strong>point</strong> – Query point, in world space.</p></li>
+<li><p><strong>mesh_ids</strong> – Identifiers of the rest-pose meshes.</p></li>
+<li><p><strong>transforms</strong> – Per-mesh, per-sample rigid poses, mapping rest space to
 world space.</p></li>
-<li><p><strong>max_dist</strong> (<a class="reference internal" href="warp.float32.html#warp.float32" title="warp._src.types.float32"><em>float32</em></a>) – Bound on the closest-point search. A query that finds nothing
+<li><p><strong>max_dist</strong> – Bound on the closest-point search. A query that finds nothing
 within it returns no sign either, so this returns <code class="docutils literal notranslate"><span class="pre">+max_dist</span></code> for
 a point deep inside the union just as it does for one far outside;
 pass a bound that spans the region of interest, as the array-level
 entry points do.</p></li>
-<li><p><strong>sign_mode</strong> (<a class="reference internal" href="warp.int32.html#warp.int32" title="warp._src.types.int32"><em>int32</em></a>) – Inside/outside classification method, as the integer value of
+<li><p><strong>sign_mode</strong> – Inside/outside classification method, as the integer value of
 a <a class="reference internal" href="warp.geometry.SweptVolumeSignMode.html#warp.geometry.SweptVolumeSignMode" title="warp.geometry.SweptVolumeSignMode"><code class="xref py py-class docutils literal notranslate"><span class="pre">SweptVolumeSignMode</span></code></a> member.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>The pseudo signed distance at <code class="docutils literal notranslate"><span class="pre">point</span></code>.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="warp.float32.html#warp.float32" title="warp._src.types.float32"><em>float32</em></a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -556,20 +563,20 @@ a <a class="reference internal" href="warp.geometry.SweptVolumeSignMode.html#war
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.geometry.swept_volume_mesh.html"
+       href="warp.geometry.find_triangle_neighbor_edge_index.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.geometry.swept_volume_mesh</p>
+        <p class="prev-next-title">warp.geometry.find_triangle_neighbor_edge_index</p>
       </div>
     </a>
     <a class="right-next"
-       href="warp.geometry.tri_tri_adjacency.html"
+       href="../warp_optim.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.geometry.tri_tri_adjacency</p>
+        <p class="prev-next-title">warp.optim</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -594,7 +601,7 @@ a <a class="reference internal" href="warp.geometry.SweptVolumeSignMode.html#war
   </div>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.geometry.swept_volume_sdf"><code class="docutils literal notranslate"><span class="pre">swept_volume_sdf</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.geometry.swept_volume_sdf"><code class="docutils literal notranslate"><span class="pre">swept_volume_sdf()</span></code></a></li>
 </ul>
   </nav></div>
 

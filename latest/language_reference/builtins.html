@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=e5bdcd64" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=ca94f457" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
@@ -561,6 +561,9 @@ apply. The tags indicate where a function can be called and whether it is differ
 <li><p><strong>Python</strong> - Can be called at the Python scope</p></li>
 <li><p><strong>Differentiable</strong> - Propagates gradients when used in reverse mode automatic differentiation</p></li>
 </ul>
+<p>A missing tag means that the capability is not guaranteed for that overload: it may be
+unsupported, or supported only for some arguments. See the function description for
+details.</p>
 <p>For a listing of the API that is exclusively intended to be used at the Python scope
 and run inside the CPython interpreter, see <a class="reference internal" href="../api_reference/warp.html"><span class="doc">warp</span></a>.</p>
 <section id="scalar-math">

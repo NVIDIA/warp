@@ -1,9 +1,11 @@
 ﻿warp.mesh\_query\_point\_sign\_normal
 =====================================
 
-.. function:: warp._src.lang.mesh_query_point_sign_normal(id: uint64, point: vec3f, max_dist: float32, epsilon: float32 = 0.001) -> MeshQueryPoint
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: mesh_query_point_sign_normal(id: uint64, point: vec3f, max_dist: float32, epsilon: float32 = 0.001) -> MeshQueryPoint
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true

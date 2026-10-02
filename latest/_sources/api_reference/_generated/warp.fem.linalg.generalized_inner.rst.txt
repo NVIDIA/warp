@@ -3,4 +3,86 @@
 
 .. currentmodule:: warp.fem.linalg
 
-.. autodata:: generalized_inner
+.. function:: generalized_inner(x: Vector[Scalar, Any], y: Vector[Scalar, Any])
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: unknown
+      :differentiable: unknown
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/linalg.py#L66-L77
+
+   Compute a generalized inner product.
+   
+   :param x: Vector input.
+   :param y: Vector input.
+   
+   :returns: Scalar (``y^T x``).
+   
+
+.. function:: generalized_inner(x: Scalar, y: Scalar)
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: unknown
+      :differentiable: unknown
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/linalg.py#L80-L91
+
+   Compute a generalized inner product.
+   
+   :param x: Scalar input.
+   :param y: Scalar input.
+   
+   :returns: Scalar (``x y``).
+   
+
+.. function:: generalized_inner(x: Matrix[Scalar, Any, Any], y: Vector[Scalar, Any])
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: unknown
+      :differentiable: unknown
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/linalg.py#L94-L105
+
+   Compute a generalized inner product.
+   
+   :param x: Matrix input.
+   :param y: Vector input.
+   
+   :returns: Vector (``y^T x``).
+   
+
+.. function:: generalized_inner(x: Vector[Scalar, Any], y: Matrix[Scalar, Any, Any])
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: unknown
+      :differentiable: unknown
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/linalg.py#L108-L119
+
+   Compute a generalized inner product.
+   
+   :param x: Vector input.
+   :param y: Matrix input.
+   
+   :returns: Vector (``x^T y``).
+   
+
+.. function:: generalized_inner(x: Matrix[Scalar, Any, Any], y: Matrix[Scalar, Any, Any])
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: unknown
+      :differentiable: unknown
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/linalg.py#L122-L133
+
+   Compute a generalized inner product.
+   
+   :param x: Matrix input.
+   :param y: Matrix input.
+   
+   :returns: Scalar (``x : y``).
+   

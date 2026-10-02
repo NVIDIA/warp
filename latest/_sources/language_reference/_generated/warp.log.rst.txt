@@ -1,9 +1,11 @@
 ﻿warp.log
 ========
 
-.. function:: warp._src.lang.log(x: Float) -> Float
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: log(x: Float) -> Float
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true

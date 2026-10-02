@@ -1,9 +1,11 @@
 ﻿warp.tile\_fft
 ==============
 
-.. function:: warp._src.lang.tile_fft(inout: Tile[Vector[Float, Literal[2]], tuple[int, ...]]) -> None
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: tile_fft(inout: Tile[Vector[Float, Literal[2]], tuple[int, ...]]) -> None
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true

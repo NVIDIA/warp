@@ -3,4 +3,12 @@
 
 .. currentmodule:: warp
 
-.. autodata:: quat_between_vectors
+.. function:: quat_between_vectors(a: vec3f, b: vec3f) -> quatf
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: unknown
+      :differentiable: unknown
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/utils.py#L38-L46
+
+   Compute the quaternion that rotates vector ``a`` to vector ``b``.

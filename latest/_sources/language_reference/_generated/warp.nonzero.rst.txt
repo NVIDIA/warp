@@ -1,9 +1,11 @@
 ﻿warp.nonzero
 ============
 
-.. function:: warp._src.lang.nonzero(x: Scalar) -> Scalar
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: nonzero(x: Scalar) -> Scalar
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: false

@@ -1,9 +1,11 @@
 ﻿warp.max
 ========
 
-.. function:: warp._src.lang.max(a: Scalar, b: Scalar) -> Scalar
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: max(a: Scalar, b: Scalar) -> Scalar
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
@@ -14,10 +16,10 @@
    operation returns the non-NaN operand when exactly one is NaN, and NaN
    only when both are NaN.
 
-.. function:: warp._src.lang.max(a: Vector[Scalar, Any], b: Vector[Scalar, Any]) -> Vector[Scalar, Any]
+.. function:: max(a: Vector[Scalar, Any], b: Vector[Scalar, Any]) -> Vector[Scalar, Any]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
@@ -27,10 +29,10 @@
    :returns: The element-wise maximum of ``a`` and ``b``.
    
 
-.. function:: warp._src.lang.max(a: Vector[Scalar, Any]) -> Scalar
+.. function:: max(a: Vector[Scalar, Any]) -> Scalar
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true

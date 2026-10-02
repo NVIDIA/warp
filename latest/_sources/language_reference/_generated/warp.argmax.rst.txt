@@ -1,9 +1,11 @@
 ﻿warp.argmax
 ===========
 
-.. function:: warp._src.lang.argmax(a: Vector[Scalar, Any]) -> uint32
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: argmax(a: Vector[Scalar, Any]) -> uint32
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: false

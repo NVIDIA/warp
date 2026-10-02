@@ -1,59 +1,61 @@
 ﻿warp.sub
 ========
 
-.. function:: warp._src.lang.sub(a: Scalar, b: Scalar) -> Scalar
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: sub(a: Scalar, b: Scalar) -> Scalar
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
 
    Subtract ``b`` from ``a``.
 
-.. function:: warp._src.lang.sub(a: Vector[Scalar, Any], b: Vector[Scalar, Any]) -> Vector[Scalar, Any]
+.. function:: sub(a: Vector[Scalar, Any], b: Vector[Scalar, Any]) -> Vector[Scalar, Any]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
 
    Subtract ``b`` from ``a``.
 
-.. function:: warp._src.lang.sub(a: Matrix[Scalar, Any, Any], b: Matrix[Scalar, Any, Any]) -> Matrix[Scalar, Any, Any]
+.. function:: sub(a: Matrix[Scalar, Any, Any], b: Matrix[Scalar, Any, Any]) -> Matrix[Scalar, Any, Any]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
 
    Subtract ``b`` from ``a``.
 
-.. function:: warp._src.lang.sub(a: Quaternion[Float], b: Quaternion[Float]) -> Quaternion[Float]
+.. function:: sub(a: Quaternion[Float], b: Quaternion[Float]) -> Quaternion[Float]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
 
    Subtract ``b`` from ``a``.
 
-.. function:: warp._src.lang.sub(a: Transformation[Float], b: Transformation[Float]) -> Transformation[Float]
+.. function:: sub(a: Transformation[Float], b: Transformation[Float]) -> Transformation[Float]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
 
    Subtract ``b`` from ``a``.
 
-.. function:: warp._src.lang.sub(a: Tile[Any, tuple[int, ...]], b: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[int, ...]]
+.. function:: sub(a: Tile[Any, tuple[int, ...]], b: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[int, ...]]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true

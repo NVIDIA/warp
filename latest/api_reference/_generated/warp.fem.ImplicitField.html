@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=e5bdcd64" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=ca94f457" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
@@ -520,7 +520,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">degree</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/field/field.py#L280-L465"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ImplicitField" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/field/field.py#L280-L464"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ImplicitField" title="Link to this definition">#</a></dt>
 <dd><p>Field defined from an arbitrary function over a domain.
 Does not support autodiff yet, so if gradient/divergence evaluation is required corresponding functions must be provided.</p>
 <dl class="field-list simple">
@@ -633,49 +633,49 @@ Does not support autodiff yet, so if gradient/divergence evaluation is required 
 </div>
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.ImplicitField.values">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">values</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/field/field.py#L355-L359"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ImplicitField.values" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">values</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/field/field.py#L355-L358"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ImplicitField.values" title="Link to this definition">#</a></dt>
 <dd><p>Argument values passed to the evaluation function.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.ImplicitField.geometry">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">geometry</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.fem.Geometry.html#warp.fem.Geometry" title="warp._src.fem.geometry.geometry.Geometry"><span class="pre">Geometry</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/field/field.py#L365-L369"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ImplicitField.geometry" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">geometry</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.fem.Geometry.html#warp.fem.Geometry" title="warp._src.fem.geometry.geometry.Geometry"><span class="pre">Geometry</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/field/field.py#L365-L368"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ImplicitField.geometry" title="Link to this definition">#</a></dt>
 <dd><p>Underlying geometry of the domain.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.ImplicitField.element_kind">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">element_kind</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.fem.ElementKind.html#warp.fem.ElementKind" title="warp._src.fem.types.ElementKind"><span class="pre">ElementKind</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/field/field.py#L370-L374"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ImplicitField.element_kind" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">element_kind</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.fem.ElementKind.html#warp.fem.ElementKind" title="warp._src.fem.types.ElementKind"><span class="pre">ElementKind</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/field/field.py#L370-L373"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ImplicitField.element_kind" title="Link to this definition">#</a></dt>
 <dd><p>Kind of elements over which the field is defined.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.ImplicitField.dtype">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">dtype</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/field/field.py#L375-L380"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ImplicitField.dtype" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">dtype</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/field/field.py#L375-L379"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ImplicitField.dtype" title="Link to this definition">#</a></dt>
 <dd><p>Field value type if known, otherwise <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.ImplicitField.eval_arg_value">
-<span class="sig-name descname"><span class="pre">eval_arg_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/field/field.py#L381-L384"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ImplicitField.eval_arg_value" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">eval_arg_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/field/field.py#L381-L383"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ImplicitField.eval_arg_value" title="Link to this definition">#</a></dt>
 <dd><p>Return the evaluation argument structure for device functions.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.ImplicitField.degree">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">degree</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/field/field.py#L385-L389"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ImplicitField.degree" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">degree</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/field/field.py#L385-L388"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ImplicitField.degree" title="Link to this definition">#</a></dt>
 <dd><p>Quadrature degree hint for the field.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.ImplicitField.name">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">name</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/field/field.py#L390-L394"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ImplicitField.name" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">name</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/field/field.py#L390-L393"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ImplicitField.name" title="Link to this definition">#</a></dt>
 <dd><p>Unique name encoding the domain, argument structure, and evaluation functions.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.ImplicitField.gradient_valid">
-<span class="sig-name descname"><span class="pre">gradient_valid</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/field/field.py#L395-L398"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ImplicitField.gradient_valid" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">gradient_valid</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/field/field.py#L395-L397"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ImplicitField.gradient_valid" title="Link to this definition">#</a></dt>
 <dd><p>Whether gradient evaluation is available.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -686,7 +686,7 @@ Does not support autodiff yet, so if gradient/divergence evaluation is required 
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.ImplicitField.divergence_valid">
-<span class="sig-name descname"><span class="pre">divergence_valid</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/field/field.py#L399-L402"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ImplicitField.divergence_valid" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">divergence_valid</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/field/field.py#L399-L401"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ImplicitField.divergence_valid" title="Link to this definition">#</a></dt>
 <dd><p>Whether divergence evaluation is available.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -697,7 +697,7 @@ Does not support autodiff yet, so if gradient/divergence evaluation is required 
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.ImplicitField.trace">
-<span class="sig-name descname"><span class="pre">trace</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/field/field.py#L452-L465"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ImplicitField.trace" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">trace</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/field/field.py#L452-L464"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ImplicitField.trace" title="Link to this definition">#</a></dt>
 <dd><p>Return the trace of this field on domain sides.</p>
 </dd></dl>
 

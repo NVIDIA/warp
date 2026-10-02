@@ -1,9 +1,11 @@
 ﻿warp.tile\_axpy
 ===============
 
-.. function:: warp._src.lang.tile_axpy(alpha: Any, src: Tile[Any, tuple[int, ...]], dest: Tile[Any, tuple[int, ...]]) -> None
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: tile_axpy(alpha: Any, src: Tile[Any, tuple[int, ...]], dest: Tile[Any, tuple[int, ...]]) -> None
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true

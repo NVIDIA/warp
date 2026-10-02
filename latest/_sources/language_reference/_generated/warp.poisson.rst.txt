@@ -1,9 +1,11 @@
 ﻿warp.poisson
 ============
 
-.. function:: warp._src.lang.poisson(state: uint32, lam: float32) -> uint32
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: poisson(state: uint32, lam: float32) -> uint32
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: false

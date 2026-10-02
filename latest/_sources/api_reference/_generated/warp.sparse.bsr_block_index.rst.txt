@@ -3,4 +3,38 @@
 
 .. currentmodule:: warp.sparse
 
-.. autodata:: bsr_block_index
+.. function:: bsr_block_index(row: int, col: int, bsr_offsets: Array[int32], bsr_columns: Array[int32]) -> int
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: unknown
+      :differentiable: unknown
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/sparse.py#L1862-L1888
+
+   Return the index of the block at block-coordinates (row, col), or -1 if no such block exists.
+   
+   Assumes that the segments of ``bsr_columns`` corresponding to each row are sorted. This overload
+   searches the storage row ``bsr_offsets[row]:bsr_offsets[row + 1]``. For matrices with padded row
+   capacity, pass ``bsr_row_counts`` to search active blocks only.
+   
+   :param row: Row of the block.
+   :param col: Column of the block.
+   :param bsr_offsets: Array of size at least ``1 + row`` containing the offsets of the blocks in each row.
+   :param bsr_columns: Array of size at least equal to ``bsr_offsets[row + 1]`` containing the column indices of the blocks.
+   
+
+.. function:: bsr_block_index(row: int, col: int, bsr_offsets: Array[int32], bsr_columns: Array[int32], bsr_row_counts: Array[int32]) -> int
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: unknown
+      :differentiable: unknown
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/sparse.py#L1891-L1913
+
+   Return the active block index in a capacity-aware BSR matrix, or -1 if no such block exists.
+   
+   This row-capacity overload searches
+   ``bsr_offsets[row]:bsr_offsets[row] + bsr_row_counts[row]`` and ignores
+   slack storage. If ``bsr_row_counts`` is ``None``, it falls back to compact
+   storage rows defined by ``bsr_offsets``.

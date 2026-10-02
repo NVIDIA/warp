@@ -1,9 +1,11 @@
 ﻿warp.tile\_stack\_count
 =======================
 
-.. function:: warp._src.lang.tile_stack_count(s: Any) -> int
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: tile_stack_count(s: Any) -> int
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

@@ -1,9 +1,11 @@
 ﻿warp.tile\_store\_indexed
 =========================
 
-.. function:: warp._src.lang.tile_store_indexed(a: Array[Any], indices: Tile[int32, tuple[int]], t: Tile[Any, tuple[int, ...]], offset: tuple[int, ...] = ..., axis: int32 = 0) -> None
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: tile_store_indexed(a: Array[Any], indices: Tile[int32, tuple[int]], t: Tile[Any, tuple[int, ...]], offset: tuple[int, ...] = ..., axis: int32 = 0) -> None
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true

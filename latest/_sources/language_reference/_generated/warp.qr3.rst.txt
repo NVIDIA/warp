@@ -1,9 +1,11 @@
 ﻿warp.qr3
 ========
 
-.. function:: warp._src.lang.qr3(A: Matrix[Float, Literal[3], Literal[3]]) -> tuple[Matrix[Float, Literal[3], Literal[3]], Matrix[Float, Literal[3], Literal[3]]]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: qr3(A: Matrix[Float, Literal[3], Literal[3]]) -> tuple[Matrix[Float, Literal[3], Literal[3]], Matrix[Float, Literal[3], Literal[3]]]
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
@@ -78,10 +80,10 @@
        R diagonal: [ 1.414  1.225 -1.155]
    
 
-.. function:: warp._src.lang.qr3(A: Matrix[Float, Literal[3], Literal[3]], Q: Matrix[Float, Literal[3], Literal[3]], R: Matrix[Float, Literal[3], Literal[3]]) -> None
+.. function:: qr3(A: Matrix[Float, Literal[3], Literal[3]], Q: Matrix[Float, Literal[3], Literal[3]], R: Matrix[Float, Literal[3], Literal[3]]) -> None
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true

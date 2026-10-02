@@ -1,9 +1,11 @@
 ﻿warp.spatial\_dot
 =================
 
-.. function:: warp._src.lang.spatial_dot(a: Vector[Float, Literal[6]], b: Vector[Float, Literal[6]]) -> Float
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: spatial_dot(a: Vector[Float, Literal[6]], b: Vector[Float, Literal[6]]) -> Float
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true

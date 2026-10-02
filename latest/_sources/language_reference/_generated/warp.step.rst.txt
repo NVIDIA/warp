@@ -1,9 +1,11 @@
 ﻿warp.step
 =========
 
-.. function:: warp._src.lang.step(x: Scalar) -> Scalar
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: step(x: Scalar) -> Scalar
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: false

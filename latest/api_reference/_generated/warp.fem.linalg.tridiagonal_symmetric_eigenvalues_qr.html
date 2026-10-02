@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=e5bdcd64" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=ca94f457" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
@@ -510,18 +510,18 @@
                   
   <section id="warp-fem-linalg-tridiagonal-symmetric-eigenvalues-qr">
 <h1>warp.fem.linalg.tridiagonal_symmetric_eigenvalues_qr<a class="headerlink" href="#warp-fem-linalg-tridiagonal-symmetric-eigenvalues-qr" title="Link to this heading">#</a></h1>
-<dl class="py data">
+<dl class="py function">
 <dt class="sig sig-object py" id="warp.fem.linalg.tridiagonal_symmetric_eigenvalues_qr">
-<span class="sig-prename descclassname"><span class="pre">warp.fem.linalg.</span></span><span class="sig-name descname"><span class="pre">tridiagonal_symmetric_eigenvalues_qr</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">tridiagonal_symmetric_eigenvalues_qr(D:</span> <span class="pre">Any,</span> <span class="pre">L:</span> <span class="pre">Any,</span> <span class="pre">Q:</span> <span class="pre">Any,</span> <span class="pre">tol:</span> <span class="pre">Any)&gt;</span></span><a class="headerlink" href="#warp.fem.linalg.tridiagonal_symmetric_eigenvalues_qr" title="Link to this definition">#</a></dt>
-<dd><p>Compute the eigenvalues and eigen vectors of a symmetric tridiagonal matrix using the
+<span class="sig-prename descclassname"><span class="pre">warp.fem.linalg.</span></span><span class="sig-name descname"><span class="pre">tridiagonal_symmetric_eigenvalues_qr</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">D</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">L</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Q</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tol</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/linalg.py#L401-L501"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.linalg.tridiagonal_symmetric_eigenvalues_qr" title="Link to this definition">#</a></dt>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Compute the eigenvalues and eigen vectors of a symmetric tridiagonal matrix using the
 Symmetric tridiagonal QR algorithm with implicit Wilkinson shift</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>D</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>) – Main diagonal of the matrix</p></li>
-<li><p><strong>L</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>) – Lower diagonal of the matrix, indexed such that L[i] = A[i+1, i]</p></li>
-<li><p><strong>Q</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>) – Initialization for the eigenvectors, useful if a pre-transformation has been applied, otherwise may be identity</p></li>
-<li><p><strong>tol</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>) – Tolerance on off-diagonal terms, relative to their neighboring diagonal terms. Tolerances below the
+<li><p><strong>D</strong> – Main diagonal of the matrix</p></li>
+<li><p><strong>L</strong> – Lower diagonal of the matrix, indexed such that L[i] = A[i+1, i]</p></li>
+<li><p><strong>Q</strong> – Initialization for the eigenvectors, useful if a pre-transformation has been applied, otherwise may be identity</p></li>
+<li><p><strong>tol</strong> – Tolerance on off-diagonal terms, relative to their neighboring diagonal terms. Tolerances below the
 machine epsilon of the scalar type fall back to the tightest attainable criterion.</p></li>
 </ul>
 </dd>
@@ -581,7 +581,7 @@ machine epsilon of the scalar type fall back to the tightest attainable criterio
   </div>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.linalg.tridiagonal_symmetric_eigenvalues_qr"><code class="docutils literal notranslate"><span class="pre">tridiagonal_symmetric_eigenvalues_qr</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.linalg.tridiagonal_symmetric_eigenvalues_qr"><code class="docutils literal notranslate"><span class="pre">tridiagonal_symmetric_eigenvalues_qr()</span></code></a></li>
 </ul>
   </nav></div>
 

@@ -1,9 +1,11 @@
 ﻿warp.outer
 ==========
 
-.. function:: warp._src.lang.outer(a: Vector[Scalar, Any], b: Vector[Scalar, Any]) -> Matrix[Scalar, Any, Any]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: outer(a: Vector[Scalar, Any], b: Vector[Scalar, Any]) -> Matrix[Scalar, Any, Any]
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true

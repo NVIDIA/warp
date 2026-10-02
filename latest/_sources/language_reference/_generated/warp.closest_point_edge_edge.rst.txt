@@ -1,9 +1,11 @@
 ﻿warp.closest\_point\_edge\_edge
 ===============================
 
-.. function:: warp._src.lang.closest_point_edge_edge(p1: vec3f, q1: vec3f, p2: vec3f, q2: vec3f, epsilon: float32) -> vec3f
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: closest_point_edge_edge(p1: vec3f, q1: vec3f, p2: vec3f, q2: vec3f, epsilon: float32) -> vec3f
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true

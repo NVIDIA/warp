@@ -1,9 +1,11 @@
 ﻿warp.cross
 ==========
 
-.. function:: warp._src.lang.cross(a: Vector[Scalar, Literal[3]], b: Vector[Scalar, Literal[3]]) -> Vector[Scalar, Literal[3]]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: cross(a: Vector[Scalar, Literal[3]], b: Vector[Scalar, Literal[3]]) -> Vector[Scalar, Literal[3]]
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true

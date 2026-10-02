@@ -1,9 +1,11 @@
 ﻿warp.tile\_randf
 ================
 
-.. function:: warp._src.lang.tile_randf(shape: tuple[int, ...], rng: uint32, storage: str = "register") -> Tile[Any, tuple[int, ...]]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: tile_randf(shape: tuple[int, ...], rng: uint32, storage: str = "register") -> Tile[Any, tuple[int, ...]]
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -60,10 +62,10 @@
    kernel generates a different sequence.
    
 
-.. function:: warp._src.lang.tile_randf(shape: int32, rng: uint32, storage: str = "register") -> Tile[Any, tuple[int, ...]]
+.. function:: tile_randf(shape: int32, rng: uint32, storage: str = "register") -> Tile[Any, tuple[int, ...]]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -74,10 +76,10 @@
    ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument for usage
    details and an example.
 
-.. function:: warp._src.lang.tile_randf(shape: tuple[int, ...], rng: uint32, min: float32, max: float32, storage: str = "register") -> Tile[Any, tuple[int, ...]]
+.. function:: tile_randf(shape: tuple[int, ...], rng: uint32, min: float32, max: float32, storage: str = "register") -> Tile[Any, tuple[int, ...]]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -100,10 +102,10 @@
              ``[min, max)``.
    
 
-.. function:: warp._src.lang.tile_randf(shape: int32, rng: uint32, min: float32, max: float32, storage: str = "register") -> Tile[Any, tuple[int, ...]]
+.. function:: tile_randf(shape: int32, rng: uint32, min: float32, max: float32, storage: str = "register") -> Tile[Any, tuple[int, ...]]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

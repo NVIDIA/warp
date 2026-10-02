@@ -1,9 +1,11 @@
 ﻿warp.volume\_lookup\_v
 ======================
 
-.. function:: warp._src.lang.volume_lookup_v(id: uint64, i: int32, j: int32, k: int32) -> vec3f
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: volume_lookup_v(id: uint64, i: int32, j: int32, k: int32) -> vec3f
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: false

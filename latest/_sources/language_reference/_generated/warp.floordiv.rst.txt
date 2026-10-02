@@ -1,9 +1,11 @@
 ﻿warp.floordiv
 =============
 
-.. function:: warp._src.lang.floordiv(a: Scalar, b: Scalar) -> Scalar
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: floordiv(a: Scalar, b: Scalar) -> Scalar
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: false

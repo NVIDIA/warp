@@ -1,9 +1,11 @@
 ﻿warp.spatial\_adjoint
 =====================
 
-.. function:: warp._src.lang.spatial_adjoint(r: Matrix[Float, Literal[3], Literal[3]], s: Matrix[Float, Literal[3], Literal[3]]) -> Matrix[Float, Literal[6], Literal[6]]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: spatial_adjoint(r: Matrix[Float, Literal[3], Literal[3]], s: Matrix[Float, Literal[3], Literal[3]]) -> Matrix[Float, Literal[6], Literal[6]]
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true

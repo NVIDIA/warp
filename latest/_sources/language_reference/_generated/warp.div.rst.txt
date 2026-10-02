@@ -1,19 +1,21 @@
 ﻿warp.div
 ========
 
-.. function:: warp._src.lang.div(a: Scalar, b: Scalar) -> Scalar
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: div(a: Scalar, b: Scalar) -> Scalar
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
 
    Divide two values.
 
-.. function:: warp._src.lang.div(a: Vector[Scalar, Any], b: Scalar) -> Vector[Scalar, Any]
+.. function:: div(a: Vector[Scalar, Any], b: Scalar) -> Vector[Scalar, Any]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
@@ -22,10 +24,10 @@
    
    Divide a vector by a scalar.
 
-.. function:: warp._src.lang.div(a: Scalar, b: Vector[Scalar, Any]) -> Vector[Scalar, Any]
+.. function:: div(a: Scalar, b: Vector[Scalar, Any]) -> Vector[Scalar, Any]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
@@ -34,10 +36,10 @@
    
    Divide a scalar by each element of a vector.
 
-.. function:: warp._src.lang.div(a: Matrix[Scalar, Any, Any], b: Scalar) -> Matrix[Scalar, Any, Any]
+.. function:: div(a: Matrix[Scalar, Any, Any], b: Scalar) -> Matrix[Scalar, Any, Any]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
@@ -46,10 +48,10 @@
    
    Divide a matrix by a scalar.
 
-.. function:: warp._src.lang.div(a: Scalar, b: Matrix[Scalar, Any, Any]) -> Matrix[Scalar, Any, Any]
+.. function:: div(a: Scalar, b: Matrix[Scalar, Any, Any]) -> Matrix[Scalar, Any, Any]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
@@ -58,10 +60,10 @@
    
    Divide a scalar by each element of a matrix.
 
-.. function:: warp._src.lang.div(a: Quaternion[Float], b: Scalar) -> Quaternion[Float]
+.. function:: div(a: Quaternion[Float], b: Scalar) -> Quaternion[Float]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
@@ -72,10 +74,10 @@
    
    The result is unnormalized.
 
-.. function:: warp._src.lang.div(a: Scalar, b: Quaternion[Float]) -> Quaternion[Float]
+.. function:: div(a: Scalar, b: Quaternion[Float]) -> Quaternion[Float]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
@@ -86,20 +88,20 @@
    
    The result is unnormalized.
 
-.. function:: warp._src.lang.div(a: Tile[Any, tuple[int, ...]], b: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[int, ...]]
+.. function:: div(a: Tile[Any, tuple[int, ...]], b: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[int, ...]]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
 
    Element-wise division of tiles.
 
-.. function:: warp._src.lang.div(a: Tile[Any, tuple[int, ...]], b: Any) -> Tile[Any, tuple[int, ...]]
+.. function:: div(a: Tile[Any, tuple[int, ...]], b: Any) -> Tile[Any, tuple[int, ...]]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -111,10 +113,10 @@
    At least one of the tile's element type or the constant type must be scalar.
    Underlying scalar types must match.
 
-.. function:: warp._src.lang.div(a: Any, b: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[int, ...]]
+.. function:: div(a: Any, b: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[int, ...]]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true

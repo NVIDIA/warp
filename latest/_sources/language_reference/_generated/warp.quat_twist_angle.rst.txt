@@ -1,12 +1,15 @@
 ﻿warp.quat\_twist\_angle
 =======================
 
-.. function:: warp._src.lang.quat_twist_angle(axis: vec3f, q: quatf) -> float
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: quat_twist_angle(axis: vec3f, q: quatf) -> float
+
+   .. wp-function-tags::
       :kernel: true
-      :python: false
+      :python: true
       :differentiable: true
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/math.py#L171-L193
 
    Return the unsigned twist magnitude of ``q`` around ``axis``.
    

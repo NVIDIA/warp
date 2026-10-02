@@ -1,9 +1,11 @@
 ﻿warp.transform\_get\_rotation
 =============================
 
-.. function:: warp._src.lang.transform_get_rotation(xform: Transformation[Float]) -> Quaternion[Float]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: transform_get_rotation(xform: Transformation[Float]) -> Quaternion[Float]
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true

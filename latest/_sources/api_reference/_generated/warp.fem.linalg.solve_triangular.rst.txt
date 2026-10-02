@@ -3,4 +3,14 @@
 
 .. currentmodule:: warp.fem.linalg
 
-.. autodata:: solve_triangular
+.. function:: solve_triangular(R: Any, b: Any)
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: unknown
+      :differentiable: unknown
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/linalg.py#L292-L305
+
+   Solve for R x = b where R is an upper triangular matrix.
+   
+   Returns x

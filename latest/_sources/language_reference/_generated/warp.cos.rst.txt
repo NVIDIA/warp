@@ -1,9 +1,11 @@
 ﻿warp.cos
 ========
 
-.. function:: warp._src.lang.cos(x: Float) -> Float
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: cos(x: Float) -> Float
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true

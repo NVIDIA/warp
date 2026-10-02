@@ -1,9 +1,11 @@
 ﻿warp.bvh\_query\_next\_tiled
 ============================
 
-.. function:: warp._src.lang.bvh_query_next_tiled(query: BvhQueryTiled) -> Tile[int32, tuple[int]]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: bvh_query_next_tiled(query: BvhQueryTiled) -> Tile[int32, tuple[int]]
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

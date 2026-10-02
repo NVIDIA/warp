@@ -1,9 +1,11 @@
 ﻿warp.tile\_assign
 =================
 
-.. function:: warp._src.lang.tile_assign(dst: Tile[Any, tuple[int, ...]], src: Tile[Any, tuple[int, ...]], offset: tuple[int, ...] = ...) -> None
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: tile_assign(dst: Tile[Any, tuple[int, ...]], src: Tile[Any, tuple[int, ...]], offset: tuple[int, ...] = ...) -> None
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true

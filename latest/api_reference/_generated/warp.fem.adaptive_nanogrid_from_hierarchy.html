@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=e5bdcd64" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=ca94f457" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
@@ -64,7 +64,7 @@
 
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="warp.fem.at_node" href="warp.fem.at_node.html" />
+    <link rel="next" title="warp.fem.borrow_temporary" href="warp.fem.borrow_temporary.html" />
     <link rel="prev" title="warp.fem.adaptive_nanogrid_from_field" href="warp.fem.adaptive_nanogrid_from_field.html" />
 
 
@@ -517,7 +517,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">temporary_store</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/adaptivity.py#L17-L86"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.adaptive_nanogrid_from_hierarchy" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/adaptivity.py#L17-L85"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.adaptive_nanogrid_from_hierarchy" title="Link to this definition">#</a></dt>
 <dd><p>Constructs a <a class="reference internal" href="warp.fem.AdaptiveNanogrid.html#warp.fem.AdaptiveNanogrid" title="warp.fem.AdaptiveNanogrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.fem.AdaptiveNanogrid</span></code></a> from a non-overlapping grid hierarchy.</p>
 <p>Warning: The result is undefined if there are partial overlaps between levels, that is if a cell at level <cite>l</cite> is only partially covered by cells at levels <cite>l-1</cite> or lower.</p>
 <dl class="field-list simple">
@@ -556,11 +556,11 @@
       </div>
     </a>
     <a class="right-next"
-       href="warp.fem.at_node.html"
+       href="warp.fem.borrow_temporary.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.fem.at_node</p>
+        <p class="prev-next-title">warp.fem.borrow_temporary</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>

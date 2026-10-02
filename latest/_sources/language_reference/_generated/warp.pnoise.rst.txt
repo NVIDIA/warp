@@ -1,9 +1,11 @@
 ﻿warp.pnoise
 ===========
 
-.. function:: warp._src.lang.pnoise(state: uint32, x: float32, px: int32) -> float
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: pnoise(state: uint32, x: float32, px: int32) -> float
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
@@ -46,10 +48,10 @@
        True
    
 
-.. function:: warp._src.lang.pnoise(state: uint32, xy: vec2f, px: int32, py: int32) -> float
+.. function:: pnoise(state: uint32, xy: vec2f, px: int32, py: int32) -> float
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
@@ -66,10 +68,10 @@
    :returns: The noise value at ``xy``.
    
 
-.. function:: warp._src.lang.pnoise(state: uint32, xyz: vec3f, px: int32, py: int32, pz: int32) -> float
+.. function:: pnoise(state: uint32, xyz: vec3f, px: int32, py: int32, pz: int32) -> float
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
@@ -87,10 +89,10 @@
    :returns: The noise value at ``xyz``.
    
 
-.. function:: warp._src.lang.pnoise(state: uint32, xyzt: vec4f, px: int32, py: int32, pz: int32, pt: int32) -> float
+.. function:: pnoise(state: uint32, xyzt: vec4f, px: int32, py: int32, pz: int32, pt: int32) -> float
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true

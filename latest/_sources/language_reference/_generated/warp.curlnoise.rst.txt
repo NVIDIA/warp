@@ -1,9 +1,11 @@
 ﻿warp.curlnoise
 ==============
 
-.. function:: warp._src.lang.curlnoise(state: uint32, xy: vec2f, octaves: uint32 = uint32(1), lacunarity: float32 = 2.0, gain: float32 = 0.5) -> vec2f
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: curlnoise(state: uint32, xy: vec2f, octaves: uint32 = uint32(1), lacunarity: float32 = 2.0, gain: float32 = 0.5) -> vec2f
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
@@ -46,10 +48,10 @@
        wp.launch(advect, dim=len(positions), inputs=[42, positions, 0.1])
    
 
-.. function:: warp._src.lang.curlnoise(state: uint32, xyz: vec3f, octaves: uint32 = uint32(1), lacunarity: float32 = 2.0, gain: float32 = 0.5) -> vec3f
+.. function:: curlnoise(state: uint32, xyz: vec3f, octaves: uint32 = uint32(1), lacunarity: float32 = 2.0, gain: float32 = 0.5) -> vec3f
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
@@ -68,10 +70,10 @@
              ``xyz``. The resulting vector field is divergence-free. The vector is not normalized.
    
 
-.. function:: warp._src.lang.curlnoise(state: uint32, xyzt: vec4f, octaves: uint32 = uint32(1), lacunarity: float32 = 2.0, gain: float32 = 0.5) -> vec3f
+.. function:: curlnoise(state: uint32, xyzt: vec4f, octaves: uint32 = uint32(1), lacunarity: float32 = 2.0, gain: float32 = 0.5) -> vec3f
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true

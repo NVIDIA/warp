@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=e5bdcd64" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=ca94f457" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
@@ -510,17 +510,14 @@
                   
   <section id="warp-fem-linalg-householder-make-hessenberg">
 <h1>warp.fem.linalg.householder_make_hessenberg<a class="headerlink" href="#warp-fem-linalg-householder-make-hessenberg" title="Link to this heading">#</a></h1>
-<dl class="py data">
+<dl class="py function">
 <dt class="sig sig-object py" id="warp.fem.linalg.householder_make_hessenberg">
-<span class="sig-prename descclassname"><span class="pre">warp.fem.linalg.</span></span><span class="sig-name descname"><span class="pre">householder_make_hessenberg</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">householder_make_hessenberg(A:</span> <span class="pre">Any)&gt;</span></span><a class="headerlink" href="#warp.fem.linalg.householder_make_hessenberg" title="Link to this definition">#</a></dt>
-<dd><p>Transform a square matrix to Hessenberg form (single lower diagonal) using Householder reflections.</p>
+<span class="sig-prename descclassname"><span class="pre">warp.fem.linalg.</span></span><span class="sig-name descname"><span class="pre">householder_make_hessenberg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/linalg.py#L265-L289"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.linalg.householder_make_hessenberg" title="Link to this definition">#</a></dt>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Transform a square matrix to Hessenberg form (single lower diagonal) using Householder reflections.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><p>Q and H such that Q H Q^T = A, Q orthonormal, H under Hessenberg form
 If A is symmetric, H will be tridiagonal</p>
-</dd>
-<dt class="field-even">Parameters<span class="colon">:</span></dt>
-<dd class="field-even"><p><strong>A</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>)</p>
 </dd>
 </dl>
 </dd></dl>
@@ -576,7 +573,7 @@ If A is symmetric, H will be tridiagonal</p>
   </div>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.linalg.householder_make_hessenberg"><code class="docutils literal notranslate"><span class="pre">householder_make_hessenberg</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.linalg.householder_make_hessenberg"><code class="docutils literal notranslate"><span class="pre">householder_make_hessenberg()</span></code></a></li>
 </ul>
   </nav></div>
 

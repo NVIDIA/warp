@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=e5bdcd64" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=ca94f457" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
@@ -509,7 +509,7 @@
 <h1>warp.fem.CellBasedGeometryPartition<a class="headerlink" href="#warp-fem-cellbasedgeometrypartition" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.fem.CellBasedGeometryPartition">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">CellBasedGeometryPartition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/partition.py#L182-L362"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.CellBasedGeometryPartition" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">CellBasedGeometryPartition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/partition.py#L182-L361"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.CellBasedGeometryPartition" title="Link to this definition">#</a></dt>
 <dd><p>Geometry partition based on a subset of cells. Interior, boundary and frontier sides are automatically categorized.</p>
 <p class="rubric">Methods</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
@@ -590,7 +590,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.CellBasedGeometryPartition.side_count">
-<span class="sig-name descname"><span class="pre">side_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/partition.py#L211-L214"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.CellBasedGeometryPartition.side_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">side_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/partition.py#L211-L213"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.CellBasedGeometryPartition.side_count" title="Link to this definition">#</a></dt>
 <dd><p>Return the number of sides in the partition.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -601,7 +601,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.CellBasedGeometryPartition.boundary_side_count">
-<span class="sig-name descname"><span class="pre">boundary_side_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/partition.py#L215-L218"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.CellBasedGeometryPartition.boundary_side_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">boundary_side_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/partition.py#L215-L217"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.CellBasedGeometryPartition.boundary_side_count" title="Link to this definition">#</a></dt>
 <dd><p>Return the number of boundary sides in the partition.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -612,7 +612,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.CellBasedGeometryPartition.frontier_side_count">
-<span class="sig-name descname"><span class="pre">frontier_side_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/partition.py#L219-L222"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.CellBasedGeometryPartition.frontier_side_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">frontier_side_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/partition.py#L219-L221"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.CellBasedGeometryPartition.frontier_side_count" title="Link to this definition">#</a></dt>
 <dd><p>Return the number of frontier sides in the partition.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -623,7 +623,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.CellBasedGeometryPartition.fill_side_arg">
-<span class="sig-name descname"><span class="pre">fill_side_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/partition.py#L223-L229"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.CellBasedGeometryPartition.fill_side_arg" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">fill_side_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/partition.py#L223-L228"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.CellBasedGeometryPartition.fill_side_arg" title="Link to this definition">#</a></dt>
 <dd><p>Fill the arguments to be passed to side-related device functions.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -683,7 +683,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">temporary_store</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/partition.py#L245-L358"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.CellBasedGeometryPartition.compute_side_indices_from_cells" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/partition.py#L245-L357"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.CellBasedGeometryPartition.compute_side_indices_from_cells" title="Link to this definition">#</a></dt>
 <dd><p>Compute partition, boundary, and frontier side indices from a cell mask.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>

@@ -1,9 +1,11 @@
 ﻿warp.mesh\_get
 ==============
 
-.. function:: warp._src.lang.mesh_get(id: uint64) -> Mesh
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: mesh_get(id: uint64) -> Mesh
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

@@ -1,9 +1,11 @@
 ﻿warp.mesh\_query\_ray
 =====================
 
-.. function:: warp._src.lang.mesh_query_ray(id: uint64, start: vec3f, dir: vec3f, max_t: float32, root: int32 = -1) -> MeshQueryRay
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: mesh_query_ray(id: uint64, start: vec3f, dir: vec3f, max_t: float32, root: int32 = -1) -> MeshQueryRay
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true

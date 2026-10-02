@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=e5bdcd64" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=ca94f457" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
@@ -64,8 +64,8 @@
 
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="warp.geometry.lipschitz_octree" href="warp.geometry.lipschitz_octree.html" />
-    <link rel="prev" title="warp.geometry.delaunay_edge_flip" href="warp.geometry.delaunay_edge_flip.html" />
+    <link rel="next" title="warp.geometry.swept_volume_sdf" href="warp.geometry.swept_volume_sdf.html" />
+    <link rel="prev" title="warp.geometry.tri_tri_adjacency" href="warp.geometry.tri_tri_adjacency.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -507,17 +507,25 @@
                   
   <section id="warp-geometry-find-triangle-neighbor-edge-index">
 <h1>warp.geometry.find_triangle_neighbor_edge_index<a class="headerlink" href="#warp-geometry-find-triangle-neighbor-edge-index" title="Link to this heading">#</a></h1>
-<dl class="py data">
+<dl class="py function">
 <dt class="sig sig-object py" id="warp.geometry.find_triangle_neighbor_edge_index">
-<span class="sig-prename descclassname"><span class="pre">warp.geometry.</span></span><span class="sig-name descname"><span class="pre">find_triangle_neighbor_edge_index</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">find_triangle_neighbor_edge_index(triangle_neighbors:</span> <span class="pre">array(ndim=2,</span> <span class="pre">dtype=int32),</span> <span class="pre">triangle:</span> <span class="pre">int32,</span> <span class="pre">neighbor:</span> <span class="pre">int32)&gt;</span></span><a class="headerlink" href="#warp.geometry.find_triangle_neighbor_edge_index" title="Link to this definition">#</a></dt>
-<dd><p>Return the local edge of <code class="docutils literal notranslate"><span class="pre">triangle</span></code> shared with <code class="docutils literal notranslate"><span class="pre">neighbor</span></code>.</p>
+<span class="sig-prename descclassname"><span class="pre">warp.geometry.</span></span><span class="sig-name descname"><span class="pre">find_triangle_neighbor_edge_index</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">triangle_neighbors</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Array</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="warp.int32.html#warp.int32" title="warp.int32"><span class="pre">int32</span></a><span class="p"><span class="pre">]</span></span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">triangle</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="warp.int32.html#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">neighbor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="warp.int32.html#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="warp.int32.html#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/delaunay.py#L311-L337"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.find_triangle_neighbor_edge_index" title="Link to this definition">#</a></dt>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Return the local edge of <code class="docutils literal notranslate"><span class="pre">triangle</span></code> shared with <code class="docutils literal notranslate"><span class="pre">neighbor</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>triangle_neighbors</strong> (<a class="reference internal" href="warp.array2d.html#warp.array2d" title="warp.array2d"><em>warp.array2d</em></a><em>[</em><a class="reference internal" href="warp.int32.html#warp.int32" title="warp.int32"><em>warp.int32</em></a><em>]</em>) – The <code class="docutils literal notranslate"><span class="pre">(num_tris,</span> <span class="pre">3)</span></code> adjacency array built by
+<li><p><strong>triangle_neighbors</strong> – The <code class="docutils literal notranslate"><span class="pre">(num_tris,</span> <span class="pre">3)</span></code> adjacency array built by
 <a class="reference internal" href="warp.geometry.tri_tri_adjacency.html#warp.geometry.tri_tri_adjacency" title="warp.geometry.tri_tri_adjacency"><code class="xref py py-func docutils literal notranslate"><span class="pre">tri_tri_adjacency()</span></code></a> (its <code class="docutils literal notranslate"><span class="pre">triangle_neighbors</span></code> output).</p></li>
-<li><p><strong>triangle</strong> (<a class="reference internal" href="warp.int32.html#warp.int32" title="warp._src.types.int32"><em>int32</em></a>) – Index of the triangle to search.</p></li>
-<li><p><strong>neighbor</strong> (<a class="reference internal" href="warp.int32.html#warp.int32" title="warp._src.types.int32"><em>int32</em></a>) – Index of the triangle to find among <code class="docutils literal notranslate"><span class="pre">triangle</span></code>’s neighbors.</p></li>
+<li><p><strong>triangle</strong> – Index of the triangle to search.</p></li>
+<li><p><strong>neighbor</strong> – Index of the triangle to find among <code class="docutils literal notranslate"><span class="pre">triangle</span></code>’s neighbors.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -527,9 +535,6 @@ Calling this with <code class="docutils literal notranslate"><span class="pre">t
 single entry – the value <a class="reference internal" href="warp.geometry.tri_tri_adjacency.html#warp.geometry.tri_tri_adjacency" title="warp.geometry.tri_tri_adjacency"><code class="xref py py-func docutils literal notranslate"><span class="pre">tri_tri_adjacency()</span></code></a> would have stored
 in <code class="docutils literal notranslate"><span class="pre">neighbor_edge_indices</span></code> had it been called with
 <code class="docutils literal notranslate"><span class="pre">return_neighbor_edge_indices=True</span></code> – without having to keep that array around.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="warp.int32.html#warp.int32" title="warp._src.types.int32"><em>int32</em></a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -547,20 +552,20 @@ in <code class="docutils literal notranslate"><span class="pre">neighbor_edge_in
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.geometry.delaunay_edge_flip.html"
+       href="warp.geometry.tri_tri_adjacency.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.geometry.delaunay_edge_flip</p>
+        <p class="prev-next-title">warp.geometry.tri_tri_adjacency</p>
       </div>
     </a>
     <a class="right-next"
-       href="warp.geometry.lipschitz_octree.html"
+       href="warp.geometry.swept_volume_sdf.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.geometry.lipschitz_octree</p>
+        <p class="prev-next-title">warp.geometry.swept_volume_sdf</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -585,7 +590,7 @@ in <code class="docutils literal notranslate"><span class="pre">neighbor_edge_in
   </div>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.geometry.find_triangle_neighbor_edge_index"><code class="docutils literal notranslate"><span class="pre">find_triangle_neighbor_edge_index</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.geometry.find_triangle_neighbor_edge_index"><code class="docutils literal notranslate"><span class="pre">find_triangle_neighbor_edge_index()</span></code></a></li>
 </ul>
   </nav></div>
 

@@ -1,9 +1,11 @@
 ﻿warp.breakpoint
 ===============
 
-.. function:: warp._src.lang.breakpoint() -> None
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: breakpoint() -> None
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

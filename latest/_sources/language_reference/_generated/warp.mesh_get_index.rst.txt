@@ -1,9 +1,11 @@
 ﻿warp.mesh\_get\_index
 =====================
 
-.. function:: warp._src.lang.mesh_get_index(id: uint64, index: int32) -> int
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: mesh_get_index(id: uint64, index: int32) -> int
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

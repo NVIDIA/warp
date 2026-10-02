@@ -3,4 +3,23 @@
 
 .. currentmodule:: warp.fem.linalg
 
-.. autodata:: spherical_part
+.. function:: spherical_part(x: Matrix[Scalar, Literal[2], Literal[2]])
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: unknown
+      :differentiable: unknown
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/linalg.py#L171-L174
+
+   Spherical part of a square tensor.
+
+.. function:: spherical_part(x: Matrix[Scalar, Literal[3], Literal[3]])
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: unknown
+      :differentiable: unknown
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/linalg.py#L177-L180
+
+   Spherical part of a square tensor.

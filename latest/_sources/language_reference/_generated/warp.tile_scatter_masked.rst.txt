@@ -1,9 +1,11 @@
 ﻿warp.tile\_scatter\_masked
 ==========================
 
-.. function:: warp._src.lang.tile_scatter_masked(a: Tile[Any, tuple[int, ...]], i: int32, value: Any, has_value: bool) -> None
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: tile_scatter_masked(a: Tile[Any, tuple[int, ...]], i: int32, value: Any, has_value: bool) -> None
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -52,10 +54,10 @@
        [8 7 6 5 4 3 2 1]
    
 
-.. function:: warp._src.lang.tile_scatter_masked(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, value: Any, has_value: bool) -> None
+.. function:: tile_scatter_masked(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, value: Any, has_value: bool) -> None
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -65,10 +67,10 @@
    Overload taking one index per tile dimension. For the full contract and a usage
    example, see the 1D overload that takes only ``i`` as its index.
 
-.. function:: warp._src.lang.tile_scatter_masked(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32, value: Any, has_value: bool) -> None
+.. function:: tile_scatter_masked(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32, value: Any, has_value: bool) -> None
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -78,10 +80,10 @@
    Overload taking one index per tile dimension. For the full contract and a usage
    example, see the 1D overload that takes only ``i`` as its index.
 
-.. function:: warp._src.lang.tile_scatter_masked(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32, l: int32, value: Any, has_value: bool) -> None
+.. function:: tile_scatter_masked(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32, l: int32, value: Any, has_value: bool) -> None
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true

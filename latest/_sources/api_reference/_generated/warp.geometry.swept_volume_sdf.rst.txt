@@ -3,4 +3,34 @@
 
 .. currentmodule:: warp.geometry
 
-.. autodata:: swept_volume_sdf
+.. function:: swept_volume_sdf(point: vec3f, mesh_ids: Array[uint64], transforms: Array[transformf], max_dist: float32, sign_mode: int32) -> float32
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: unknown
+      :differentiable: false
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/delaunay.py#L716-L780
+
+   Evaluate the swept-volume pseudo signed distance at a single point.
+   
+   Returns :math:`\min_m \min_s \mathrm{sdf}_m(X_{m,s}^{-1} p)`, the minimum
+   over every mesh :math:`m` and every sampled pose :math:`s`. The motion is
+   rigid, so instead of transforming the geometry the query point is pushed
+   back into each mesh's rest frame, and one closest-point query per
+   (mesh, sample) evaluates one pose. Callable from within your own kernels;
+   not differentiable.
+   
+   :param point: Query point, in world space.
+   :param mesh_ids: Identifiers of the rest-pose meshes.
+   :param transforms: Per-mesh, per-sample rigid poses, mapping rest space to
+                      world space.
+   :param max_dist: Bound on the closest-point search. A query that finds nothing
+                    within it returns no sign either, so this returns ``+max_dist`` for
+                    a point deep inside the union just as it does for one far outside;
+                    pass a bound that spans the region of interest, as the array-level
+                    entry points do.
+   :param sign_mode: Inside/outside classification method, as the integer value of
+                     a :class:`SweptVolumeSignMode` member.
+   
+   :returns: The pseudo signed distance at ``point``.
+   

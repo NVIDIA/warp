@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=e5bdcd64" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=ca94f457" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
@@ -557,44 +557,52 @@
 <p>This module provides kernel-compatible linear algebra functions including matrix
 decompositions (QR factorization, tensor decompositions), eigenvalue solvers,
 matrix inversion, and array operations commonly needed in finite element computations.</p>
-<section id="api">
-<h2>API<a class="headerlink" href="#api" title="Link to this heading">#</a></h2>
+<section id="python-api">
+<h2>Python API<a class="headerlink" href="#python-api" title="Link to this heading">#</a></h2>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.linalg.array_axpy.html#warp.fem.linalg.array_axpy" title="warp.fem.linalg.array_axpy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">array_axpy</span></code></a></p></td>
 <td><p>Compute <code class="docutils literal notranslate"><span class="pre">y</span> <span class="pre">=</span> <span class="pre">alpha*x</span> <span class="pre">+</span> <span class="pre">beta*y</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.linalg.generalized_inner.html#warp.fem.linalg.generalized_inner" title="warp.fem.linalg.generalized_inner"><code class="xref py py-obj docutils literal notranslate"><span class="pre">generalized_inner</span></code></a></p></td>
+</tbody>
+</table>
+</div>
+</section>
+<section id="kernel-api">
+<h2>Kernel API<a class="headerlink" href="#kernel-api" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.linalg.generalized_inner.html#warp.fem.linalg.generalized_inner" title="warp.fem.linalg.generalized_inner"><code class="xref py py-obj docutils literal notranslate"><span class="pre">generalized_inner</span></code></a></p></td>
 <td><p>Compute a generalized inner product.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.linalg.generalized_outer.html#warp.fem.linalg.generalized_outer" title="warp.fem.linalg.generalized_outer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">generalized_outer</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.linalg.generalized_outer.html#warp.fem.linalg.generalized_outer" title="warp.fem.linalg.generalized_outer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">generalized_outer</span></code></a></p></td>
 <td><p>Compute a generalized outer product.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.linalg.householder_make_hessenberg.html#warp.fem.linalg.householder_make_hessenberg" title="warp.fem.linalg.householder_make_hessenberg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">householder_make_hessenberg</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.linalg.householder_make_hessenberg.html#warp.fem.linalg.householder_make_hessenberg" title="warp.fem.linalg.householder_make_hessenberg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">householder_make_hessenberg</span></code></a></p></td>
 <td><p>Transform a square matrix to Hessenberg form (single lower diagonal) using Householder reflections.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.linalg.householder_qr_decomposition.html#warp.fem.linalg.householder_qr_decomposition" title="warp.fem.linalg.householder_qr_decomposition"><code class="xref py py-obj docutils literal notranslate"><span class="pre">householder_qr_decomposition</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.linalg.householder_qr_decomposition.html#warp.fem.linalg.householder_qr_decomposition" title="warp.fem.linalg.householder_qr_decomposition"><code class="xref py py-obj docutils literal notranslate"><span class="pre">householder_qr_decomposition</span></code></a></p></td>
 <td><p>QR decomposition of a square matrix using Householder reflections</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.linalg.inverse_qr.html#warp.fem.linalg.inverse_qr" title="warp.fem.linalg.inverse_qr"><code class="xref py py-obj docutils literal notranslate"><span class="pre">inverse_qr</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.linalg.inverse_qr.html#warp.fem.linalg.inverse_qr" title="warp.fem.linalg.inverse_qr"><code class="xref py py-obj docutils literal notranslate"><span class="pre">inverse_qr</span></code></a></p></td>
 <td><p>Compute the inverse of a square matrix using QR factorization.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.linalg.skew_part.html#warp.fem.linalg.skew_part" title="warp.fem.linalg.skew_part"><code class="xref py py-obj docutils literal notranslate"><span class="pre">skew_part</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.linalg.skew_part.html#warp.fem.linalg.skew_part" title="warp.fem.linalg.skew_part"><code class="xref py py-obj docutils literal notranslate"><span class="pre">skew_part</span></code></a></p></td>
 <td><p>Skew part of a 3x3 tensor as the corresponding rotation vector.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.linalg.solve_triangular.html#warp.fem.linalg.solve_triangular" title="warp.fem.linalg.solve_triangular"><code class="xref py py-obj docutils literal notranslate"><span class="pre">solve_triangular</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.linalg.solve_triangular.html#warp.fem.linalg.solve_triangular" title="warp.fem.linalg.solve_triangular"><code class="xref py py-obj docutils literal notranslate"><span class="pre">solve_triangular</span></code></a></p></td>
 <td><p>Solve for R x = b where R is an upper triangular matrix.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.linalg.spherical_part.html#warp.fem.linalg.spherical_part" title="warp.fem.linalg.spherical_part"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spherical_part</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.linalg.spherical_part.html#warp.fem.linalg.spherical_part" title="warp.fem.linalg.spherical_part"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spherical_part</span></code></a></p></td>
 <td><p>Spherical part of a square tensor.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.linalg.symmetric_eigenvalues_qr.html#warp.fem.linalg.symmetric_eigenvalues_qr" title="warp.fem.linalg.symmetric_eigenvalues_qr"><code class="xref py py-obj docutils literal notranslate"><span class="pre">symmetric_eigenvalues_qr</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.linalg.symmetric_eigenvalues_qr.html#warp.fem.linalg.symmetric_eigenvalues_qr" title="warp.fem.linalg.symmetric_eigenvalues_qr"><code class="xref py py-obj docutils literal notranslate"><span class="pre">symmetric_eigenvalues_qr</span></code></a></p></td>
 <td><p>Compute the eigenvalues and eigen vectors of a square symmetric matrix A using the QR algorithm</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.linalg.symmetric_part.html#warp.fem.linalg.symmetric_part" title="warp.fem.linalg.symmetric_part"><code class="xref py py-obj docutils literal notranslate"><span class="pre">symmetric_part</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.linalg.symmetric_part.html#warp.fem.linalg.symmetric_part" title="warp.fem.linalg.symmetric_part"><code class="xref py py-obj docutils literal notranslate"><span class="pre">symmetric_part</span></code></a></p></td>
 <td><p>Symmetric part of a square tensor.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.linalg.tridiagonal_symmetric_eigenvalues_qr.html#warp.fem.linalg.tridiagonal_symmetric_eigenvalues_qr" title="warp.fem.linalg.tridiagonal_symmetric_eigenvalues_qr"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tridiagonal_symmetric_eigenvalues_qr</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.linalg.tridiagonal_symmetric_eigenvalues_qr.html#warp.fem.linalg.tridiagonal_symmetric_eigenvalues_qr" title="warp.fem.linalg.tridiagonal_symmetric_eigenvalues_qr"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tridiagonal_symmetric_eigenvalues_qr</span></code></a></p></td>
 <td><p>Compute the eigenvalues and eigen vectors of a symmetric tridiagonal matrix using the Symmetric tridiagonal QR algorithm with implicit Wilkinson shift</p></td>
 </tr>
 </tbody>
@@ -652,7 +660,8 @@ matrix inversion, and array operations commonly needed in finite element computa
   </div>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#api">API</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#python-api">Python API</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#kernel-api">Kernel API</a></li>
 </ul>
   </nav></div>
 

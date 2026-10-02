@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=e5bdcd64" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=ca94f457" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
@@ -509,7 +509,7 @@
 <h1>warp.Logger<a class="headerlink" href="#warp-logger" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.Logger">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Logger</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/logger.py#L29-L59"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Logger" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Logger</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/logger.py#L29-L58"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Logger" title="Link to this definition">#</a></dt>
 <dd><p>Protocol for Warp loggers.</p>
 <p>Any object with <code class="docutils literal notranslate"><span class="pre">debug</span></code>, <code class="docutils literal notranslate"><span class="pre">info</span></code>, <code class="docutils literal notranslate"><span class="pre">warning</span></code>, and <code class="docutils literal notranslate"><span class="pre">error</span></code> methods
 matching these signatures can be used as a Warp logger.  Frameworks
@@ -534,7 +534,7 @@ register an instance via <a class="reference internal" href="warp.set_logger.htm
 </div>
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Logger.debug">
-<span class="sig-name descname"><span class="pre">debug</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/logger.py#L38-L41"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Logger.debug" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">debug</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/logger.py#L38-L40"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Logger.debug" title="Link to this definition">#</a></dt>
 <dd><p>Emit a debug-level message.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -548,7 +548,7 @@ register an instance via <a class="reference internal" href="warp.set_logger.htm
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Logger.info">
-<span class="sig-name descname"><span class="pre">info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/logger.py#L42-L45"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Logger.info" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/logger.py#L42-L44"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Logger.info" title="Link to this definition">#</a></dt>
 <dd><p>Emit an info-level message.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -562,7 +562,7 @@ register an instance via <a class="reference internal" href="warp.set_logger.htm
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Logger.warning">
-<span class="sig-name descname"><span class="pre">warning</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">category</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stacklevel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/logger.py#L46-L55"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Logger.warning" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">warning</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">category</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stacklevel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/logger.py#L46-L54"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Logger.warning" title="Link to this definition">#</a></dt>
 <dd><p>Emit a warning-level message.</p>
 <p>Implementations should typically call <code class="docutils literal notranslate"><span class="pre">warnings.warn(message,</span> <span class="pre">category,</span>
 <span class="pre">stacklevel=stacklevel)</span></code> to integrate with Python’s warning filter
@@ -583,7 +583,7 @@ use with <code class="docutils literal notranslate"><span class="pre">warnings.w
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Logger.error">
-<span class="sig-name descname"><span class="pre">error</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/logger.py#L56-L59"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Logger.error" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">error</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/logger.py#L56-L58"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Logger.error" title="Link to this definition">#</a></dt>
 <dd><p>Emit an error-level message.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>

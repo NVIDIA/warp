@@ -1,9 +1,11 @@
 ﻿warp.print
 ==========
 
-.. function:: warp._src.lang.print(value: Any) -> None
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: print(value: Any) -> None
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true

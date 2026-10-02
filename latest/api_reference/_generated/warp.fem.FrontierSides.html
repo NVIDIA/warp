@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=e5bdcd64" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=ca94f457" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
@@ -509,7 +509,7 @@
 <h1>warp.fem.FrontierSides<a class="headerlink" href="#warp-fem-frontiersides" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.fem.FrontierSides">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">FrontierSides</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">geometry</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L490-L508"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FrontierSides" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">FrontierSides</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">geometry</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L490-L507"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FrontierSides" title="Link to this definition">#</a></dt>
 <dd><p>A Domain containing frontier sides of the geometry partition (sides shared with at least another partition).</p>
 <p class="rubric">Methods</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
@@ -641,7 +641,7 @@
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.FrontierSides.element_count">
-<span class="sig-name descname"><span class="pre">element_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L496-L499"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FrontierSides.element_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">element_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L496-L498"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FrontierSides.element_count" title="Link to this definition">#</a></dt>
 <dd><p>Number of elements in the domain.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -652,7 +652,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.FrontierSides.geometry_element_count">
-<span class="sig-name descname"><span class="pre">geometry_element_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L500-L503"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FrontierSides.geometry_element_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">geometry_element_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L500-L502"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FrontierSides.geometry_element_count" title="Link to this definition">#</a></dt>
 <dd><p>Number of elements in the underlying geometry.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -663,7 +663,7 @@
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.FrontierSides.element_index">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">element_index</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Function.html#warp.Function" title="warp._src.context.Function"><span class="pre">Function</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L504-L508"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FrontierSides.element_index" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">element_index</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Function.html#warp.Function" title="warp._src.context.Function"><span class="pre">Function</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L504-L507"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FrontierSides.element_index" title="Link to this definition">#</a></dt>
 <dd><p>Device function mapping partition indices to element indices.</p>
 </dd></dl>
 

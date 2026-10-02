@@ -1,9 +1,11 @@
 ﻿warp.quat\_rpy
 ==============
 
-.. function:: warp._src.lang.quat_rpy(roll: Float, pitch: Float, yaw: Float) -> Quaternion[Float]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: quat_rpy(roll: Float, pitch: Float, yaw: Float) -> Quaternion[Float]
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true

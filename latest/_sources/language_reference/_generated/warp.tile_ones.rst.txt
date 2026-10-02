@@ -1,9 +1,11 @@
 ﻿warp.tile\_ones
 ===============
 
-.. function:: warp._src.lang.tile_ones(shape: tuple[int, ...], dtype: Any = float, storage: str = "register") -> Tile[Any, tuple[int, ...]]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: tile_ones(shape: tuple[int, ...], dtype: Any = float, storage: str = "register") -> Tile[Any, tuple[int, ...]]
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -47,10 +49,10 @@
        [ 10.  40.  90. 160.]
    
 
-.. function:: warp._src.lang.tile_ones(shape: int32, dtype: Any = float, storage: str = "register") -> Tile[Any, tuple[int, ...]]
+.. function:: tile_ones(shape: int32, dtype: Any = float, storage: str = "register") -> Tile[Any, tuple[int, ...]]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

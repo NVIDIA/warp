@@ -1,9 +1,11 @@
 ﻿warp.transform\_get\_translation
 ================================
 
-.. function:: warp._src.lang.transform_get_translation(xform: Transformation[Float]) -> Vector[Float, Literal[3]]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: transform_get_translation(xform: Transformation[Float]) -> Vector[Float, Literal[3]]
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true

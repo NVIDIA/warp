@@ -1,9 +1,11 @@
 ﻿warp.tile\_extract
 ==================
 
-.. function:: warp._src.lang.tile_extract(a: Tile[Any, tuple[int]], i: int32) -> Any
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: tile_extract(a: Tile[Any, tuple[int]], i: int32) -> Any
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -54,10 +56,10 @@
        [10. 20. 30. 40.]
    
 
-.. function:: warp._src.lang.tile_extract(a: Tile[Any, tuple[int, ...]], i: int32, j: int32) -> Any
+.. function:: tile_extract(a: Tile[Any, tuple[int, ...]], i: int32, j: int32) -> Any
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -79,10 +81,10 @@
              of the matrix element at ``i``, as a vector.
    
 
-.. function:: warp._src.lang.tile_extract(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32) -> Any
+.. function:: tile_extract(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32) -> Any
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -105,10 +107,10 @@
              scalar.
    
 
-.. function:: warp._src.lang.tile_extract(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32, l: int32) -> Any
+.. function:: tile_extract(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32, l: int32) -> Any
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -132,10 +134,10 @@
              scalar.
    
 
-.. function:: warp._src.lang.tile_extract(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32, l: int32, m: int32) -> Any
+.. function:: tile_extract(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32, l: int32, m: int32) -> Any
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -159,10 +161,10 @@
              scalar.
    
 
-.. function:: warp._src.lang.tile_extract(a: Tile[Any, tuple[int, int, int, int]], i: int32, j: int32, k: int32, l: int32, m: int32, n: int32) -> Any
+.. function:: tile_extract(a: Tile[Any, tuple[int, int, int, int]], i: int32, j: int32, k: int32, l: int32, m: int32, n: int32) -> Any
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true

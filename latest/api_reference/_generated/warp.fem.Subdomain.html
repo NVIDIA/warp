@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=e5bdcd64" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=ca94f457" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
@@ -518,7 +518,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">temporary_store</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L510-L642"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Subdomain" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L510-L641"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Subdomain" title="Link to this definition">#</a></dt>
 <dd><p>Restriction of domain to a subset of its elements.</p>
 <p>Create a subdomain from a subset of elements.</p>
 <p>Exactly one of <cite>element_mask</cite> and <cite>element_indices</cite> should be provided.</p>
@@ -642,25 +642,25 @@
 </div>
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.Subdomain.name">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">name</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L561-L565"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Subdomain.name" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">name</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L561-L564"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Subdomain.name" title="Link to this definition">#</a></dt>
 <dd><p>Name of the subdomain.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.Subdomain.element_kind">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">element_kind</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.fem.ElementKind.html#warp.fem.ElementKind" title="warp._src.fem.types.ElementKind"><span class="pre">ElementKind</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L573-L577"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Subdomain.element_kind" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">element_kind</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.fem.ElementKind.html#warp.fem.ElementKind" title="warp._src.fem.types.ElementKind"><span class="pre">ElementKind</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L573-L576"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Subdomain.element_kind" title="Link to this definition">#</a></dt>
 <dd><p>Kind of elements contained in the domain.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.Subdomain.dimension">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">dimension</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L578-L582"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Subdomain.dimension" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">dimension</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L578-L581"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Subdomain.dimension" title="Link to this definition">#</a></dt>
 <dd><p>Dimension of elements in the domain.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Subdomain.element_count">
-<span class="sig-name descname"><span class="pre">element_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L583-L586"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Subdomain.element_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">element_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L583-L585"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Subdomain.element_count" title="Link to this definition">#</a></dt>
 <dd><p>Number of elements in the domain.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -671,12 +671,12 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Subdomain.element_index_arg_value">
-<span class="sig-name descname"><span class="pre">element_index_arg_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/cache.py#L341-L352"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Subdomain.element_index_arg_value" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">element_index_arg_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/cache.py#L341-L351"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Subdomain.element_index_arg_value" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Subdomain.fill_element_index_arg">
-<span class="sig-name descname"><span class="pre">fill_element_index_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L602-L606"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Subdomain.fill_element_index_arg" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">fill_element_index_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L602-L605"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Subdomain.fill_element_index_arg" title="Link to this definition">#</a></dt>
 <dd><p>Fill the element index arguments for device functions.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -690,13 +690,13 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Subdomain.supports_lookup">
-<span class="sig-name descname"><span class="pre">supports_lookup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L621-L624"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Subdomain.supports_lookup" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">supports_lookup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L621-L623"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Subdomain.supports_lookup" title="Link to this definition">#</a></dt>
 <dd><p>Return whether element lookup is supported on the given device.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Subdomain.cell_domain">
-<span class="sig-name descname"><span class="pre">cell_domain</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L625-L628"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Subdomain.cell_domain" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">cell_domain</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L625-L627"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Subdomain.cell_domain" title="Link to this definition">#</a></dt>
 <dd><p>Return the corresponding cell domain.</p>
 </dd></dl>
 

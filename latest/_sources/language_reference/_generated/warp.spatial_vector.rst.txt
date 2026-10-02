@@ -1,9 +1,11 @@
 ﻿warp.spatial\_vector
 ====================
 
-.. function:: warp._src.lang.spatial_vector(dtype: Float = ...) -> Vector[Float, Literal[6]]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: spatial_vector(dtype: Float = ...) -> Vector[Float, Literal[6]]
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -17,10 +19,10 @@
    :returns: The zero spatial vector.
    
 
-.. function:: warp._src.lang.spatial_vector(w: Vector[Float, Literal[3]], v: Vector[Float, Literal[3]], dtype: Float = ...) -> Vector[Float, Literal[6]]
+.. function:: spatial_vector(w: Vector[Float, Literal[3]], v: Vector[Float, Literal[3]], dtype: Float = ...) -> Vector[Float, Literal[6]]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -57,10 +59,10 @@
         [0. 0. 2. 1. 0. 0.]]
    
 
-.. function:: warp._src.lang.spatial_vector(wx: Float, wy: Float, wz: Float, vx: Float, vy: Float, vz: Float, dtype: Float = ...) -> Vector[Float, Literal[6]]
+.. function:: spatial_vector(wx: Float, wy: Float, wz: Float, vx: Float, vy: Float, vz: Float, dtype: Float = ...) -> Vector[Float, Literal[6]]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true

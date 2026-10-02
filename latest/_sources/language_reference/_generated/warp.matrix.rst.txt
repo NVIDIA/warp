@@ -1,9 +1,11 @@
 ﻿warp.matrix
 ===========
 
-.. function:: warp._src.lang.matrix(pos: Vector[Float, Literal[3]], rot: Quaternion[Float], scale: Vector[Float, Literal[3]], dtype: Float = ...) -> Matrix[Float, Literal[4], Literal[4]]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: matrix(pos: Vector[Float, Literal[3]], rot: Quaternion[Float], scale: Vector[Float, Literal[3]], dtype: Float = ...) -> Matrix[Float, Literal[4], Literal[4]]
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -18,10 +20,10 @@
    
    .. deprecated:: 1.8
 
-.. function:: warp._src.lang.matrix(*args: Scalar, shape: tuple[int, int] = ..., dtype: Scalar = ...) -> Matrix[Scalar, Any, Any]
+.. function:: matrix(*args: Scalar, shape: tuple[int, int] = ..., dtype: Scalar = ...) -> Matrix[Scalar, Any, Any]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true

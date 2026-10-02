@@ -3,4 +3,25 @@
 
 .. currentmodule:: warp.geometry
 
-.. autodata:: find_triangle_neighbor_edge_index
+.. function:: find_triangle_neighbor_edge_index(triangle_neighbors: Array[int32], triangle: int32, neighbor: int32) -> int32
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: unknown
+      :differentiable: unknown
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/delaunay.py#L311-L337
+
+   Return the local edge of ``triangle`` shared with ``neighbor``.
+   
+   :param triangle_neighbors: The ``(num_tris, 3)`` adjacency array built by
+                              :func:`tri_tri_adjacency` (its ``triangle_neighbors`` output).
+   :param triangle: Index of the triangle to search.
+   :param neighbor: Index of the triangle to find among ``triangle``'s neighbors.
+   
+   :returns: The local edge index ``j`` such that ``triangle_neighbors[triangle, j]
+             == neighbor``, or -1 if ``triangle`` and ``neighbor`` are not adjacent.
+             Calling this with ``triangle`` and ``neighbor`` swapped recovers a
+             single entry -- the value :func:`tri_tri_adjacency` would have stored
+             in ``neighbor_edge_indices`` had it been called with
+             ``return_neighbor_edge_indices=True`` -- without having to keep that array around.
+   

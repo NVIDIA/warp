@@ -1,12 +1,15 @@
 ﻿warp.norm\_huber
 ================
 
-.. function:: warp._src.lang.norm_huber(v: Any, delta: float = 1.0) -> float
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: norm_huber(v: Any, delta: float = 1.0) -> float
+
+   .. wp-function-tags::
       :kernel: true
-      :python: false
+      :python: true
       :differentiable: true
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/math.py#L68-L88
 
    Compute the Huber norm of a vector v with a given delta.
    

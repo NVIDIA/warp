@@ -3,4 +3,17 @@
 
 .. currentmodule:: warp.fem.linalg
 
-.. autodata:: inverse_qr
+.. function:: inverse_qr(A: Any)
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: unknown
+      :differentiable: unknown
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/linalg.py#L308-L325
+
+   Compute the inverse of a square matrix using QR factorization.
+   
+   :param A: Square matrix to invert.
+   
+   :returns: Inverse of ``A``.
+   

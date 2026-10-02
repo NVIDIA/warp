@@ -1,9 +1,11 @@
 ﻿warp.tile\_load
 ===============
 
-.. function:: warp._src.lang.tile_load(a: Array[Any], shape: tuple[int, ...], offset: tuple[int, ...] = ..., storage: str = "register", bounds_check: bool = True, aligned: bool = False) -> Tile[Any, tuple[int, ...]]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: tile_load(a: Array[Any], shape: tuple[int, ...], offset: tuple[int, ...] = ..., storage: str = "register", bounds_check: bool = True, aligned: bool = False) -> Tile[Any, tuple[int, ...]]
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -62,10 +64,10 @@
         [16. 17. 18. 19. 20.  0.  0.  0.]]
    
 
-.. function:: warp._src.lang.tile_load(a: Array[Any], shape: int32, offset: int32 = ..., storage: str = "register", bounds_check: bool = True, aligned: bool = False) -> Tile[Any, tuple[int, ...]]
+.. function:: tile_load(a: Array[Any], shape: int32, offset: int32 = ..., storage: str = "register", bounds_check: bool = True, aligned: bool = False) -> Tile[Any, tuple[int, ...]]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true

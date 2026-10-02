@@ -1,9 +1,11 @@
 ﻿warp.hash\_grid\_point\_id
 ==========================
 
-.. function:: warp._src.lang.hash_grid_point_id(id: uint64, index: int32) -> int
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: hash_grid_point_id(id: uint64, index: int32) -> int
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

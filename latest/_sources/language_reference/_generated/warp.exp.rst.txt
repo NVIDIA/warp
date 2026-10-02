@@ -1,9 +1,11 @@
 ﻿warp.exp
 ========
 
-.. function:: warp._src.lang.exp(x: Float) -> Float
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: exp(x: Float) -> Float
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true

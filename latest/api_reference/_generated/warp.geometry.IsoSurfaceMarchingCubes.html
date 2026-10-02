@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=e5bdcd64" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=ca94f457" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
@@ -525,7 +525,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">domain_bounds_upper_corner</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">_DEFAULT_NONE</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L531-L962"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L531-L961"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes" title="Link to this definition">#</a></dt>
 <dd><p>A reusable context for marching cubes surface extraction.</p>
 <p>This class provides a stateful interface for isosurface extraction. You
 can initialize it with a specific grid configuration and then call the
@@ -743,7 +743,7 @@ values defines a triangle by specifying edge indices (0-11) where the vertices l
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.geometry.IsoSurfaceMarchingCubes.domain_bounds_lower_corner">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">domain_bounds_lower_corner</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L697-L706"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes.domain_bounds_lower_corner" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">domain_bounds_lower_corner</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L697-L705"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes.domain_bounds_lower_corner" title="Link to this definition">#</a></dt>
 <dd><p>Deprecated alias of <a class="reference internal" href="#warp.geometry.IsoSurfaceMarchingCubes.lower" title="warp.geometry.IsoSurfaceMarchingCubes.lower"><code class="xref py py-attr docutils literal notranslate"><span class="pre">lower</span></code></a>.</p>
 <div class="deprecated">
 <p><span class="versionmodified deprecated">Deprecated since version 1.18: </span>Use <a class="reference internal" href="#warp.geometry.IsoSurfaceMarchingCubes.lower" title="warp.geometry.IsoSurfaceMarchingCubes.lower"><code class="xref py py-attr docutils literal notranslate"><span class="pre">lower</span></code></a> instead.</p>
@@ -752,7 +752,7 @@ values defines a triangle by specifying edge indices (0-11) where the vertices l
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.geometry.IsoSurfaceMarchingCubes.domain_bounds_upper_corner">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">domain_bounds_upper_corner</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L712-L721"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes.domain_bounds_upper_corner" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">domain_bounds_upper_corner</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L712-L720"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes.domain_bounds_upper_corner" title="Link to this definition">#</a></dt>
 <dd><p>Deprecated alias of <a class="reference internal" href="#warp.geometry.IsoSurfaceMarchingCubes.upper" title="warp.geometry.IsoSurfaceMarchingCubes.upper"><code class="xref py py-attr docutils literal notranslate"><span class="pre">upper</span></code></a>.</p>
 <div class="deprecated">
 <p><span class="versionmodified deprecated">Deprecated since version 1.18: </span>Use <a class="reference internal" href="#warp.geometry.IsoSurfaceMarchingCubes.upper" title="warp.geometry.IsoSurfaceMarchingCubes.upper"><code class="xref py py-attr docutils literal notranslate"><span class="pre">upper</span></code></a> instead.</p>
@@ -761,7 +761,7 @@ values defines a triangle by specifying edge indices (0-11) where the vertices l
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.geometry.IsoSurfaceMarchingCubes.max_verts">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">max_verts</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L727-L737"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes.max_verts" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">max_verts</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L727-L736"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes.max_verts" title="Link to this definition">#</a></dt>
 <dd><p>Deprecated compatibility value that is not used.</p>
 <div class="deprecated">
 <p><span class="versionmodified deprecated">Deprecated since version 1.9.0: </span>Output arrays are sized dynamically. This attribute will be removed
@@ -771,7 +771,7 @@ in Warp 1.19.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.geometry.IsoSurfaceMarchingCubes.max_tris">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">max_tris</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L743-L753"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes.max_tris" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">max_tris</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L743-L752"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes.max_tris" title="Link to this definition">#</a></dt>
 <dd><p>Deprecated compatibility value that is not used.</p>
 <div class="deprecated">
 <p><span class="versionmodified deprecated">Deprecated since version 1.9.0: </span>Output arrays are sized dynamically. This attribute will be removed
@@ -781,7 +781,7 @@ in Warp 1.19.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.geometry.IsoSurfaceMarchingCubes.device">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">device</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L759-L769"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes.device" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">device</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L759-L768"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes.device" title="Link to this definition">#</a></dt>
 <dd><p>Deprecated device value that is not used for extraction.</p>
 <div class="deprecated">
 <p><span class="versionmodified deprecated">Deprecated since version 1.9.0: </span>Use the input field’s <a class="reference internal" href="warp.array.html#warp.array.device" title="warp.array.device"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.array.device</span></code></a> instead. This
@@ -791,7 +791,7 @@ attribute will be removed in Warp 1.19.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.geometry.IsoSurfaceMarchingCubes.id">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">id</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L775-L784"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes.id" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">id</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L775-L783"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes.id" title="Link to this definition">#</a></dt>
 <dd><p>Deprecated compatibility value that does not identify a resource.</p>
 <div class="deprecated">
 <p><span class="versionmodified deprecated">Deprecated since version 1.15.0: </span>This attribute has no replacement and will be removed in Warp 1.19.</p>
@@ -800,7 +800,7 @@ attribute will be removed in Warp 1.19.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.geometry.IsoSurfaceMarchingCubes.runtime">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">runtime</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L790-L800"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes.runtime" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">runtime</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L790-L799"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes.runtime" title="Link to this definition">#</a></dt>
 <dd><p>Deprecated compatibility reference that is not used.</p>
 <div class="deprecated">
 <p><span class="versionmodified deprecated">Deprecated since version 1.15.0: </span>Use public Warp APIs instead. This attribute will be removed in Warp
@@ -820,7 +820,7 @@ attribute will be removed in Warp 1.19.</p>
 <dd><em class="sig-param"><span class="n"><span class="pre">max_tris</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">_DEFAULT_ZERO</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L806-L847"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes.resize" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L806-L846"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes.resize" title="Link to this definition">#</a></dt>
 <dd><p>Update the grid dimensions for the context.</p>
 <p>This allows the instance to be reused for scalar fields of a different
 resolution. The new dimensions take effect on the next call to
@@ -847,7 +847,7 @@ from calls.</p></li>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.geometry.IsoSurfaceMarchingCubes.surface">
-<span class="sig-name descname"><span class="pre">surface</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L848-L875"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes.surface" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">surface</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L848-L874"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes.surface" title="Link to this definition">#</a></dt>
 <dd><p>Compute a 2D surface mesh of a given isosurface from a 3D scalar field.</p>
 <p>This method is a convenience wrapper that calls the <a class="reference internal" href="#warp.geometry.IsoSurfaceMarchingCubes.extract" title="warp.geometry.IsoSurfaceMarchingCubes.extract"><code class="xref py py-meth docutils literal notranslate"><span class="pre">extract()</span></code></a>
 class method and stores the resulting mesh data in the <a class="reference internal" href="#warp.geometry.IsoSurfaceMarchingCubes.verts" title="warp.geometry.IsoSurfaceMarchingCubes.verts"><code class="xref py py-attr docutils literal notranslate"><span class="pre">verts</span></code></a>
@@ -882,7 +882,7 @@ and <a class="reference internal" href="#warp.geometry.IsoSurfaceMarchingCubes.i
 <dd><em class="sig-param"><span class="n"><span class="pre">upper</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L876-L937"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes.extract" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L876-L936"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes.extract" title="Link to this definition">#</a></dt>
 <dd><p>Extract a triangular mesh from a 3D scalar field.</p>
 <p>This function generates an isosurface by processing the entire input <code class="docutils literal notranslate"><span class="pre">field</span></code>.
 The resolution of the output mesh is determined by the shape of the <code class="docutils literal notranslate"><span class="pre">field</span></code>
@@ -938,7 +938,7 @@ integers forms a single triangle by referencing vertices in the
 <dd><em class="sig-param"><span class="n"><span class="pre">domain_bounds_upper_corner</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L938-L962"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes.extract_surface_marching_cubes" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L938-L961"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes.extract_surface_marching_cubes" title="Link to this definition">#</a></dt>
 <dd><p>Extract a triangular mesh from a 3D scalar field.</p>
 <div class="deprecated">
 <p><span class="versionmodified deprecated">Deprecated since version 1.18: </span>Use <a class="reference internal" href="#warp.geometry.IsoSurfaceMarchingCubes.extract" title="warp.geometry.IsoSurfaceMarchingCubes.extract"><code class="xref py py-meth docutils literal notranslate"><span class="pre">extract()</span></code></a> instead. This alias will be removed in a future version of Warp.</p>

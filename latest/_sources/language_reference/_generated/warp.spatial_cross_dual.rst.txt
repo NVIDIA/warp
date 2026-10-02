@@ -1,9 +1,11 @@
 ﻿warp.spatial\_cross\_dual
 =========================
 
-.. function:: warp._src.lang.spatial_cross_dual(a: Vector[Float, Literal[6]], b: Vector[Float, Literal[6]]) -> Vector[Float, Literal[6]]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: spatial_cross_dual(a: Vector[Float, Literal[6]], b: Vector[Float, Literal[6]]) -> Vector[Float, Literal[6]]
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true

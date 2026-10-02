@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=e5bdcd64" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=ca94f457" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
@@ -570,8 +570,8 @@ control over memory allocations.</p>
 <p class="admonition-title">See also</p>
 <p><a class="reference internal" href="../domain_modules/sparse.html"><span class="doc">Sparse Matrices</span></a> for detailed examples and usage patterns.</p>
 </div>
-<section id="api">
-<h2>API<a class="headerlink" href="#api" title="Link to this heading">#</a></h2>
+<section id="python-api">
+<h2>Python API<a class="headerlink" href="#python-api" title="Link to this heading">#</a></h2>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix" title="warp.sparse.BsrMatrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BsrMatrix</span></code></a></p></td>
@@ -589,38 +589,32 @@ control over memory allocations.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.sparse.bsr_axpy.html#warp.sparse.bsr_axpy" title="warp.sparse.bsr_axpy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bsr_axpy</span></code></a></p></td>
 <td><p>Perform the sparse matrix addition <code class="docutils literal notranslate"><span class="pre">y</span> <span class="pre">:=</span> <span class="pre">alpha</span> <span class="pre">*</span> <span class="pre">X</span> <span class="pre">+</span> <span class="pre">beta</span> <span class="pre">*</span> <span class="pre">y</span></code> on BSR matrices <code class="docutils literal notranslate"><span class="pre">x</span></code> and <code class="docutils literal notranslate"><span class="pre">y</span></code> and return <code class="docutils literal notranslate"><span class="pre">y</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.sparse.bsr_block_index.html#warp.sparse.bsr_block_index" title="warp.sparse.bsr_block_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bsr_block_index</span></code></a></p></td>
-<td><p>Return the active block index in a capacity-aware BSR matrix, or -1 if no such block exists.</p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.sparse.bsr_compress.html#warp.sparse.bsr_compress" title="warp.sparse.bsr_compress"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bsr_compress</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.sparse.bsr_compress.html#warp.sparse.bsr_compress" title="warp.sparse.bsr_compress"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bsr_compress</span></code></a></p></td>
 <td><p>Compress the active blocks of <code class="docutils literal notranslate"><span class="pre">src</span></code> and return <code class="docutils literal notranslate"><span class="pre">src</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.sparse.bsr_copy.html#warp.sparse.bsr_copy" title="warp.sparse.bsr_copy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bsr_copy</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.sparse.bsr_copy.html#warp.sparse.bsr_copy" title="warp.sparse.bsr_copy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bsr_copy</span></code></a></p></td>
 <td><p>Return a copy of matrix <code class="docutils literal notranslate"><span class="pre">A</span></code>, possibly changing its scalar type.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.sparse.bsr_diag.html#warp.sparse.bsr_diag" title="warp.sparse.bsr_diag"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bsr_diag</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.sparse.bsr_diag.html#warp.sparse.bsr_diag" title="warp.sparse.bsr_diag"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bsr_diag</span></code></a></p></td>
 <td><p>Create and return a block-diagonal BSR matrix from an given block value or array of block values.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.sparse.bsr_from_triplets.html#warp.sparse.bsr_from_triplets" title="warp.sparse.bsr_from_triplets"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bsr_from_triplets</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.sparse.bsr_from_triplets.html#warp.sparse.bsr_from_triplets" title="warp.sparse.bsr_from_triplets"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bsr_from_triplets</span></code></a></p></td>
 <td><p>Construct a BSR matrix with values defined by coordinate-oriented (COO) triplets.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.sparse.bsr_get_diag.html#warp.sparse.bsr_get_diag" title="warp.sparse.bsr_get_diag"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bsr_get_diag</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.sparse.bsr_get_diag.html#warp.sparse.bsr_get_diag" title="warp.sparse.bsr_get_diag"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bsr_get_diag</span></code></a></p></td>
 <td><p>Return the array of blocks that constitute the diagonal of a sparse matrix.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.sparse.bsr_identity.html#warp.sparse.bsr_identity" title="warp.sparse.bsr_identity"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bsr_identity</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.sparse.bsr_identity.html#warp.sparse.bsr_identity" title="warp.sparse.bsr_identity"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bsr_identity</span></code></a></p></td>
 <td><p>Create and return a square identity matrix.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.sparse.bsr_matrix_t.html#warp.sparse.bsr_matrix_t" title="warp.sparse.bsr_matrix_t"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bsr_matrix_t</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.sparse.bsr_matrix_t.html#warp.sparse.bsr_matrix_t" title="warp.sparse.bsr_matrix_t"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bsr_matrix_t</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.sparse.bsr_mm.html#warp.sparse.bsr_mm" title="warp.sparse.bsr_mm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bsr_mm</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.sparse.bsr_mm.html#warp.sparse.bsr_mm" title="warp.sparse.bsr_mm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bsr_mm</span></code></a></p></td>
 <td><p>Perform the sparse matrix-matrix multiplication <code class="docutils literal notranslate"><span class="pre">z</span> <span class="pre">:=</span> <span class="pre">alpha</span> <span class="pre">*</span> <span class="pre">x</span> <span class="pre">&#64;</span> <span class="pre">y</span> <span class="pre">+</span> <span class="pre">beta</span> <span class="pre">*</span> <span class="pre">z</span></code> on BSR matrices <code class="docutils literal notranslate"><span class="pre">x</span></code>, <code class="docutils literal notranslate"><span class="pre">y</span></code> and <code class="docutils literal notranslate"><span class="pre">z</span></code>, and return <code class="docutils literal notranslate"><span class="pre">z</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.sparse.bsr_mv.html#warp.sparse.bsr_mv" title="warp.sparse.bsr_mv"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bsr_mv</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.sparse.bsr_mv.html#warp.sparse.bsr_mv" title="warp.sparse.bsr_mv"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bsr_mv</span></code></a></p></td>
 <td><p>Perform the sparse matrix-vector product <code class="docutils literal notranslate"><span class="pre">y</span> <span class="pre">:=</span> <span class="pre">alpha</span> <span class="pre">*</span> <span class="pre">A</span> <span class="pre">*</span> <span class="pre">x</span> <span class="pre">+</span> <span class="pre">beta</span> <span class="pre">*</span> <span class="pre">y</span></code> and return <code class="docutils literal notranslate"><span class="pre">y</span></code>.</p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.sparse.bsr_row_index.html#warp.sparse.bsr_row_index" title="warp.sparse.bsr_row_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bsr_row_index</span></code></a></p></td>
-<td><p>Return the row containing an active block in a capacity-aware BSR matrix, or -1 if no such row exists.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.sparse.bsr_scale.html#warp.sparse.bsr_scale" title="warp.sparse.bsr_scale"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bsr_scale</span></code></a></p></td>
 <td><p>Perform the operation <code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">:=</span> <span class="pre">alpha</span> <span class="pre">*</span> <span class="pre">x</span></code> on BSR matrix <code class="docutils literal notranslate"><span class="pre">x</span></code> and return <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p></td>
@@ -651,6 +645,20 @@ control over memory allocations.</p>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.sparse.BSR_STATUS_SUCCESS.html#warp.sparse.BSR_STATUS_SUCCESS" title="warp.sparse.BSR_STATUS_SUCCESS"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BSR_STATUS_SUCCESS</span></code></a></p></td>
 <td><p>Sparse operation status code for success.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="kernel-api">
+<h2>Kernel API<a class="headerlink" href="#kernel-api" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.sparse.bsr_block_index.html#warp.sparse.bsr_block_index" title="warp.sparse.bsr_block_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bsr_block_index</span></code></a></p></td>
+<td><p>Return the active block index in a capacity-aware BSR matrix, or -1 if no such block exists.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.sparse.bsr_row_index.html#warp.sparse.bsr_row_index" title="warp.sparse.bsr_row_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bsr_row_index</span></code></a></p></td>
+<td><p>Return the row containing an active block in a capacity-aware BSR matrix, or -1 if no such row exists.</p></td>
 </tr>
 </tbody>
 </table>
@@ -707,7 +715,8 @@ control over memory allocations.</p>
   </div>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#api">API</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#python-api">Python API</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#kernel-api">Kernel API</a></li>
 </ul>
   </nav></div>
 

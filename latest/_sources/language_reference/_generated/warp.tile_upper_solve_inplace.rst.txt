@@ -1,9 +1,11 @@
 ﻿warp.tile\_upper\_solve\_inplace
 ================================
 
-.. function:: warp._src.lang.tile_upper_solve_inplace(U: Tile[Float, tuple[int, int]], z: Tile[Float, tuple[int]]) -> None
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: tile_upper_solve_inplace(U: Tile[Float, tuple[int, int]], z: Tile[Float, tuple[int]]) -> None
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

@@ -1,9 +1,11 @@
 ﻿warp.tan
 ========
 
-.. function:: warp._src.lang.tan(x: Float) -> Float
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: tan(x: Float) -> Float
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true

@@ -1,9 +1,11 @@
 ﻿warp.mesh\_query\_aabb\_next
 ============================
 
-.. function:: warp._src.lang.mesh_query_aabb_next(query: MeshQueryAABB, index: int32) -> bool
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: mesh_query_aabb_next(query: MeshQueryAABB, index: int32) -> bool
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -19,10 +21,10 @@
    :returns: ``True`` if another matching triangle was found, otherwise ``False``.
    
 
-.. function:: warp._src.lang.mesh_query_aabb_next(query: _MeshQuerySphere, index: int32) -> bool
+.. function:: mesh_query_aabb_next(query: _MeshQuerySphere, index: int32) -> bool
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -38,10 +40,10 @@
    :returns: ``True`` if another matching triangle was found, otherwise ``False``.
    
 
-.. function:: warp._src.lang.mesh_query_aabb_next(query: MeshQuery, index: int32) -> bool
+.. function:: mesh_query_aabb_next(query: MeshQuery, index: int32) -> bool
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

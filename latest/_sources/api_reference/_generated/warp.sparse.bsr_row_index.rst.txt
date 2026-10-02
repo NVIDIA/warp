@@ -3,4 +3,36 @@
 
 .. currentmodule:: warp.sparse
 
-.. autodata:: bsr_row_index
+.. function:: bsr_row_index(offsets: Array[int32], row_count: int, block_index: int) -> int
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: unknown
+      :differentiable: unknown
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/sparse.py#L1804-L1820
+
+   Return the row containing a block in compact BSR/CSR storage, or -1 if no such row exists.
+   
+   This overload searches the storage range defined by ``offsets``. For matrices with padded row
+   capacity, pass ``row_counts`` to the row-capacity overload to search active blocks only.
+   
+   :param offsets: Array of size at least ``1 + row_count`` containing the offsets of the blocks in each row.
+   :param row_count: Number of rows of blocks.
+   :param block_index: Index of the block.
+   
+
+.. function:: bsr_row_index(offsets: Array[int32], row_count: int, block_index: int, row_counts: Array[int32]) -> int
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: unknown
+      :differentiable: unknown
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/sparse.py#L1823-L1843
+
+   Return the row containing an active block in a capacity-aware BSR matrix, or -1 if no such row exists.
+   
+   This row-capacity overload searches active row ranges
+   ``offsets[row]:offsets[row] + row_counts[row]`` and ignores slack storage.
+   If ``row_counts`` is ``None``, it falls back to compact storage rows
+   defined by ``offsets``.

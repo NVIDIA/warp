@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=e5bdcd64" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=ca94f457" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
@@ -65,7 +65,7 @@
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="warp.sparse.bsr_copy" href="warp.sparse.bsr_copy.html" />
-    <link rel="prev" title="warp.sparse.bsr_block_index" href="warp.sparse.bsr_block_index.html" />
+    <link rel="prev" title="warp.sparse.bsr_axpy" href="warp.sparse.bsr_axpy.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -518,7 +518,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">topology</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/sparse.py#L1582-L1684"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_compress" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/sparse.py#L1582-L1683"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_compress" title="Link to this definition">#</a></dt>
 <dd><p>Compress the active blocks of <code class="docutils literal notranslate"><span class="pre">src</span></code> and return <code class="docutils literal notranslate"><span class="pre">src</span></code>.</p>
 <p>Slack entries outside <code class="docutils literal notranslate"><span class="pre">offsets[row]:offsets[row]</span> <span class="pre">+</span> <span class="pre">row_counts[row]</span></code> are ignored. When
 <code class="docutils literal notranslate"><span class="pre">inplace=False</span></code>, the topology is rebuilt natively from active row and
@@ -568,12 +568,12 @@ increases the active block count.</p></li>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.sparse.bsr_block_index.html"
+       href="warp.sparse.bsr_axpy.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.sparse.bsr_block_index</p>
+        <p class="prev-next-title">warp.sparse.bsr_axpy</p>
       </div>
     </a>
     <a class="right-next"

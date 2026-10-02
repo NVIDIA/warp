@@ -1,9 +1,11 @@
 ﻿warp.array
 ==========
 
-.. function:: warp._src.lang.array(ptr: uint64, shape: tuple[int, ...], dtype: Any) -> Array[Scalar]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: array(ptr: uint64, shape: tuple[int, ...], dtype: Any) -> Array[Scalar]
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

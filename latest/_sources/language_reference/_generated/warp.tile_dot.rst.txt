@@ -1,9 +1,11 @@
 ﻿warp.tile\_dot
 ==============
 
-.. function:: warp._src.lang.tile_dot(a: Tile[Any, tuple[int, ...]], b: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[Literal[1]]]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: tile_dot(a: Tile[Any, tuple[int, ...]], b: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[Literal[1]]]
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true

@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=e5bdcd64" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=ca94f457" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
@@ -562,8 +562,78 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">mat</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Matrix</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><span class="pre">float32</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="m"><span class="pre">4</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="m"><span class="pre">4</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Transformation</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><span class="pre">float32</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#warp._src.lang.transform_from_matrix" title="Link to this definition">#</a></dt>
-<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Construct a transformation from a 4x4 matrix.</p>
+<span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Transformation</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><span class="pre">float32</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/math.py#L515-L539"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp._src.lang.transform_from_matrix" title="Link to this definition">#</a></dt>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag" data-wp-tag="python" data-wp-value="true"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Construct a transformation from a 4x4 matrix.</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}M = \begin{bmatrix}
+R_{00} &amp; R_{01} &amp; R_{02} &amp; p_x \\
+R_{10} &amp; R_{11} &amp; R_{12} &amp; p_y \\
+R_{20} &amp; R_{21} &amp; R_{22} &amp; p_z \\
+0 &amp; 0 &amp; 0 &amp; 1
+\end{bmatrix}\end{split}\]</div>
+<p>Where:</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(R\)</span> is the 3x3 rotation matrix extracted from the rotational part of the input matrix.</p></li>
+<li><p><span class="math notranslate nohighlight">\(p\)</span> is the 3D position vector <span class="math notranslate nohighlight">\([p_x, p_y, p_z]\)</span> extracted from the input matrix.</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>mat</strong> (<em>Matrix</em><em>[</em><a class="reference internal" href="../../api_reference/_generated/warp.Float.html#warp.Float" title="warp.Float"><em>Float</em></a><em>, </em><em>4</em><em>, </em><em>4</em><em>]</em>) – Matrix to convert.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The transformation.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Transformation[<a class="reference internal" href="../../api_reference/_generated/warp.Float.html#warp.Float" title="warp.Float">Float</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">transform_from_matrix</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">mat</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Matrix</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../api_reference/_generated/warp.float16.html#warp.float16" title="warp.float16"><span class="pre">float16</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="m"><span class="pre">4</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="m"><span class="pre">4</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Transformation</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../api_reference/_generated/warp.float16.html#warp.float16" title="warp.float16"><span class="pre">float16</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/math.py#L515-L539"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag" data-wp-tag="python" data-wp-value="true"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Construct a transformation from a 4x4 matrix.</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}M = \begin{bmatrix}
+R_{00} &amp; R_{01} &amp; R_{02} &amp; p_x \\
+R_{10} &amp; R_{11} &amp; R_{12} &amp; p_y \\
+R_{20} &amp; R_{21} &amp; R_{22} &amp; p_z \\
+0 &amp; 0 &amp; 0 &amp; 1
+\end{bmatrix}\end{split}\]</div>
+<p>Where:</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(R\)</span> is the 3x3 rotation matrix extracted from the rotational part of the input matrix.</p></li>
+<li><p><span class="math notranslate nohighlight">\(p\)</span> is the 3D position vector <span class="math notranslate nohighlight">\([p_x, p_y, p_z]\)</span> extracted from the input matrix.</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>mat</strong> (<em>Matrix</em><em>[</em><a class="reference internal" href="../../api_reference/_generated/warp.Float.html#warp.Float" title="warp.Float"><em>Float</em></a><em>, </em><em>4</em><em>, </em><em>4</em><em>]</em>) – Matrix to convert.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The transformation.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Transformation[<a class="reference internal" href="../../api_reference/_generated/warp.Float.html#warp.Float" title="warp.Float">Float</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">transform_from_matrix</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">mat</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Matrix</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../api_reference/_generated/warp.float64.html#warp.float64" title="warp.float64"><span class="pre">float64</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="m"><span class="pre">4</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="m"><span class="pre">4</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Transformation</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../api_reference/_generated/warp.float64.html#warp.float64" title="warp.float64"><span class="pre">float64</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/math.py#L515-L539"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag" data-wp-tag="python" data-wp-value="true"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Construct a transformation from a 4x4 matrix.</p>
 <div class="math notranslate nohighlight">
 \[\begin{split}M = \begin{bmatrix}
 R_{00} &amp; R_{01} &amp; R_{02} &amp; p_x \\

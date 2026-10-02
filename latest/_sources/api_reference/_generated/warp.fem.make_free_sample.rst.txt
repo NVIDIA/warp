@@ -3,4 +3,23 @@
 
 .. currentmodule:: warp.fem
 
-.. autodata:: make_free_sample
+.. function:: make_free_sample(element_index: int, element_coords: vec3f)
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: unknown
+      :differentiable: unknown
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/types.py#L149-L152
+
+   Return a :class:`Sample` that is not associated to any quadrature point or dof.
+
+.. function:: make_free_sample(element_index: int, element_coords: vec3d)
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: unknown
+      :differentiable: unknown
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/types.py#L155-L158
+
+   Return a :class:`Sample_f64` that is not associated to any quadrature point or dof.

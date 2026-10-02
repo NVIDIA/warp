@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=e5bdcd64" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=ca94f457" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
@@ -550,7 +550,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">inline_hint</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L223-L830"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Function" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L223-L829"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Function" title="Link to this definition">#</a></dt>
 <dd><p>Represents a Warp function decorated with <a class="reference internal" href="warp.func.html#warp.func" title="warp.func"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;warp.func</span></code></a>.</p>
 <p>Functions can be called from kernels or other Warp functions.</p>
 <p class="rubric">Methods</p>
@@ -662,7 +662,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Function.is_builtin">
-<span class="sig-name descname"><span class="pre">is_builtin</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L525-L527"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Function.is_builtin" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">is_builtin</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L525-L526"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Function.is_builtin" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool">bool</a></p>
@@ -672,7 +672,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Function.is_simple">
-<span class="sig-name descname"><span class="pre">is_simple</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L528-L538"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Function.is_simple" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">is_simple</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L528-L537"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Function.is_simple" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool">bool</a></p>
@@ -682,7 +682,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Function.mangle">
-<span class="sig-name descname"><span class="pre">mangle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">template_args</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L539-L562"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Function.mangle" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">mangle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">template_args</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L539-L561"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Function.mangle" title="Link to this definition">#</a></dt>
 <dd><p>Build a mangled name for the C-exported function, e.g.: <code class="docutils literal notranslate"><span class="pre">builtin_normalize_vec3()</span></code>.</p>
 <p>A built-in that instantiates its native function from a parameter rather than from its
 runtime arguments is exported once per instantiation, so <code class="docutils literal notranslate"><span class="pre">template_args</span></code> selects which of
@@ -699,7 +699,7 @@ those names to build.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Function.add_overload">
-<span class="sig-name descname"><span class="pre">add_overload</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L571-L610"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Function.add_overload" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">add_overload</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L571-L609"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Function.add_overload" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>f</strong> (<a class="reference internal" href="#warp.Function" title="warp._src.context.Function"><em>Function</em></a>)</p>
@@ -712,7 +712,7 @@ those names to build.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Function.get_overload">
-<span class="sig-name descname"><span class="pre">get_overload</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg_types</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kwarg_types</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L611-L689"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Function.get_overload" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_overload</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg_types</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kwarg_types</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L611-L688"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Function.get_overload" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -728,7 +728,7 @@ those names to build.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Function.get_builtin">
-<span class="sig-name descname"><span class="pre">get_builtin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L690-L693"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Function.get_builtin" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_builtin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L690-L692"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Function.get_builtin" title="Link to this definition">#</a></dt>
 <dd><p>Resolve a Python-scope built-in call and return its invariant descriptor.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -739,7 +739,7 @@ those names to build.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Function.call_builtin">
-<span class="sig-name descname"><span class="pre">call_builtin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">desc</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L799-L807"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Function.call_builtin" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">call_builtin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">desc</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L799-L806"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Function.call_builtin" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>desc</strong> (<em>BuiltinCallDesc</em>)</p>
@@ -752,7 +752,7 @@ those names to build.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Function.build">
-<span class="sig-name descname"><span class="pre">build</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">builder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_builder_options</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L808-L826"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Function.build" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">build</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">builder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_builder_options</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L808-L825"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Function.build" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>builder</strong> (<em>ModuleBuilder</em><em> | </em><em>None</em>)</p>

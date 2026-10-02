@@ -1,9 +1,11 @@
 ﻿warp.inverse\_approx
 ====================
 
-.. function:: warp._src.lang.inverse_approx(a: Matrix[Float, Literal[2], Literal[2]]) -> Matrix[Float, Any, Any]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: inverse_approx(a: Matrix[Float, Literal[2], Literal[2]]) -> Matrix[Float, Any, Any]
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -56,10 +58,10 @@
         [-0.333  0.667]]
    
 
-.. function:: warp._src.lang.inverse_approx(a: Matrix[Float, Literal[3], Literal[3]]) -> Matrix[Float, Any, Any]
+.. function:: inverse_approx(a: Matrix[Float, Literal[3], Literal[3]]) -> Matrix[Float, Any, Any]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -74,10 +76,10 @@
    :returns: A matrix whose product with the input approximates the identity.
    
 
-.. function:: warp._src.lang.inverse_approx(a: Matrix[Float, Literal[4], Literal[4]]) -> Matrix[Float, Any, Any]
+.. function:: inverse_approx(a: Matrix[Float, Literal[4], Literal[4]]) -> Matrix[Float, Any, Any]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true

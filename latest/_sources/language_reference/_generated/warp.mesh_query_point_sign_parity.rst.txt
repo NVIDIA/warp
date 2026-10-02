@@ -1,9 +1,11 @@
 ﻿warp.mesh\_query\_point\_sign\_parity
 =====================================
 
-.. function:: warp._src.lang.mesh_query_point_sign_parity(id: uint64, point: vec3f, max_dist: float32, n_sample: int32 = 1, perturbation_scale: float32 = 0.1) -> MeshQueryPoint
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: mesh_query_point_sign_parity(id: uint64, point: vec3f, max_dist: float32, n_sample: int32 = 1, perturbation_scale: float32 = 0.1) -> MeshQueryPoint
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true

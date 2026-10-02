@@ -1,12 +1,15 @@
 ﻿warp.transform\_twist
 =====================
 
-.. function:: warp._src.lang.transform_twist(t: transformf, x: spatial_vectorf) -> spatial_vectorf
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: transform_twist(t: transformf, x: spatial_vectorf) -> spatial_vectorf
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/math.py#L452-L478
 
    Transform a spatial twist between coordinate frames.
    

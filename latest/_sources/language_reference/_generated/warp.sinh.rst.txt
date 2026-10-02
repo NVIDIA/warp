@@ -1,9 +1,11 @@
 ﻿warp.sinh
 =========
 
-.. function:: warp._src.lang.sinh(x: Float) -> Float
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: sinh(x: Float) -> Float
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true

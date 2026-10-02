@@ -1,9 +1,11 @@
 ﻿warp.quat\_to\_matrix
 =====================
 
-.. function:: warp._src.lang.quat_to_matrix(quat: Quaternion[Float]) -> Matrix[Float, Literal[3], Literal[3]]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: quat_to_matrix(quat: Quaternion[Float]) -> Matrix[Float, Literal[3], Literal[3]]
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true

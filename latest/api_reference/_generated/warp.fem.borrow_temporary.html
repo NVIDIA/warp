@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=e5bdcd64" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=ca94f457" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
@@ -65,7 +65,7 @@
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="warp.fem.borrow_temporary_like" href="warp.fem.borrow_temporary_like.html" />
-    <link rel="prev" title="warp.fem.average" href="warp.fem.average.html" />
+    <link rel="prev" title="warp.fem.adaptive_nanogrid_from_hierarchy" href="warp.fem.adaptive_nanogrid_from_hierarchy.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -520,7 +520,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/cache.py#L637-L676"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.borrow_temporary" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/cache.py#L637-L675"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.borrow_temporary" title="Link to this definition">#</a></dt>
 <dd><p>Borrow and return a temporary array with specified attributes from a shared pool.</p>
 <p>If an array with sufficient capacity and matching desired attributes is already available in the pool, it will be returned.
 Otherwise, a new allocation will be performed.</p>
@@ -554,12 +554,12 @@ Otherwise, a new allocation will be performed.</p>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.fem.average.html"
+       href="warp.fem.adaptive_nanogrid_from_hierarchy.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.fem.average</p>
+        <p class="prev-next-title">warp.fem.adaptive_nanogrid_from_hierarchy</p>
       </div>
     </a>
     <a class="right-next"

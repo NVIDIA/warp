@@ -3,4 +3,14 @@
 
 .. currentmodule:: warp.fem.linalg
 
-.. autodata:: householder_qr_decomposition
+.. function:: householder_qr_decomposition(A: Any)
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: unknown
+      :differentiable: unknown
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/linalg.py#L241-L262
+
+   QR decomposition of a square matrix using Householder reflections
+   
+   Returns Q and R such that Q R = A, Q orthonormal (such that QQ^T = Id), R upper triangular

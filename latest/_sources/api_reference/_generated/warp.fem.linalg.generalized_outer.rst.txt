@@ -3,4 +3,69 @@
 
 .. currentmodule:: warp.fem.linalg
 
-.. autodata:: generalized_outer
+.. function:: generalized_outer(x: Vector[Scalar, Any], y: Vector[Scalar, Any])
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: unknown
+      :differentiable: unknown
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/linalg.py#L10-L21
+
+   Compute a generalized outer product.
+   
+   :param x: Vector input.
+   :param y: Vector input.
+   
+   :returns: Matrix (``x y^T``).
+   
+
+.. function:: generalized_outer(x: Scalar, y: Vector[Scalar, Any])
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: unknown
+      :differentiable: unknown
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/linalg.py#L24-L35
+
+   Compute a generalized outer product.
+   
+   :param x: Scalar input.
+   :param y: Vector input.
+   
+   :returns: Vector (``x y``).
+   
+
+.. function:: generalized_outer(x: Vector[Scalar, Any], y: Scalar)
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: unknown
+      :differentiable: unknown
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/linalg.py#L38-L49
+
+   Compute a generalized outer product.
+   
+   :param x: Vector input.
+   :param y: Scalar input.
+   
+   :returns: Vector (``x y``).
+   
+
+.. function:: generalized_outer(x: quatf, y: Vector[Scalar, Any])
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: unknown
+      :differentiable: unknown
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/linalg.py#L52-L63
+
+   Compute a generalized outer product.
+   
+   :param x: Quaternion input.
+   :param y: Vector input.
+   
+   :returns: Matrix (``x y^T``).
+   

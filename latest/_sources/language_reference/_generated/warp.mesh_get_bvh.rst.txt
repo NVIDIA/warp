@@ -1,9 +1,11 @@
 ﻿warp.mesh\_get\_bvh
 ===================
 
-.. function:: warp._src.lang.mesh_get_bvh(id: uint64) -> uint64
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: mesh_get_bvh(id: uint64) -> uint64
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

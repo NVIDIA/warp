@@ -3,4 +3,12 @@
 
 .. currentmodule:: warp.fem.linalg
 
-.. autodata:: symmetric_part
+.. function:: symmetric_part(x: Any)
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: unknown
+      :differentiable: unknown
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/linalg.py#L165-L168
+
+   Symmetric part of a square tensor.

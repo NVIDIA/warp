@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=e5bdcd64" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=ca94f457" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
@@ -64,8 +64,8 @@
 
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="warp.optim" href="../warp_optim.html" />
-    <link rel="prev" title="warp.geometry.swept_volume_sdf" href="warp.geometry.swept_volume_sdf.html" />
+    <link rel="next" title="warp.geometry.find_triangle_neighbor_edge_index" href="warp.geometry.find_triangle_neighbor_edge_index.html" />
+    <link rel="prev" title="warp.geometry.swept_volume_mesh" href="warp.geometry.swept_volume_mesh.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -517,7 +517,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">return_neighbor_edge_indices</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/delaunay.py#L236-L304"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.tri_tri_adjacency" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/delaunay.py#L236-L303"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.tri_tri_adjacency" title="Link to this definition">#</a></dt>
 <dd><p>Build triangle-triangle adjacency for a triangle mesh. Assumes
 edge-manifold with possible boundary (i.e., exactly one or two triangles per
 edge). Consistent triangle orientation is not required.</p>
@@ -562,20 +562,20 @@ neighboring triangle.</p>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.geometry.swept_volume_sdf.html"
+       href="warp.geometry.swept_volume_mesh.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.geometry.swept_volume_sdf</p>
+        <p class="prev-next-title">warp.geometry.swept_volume_mesh</p>
       </div>
     </a>
     <a class="right-next"
-       href="../warp_optim.html"
+       href="warp.geometry.find_triangle_neighbor_edge_index.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.optim</p>
+        <p class="prev-next-title">warp.geometry.find_triangle_neighbor_edge_index</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>

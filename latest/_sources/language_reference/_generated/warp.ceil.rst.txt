@@ -1,9 +1,11 @@
 ﻿warp.ceil
 =========
 
-.. function:: warp._src.lang.ceil(x: Float) -> Float
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: ceil(x: Float) -> Float
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: false

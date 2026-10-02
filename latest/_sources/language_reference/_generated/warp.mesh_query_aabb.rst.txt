@@ -1,9 +1,11 @@
 ﻿warp.mesh\_query\_aabb
 ======================
 
-.. function:: warp._src.lang.mesh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> MeshQueryAABB
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: mesh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> MeshQueryAABB
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

@@ -1,9 +1,11 @@
 ﻿warp.quat\_rotate\_inv
 ======================
 
-.. function:: warp._src.lang.quat_rotate_inv(quat: Quaternion[Float], vec: Vector[Float, Literal[3]]) -> Vector[Float, Literal[3]]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: quat_rotate_inv(quat: Quaternion[Float], vec: Vector[Float, Literal[3]]) -> Vector[Float, Literal[3]]
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true

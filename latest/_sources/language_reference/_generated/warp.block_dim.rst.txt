@@ -1,9 +1,11 @@
 ﻿warp.block\_dim
 ===============
 
-.. function:: warp._src.lang.block_dim() -> int
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: block_dim() -> int
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: false

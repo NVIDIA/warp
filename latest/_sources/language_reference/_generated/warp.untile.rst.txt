@@ -1,9 +1,11 @@
 ﻿warp.untile
 ===========
 
-.. function:: warp._src.lang.untile(a: Tile[Any, tuple[int, ...]]) -> Any
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: untile(a: Tile[Any, tuple[int, ...]]) -> Any
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true

@@ -1,9 +1,11 @@
 ﻿warp.volume\_store\_v
 =====================
 
-.. function:: warp._src.lang.volume_store_v(id: uint64, i: int32, j: int32, k: int32, value: vec3f) -> None
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: volume_store_v(id: uint64, i: int32, j: int32, k: int32, value: vec3f) -> None
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

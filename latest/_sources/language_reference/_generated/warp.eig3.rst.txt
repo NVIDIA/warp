@@ -1,9 +1,11 @@
 ﻿warp.eig3
 =========
 
-.. function:: warp._src.lang.eig3(A: Matrix[Float, Literal[3], Literal[3]]) -> tuple[Matrix[Float, Literal[3], Literal[3]], Vector[Float, Literal[3]]]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: eig3(A: Matrix[Float, Literal[3], Literal[3]]) -> tuple[Matrix[Float, Literal[3], Literal[3]], Vector[Float, Literal[3]]]
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
@@ -68,10 +70,10 @@
         [2. 1. 5.]]
    
 
-.. function:: warp._src.lang.eig3(A: Matrix[Float, Literal[3], Literal[3]], Q: Matrix[Float, Literal[3], Literal[3]], d: Vector[Float, Literal[3]]) -> None
+.. function:: eig3(A: Matrix[Float, Literal[3], Literal[3]], Q: Matrix[Float, Literal[3], Literal[3]], d: Vector[Float, Literal[3]]) -> None
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true

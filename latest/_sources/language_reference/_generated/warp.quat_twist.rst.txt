@@ -1,12 +1,15 @@
 ﻿warp.quat\_twist
 ================
 
-.. function:: warp._src.lang.quat_twist(axis: vec3f, q: quatf) -> quatf
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: quat_twist(axis: vec3f, q: quatf) -> quatf
+
+   .. wp-function-tags::
       :kernel: true
-      :python: false
+      :python: true
       :differentiable: true
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/math.py#L151-L168
 
    Extract the twist quaternion of ``q`` around ``axis``.
    

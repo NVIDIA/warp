@@ -1,9 +1,11 @@
 ﻿warp.transpose
 ==============
 
-.. function:: warp._src.lang.transpose(a: Matrix[Scalar, Any, Any]) -> Matrix[Scalar, Any, Any]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: transpose(a: Matrix[Scalar, Any, Any]) -> Matrix[Scalar, Any, Any]
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true

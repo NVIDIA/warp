@@ -1,12 +1,15 @@
 ﻿warp.transform\_wrench
 ======================
 
-.. function:: warp._src.lang.transform_wrench(t: transformf, x: spatial_vectorf) -> spatial_vectorf
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: transform_wrench(t: transformf, x: spatial_vectorf) -> spatial_vectorf
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/math.py#L481-L507
 
    Transform a spatial wrench between coordinate frames.
    

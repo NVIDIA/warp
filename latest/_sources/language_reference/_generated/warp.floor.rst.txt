@@ -1,9 +1,11 @@
 ﻿warp.floor
 ==========
 
-.. function:: warp._src.lang.floor(x: Float) -> Float
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: floor(x: Float) -> Float
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: false

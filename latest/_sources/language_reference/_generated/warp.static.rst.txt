@@ -1,9 +1,11 @@
 ﻿warp.static
 ===========
 
-.. function:: warp._src.lang.static(expr: Any) -> Any
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: static(expr: Any) -> Any
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

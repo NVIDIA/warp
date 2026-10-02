@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=e5bdcd64" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=ca94f457" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
@@ -512,7 +512,7 @@
 <h1>warp.fem.geometry.DeformedGeometry<a class="headerlink" href="#warp-fem-geometry-deformedgeometry" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.fem.geometry.DeformedGeometry">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.fem.geometry.</span></span><span class="sig-name descname"><span class="pre">DeformedGeometry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">relative</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">build_bvh</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/deformed_geometry.py#L17-L312"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.geometry.DeformedGeometry" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.fem.geometry.</span></span><span class="sig-name descname"><span class="pre">DeformedGeometry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">relative</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">build_bvh</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/deformed_geometry.py#L17-L311"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.geometry.DeformedGeometry" title="Link to this definition">#</a></dt>
 <dd><p>Geometry obtained by deforming a base geometry with a displacement field.</p>
 <p>Construct a Deformed Geometry from a displacement or absolute position field defined over a base geometry.
 The deformation field does not need to be isoparameteric.</p>
@@ -702,34 +702,34 @@ The deformation field does not need to be isoparameteric.</p>
 </dl>
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.geometry.DeformedGeometry.name">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">name</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/deformed_geometry.py#L90-L99"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.geometry.DeformedGeometry.name" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">name</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/deformed_geometry.py#L90-L98"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.geometry.DeformedGeometry.name" title="Link to this definition">#</a></dt>
 <dd><p>Unique name of the deformed geometry.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.geometry.DeformedGeometry.base">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">base</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.fem.Geometry.html#warp.fem.Geometry" title="warp._src.fem.geometry.geometry.Geometry"><span class="pre">Geometry</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/deformed_geometry.py#L100-L104"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.geometry.DeformedGeometry.base" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">base</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.fem.Geometry.html#warp.fem.Geometry" title="warp._src.fem.geometry.geometry.Geometry"><span class="pre">Geometry</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/deformed_geometry.py#L100-L103"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.geometry.DeformedGeometry.base" title="Link to this definition">#</a></dt>
 <dd><p>Base geometry prior to deformation.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.geometry.DeformedGeometry.scalar_type">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">scalar_type</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/deformed_geometry.py#L105-L108"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.geometry.DeformedGeometry.scalar_type" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">scalar_type</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/deformed_geometry.py#L105-L107"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.geometry.DeformedGeometry.scalar_type" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.geometry.DeformedGeometry.environment_count">
-<span class="sig-name descname"><span class="pre">environment_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/deformed_geometry.py#L109-L111"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.geometry.DeformedGeometry.environment_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">environment_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/deformed_geometry.py#L109-L110"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.geometry.DeformedGeometry.environment_count" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.geometry.DeformedGeometry.cell_env">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cell_env</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/deformed_geometry.py#L112-L115"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.geometry.DeformedGeometry.cell_env" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cell_env</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/deformed_geometry.py#L112-L114"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.geometry.DeformedGeometry.cell_env" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.geometry.DeformedGeometry.fill_cell_arg">
-<span class="sig-name descname"><span class="pre">fill_cell_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/deformed_geometry.py#L127-L132"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.geometry.DeformedGeometry.fill_cell_arg" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">fill_cell_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/deformed_geometry.py#L127-L131"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.geometry.DeformedGeometry.fill_cell_arg" title="Link to this definition">#</a></dt>
 <dd><p>Fill arguments for cell-related device functions.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -740,7 +740,7 @@ The deformation field does not need to be isoparameteric.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.geometry.DeformedGeometry.fill_side_arg">
-<span class="sig-name descname"><span class="pre">fill_side_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/deformed_geometry.py#L171-L177"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.geometry.DeformedGeometry.fill_side_arg" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">fill_side_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/deformed_geometry.py#L171-L176"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.geometry.DeformedGeometry.fill_side_arg" title="Link to this definition">#</a></dt>
 <dd><p>Fill arguments for side-related device functions.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>

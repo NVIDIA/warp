@@ -1,9 +1,11 @@
 ﻿warp.volume\_sample\_v
 ======================
 
-.. function:: warp._src.lang.volume_sample_v(id: uint64, uvw: vec3f, sampling_mode: int32) -> vec3f
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: volume_sample_v(id: uint64, uvw: vec3f, sampling_mode: int32) -> vec3f
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
