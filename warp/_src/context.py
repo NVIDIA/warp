@@ -3340,7 +3340,10 @@ class ModuleHasher:
             ch.update(bytes(k, "utf-8"))
             if isinstance(v, Function):
                 if v not in self.functions_in_progress:
-                    ch.update(self.hash_function(v))
+                    if v.is_builtin():
+                        ch.update(self.hash_builtin_function(v))
+                    else:
+                        ch.update(self.hash_function(v))
             else:
                 ch.update(self.get_constant_bytes(v))
 
