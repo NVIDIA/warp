@@ -3765,7 +3765,18 @@ class Adjoint:
                         raise WarpCodegenAttributeError(
                             f"Native type '{type(aggregate.constant).__name__}' has no field '{node.attr}'"
                         ) from e
-                return aggregate
+                if isinstance(aggregate.constant, StructInstance):
+                    field_type = aggregate.type.vars[node.attr].type
+                    value = getattr(aggregate.constant, node.attr)
+                    if not warp._src.types.is_value(value) and not isinstance(value, StructInstance):
+                        raise WarpCodegenAttributeError(
+                            f"Cannot access non-value field '{node.attr}' on a constant struct"
+                        )
+                    if field_type in warp._src.types.scalar_types:
+                        value = field_type(value)
+                    return adj.add_constant(value)
+                if not isinstance(aggregate.constant, ctypes.Array):
+                    return aggregate
 
             if isinstance(aggregate, types.ModuleType) or isinstance(aggregate, type):
                 out = getattr(aggregate, node.attr)
