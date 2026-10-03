@@ -74,6 +74,38 @@ class MemoryType(enum.IntEnum):
     """The memory is a CUDA array handle (``cudaArray_t``)."""
 
 
+# Bit layout of the packed ``info`` word in the kernel-facing texture descriptors.
+# Keep in sync with WP_TEXTURE_INFO_* in warp/native/texture.h.
+_TEXTURE_INFO_NUM_CHANNELS_SHIFT = 0  # 4 bits
+_TEXTURE_INFO_DTYPE_SHIFT = 4  # 4 bits
+_TEXTURE_INFO_FILTER_MODE_SHIFT = 8  # 1 bit
+_TEXTURE_INFO_MIP_FILTER_MODE_SHIFT = 9  # 1 bit
+_TEXTURE_INFO_NORMALIZED_COORDS_SHIFT = 10  # 1 bit
+_TEXTURE_INFO_NUM_MIP_LEVELS_SHIFT = 11  # 5 bits
+
+
+def _pack_texture_info(
+    num_channels: int = 0,
+    dtype: int = 0,
+    filter_mode: int = 0,
+    mip_filter_mode: int = 0,
+    num_mip_levels: int = 1,
+    use_normalized_coords: bool = True,
+) -> int:
+    """Pack texture metadata into the ``info`` word of a kernel-facing texture descriptor."""
+    return (
+        (int(num_channels) & 0xF) << _TEXTURE_INFO_NUM_CHANNELS_SHIFT
+        | (int(dtype) & 0xF) << _TEXTURE_INFO_DTYPE_SHIFT
+        | (int(filter_mode) & 0x1) << _TEXTURE_INFO_FILTER_MODE_SHIFT
+        | (int(mip_filter_mode) & 0x1) << _TEXTURE_INFO_MIP_FILTER_MODE_SHIFT
+        | (int(bool(use_normalized_coords)) << _TEXTURE_INFO_NORMALIZED_COORDS_SHIFT)
+        | (int(num_mip_levels) & 0x1F) << _TEXTURE_INFO_NUM_MIP_LEVELS_SHIFT
+    )
+
+
+_TEXTURE_INFO_DEFAULT = _pack_texture_info()
+
+
 class texture1d_t(ctypes.Structure):
     """Structure representing a 1D texture for kernel access.
 
@@ -83,15 +115,13 @@ class texture1d_t(ctypes.Structure):
     _fields_ = (
         ("tex", ctypes.c_uint64),
         ("width", ctypes.c_int32),
-        ("num_channels", ctypes.c_int32),
-        ("dtype", ctypes.c_int32),
+        ("info", ctypes.c_uint32),  # see _pack_texture_info()
     )
 
-    def __init__(self, tex=0, width=0, num_channels=0, dtype=0):
+    def __init__(self, tex=0, width=0, info=_TEXTURE_INFO_DEFAULT):
         self.tex = tex
         self.width = width
-        self.num_channels = num_channels
-        self.dtype = dtype
+        self.info = info
 
 
 class texture2d_t(ctypes.Structure):
@@ -104,16 +134,14 @@ class texture2d_t(ctypes.Structure):
         ("tex", ctypes.c_uint64),
         ("width", ctypes.c_int32),
         ("height", ctypes.c_int32),
-        ("num_channels", ctypes.c_int32),
-        ("dtype", ctypes.c_int32),
+        ("info", ctypes.c_uint32),  # see _pack_texture_info()
     )
 
-    def __init__(self, tex=0, width=0, height=0, num_channels=0, dtype=0):
+    def __init__(self, tex=0, width=0, height=0, info=_TEXTURE_INFO_DEFAULT):
         self.tex = tex
         self.width = width
         self.height = height
-        self.num_channels = num_channels
-        self.dtype = dtype
+        self.info = info
 
 
 class texture3d_t(ctypes.Structure):
@@ -127,17 +155,15 @@ class texture3d_t(ctypes.Structure):
         ("width", ctypes.c_int32),
         ("height", ctypes.c_int32),
         ("depth", ctypes.c_int32),
-        ("num_channels", ctypes.c_int32),
-        ("dtype", ctypes.c_int32),
+        ("info", ctypes.c_uint32),  # see _pack_texture_info()
     )
 
-    def __init__(self, tex=0, width=0, height=0, depth=0, num_channels=0, dtype=0):
+    def __init__(self, tex=0, width=0, height=0, depth=0, info=_TEXTURE_INFO_DEFAULT):
         self.tex = tex
         self.width = width
         self.height = height
         self.depth = depth
-        self.num_channels = num_channels
-        self.dtype = dtype
+        self.info = info
 
 
 class cuda_array_desc_t(ctypes.Structure):
@@ -395,6 +421,14 @@ class Texture:
         self._address_mode_w = address_mode_w
         self._normalized_coords = normalized_coords
         self._surface_access = bool(surface_access and device.is_cuda)
+        self._info = _pack_texture_info(
+            num_channels,
+            dtype_code,
+            filter_mode,
+            mip_filter_mode,
+            resolved_num_mip_levels,
+            normalized_coords,
+        )
 
         # create texture
         if device.is_cuda:
@@ -1198,7 +1232,7 @@ class Texture1D(Texture):
         """Return the ctypes structure for passing to kernels."""
         if self._tex_handle == 0:
             raise RuntimeError("Texture was created with data=None but never initialized.")
-        return texture1d_t(self._tex_handle, self._width, self._num_channels, self._dtype_code)
+        return texture1d_t(self._tex_handle, self._width, self._info)
 
 
 class Texture2D(Texture):
@@ -1279,7 +1313,7 @@ class Texture2D(Texture):
         """Return the ctypes structure for passing to kernels."""
         if self._tex_handle == 0:
             raise RuntimeError("Texture was created with data=None but never initialized.")
-        return texture2d_t(self._tex_handle, self._width, self._height, self._num_channels, self._dtype_code)
+        return texture2d_t(self._tex_handle, self._width, self._height, self._info)
 
 
 class Texture3D(Texture):
@@ -1364,9 +1398,7 @@ class Texture3D(Texture):
         """Return the ctypes structure for passing to kernels."""
         if self._tex_handle == 0:
             raise RuntimeError("Texture was created with data=None but never initialized.")
-        return texture3d_t(
-            self._tex_handle, self._width, self._height, self._depth, self._num_channels, self._dtype_code
-        )
+        return texture3d_t(self._tex_handle, self._width, self._height, self._depth, self._info)
 
 
 class TextureResourceFlags(enum.IntEnum):
