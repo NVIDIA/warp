@@ -67,6 +67,30 @@ def test_quat_between_vectors_preserves_regular_rotations(test, device):
     np.testing.assert_allclose(np.linalg.norm(q.numpy(), axis=-1), 1.0, rtol=2e-6)
 
 
+def test_quat_between_nearly_opposite_vectors_preserves_rotation_plane(test, device):
+    """Nearly opposite vectors keep the rotation axis in their cross-product plane."""
+    sources = np.array([[0.0, 0.0, 1.0]], dtype=np.float32)
+    targets = np.array([[0.0, 5.0e-7, -1.0]], dtype=np.float32)
+    a = wp.array(sources, dtype=wp.vec3, device=device)
+    b = wp.array(targets, dtype=wp.vec3, device=device)
+    rotations = wp.empty(1, dtype=wp.quat, device=device)
+    rotated = wp.empty(1, dtype=wp.vec3, device=device)
+
+    wp.launch(quat_between_vectors_kernel, dim=1, inputs=[a, b, rotations, rotated], device=device)
+
+    source = sources[0] / np.linalg.norm(sources[0])
+    target = targets[0] / np.linalg.norm(targets[0])
+    expected_axis = np.cross(source, target)
+    expected_axis /= np.linalg.norm(expected_axis)
+    quaternion_axis = rotations.numpy()[0, :3]
+    quaternion_axis /= np.linalg.norm(quaternion_axis)
+
+    np.testing.assert_allclose(
+        abs(np.dot(quaternion_axis, expected_axis)), 1.0, rtol=2e-6, atol=2e-6
+    )
+    np.testing.assert_allclose(rotated.numpy()[0], target, rtol=2e-6, atol=2e-6)
+
+
 def test_array_scan(test, device):
     rng = np.random.default_rng(123)
 
@@ -1614,6 +1638,12 @@ add_function_test(
 
 
 add_function_test(TestUtils, "test_quat_between_opposite_vectors", test_quat_between_opposite_vectors, devices=devices)
+add_function_test(
+    TestUtils,
+    "test_quat_between_nearly_opposite_vectors_preserves_rotation_plane",
+    test_quat_between_nearly_opposite_vectors_preserves_rotation_plane,
+    devices=devices,
+)
 add_function_test(
     TestUtils,
     "test_quat_between_vectors_preserves_regular_rotations",
