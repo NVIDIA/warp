@@ -3324,8 +3324,8 @@ class ModuleHasher:
                 ch.update(arg_type.dtype.hash)
 
         # NOTE: get_references() only captures closure variables that resolve to Warp
-        # Function, Struct, or value types (scalars, vectors, matrices, etc.). Non-Warp Python objects (lists,
-        # dicts, custom classes) captured by closures are not included in the hash.
+        # Function, Struct types or instances, or value types (scalars, vectors, matrices, etc.).
+        # Non-Warp Python objects (lists, dicts, custom classes) captured by closures are not included in the hash.
         # Users should wrap such values with wp.static() to make them visible.
         # find referenced constants, types, and functions
         constants, types, functions = adj.get_references()
