@@ -3121,7 +3121,7 @@ class Adjoint:
                 require_original_output_arg=func.require_original_output_arg,
             )
             if arg_str is not None:
-                if func.lto_dispatch_func is not None:
+                if func.lto_dispatch_func is not None or func.adjoint_uses_template_args:
                     adj_func_name = compute_type_str(func.native_func, template_args)
                 else:
                     adj_func_name = func.native_func
@@ -7079,11 +7079,12 @@ class Adjoint:
                         # module dependency discovery because they have no module.
                         for callable_func in iter_call_callable_arg_targets(adj, func, node, callable_arg_values):
                             functions[callable_func] = None
-                    elif func._has_external_builtin_contract:
-                        # External builtins are mutable process-local registrations, so
-                        # their native contract must participate in the module hash.
-                        # Warp's builtins are versioned with the library and need no
-                        # per-call hashing; keeping them out preserves declaration speed.
+                    elif func._has_external_builtin_contract or any(
+                        overload.adjoint_uses_template_args for overload in func.overloads
+                    ):
+                        # External builtins and templated native adjoints can change
+                        # generated calls without changing the kernel source.
+                        # Other Warp builtins use the versioned cache directory.
                         functions[func] = None
                 elif isinstance(func, Struct):
                     # calling struct constructor
@@ -7103,7 +7104,9 @@ class Adjoint:
                     if path and rhs_func is warp:
                         rhs_func = warp._src.context.builtin_functions.get(path[-1])
                     if isinstance(rhs_func, warp._src.context.Function) and (
-                        not rhs_func.is_builtin() or rhs_func._has_external_builtin_contract
+                        not rhs_func.is_builtin()
+                        or rhs_func._has_external_builtin_contract
+                        or any(overload.adjoint_uses_template_args for overload in rhs_func.overloads)
                     ):
                         functions[rhs_func] = None
 

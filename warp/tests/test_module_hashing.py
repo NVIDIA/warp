@@ -415,6 +415,31 @@ class TestModuleHasherKernelOptions(unittest.TestCase):
 
 
 class TestModuleHashing(unittest.TestCase):
+    def test_builtin_adjoint_dispatch_affects_module_hash(self):
+        """Changes to a native adjoint call must invalidate cached kernels."""
+
+        @wp.kernel(module="unique")
+        def reduce_axis(x: wp.array2d[float], y: wp.array[float]):
+            values = wp.tile_load(x, shape=(2, 3), storage="shared")
+            wp.tile_store(y, wp.tile_sum(values, axis=0))
+
+        tile_sum = wp._src.context.builtin_functions["tile_sum"]
+        axis_overload = next(overload for overload in tile_sum.overloads if "axis" in overload.input_types)
+        original_native_func = axis_overload.native_func
+        original_flag = axis_overload.adjoint_uses_template_args
+        original_hash = reduce_axis.module.hash_module()
+
+        try:
+            axis_overload.native_func = f"{original_native_func}_changed"
+            self.assertNotEqual(reduce_axis.module.hash_module(), original_hash)
+
+            axis_overload.native_func = original_native_func
+            axis_overload.adjoint_uses_template_args = not original_flag
+            self.assertNotEqual(reduce_axis.module.hash_module(), original_hash)
+        finally:
+            axis_overload.native_func = original_native_func
+            axis_overload.adjoint_uses_template_args = original_flag
+
     def test_inline_hint_hashed(self):
         """Verify each ``@wp.func`` inline hint produces a distinct module hash.
 
