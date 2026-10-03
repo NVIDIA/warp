@@ -42,9 +42,10 @@ def quat_between_vectors(a: wp.vec3, b: wp.vec3) -> wp.quat:
     b = wp.normalize(b)
     c = wp.cross(a, b)
     d = wp.dot(a, b)
-    if d < 0.0 and wp.length_sq(c) == 0.0:
-        # Exact antiparallel inputs have no rotation-plane axis.
-        # Use a stable perpendicular axis for their deterministic half turn.
+    if d < 0.0 and wp.length_sq(c) < 4.0e-14:
+        # Truly antiparallel float32 inputs can retain a tiny cross product
+        # after separate normalization. Keep the tolerance below meaningful
+        # near-opposite rotation-plane offsets.
         axis = wp.vec3(1.0, 0.0, 0.0)
         if wp.abs(a[0]) > 0.9:
             axis = wp.vec3(0.0, 1.0, 0.0)
