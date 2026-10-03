@@ -665,6 +665,27 @@ def test_atomic_operations(test, device):
         wp.config.verify_autograd_array_access = saved_verify_autograd_array_access_setting
 
 
+# a zero-size launch recorded on a tape must not reach the array-access check
+def test_zero_size_launch_with_verification(test, device):
+    saved_verify_autograd_array_access_setting = wp.config.verify_autograd_array_access
+    try:
+        wp.config.verify_autograd_array_access = True
+
+        a = wp.zeros(0, dtype=float, requires_grad=True, device=device)
+        b = wp.zeros(0, dtype=float, requires_grad=True, device=device)
+
+        tape = wp.Tape()
+        with tape:
+            # launch() only builds its argument list when there is work to do,
+            # and the check below the tape recording read it unconditionally
+            wp.launch(square_kernel, dim=0, inputs=[a], outputs=[b], device=device)
+
+        test.assertEqual(len(tape.launches), 1)
+
+    finally:
+        wp.config.verify_autograd_array_access = saved_verify_autograd_array_access_setting
+
+
 class TestOverwrite(unittest.TestCase):
     pass
 
@@ -713,6 +734,9 @@ add_function_test(
     TestOverwrite, "test_deferred_backward_still_warns", test_deferred_backward_still_warns, devices=devices
 )
 add_function_test(TestOverwrite, "test_atomic_operations", test_atomic_operations, devices=devices)
+add_function_test(
+    TestOverwrite, "test_zero_size_launch_with_verification", test_zero_size_launch_with_verification, devices=devices
+)
 
 # Some warning are only issued during codegen, and codegen only runs on cuda_0 in the MGPU case.
 cuda_device = get_cuda_test_devices(mode="basic")
