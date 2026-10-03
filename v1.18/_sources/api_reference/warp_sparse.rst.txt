@@ -6,8 +6,8 @@ warp.sparse
 
 .. currentmodule:: warp.sparse
 
-API
----
+Python API
+----------
 
 .. autosummary::
    :nosignatures:
@@ -18,7 +18,6 @@ API
    bsr_mm_work_arrays
    bsr_assign
    bsr_axpy
-   bsr_block_index
    bsr_compress
    bsr_copy
    bsr_diag
@@ -28,7 +27,6 @@ API
    bsr_matrix_t
    bsr_mm
    bsr_mv
-   bsr_row_index
    bsr_scale
    bsr_set_diag
    bsr_set_from_triplets
@@ -39,3 +37,13 @@ API
    bsr_zeros
    BSR_STATUS_ROW_CAPACITY_EXCEEDED
    BSR_STATUS_SUCCESS
+
+Kernel API
+----------
+
+.. autosummary::
+   :nosignatures:
+   :toctree: _generated
+
+   bsr_block_index
+   bsr_row_index

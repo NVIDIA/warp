@@ -1,9 +1,11 @@
 ﻿warp.svd2
 =========
 
-.. function:: warp._src.lang.svd2(A: Matrix[Float, Literal[2], Literal[2]]) -> tuple[Matrix[Float, Literal[2], Literal[2]], Vector[Float, Literal[2]], Matrix[Float, Literal[2], Literal[2]]]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: svd2(A: Matrix[Float, Literal[2], Literal[2]]) -> tuple[Matrix[Float, Literal[2], Literal[2]], Vector[Float, Literal[2]], Matrix[Float, Literal[2], Literal[2]]]
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
@@ -65,10 +67,10 @@
         [ 0.447  0.894]]
    
 
-.. function:: warp._src.lang.svd2(A: Matrix[Float, Literal[2], Literal[2]], U: Matrix[Float, Literal[2], Literal[2]], sigma: Vector[Float, Literal[2]], V: Matrix[Float, Literal[2], Literal[2]]) -> None
+.. function:: svd2(A: Matrix[Float, Literal[2], Literal[2]], U: Matrix[Float, Literal[2], Literal[2]], sigma: Vector[Float, Literal[2]], V: Matrix[Float, Literal[2], Literal[2]]) -> None
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true

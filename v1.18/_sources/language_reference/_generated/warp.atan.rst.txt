@@ -1,9 +1,11 @@
 ﻿warp.atan
 =========
 
-.. function:: warp._src.lang.atan(x: Float) -> Float
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: atan(x: Float) -> Float
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true

@@ -1,9 +1,11 @@
 ﻿warp.trace
 ==========
 
-.. function:: warp._src.lang.trace(a: Matrix[Scalar, Any, Any]) -> Scalar
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: trace(a: Matrix[Scalar, Any, Any]) -> Scalar
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true

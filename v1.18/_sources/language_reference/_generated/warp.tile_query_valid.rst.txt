@@ -1,9 +1,11 @@
 ﻿warp.tile\_query\_valid
 =======================
 
-.. function:: warp._src.lang.tile_query_valid(query: BvhQueryTiled) -> bool
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: tile_query_valid(query: BvhQueryTiled) -> bool
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -50,10 +52,10 @@
        overlaps: [1, 1, 0]
    
 
-.. function:: warp._src.lang.tile_query_valid(query: MeshQueryAABBTiled) -> bool
+.. function:: tile_query_valid(query: MeshQueryAABBTiled) -> bool
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

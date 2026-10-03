@@ -1,9 +1,11 @@
 ﻿warp.randn
 ==========
 
-.. function:: warp._src.lang.randn(state: uint32) -> float
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: randn(state: uint32) -> float
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: false

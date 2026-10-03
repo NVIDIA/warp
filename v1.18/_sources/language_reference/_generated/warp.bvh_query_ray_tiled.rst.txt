@@ -1,9 +1,11 @@
 ﻿warp.bvh\_query\_ray\_tiled
 ===========================
 
-.. function:: warp._src.lang.bvh_query_ray_tiled(id: uint64, start: vec3f, dir: vec3f) -> BvhQueryTiled
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: bvh_query_ray_tiled(id: uint64, start: vec3f, dir: vec3f) -> BvhQueryTiled
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

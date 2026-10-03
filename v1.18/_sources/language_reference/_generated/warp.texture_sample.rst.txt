@@ -1,9 +1,11 @@
 ﻿warp.texture\_sample
 ====================
 
-.. function:: warp._src.lang.texture_sample(tex: Texture1D, u: float32, dtype: Any, lod: float32 = -1.0) -> Any
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: texture_sample(tex: Texture1D, u: float32, dtype: Any, lod: float32 = -1.0) -> Any
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -72,10 +74,10 @@
        5.0 1.0 1.0
    
 
-.. function:: warp._src.lang.texture_sample(tex: Texture2D, uv: vec2f, dtype: Any, lod: float32 = -1.0) -> Any
+.. function:: texture_sample(tex: Texture2D, uv: vec2f, dtype: Any, lod: float32 = -1.0) -> Any
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -116,10 +118,10 @@
    :class:`warp.Texture`. Currently, CUDA textures with unnormalized coordinates support only
    ``CLAMP`` and ``BORDER`` address modes. Use normalized coordinates with ``WRAP`` or ``MIRROR``.
 
-.. function:: warp._src.lang.texture_sample(tex: Texture2D, u: float32, v: float32, dtype: Any, lod: float32 = -1.0) -> Any
+.. function:: texture_sample(tex: Texture2D, u: float32, v: float32, dtype: Any, lod: float32 = -1.0) -> Any
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -162,10 +164,10 @@
    :class:`warp.Texture`. Currently, CUDA textures with unnormalized coordinates support only
    ``CLAMP`` and ``BORDER`` address modes. Use normalized coordinates with ``WRAP`` or ``MIRROR``.
 
-.. function:: warp._src.lang.texture_sample(tex: Texture3D, uvw: vec3f, dtype: Any, lod: float32 = -1.0) -> Any
+.. function:: texture_sample(tex: Texture3D, uvw: vec3f, dtype: Any, lod: float32 = -1.0) -> Any
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -206,10 +208,10 @@
    :class:`warp.Texture`. Currently, CUDA textures with unnormalized coordinates support only
    ``CLAMP`` and ``BORDER`` address modes. Use normalized coordinates with ``WRAP`` or ``MIRROR``.
 
-.. function:: warp._src.lang.texture_sample(tex: Texture3D, u: float32, v: float32, w: float32, dtype: Any, lod: float32 = -1.0) -> Any
+.. function:: texture_sample(tex: Texture3D, u: float32, v: float32, w: float32, dtype: Any, lod: float32 = -1.0) -> Any
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

@@ -1,9 +1,11 @@
 ﻿warp.tile\_atomic\_add
 ======================
 
-.. function:: warp._src.lang.tile_atomic_add(a: Array[Any], t: Tile[Any, tuple[int, ...]], offset: tuple[int, ...] = ..., bounds_check: bool = True) -> Tile[Any, tuple[int, ...]]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: tile_atomic_add(a: Array[Any], t: Tile[Any, tuple[int, ...]], offset: tuple[int, ...] = ..., bounds_check: bool = True) -> Tile[Any, tuple[int, ...]]
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -70,10 +72,10 @@
         [2. 3.]]
    
 
-.. function:: warp._src.lang.tile_atomic_add(a: Array[Any], t: Tile[Any, tuple[int, ...]], offset: int32 = ..., bounds_check: bool = True) -> Tile[Any, tuple[int, ...]]
+.. function:: tile_atomic_add(a: Array[Any], t: Tile[Any, tuple[int, ...]], offset: int32 = ..., bounds_check: bool = True) -> Tile[Any, tuple[int, ...]]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true

@@ -1,9 +1,11 @@
 ﻿warp.randf
 ==========
 
-.. function:: warp._src.lang.randf(state: uint32) -> float
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: randf(state: uint32) -> float
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: false
@@ -30,10 +32,10 @@
    :func:`randi`, :func:`randu`, and :func:`randn` are used the same way:
    initialize ``rng`` once with :func:`rand_init`, then pass it to each call.
 
-.. function:: warp._src.lang.randf(state: uint32, low: float32, high: float32) -> float
+.. function:: randf(state: uint32, low: float32, high: float32) -> float
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: false

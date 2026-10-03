@@ -1,9 +1,11 @@
 ﻿warp.skew
 =========
 
-.. function:: warp._src.lang.skew(vec: Vector[Scalar, Literal[3]]) -> Matrix[Scalar, Literal[3], Literal[3]]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: skew(vec: Vector[Scalar, Literal[3]]) -> Matrix[Scalar, Literal[3], Literal[3]]
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true

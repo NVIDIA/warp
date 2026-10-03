@@ -1,9 +1,11 @@
 ﻿warp.select
 ===========
 
-.. function:: warp._src.lang.select(cond: bool, value_if_false: Any, value_if_true: Any) -> Any
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: select(cond: bool, value_if_false: Any, value_if_true: Any) -> Any
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -16,10 +18,10 @@
    
    .. deprecated:: 1.7
 
-.. function:: warp._src.lang.select(cond: int8, value_if_false: Any, value_if_true: Any) -> Any
+.. function:: select(cond: int8, value_if_false: Any, value_if_true: Any) -> Any
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -32,10 +34,10 @@
    
    .. deprecated:: 1.7
 
-.. function:: warp._src.lang.select(cond: uint8, value_if_false: Any, value_if_true: Any) -> Any
+.. function:: select(cond: uint8, value_if_false: Any, value_if_true: Any) -> Any
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -48,10 +50,10 @@
    
    .. deprecated:: 1.7
 
-.. function:: warp._src.lang.select(cond: int16, value_if_false: Any, value_if_true: Any) -> Any
+.. function:: select(cond: int16, value_if_false: Any, value_if_true: Any) -> Any
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -64,10 +66,10 @@
    
    .. deprecated:: 1.7
 
-.. function:: warp._src.lang.select(cond: uint16, value_if_false: Any, value_if_true: Any) -> Any
+.. function:: select(cond: uint16, value_if_false: Any, value_if_true: Any) -> Any
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -80,10 +82,10 @@
    
    .. deprecated:: 1.7
 
-.. function:: warp._src.lang.select(cond: int32, value_if_false: Any, value_if_true: Any) -> Any
+.. function:: select(cond: int32, value_if_false: Any, value_if_true: Any) -> Any
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -96,10 +98,10 @@
    
    .. deprecated:: 1.7
 
-.. function:: warp._src.lang.select(cond: uint32, value_if_false: Any, value_if_true: Any) -> Any
+.. function:: select(cond: uint32, value_if_false: Any, value_if_true: Any) -> Any
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -112,10 +114,10 @@
    
    .. deprecated:: 1.7
 
-.. function:: warp._src.lang.select(cond: int64, value_if_false: Any, value_if_true: Any) -> Any
+.. function:: select(cond: int64, value_if_false: Any, value_if_true: Any) -> Any
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -128,10 +130,10 @@
    
    .. deprecated:: 1.7
 
-.. function:: warp._src.lang.select(cond: uint64, value_if_false: Any, value_if_true: Any) -> Any
+.. function:: select(cond: uint64, value_if_false: Any, value_if_true: Any) -> Any
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -144,10 +146,10 @@
    
    .. deprecated:: 1.7
 
-.. function:: warp._src.lang.select(arr: Array[Any], value_if_false: Any, value_if_true: Any) -> Any
+.. function:: select(arr: Array[Any], value_if_false: Any, value_if_true: Any) -> Any
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

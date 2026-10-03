@@ -1,9 +1,11 @@
 ﻿warp.round
 ==========
 
-.. function:: warp._src.lang.round(x: Float) -> Float
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: round(x: Float) -> Float
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: false

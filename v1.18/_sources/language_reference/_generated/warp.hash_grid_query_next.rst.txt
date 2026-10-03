@@ -1,9 +1,11 @@
 ﻿warp.hash\_grid\_query\_next
 ============================
 
-.. function:: warp._src.lang.hash_grid_query_next(query: HashGridQuery, index: int32) -> bool
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: hash_grid_query_next(query: HashGridQuery, index: int32) -> bool
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -52,10 +54,10 @@
        [2 2 1 1]
    
 
-.. function:: warp._src.lang.hash_grid_query_next(query: HashGridQuery, index: int32) -> bool
+.. function:: hash_grid_query_next(query: HashGridQuery, index: int32) -> bool
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -73,10 +75,10 @@
              query is exhausted.
    
 
-.. function:: warp._src.lang.hash_grid_query_next(query: HashGridQuery, index: int32) -> bool
+.. function:: hash_grid_query_next(query: HashGridQuery, index: int32) -> bool
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

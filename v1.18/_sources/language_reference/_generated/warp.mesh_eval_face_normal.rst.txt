@@ -1,9 +1,11 @@
 ﻿warp.mesh\_eval\_face\_normal
 =============================
 
-.. function:: warp._src.lang.mesh_eval_face_normal(id: uint64, face: int32) -> vec3f
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: mesh_eval_face_normal(id: uint64, face: int32) -> vec3f
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

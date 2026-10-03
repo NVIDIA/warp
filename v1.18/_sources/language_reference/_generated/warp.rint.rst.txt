@@ -1,9 +1,11 @@
 ﻿warp.rint
 =========
 
-.. function:: warp._src.lang.rint(x: Float) -> Float
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: rint(x: Float) -> Float
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: false

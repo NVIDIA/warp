@@ -1,31 +1,21 @@
 ﻿warp.mul
 ========
 
-.. function:: warp._src.lang.mul(a: Scalar, b: Scalar) -> Scalar
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: mul(a: Scalar, b: Scalar) -> Scalar
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
 
    Multiply two values.
 
-.. function:: warp._src.lang.mul(a: Vector[Scalar, Any], b: Scalar) -> Vector[Scalar, Any]
+.. function:: mul(a: Vector[Scalar, Any], b: Scalar) -> Vector[Scalar, Any]
    :noindex:
 
-   .. wp-builtin-tags::
-      :kernel: true
-      :python: true
-      :differentiable: true
-
-   Multiply two values.
-   
-   Scale a vector by a scalar.
-
-.. function:: warp._src.lang.mul(a: Scalar, b: Vector[Scalar, Any]) -> Vector[Scalar, Any]
-   :noindex:
-
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
@@ -34,10 +24,22 @@
    
    Scale a vector by a scalar.
 
-.. function:: warp._src.lang.mul(a: Quaternion[Float], b: Scalar) -> Quaternion[Float]
+.. function:: mul(a: Scalar, b: Vector[Scalar, Any]) -> Vector[Scalar, Any]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Multiply two values.
+   
+   Scale a vector by a scalar.
+
+.. function:: mul(a: Quaternion[Float], b: Scalar) -> Quaternion[Float]
+   :noindex:
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
@@ -46,10 +48,10 @@
    
    Scale a quaternion by a scalar.
 
-.. function:: warp._src.lang.mul(a: Scalar, b: Quaternion[Float]) -> Quaternion[Float]
+.. function:: mul(a: Scalar, b: Quaternion[Float]) -> Quaternion[Float]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
@@ -58,10 +60,10 @@
    
    Scale a quaternion by a scalar.
 
-.. function:: warp._src.lang.mul(a: Quaternion[Float], b: Quaternion[Float]) -> Quaternion[Float]
+.. function:: mul(a: Quaternion[Float], b: Quaternion[Float]) -> Quaternion[Float]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
@@ -70,10 +72,10 @@
    
    Compute the Hamilton product of two quaternions.
 
-.. function:: warp._src.lang.mul(a: Scalar, b: Matrix[Scalar, Any, Any]) -> Matrix[Scalar, Any, Any]
+.. function:: mul(a: Scalar, b: Matrix[Scalar, Any, Any]) -> Matrix[Scalar, Any, Any]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
@@ -82,10 +84,10 @@
    
    Scale a matrix by a scalar.
 
-.. function:: warp._src.lang.mul(a: Matrix[Scalar, Any, Any], b: Scalar) -> Matrix[Scalar, Any, Any]
+.. function:: mul(a: Matrix[Scalar, Any, Any], b: Scalar) -> Matrix[Scalar, Any, Any]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
@@ -94,10 +96,10 @@
    
    Scale a matrix by a scalar.
 
-.. function:: warp._src.lang.mul(a: Matrix[Scalar, Any, Any], b: Vector[Scalar, Any]) -> Vector[Scalar, Any]
+.. function:: mul(a: Matrix[Scalar, Any, Any], b: Vector[Scalar, Any]) -> Vector[Scalar, Any]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
@@ -106,10 +108,10 @@
    
    Compute a matrix-vector product.
 
-.. function:: warp._src.lang.mul(a: Vector[Scalar, Any], b: Matrix[Scalar, Any, Any]) -> Vector[Scalar, Any]
+.. function:: mul(a: Vector[Scalar, Any], b: Matrix[Scalar, Any, Any]) -> Vector[Scalar, Any]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
@@ -118,10 +120,10 @@
    
    Compute a row-vector-by-matrix product.
 
-.. function:: warp._src.lang.mul(a: Matrix[Scalar, Any, Any], b: Matrix[Scalar, Any, Any]) -> Matrix[Scalar, Any, Any]
+.. function:: mul(a: Matrix[Scalar, Any, Any], b: Matrix[Scalar, Any, Any]) -> Matrix[Scalar, Any, Any]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
@@ -130,10 +132,10 @@
    
    Compute a matrix-matrix product.
 
-.. function:: warp._src.lang.mul(a: Transformation[Float], b: Transformation[Float]) -> Transformation[Float]
+.. function:: mul(a: Transformation[Float], b: Transformation[Float]) -> Transformation[Float]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
@@ -142,10 +144,10 @@
    
    Compose transformations (apply ``b`` then ``a``).
 
-.. function:: warp._src.lang.mul(a: Scalar, b: Transformation[Float]) -> Transformation[Float]
+.. function:: mul(a: Scalar, b: Transformation[Float]) -> Transformation[Float]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
@@ -156,10 +158,10 @@
    
    The result has an unnormalized quaternion.
 
-.. function:: warp._src.lang.mul(a: Transformation[Float], b: Scalar) -> Transformation[Float]
+.. function:: mul(a: Transformation[Float], b: Scalar) -> Transformation[Float]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
@@ -170,20 +172,20 @@
    
    The result has an unnormalized quaternion.
 
-.. function:: warp._src.lang.mul(a: Tile[Any, tuple[int, ...]], b: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[int, ...]]
+.. function:: mul(a: Tile[Any, tuple[int, ...]], b: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[int, ...]]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
 
    Element-wise multiplication of tiles.
 
-.. function:: warp._src.lang.mul(a: Tile[Any, tuple[int, ...]], b: Any) -> Tile[Any, tuple[int, ...]]
+.. function:: mul(a: Tile[Any, tuple[int, ...]], b: Any) -> Tile[Any, tuple[int, ...]]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -195,10 +197,10 @@
    At least one of the tile's element type or the constant type must be scalar.
    Underlying scalar types must match.
 
-.. function:: warp._src.lang.mul(a: Any, b: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[int, ...]]
+.. function:: mul(a: Any, b: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[int, ...]]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true

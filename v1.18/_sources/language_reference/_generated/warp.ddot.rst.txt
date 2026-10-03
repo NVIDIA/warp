@@ -1,9 +1,11 @@
 ﻿warp.ddot
 =========
 
-.. function:: warp._src.lang.ddot(a: Matrix[Scalar, Any, Any], b: Matrix[Scalar, Any, Any]) -> Scalar
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: ddot(a: Matrix[Scalar, Any, Any], b: Matrix[Scalar, Any, Any]) -> Scalar
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true

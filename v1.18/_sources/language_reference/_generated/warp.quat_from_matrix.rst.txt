@@ -1,9 +1,11 @@
 ﻿warp.quat\_from\_matrix
 =======================
 
-.. function:: warp._src.lang.quat_from_matrix(mat: Matrix[Float, Literal[3], Literal[3]]) -> Quaternion[Float]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: quat_from_matrix(mat: Matrix[Float, Literal[3], Literal[3]]) -> Quaternion[Float]
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
@@ -12,10 +14,10 @@
    
    If the matrix is not a pure rotation, but for example includes scaling or skewing, the result is undefined.
 
-.. function:: warp._src.lang.quat_from_matrix(mat: Matrix[Float, Literal[4], Literal[4]]) -> Quaternion[Float]
+.. function:: quat_from_matrix(mat: Matrix[Float, Literal[4], Literal[4]]) -> Quaternion[Float]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true

@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=e5bdcd64" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=ca94f457" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
@@ -562,8 +562,50 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Matrix</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../api_reference/_generated/warp.Float.html#warp.Float" title="warp.Float"><span class="pre">Float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#warp._src.lang.inverse_approx" title="Link to this definition">#</a></dt>
-<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Compute the inverse of matrix <code class="docutils literal notranslate"><span class="pre">a</span></code> using approximate GPU intrinsics.</p>
-<p>Falls back to exact inverse on CPU.</p>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Return an approximate inverse of a matrix.</p>
+<p>On GPU, this function may be faster than <a class="reference internal" href="warp.inverse.html#warp._src.lang.inverse" title="warp._src.lang.inverse"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.inverse()</span></code></a>, but its
+result and gradients may be less accurate. For double-precision matrices,
+even well-conditioned inputs can yield roughly single-precision accuracy.
+Use <a class="reference internal" href="warp.inverse.html#warp._src.lang.inverse" title="warp._src.lang.inverse"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.inverse()</span></code></a> when double-precision accuracy matters. On CPU,
+both functions currently use the same inversion method.</p>
+<p>Nearly singular inputs can amplify rounding errors and produce large
+gradients. Use a well-conditioned matrix for differentiation, and check
+that the product of the input and returned matrix is close to the identity
+before relying on the result.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>a</strong> – Matrix to invert. Must be nonsingular.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A matrix whose product with the input approximates the identity.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<p>Invert a matrix in a kernel and inspect the result:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">approximate_matrix_inverses</span><span class="p">(</span>
+    <span class="n">matrices</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">mat22</span><span class="p">],</span>
+    <span class="n">inverses</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">mat22</span><span class="p">],</span>
+<span class="p">):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">inverses</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">inverse_approx</span><span class="p">(</span><span class="n">matrices</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+<span class="n">matrices</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">wp</span><span class="o">.</span><span class="n">mat22</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">)],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">mat22</span><span class="p">)</span>
+<span class="n">inverses</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty_like</span><span class="p">(</span><span class="n">matrices</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span>
+    <span class="n">approximate_matrix_inverses</span><span class="p">,</span>
+    <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">matrices</span><span class="p">],</span>
+    <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">inverses</span><span class="p">],</span>
+<span class="p">)</span>
+<span class="n">inverse</span> <span class="o">=</span> <span class="n">inverses</span><span class="o">.</span><span class="n">numpy</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">inverse</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[[ 0.667 -0.333]
+ [-0.333  0.667]]
+</pre></div>
+</div>
 </dd></dl>
 
 <dl class="py function">
@@ -575,8 +617,17 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Matrix</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../api_reference/_generated/warp.Float.html#warp.Float" title="warp.Float"><span class="pre">Float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span></dt>
-<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Compute the inverse of matrix <code class="docutils literal notranslate"><span class="pre">a</span></code> using approximate GPU intrinsics.</p>
-<p>Falls back to exact inverse on CPU.</p>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Return an approximate inverse of a 3x3 matrix.</p>
+<p>See the 2x2 overload for device behavior, numerical accuracy, and
+autodiff guidance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>a</strong> – Matrix to invert. Must be nonsingular.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A matrix whose product with the input approximates the identity.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -588,8 +639,17 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Matrix</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../api_reference/_generated/warp.Float.html#warp.Float" title="warp.Float"><span class="pre">Float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span></dt>
-<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Compute the inverse of matrix <code class="docutils literal notranslate"><span class="pre">a</span></code> using approximate GPU intrinsics.</p>
-<p>Falls back to exact inverse on CPU.</p>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Return an approximate inverse of a 4x4 matrix.</p>
+<p>See the 2x2 overload for device behavior, numerical accuracy, and
+autodiff guidance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>a</strong> – Matrix to invert. Must be nonsingular.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A matrix whose product with the input approximates the identity.</p>
+</dd>
+</dl>
 </dd></dl>
 
 </section>

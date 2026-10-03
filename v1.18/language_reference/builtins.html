@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=e5bdcd64" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=ca94f457" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
@@ -561,6 +561,9 @@ apply. The tags indicate where a function can be called and whether it is differ
 <li><p><strong>Python</strong> - Can be called at the Python scope</p></li>
 <li><p><strong>Differentiable</strong> - Propagates gradients when used in reverse mode automatic differentiation</p></li>
 </ul>
+<p>A missing tag means that the capability is not guaranteed for that overload: it may be
+unsupported, or supported only for some arguments. See the function description for
+details.</p>
 <p>For a listing of the API that is exclusively intended to be used at the Python scope
 and run inside the CPython interpreter, see <a class="reference internal" href="../api_reference/warp.html"><span class="doc">warp</span></a>.</p>
 <section id="scalar-math">
@@ -723,7 +726,7 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <td><p>Compute the dot product.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.eig3.html#warp._src.lang.eig3" title="warp._src.lang.eig3"><code class="xref py py-obj docutils literal notranslate"><span class="pre">eig3</span></code></a></p></td>
-<td><p>Compute the eigendecomposition of a 3x3 matrix <code class="docutils literal notranslate"><span class="pre">A</span></code>.</p></td>
+<td><p>Compute the eigendecomposition of a symmetric 3x3 matrix.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.get_diag.html#warp._src.lang.get_diag" title="warp._src.lang.get_diag"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_diag</span></code></a></p></td>
 <td><p>Extract a vector containing the diagonal elements of square matrix <code class="docutils literal notranslate"><span class="pre">mat</span></code>.</p></td>
@@ -732,10 +735,10 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <td><p>Create an identity matrix with shape=(n,n) with the type given by <code class="docutils literal notranslate"><span class="pre">dtype</span></code>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.inverse.html#warp._src.lang.inverse" title="warp._src.lang.inverse"><code class="xref py py-obj docutils literal notranslate"><span class="pre">inverse</span></code></a></p></td>
-<td><p>Compute the inverse of matrix <code class="docutils literal notranslate"><span class="pre">a</span></code>.</p></td>
+<td><p>Return the inverse of a matrix.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.inverse_approx.html#warp._src.lang.inverse_approx" title="warp._src.lang.inverse_approx"><code class="xref py py-obj docutils literal notranslate"><span class="pre">inverse_approx</span></code></a></p></td>
-<td><p>Compute the inverse of matrix <code class="docutils literal notranslate"><span class="pre">a</span></code> using approximate GPU intrinsics.</p></td>
+<td><p>Return an approximate inverse of a matrix.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.length.html#warp._src.lang.length" title="warp._src.lang.length"><code class="xref py py-obj docutils literal notranslate"><span class="pre">length</span></code></a></p></td>
 <td><p>Compute the length of <code class="docutils literal notranslate"><span class="pre">a</span></code>.</p></td>

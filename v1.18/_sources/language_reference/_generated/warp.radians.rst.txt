@@ -1,9 +1,11 @@
 ﻿warp.radians
 ============
 
-.. function:: warp._src.lang.radians(x: Float) -> Float
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: radians(x: Float) -> Float
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true

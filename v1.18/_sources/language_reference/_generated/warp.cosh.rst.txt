@@ -1,9 +1,11 @@
 ﻿warp.cosh
 =========
 
-.. function:: warp._src.lang.cosh(x: Float) -> Float
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: cosh(x: Float) -> Float
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true

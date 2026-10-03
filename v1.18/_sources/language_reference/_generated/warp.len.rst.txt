@@ -1,9 +1,11 @@
 ﻿warp.len
 ========
 
-.. function:: warp._src.lang.len(a: Vector[Scalar, Any]) -> int
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: len(a: Vector[Scalar, Any]) -> int
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -14,10 +16,10 @@
              of rows for matrices and tiles; or the size of the leading dimension for arrays.
    
 
-.. function:: warp._src.lang.len(a: Quaternion[Float]) -> int
+.. function:: len(a: Quaternion[Float]) -> int
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -28,10 +30,10 @@
              of rows for matrices and tiles; or the size of the leading dimension for arrays.
    
 
-.. function:: warp._src.lang.len(a: Matrix[Scalar, Any, Any]) -> int
+.. function:: len(a: Matrix[Scalar, Any, Any]) -> int
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -42,10 +44,10 @@
              of rows for matrices and tiles; or the size of the leading dimension for arrays.
    
 
-.. function:: warp._src.lang.len(a: Transformation[Float]) -> int
+.. function:: len(a: Transformation[Float]) -> int
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -56,10 +58,10 @@
              of rows for matrices and tiles; or the size of the leading dimension for arrays.
    
 
-.. function:: warp._src.lang.len(a: Array[Any]) -> int
+.. function:: len(a: Array[Any]) -> int
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -70,10 +72,10 @@
              of rows for matrices and tiles; or the size of the leading dimension for arrays.
    
 
-.. function:: warp._src.lang.len(a: Tile[Any, tuple[int, ...]]) -> int
+.. function:: len(a: Tile[Any, tuple[int, ...]]) -> int
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -84,10 +86,10 @@
              of rows for matrices and tiles; or the size of the leading dimension for arrays.
    
 
-.. function:: warp._src.lang.len(a: tuple) -> int
+.. function:: len(a: tuple) -> int
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

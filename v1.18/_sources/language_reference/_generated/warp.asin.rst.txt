@@ -1,9 +1,11 @@
 ﻿warp.asin
 =========
 
-.. function:: warp._src.lang.asin(x: Float) -> Float
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: asin(x: Float) -> Float
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true

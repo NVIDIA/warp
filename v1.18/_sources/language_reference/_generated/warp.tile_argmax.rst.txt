@@ -1,9 +1,11 @@
 ﻿warp.tile\_argmax
 =================
 
-.. function:: warp._src.lang.tile_argmax(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Int, tuple[Literal[1]]]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: tile_argmax(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Int, tuple[Literal[1]]]
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

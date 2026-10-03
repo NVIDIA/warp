@@ -1,9 +1,11 @@
 ﻿warp.tile\_bvh\_query\_aabb
 ===========================
 
-.. function:: warp._src.lang.tile_bvh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> BvhQueryTiled
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: tile_bvh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> BvhQueryTiled
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

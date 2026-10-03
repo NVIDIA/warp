@@ -1,9 +1,11 @@
 ﻿warp.mesh\_get\_group\_root
 ===========================
 
-.. function:: warp._src.lang.mesh_get_group_root(id: uint64, group: int32) -> int
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: mesh_get_group_root(id: uint64, group: int32) -> int
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

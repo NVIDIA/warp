@@ -1,9 +1,11 @@
 ﻿warp.tile\_from\_thread
 =======================
 
-.. function:: warp._src.lang.tile_from_thread(shape: tuple[int, ...], value: Any, thread_idx: int32, storage: str = "register") -> Tile[Any, tuple[int, ...]]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: tile_from_thread(shape: tuple[int, ...], value: Any, thread_idx: int32, storage: str = "register") -> Tile[Any, tuple[int, ...]]
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -76,10 +78,10 @@
        [ 0.  1.  2.  3.  0. 10. 20. 30.]
    
 
-.. function:: warp._src.lang.tile_from_thread(shape: int32, value: Any, thread_idx: int32, storage: str = "register") -> Tile[Any, tuple[int, ...]]
+.. function:: tile_from_thread(shape: int32, value: Any, thread_idx: int32, storage: str = "register") -> Tile[Any, tuple[int, ...]]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

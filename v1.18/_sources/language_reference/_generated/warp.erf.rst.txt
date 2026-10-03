@@ -1,9 +1,11 @@
 ﻿warp.erf
 ========
 
-.. function:: warp._src.lang.erf(x: Float) -> Float
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: erf(x: Float) -> Float
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true

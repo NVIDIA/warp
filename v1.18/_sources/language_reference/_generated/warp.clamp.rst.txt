@@ -1,9 +1,11 @@
 ﻿warp.clamp
 ==========
 
-.. function:: warp._src.lang.clamp(x: Scalar, low: Scalar, high: Scalar) -> Scalar
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: clamp(x: Scalar, low: Scalar, high: Scalar) -> Scalar
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true

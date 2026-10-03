@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=e5bdcd64" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=ca94f457" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
@@ -567,7 +567,7 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span><a class="headerlink" href="#warp._src.lang.volume_sample_grad_index" title="Link to this definition">#</a></dt>
-<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Sample the volume given by <code class="docutils literal notranslate"><span class="pre">id</span></code> and its spatial gradient at the index-space point <code class="docutils literal notranslate"><span class="pre">uvw</span></code>,
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Sample the volume given by <code class="docutils literal notranslate"><span class="pre">id</span></code> and its spatial gradient at the index-space point <code class="docutils literal notranslate"><span class="pre">uvw</span></code>,
 reading voxel values from a separate <code class="docutils literal notranslate"><span class="pre">voxel_data</span></code> array.</p>
 <p>Like <a class="reference internal" href="warp.volume_sample_index.html#warp._src.lang.volume_sample_index" title="warp._src.lang.volume_sample_index"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_sample_index()</span></code></a>, but also writes the gradient of the sampled value with
 respect to the index-space coordinates <code class="docutils literal notranslate"><span class="pre">uvw</span></code> into <code class="docutils literal notranslate"><span class="pre">grad</span></code>. For scalar data, <code class="docutils literal notranslate"><span class="pre">grad</span></code> is a

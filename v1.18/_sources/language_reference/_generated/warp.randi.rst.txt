@@ -1,9 +1,11 @@
 ﻿warp.randi
 ==========
 
-.. function:: warp._src.lang.randi(state: uint32) -> int
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: randi(state: uint32) -> int
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: false
@@ -14,10 +16,10 @@
    values; called from the Python scope, it does not modify ``state``, so repeated
    calls with the same ``state`` return the same value (see :func:`rand_init`).
 
-.. function:: warp._src.lang.randi(state: uint32, low: int32, high: int32) -> int
+.. function:: randi(state: uint32, low: int32, high: int32) -> int
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: false

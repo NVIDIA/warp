@@ -1,9 +1,11 @@
 ﻿warp.unot
 =========
 
-.. function:: warp._src.lang.unot(a: bool) -> bool
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: unot(a: bool) -> bool
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: false
@@ -13,10 +15,10 @@
    :returns: ``True`` if ``a`` is falsy (``False``, zero, or an empty/null array), ``False`` otherwise.
    
 
-.. function:: warp._src.lang.unot(a: int8) -> bool
+.. function:: unot(a: int8) -> bool
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: false
@@ -26,10 +28,10 @@
    :returns: ``True`` if ``a`` is falsy (``False``, zero, or an empty/null array), ``False`` otherwise.
    
 
-.. function:: warp._src.lang.unot(a: uint8) -> bool
+.. function:: unot(a: uint8) -> bool
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: false
@@ -39,10 +41,10 @@
    :returns: ``True`` if ``a`` is falsy (``False``, zero, or an empty/null array), ``False`` otherwise.
    
 
-.. function:: warp._src.lang.unot(a: int16) -> bool
+.. function:: unot(a: int16) -> bool
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: false
@@ -52,10 +54,10 @@
    :returns: ``True`` if ``a`` is falsy (``False``, zero, or an empty/null array), ``False`` otherwise.
    
 
-.. function:: warp._src.lang.unot(a: uint16) -> bool
+.. function:: unot(a: uint16) -> bool
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: false
@@ -65,10 +67,10 @@
    :returns: ``True`` if ``a`` is falsy (``False``, zero, or an empty/null array), ``False`` otherwise.
    
 
-.. function:: warp._src.lang.unot(a: int32) -> bool
+.. function:: unot(a: int32) -> bool
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: false
@@ -78,10 +80,10 @@
    :returns: ``True`` if ``a`` is falsy (``False``, zero, or an empty/null array), ``False`` otherwise.
    
 
-.. function:: warp._src.lang.unot(a: uint32) -> bool
+.. function:: unot(a: uint32) -> bool
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: false
@@ -91,10 +93,10 @@
    :returns: ``True`` if ``a`` is falsy (``False``, zero, or an empty/null array), ``False`` otherwise.
    
 
-.. function:: warp._src.lang.unot(a: int64) -> bool
+.. function:: unot(a: int64) -> bool
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: false
@@ -104,10 +106,10 @@
    :returns: ``True`` if ``a`` is falsy (``False``, zero, or an empty/null array), ``False`` otherwise.
    
 
-.. function:: warp._src.lang.unot(a: uint64) -> bool
+.. function:: unot(a: uint64) -> bool
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: false
@@ -117,10 +119,10 @@
    :returns: ``True`` if ``a`` is falsy (``False``, zero, or an empty/null array), ``False`` otherwise.
    
 
-.. function:: warp._src.lang.unot(a: Array[Any]) -> bool
+.. function:: unot(a: Array[Any]) -> bool
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

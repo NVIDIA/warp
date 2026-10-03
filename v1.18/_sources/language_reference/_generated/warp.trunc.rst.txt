@@ -1,9 +1,11 @@
 ﻿warp.trunc
 ==========
 
-.. function:: warp._src.lang.trunc(x: Float) -> Float
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: trunc(x: Float) -> Float
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: false

@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=e5bdcd64" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=ca94f457" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
@@ -562,8 +562,61 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><span class="pre">Matrix</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../api_reference/_generated/warp.Float.html#warp.Float" title="warp.Float"><span class="pre">Float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="m"><span class="pre">3</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="m"><span class="pre">3</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Vector</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../api_reference/_generated/warp.Float.html#warp.Float" title="warp.Float"><span class="pre">Float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="m"><span class="pre">3</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#warp._src.lang.eig3" title="Link to this definition">#</a></dt>
-<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag" data-wp-tag="python" data-wp-value="true"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Compute the eigendecomposition of a 3x3 matrix <code class="docutils literal notranslate"><span class="pre">A</span></code>.</p>
-<p>The eigenvectors are returned as the columns of <code class="docutils literal notranslate"><span class="pre">Q</span></code>, while the corresponding eigenvalues are returned in <code class="docutils literal notranslate"><span class="pre">d</span></code>.</p>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag" data-wp-tag="python" data-wp-value="true"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Compute the eigendecomposition of a symmetric 3x3 matrix.</p>
+<p>Do not rely on a particular ordering of the eigenvalues, signs of the
+eigenvectors, or a specific eigenvector basis when eigenvalues repeat.</p>
+<p>When eigenvalues are close or repeated, small changes in <code class="docutils literal notranslate"><span class="pre">A</span></code> can change
+<code class="docutils literal notranslate"><span class="pre">Q</span></code> substantially. Gradients through <code class="docutils literal notranslate"><span class="pre">Q</span></code> may therefore be unreliable.</p>
+<p>The current implementation uses a fixed number of Jacobi iterations.
+Check reconstruction and orthogonality when accuracy is critical.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>A</strong> – Symmetric matrix to decompose.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A tuple <code class="docutils literal notranslate"><span class="pre">(Q,</span> <span class="pre">d)</span></code> such that
+<code class="docutils literal notranslate"><span class="pre">A</span> <span class="pre">=</span> <span class="pre">Q</span> <span class="pre">*</span> <span class="pre">wp.diag(d)</span> <span class="pre">*</span> <span class="pre">wp.transpose(Q)</span></code> up to numerical error.
+The columns of <code class="docutils literal notranslate"><span class="pre">Q</span></code> form a right-handed orthonormal eigenvector
+basis, paired with the corresponding eigenvalues in <code class="docutils literal notranslate"><span class="pre">d</span></code>.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<p>Decompose a symmetric matrix and reconstruct it from its eigenpairs:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">decompose_symmetric_matrices</span><span class="p">(</span>
+    <span class="n">matrices</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">mat33</span><span class="p">],</span>
+    <span class="n">eigenvectors</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">mat33</span><span class="p">],</span>
+    <span class="n">eigenvalues</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span>
+<span class="p">):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">Q</span><span class="p">,</span> <span class="n">d</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">eig3</span><span class="p">(</span><span class="n">matrices</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+    <span class="n">eigenvectors</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">Q</span>
+    <span class="n">eigenvalues</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">d</span>
+
+<span class="n">matrices</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+    <span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">mat33</span><span class="p">(</span><span class="mf">4.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">)],</span>
+    <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">mat33</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">eigenvectors</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">mat33</span><span class="p">)</span>
+<span class="n">eigenvalues</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span>
+    <span class="n">decompose_symmetric_matrices</span><span class="p">,</span>
+    <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">matrices</span><span class="p">],</span>
+    <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">eigenvectors</span><span class="p">,</span> <span class="n">eigenvalues</span><span class="p">],</span>
+<span class="p">)</span>
+
+<span class="n">Q</span> <span class="o">=</span> <span class="n">eigenvectors</span><span class="o">.</span><span class="n">numpy</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">d</span> <span class="o">=</span> <span class="n">eigenvalues</span><span class="o">.</span><span class="n">numpy</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">Q</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">@</span> <span class="n">Q</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[[4. 1. 2.]
+ [1. 3. 1.]
+ [2. 1. 5.]]
+</pre></div>
+</div>
 </dd></dl>
 
 <dl class="py function">
@@ -577,8 +630,29 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span></dt>
-<dd><ul class="wp-builtin-tags"><li class="wp-builtin-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-builtin-tag-name">Kernel</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li><li class="wp-builtin-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-builtin-tag-name">Python</span><span class="wp-builtin-tag-value visually-hidden">: false</span></li><li class="wp-builtin-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-builtin-tag-name">Differentiable</span><span class="wp-builtin-tag-value visually-hidden">: true</span></li></ul><p>Compute the eigendecomposition of a 3x3 matrix <code class="docutils literal notranslate"><span class="pre">A</span></code>.</p>
-<p>The eigenvectors are returned as the columns of <code class="docutils literal notranslate"><span class="pre">Q</span></code>, while the corresponding eigenvalues are returned in <code class="docutils literal notranslate"><span class="pre">d</span></code>.</p>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Compute the eigendecomposition of a symmetric 3x3 matrix and store
+the eigenpairs in caller-provided output arguments.</p>
+<p>See the return-value overload for the factorization convention, numerical
+behavior, and autodiff guidance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>A</strong> – Symmetric matrix to decompose.</p></li>
+<li><p><strong>Q</strong> – Output matrix whose columns are eigenvectors.</p></li>
+<li><p><strong>d</strong> – Output vector of the corresponding eigenvalues.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<p>Store the eigenpairs of <code class="docutils literal notranslate"><span class="pre">A</span></code> in <code class="docutils literal notranslate"><span class="pre">Q</span></code> and <code class="docutils literal notranslate"><span class="pre">d</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_eig3</span><span class="p">(</span><span class="n">A</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">mat33</span><span class="p">):</span>
+    <span class="n">Q</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">mat33</span><span class="p">()</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">()</span>
+
+    <span class="n">wp</span><span class="o">.</span><span class="n">eig3</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">Q</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
+</pre></div>
+</div>
 </dd></dl>
 
 </section>

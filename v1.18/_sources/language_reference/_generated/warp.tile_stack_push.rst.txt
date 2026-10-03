@@ -1,9 +1,11 @@
 ﻿warp.tile\_stack\_push
 ======================
 
-.. function:: warp._src.lang.tile_stack_push(s: Any, value: Any, has_value: bool) -> int
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: tile_stack_push(s: Any, value: Any, has_value: bool) -> int
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

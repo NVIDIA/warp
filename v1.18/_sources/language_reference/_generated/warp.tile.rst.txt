@@ -1,9 +1,11 @@
 ﻿warp.tile
 =========
 
-.. function:: warp._src.lang.tile(x: Any, preserve_type: bool = False) -> Tile[Any, tuple]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: tile(x: Any, preserve_type: bool = False) -> Tile[Any, tuple]
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true

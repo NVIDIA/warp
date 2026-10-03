@@ -1,9 +1,11 @@
 ﻿warp.tile\_map
 ==============
 
-.. function:: warp._src.lang.tile_map(op: Callable, a: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[int, ...]]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: tile_map(op: Callable, a: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[int, ...]]
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -36,10 +38,10 @@
        [0 0.0998334 0.198669 0.29552 0.389418 0.479426 0.564642 0.644218 0.717356 0.783327] = tile(shape=(10), storage=register)
    
 
-.. function:: warp._src.lang.tile_map(op: Callable, a: Tile[Any, tuple[int, ...]], b: Any) -> Tile[Any, tuple[int, ...]]
+.. function:: tile_map(op: Callable, a: Tile[Any, tuple[int, ...]], b: Any) -> Tile[Any, tuple[int, ...]]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -77,10 +79,10 @@
        [1 1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9] = tile(shape=(10), storage=register)
    
 
-.. function:: warp._src.lang.tile_map(op: Callable, a: Tile[Any, tuple[int, ...]], *args: Any) -> Tile[Any, tuple[int, ...]]
+.. function:: tile_map(op: Callable, a: Tile[Any, tuple[int, ...]], *args: Any) -> Tile[Any, tuple[int, ...]]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true

@@ -1,9 +1,11 @@
 ﻿warp.tile\_cholesky\_solve\_inplace
 ===================================
 
-.. function:: warp._src.lang.tile_cholesky_solve_inplace(L: Tile[Float, tuple[int, int]], y: Tile[Float, tuple[int]], fill_mode: str = "lower") -> None
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: tile_cholesky_solve_inplace(L: Tile[Float, tuple[int, int]], y: Tile[Float, tuple[int]], fill_mode: str = "lower") -> None
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

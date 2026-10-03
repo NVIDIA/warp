@@ -1,9 +1,11 @@
 ﻿warp.mesh\_query\_ray\_count\_intersections
 ===========================================
 
-.. function:: warp._src.lang.mesh_query_ray_count_intersections(id: uint64, start: vec3f, dir: vec3f, root: int32 = -1) -> int
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: mesh_query_ray_count_intersections(id: uint64, start: vec3f, dir: vec3f, root: int32 = -1) -> int
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

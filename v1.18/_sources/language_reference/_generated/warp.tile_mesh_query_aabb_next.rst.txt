@@ -1,9 +1,11 @@
 ﻿warp.tile\_mesh\_query\_aabb\_next
 ==================================
 
-.. function:: warp._src.lang.tile_mesh_query_aabb_next(query: MeshQueryAABBTiled) -> Tile[int32, tuple[int]]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: tile_mesh_query_aabb_next(query: MeshQueryAABBTiled) -> Tile[int32, tuple[int]]
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

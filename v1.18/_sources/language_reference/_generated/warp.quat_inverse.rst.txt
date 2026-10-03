@@ -1,9 +1,11 @@
 ﻿warp.quat\_inverse
 ==================
 
-.. function:: warp._src.lang.quat_inverse(quat: Quaternion[Float]) -> Quaternion[Float]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: quat_inverse(quat: Quaternion[Float]) -> Quaternion[Float]
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true

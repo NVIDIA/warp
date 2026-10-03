@@ -1,9 +1,11 @@
 ﻿warp.noise
 ==========
 
-.. function:: warp._src.lang.noise(state: uint32, x: float32) -> float
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: noise(state: uint32, x: float32) -> float
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
@@ -43,10 +45,10 @@
        wp.launch(sample_noise, dim=len(coords), inputs=[42, coords], outputs=[values])
    
 
-.. function:: warp._src.lang.noise(state: uint32, xy: vec2f) -> float
+.. function:: noise(state: uint32, xy: vec2f) -> float
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
@@ -61,10 +63,10 @@
    :returns: The noise value at ``xy``.
    
 
-.. function:: warp._src.lang.noise(state: uint32, xyz: vec3f) -> float
+.. function:: noise(state: uint32, xyz: vec3f) -> float
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
@@ -79,10 +81,10 @@
    :returns: The noise value at ``xyz``.
    
 
-.. function:: warp._src.lang.noise(state: uint32, xyzt: vec4f) -> float
+.. function:: noise(state: uint32, xyzt: vec4f) -> float
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true

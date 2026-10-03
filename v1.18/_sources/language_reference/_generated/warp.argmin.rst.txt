@@ -1,9 +1,11 @@
 ﻿warp.argmin
 ===========
 
-.. function:: warp._src.lang.argmin(a: Vector[Scalar, Any]) -> uint32
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: argmin(a: Vector[Scalar, Any]) -> uint32
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: false

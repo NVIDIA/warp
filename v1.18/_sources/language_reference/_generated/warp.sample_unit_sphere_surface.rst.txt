@@ -1,9 +1,11 @@
 ﻿warp.sample\_unit\_sphere\_surface
 ==================================
 
-.. function:: warp._src.lang.sample_unit_sphere_surface(state: uint32) -> vec3f
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: sample_unit_sphere_surface(state: uint32) -> vec3f
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: false

@@ -1,9 +1,11 @@
 ﻿warp.length\_sq
 ===============
 
-.. function:: warp._src.lang.length_sq(a: Vector[Scalar, Any]) -> Scalar
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: length_sq(a: Vector[Scalar, Any]) -> Scalar
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
@@ -12,10 +14,10 @@
    
    Compute the squared length of a vector.
 
-.. function:: warp._src.lang.length_sq(a: Quaternion[Float]) -> Float
+.. function:: length_sq(a: Quaternion[Float]) -> Float
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true

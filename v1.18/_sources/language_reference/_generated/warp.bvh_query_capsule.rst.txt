@@ -1,9 +1,11 @@
 ﻿warp.bvh\_query\_capsule
 ========================
 
-.. function:: warp._src.lang.bvh_query_capsule(id: uint64, start: vec3f, dir: vec3f, radius: float32, root: int32 = -1) -> _BvhQueryCapsule
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: bvh_query_capsule(id: uint64, start: vec3f, dir: vec3f, radius: float32, root: int32 = -1) -> _BvhQueryCapsule
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

@@ -1,9 +1,11 @@
 ﻿warp.div\_approx
 ================
 
-.. function:: warp._src.lang.div_approx(a: Float, b: Float) -> Float
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: div_approx(a: Float, b: Float) -> Float
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -12,10 +14,10 @@
    
    Falls back to exact division on CPU.
 
-.. function:: warp._src.lang.div_approx(a: Vector[Float, Any], b: Float) -> Vector[Float, Any]
+.. function:: div_approx(a: Vector[Float, Any], b: Float) -> Vector[Float, Any]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -24,10 +26,10 @@
    
    Divide a vector by a scalar. Falls back to exact division on CPU.
 
-.. function:: warp._src.lang.div_approx(a: Float, b: Vector[Float, Any]) -> Vector[Float, Any]
+.. function:: div_approx(a: Float, b: Vector[Float, Any]) -> Vector[Float, Any]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -36,10 +38,10 @@
    
    Divide a scalar by each element of a vector. Falls back to exact division on CPU.
 
-.. function:: warp._src.lang.div_approx(a: Matrix[Float, Any, Any], b: Float) -> Matrix[Float, Any, Any]
+.. function:: div_approx(a: Matrix[Float, Any, Any], b: Float) -> Matrix[Float, Any, Any]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -48,10 +50,10 @@
    
    Divide a matrix by a scalar. Falls back to exact division on CPU.
 
-.. function:: warp._src.lang.div_approx(a: Float, b: Matrix[Float, Any, Any]) -> Matrix[Float, Any, Any]
+.. function:: div_approx(a: Float, b: Matrix[Float, Any, Any]) -> Matrix[Float, Any, Any]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -60,10 +62,10 @@
    
    Divide a scalar by each element of a matrix. Falls back to exact division on CPU.
 
-.. function:: warp._src.lang.div_approx(a: Quaternion[Float], b: Float) -> Quaternion[Float]
+.. function:: div_approx(a: Quaternion[Float], b: Float) -> Quaternion[Float]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -74,10 +76,10 @@
    
    The result is unnormalized. Falls back to exact division on CPU.
 
-.. function:: warp._src.lang.div_approx(a: Float, b: Quaternion[Float]) -> Quaternion[Float]
+.. function:: div_approx(a: Float, b: Quaternion[Float]) -> Quaternion[Float]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true

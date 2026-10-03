@@ -1,9 +1,11 @@
 ﻿warp.tile\_diag\_add
 ====================
 
-.. function:: warp._src.lang.tile_diag_add(a: Tile[Any, tuple[int, int]], d: Tile[Any, tuple[int]]) -> Tile[Any, tuple[int, int]]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: tile_diag_add(a: Tile[Any, tuple[int, int]], d: Tile[Any, tuple[int]]) -> Tile[Any, tuple[int, int]]
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

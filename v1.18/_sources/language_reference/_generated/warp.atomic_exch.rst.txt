@@ -1,9 +1,11 @@
 ﻿warp.atomic\_exch
 =================
 
-.. function:: warp._src.lang.atomic_exch(arr: Array[Any], i: Int, value: Any) -> Any
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: atomic_exch(arr: Array[Any], i: Int, value: Any) -> Any
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -12,10 +14,10 @@
    
    The operation is only atomic on a per-component basis for vectors and matrices.
 
-.. function:: warp._src.lang.atomic_exch(arr: Array[Any], i: Int, j: Int, value: Any) -> Any
+.. function:: atomic_exch(arr: Array[Any], i: Int, j: Int, value: Any) -> Any
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -24,10 +26,10 @@
    
    The operation is only atomic on a per-component basis for vectors and matrices.
 
-.. function:: warp._src.lang.atomic_exch(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any
+.. function:: atomic_exch(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -36,10 +38,10 @@
    
    The operation is only atomic on a per-component basis for vectors and matrices.
 
-.. function:: warp._src.lang.atomic_exch(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
+.. function:: atomic_exch(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -48,10 +50,10 @@
    
    The operation is only atomic on a per-component basis for vectors and matrices.
 
-.. function:: warp._src.lang.atomic_exch(arr: FabricArray[Any], i: Int, value: Any) -> Any
+.. function:: atomic_exch(arr: FabricArray[Any], i: Int, value: Any) -> Any
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -60,10 +62,10 @@
    
    The operation is only atomic on a per-component basis for vectors and matrices.
 
-.. function:: warp._src.lang.atomic_exch(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any
+.. function:: atomic_exch(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -72,10 +74,10 @@
    
    The operation is only atomic on a per-component basis for vectors and matrices.
 
-.. function:: warp._src.lang.atomic_exch(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any
+.. function:: atomic_exch(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -84,10 +86,10 @@
    
    The operation is only atomic on a per-component basis for vectors and matrices.
 
-.. function:: warp._src.lang.atomic_exch(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
+.. function:: atomic_exch(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -96,10 +98,10 @@
    
    The operation is only atomic on a per-component basis for vectors and matrices.
 
-.. function:: warp._src.lang.atomic_exch(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any
+.. function:: atomic_exch(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -108,10 +110,10 @@
    
    The operation is only atomic on a per-component basis for vectors and matrices.
 
-.. function:: warp._src.lang.atomic_exch(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any
+.. function:: atomic_exch(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -120,10 +122,10 @@
    
    The operation is only atomic on a per-component basis for vectors and matrices.
 
-.. function:: warp._src.lang.atomic_exch(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any
+.. function:: atomic_exch(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -132,10 +134,10 @@
    
    The operation is only atomic on a per-component basis for vectors and matrices.
 
-.. function:: warp._src.lang.atomic_exch(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
+.. function:: atomic_exch(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

@@ -1,9 +1,11 @@
 ﻿warp.sample\_cdf
 ================
 
-.. function:: warp._src.lang.sample_cdf(state: uint32, cdf: Array[float32]) -> int
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: sample_cdf(state: uint32, cdf: Array[float32]) -> int
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

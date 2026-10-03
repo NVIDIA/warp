@@ -1,9 +1,11 @@
 ﻿warp.tid
 ========
 
-.. function:: warp._src.lang.tid() -> int
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: tid() -> int
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -25,10 +27,10 @@
    
    This function may not be called from user-defined Warp functions.
 
-.. function:: warp._src.lang.tid() -> tuple[int, int]
+.. function:: tid() -> tuple[int, int]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -50,10 +52,10 @@
    
    This function may not be called from user-defined Warp functions.
 
-.. function:: warp._src.lang.tid() -> tuple[int, int, int]
+.. function:: tid() -> tuple[int, int, int]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -75,10 +77,10 @@
    
    This function may not be called from user-defined Warp functions.
 
-.. function:: warp._src.lang.tid() -> tuple[int, int, int, int]
+.. function:: tid() -> tuple[int, int, int, int]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

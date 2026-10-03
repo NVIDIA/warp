@@ -1,9 +1,11 @@
 ﻿warp.spatial\_top
 =================
 
-.. function:: warp._src.lang.spatial_top(svec: Vector[Float, Literal[6]]) -> Vector[Float, Literal[3]]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: spatial_top(svec: Vector[Float, Literal[6]]) -> Vector[Float, Literal[3]]
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true

@@ -1,9 +1,11 @@
 ﻿warp.degrees
 ============
 
-.. function:: warp._src.lang.degrees(x: Float) -> Float
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: degrees(x: Float) -> Float
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true

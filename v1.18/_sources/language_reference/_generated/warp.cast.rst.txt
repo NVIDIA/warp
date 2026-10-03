@@ -1,9 +1,11 @@
 ﻿warp.cast
 =========
 
-.. function:: warp._src.lang.cast(a: Any, dtype: Any) -> Any
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: cast(a: Any, dtype: Any) -> Any
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

@@ -1,9 +1,11 @@
 ﻿warp.transform\_vector
 ======================
 
-.. function:: warp._src.lang.transform_vector(xform: Transformation[Float], vec: Vector[Float, Literal[3]]) -> Vector[Float, Literal[3]]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: transform_vector(xform: Transformation[Float], vec: Vector[Float, Literal[3]]) -> Vector[Float, Literal[3]]
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
@@ -20,10 +22,10 @@
    
    See :func:`~warp.transform_point` for a usage example.
 
-.. function:: warp._src.lang.transform_vector(mat: Matrix[Float, Literal[4], Literal[4]], vec: Vector[Float, Literal[3]]) -> Vector[Float, Literal[3]]
+.. function:: transform_vector(mat: Matrix[Float, Literal[4], Literal[4]], vec: Vector[Float, Literal[3]]) -> Vector[Float, Literal[3]]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true

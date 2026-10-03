@@ -1,9 +1,11 @@
 ﻿warp.atomic\_add
 ================
 
-.. function:: warp._src.lang.atomic_add(arr: Array[Any], i: Int, value: Any) -> Any
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: atomic_add(arr: Array[Any], i: Int, value: Any) -> Any
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -12,10 +14,10 @@
    
    This function is automatically invoked when using the syntax ``arr[i] += value``.
 
-.. function:: warp._src.lang.atomic_add(arr: Array[Any], i: Int, j: Int, value: Any) -> Any
+.. function:: atomic_add(arr: Array[Any], i: Int, j: Int, value: Any) -> Any
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -24,10 +26,10 @@
    
    This function is automatically invoked when using the syntax ``arr[i,j] += value``.
 
-.. function:: warp._src.lang.atomic_add(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any
+.. function:: atomic_add(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -36,10 +38,10 @@
    
    This function is automatically invoked when using the syntax ``arr[i,j,k] += value``.
 
-.. function:: warp._src.lang.atomic_add(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
+.. function:: atomic_add(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -48,10 +50,10 @@
    
    This function is automatically invoked when using the syntax ``arr[i,j,k,l] += value``.
 
-.. function:: warp._src.lang.atomic_add(arr: FabricArray[Any], i: Int, value: Any) -> Any
+.. function:: atomic_add(arr: FabricArray[Any], i: Int, value: Any) -> Any
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -60,10 +62,10 @@
    
    This function is automatically invoked when using the syntax ``arr[i] += value``.
 
-.. function:: warp._src.lang.atomic_add(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any
+.. function:: atomic_add(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -72,10 +74,10 @@
    
    This function is automatically invoked when using the syntax ``arr[i,j] += value``.
 
-.. function:: warp._src.lang.atomic_add(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any
+.. function:: atomic_add(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -84,10 +86,10 @@
    
    This function is automatically invoked when using the syntax ``arr[i,j,k] += value``.
 
-.. function:: warp._src.lang.atomic_add(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
+.. function:: atomic_add(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -96,10 +98,10 @@
    
    This function is automatically invoked when using the syntax ``arr[i,j,k,l] += value``.
 
-.. function:: warp._src.lang.atomic_add(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any
+.. function:: atomic_add(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -108,10 +110,10 @@
    
    This function is automatically invoked when using the syntax ``arr[i] += value``.
 
-.. function:: warp._src.lang.atomic_add(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any
+.. function:: atomic_add(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -120,10 +122,10 @@
    
    This function is automatically invoked when using the syntax ``arr[i,j] += value``.
 
-.. function:: warp._src.lang.atomic_add(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any
+.. function:: atomic_add(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -132,10 +134,10 @@
    
    This function is automatically invoked when using the syntax ``arr[i,j,k] += value``.
 
-.. function:: warp._src.lang.atomic_add(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
+.. function:: atomic_add(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true

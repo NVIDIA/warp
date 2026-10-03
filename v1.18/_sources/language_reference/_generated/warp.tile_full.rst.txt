@@ -1,9 +1,11 @@
 ﻿warp.tile\_full
 ===============
 
-.. function:: warp._src.lang.tile_full(shape: tuple[int, ...], value: Any, dtype: Any = ..., storage: str = "register") -> Tile[Any, tuple[int, ...]]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: tile_full(shape: tuple[int, ...], value: Any, dtype: Any = ..., storage: str = "register") -> Tile[Any, tuple[int, ...]]
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -44,10 +46,10 @@
        [2. 2. 3. 4.]
    
 
-.. function:: warp._src.lang.tile_full(shape: int32, value: Any, dtype: Any = ..., storage: str = "register") -> Tile[Any, tuple[int, ...]]
+.. function:: tile_full(shape: int32, value: Any, dtype: Any = ..., storage: str = "register") -> Tile[Any, tuple[int, ...]]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

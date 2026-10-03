@@ -1,9 +1,11 @@
 ﻿warp.tile\_transpose
 ====================
 
-.. function:: warp._src.lang.tile_transpose(a: Tile[Any, tuple[int, int]]) -> Tile[Any, tuple[int, int]]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: tile_transpose(a: Tile[Any, tuple[int, int]]) -> Tile[Any, tuple[int, int]]
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true

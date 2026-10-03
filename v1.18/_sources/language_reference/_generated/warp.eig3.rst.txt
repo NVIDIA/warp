@@ -1,25 +1,103 @@
 ﻿warp.eig3
 =========
 
-.. function:: warp._src.lang.eig3(A: Matrix[Float, Literal[3], Literal[3]]) -> tuple[Matrix[Float, Literal[3], Literal[3]], Vector[Float, Literal[3]]]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: eig3(A: Matrix[Float, Literal[3], Literal[3]]) -> tuple[Matrix[Float, Literal[3], Literal[3]], Vector[Float, Literal[3]]]
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
 
-   Compute the eigendecomposition of a 3x3 matrix ``A``.
+   Compute the eigendecomposition of a symmetric 3x3 matrix.
    
-   The eigenvectors are returned as the columns of ``Q``, while the corresponding eigenvalues are returned in ``d``.
+   Do not rely on a particular ordering of the eigenvalues, signs of the
+   eigenvectors, or a specific eigenvector basis when eigenvalues repeat.
+   
+   When eigenvalues are close or repeated, small changes in ``A`` can change
+   ``Q`` substantially. Gradients through ``Q`` may therefore be unreliable.
+   
+   The current implementation uses a fixed number of Jacobi iterations.
+   Check reconstruction and orthogonality when accuracy is critical.
+   
+   :param A: Symmetric matrix to decompose.
+   
+   :returns: A tuple ``(Q, d)`` such that
+             ``A = Q * wp.diag(d) * wp.transpose(Q)`` up to numerical error.
+             The columns of ``Q`` form a right-handed orthonormal eigenvector
+             basis, paired with the corresponding eigenvalues in ``d``.
+   
+   .. rubric:: Example
+   
+   Decompose a symmetric matrix and reconstruct it from its eigenpairs:
+   
+   .. testcode::
+   
+       @wp.kernel
+       def decompose_symmetric_matrices(
+           matrices: wp.array[wp.mat33],
+           eigenvectors: wp.array[wp.mat33],
+           eigenvalues: wp.array[wp.vec3],
+       ):
+           i = wp.tid()
+           Q, d = wp.eig3(matrices[i])
+           eigenvectors[i] = Q
+           eigenvalues[i] = d
+   
+       matrices = wp.array(
+           [wp.mat33(4.0, 1.0, 2.0, 1.0, 3.0, 1.0, 2.0, 1.0, 5.0)],
+           dtype=wp.mat33,
+       )
+       eigenvectors = wp.empty(1, dtype=wp.mat33)
+       eigenvalues = wp.empty(1, dtype=wp.vec3)
+   
+       wp.launch(
+           decompose_symmetric_matrices,
+           dim=1,
+           inputs=[matrices],
+           outputs=[eigenvectors, eigenvalues],
+       )
+   
+       Q = eigenvectors.numpy()[0]
+       d = eigenvalues.numpy()[0]
+       print(np.round(Q @ np.diag(d) @ Q.T, 3))
+   
+   .. testoutput::
+   
+       [[4. 1. 2.]
+        [1. 3. 1.]
+        [2. 1. 5.]]
+   
 
-.. function:: warp._src.lang.eig3(A: Matrix[Float, Literal[3], Literal[3]], Q: Matrix[Float, Literal[3], Literal[3]], d: Vector[Float, Literal[3]]) -> None
+.. function:: eig3(A: Matrix[Float, Literal[3], Literal[3]], Q: Matrix[Float, Literal[3], Literal[3]], d: Vector[Float, Literal[3]]) -> None
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
 
-   Compute the eigendecomposition of a 3x3 matrix ``A``.
+   Compute the eigendecomposition of a symmetric 3x3 matrix and store
+   the eigenpairs in caller-provided output arguments.
    
-   The eigenvectors are returned as the columns of ``Q``, while the corresponding eigenvalues are returned in ``d``.
+   See the return-value overload for the factorization convention, numerical
+   behavior, and autodiff guidance.
+   
+   :param A: Symmetric matrix to decompose.
+   :param Q: Output matrix whose columns are eigenvectors.
+   :param d: Output vector of the corresponding eigenvalues.
+   
+   .. rubric:: Example
+   
+   Store the eigenpairs of ``A`` in ``Q`` and ``d``:
+   
+   .. code-block:: python
+   
+       @wp.kernel
+       def compute_eig3(A: wp.mat33):
+           Q = wp.mat33()
+           d = wp.vec3()
+   
+           wp.eig3(A, Q, d)
+   

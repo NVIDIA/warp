@@ -1,9 +1,11 @@
 ﻿warp.matrix\_from\_cols
 =======================
 
-.. function:: warp._src.lang.matrix_from_cols(*args: Vector[Scalar, Any]) -> Matrix[Scalar, Any, Any]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: matrix_from_cols(*args: Vector[Scalar, Any]) -> Matrix[Scalar, Any, Any]
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true

@@ -1,9 +1,11 @@
 ﻿warp.transform\_identity
 ========================
 
-.. function:: warp._src.lang.transform_identity(dtype: Float = ...) -> transformf
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: transform_identity(dtype: Float = ...) -> transformf
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: false

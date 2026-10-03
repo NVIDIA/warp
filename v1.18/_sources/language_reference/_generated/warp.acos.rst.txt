@@ -1,9 +1,11 @@
 ﻿warp.acos
 =========
 
-.. function:: warp._src.lang.acos(x: Float) -> Float
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: acos(x: Float) -> Float
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true

@@ -1,9 +1,11 @@
 ﻿warp.transformation
 ===================
 
-.. function:: warp._src.lang.transformation(p: Vector[Float, Literal[3]], q: Quaternion[Float] = ..., dtype: Float = ...) -> Transformation[Float]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: transformation(p: Vector[Float, Literal[3]], q: Quaternion[Float] = ..., dtype: Float = ...) -> Transformation[Float]
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -48,10 +50,10 @@
         [1.    2.    3.    0.    0.    0.    1.   ]]
    
 
-.. function:: warp._src.lang.transformation(*args: Float, dtype: Float = ...) -> Transformation[Float]
+.. function:: transformation(*args: Float, dtype: Float = ...) -> Transformation[Float]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true

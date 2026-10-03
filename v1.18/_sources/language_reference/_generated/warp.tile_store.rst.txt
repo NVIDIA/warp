@@ -1,9 +1,11 @@
 ﻿warp.tile\_store
 ================
 
-.. function:: warp._src.lang.tile_store(a: Array[Any], t: Tile[Any, tuple[int, ...]], offset: tuple[int, ...] = ..., bounds_check: bool = True, aligned: bool = False) -> None
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: tile_store(a: Array[Any], t: Tile[Any, tuple[int, ...]], offset: tuple[int, ...] = ..., bounds_check: bool = True, aligned: bool = False) -> None
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true
@@ -59,10 +61,10 @@
         [18. 20. 22.]]
    
 
-.. function:: warp._src.lang.tile_store(a: Array[Any], t: Tile[Any, tuple[int, ...]], offset: int32 = ..., bounds_check: bool = True, aligned: bool = False) -> None
+.. function:: tile_store(a: Array[Any], t: Tile[Any, tuple[int, ...]], offset: int32 = ..., bounds_check: bool = True, aligned: bool = False) -> None
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: true

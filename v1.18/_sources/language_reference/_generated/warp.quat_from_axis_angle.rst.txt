@@ -1,9 +1,11 @@
 ﻿warp.quat\_from\_axis\_angle
 ============================
 
-.. function:: warp._src.lang.quat_from_axis_angle(axis: Vector[Float, Literal[3]], angle: Float) -> Quaternion[Float]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: quat_from_axis_angle(axis: Vector[Float, Literal[3]], angle: Float) -> Quaternion[Float]
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true

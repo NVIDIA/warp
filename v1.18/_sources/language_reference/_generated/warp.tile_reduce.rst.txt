@@ -1,9 +1,11 @@
 ﻿warp.tile\_reduce
 =================
 
-.. function:: warp._src.lang.tile_reduce(op: Callable, a: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[Literal[1]]]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: tile_reduce(op: Callable, a: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[Literal[1]]]
+
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
@@ -36,10 +38,10 @@
        [362880] = tile(shape=(1), storage=register)
    
 
-.. function:: warp._src.lang.tile_reduce(op: Callable, a: Tile[Scalar, tuple[int, ...]], axis: int32) -> Tile[Scalar, tuple[int, ...]]
+.. function:: tile_reduce(op: Callable, a: Tile[Scalar, tuple[int, ...]], axis: int32) -> Tile[Scalar, tuple[int, ...]]
    :noindex:
 
-   .. wp-builtin-tags::
+   .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false

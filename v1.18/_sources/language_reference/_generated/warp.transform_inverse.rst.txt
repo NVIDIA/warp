@@ -1,9 +1,11 @@
 ﻿warp.transform\_inverse
 =======================
 
-.. function:: warp._src.lang.transform_inverse(xform: Transformation[Float]) -> Transformation[Float]
+.. currentmodule:: warp._src.lang
 
-   .. wp-builtin-tags::
+.. function:: transform_inverse(xform: Transformation[Float]) -> Transformation[Float]
+
+   .. wp-function-tags::
       :kernel: true
       :python: true
       :differentiable: true
