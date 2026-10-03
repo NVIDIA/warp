@@ -363,6 +363,67 @@ def test_tile_binary_map_nondifferentiable_builtin(test, device):
     assert_np_equal(b.grad.numpy(), np.zeros_like(b_np))
 
 
+@wp.kernel
+def tile_map_builtin_original_output_func(input_a: wp.array2d[Any], input_b: wp.array2d[Any], output: wp.array2d[Any]):
+    # tile index
+    i, j = wp.tid()
+
+    a = wp.tile_load(input_a, shape=(TILE_M, TILE_N), offset=(i * TILE_M, j * TILE_N))
+    b = wp.tile_load(input_b, shape=(TILE_M, TILE_N), offset=(i * TILE_M, j * TILE_N))
+
+    # the adjoints of these builtins also take the forward result
+    unary = wp.tile_map(wp.exp, a) + wp.tile_map(wp.sqrt, a)
+    binary = wp.tile_map(wp.div, a, b) + wp.tile_map(wp.pow, a, b)
+
+    wp.tile_store(output, unary + binary, offset=(i * TILE_M, j * TILE_N))
+
+
+# Register the instantiations these tests use up front (see "Compilation hygiene" at the top of the file).
+for _dtype in (wp.float32, wp.float64):
+    wp.overload(tile_map_builtin_original_output_func, [wp.array2d[_dtype], wp.array2d[_dtype], wp.array2d[_dtype]])
+
+
+def test_tile_map_builtin_original_output(test, device):
+    """Differentiate builtins whose adjoints also take the forward result."""
+    rng = np.random.default_rng(42)
+
+    M = TILE_M * 7
+    N = TILE_N * 5
+
+    for dtype in (np.float32, np.float64):
+        A = rng.random((M, N), dtype=dtype) + 0.5
+        B = rng.random((M, N), dtype=dtype) + 0.5
+        C = np.exp(A) + np.sqrt(A) + A / B + A**B
+
+        A_grad = np.exp(A) + 0.5 / np.sqrt(A) + 1.0 / B + B * A ** (B - 1.0)
+        B_grad = -A / B**2 + A**B * np.log(A)
+
+        A_wp = wp.array(A, requires_grad=True, device=device)
+        B_wp = wp.array(B, requires_grad=True, device=device)
+        C_wp = wp.zeros_like(A_wp, requires_grad=True, device=device)
+
+        with wp.Tape() as tape:
+            wp.launch_tiled(
+                tile_map_builtin_original_output_func,
+                dim=[int(M / TILE_M), int(N / TILE_N)],
+                inputs=[A_wp, B_wp, C_wp],
+                block_dim=TILE_DIM,
+                device=device,
+            )
+
+        tol = 1.0e-6 if dtype == np.float64 else 1.0e-4
+
+        # verify forward pass
+        assert_np_equal(C_wp.numpy(), C, tol=tol)
+
+        # verify backward pass
+        C_wp.grad = wp.ones_like(C_wp, device=device)
+        tape.backward()
+
+        assert_np_equal(A_wp.grad.numpy(), A_grad, tol=tol)
+        assert_np_equal(B_wp.grad.numpy(), B_grad, tol=tol)
+
+
 @wp.func
 def binary_func_mixed_types(x: int, y: float) -> float:
     return wp.sin(float(x)) + y
@@ -2937,6 +2998,9 @@ add_function_test(
     "test_tile_binary_map_nondifferentiable_builtin",
     test_tile_binary_map_nondifferentiable_builtin,
     devices=devices,
+)
+add_function_test(
+    TestTile, "test_tile_map_builtin_original_output", test_tile_map_builtin_original_output, devices=devices
 )
 add_function_test(TestTile, "test_tile_binary_map_mixed_types", test_tile_binary_map_mixed_types, devices=devices)
 add_function_test(TestTile, "test_tile_n_map", test_tile_n_map, devices=devices)

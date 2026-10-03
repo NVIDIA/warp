@@ -4239,16 +4239,50 @@ inline CUDA_CALLABLE void adj_tile_map(
     adj_to_tile<Shape>(adj_t8, adj_r8);
 }
 
+// Builtins registered with require_original_output_arg=True (e.g. exp, sqrt, div, pow) have adjoints that also take
+// the forward result, e.g. adj_exp(x, ret, adj_x, adj_ret). These helpers call that form when the adjoint accepts it,
+// recomputing ret as adj_cw_div does below, and otherwise the form without it that user functions and other builtins
+// use. Passing 0 makes overload resolution prefer the `int` overload whenever its return type is well-formed.
+template <typename AdjOp, typename Op, typename T, typename AdjT, typename AdjRet>
+inline CUDA_CALLABLE auto tile_map_call_adj(AdjOp adj_op, Op op, T x, AdjT& adj_x, AdjRet adj_ret, int)
+    -> decltype(adj_op(x, op(x), adj_x, adj_ret), void())
+{
+    adj_op(x, op(x), adj_x, adj_ret);
+}
+
+template <typename AdjOp, typename Op, typename T, typename AdjT, typename AdjRet>
+inline CUDA_CALLABLE void tile_map_call_adj(AdjOp adj_op, Op op, T x, AdjT& adj_x, AdjRet adj_ret, long)
+{
+    adj_op(x, adj_x, adj_ret);
+}
+
+template <typename AdjOp, typename Op, typename T, typename U, typename AdjT, typename AdjU, typename AdjRet>
+inline CUDA_CALLABLE auto
+tile_map_call_adj(AdjOp adj_op, Op op, T x, U y, AdjT& adj_x, AdjU& adj_y, AdjRet adj_ret, int)
+    -> decltype(adj_op(x, y, op(x, y), adj_x, adj_y, adj_ret), void())
+{
+    adj_op(x, y, op(x, y), adj_x, adj_y, adj_ret);
+}
+
+template <typename AdjOp, typename Op, typename T, typename U, typename AdjT, typename AdjU, typename AdjRet>
+inline CUDA_CALLABLE void
+tile_map_call_adj(AdjOp adj_op, Op op, T x, U y, AdjT& adj_x, AdjU& adj_y, AdjRet adj_ret, long)
+{
+    adj_op(x, y, adj_x, adj_y, adj_ret);
+}
+
 // We wrap the operator in a lambda so that we don't have to do overload resolution for things like e.g.: wp.sin()
 // this is important because many of the builtin operators don't follow particular conventions on references for
 // the `adj_ret` parameter, which means it's not possible to figure out the overload we need using simple casting.
 // The return type is automatically deduced from the operation result using decltype.
+// adj_op reaches tile_map_call_adj() through a forwarding lambda whose return type is decltype(adj_op(args...)), so
+// a call with the wrong arguments is a substitution failure rather than a hard error.
 
 #define tile_unary_map(op, a) tile_map([](auto x) { return op(x);}, a)
-#define adj_tile_unary_map(op, a, adj_op, adj_a, adj_ret) adj_tile_map([](auto x) { return op(x);}, a, [](auto x, auto& adj_x, auto adj_ret) { adj_op(x, adj_x, adj_ret);}, adj_a, adj_ret)
+#define adj_tile_unary_map(op, a, adj_op, adj_a, adj_ret) adj_tile_map([](auto x) { return op(x);}, a, [](auto x, auto& adj_x, auto adj_ret) { wp::tile_map_call_adj([](auto&&... args) -> decltype(adj_op(args...)) { return adj_op(args...);}, [](auto x) { return op(x);}, x, adj_x, adj_ret, 0);}, adj_a, adj_ret)
 
 #define tile_binary_map(op, a, b) tile_map([](auto x, auto y) { return op(x, y);}, a, b)
-#define adj_tile_binary_map(op, a, b, adj_op, adj_a, adj_b, adj_ret) adj_tile_map([](auto x, auto y) { return op(x, y);}, a, b, [](auto x, auto y, auto& adj_x, auto& adj_y, auto adj_ret) { adj_op(x, y, adj_x, adj_y, adj_ret);}, adj_a, adj_b, adj_ret)
+#define adj_tile_binary_map(op, a, b, adj_op, adj_a, adj_b, adj_ret) adj_tile_map([](auto x, auto y) { return op(x, y);}, a, b, [](auto x, auto y, auto& adj_x, auto& adj_y, auto adj_ret) { wp::tile_map_call_adj([](auto&&... args) -> decltype(adj_op(args...)) { return adj_op(args...);}, [](auto x, auto y) { return op(x, y);}, x, y, adj_x, adj_y, adj_ret, 0);}, adj_a, adj_b, adj_ret)
 
 // Wrapper for scalar adj_div to match the 5-arg interface expected by adj_tile_binary_map.
 // Scalar adj_div takes 6 args (includes ret), but adj_tile_binary_map only passes 5.
