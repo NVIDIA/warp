@@ -41,6 +41,20 @@ CAPTURED_STRUCT_WITH_ARRAY.scalar = wp.float32(8.0)
 
 
 @wp.struct
+class CapturedState:
+    x: wp.float32
+
+
+@wp.struct
+class BoxWithCapturedState:
+    state: CapturedState
+
+
+state = CapturedState()
+state.x = wp.float32(99.0)
+
+
+@wp.struct
 class CapturedStructWithUntypedScalar:
     value: wp.int64
 
@@ -123,6 +137,14 @@ def test_captured_struct_scalar_type_kernel(out: wp.array[wp.int64]):
     out[1] = captured_int64_identity(wp.static(CAPTURED_STRUCT_WITH_UNTYPED_SCALAR).value)
 
 
+@wp.kernel
+def test_array_struct_attribute_with_shadowed_global_kernel(
+    boxes: wp.array[BoxWithCapturedState], out: wp.array[wp.float32]
+):
+    i = wp.tid()
+    out[i] = boxes[i].state.x
+
+
 def test_captured_constant_attributes(test, device):
     out = wp.zeros(8, dtype=float, device=device)
     wp.launch(test_captured_constant_attributes_kernel, dim=1, inputs=[out], device=device)
@@ -141,6 +163,19 @@ def test_captured_struct_scalar_type(test, device):
     out = wp.zeros(2, dtype=wp.int64, device=device)
     wp.launch(test_captured_struct_scalar_type_kernel, dim=1, inputs=[out], device=device)
     np.testing.assert_array_equal(out.numpy(), [11, 11])
+
+
+def test_array_struct_attribute_with_shadowed_global(test, device):
+    first = BoxWithCapturedState()
+    first.state = CapturedState()
+    first.state.x = wp.float32(3.0)
+    second = BoxWithCapturedState()
+    second.state = CapturedState()
+    second.state.x = wp.float32(7.0)
+    boxes = wp.array([first, second], dtype=BoxWithCapturedState, device=device)
+    out = wp.zeros(2, dtype=wp.float32, device=device)
+    wp.launch(test_array_struct_attribute_with_shadowed_global_kernel, dim=2, inputs=[boxes, out], device=device)
+    np.testing.assert_array_equal(out.numpy(), [3.0, 7.0])
 
 
 def test_closure_capture(test, device):
@@ -447,6 +482,12 @@ add_function_test(
 )
 add_function_test(TestConstants, "test_shadowed_captured_struct", test_shadowed_captured_struct, devices=devices)
 add_function_test(TestConstants, "test_captured_struct_scalar_type", test_captured_struct_scalar_type, devices=devices)
+add_function_test(
+    TestConstants,
+    "test_array_struct_attribute_with_shadowed_global",
+    test_array_struct_attribute_with_shadowed_global,
+    devices=devices,
+)
 
 add_function_test(TestConstants, "test_closure_capture", test_closure_capture, devices=devices)
 add_function_test(TestConstants, "test_closure_precedence", test_closure_precedence, devices=devices)

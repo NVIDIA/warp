@@ -3759,7 +3759,14 @@ class Adjoint:
             # struct as a constant. Materializing the whole struct can include
             # unsupported fields (for example, arrays) that the kernel never reads.
             _, path = adj.resolve_static_expression(node, eval_types=False)
-            captured_root = adj.resolve_external_reference(path[0]) if path and path[0] not in adj.symbols else None
+            static_root = node
+            while isinstance(static_root, ast.Attribute):
+                static_root = static_root.value
+            captured_root = (
+                adj.resolve_external_reference(path[0])
+                if isinstance(static_root, ast.Name) and path and path[0] not in adj.symbols
+                else None
+            )
             if path and is_struct(captured_root):
                 value = captured_root
                 value_type = captured_root._cls
@@ -4299,7 +4306,7 @@ class Adjoint:
         static_root = arg
         while isinstance(static_root, ast.Attribute):
             static_root = static_root.value
-        if (path and is_struct(adj.resolve_external_reference(path[0]))) or (
+        if (isinstance(static_root, ast.Name) and path and is_struct(adj.resolve_external_reference(path[0]))) or (
             isinstance(static_root, ast.Constant) and is_struct(static_root.value)
         ):
             return var
