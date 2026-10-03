@@ -354,9 +354,19 @@ class TestModuleAOT(unittest.TestCase):
 
             module_identifier = wp.get_module("warp.tests.aot.aux_test_hash_reload").get_module_identifier()
             expected_path = TEST_CACHE_DIR / f"{module_identifier}.sm{arch}.ptx"
+            expected_source_path = TEST_CACHE_DIR / f"{module_identifier}.cu"
+            expected_apic_source_path = expected_path.with_suffix(".cu")
             self.assertTrue(expected_path.exists(), f"Expected compiled PTX file not found: {expected_path}")
             self.assertEqual(artifact_paths, [expected_path])
             self.assertIn(b".version", artifact_paths[0].read_bytes())
+            self.assertTrue(
+                expected_source_path.exists(), f"Expected generated CUDA source not found: {expected_source_path}"
+            )
+            self.assertTrue(
+                expected_apic_source_path.exists(),
+                f"Expected APIC CUDA source snapshot not found: {expected_apic_source_path}",
+            )
+            self.assertEqual(expected_source_path.read_bytes(), expected_apic_source_path.read_bytes())
         finally:
             shutil.rmtree(TEST_CACHE_DIR, ignore_errors=True)
 
