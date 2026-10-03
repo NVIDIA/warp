@@ -42,6 +42,14 @@ def quat_between_vectors(a: wp.vec3, b: wp.vec3) -> wp.quat:
     b = wp.normalize(b)
     c = wp.cross(a, b)
     d = wp.dot(a, b)
+    if d < 0.0 and wp.length_sq(c) < 1.0e-12:
+        # Roundoff can leave a tiny cross product for collinear opposites.
+        # A half turn about a stable perpendicular axis avoids normalizing it.
+        axis = wp.vec3(1.0, 0.0, 0.0)
+        if wp.abs(a[0]) > 0.9:
+            axis = wp.vec3(0.0, 1.0, 0.0)
+        c = wp.normalize(wp.cross(a, axis))
+        return wp.quat(c[0], c[1], c[2], 0.0)
     q = wp.quat(c[0], c[1], c[2], 1.0 + d)
     return wp.normalize(q)
 
