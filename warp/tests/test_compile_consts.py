@@ -40,9 +40,23 @@ CAPTURED_STRUCT_WITH_ARRAY = CapturedStructWithArray()
 CAPTURED_STRUCT_WITH_ARRAY.scalar = wp.float32(8.0)
 
 
+@wp.struct
+class CapturedStructWithUntypedScalar:
+    value: wp.int64
+
+
+CAPTURED_STRUCT_WITH_UNTYPED_SCALAR = CapturedStructWithUntypedScalar()
+CAPTURED_STRUCT_WITH_UNTYPED_SCALAR.value = 11
+
+
 @wp.func
 def captured_constant_attributes_func() -> float:
     return CAPTURED_STRUCT.vector.y
+
+
+@wp.func
+def captured_int64_identity(value: wp.int64) -> wp.int64:
+    return value
 
 
 ONE_FP16 = wp.constant(wp.float16(1.0))
@@ -98,10 +112,35 @@ def test_captured_constant_attributes_kernel(out: wp.array[float]):
     out[7] = CAPTURED_STRUCT_WITH_ARRAY.scalar
 
 
+@wp.kernel
+def test_shadowed_captured_struct_kernel(CAPTURED_STRUCT: CapturedStruct, out: wp.array[float]):
+    out[0] = CAPTURED_STRUCT.scalar
+
+
+@wp.kernel
+def test_captured_struct_scalar_type_kernel(out: wp.array[wp.int64]):
+    out[0] = captured_int64_identity(CAPTURED_STRUCT_WITH_UNTYPED_SCALAR.value)
+    out[1] = captured_int64_identity(wp.static(CAPTURED_STRUCT_WITH_UNTYPED_SCALAR).value)
+
+
 def test_captured_constant_attributes(test, device):
     out = wp.zeros(8, dtype=float, device=device)
     wp.launch(test_captured_constant_attributes_kernel, dim=1, inputs=[out], device=device)
     np.testing.assert_allclose(out.numpy(), [2.0, 0.1, 0.9, 4.0, 6.0, 6.0, 6.0, 8.0])
+
+
+def test_shadowed_captured_struct(test, device):
+    local_struct = CapturedStruct()
+    local_struct.scalar = wp.float32(9.0)
+    out = wp.zeros(1, dtype=float, device=device)
+    wp.launch(test_shadowed_captured_struct_kernel, dim=1, inputs=[local_struct, out], device=device)
+    np.testing.assert_allclose(out.numpy(), [9.0])
+
+
+def test_captured_struct_scalar_type(test, device):
+    out = wp.zeros(2, dtype=wp.int64, device=device)
+    wp.launch(test_captured_struct_scalar_type_kernel, dim=1, inputs=[out], device=device)
+    np.testing.assert_array_equal(out.numpy(), [11, 11])
 
 
 def test_closure_capture(test, device):
@@ -406,6 +445,8 @@ add_kernel_test(TestConstants, test_float, dim=1, inputs=[x], devices=devices)
 add_function_test(
     TestConstants, "test_captured_constant_attributes", test_captured_constant_attributes, devices=devices
 )
+add_function_test(TestConstants, "test_shadowed_captured_struct", test_shadowed_captured_struct, devices=devices)
+add_function_test(TestConstants, "test_captured_struct_scalar_type", test_captured_struct_scalar_type, devices=devices)
 
 add_function_test(TestConstants, "test_closure_capture", test_closure_capture, devices=devices)
 add_function_test(TestConstants, "test_closure_precedence", test_closure_precedence, devices=devices)

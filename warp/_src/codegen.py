@@ -3758,10 +3758,25 @@ class Adjoint:
             # Resolve attributes on captured structs before evaluating the root
             # struct as a constant. Materializing the whole struct can include
             # unsupported fields (for example, arrays) that the kernel never reads.
-            resolved, path = adj.resolve_static_expression(node, eval_types=False)
-            if path and is_struct(adj.resolve_external_reference(path[0])):
-                if warp._src.types.is_value(resolved):
-                    return adj.add_constant(resolved)
+            _, path = adj.resolve_static_expression(node, eval_types=False)
+            captured_root = adj.resolve_external_reference(path[0]) if path and path[0] not in adj.symbols else None
+            if path and is_struct(captured_root):
+                value = captured_root
+                value_type = captured_root._cls
+                for attr in path[1:]:
+                    if isinstance(value_type, Struct):
+                        field_type = value_type.vars[attr].type
+                        value = getattr(value, attr)
+                        if field_type in warp._src.types.scalar_types:
+                            value = field_type(value)
+                        value_type = field_type
+                    else:
+                        value = getattr(value, attr)
+                        if isinstance(value_type, type) and issubclass(value_type, ctypes.Array):
+                            value = type_scalar_type(value_type)(value)
+                        value_type = type(value)
+                if warp._src.types.is_value(value):
+                    return adj.add_constant(value)
                 raise WarpCodegenAttributeError(f"Cannot access non-value field '{path[-1]}' on a captured struct")
             # wp.static() may have been replaced with a Constant node before
             # code generation. Resolve its struct field the same way, without
@@ -3776,8 +3791,19 @@ class Adjoint:
                 if adj.builder is not None:
                     adj.builder.build_struct_recursive(struct_value._cls)
                 value = struct_value
+                value_type = struct_value._cls
                 for attr in reversed(attributes):
-                    value = getattr(value, attr)
+                    if isinstance(value_type, Struct):
+                        field_type = value_type.vars[attr].type
+                        value = getattr(value, attr)
+                        if field_type in warp._src.types.scalar_types:
+                            value = field_type(value)
+                        value_type = field_type
+                    else:
+                        value = getattr(value, attr)
+                        if isinstance(value_type, type) and issubclass(value_type, ctypes.Array):
+                            value = type_scalar_type(value_type)(value)
+                        value_type = type(value)
                 if warp._src.types.is_value(value):
                     return adj.add_constant(value)
                 raise WarpCodegenAttributeError(f"Cannot access non-value field '{attributes[0]}' on a constant struct")
@@ -4259,11 +4285,23 @@ class Adjoint:
 
         # Check if we can resolve the argument as a static expression.
         # If not, return the variable resulting from evaluating the argument.
-        expr, _ = adj.resolve_static_expression(arg)
+        expr, path = adj.resolve_static_expression(arg)
         if expr is None:
             if error is not None:
                 raise error
 
+            return var
+
+        # Attribute expressions on captured structs are lowered by emit_Attribute,
+        # which preserves the declared scalar field type. Reusing the raw Python
+        # value from static resolution here would infer int32 for a Python int
+        # stored in a wp.int64 field.
+        static_root = arg
+        while isinstance(static_root, ast.Attribute):
+            static_root = static_root.value
+        if (path and is_struct(adj.resolve_external_reference(path[0]))) or (
+            isinstance(static_root, ast.Constant) and is_struct(static_root.value)
+        ):
             return var
 
         if isinstance(expr, (type, Struct, Var, warp._src.context.Function)):
