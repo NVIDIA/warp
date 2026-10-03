@@ -17,6 +17,82 @@ from warp._src.logger import log_warning
 from warp.tests.unittest_utils import *
 
 
+@wp.kernel
+def quat_between_vectors_kernel(
+    a: wp.array[wp.vec3], b: wp.array[wp.vec3], rotations: wp.array[wp.quat], rotated: wp.array[wp.vec3]
+):
+    i = wp.tid()
+    q = wp.quat_between_vectors(a[i], b[i])
+    rotations[i] = q
+    rotated[i] = wp.quat_rotate(q, wp.normalize(a[i]))
+
+
+def test_quat_between_opposite_vectors(test, device):
+    directions = np.array(
+        [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0], [1.0, 2.0, 3.0], [-2.0, 5.0, -3.0], [1.0, 1.0, 1.0]],
+        dtype=np.float32,
+    )
+    rng = np.random.default_rng(113)
+    oblique = rng.normal(size=(256, 3)).astype(np.float32)
+    roundoff_source = np.array([[-8633.081, -17956.49, 16955.676]], dtype=np.float32)
+    roundoff_target = np.array([[500.75583, 1041.5536, -983.5022]], dtype=np.float32)
+    sources = np.concatenate([directions, -2 * directions, 3.7 * oblique, roundoff_source])
+    targets = np.concatenate([-directions, 2 * directions, -0.23 * oblique, roundoff_target])
+    a = wp.array(sources, dtype=wp.vec3, device=device)
+    b = wp.array(targets, dtype=wp.vec3, device=device)
+    rotations = wp.empty(len(sources), dtype=wp.quat, device=device)
+    rotated = wp.empty(len(sources), dtype=wp.vec3, device=device)
+    wp.launch(quat_between_vectors_kernel, dim=len(sources), inputs=[a, b, rotations, rotated], device=device)
+    expected = targets / np.linalg.norm(targets, axis=-1, keepdims=True)
+    np.testing.assert_allclose(rotated.numpy(), expected, rtol=2e-6, atol=2e-6)
+    q = rotations.numpy()
+    np.testing.assert_allclose(np.linalg.norm(q, axis=-1), 1.0, rtol=2e-6)
+    np.testing.assert_allclose(q[:, 3], 0.0, atol=2e-6)
+    np.testing.assert_array_equal(a.numpy(), sources)
+    np.testing.assert_array_equal(b.numpy(), targets)
+
+
+def test_quat_between_vectors_preserves_regular_rotations(test, device):
+    rng = np.random.default_rng(31)
+    sources = rng.normal(size=(64, 3)).astype(np.float32)
+    targets = rng.normal(size=(64, 3)).astype(np.float32)
+    sources = np.concatenate([sources, [[1.0, 0.0, 0.0], [0.0, 0.0, 0.0], [1.0, 0.0, 0.0]]]).astype(np.float32)
+    targets = np.concatenate([targets, [[2.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 0.0]]]).astype(np.float32)
+    a = wp.array(sources, dtype=wp.vec3, device=device)
+    b = wp.array(targets, dtype=wp.vec3, device=device)
+    q = wp.empty(len(sources), dtype=wp.quat, device=device)
+    rotated = wp.empty(len(sources), dtype=wp.vec3, device=device)
+    wp.launch(quat_between_vectors_kernel, dim=len(sources), inputs=[a, b, q, rotated], device=device)
+    expected = targets[:65] / np.linalg.norm(targets[:65], axis=-1, keepdims=True)
+    np.testing.assert_allclose(rotated.numpy()[:65], expected, rtol=2e-5, atol=2e-6)
+    np.testing.assert_allclose(q.numpy()[-3:], [[0.0, 0.0, 0.0, 1.0]] * 3, atol=1e-6)
+    np.testing.assert_allclose(np.linalg.norm(q.numpy(), axis=-1), 1.0, rtol=2e-6)
+
+
+def test_quat_between_nearly_opposite_vectors_preserves_rotation_plane(test, device):
+    """Nearly opposite vectors keep the rotation axis in their cross-product plane."""
+    sources = np.array([[0.0, 0.0, 1.0]], dtype=np.float32)
+    targets = np.array([[0.0, 5.0e-7, -1.0]], dtype=np.float32)
+    a = wp.array(sources, dtype=wp.vec3, device=device)
+    b = wp.array(targets, dtype=wp.vec3, device=device)
+    rotations = wp.empty(1, dtype=wp.quat, device=device)
+    rotated = wp.empty(1, dtype=wp.vec3, device=device)
+
+    wp.launch(quat_between_vectors_kernel, dim=1, inputs=[a, b, rotations, rotated], device=device)
+
+    source = sources[0] / np.linalg.norm(sources[0])
+    target = targets[0] / np.linalg.norm(targets[0])
+    expected_axis = np.cross(source, target)
+    expected_axis /= np.linalg.norm(expected_axis)
+    quaternion_axis = rotations.numpy()[0, :3]
+    quaternion_axis /= np.linalg.norm(quaternion_axis)
+
+    np.testing.assert_allclose(
+        abs(np.dot(quaternion_axis, expected_axis)), 1.0, rtol=2e-6, atol=2e-6
+    )
+    np.testing.assert_allclose(rotated.numpy()[0], target, rtol=2e-6, atol=2e-6)
+
+
 def test_array_scan(test, device):
     rng = np.random.default_rng(123)
 
@@ -1559,6 +1635,21 @@ add_function_test(
     TestUtils,
     "test_array_cast_error_unsupported_partial_cast",
     test_array_cast_error_unsupported_partial_cast,
+    devices=devices,
+)
+
+
+add_function_test(TestUtils, "test_quat_between_opposite_vectors", test_quat_between_opposite_vectors, devices=devices)
+add_function_test(
+    TestUtils,
+    "test_quat_between_nearly_opposite_vectors_preserves_rotation_plane",
+    test_quat_between_nearly_opposite_vectors_preserves_rotation_plane,
+    devices=devices,
+)
+add_function_test(
+    TestUtils,
+    "test_quat_between_vectors_preserves_regular_rotations",
+    test_quat_between_vectors_preserves_regular_rotations,
     devices=devices,
 )
 
