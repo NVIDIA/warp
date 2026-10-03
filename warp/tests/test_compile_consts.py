@@ -136,6 +136,33 @@ def test_hash_global_capture(test, device):
     wp.launch(test_int, (1,), inputs=[a], device=device)
 
 
+def test_hash_captured_struct(test, device):
+    """Include captured struct type and field values in the module hash."""
+
+    @wp.kernel
+    def test_function(data: wp.array[wp.float32]):
+        data[0] = CAPTURED_STRUCT.scalar
+
+    data = wp.empty(1, dtype=wp.float32, device=device)
+    module = wp.get_module(test_function.__module__)
+    original_scalar = CAPTURED_STRUCT.scalar
+
+    try:
+        wp.launch(test_function, (1,), inputs=[data], device=device)
+        module_hash_0 = module.hash_module()
+        test.assertEqual(data.numpy()[0], 4.0)
+
+        CAPTURED_STRUCT.scalar = wp.float32(8.0)
+        module_hash_1 = module.hash_module()
+        test.assertNotEqual(module_hash_0, module_hash_1)
+
+        CAPTURED_STRUCT.scalar = original_scalar
+        module_hash_2 = module.hash_module()
+        test.assertEqual(module_hash_0, module_hash_2)
+    finally:
+        CAPTURED_STRUCT.scalar = original_scalar
+
+
 def test_hash_redefine_kernel(test, device):
     """Invalidate the module hash after redefining a kernel."""
 
@@ -372,6 +399,7 @@ add_function_test(
 add_function_test(TestConstants, "test_closure_capture", test_closure_capture, devices=devices)
 add_function_test(TestConstants, "test_closure_precedence", test_closure_precedence, devices=devices)
 add_function_test(TestConstants, "test_hash_global_capture", test_hash_global_capture, devices=devices)
+add_function_test(TestConstants, "test_hash_captured_struct", test_hash_captured_struct, devices=devices)
 add_function_test(TestConstants, "test_hash_redefine_kernel", test_hash_redefine_kernel, devices=devices)
 add_function_test(TestConstants, "test_hash_redefine_constant_only", test_hash_redefine_constant_only, devices=devices)
 add_function_test(TestConstants, "test_hash_shadowed_var", test_hash_shadowed_var, devices=devices)

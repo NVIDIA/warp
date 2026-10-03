@@ -3678,10 +3678,12 @@ class Adjoint:
         if obj is None:
             raise WarpCodegenKeyError("Referencing undefined symbol: " + str(node.id))
 
-        if warp._src.types.is_value(obj):
+        if warp._src.types.is_value(obj) or is_struct(obj):
             # evaluate constant
             out = adj.add_constant(obj)
             adj.symbols[node.id] = out
+            if is_struct(obj) and adj.builder is not None:
+                adj.builder.build_struct_recursive(obj._cls)
             return out
 
         # the named object is either a function, class name, or module
@@ -7060,11 +7062,17 @@ class Adjoint:
                 obj = adj.resolve_external_reference(node.id)
                 if warp._src.types.is_value(obj):
                     constants[node.id] = obj
+                elif is_struct(obj):
+                    constants[node.id] = obj
+                    types[obj._cls] = None
 
             elif isinstance(node, ast.Attribute):
                 obj, path = adj.resolve_static_expression(node, eval_types=False)
                 if warp._src.types.is_value(obj):
                     constants[".".join(path)] = obj
+                elif is_struct(obj):
+                    constants[".".join(path)] = obj
+                    types[obj._cls] = None
 
             elif isinstance(node, ast.Call):
                 if isinstance(node.func, ast.Name) and node.func.id in local_variables:
