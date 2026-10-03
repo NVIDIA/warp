@@ -3755,6 +3755,32 @@ class Adjoint:
             node.value.is_adjoint = True
 
         if aggregate is None:
+            # Resolve attributes on captured structs before evaluating the root
+            # struct as a constant. Materializing the whole struct can include
+            # unsupported fields (for example, arrays) that the kernel never reads.
+            resolved, path = adj.resolve_static_expression(node, eval_types=False)
+            if path and is_struct(adj.resolve_external_reference(path[0])):
+                if warp._src.types.is_value(resolved):
+                    return adj.add_constant(resolved)
+                raise WarpCodegenAttributeError(f"Cannot access non-value field '{path[-1]}' on a captured struct")
+            # wp.static() may have been replaced with a Constant node before
+            # code generation. Resolve its struct field the same way, without
+            # first emitting the entire captured struct as a constant.
+            attributes = []
+            root = node
+            while isinstance(root, ast.Attribute):
+                attributes.append(root.attr)
+                root = root.value
+            if isinstance(root, ast.Constant) and is_struct(root.value):
+                struct_value = root.value
+                if adj.builder is not None:
+                    adj.builder.build_struct_recursive(struct_value._cls)
+                value = struct_value
+                for attr in reversed(attributes):
+                    value = getattr(value, attr)
+                if warp._src.types.is_value(value):
+                    return adj.add_constant(value)
+                raise WarpCodegenAttributeError(f"Cannot access non-value field '{attributes[0]}' on a constant struct")
             aggregate = adj.eval(node.value)
 
         try:
@@ -7063,7 +7089,6 @@ class Adjoint:
                 if warp._src.types.is_value(obj):
                     constants[node.id] = obj
                 elif is_struct(obj):
-                    constants[node.id] = obj
                     types[obj._cls] = None
 
             elif isinstance(node, ast.Attribute):
@@ -7071,7 +7096,6 @@ class Adjoint:
                 if warp._src.types.is_value(obj):
                     constants[".".join(path)] = obj
                 elif is_struct(obj):
-                    constants[".".join(path)] = obj
                     types[obj._cls] = None
 
             elif isinstance(node, ast.Call):

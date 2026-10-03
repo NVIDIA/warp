@@ -30,6 +30,16 @@ CAPTURED_STRUCT.scalar = wp.float32(4.0)
 CAPTURED_STRUCT.vector = wp.vec3(5.0, 6.0, 7.0)
 
 
+@wp.struct
+class CapturedStructWithArray:
+    scalar: wp.float32
+    array: wp.array[wp.float32]
+
+
+CAPTURED_STRUCT_WITH_ARRAY = CapturedStructWithArray()
+CAPTURED_STRUCT_WITH_ARRAY.scalar = wp.float32(8.0)
+
+
 @wp.func
 def captured_constant_attributes_func() -> float:
     return CAPTURED_STRUCT.vector.y
@@ -85,12 +95,13 @@ def test_captured_constant_attributes_kernel(out: wp.array[float]):
     out[4] = CAPTURED_STRUCT.vector.y
     out[5] = captured_constant_attributes_func()
     out[6] = wp.static(CAPTURED_STRUCT).vector.y
+    out[7] = CAPTURED_STRUCT_WITH_ARRAY.scalar
 
 
 def test_captured_constant_attributes(test, device):
-    out = wp.zeros(7, dtype=float, device=device)
+    out = wp.zeros(8, dtype=float, device=device)
     wp.launch(test_captured_constant_attributes_kernel, dim=1, inputs=[out], device=device)
-    np.testing.assert_allclose(out.numpy(), [2.0, 0.1, 0.9, 4.0, 6.0, 6.0, 6.0])
+    np.testing.assert_allclose(out.numpy(), [2.0, 0.1, 0.9, 4.0, 6.0, 6.0, 6.0, 8.0])
 
 
 def test_closure_capture(test, device):
