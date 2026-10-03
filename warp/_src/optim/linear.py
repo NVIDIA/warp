@@ -1327,7 +1327,9 @@ class LinearSolverState:
         self._dofs_per_entry = _dofs_per_entry(b.dtype)
 
         if maxiter is None or maxiter == 0:
-            maxiter = _scalar_dof_count(b) // self._batch_count
+            maxiter = self._A.max_batch_length
+            if maxiter is None:
+                maxiter = _scalar_dof_count(b)
         self._maxiter = int(maxiter)
 
         self._cur_iter_and_condition = wp.empty((2,), dtype=int, device=self._device)
