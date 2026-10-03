@@ -426,6 +426,27 @@ struct bvh_stack_t {
 // (bvh_query_next_dynamic and the CPU tiled fallback in tile_bvh.h).
 enum class BvhQueryKind : uint8_t { AABB = 0, RAY = 1, CAPSULE = 2, SPHERE = 3 };
 
+CUDA_CALLABLE inline bool
+bvh_ray_intersect_aabb(const vec3& start, const vec3& rcp_dir, const vec3& lower, const vec3& upper, float& t)
+{
+    float lmin = -FLT_MAX;
+    float lmax = FLT_MAX;
+
+    // Distribute the interval clamp over each endpoint. With fmin/fmax
+    // semantics, a NaN from 0 * infinity then leaves the interval unchanged.
+    for (int i = 0; i < 3; ++i) {
+        const float l1 = (lower[i] - start[i]) * rcp_dir[i];
+        const float l2 = (upper[i] - start[i]) * rcp_dir[i];
+        lmin = min(max(l1, lmin), max(l2, lmin));
+        lmax = max(min(l1, lmax), min(l2, lmax));
+    }
+
+    const bool hit = (lmax >= 0.0f) & (lmax >= lmin);
+    if (hit)
+        t = lmin;
+    return hit;
+}
+
 // stores state required to traverse the BVH nodes that overlap with a query.
 struct bvh_query_t {
     CUDA_CALLABLE bvh_query_t()
@@ -505,9 +526,9 @@ bvh_query_test(const bvh_query_t& query, const vec3& node_lower, const vec3& nod
         );
         return hit && !(t > max_dist);
     } else if constexpr (QUERY_KIND == BvhQueryKind::RAY) {
-        // Plain ray: original slab test with its original half-open max_dist bound.
+        // Plain ray with its original half-open max_dist bound.
         float t = FLT_MAX;
-        bool hit = intersect_ray_aabb(query.input_lower, query.input_upper, node_lower, node_upper, t);
+        bool hit = bvh_ray_intersect_aabb(query.input_lower, query.input_upper, node_lower, node_upper, t);
         return hit && !(t >= max_dist);
     } else {
         return intersect_aabb_aabb(query.input_lower, query.input_upper, node_lower, node_upper);

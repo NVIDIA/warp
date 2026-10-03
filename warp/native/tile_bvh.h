@@ -55,7 +55,7 @@ bvh_query_intersection_test(const bvh_query_thread_block_t& query, const vec3& n
 {
     if (query.is_ray) {
         float t = 0.0f;
-        return intersect_ray_aabb(query.input_lower, query.input_upper, node_lower, node_upper, t);
+        return bvh_ray_intersect_aabb(query.input_lower, query.input_upper, node_lower, node_upper, t);
     } else {
         return intersect_aabb_aabb(query.input_lower, query.input_upper, node_lower, node_upper);
     }
