@@ -7,10 +7,9 @@ This module provides functions to process 2D and 3D geometry and their
 associated topological data structures (e.g., meshes), and GPU-accelerated
 isosurface extraction.
 
-Dense-grid isosurface backends take a 3-D ``wp.float32`` field sampled at grid
-nodes and share the :class:`IsoSurfaceBase` interface, so they can be swapped
-without changing calling code: :class:`IsoSurfaceMarchingCubes` produces
-triangles.
+:class:`IsoSurfaceBase` defines the interface for dense-grid isosurface
+extraction. :class:`IsoSurfaceMarchingCubes` implements it and extracts a
+triangular mesh from a 3-D ``wp.float32`` field sampled at grid nodes.
 
 Sparse extraction skips the dense grid entirely. :func:`sparse_marching_cubes`
 takes an implicit function and builds a Lipschitz octree around the level set,
