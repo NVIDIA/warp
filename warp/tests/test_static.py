@@ -495,6 +495,17 @@ def k():
     print(wp.static(f)())
 """
 
+static_builtin_func_template = """
+import warp as wp
+
+# Warp built-in function like wp.sin or wp.exp
+OP = wp.{name}
+
+@wp.kernel
+def k():
+    print(wp.static(OP)(1.0))
+"""
+
 
 def test_static_constant_hash(test, _):
     # Python literals
@@ -570,6 +581,23 @@ def test_static_function_hash(test, _):
     module1 = load_code_as_module(source1, "aux_static_func1")
     module2 = load_code_as_module(source2, "aux_static_func2")
     module3 = load_code_as_module(source3, "aux_static_func3")
+
+    hash1 = module1.hash_module()
+    hash2 = module2.hash_module()
+    hash3 = module3.hash_module()
+
+    test.assertNotEqual(hash1, hash2)
+    test.assertEqual(hash1, hash3)
+
+
+def test_static_builtin_function_hash(test, _):
+    source1 = static_builtin_func_template.format(name="sin")
+    source2 = static_builtin_func_template.format(name="exp")
+    source3 = static_builtin_func_template.format(name="sin")
+
+    module1 = load_code_as_module(source1, "aux_static_builtin_func1")
+    module2 = load_code_as_module(source2, "aux_static_builtin_func2")
+    module3 = load_code_as_module(source3, "aux_static_builtin_func3")
 
     hash1 = module1.hash_module()
     hash2 = module2.hash_module()
@@ -753,6 +781,7 @@ add_function_test(TestStatic, "test_static_if_else_elif", test_static_if_else_el
 
 add_function_test(TestStatic, "test_static_constant_hash", test_static_constant_hash, devices=None)
 add_function_test(TestStatic, "test_static_function_hash", test_static_function_hash, devices=None)
+add_function_test(TestStatic, "test_static_builtin_function_hash", test_static_builtin_function_hash, devices=None)
 add_function_test(TestStatic, "test_static_len_query", test_static_len_query, devices=None)
 add_function_test(
     TestStatic,
