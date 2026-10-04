@@ -8022,6 +8022,9 @@ add_builtin(
     variadic=True,
     doc="""Cooperatively sort the elements of two tiles in ascending order based on the keys, using all threads in the block.
 
+    On CUDA devices, prefer a ``block_dim`` that is a multiple of 32 for better sorting performance. Other block
+    dimensions are supported but may be slower.
+
     Args:
         keys: Keys to sort by. Supported key types: :class:`warp.float32`, :class:`warp.int32`, :class:`warp.uint32`, :class:`warp.int64`, :class:`warp.uint64`. Must be in shared memory.
         values: Values to sort along with keys. No type restrictions. Must be in shared memory.

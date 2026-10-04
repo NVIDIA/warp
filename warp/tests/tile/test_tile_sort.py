@@ -173,6 +173,50 @@ def test_tile_sort_block_dim_multiple_of_32(test, device):
     )
 
 
+def test_tile_sort_block_dim_not_multiple_of_32(test, device):
+    """Sort with block dims that leave a partial warp, including a single thread.
+
+    The lengths cover every dispatch case of the warp-aligned sort: fewer than 32 elements, a power of two, a padded
+    bitonic length, a radix length, and 64-bit keys.
+    """
+    _assert_tile_sort_block_dims(
+        device,
+        module="tile_sort_block_dim_not_multiple_of_32",
+        block_dims=(16, 33, 48, 100, 1),
+        cases=((wp.float32, 8), (wp.float32, 64), (wp.float32, 65), (wp.float32, 2100), (wp.int64, 1025)),
+    )
+
+
+def test_tile_sort_same_tile_for_keys_and_values(test, device):
+    """Sort with the same tile passed as keys and values.
+
+    Block dims 33 and 48 take the shared-memory sort, whose swaps must not undo each other when keys and values alias.
+    Block dim 64 locks in that the warp-aligned bitonic and radix paths already handle aliasing.
+    """
+
+    def create_kernel(length):
+        @wp.kernel(enable_backward=False, module="tile_sort_same_tile_for_keys_and_values", launch_bounds=1024)
+        def sort_kernel(keys_array: wp.array[wp.int32]):
+            keys = wp.tile_load(keys_array, shape=length, storage="shared")
+            wp.tile_sort(keys, keys)
+            wp.tile_store(keys_array, keys)
+
+        return sort_kernel
+
+    kernels = {length: create_kernel(length) for length in (65, 2100)}
+
+    for block_dim in (33, 48, 64):
+        for length, kernel in kernels.items():
+            np_keys = _make_unique_sort_keys(wp.int32, length, np.random.default_rng(1748 + length))
+            keys = wp.array(np_keys, dtype=wp.int32, device=device)
+
+            wp.launch_tiled(kernel, dim=1, inputs=[keys], block_dim=block_dim, device=device)
+
+            np.testing.assert_array_equal(
+                keys.numpy(), np.sort(np_keys), err_msg=f"Sorting mismatch for length={length}, block_dim={block_dim}"
+            )
+
+
 def _run_large_cpu_tile_sort():
     """Exercise the heap-backed radix path outside the parent runner."""
     wp.config.enable_cpu_blocks = True
@@ -368,6 +412,18 @@ add_function_test(
     TestTileSort,
     "test_tile_sort_block_dim_multiple_of_32",
     test_tile_sort_block_dim_multiple_of_32,
+    devices=get_cuda_test_devices(),
+)
+add_function_test(
+    TestTileSort,
+    "test_tile_sort_block_dim_not_multiple_of_32",
+    test_tile_sort_block_dim_not_multiple_of_32,
+    devices=get_cuda_test_devices(),
+)
+add_function_test(
+    TestTileSort,
+    "test_tile_sort_same_tile_for_keys_and_values",
+    test_tile_sort_same_tile_for_keys_and_values,
     devices=get_cuda_test_devices(),
 )
 add_function_test(
