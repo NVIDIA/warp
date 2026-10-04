@@ -59,6 +59,9 @@ Warp requires Python 3.10 or newer. We publish `warp-lang` wheels on PyPI for Wi
 
 PyPI and nightly wheels for Linux and Windows use CUDA Toolkit 13.4. They require an NVIDIA R580-series or newer driver and a Turing (`sm_75`) or newer GPU for CUDA acceleration. For CUDA 12 environments, download a `+cu12` wheel from [GitHub Releases](https://github.com/NVIDIA/warp/releases) or build Warp from source with CUDA 12.
 
+Windows on Arm supports experimental CUDA source builds with CUDA Toolkit 13.4 or newer; see the
+[Windows on Arm build instructions](https://github.com/NVIDIA/warp/blob/main/docs/user_guide/installation.rst#windows-arm64-builds).
+
 The easiest way to install Warp is from [PyPI](https://pypi.org/project/warp-lang/):
 
 ```text

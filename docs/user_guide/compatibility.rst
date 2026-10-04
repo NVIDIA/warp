@@ -27,7 +27,7 @@ on platforms with NVIDIA CUDA support. The following table summarizes platform s
     +=====================+==============+======================+====================+=====================+
     | **Windows** 10/11   | ``x86-64``   | PC                   | Supported ✅       | CUDA                |
     +---------------------+--------------+----------------------+--------------------+---------------------+
-    | **Windows** 11      | ``arm64``    | PC                   | Source build ✅    | CPU Only            |
+    | **Windows** 11      | ``arm64``    | PC                   | Experimental       | CUDA 13.4+          |
     +---------------------+--------------+----------------------+--------------------+---------------------+
     | **Linux**           | ``x86-64``   | PC / Server          | Supported ✅       | CUDA                |
     +---------------------+--------------+----------------------+--------------------+---------------------+
@@ -38,7 +38,8 @@ on platforms with NVIDIA CUDA support. The following table summarizes platform s
     | **macOS**           | ``x86-64``   | Intel-based Mac      | Discontinued       | None                |
     +---------------------+--------------+----------------------+--------------------+---------------------+
 
-Warp supports CPU execution on Windows ARM64 when built from source. We do not currently publish pre-built wheels for this platform.
+Windows on Arm supports CPU execution and experimental CUDA acceleration through source builds.
+See :ref:`windows-arm64-builds` for requirements and current limitations.
 
 Runtime requirements
 --------------------
@@ -113,15 +114,15 @@ To build Warp from source, you need:
 
 * CUDA Toolkit (required to build Warp with GPU support, not available on macOS):
 
-  * Minimum: CUDA Toolkit 12.0
+  * Minimum: CUDA Toolkit 12.0 (13.4 on Windows on Arm)
   * For full libmathdx support: CUDA Toolkit 12.6.3+
   * For conditional graph node support: CUDA Toolkit 12.4+
 
 * libmathdx (auto-fetched via Packman by default)
 * LLVM/Clang (auto-fetched via Packman by default)
 
-Building from source with CUDA 12 remains supported, subject to the driver and GPU architecture
-requirements above. A CUDA Toolkit is not needed for a CPU-only build.
+Building from source with CUDA 12 remains supported on Windows x86-64 and Linux, subject to the
+driver and GPU architecture requirements above. A CUDA Toolkit is not needed for a CPU-only build.
 
 **Building:**
 
