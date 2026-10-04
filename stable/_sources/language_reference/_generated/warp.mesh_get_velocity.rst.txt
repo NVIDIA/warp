@@ -1,12 +1,14 @@
 ﻿warp.mesh\_get\_velocity
 ========================
 
-.. function:: warp._src.lang.mesh_get_velocity(id: uint64, index: int32) -> vec3f
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: mesh_get_velocity(id: uint64, index: int32) -> vec3f
 
-      * Kernel
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Look up the velocity of a face's vertex in the :class:`warp.Mesh`.
    

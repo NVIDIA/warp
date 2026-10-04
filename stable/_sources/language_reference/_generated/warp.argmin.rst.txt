@@ -1,13 +1,14 @@
 ﻿warp.argmin
 ===========
 
-.. function:: warp._src.lang.argmin(a: Vector[Scalar, Any]) -> uint32
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: argmin(a: Vector[Scalar, Any]) -> uint32
 
-      * Kernel
-      * Python
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Compute the index of the minimum element of vector ``a``.
    

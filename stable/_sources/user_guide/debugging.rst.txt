@@ -69,22 +69,6 @@ At ``wp.LOG_DEBUG``, additional messages are printed to standard output
 regarding program progress and code generation, such as when operations may be
 non-differentiable.
 
-.. note::
-    The legacy ``wp.config.verbose`` and ``wp.config.quiet`` flags are
-    deprecated. Migrate to ``wp.config.log_level``:
-
-    - ``wp.config.verbose = True`` → ``wp.config.log_level = wp.LOG_DEBUG``
-    - ``wp.config.quiet = True`` → ``wp.config.log_level = wp.LOG_WARNING``
-
-    Reading or setting either deprecated flag emits a one-time
-    ``DeprecationWarning``. During the deprecation window the flag is still
-    honored alongside ``log_level``, so existing code keeps working. Remove the
-    flag once your code sets ``log_level`` directly.
-
-    ``wp.config.verbose_warnings`` is not deprecated. It is an orthogonal
-    formatting flag that controls whether warning messages include the source
-    location and has no ``log_level`` equivalent.
-
 Verbose Warnings
 ^^^^^^^^^^^^^^^^
 
@@ -175,11 +159,17 @@ The easiest way to enable the compilation of Warp kernels in debug mode is to se
     wp.config.mode = "debug"
 
 As an alternative to the previous global setting,
-debug mode can be turned on in a per-module basis by setting
+debug mode can be enabled on a per-module basis by setting
 
 .. code-block:: python
 
     wp.set_module_options({"mode": "debug"})
+
+.. warning::
+
+    On Linux with CUDA Toolkit 13.1 and newer, an NVRTC compiler issue can
+    corrupt release-mode kernels compiled after a debug-mode kernel in the same
+    process. Run debug-mode and release-mode compilation in separate processes.
 
 Assertions
 ----------
@@ -224,8 +214,8 @@ Users should first compile the kernels in debug mode by setting::
 
     wp.config.mode = "debug"
 
-This setting ensures that line numbers, and debug symbols are generated correctly. After launching the Python process,
-the debugger should be attached, and a breakpoint inserted into the generated code.
+This setting generates line-number information and full debug symbols. After launching the Python process, the
+debugger should be attached, and a breakpoint inserted into the generated code.
 
 .. note:: Generated kernel code is not a 1:1 correspondence with the original Python code, but individual operations can still be replayed and variables inspected.
 
@@ -236,7 +226,7 @@ Breakpoints can also be inserted into Warp kernels running on GPU devices on Lin
 or the `NVIDIA Nsight Visual Studio Code Edition (VSCE) <https://developer.nvidia.com/nsight-visual-studio-code-edition>`__
 extension.
 
-An example `launch configuration <https://code.visualstudio.com/docs/debugtest/debugging#_launch-configurations>`__
+An example `launch configuration <https://code.visualstudio.com/docs/debugtest/debugging-configuration#_launch-configurations>`__
 for Visual Studio Code is shown below:
 
 .. code-block:: json
@@ -264,13 +254,14 @@ The cache location is printed at startup when :func:`wp.init() <warp.init>` is c
 
 .. code-block:: text
 
-    Warp 0.8.1 initialized:
-        CUDA Toolkit: 11.8, Driver: 11.8
-        Devices:
-        "cpu"    | AMD64 Family 25 Model 33 Stepping 0, AuthenticAMD
-        "cuda:0" | NVIDIA GeForce RTX 3090 (sm_86)
-        "cuda:1" | NVIDIA GeForce RTX 2080 Ti (sm_75)
-        Kernel cache: C:\Users\LukasW\AppData\Local\NVIDIA Corporation\warp\Cache\0.8.1
+    Warp 1.18.0 initialized:
+    CUDA Toolkit 13.4, Driver 13.0
+    Devices:
+        "cpu"      : "AMD64 Family 25 Model 33 Stepping 0, AuthenticAMD"
+        "cuda:0"   : "NVIDIA GeForce RTX 3090" (24 GiB, sm_86, mempool enabled)
+        "cuda:1"   : "NVIDIA GeForce RTX 2080 Ti" (11 GiB, sm_75, mempool enabled)
+    Kernel cache:
+        C:\Users\LukasW\AppData\Local\NVIDIA Corporation\warp\Cache\1.18.0
 
 The kernel cache has folders beginning with ``wp_`` that contain the generated C++/CUDA code and the compiled binaries
 for each module that was compiled at runtime.
@@ -358,7 +349,7 @@ be used to detect subtle memory-access issues in Warp applications, e.g.
 
     compute-sanitizer --tool initcheck python sim.py
 
-The Compute Sanitizer suite is available through the `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`__.
+The Compute Sanitizer suite is available through the `CUDA Toolkit <https://developer.nvidia.com/cuda/toolkit>`__.
 
 CPU Memory Error Detection with AddressSanitizer
 ------------------------------------------------

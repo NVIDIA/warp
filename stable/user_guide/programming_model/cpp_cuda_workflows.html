@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>C++ and CUDA Workflows &#8212; Warp 1.17.0</title>
+    <title>C++ and CUDA Workflows &#8212; Warp 1.18.0</title>
   
   
   
@@ -28,32 +28,32 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
-<link href="../../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+  <link href="../../_static/styles/theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=2a8757ae" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=ca94f457" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="../../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
-<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67" />
 
 
 
-    <script src="../../_static/documentation_options.js?v=755b3f99"></script>
+    <script src="../../_static/documentation_options.js?v=9d419c5b"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'user_guide/programming_model/cpp_cuda_workflows';</script>
     <script>
-        DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
+        DOCUMENTATION_OPTIONS.theme_version = '0.21.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.17';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.18';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
@@ -70,7 +70,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.17.0" />
+  <meta name="docsearch:version" content="1.18.0" />
   
     
     <script src="../../_static/searchtools.js"></script>
@@ -147,11 +147,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.18.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.18.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.17.0</p>
+    <p class="title logo__title">Warp 1.18.0</p>
   
 </a></div>
     
@@ -291,11 +291,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.18.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.18.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.17.0</p>
+    <p class="title logo__title">Warp 1.18.0</p>
   
 </a>
 
@@ -433,6 +433,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_build_experimental.html">warp.build_experimental</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_config.html">warp.config</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_fem.html">warp.fem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_geometry.html">warp.geometry</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_optim.html">warp.optim</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_render.html">warp.render</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_sparse.html">warp.sparse</a></li>
@@ -583,7 +584,7 @@ snippets are inserted into generated C++/CUDA, so they cannot call
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
 
-<span class="n">snippet</span> <span class="o">=</span> <span class="s2">&quot;out[tid] = x[tid] + 1.0f;&quot;</span>
+<span class="n">snippet</span> <span class="o">=</span> <span class="s2">"out[tid] = x[tid] + 1.0f;"</span>
 
 
 <span class="nd">@wp</span><span class="o">.</span><span class="n">func_native</span><span class="p">(</span><span class="n">snippet</span><span class="p">)</span>
@@ -597,7 +598,7 @@ snippets are inserted into generated C++/CUDA, so they cannot call
     <span class="n">increment</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">out</span><span class="p">,</span> <span class="n">tid</span><span class="p">)</span>
 
 
-<span class="n">device</span> <span class="o">=</span> <span class="s2">&quot;cpu&quot;</span>
+<span class="n">device</span> <span class="o">=</span> <span class="s2">"cpu"</span>
 <span class="n">x</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
 <span class="n">out</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
 <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">increment_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">x</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
@@ -613,7 +614,7 @@ one result per block.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
 
-<span class="n">snippet</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="n">snippet</span> <span class="o">=</span> <span class="s2">"""</span>
 <span class="s2">    __shared__ int sum[128];</span>
 
 <span class="s2">    sum[tid] = arr[tid];</span>
@@ -629,7 +630,7 @@ one result per block.</p>
 <span class="s2">    if (tid == 0) {</span>
 <span class="s2">        out[0] = sum[0];</span>
 <span class="s2">    }</span>
-<span class="s2">    &quot;&quot;&quot;</span>
+<span class="s2">    """</span>
 
 
 <span class="nd">@wp</span><span class="o">.</span><span class="n">func_native</span><span class="p">(</span><span class="n">snippet</span><span class="p">)</span>
@@ -643,9 +644,9 @@ one result per block.</p>
     <span class="n">reduce</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="n">out</span><span class="p">,</span> <span class="n">tid</span><span class="p">)</span>
 
 
-<span class="n">arr</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
-<span class="n">out</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
-<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">reduce_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">arr</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">],</span> <span class="n">block_dim</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
+<span class="n">arr</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda"</span><span class="p">)</span>
+<span class="n">out</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda"</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">reduce_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">arr</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">],</span> <span class="n">block_dim</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda"</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
@@ -675,7 +676,7 @@ accessed.</p>
 <span class="n">CLUSTER_DIM</span> <span class="o">=</span> <span class="mi">4</span>
 <span class="n">BLOCK_DIM</span> <span class="o">=</span> <span class="mi">32</span>
 
-<span class="n">snippet</span> <span class="o">=</span> <span class="sa">r</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="n">snippet</span> <span class="o">=</span> <span class="sa">r</span><span class="s2">"""</span>
 <span class="s2">    const unsigned int lane = threadIdx.x;</span>
 
 <span class="s2">    // Each block reduces its slice into a single shared-memory accumulator.</span>
@@ -685,16 +686,16 @@ accessed.</p>
 <span class="s2">    atomicAdd(&amp;s_partial, value);</span>
 <span class="s2">    __syncthreads();</span>
 
-<span class="s2">    // Cluster barrier: every block&#39;s s_partial is finalized and visible</span>
-<span class="s2">    // across the cluster&#39;s distributed shared memory.</span>
-<span class="s2">    asm volatile(&quot;barrier.cluster.arrive;&quot; ::: &quot;memory&quot;);</span>
-<span class="s2">    asm volatile(&quot;barrier.cluster.wait;&quot; ::: &quot;memory&quot;);</span>
+<span class="s2">    // Cluster barrier: every block's s_partial is finalized and visible</span>
+<span class="s2">    // across the cluster's distributed shared memory.</span>
+<span class="s2">    asm volatile("barrier.cluster.arrive;" ::: "memory");</span>
+<span class="s2">    asm volatile("barrier.cluster.wait;" ::: "memory");</span>
 
 <span class="s2">    unsigned int rank, num_blocks;</span>
-<span class="s2">    asm volatile(&quot;mov.u32 %0, </span><span class="si">%%</span><span class="s2">cluster_ctarank;&quot; : &quot;=r&quot;(rank));</span>
-<span class="s2">    asm volatile(&quot;mov.u32 %0, </span><span class="si">%%</span><span class="s2">cluster_nctarank;&quot; : &quot;=r&quot;(num_blocks));</span>
+<span class="s2">    asm volatile("mov.u32 %0, </span><span class="si">%%</span><span class="s2">cluster_ctarank;" : "=r"(rank));</span>
+<span class="s2">    asm volatile("mov.u32 %0, </span><span class="si">%%</span><span class="s2">cluster_nctarank;" : "=r"(num_blocks));</span>
 
-<span class="s2">    // Block 0 gathers every peer&#39;s partial sum via distributed shared memory.</span>
+<span class="s2">    // Block 0 gathers every peer's partial sum via distributed shared memory.</span>
 <span class="s2">    if (rank == 0 &amp;&amp; lane == 0) {</span>
 <span class="s2">        int total = 0;</span>
 <span class="s2">        for (unsigned int r = 0; r &lt; num_blocks; ++r) {</span>
@@ -705,10 +706,10 @@ accessed.</p>
 <span class="s2">    }</span>
 
 <span class="s2">    // Second barrier: no block exits (freeing its shared memory) until</span>
-<span class="s2">    // block 0 has finished reading every peer&#39;s accumulator.</span>
-<span class="s2">    asm volatile(&quot;barrier.cluster.arrive;&quot; ::: &quot;memory&quot;);</span>
-<span class="s2">    asm volatile(&quot;barrier.cluster.wait;&quot; ::: &quot;memory&quot;);</span>
-<span class="s2">    &quot;&quot;&quot;</span>
+<span class="s2">    // block 0 has finished reading every peer's accumulator.</span>
+<span class="s2">    asm volatile("barrier.cluster.arrive;" ::: "memory");</span>
+<span class="s2">    asm volatile("barrier.cluster.wait;" ::: "memory");</span>
+<span class="s2">    """</span>
 
 
 <span class="nd">@wp</span><span class="o">.</span><span class="n">func_native</span><span class="p">(</span><span class="n">snippet</span><span class="p">)</span>
@@ -724,15 +725,15 @@ accessed.</p>
 
 <span class="c1"># One cluster of CLUSTER_DIM blocks: launch exactly CLUSTER_DIM * BLOCK_DIM threads.</span>
 <span class="n">n</span> <span class="o">=</span> <span class="n">CLUSTER_DIM</span> <span class="o">*</span> <span class="n">BLOCK_DIM</span>
-<span class="n">values</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
-<span class="n">out</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
+<span class="n">values</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda"</span><span class="p">)</span>
+<span class="n">out</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda"</span><span class="p">)</span>
 <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span>
     <span class="n">cluster_reduce_kernel</span><span class="p">,</span>
     <span class="n">dim</span><span class="o">=</span><span class="n">n</span><span class="p">,</span>
     <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">values</span><span class="p">],</span>
     <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">],</span>
     <span class="n">block_dim</span><span class="o">=</span><span class="n">BLOCK_DIM</span><span class="p">,</span>
-    <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="s2">"cuda"</span><span class="p">,</span>
 <span class="p">)</span>
 
 <span class="nb">print</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">numpy</span><span class="p">()[</span><span class="mi">0</span><span class="p">]))</span>
@@ -758,14 +759,14 @@ accumulates them into one 32-bit result.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
 
-<span class="n">snippet</span> <span class="o">=</span> <span class="sa">r</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="n">snippet</span> <span class="o">=</span> <span class="sa">r</span><span class="s2">"""</span>
 <span class="s2">    unsigned int result;</span>
 <span class="s2">    unsigned int zero = 0;</span>
-<span class="s2">    asm(&quot;vabsdiff4.u32.u32.u32.add %0, %1, %2, %3;&quot;</span>
-<span class="s2">        : &quot;=r&quot;(result)</span>
-<span class="s2">        : &quot;r&quot;(a), &quot;r&quot;(b), &quot;r&quot;(zero));</span>
+<span class="s2">    asm("vabsdiff4.u32.u32.u32.add %0, %1, %2, %3;"</span>
+<span class="s2">        : "=r"(result)</span>
+<span class="s2">        : "r"(a), "r"(b), "r"(zero));</span>
 <span class="s2">    return result;</span>
-<span class="s2">    &quot;&quot;&quot;</span>
+<span class="s2">    """</span>
 
 
 <span class="nd">@wp</span><span class="o">.</span><span class="n">func_native</span><span class="p">(</span><span class="n">snippet</span><span class="p">)</span>
@@ -790,10 +791,10 @@ accumulates them into one 32-bit result.</p>
 <span class="n">a_host</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">pack4</span><span class="p">([</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="mi">40</span><span class="p">]),</span> <span class="n">pack4</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">128</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="mi">13</span><span class="p">])],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint32</span><span class="p">)</span>
 <span class="n">b_host</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">pack4</span><span class="p">([</span><span class="mi">13</span><span class="p">,</span> <span class="mi">18</span><span class="p">,</span> <span class="mi">41</span><span class="p">,</span> <span class="mi">35</span><span class="p">]),</span> <span class="n">pack4</span><span class="p">([</span><span class="mi">255</span><span class="p">,</span> <span class="mi">120</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">15</span><span class="p">])],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint32</span><span class="p">)</span>
 
-<span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">a_host</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">uint32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
-<span class="n">b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">b_host</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">uint32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
+<span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">a_host</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">uint32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda"</span><span class="p">)</span>
+<span class="n">b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">b_host</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">uint32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda"</span><span class="p">)</span>
 <span class="n">out</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
-<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">absdiff4_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">absdiff4_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda"</span><span class="p">)</span>
 
 <span class="c1"># [3 + 2 + 11 + 5, 255 + 8 + 255 + 2]</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
@@ -814,10 +815,10 @@ the assembly reads or writes memory through pointers, add the appropriate
 <p>A native snippet can return a value when the Python stub declares a return type.
 Warp supports scalar, vector, matrix, quaternion, array, and fixed-array return
 types. Struct return values are not supported.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">snippet</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">snippet</span> <span class="o">=</span> <span class="s2">"""</span>
 <span class="s2">    float sq = x * x;</span>
 <span class="s2">    return sq;</span>
-<span class="s2">    &quot;&quot;&quot;</span>
+<span class="s2">    """</span>
 
 
 <span class="nd">@wp</span><span class="o">.</span><span class="n">func_native</span><span class="p">(</span><span class="n">snippet</span><span class="p">)</span>
@@ -832,7 +833,7 @@ types. Struct return values are not supported.</p>
 vector, matrix, quaternion, or struct values that should be mutated in place.
 Inside the native snippet, a <code class="docutils literal notranslate"><span class="pre">wp.ref[T]</span></code> parameter is visible as a C++/CUDA
 reference named after the Python parameter:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func_native</span><span class="p">(</span><span class="s2">&quot;x = x + 5;&quot;</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func_native</span><span class="p">(</span><span class="s2">"x = x + 5;"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">add_five</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">ref</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">]):</span>
     <span class="o">...</span>
 
@@ -855,7 +856,7 @@ parameter. Use <code class="docutils literal notranslate"><span class="pre">arra
 <code class="docutils literal notranslate"><span class="pre">wp.address_of(expr)</span></code> for local variables, array elements, components, or
 nested fields such as <code class="docutils literal notranslate"><span class="pre">wp.address_of(v.y)</span></code> and
 <code class="docutils literal notranslate"><span class="pre">wp.address_of(outers[i].inner.value)</span></code>:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func_native</span><span class="p">(</span><span class="s2">&quot;*(float*)ptr += delta;&quot;</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func_native</span><span class="p">(</span><span class="s2">"*(float*)ptr += delta;"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">add_to_ptr</span><span class="p">(</span><span class="n">ptr</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">uint64</span><span class="p">,</span> <span class="n">delta</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">):</span>
     <span class="o">...</span>
 
@@ -878,11 +879,11 @@ appropriate manual adjoint for the surrounding native operation.</p>
 <code class="docutils literal notranslate"><span class="pre">adj_snippet</span></code> that accumulates adjoints for the native operation. Adjoint
 variables use the <code class="docutils literal notranslate"><span class="pre">adj_</span></code> prefix, and return-value adjoints are named
 <code class="docutils literal notranslate"><span class="pre">adj_ret</span></code>.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">snippet</span> <span class="o">=</span> <span class="s2">&quot;out[tid] = 2.0f * x[tid] + y[tid];&quot;</span>
-<span class="n">adj_snippet</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">snippet</span> <span class="o">=</span> <span class="s2">"out[tid] = 2.0f * x[tid] + y[tid];"</span>
+<span class="n">adj_snippet</span> <span class="o">=</span> <span class="s2">"""</span>
 <span class="s2">    adj_x[tid] += 2.0f * adj_out[tid];</span>
 <span class="s2">    adj_y[tid] += adj_out[tid];</span>
-<span class="s2">    &quot;&quot;&quot;</span>
+<span class="s2">    """</span>
 
 
 <span class="nd">@wp</span><span class="o">.</span><span class="n">func_native</span><span class="p">(</span><span class="n">snippet</span><span class="o">=</span><span class="n">snippet</span><span class="p">,</span> <span class="n">adj_snippet</span><span class="o">=</span><span class="n">adj_snippet</span><span class="p">)</span>
@@ -900,11 +901,11 @@ functions replay the original <code class="docutils literal notranslate"><span c
 effects that should not be repeated, such as mutating a counter with an atomic
 operation, provide <code class="docutils literal notranslate"><span class="pre">replay_snippet</span></code>. An empty string is a valid no-op replay
 snippet.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">snippet</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">snippet</span> <span class="o">=</span> <span class="s2">"""</span>
 <span class="s2">    int next_index = atomicAdd(counter, 1);</span>
 <span class="s2">    thread_values[tid] = next_index;</span>
-<span class="s2">    &quot;&quot;&quot;</span>
-<span class="n">replay_snippet</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+<span class="s2">    """</span>
+<span class="n">replay_snippet</span> <span class="o">=</span> <span class="s2">""</span>
 
 
 <span class="nd">@wp</span><span class="o">.</span><span class="n">func_native</span><span class="p">(</span><span class="n">snippet</span><span class="p">,</span> <span class="n">replay_snippet</span><span class="o">=</span><span class="n">replay_snippet</span><span class="p">)</span>
@@ -940,11 +941,11 @@ and may change without deprecation in future releases.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">build_options</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">ModuleBuildOptions</span><span class="p">(</span>
     <span class="n">extra_cuda_include_dirs</span><span class="o">=</span><span class="p">[</span><span class="n">my_cuda_include_dir</span><span class="p">],</span>
     <span class="n">extra_cpu_include_dirs</span><span class="o">=</span><span class="p">[</span><span class="n">my_cpu_include_dir</span><span class="p">],</span>
-    <span class="n">extra_cuda_preamble</span><span class="o">=</span><span class="s1">&#39;#include &quot;my_cuda_addon.h&quot;&#39;</span><span class="p">,</span>
-    <span class="n">extra_cpu_preamble</span><span class="o">=</span><span class="s1">&#39;#include &quot;my_cpu_addon.h&quot;&#39;</span><span class="p">,</span>
+    <span class="n">extra_cuda_preamble</span><span class="o">=</span><span class="s1">'#include "my_cuda_addon.h"'</span><span class="p">,</span>
+    <span class="n">extra_cpu_preamble</span><span class="o">=</span><span class="s1">'#include "my_cpu_addon.h"'</span><span class="p">,</span>
     <span class="n">extra_build_dependencies</span><span class="o">=</span><span class="p">[</span><span class="n">my_cuda_addon_header</span><span class="p">,</span> <span class="n">my_cpu_addon_header</span><span class="p">],</span>
 <span class="p">)</span>
-<span class="n">wp</span><span class="o">.</span><span class="n">set_module_options</span><span class="p">({</span><span class="s2">&quot;extra_build_options&quot;</span><span class="p">:</span> <span class="n">build_options</span><span class="p">})</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">set_module_options</span><span class="p">({</span><span class="s2">"extra_build_options"</span><span class="p">:</span> <span class="n">build_options</span><span class="p">})</span>
 </pre></div>
 </div>
 <p>The preambles are inserted after Warp’s own headers, but before codegen-only
@@ -964,11 +965,11 @@ take effect when it is passed to <a class="reference internal" href="../../api_r
 compilation state.</p>
 <p>If more than one addon contributes build inputs, combine them without
 discarding earlier settings:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">current</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_module_options</span><span class="p">(</span><span class="n">kernel</span><span class="o">.</span><span class="n">module</span><span class="p">)[</span><span class="s2">&quot;extra_build_options&quot;</span><span class="p">]</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">current</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_module_options</span><span class="p">(</span><span class="n">kernel</span><span class="o">.</span><span class="n">module</span><span class="p">)[</span><span class="s2">"extra_build_options"</span><span class="p">]</span>
 <span class="k">if</span> <span class="n">current</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
     <span class="n">current</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">ModuleBuildOptions</span><span class="p">()</span>
 <span class="n">wp</span><span class="o">.</span><span class="n">set_module_options</span><span class="p">(</span>
-    <span class="p">{</span><span class="s2">&quot;extra_build_options&quot;</span><span class="p">:</span> <span class="n">current</span><span class="o">.</span><span class="n">merged</span><span class="p">(</span><span class="n">addon_build_options</span><span class="p">)},</span>
+    <span class="p">{</span><span class="s2">"extra_build_options"</span><span class="p">:</span> <span class="n">current</span><span class="o">.</span><span class="n">merged</span><span class="p">(</span><span class="n">addon_build_options</span><span class="p">)},</span>
     <span class="n">module</span><span class="o">=</span><span class="n">kernel</span><span class="o">.</span><span class="n">module</span><span class="p">,</span>
 <span class="p">)</span>
 </pre></div>
@@ -984,16 +985,16 @@ host ABI with <a class="reference external" href="https://docs.python.org/3/libr
 
 <span class="k">class</span><span class="w"> </span><span class="nc">Color</span><span class="p">(</span><span class="n">ctypes</span><span class="o">.</span><span class="n">Structure</span><span class="p">):</span>
     <span class="n">_fields_</span> <span class="o">=</span> <span class="p">[</span>
-        <span class="p">(</span><span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_float</span><span class="p">),</span>
-        <span class="p">(</span><span class="s2">&quot;g&quot;</span><span class="p">,</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_float</span><span class="p">),</span>
-        <span class="p">(</span><span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_float</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">"r"</span><span class="p">,</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_float</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">"g"</span><span class="p">,</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_float</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">"b"</span><span class="p">,</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_float</span><span class="p">),</span>
     <span class="p">]</span>
 
 <span class="n">wp</span><span class="o">.</span><span class="n">build_experimental</span><span class="o">.</span><span class="n">add_native_type</span><span class="p">(</span>
     <span class="n">Color</span><span class="p">,</span>
-    <span class="n">native_name</span><span class="o">=</span><span class="s2">&quot;render::Color&quot;</span><span class="p">,</span>
-    <span class="n">fields</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;r&quot;</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="s2">&quot;g&quot;</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="s2">&quot;b&quot;</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">},</span>
-    <span class="n">initializer</span><span class="o">=</span><span class="s2">&quot;aggregate&quot;</span><span class="p">,</span>
+    <span class="n">native_name</span><span class="o">=</span><span class="s2">"render::Color"</span><span class="p">,</span>
+    <span class="n">fields</span><span class="o">=</span><span class="p">{</span><span class="s2">"r"</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="s2">"g"</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="s2">"b"</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">},</span>
+    <span class="n">initializer</span><span class="o">=</span><span class="s2">"aggregate"</span><span class="p">,</span>
 <span class="p">)</span>
 </pre></div>
 </div>
@@ -1025,46 +1026,46 @@ kernels. For example, <code class="docutils literal notranslate"><span class="pr
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
 
-<span class="n">include_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">&quot;include&quot;</span>
-<span class="n">header</span> <span class="o">=</span> <span class="n">include_dir</span> <span class="o">/</span> <span class="s2">&quot;my_addon.h&quot;</span>
+<span class="n">include_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">"include"</span>
+<span class="n">header</span> <span class="o">=</span> <span class="n">include_dir</span> <span class="o">/</span> <span class="s2">"my_addon.h"</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">Color</span><span class="p">(</span><span class="n">ctypes</span><span class="o">.</span><span class="n">Structure</span><span class="p">):</span>
     <span class="n">_fields_</span> <span class="o">=</span> <span class="p">[</span>
-        <span class="p">(</span><span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_float</span><span class="p">),</span>
-        <span class="p">(</span><span class="s2">&quot;g&quot;</span><span class="p">,</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_float</span><span class="p">),</span>
-        <span class="p">(</span><span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_float</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">"r"</span><span class="p">,</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_float</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">"g"</span><span class="p">,</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_float</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">"b"</span><span class="p">,</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_float</span><span class="p">),</span>
     <span class="p">]</span>
 
 
 <span class="n">wp</span><span class="o">.</span><span class="n">build_experimental</span><span class="o">.</span><span class="n">add_native_type</span><span class="p">(</span>
     <span class="n">Color</span><span class="p">,</span>
-    <span class="n">native_name</span><span class="o">=</span><span class="s2">&quot;my_addon::Color&quot;</span><span class="p">,</span>
-    <span class="n">fields</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;r&quot;</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="s2">&quot;g&quot;</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="s2">&quot;b&quot;</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">},</span>
-    <span class="n">initializer</span><span class="o">=</span><span class="s2">&quot;aggregate&quot;</span><span class="p">,</span>
+    <span class="n">native_name</span><span class="o">=</span><span class="s2">"my_addon::Color"</span><span class="p">,</span>
+    <span class="n">fields</span><span class="o">=</span><span class="p">{</span><span class="s2">"r"</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="s2">"g"</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="s2">"b"</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">},</span>
+    <span class="n">initializer</span><span class="o">=</span><span class="s2">"aggregate"</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="n">wp</span><span class="o">.</span><span class="n">build_experimental</span><span class="o">.</span><span class="n">add_builtin</span><span class="p">(</span>
-    <span class="s2">&quot;my_addon_scale_color&quot;</span><span class="p">,</span>
-    <span class="p">{</span><span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="n">Color</span><span class="p">,</span> <span class="s2">&quot;factor&quot;</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">},</span>
+    <span class="s2">"my_addon_scale_color"</span><span class="p">,</span>
+    <span class="p">{</span><span class="s2">"value"</span><span class="p">:</span> <span class="n">Color</span><span class="p">,</span> <span class="s2">"factor"</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">},</span>
     <span class="n">Color</span><span class="p">,</span>
-    <span class="n">native_name</span><span class="o">=</span><span class="s2">&quot;my_addon::scale_color&quot;</span><span class="p">,</span>
+    <span class="n">native_name</span><span class="o">=</span><span class="s2">"my_addon::scale_color"</span><span class="p">,</span>
 <span class="p">)</span>
 
 <span class="n">_build_options</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">ModuleBuildOptions</span><span class="p">(</span>
     <span class="n">extra_cuda_include_dirs</span><span class="o">=</span><span class="p">[</span><span class="n">include_dir</span><span class="p">],</span>
     <span class="n">extra_cpu_include_dirs</span><span class="o">=</span><span class="p">[</span><span class="n">include_dir</span><span class="p">],</span>
-    <span class="n">extra_cuda_preamble</span><span class="o">=</span><span class="s1">&#39;#include &quot;my_addon.h&quot;&#39;</span><span class="p">,</span>
-    <span class="n">extra_cpu_preamble</span><span class="o">=</span><span class="s1">&#39;#include &quot;my_addon.h&quot;&#39;</span><span class="p">,</span>
+    <span class="n">extra_cuda_preamble</span><span class="o">=</span><span class="s1">'#include "my_addon.h"'</span><span class="p">,</span>
+    <span class="n">extra_cpu_preamble</span><span class="o">=</span><span class="s1">'#include "my_addon.h"'</span><span class="p">,</span>
     <span class="n">extra_build_dependencies</span><span class="o">=</span><span class="p">[</span><span class="n">header</span><span class="p">],</span>
 <span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">configure_module</span><span class="p">(</span><span class="n">module</span><span class="p">):</span>
-    <span class="n">current</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_module_options</span><span class="p">(</span><span class="n">module</span><span class="p">)[</span><span class="s2">&quot;extra_build_options&quot;</span><span class="p">]</span>
+    <span class="n">current</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_module_options</span><span class="p">(</span><span class="n">module</span><span class="p">)[</span><span class="s2">"extra_build_options"</span><span class="p">]</span>
     <span class="k">if</span> <span class="n">current</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">current</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">ModuleBuildOptions</span><span class="p">()</span>
     <span class="n">wp</span><span class="o">.</span><span class="n">set_module_options</span><span class="p">(</span>
-        <span class="p">{</span><span class="s2">&quot;extra_build_options&quot;</span><span class="p">:</span> <span class="n">current</span><span class="o">.</span><span class="n">merged</span><span class="p">(</span><span class="n">_build_options</span><span class="p">)},</span>
+        <span class="p">{</span><span class="s2">"extra_build_options"</span><span class="p">:</span> <span class="n">current</span><span class="o">.</span><span class="n">merged</span><span class="p">(</span><span class="n">_build_options</span><span class="p">)},</span>
         <span class="n">module</span><span class="o">=</span><span class="n">module</span><span class="p">,</span>
     <span class="p">)</span>
 </pre></div>
@@ -1084,11 +1085,11 @@ configure each kernel module before its first launch or AOT compilation:</p>
 
 <span class="n">my_addon</span><span class="o">.</span><span class="n">configure_module</span><span class="p">(</span><span class="n">scale_colors</span><span class="o">.</span><span class="n">module</span><span class="p">)</span>
 
-<span class="c1"># A normal wp.launch() now JIT-compiles with the addon&#39;s build inputs.</span>
+<span class="c1"># A normal wp.launch() now JIT-compiles with the addon's build inputs.</span>
 <span class="c1"># For external runtimes, AOT compilation returns the generated artifact.</span>
 <span class="n">artifacts</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">compile_aot_module</span><span class="p">(</span>
     <span class="n">scale_colors</span><span class="o">.</span><span class="n">module</span><span class="p">,</span>
-    <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="s2">"cuda"</span><span class="p">,</span>
     <span class="n">use_ptx</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span>
 </pre></div>
@@ -1145,12 +1146,88 @@ CUDA. It loads recorded CPU kernel objects and replays the graph with
 Warp’s generated type support.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">warp/native/warp.h</span></code> declares the core Warp C API exported by the native
 library.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">warp/native/warp_clang.h</span></code> declares the experimental CPU block runtime
+binding, module loading, and symbol lookup API exported by <code class="docutils literal notranslate"><span class="pre">warp-clang</span></code>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">warp/native/apic.h</span></code> declares the APIC graph loading and replay API used by
 <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> graph consumers.</p></li>
 </ul>
 <p>Other files in <code class="docutils literal notranslate"><span class="pre">warp/native/</span></code> implement Warp’s runtime and kernel support
 library. They are useful when inspecting generated code, but the examples above
 are the recommended starting points for native host integration.</p>
+</section>
+<section id="native-library-linking-and-version-checks">
+<span id="native-library-linking"></span><h2>Native Library Linking and Version Checks<a class="headerlink" href="#native-library-linking-and-version-checks" title="Link to this heading">#</a></h2>
+<p>Windows wheels include <code class="docutils literal notranslate"><span class="pre">warp.lib</span></code> beside <code class="docutils literal notranslate"><span class="pre">warp.dll</span></code> and
+<code class="docutils literal notranslate"><span class="pre">warp-clang.lib</span></code> beside <code class="docutils literal notranslate"><span class="pre">warp-clang.dll</span></code>. At build time, link against the
+<code class="docutils literal notranslate"><span class="pre">.lib</span></code> import libraries and deploy the corresponding DLLs. This records
+load-time dependencies on the DLLs. On Linux and macOS, link the application
+against the Warp and warp-clang shared libraries at build time.</p>
+<p>Warp does not currently provide an official <code class="docutils literal notranslate"><span class="pre">find_package()</span></code> configuration.
+A consuming CMake project that knows the wheel’s package location can define
+ordinary imported targets. For example, the Windows targets can be defined as:</p>
+<div class="highlight-cmake notranslate"><div class="highlight"><pre><span></span><span class="nb">set</span><span class="p">(</span><span class="s">WARP_PACKAGE_ROOT</span><span class="w"> </span><span class="s2">".../site-packages/warp"</span><span class="p">)</span>
+
+<span class="nb">add_library</span><span class="p">(</span><span class="s">Warp::runtime</span><span class="w"> </span><span class="s">SHARED</span><span class="w"> </span><span class="s">IMPORTED</span><span class="p">)</span>
+<span class="nb">set_target_properties</span><span class="p">(</span><span class="s">Warp::runtime</span><span class="w"> </span><span class="s">PROPERTIES</span>
+<span class="w">    </span><span class="s">IMPORTED_LOCATION</span><span class="w"> </span><span class="s2">"${WARP_PACKAGE_ROOT}/bin/warp.dll"</span>
+<span class="w">    </span><span class="s">IMPORTED_IMPLIB</span><span class="w"> </span><span class="s2">"${WARP_PACKAGE_ROOT}/bin/warp.lib"</span>
+<span class="w">    </span><span class="s">INTERFACE_INCLUDE_DIRECTORIES</span><span class="w"> </span><span class="s2">"${WARP_PACKAGE_ROOT}/native"</span>
+<span class="p">)</span>
+
+<span class="nb">add_library</span><span class="p">(</span><span class="s">Warp::clang</span><span class="w"> </span><span class="s">SHARED</span><span class="w"> </span><span class="s">IMPORTED</span><span class="p">)</span>
+<span class="nb">set_target_properties</span><span class="p">(</span><span class="s">Warp::clang</span><span class="w"> </span><span class="s">PROPERTIES</span>
+<span class="w">    </span><span class="s">IMPORTED_LOCATION</span><span class="w"> </span><span class="s2">"${WARP_PACKAGE_ROOT}/bin/warp-clang.dll"</span>
+<span class="w">    </span><span class="s">IMPORTED_IMPLIB</span><span class="w"> </span><span class="s2">"${WARP_PACKAGE_ROOT}/bin/warp-clang.lib"</span>
+<span class="w">    </span><span class="s">INTERFACE_INCLUDE_DIRECTORIES</span><span class="w"> </span><span class="s2">"${WARP_PACKAGE_ROOT}/native"</span>
+<span class="p">)</span>
+
+<span class="nb">target_link_libraries</span><span class="p">(</span><span class="s">my_app</span><span class="w"> </span><span class="s">PRIVATE</span><span class="w"> </span><span class="s">Warp::runtime</span><span class="w"> </span><span class="s">Warp::clang</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>On Linux and macOS, set <code class="docutils literal notranslate"><span class="pre">IMPORTED_LOCATION</span></code> to the corresponding <code class="docutils literal notranslate"><span class="pre">.so</span></code> or
+<code class="docutils literal notranslate"><span class="pre">.dylib</span></code> file and omit <code class="docutils literal notranslate"><span class="pre">IMPORTED_IMPLIB</span></code>.</p>
+<p>The native C APIs and <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> format do not currently guarantee backward or
+forward compatibility across Warp releases. Build and deploy a native
+application with the headers, DLLs or other shared libraries, Windows import
+libraries, <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> files, and companion module artifacts from the same Warp
+release. Mixing these artifacts across releases is unsupported, even when a
+particular combination happens to work. Check both linked libraries during
+startup before loading a graph or CPU module:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">"warp.h"</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">"warp_clang.h"</span>
+
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstring&gt;</span>
+
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">wp_init</span><span class="p">(</span><span class="n">WP_VERSION_STRING</span><span class="p">)</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">strcmp</span><span class="p">(</span><span class="n">wp_warp_clang_version</span><span class="p">(),</span><span class="w"> </span><span class="n">WP_VERSION_STRING</span><span class="p">)</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span>
+</pre></div>
+</div>
+<p>Applications that load CPU object modules through <code class="docutils literal notranslate"><span class="pre">wp_load_obj()</span></code> must also
+bind the core Warp CPU block runtime after initialization and before loading
+the first object:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">wp_llvm_set_cpu_block_runtime</span><span class="p">(</span><span class="n">wp_cpu_block_runtime_get_api</span><span class="p">()))</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">3</span><span class="p">;</span>
+</pre></div>
+</div>
+<p>These checks detect a library that reports a different Warp release, but they
+do not establish a stable ABI:</p>
+<ul class="simple">
+<li><p>The Windows loader may reject a missing DLL or symbol before <code class="docutils literal notranslate"><span class="pre">main()</span></code>, so
+runtime version checks cannot recover from that failure.</p></li>
+<li><p>An unchanged C symbol with a changed signature remains unsafe despite the
+version checks.</p></li>
+<li><p>Put the matching DLLs beside the executable or configure the DLL search path
+deliberately.</p></li>
+<li><p>Linking <code class="docutils literal notranslate"><span class="pre">warp-clang.lib</span></code> makes <code class="docutils literal notranslate"><span class="pre">warp-clang.dll</span></code> a startup dependency,
+even for a process that later replays only CUDA graphs.</p></li>
+<li><p>Both DLLs are included in the same Warp Windows distribution package, such
+as a wheel or conda package, but remain separate libraries.</p></li>
+<li><p>CPU APIC callers should include <code class="docutils literal notranslate"><span class="pre">warp_clang.h</span></code> for the runtime binding,
+module loading, and symbol lookup declarations instead of copying
+declarations from <code class="docutils literal notranslate"><span class="pre">clang.cpp</span></code>.</p></li>
+</ul>
 </section>
 <section id="related-topics">
 <h2>Related Topics<a class="headerlink" href="#related-topics" title="Link to this heading">#</a></h2>
@@ -1232,6 +1309,7 @@ compilation.</p></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ahead-of-time-c-cuda-workflows">Ahead-of-Time C++/CUDA Workflows</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#api-capture-replay-from-c">API Capture Replay from C++</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#native-library-headers">Native Library Headers</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#native-library-linking-and-version-checks">Native Library Linking and Version Checks</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#related-topics">Related Topics</a></li>
 </ul>
   </nav></div>
@@ -1240,7 +1318,7 @@ compilation.</p></li>
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/release-1.17/docs/user_guide/programming_model/cpp_cuda_workflows.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/release-1.18/docs/user_guide/programming_model/cpp_cuda_workflows.rst">
       <i class="fa-solid fa-pencil"></i>
       
       
@@ -1267,8 +1345,8 @@ compilation.</p></li>
   
 
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
-<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67"></script>
 
 
   <footer class="bd-footer">

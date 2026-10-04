@@ -1,12 +1,14 @@
 ﻿warp.tile\_argmin
 =================
 
-.. function:: warp._src.lang.tile_argmin(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Int, tuple[Literal[1]]]
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: tile_argmin(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Int, tuple[Literal[1]]]
 
-      * Kernel
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Cooperatively compute the index of the minimum element in the tile using all threads in the block.
    

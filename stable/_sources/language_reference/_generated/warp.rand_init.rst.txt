@@ -1,13 +1,14 @@
 ﻿warp.rand\_init
 ===============
 
-.. function:: warp._src.lang.rand_init(seed: int32) -> uint32
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: rand_init(seed: int32) -> uint32
 
-      * Kernel
-      * Python
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Initialize a random number generator (RNG) state from a seed.
    
@@ -37,14 +38,13 @@
    :returns: A 32-bit unsigned integer holding the initial RNG state.
    
 
-.. function:: warp._src.lang.rand_init(seed: int32, offset: int32) -> uint32
+.. function:: rand_init(seed: int32, offset: int32) -> uint32
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Initialize a random number generator (RNG) state from a seed and an offset.
    

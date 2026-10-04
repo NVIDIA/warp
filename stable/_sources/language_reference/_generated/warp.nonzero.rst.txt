@@ -1,12 +1,13 @@
 ﻿warp.nonzero
 ============
 
-.. function:: warp._src.lang.nonzero(x: Scalar) -> Scalar
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: nonzero(x: Scalar) -> Scalar
 
-      * Kernel
-      * Python
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Compute 1.0 if ``x`` is not equal to zero, otherwise 0.0.

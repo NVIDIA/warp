@@ -22,5 +22,6 @@
       ~Mesh.points
       ~Mesh.vars
       ~Mesh.velocities
+      ~Mesh.support_winding_number
    
    

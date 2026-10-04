@@ -1,12 +1,13 @@
 ﻿warp.ceil
 =========
 
-.. function:: warp._src.lang.ceil(x: Float) -> Float
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: ceil(x: Float) -> Float
 
-      * Kernel
-      * Python
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Compute the smallest integer that is greater than or equal to ``x``.

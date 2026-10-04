@@ -1,25 +1,23 @@
 ﻿warp.cw\_div
 ============
 
-.. function:: warp._src.lang.cw_div(a: Vector[Scalar, Any], b: Vector[Scalar, Any]) -> Vector[Scalar, Any]
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: cw_div(a: Vector[Scalar, Any], b: Vector[Scalar, Any]) -> Vector[Scalar, Any]
 
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Compute the component-wise division of ``a`` by ``b``.
 
-.. function:: warp._src.lang.cw_div(a: Matrix[Scalar, Any, Any], b: Matrix[Scalar, Any, Any]) -> Matrix[Scalar, Any, Any]
+.. function:: cw_div(a: Matrix[Scalar, Any, Any], b: Matrix[Scalar, Any, Any]) -> Matrix[Scalar, Any, Any]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Compute the component-wise division of ``a`` by ``b``.

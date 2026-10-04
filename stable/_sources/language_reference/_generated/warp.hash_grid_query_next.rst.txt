@@ -1,12 +1,14 @@
 ﻿warp.hash\_grid\_query\_next
 ============================
 
-.. function:: warp._src.lang.hash_grid_query_next(query: HashGridQuery, index: int32) -> bool
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: hash_grid_query_next(query: HashGridQuery, index: int32) -> bool
 
-      * Kernel
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Advance a hash grid query to the next candidate neighbor and report whether one was found.
    
@@ -52,13 +54,13 @@
        [2 2 1 1]
    
 
-.. function:: warp._src.lang.hash_grid_query_next(query: HashGridQuery, index: int32) -> bool
+.. function:: hash_grid_query_next(query: HashGridQuery, index: int32) -> bool
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Advance a hash grid query to the next candidate neighbor and report whether one was found (float16 precision).
    
@@ -73,13 +75,13 @@
              query is exhausted.
    
 
-.. function:: warp._src.lang.hash_grid_query_next(query: HashGridQuery, index: int32) -> bool
+.. function:: hash_grid_query_next(query: HashGridQuery, index: int32) -> bool
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Advance a hash grid query to the next candidate neighbor and report whether one was found (float64 precision).
    

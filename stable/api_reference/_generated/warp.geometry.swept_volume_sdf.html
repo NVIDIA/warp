@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.config.quiet &#8212; Warp 1.17.0</title>
+    <title>warp.geometry.swept_volume_sdf &#8212; Warp 1.18.0</title>
   
   
   
@@ -28,32 +28,33 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
-<link href="../../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+  <link href="../../_static/styles/theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=2a8757ae" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=ca94f457" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="../../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
-<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67" />
 
 
 
-    <script src="../../_static/documentation_options.js?v=755b3f99"></script>
+    <script src="../../_static/documentation_options.js?v=9d419c5b"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.config.quiet';</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.geometry.swept_volume_sdf';</script>
     <script>
-        DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
+        DOCUMENTATION_OPTIONS.theme_version = '0.21.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.17';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.18';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
@@ -64,13 +65,13 @@
 
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="warp.config.track_memory" href="warp.config.track_memory.html" />
-    <link rel="prev" title="warp.config.ptx_target_arch" href="warp.config.ptx_target_arch.html" />
+    <link rel="next" title="warp.optim" href="../warp_optim.html" />
+    <link rel="prev" title="warp.geometry.find_triangle_neighbor_edge_index" href="warp.geometry.find_triangle_neighbor_edge_index.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.17.0" />
+  <meta name="docsearch:version" content="1.18.0" />
   
     
     <script src="../../_static/searchtools.js"></script>
@@ -147,11 +148,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.18.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.18.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.17.0</p>
+    <p class="title logo__title">Warp 1.18.0</p>
   
 </a></div>
     
@@ -291,11 +292,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.18.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.18.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.17.0</p>
+    <p class="title logo__title">Warp 1.18.0</p>
   
 </a>
 
@@ -433,6 +434,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../warp_build_experimental.html">warp.build_experimental</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_config.html">warp.config</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_fem.html">warp.fem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_geometry.html">warp.geometry</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_optim.html">warp.optim</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_render.html">warp.render</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_sparse.html">warp.sparse</a></li>
@@ -485,9 +487,9 @@
       </a>
     </li>
     
-    <li class="breadcrumb-item"><a href="../warp_config.html" class="nav-link">warp.config</a></li>
+    <li class="breadcrumb-item"><a href="../warp_geometry.html" class="nav-link">warp.geometry</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.config.quiet</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.geometry.swept_volume_sdf</span></li>
   </ul>
 </nav>
 </div>
@@ -504,16 +506,48 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="warp-config-quiet">
-<h1>warp.config.quiet<a class="headerlink" href="#warp-config-quiet" title="Link to this heading">#</a></h1>
-<dl class="py data">
-<dt class="sig sig-object py" id="warp.config.quiet">
-<span class="sig-prename descclassname"><span class="pre">warp.config.</span></span><span class="sig-name descname"><span class="pre">quiet</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></span><a class="headerlink" href="#warp.config.quiet" title="Link to this definition">#</a></dt>
-<dd><p>Disable Warp module initialization messages.</p>
-<div class="deprecated">
-<p><span class="versionmodified deprecated">Deprecated since version Use: </span><code class="docutils literal notranslate"><span class="pre">warp.config.log_level</span> <span class="pre">=</span> <span class="pre">warp.LOG_WARNING</span></code> instead. Reading or setting
-this flag emits a <code class="docutils literal notranslate"><span class="pre">DeprecationWarning</span></code> for external callers.</p>
-</div>
+  <section id="warp-geometry-swept-volume-sdf">
+<h1>warp.geometry.swept_volume_sdf<a class="headerlink" href="#warp-geometry-swept-volume-sdf" title="Link to this heading">#</a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.geometry.swept_volume_sdf">
+<span class="sig-prename descclassname"><span class="pre">warp.geometry.</span></span><span class="sig-name descname"><span class="pre">swept_volume_sdf</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">point</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="warp.vec3f.html#warp.vec3f" title="warp.vec3f"><span class="pre">vec3f</span></a></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">mesh_ids</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Array</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="warp.uint64.html#warp.uint64" title="warp.uint64"><span class="pre">uint64</span></a><span class="p"><span class="pre">]</span></span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">transforms</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Array</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="warp.transformf.html#warp.transformf" title="warp.transformf"><span class="pre">transformf</span></a><span class="p"><span class="pre">]</span></span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_dist</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="warp.float32.html#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">sign_mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="warp.int32.html#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="warp.float32.html#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.18/warp/_src/geometry/delaunay.py#L716-L780"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.swept_volume_sdf" title="Link to this definition">#</a></dt>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="differentiable" data-wp-value="false"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: false</span></li></ul><p>Evaluate the swept-volume pseudo signed distance at a single point.</p>
+<p>Returns <span class="math notranslate nohighlight">\(\min_m \min_s \mathrm{sdf}_m(X_{m,s}^{-1} p)\)</span>, the minimum
+over every mesh <span class="math notranslate nohighlight">\(m\)</span> and every sampled pose <span class="math notranslate nohighlight">\(s\)</span>. The motion is
+rigid, so instead of transforming the geometry the query point is pushed
+back into each mesh’s rest frame, and one closest-point query per
+(mesh, sample) evaluates one pose. Callable from within your own kernels;
+not differentiable.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>point</strong> – Query point, in world space.</p></li>
+<li><p><strong>mesh_ids</strong> – Identifiers of the rest-pose meshes.</p></li>
+<li><p><strong>transforms</strong> – Per-mesh, per-sample rigid poses, mapping rest space to
+world space.</p></li>
+<li><p><strong>max_dist</strong> – Bound on the closest-point search. A query that finds nothing
+within it returns no sign either, so this returns <code class="docutils literal notranslate"><span class="pre">+max_dist</span></code> for
+a point deep inside the union just as it does for one far outside;
+pass a bound that spans the region of interest, as the array-level
+entry points do.</p></li>
+<li><p><strong>sign_mode</strong> – Inside/outside classification method, as the integer value of
+a <a class="reference internal" href="warp.geometry.SweptVolumeSignMode.html#warp.geometry.SweptVolumeSignMode" title="warp.geometry.SweptVolumeSignMode"><code class="xref py py-class docutils literal notranslate"><span class="pre">SweptVolumeSignMode</span></code></a> member.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The pseudo signed distance at <code class="docutils literal notranslate"><span class="pre">point</span></code>.</p>
+</dd>
+</dl>
 </dd></dl>
 
 </section>
@@ -529,20 +563,20 @@ this flag emits a <code class="docutils literal notranslate"><span class="pre">D
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.config.ptx_target_arch.html"
+       href="warp.geometry.find_triangle_neighbor_edge_index.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.config.ptx_target_arch</p>
+        <p class="prev-next-title">warp.geometry.find_triangle_neighbor_edge_index</p>
       </div>
     </a>
     <a class="right-next"
-       href="warp.config.track_memory.html"
+       href="../warp_optim.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.config.track_memory</p>
+        <p class="prev-next-title">warp.optim</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -567,7 +601,7 @@ this flag emits a <code class="docutils literal notranslate"><span class="pre">D
   </div>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.config.quiet"><code class="docutils literal notranslate"><span class="pre">quiet</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.geometry.swept_volume_sdf"><code class="docutils literal notranslate"><span class="pre">swept_volume_sdf()</span></code></a></li>
 </ul>
   </nav></div>
 
@@ -586,8 +620,8 @@ this flag emits a <code class="docutils literal notranslate"><span class="pre">D
   
 
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
-<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67"></script>
 
 
   <footer class="bd-footer">

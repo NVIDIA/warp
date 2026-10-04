@@ -1,13 +1,14 @@
 ﻿warp.tile\_lower\_solve
 =======================
 
-.. function:: warp._src.lang.tile_lower_solve(L: Tile[Float, tuple[int, int]], y: Tile[Float, tuple[int]]) -> Tile[Float, tuple[int]]
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: tile_lower_solve(L: Tile[Float, tuple[int, int]], y: Tile[Float, tuple[int]]) -> Tile[Float, tuple[int]]
 
-      * Kernel
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Solve for ``z`` in ``Lz = y``, where ``L`` is a lower triangular matrix.
    

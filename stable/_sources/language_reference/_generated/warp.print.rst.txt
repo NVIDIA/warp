@@ -1,12 +1,13 @@
 ﻿warp.print
 ==========
 
-.. function:: warp._src.lang.print(value: Any) -> None
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: print(value: Any) -> None
 
-      * Kernel
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Print a variable to stdout.

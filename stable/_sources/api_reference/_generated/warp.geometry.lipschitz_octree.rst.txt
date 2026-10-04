@@ -1,0 +1,6 @@
+﻿warp.geometry.lipschitz\_octree
+===============================
+
+.. currentmodule:: warp.geometry
+
+.. autofunction:: lipschitz_octree

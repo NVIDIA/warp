@@ -1,13 +1,14 @@
 ﻿warp.randf
 ==========
 
-.. function:: warp._src.lang.randf(state: uint32) -> float
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: randf(state: uint32) -> float
 
-      * Kernel
-      * Python
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Generate a uniform random float in the range [0.0, 1.0).
    
@@ -31,14 +32,13 @@
    :func:`randi`, :func:`randu`, and :func:`randn` are used the same way:
    initialize ``rng`` once with :func:`rand_init`, then pass it to each call.
 
-.. function:: warp._src.lang.randf(state: uint32, low: float32, high: float32) -> float
+.. function:: randf(state: uint32, low: float32, high: float32) -> float
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Generate a uniform random float in the range [low, high).
    

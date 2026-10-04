@@ -1,12 +1,14 @@
 ﻿warp.mesh\_get
 ==============
 
-.. function:: warp._src.lang.mesh_get(id: uint64) -> Mesh
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: mesh_get(id: uint64) -> Mesh
 
-      * Kernel
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Retrieve the :class:`warp.Mesh` object identified by ``id``.
    

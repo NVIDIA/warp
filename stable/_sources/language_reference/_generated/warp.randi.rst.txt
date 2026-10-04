@@ -1,13 +1,14 @@
 ﻿warp.randi
 ==========
 
-.. function:: warp._src.lang.randi(state: uint32) -> int
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: randi(state: uint32) -> int
 
-      * Kernel
-      * Python
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Generate a uniform random 32-bit signed integer in the range [-2^31, 2^31).
    
@@ -15,14 +16,13 @@
    values; called from the Python scope, it does not modify ``state``, so repeated
    calls with the same ``state`` return the same value (see :func:`rand_init`).
 
-.. function:: warp._src.lang.randi(state: uint32, low: int32, high: int32) -> int
+.. function:: randi(state: uint32, low: int32, high: int32) -> int
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Generate a uniform random integer in the range [low, high).
    

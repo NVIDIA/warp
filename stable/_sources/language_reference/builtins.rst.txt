@@ -13,7 +13,7 @@ Scalar Math
 .. autosummary::
    :nosignatures:
    :toctree: _generated
-   :template: builtins.rst
+   :template: warp_function.rst
 
    abs
    acos
@@ -62,7 +62,7 @@ Vector Math
 .. autosummary::
    :nosignatures:
    :toctree: _generated
-   :template: builtins.rst
+   :template: warp_function.rst
 
    argmax
    argmin
@@ -104,7 +104,7 @@ Quaternion Math
 .. autosummary::
    :nosignatures:
    :toctree: _generated
-   :template: builtins.rst
+   :template: warp_function.rst
 
    quat_from_axis_angle
    quat_from_euler
@@ -130,7 +130,7 @@ Transformations
 .. autosummary::
    :nosignatures:
    :toctree: _generated
-   :template: builtins.rst
+   :template: warp_function.rst
 
    transform_compose
    transform_decompose
@@ -153,7 +153,7 @@ Spatial Math
 .. autosummary::
    :nosignatures:
    :toctree: _generated
-   :template: builtins.rst
+   :template: warp_function.rst
 
    spatial_adjoint
    spatial_bottom
@@ -172,7 +172,7 @@ Tile Primitives
 .. autosummary::
    :nosignatures:
    :toctree: _generated
-   :template: builtins.rst
+   :template: warp_function.rst
 
    tile
    tile_arange
@@ -245,7 +245,7 @@ Geometry
 .. autosummary::
    :nosignatures:
    :toctree: _generated
-   :template: builtins.rst
+   :template: warp_function.rst
 
    bvh_get_group_root
    bvh_query_aabb
@@ -286,13 +286,15 @@ Geometry
    mesh_query_ray_count_intersections
    mesh_query_sphere
 
+.. _builtins-volumes:
+
 Volumes
 -------
 
 .. autosummary::
    :nosignatures:
    :toctree: _generated
-   :template: builtins.rst
+   :template: warp_function.rst
 
    volume_index_to_world
    volume_index_to_world_dir
@@ -317,13 +319,15 @@ Volumes
    volume_world_to_index
    volume_world_to_index_dir
 
+.. _builtins-textures:
+
 Textures
 --------
 
 .. autosummary::
    :nosignatures:
    :toctree: _generated
-   :template: builtins.rst
+   :template: warp_function.rst
 
    texture_sample
 
@@ -333,7 +337,7 @@ Random
 .. autosummary::
    :nosignatures:
    :toctree: _generated
-   :template: builtins.rst
+   :template: warp_function.rst
 
    curlnoise
    noise
@@ -361,7 +365,7 @@ Utility
 .. autosummary::
    :nosignatures:
    :toctree: _generated
-   :template: builtins.rst
+   :template: warp_function.rst
 
    array
    atomic_add
@@ -393,7 +397,7 @@ Other
 .. autosummary::
    :nosignatures:
    :toctree: _generated
-   :template: builtins.rst
+   :template: warp_function.rst
 
    lower_bound
 
@@ -403,7 +407,7 @@ Operators
 .. autosummary::
    :nosignatures:
    :toctree: _generated
-   :template: builtins.rst
+   :template: warp_function.rst
 
    add
    bit_and
@@ -428,6 +432,6 @@ Code Generation
 .. autosummary::
    :nosignatures:
    :toctree: _generated
-   :template: builtins.rst
+   :template: warp_function.rst
 
    static

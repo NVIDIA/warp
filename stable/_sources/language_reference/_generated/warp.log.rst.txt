@@ -1,13 +1,13 @@
 ﻿warp.log
 ========
 
-.. function:: warp._src.lang.log(x: Float) -> Float
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: log(x: Float) -> Float
 
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Compute the natural logarithm (base-e) of ``x``, where ``x`` is positive.

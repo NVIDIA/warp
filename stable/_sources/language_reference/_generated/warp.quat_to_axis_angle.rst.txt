@@ -1,24 +1,23 @@
 ﻿warp.quat\_to\_axis\_angle
 ==========================
 
-.. function:: warp._src.lang.quat_to_axis_angle(quat: Quaternion[Float]) -> tuple[Vector[Float, Literal[3]], Float]
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: quat_to_axis_angle(quat: Quaternion[Float]) -> tuple[Vector[Float, Literal[3]], Float]
 
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Extract the rotation axis and angle radians a quaternion represents.
 
-.. function:: warp._src.lang.quat_to_axis_angle(quat: Quaternion[Float], axis: Vector[Float, Literal[3]], angle: Float) -> None
+.. function:: quat_to_axis_angle(quat: Quaternion[Float], axis: Vector[Float, Literal[3]], angle: Float) -> None
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Extract the rotation axis and angle radians a quaternion represents.

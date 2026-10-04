@@ -1,13 +1,14 @@
 ﻿warp.tile\_ifft
 ===============
 
-.. function:: warp._src.lang.tile_ifft(inout: Tile[Vector[Float, Literal[2]], tuple[int, ...]]) -> None
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: tile_ifft(inout: Tile[Vector[Float, Literal[2]], tuple[int, ...]]) -> None
 
-      * Kernel
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Compute the inverse FFT along the last dimension of an N-D tile of data.
    

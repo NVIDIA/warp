@@ -1,12 +1,13 @@
 ﻿warp.matrix\_from\_rows
 =======================
 
-.. function:: warp._src.lang.matrix_from_rows(*args: Vector[Scalar, Any]) -> Matrix[Scalar, Any, Any]
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: matrix_from_rows(*args: Vector[Scalar, Any]) -> Matrix[Scalar, Any, Any]
 
-      * Kernel
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Construct a matrix with each vector argument as a row.

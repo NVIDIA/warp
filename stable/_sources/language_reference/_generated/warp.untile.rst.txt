@@ -1,13 +1,14 @@
 ﻿warp.untile
 ===========
 
-.. function:: warp._src.lang.untile(a: Tile[Any, tuple[int, ...]]) -> Any
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: untile(a: Tile[Any, tuple[int, ...]]) -> Any
 
-      * Kernel
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Convert a tile back to per-thread values.
    

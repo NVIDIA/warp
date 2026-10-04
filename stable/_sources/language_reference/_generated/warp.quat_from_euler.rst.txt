@@ -1,13 +1,15 @@
 ﻿warp.quat\_from\_euler
 ======================
 
-.. function:: warp._src.lang.quat_from_euler(e: vec3f, i: int, j: int, k: int) -> quatf
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: quat_from_euler(e: vec3f, i: int, j: int, k: int) -> quatf
 
-      * Kernel
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+      :source: https://github.com/NVIDIA/warp/blob/release-1.18/warp/_src/math.py#L389-L449
 
    Construct a quaternion from Euler angles and an axis sequence.
    

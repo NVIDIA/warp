@@ -1,37 +1,33 @@
 ﻿warp.determinant
 ================
 
-.. function:: warp._src.lang.determinant(a: Matrix[Float, Literal[2], Literal[2]]) -> Float
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: determinant(a: Matrix[Float, Literal[2], Literal[2]]) -> Float
 
-      * Kernel
-      * Python
-      * Differentiable
-
-   Compute the determinant of matrix ``a``.
-
-.. function:: warp._src.lang.determinant(a: Matrix[Float, Literal[3], Literal[3]]) -> Float
-   :noindex:
-
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Compute the determinant of matrix ``a``.
 
-.. function:: warp._src.lang.determinant(a: Matrix[Float, Literal[4], Literal[4]]) -> Float
+.. function:: determinant(a: Matrix[Float, Literal[3], Literal[3]]) -> Float
    :noindex:
 
-   .. hlist::
-      :columns: 8
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
-      * Kernel
-      * Python
-      * Differentiable
+   Compute the determinant of matrix ``a``.
+
+.. function:: determinant(a: Matrix[Float, Literal[4], Literal[4]]) -> Float
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Compute the determinant of matrix ``a``.

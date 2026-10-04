@@ -1,26 +1,14 @@
 ﻿warp.len
 ========
 
-.. function:: warp._src.lang.len(a: Vector[Scalar, Any]) -> int
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: len(a: Vector[Scalar, Any]) -> int
 
-      * Kernel
-
-   Query the length of ``a``.
-   
-   :returns: The number of elements for vectors, quaternions, and transformations; the number
-             of rows for matrices and tiles; or the size of the leading dimension for arrays.
-   
-
-.. function:: warp._src.lang.len(a: Quaternion[Float]) -> int
-   :noindex:
-
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Query the length of ``a``.
    
@@ -28,13 +16,13 @@
              of rows for matrices and tiles; or the size of the leading dimension for arrays.
    
 
-.. function:: warp._src.lang.len(a: Matrix[Scalar, Any, Any]) -> int
+.. function:: len(a: Quaternion[Float]) -> int
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Query the length of ``a``.
    
@@ -42,13 +30,13 @@
              of rows for matrices and tiles; or the size of the leading dimension for arrays.
    
 
-.. function:: warp._src.lang.len(a: Transformation[Float]) -> int
+.. function:: len(a: Matrix[Scalar, Any, Any]) -> int
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Query the length of ``a``.
    
@@ -56,13 +44,13 @@
              of rows for matrices and tiles; or the size of the leading dimension for arrays.
    
 
-.. function:: warp._src.lang.len(a: Array[Any]) -> int
+.. function:: len(a: Transformation[Float]) -> int
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Query the length of ``a``.
    
@@ -70,13 +58,13 @@
              of rows for matrices and tiles; or the size of the leading dimension for arrays.
    
 
-.. function:: warp._src.lang.len(a: Tile[Any, tuple[int, ...]]) -> int
+.. function:: len(a: Array[Any]) -> int
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Query the length of ``a``.
    
@@ -84,13 +72,27 @@
              of rows for matrices and tiles; or the size of the leading dimension for arrays.
    
 
-.. function:: warp._src.lang.len(a: tuple) -> int
+.. function:: len(a: Tile[Any, tuple[int, ...]]) -> int
    :noindex:
 
-   .. hlist::
-      :columns: 8
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
-      * Kernel
+   Query the length of ``a``.
+   
+   :returns: The number of elements for vectors, quaternions, and transformations; the number
+             of rows for matrices and tiles; or the size of the leading dimension for arrays.
+   
+
+.. function:: len(a: tuple) -> int
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Query the length of ``a``.
    

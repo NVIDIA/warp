@@ -1,12 +1,14 @@
 ﻿warp.cast
 =========
 
-.. function:: warp._src.lang.cast(a: Any, dtype: Any) -> Any
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: cast(a: Any, dtype: Any) -> Any
 
-      * Kernel
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Reinterpret a value as a different type while preserving its bit pattern.
    

@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.config.verbose &#8212; Warp 1.17.0</title>
+    <title>warp.geometry.delaunay_edge_flip &#8212; Warp 1.18.0</title>
   
   
   
@@ -28,32 +28,32 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
-<link href="../../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+  <link href="../../_static/styles/theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=2a8757ae" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=ca94f457" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="../../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
-<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67" />
 
 
 
-    <script src="../../_static/documentation_options.js?v=755b3f99"></script>
+    <script src="../../_static/documentation_options.js?v=9d419c5b"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.config.verbose';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.geometry.delaunay_edge_flip';</script>
     <script>
-        DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
+        DOCUMENTATION_OPTIONS.theme_version = '0.21.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.17';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.18';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
@@ -64,13 +64,13 @@
 
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="warp.config.verbose_warnings" href="warp.config.verbose_warnings.html" />
-    <link rel="prev" title="warp.config.use_precompiled_headers" href="warp.config.use_precompiled_headers.html" />
+    <link rel="next" title="warp.geometry.lipschitz_octree" href="warp.geometry.lipschitz_octree.html" />
+    <link rel="prev" title="warp.geometry.SweptVolumeSignMode" href="warp.geometry.SweptVolumeSignMode.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.17.0" />
+  <meta name="docsearch:version" content="1.18.0" />
   
     
     <script src="../../_static/searchtools.js"></script>
@@ -147,11 +147,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.18.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.18.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.17.0</p>
+    <p class="title logo__title">Warp 1.18.0</p>
   
 </a></div>
     
@@ -291,11 +291,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.18.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.18.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.17.0</p>
+    <p class="title logo__title">Warp 1.18.0</p>
   
 </a>
 
@@ -433,6 +433,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../warp_build_experimental.html">warp.build_experimental</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_config.html">warp.config</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_fem.html">warp.fem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_geometry.html">warp.geometry</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_optim.html">warp.optim</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_render.html">warp.render</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_sparse.html">warp.sparse</a></li>
@@ -485,9 +486,9 @@
       </a>
     </li>
     
-    <li class="breadcrumb-item"><a href="../warp_config.html" class="nav-link">warp.config</a></li>
+    <li class="breadcrumb-item"><a href="../warp_geometry.html" class="nav-link">warp.geometry</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.config.verbose</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.geometry.delaunay_edge_flip</span></li>
   </ul>
 </nav>
 </div>
@@ -504,15 +505,62 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="warp-config-verbose">
-<h1>warp.config.verbose<a class="headerlink" href="#warp-config-verbose" title="Link to this heading">#</a></h1>
-<dl class="py data">
-<dt class="sig sig-object py" id="warp.config.verbose">
-<span class="sig-prename descclassname"><span class="pre">warp.config.</span></span><span class="sig-name descname"><span class="pre">verbose</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></span><a class="headerlink" href="#warp.config.verbose" title="Link to this definition">#</a></dt>
-<dd><p>Enable detailed logging during code generation and compilation.</p>
-<div class="deprecated">
-<p><span class="versionmodified deprecated">Deprecated since version Use: </span><code class="docutils literal notranslate"><span class="pre">warp.config.log_level</span> <span class="pre">=</span> <span class="pre">warp.LOG_DEBUG</span></code> instead. Reading or setting
-this flag emits a <code class="docutils literal notranslate"><span class="pre">DeprecationWarning</span></code> for external callers.</p>
+  <section id="warp-geometry-delaunay-edge-flip">
+<h1>warp.geometry.delaunay_edge_flip<a class="headerlink" href="#warp-geometry-delaunay-edge-flip" title="Link to this heading">#</a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.geometry.delaunay_edge_flip">
+<span class="sig-prename descclassname"><span class="pre">warp.geometry.</span></span><span class="sig-name descname"><span class="pre">delaunay_edge_flip</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">positions</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">indices</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">ref_positions</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_passes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">area_epsilon</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">ref_area_epsilon</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0e-10</span></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.18/warp/_src/geometry/delaunay.py#L575-L683"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.delaunay_edge_flip" title="Link to this definition">#</a></dt>
+<dd><p>Flip non-Delaunay interior edges in place until all are Delaunay or max
+passes is reached.</p>
+<p>The triangulation is modified in place: <code class="docutils literal notranslate"><span class="pre">indices</span></code> is updated with the
+flipped connectivity while <code class="docutils literal notranslate"><span class="pre">positions</span></code> is left unchanged. Each iteration
+flips an independent set of edges in parallel; CUDA graph capture is
+supported.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>positions</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>warp.array</em></a><em>[</em><a class="reference internal" href="warp.vec2f.html#warp.vec2f" title="warp.vec2f"><em>warp.vec2f</em></a><em>]</em>) – A <code class="docutils literal notranslate"><span class="pre">(vertex_count,)</span></code> <a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a> of <a class="reference internal" href="warp.vec2.html#warp.vec2" title="warp.vec2"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec2</span></code></a>
+vertex positions.</p></li>
+<li><p><strong>indices</strong> (<a class="reference internal" href="warp.array2d.html#warp.array2d" title="warp.array2d"><em>warp.array2d</em></a><em>[</em><a class="reference internal" href="warp.int32.html#warp.int32" title="warp.int32"><em>warp.int32</em></a><em>]</em>) – A <code class="docutils literal notranslate"><span class="pre">(num_tris,</span> <span class="pre">3)</span></code> <a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a> of <code class="docutils literal notranslate"><span class="pre">int32</span></code> triangle
+vertex indices, assumed counterclockwise. Modified in place.</p></li>
+<li><p><strong>ref_positions</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>warp.array</em></a><em>[</em><a class="reference internal" href="warp.vec2f.html#warp.vec2f" title="warp.vec2f"><em>warp.vec2f</em></a><em>] </em><em>| </em><em>None</em>) – Optional <code class="docutils literal notranslate"><span class="pre">(vertex_count,)</span></code> <a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a> of
+<a class="reference internal" href="warp.vec2.html#warp.vec2" title="warp.vec2"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec2</span></code></a> reference positions. When provided, flips that
+would create a degenerate triangle in the reference configuration
+are rejected. Useful when the working mesh is a deformation of a
+reference mesh that must stay non-degenerate.</p></li>
+<li><p><strong>max_passes</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Maximum number of parallel flip passes before stopping. Must
+be at least 1.</p></li>
+<li><p><strong>area_epsilon</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Minimum signed area required for each triangle produced by
+a flip; guards against creating inverted or sliver triangles. Must be
+finite and non-negative.</p></li>
+<li><p><strong>ref_area_epsilon</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Degeneracy threshold applied to <code class="docutils literal notranslate"><span class="pre">ref_positions</span></code>. Must be
+finite and non-negative.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A (1,) int32 array on indices.device containing the total number of
+edges flipped. Under graph capture, read the value after replaying the
+graph.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="warp.array.html#warp.array" title="warp.array">wp.array</a>[<a class="reference internal" href="warp.int32.html#warp.int32" title="warp.int32">wp.int32</a>]</p>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Assumes a manifold mesh with consistent counterclockwise winding
+(positive signed triangle areas).</p>
 </div>
 </dd></dl>
 
@@ -529,20 +577,20 @@ this flag emits a <code class="docutils literal notranslate"><span class="pre">D
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.config.use_precompiled_headers.html"
+       href="warp.geometry.SweptVolumeSignMode.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.config.use_precompiled_headers</p>
+        <p class="prev-next-title">warp.geometry.SweptVolumeSignMode</p>
       </div>
     </a>
     <a class="right-next"
-       href="warp.config.verbose_warnings.html"
+       href="warp.geometry.lipschitz_octree.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.config.verbose_warnings</p>
+        <p class="prev-next-title">warp.geometry.lipschitz_octree</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -567,7 +615,7 @@ this flag emits a <code class="docutils literal notranslate"><span class="pre">D
   </div>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.config.verbose"><code class="docutils literal notranslate"><span class="pre">verbose</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.geometry.delaunay_edge_flip"><code class="docutils literal notranslate"><span class="pre">delaunay_edge_flip()</span></code></a></li>
 </ul>
   </nav></div>
 
@@ -586,8 +634,8 @@ this flag emits a <code class="docutils literal notranslate"><span class="pre">D
   
 
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
-<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67"></script>
 
 
   <footer class="bd-footer">

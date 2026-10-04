@@ -1,14 +1,14 @@
 ﻿warp.pnoise
 ===========
 
-.. function:: warp._src.lang.pnoise(state: uint32, x: float32, px: int32) -> float
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: pnoise(state: uint32, x: float32, px: int32) -> float
 
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Sample 1D Perlin noise that repeats with an integer period.
    
@@ -48,15 +48,13 @@
        True
    
 
-.. function:: warp._src.lang.pnoise(state: uint32, xy: vec2f, px: int32, py: int32) -> float
+.. function:: pnoise(state: uint32, xy: vec2f, px: int32, py: int32) -> float
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Sample 2D Perlin noise that repeats with an integer period.
    
@@ -70,15 +68,13 @@
    :returns: The noise value at ``xy``.
    
 
-.. function:: warp._src.lang.pnoise(state: uint32, xyz: vec3f, px: int32, py: int32, pz: int32) -> float
+.. function:: pnoise(state: uint32, xyz: vec3f, px: int32, py: int32, pz: int32) -> float
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Sample 3D Perlin noise that repeats with an integer period.
    
@@ -93,15 +89,13 @@
    :returns: The noise value at ``xyz``.
    
 
-.. function:: warp._src.lang.pnoise(state: uint32, xyzt: vec4f, px: int32, py: int32, pz: int32, pt: int32) -> float
+.. function:: pnoise(state: uint32, xyzt: vec4f, px: int32, py: int32, pz: int32, pt: int32) -> float
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Sample 4D Perlin noise that repeats with an integer period.
    

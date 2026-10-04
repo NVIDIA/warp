@@ -1,22 +1,22 @@
 ﻿warp.volume\_sample\_grad\_index
 ================================
 
-.. function:: warp._src.lang.volume_sample_grad_index(id: uint64, uvw: vec3f, sampling_mode: int32, voxel_data: Array[Any], background: Any, grad: Any) -> Any
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: volume_sample_grad_index(id: uint64, uvw: vec3f, sampling_mode: int32, voxel_data: Array[Any], background: Any, grad: Any) -> Any
 
-      * Kernel
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Sample the volume given by ``id`` and its spatial gradient at the index-space point ``uvw``,
    reading voxel values from a separate ``voxel_data`` array.
    
    Like :func:`~warp.volume_sample_index`, but also writes the gradient of the sampled value with
    respect to the index-space coordinates ``uvw`` into ``grad``. For scalar data, ``grad`` is a
-   length-three vector with the same scalar type. For :class:`warp.vec3f` and
-   :class:`warp.vec3d` data, it is a 3-by-3 Jacobian matrix with one row per value component.
-   Four-component vector data is not supported by this function.
+   length-three vector with the same scalar type. For a supported N-component vector type, ``grad``
+   is an N-by-3 Jacobian matrix with one row per value component.
    
    For floating-point scalar and vector data under :attr:`warp.Volume.LINEAR`, the function is
    differentiable with respect to ``uvw``, ``voxel_data``, and ``background`` away from integer

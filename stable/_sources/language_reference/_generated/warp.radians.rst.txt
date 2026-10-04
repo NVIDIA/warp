@@ -1,13 +1,13 @@
 ﻿warp.radians
 ============
 
-.. function:: warp._src.lang.radians(x: Float) -> Float
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: radians(x: Float) -> Float
 
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Convert ``x`` from degrees into radians.

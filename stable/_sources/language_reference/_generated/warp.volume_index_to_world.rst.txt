@@ -1,14 +1,14 @@
 ﻿warp.volume\_index\_to\_world
 =============================
 
-.. function:: warp._src.lang.volume_index_to_world(id: uint64, uvw: vec3f) -> vec3f
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: volume_index_to_world(id: uint64, uvw: vec3f) -> vec3f
 
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Transform the point ``uvw`` from the volume's index space (voxel coordinates) to world space
    using the volume's affine index-to-world transform.
@@ -42,15 +42,13 @@
        2.0 2.0 3.0
    
 
-.. function:: warp._src.lang.volume_index_to_world(id: uint64, uvw: vec3d) -> vec3d
+.. function:: volume_index_to_world(id: uint64, uvw: vec3d) -> vec3d
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Transform the point ``uvw`` from the volume's index space (voxel coordinates) to world space
    using the volume's affine index-to-world transform (float64 precision).

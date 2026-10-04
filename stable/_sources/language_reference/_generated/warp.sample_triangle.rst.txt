@@ -1,13 +1,14 @@
 ﻿warp.sample\_triangle
 =====================
 
-.. function:: warp._src.lang.sample_triangle(state: uint32) -> vec2f
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: sample_triangle(state: uint32) -> vec2f
 
-      * Kernel
-      * Python
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Uniformly sample a point in a triangle, returned as barycentric coordinates.
    

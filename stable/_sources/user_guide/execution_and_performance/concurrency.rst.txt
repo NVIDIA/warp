@@ -506,7 +506,7 @@ If a CUDA device does not support stream priorities, then all streams will have
 a priority of 0 regardless of the priority requested when creating the stream.
 
 For more information on stream priorities, see the section in the
-`CUDA C++ Programming Guide <https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#stream-priorities>`_.
+`CUDA Programming Guide <https://docs.nvidia.com/cuda/cuda-programming-guide/03-advanced/advanced-host-programming.html#stream-priorities>`_.
 
 The following example illustrates the impact of stream priorities:
 

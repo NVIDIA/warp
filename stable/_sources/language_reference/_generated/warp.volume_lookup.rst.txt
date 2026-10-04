@@ -1,12 +1,14 @@
 ﻿warp.volume\_lookup
 ===================
 
-.. function:: warp._src.lang.volume_lookup(id: uint64, i: int32, j: int32, k: int32, dtype: Any) -> Any
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: volume_lookup(id: uint64, i: int32, j: int32, k: int32, dtype: Any) -> Any
 
-      * Kernel
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Return the value of type ``dtype`` stored at the voxel with integer index-space coordinates
    ``i``, ``j``, ``k``, without interpolation.

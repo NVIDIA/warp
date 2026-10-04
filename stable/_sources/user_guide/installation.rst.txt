@@ -1,7 +1,14 @@
 Installation
 ============
 
-Warp requires Python 3.10 or newer. We publish ``warp-lang`` wheels on PyPI for Windows (x86-64), Linux (x86-64 and AArch64), and macOS (Apple Silicon). The Windows x86-64 and Linux wheels support CPU execution and CUDA acceleration. CUDA acceleration requires a supported NVIDIA GPU and driver. The macOS wheels support CPU execution but not Metal acceleration.
+Warp requires Python 3.10 or newer. We publish ``warp-lang`` wheels on PyPI for Windows (x86-64), Linux (x86-64 and AArch64), and macOS (Apple Silicon). The Windows x86-64 and Linux wheels support CPU execution and CUDA acceleration. The macOS wheels support CPU execution but not Metal acceleration.
+
+For experimental Windows on Arm support, see :ref:`windows-arm64-builds`.
+
+PyPI and nightly wheels for Linux and Windows use CUDA Toolkit 13.4. They require an
+NVIDIA R580-series or newer driver and a Turing (``sm_75``) or newer GPU for CUDA acceleration.
+For CUDA 12 environments, download a ``+cu12`` wheel from :ref:`GitHub Releases <github-release-wheels>`
+or :ref:`build Warp from source with CUDA 12 <building-from-source>`.
 
 The easiest way to install Warp is from `PyPI <https://pypi.org/project/warp-lang>`_:
 
@@ -22,7 +29,8 @@ To install the latest nightly build, use the following command:
 
     $ pip install -U --pre warp-lang --extra-index-url=https://pypi.nvidia.com/
 
-Note that the nightly builds are built with the CUDA 12 runtime and are not published for macOS.
+Nightly builds use CUDA Toolkit 13.4 and have the same :ref:`cuda-requirements` as the default PyPI wheels.
+They also include the CPU-only macOS Apple Silicon wheel.
 
 If you plan to install nightly builds regularly, you can simplify future installations by adding NVIDIA's package
 repository as an extra index via the ``PIP_EXTRA_INDEX_URL`` environment variable. For example:
@@ -56,35 +64,43 @@ To install a specific variant, use a build string filter:
 For more information, see the community-maintained feedstock for Warp
 `here <https://github.com/conda-forge/warp-lang-feedstock>`__.
 
+.. _github-release-wheels:
+
 Installing from GitHub Releases
 -------------------------------
 
-The binaries hosted on PyPI are currently built with the CUDA 12.9 runtime.
-We also provide binaries built with the CUDA 13.0 runtime on the `GitHub Releases <https://github.com/NVIDIA/warp/releases>`_ page.
-Copy the URL of the appropriate wheel file (``warp-lang-{ver}+cu13-py3-none-{platform}.whl``) and pass it to
-the ``pip install`` command, e.g.
+`GitHub Releases <https://github.com/NVIDIA/warp/releases>`_ provides both the default release wheels
+and CUDA 12 compatibility wheels. The default Linux and Windows wheels use CUDA Toolkit 13.4
+and have no CUDA suffix. CUDA 12 wheels have a ``+cu12`` version suffix.
 
-.. list-table:: 
-   :header-rows: 1
+Choose a ``warp_lang-<version>+cu12-py3-none-<platform>.whl`` asset for your operating system
+and CPU architecture. Copy its URL from the release page and replace ``<wheel-url>`` below:
 
-   * - Platform
-     - Install Command
-   * - Linux aarch64
-     - ``pip install https://github.com/NVIDIA/warp/releases/download/v1.17.0/warp_lang-1.17.0+cu13-py3-none-manylinux_2_34_aarch64.whl``
-   * - Linux x86-64
-     - ``pip install https://github.com/NVIDIA/warp/releases/download/v1.17.0/warp_lang-1.17.0+cu13-py3-none-manylinux_2_28_x86_64.whl``
-   * - Windows x86-64
-     - ``pip install https://github.com/NVIDIA/warp/releases/download/v1.17.0/warp_lang-1.17.0+cu13-py3-none-win_amd64.whl``
+.. code-block:: sh
+
+    $ pip install "<wheel-url>"
+
+The platform tags are ``manylinux_2_34_aarch64`` for Linux AArch64,
+``manylinux_2_28_x86_64`` for Linux x86-64, and ``win_amd64`` for Windows x86-64.
+See :ref:`cuda-requirements` for driver requirements and :doc:`compatibility` for GPU architecture support.
 
 The ``--force-reinstall`` option may need to be used to overwrite a previous installation.
+
+.. _cuda-requirements:
 
 CUDA Requirements
 -----------------
 
-* Warp packages built with CUDA Toolkit 12.x require NVIDIA driver 525 or newer.
-* Warp packages built with CUDA Toolkit 13.x require NVIDIA driver 580 or newer.
+* The default PyPI and nightly Linux and Windows wheels use CUDA Toolkit 13.4 and require
+  an NVIDIA R580-series or newer driver and a Turing (``sm_75``) or newer GPU for CUDA acceleration.
+* Warp packages built with CUDA Toolkit 12.x, including the ``+cu12`` wheels on
+  :ref:`GitHub Releases <github-release-wheels>`, require an NVIDIA R525-series or newer driver.
+* Warp packages built with CUDA Toolkit 13.x require an NVIDIA R580-series or newer driver
+  and a Turing (``sm_75``) or newer GPU.
 
-This applies to pre-built packages distributed on PyPI and GitHub and also when building Warp from source.
+The CUDA Toolkit used to build Warp determines these requirements. Pre-built wheels include the CUDA
+components that Warp needs, so they do not require a system CUDA Toolkit.
+See :doc:`compatibility` for the GPU architecture requirements of each CUDA major version.
 
 Note that building Warp with the ``--quick`` flag changes the driver requirements.
 The quick build skips CUDA backward compatibility, so the minimum required driver is determined by the CUDA Toolkit version.
@@ -98,7 +114,7 @@ Warp checks the installed driver during initialization and will report a warning
 
     Warp UserWarning:
        Insufficient CUDA driver version.
-       The minimum required CUDA driver version is 12.0, but the installed CUDA driver version is 11.8.
+       The minimum required CUDA driver version is 13.0, but the installed CUDA driver version is 12.9.
        Visit https://nvidia.github.io/warp/stable/user_guide/installation.html for guidance.
 
 This will make CUDA devices unavailable, but the CPU can still be used.
@@ -106,21 +122,26 @@ This will make CUDA devices unavailable, but the CPU can still be used.
 To remedy the situation there are a few options:
 
 * Update the driver.
-* Install a compatible pre-built Warp package.
-* Build Warp from source using a CUDA Toolkit that's compatible with the installed driver.
+* Install a ``+cu12`` compatibility wheel from :ref:`GitHub Releases <github-release-wheels>` if your system meets its requirements.
+* :ref:`Build Warp from source <building-from-source>` using a CUDA Toolkit that's compatible with the installed driver and GPU.
 
 Also note that full support for tile-based MathDx features requires CUDA version 12.6.3 or later. See :ref:`mathdx` for more information.
+
+.. _cuda-12-arm-limitation:
 
 CUDA 12.9 limitation on Linux ARM platforms
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-When building Warp from source with CUDA 12.9 on a Linux ARM platform (including NVIDIA Jetson platforms),
-the resulting binary will not support Maxwell, Pascal, or Volta GPU architectures due to a
+When building Warp with CUDA 12.9 on Linux AArch64, the default architecture set omits
+the ``sm_52``, ``sm_60``, ``sm_61``, and ``sm_70`` targets due to a
 `bug <https://github.com/NVIDIA/cccl/issues/4967>`__ in the CUDA 12.9 Toolkit which limits the number of architectures that
 can be compiled at once.
 
-If support for these architectures is required, build Warp using a CUDA Toolkit prior to 12.9.
-Note that CUDA 13.0 dropped support for the same architectures entirely.
+This also applies to Linux AArch64 ``+cu12`` wheels built with CUDA 12.9.
+The Jetson targets ``sm_53``, ``sm_62``, and ``sm_72`` remain in the default architecture set;
+running Warp on these devices still requires compatible platform and driver support.
+If support for the omitted targets is required, build Warp using CUDA Toolkit 12.0 through 12.8.
+CUDA 13.x requires Turing (``sm_75``) or newer for CUDA acceleration on all platforms.
 
 Dependencies
 ------------
@@ -129,18 +150,37 @@ Warp supports Python versions 3.10 onwards. Note that :ref:`some optional depend
 
 `NumPy <https://numpy.org>`_ must be installed.
 
-The following optional dependencies are required to support certain features:
+The ``warp-lang[examples]`` extra installs dependencies used by many Warp examples. Install it with:
 
-* `usd-core <https://pypi.org/project/usd-core>`_: Required for some Warp examples, tests, and the :class:`warp.render.UsdRenderer`.
-  On Linux aarch64 systems where ``usd-core`` wheels are not available,
-  `usd-exchange <https://pypi.org/project/usd-exchange>`_ can be installed as a drop-in replacement.
-  The ``[examples]`` extra handles this automatically.
-* `pyglet <https://pyglet.org/>`_: Required for some Warp examples and the :class:`warp.render.OpenGLRenderer`.
-* `JAX <https://jax.readthedocs.io/en/latest/installation.html>`_: Required for JAX interoperability (see :ref:`jax-interop`).
-* `PyTorch <https://pytorch.org/get-started/locally/>`_: Required for PyTorch interoperability (see :ref:`pytorch-interop`).
-* `Paddle <https://github.com/PaddlePaddle/Paddle>`_: Required for Paddle interoperability (see :ref:`paddle-interop`).
-* `NVTX for Python <https://github.com/NVIDIA/NVTX#python>`_: Required to use :class:`wp.ScopedTimer(use_nvtx=True) <warp.ScopedTimer>`.
-* `psutil <https://psutil.readthedocs.io/en/latest/>`_: Required to query CPU memory info (`get_device("cpu").total_memory`, `get_device("cpu").free_memory`).
+.. code-block:: sh
+
+    $ pip install "warp-lang[examples]"
+
+.. _openusd-dependencies:
+
+**OpenUSD dependencies**
+
+Some Warp examples and USD rendering features import the OpenUSD ``pxr`` modules. If those modules
+are missing, Python may report ``ModuleNotFoundError: No module named 'pxr'``. The error reports the
+import name; the PyPI distributions that provide these modules are ``usd-core`` and ``usd-exchange``.
+
+The ``warp-lang[examples]`` extra uses platform markers to install ``usd-core`` where supported and
+``usd-exchange`` on supported platforms without a compatible ``usd-core`` wheel.
+
+``usd-exchange`` includes its own OpenUSD runtime and ``pxr`` modules. Do not install it alongside
+``usd-core``. Both packages install files to the same locations, which can cause import or runtime
+failures.
+
+``usd-exchange`` has its own release version, separate from the version of the OpenUSD runtime it
+includes. After installation, call ``pxr.Usd.GetVersion()`` to query the OpenUSD version.
+
+Some examples need extra packages. Check the example's source file to see what else you need to
+install. For JAX and PyTorch, follow the official
+`JAX installation guide <https://docs.jax.dev/en/latest/installation.html>`__ or
+`PyTorch installation guide <https://pytorch.org/get-started/locally/>`__ to choose a version and
+build for your system.
+
+.. _building-from-source:
 
 Building from Source
 --------------------
@@ -153,7 +193,9 @@ For developers who want to build the library themselves, the following tools are
 * `Git Large File Storage <https://git-lfs.com>`_
 
 A CUDA Toolkit is not required for a CPU-only build. CUDA-enabled builds on Windows and Linux require
-`CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_ 12.0 or newer.
+`CUDA Toolkit <https://developer.nvidia.com/cuda/toolkit>`_ 12.0 or newer (13.4 or newer on Windows on Arm).
+Building from source with CUDA 12 remains supported on Windows x86-64 and Linux. Choose a toolkit
+compatible with your driver and GPU; see :ref:`cuda-requirements` and the :ref:`cuda-12-arm-limitation`.
 
 After cloning the repository, users should run:
 
@@ -189,6 +231,20 @@ After building, the Warp package should be installed using:
 
 The ``-e`` option is optional but ensures that subsequent modifications to the
 library will be reflected in the Python package.
+
+.. _windows-arm64-builds:
+
+Experimental Windows on Arm builds
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Build Warp from the ``main`` branch with CUDA Toolkit 13.4 or newer, an Arm64 Python environment,
+and Visual Studio's ARM64 C++ build tools.
+
+Windows on Arm currently receives less extensive testing than officially supported platforms.
+We do not yet publish wheels for it on PyPI or GitHub Releases.
+
+libmathdx builds for Windows on Arm are not currently available. To build without it, pass
+``--no-use-libmathdx`` to ``build_lib.py``.
 
 CMake build
 ~~~~~~~~~~~
@@ -286,7 +342,7 @@ Conda Environments
 Some modules, such as ``usd-core``, don't support the latest Python version.
 To manage running Warp and other projects on different Python versions one can
 make use of an environment management system such as
-`Conda <https://docs.conda.io/>`__.
+`Conda <https://docs.conda.io/en/latest/>`__.
 
 .. warning::
 
@@ -327,6 +383,8 @@ when building Warp.
 We recommend using one of the NVIDIA CUDA images from `nvidia/cuda <https://hub.docker.com/r/nvidia/cuda>`__ as a base
 image.
 Choose a ``devel`` flavor that matches your desired CUDA Toolkit version.
+The source-build examples below use CUDA 13.0; the default published wheels use CUDA Toolkit 13.4.
+The host driver and GPU must meet the :ref:`cuda-requirements` of the Warp build inside the container.
 
 The following Dockerfile clones the Warp repository, builds Warp, and installs it into the system Python
 environment:

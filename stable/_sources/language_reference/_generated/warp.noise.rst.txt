@@ -1,14 +1,14 @@
 ﻿warp.noise
 ==========
 
-.. function:: warp._src.lang.noise(state: uint32, x: float32) -> float
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: noise(state: uint32, x: float32) -> float
 
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Sample 1D non-periodic Perlin noise.
    
@@ -45,15 +45,13 @@
        wp.launch(sample_noise, dim=len(coords), inputs=[42, coords], outputs=[values])
    
 
-.. function:: warp._src.lang.noise(state: uint32, xy: vec2f) -> float
+.. function:: noise(state: uint32, xy: vec2f) -> float
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Sample 2D non-periodic Perlin noise.
    
@@ -65,15 +63,13 @@
    :returns: The noise value at ``xy``.
    
 
-.. function:: warp._src.lang.noise(state: uint32, xyz: vec3f) -> float
+.. function:: noise(state: uint32, xyz: vec3f) -> float
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Sample 3D non-periodic Perlin noise.
    
@@ -85,15 +81,13 @@
    :returns: The noise value at ``xyz``.
    
 
-.. function:: warp._src.lang.noise(state: uint32, xyzt: vec4f) -> float
+.. function:: noise(state: uint32, xyzt: vec4f) -> float
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Sample 4D non-periodic Perlin noise.
    

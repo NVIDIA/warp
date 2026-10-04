@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.autograd.gradcheck_tape &#8212; Warp 1.17.0</title>
+    <title>warp.autograd.gradcheck_tape &#8212; Warp 1.18.0</title>
   
   
   
@@ -28,23 +28,23 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
-<link href="../../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+  <link href="../../_static/styles/theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=2a8757ae" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=ca94f457" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="../../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
-<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67" />
 
 
 
-    <script src="../../_static/documentation_options.js?v=755b3f99"></script>
+    <script src="../../_static/documentation_options.js?v=9d419c5b"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -52,9 +52,9 @@
     <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.autograd.gradcheck_tape';</script>
     <script>
-        DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
+        DOCUMENTATION_OPTIONS.theme_version = '0.21.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.17';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.18';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
@@ -71,7 +71,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.17.0" />
+  <meta name="docsearch:version" content="1.18.0" />
   
     
     <script src="../../_static/searchtools.js"></script>
@@ -148,11 +148,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.18.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.18.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.17.0</p>
+    <p class="title logo__title">Warp 1.18.0</p>
   
 </a></div>
     
@@ -292,11 +292,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.18.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.18.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.17.0</p>
+    <p class="title logo__title">Warp 1.18.0</p>
   
 </a>
 
@@ -434,6 +434,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../warp_build_experimental.html">warp.build_experimental</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_config.html">warp.config</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_fem.html">warp.fem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_geometry.html">warp.geometry</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_optim.html">warp.optim</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_render.html">warp.render</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_sparse.html">warp.sparse</a></li>
@@ -530,7 +531,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">skip_to_launch_index</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.17/warp/_src/autograd.py#L239-L344"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.autograd.gradcheck_tape" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.18/warp/_src/autograd.py#L239-L343"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.autograd.gradcheck_tape" title="Link to this definition">#</a></dt>
 <dd><p>Check whether the autodiff gradients for kernels recorded on the Warp tape match finite differences.</p>
 <p>Given the autodiff (<span class="math notranslate nohighlight">\(\nabla_\text{AD}\)</span>) and finite difference gradients (<span class="math notranslate nohighlight">\(\nabla_\text{FD}\)</span>),
 the check succeeds if the autodiff gradients contain no NaN values and the following condition holds:</p>
@@ -551,16 +552,16 @@ e.g. via <a class="reference internal" href="warp.Tape.html#warp.Tape.record_fun
 <li><p><strong>atol</strong> – The absolute tolerance for the gradient check.</p></li>
 <li><p><strong>rtol</strong> – The relative tolerance for the gradient check.</p></li>
 <li><p><strong>raise_exception</strong> – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, raises a <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> if the gradient check fails.</p></li>
-<li><p><strong>input_output_masks</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>]</em><em>]</em><em>] </em><em>| </em><em>None</em>) – Dictionary of input-output masks for each kernel in the tape, mapping from kernel keys to input-output masks. Inputs and outputs can be identified either by their integer indices of where they appear in the kernel input/output arguments, or by the respective argument names as strings. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, computes the Jacobian for all input-output pairs.</p></li>
-<li><p><strong>blacklist_kernels</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>] </em><em>| </em><em>None</em>) – List of kernel keys to exclude from the gradient check.</p></li>
-<li><p><strong>whitelist_kernels</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>] </em><em>| </em><em>None</em>) – List of kernel keys to include in the gradient check. If not empty or <code class="docutils literal notranslate"><span class="pre">None</span></code>, only kernels in this list are checked.</p></li>
+<li><p><strong>input_output_masks</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>]</em><em>]</em><em>] </em><em>| </em><em>None</em>) – Dictionary of input-output masks for each kernel in the tape, mapping from kernel keys to input-output masks. Inputs and outputs can be identified either by their integer indices of where they appear in the kernel input/output arguments, or by the respective argument names as strings. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, computes the Jacobian for all input-output pairs.</p></li>
+<li><p><strong>blacklist_kernels</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>] </em><em>| </em><em>None</em>) – List of kernel keys to exclude from the gradient check.</p></li>
+<li><p><strong>whitelist_kernels</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>] </em><em>| </em><em>None</em>) – List of kernel keys to include in the gradient check. If not empty or <code class="docutils literal notranslate"><span class="pre">None</span></code>, only kernels in this list are checked.</p></li>
 <li><p><strong>max_inputs_per_var</strong> – Maximum number of input dimensions over which to evaluate the Jacobians for the input-output pairs. Evaluates all input dimensions if value &lt;= 0.</p></li>
 <li><p><strong>max_outputs_per_var</strong> – Maximum number of output dimensions over which to evaluate the Jacobians for the input-output pairs. Evaluates all output dimensions if value &lt;= 0.</p></li>
 <li><p><strong>plot_relative_error</strong> – If True, visualizes the relative error of the Jacobians in a plot (requires <code class="docutils literal notranslate"><span class="pre">matplotlib</span></code>).</p></li>
 <li><p><strong>plot_absolute_error</strong> – If True, visualizes the absolute error of the Jacobians in a plot (requires <code class="docutils literal notranslate"><span class="pre">matplotlib</span></code>).</p></li>
 <li><p><strong>show_summary</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If True, prints a summary table of the gradient check results.</p></li>
 <li><p><strong>reverse_launches</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If True, reverses the order of the kernel launches on the tape to check.</p></li>
-<li><p><strong>skip_to_launch_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>skip_to_launch_index</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -642,8 +643,8 @@ e.g. via <a class="reference internal" href="warp.Tape.html#warp.Tape.record_fun
   
 
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
-<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67"></script>
 
 
   <footer class="bd-footer">

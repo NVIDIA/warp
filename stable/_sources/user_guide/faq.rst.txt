@@ -174,7 +174,7 @@ with MuJoCo Warp as its primary backend.
 Applications that need a ready-made simulation stack can start with Newton.
 Applications that need custom kernels or lower-level computation can use Warp
 directly, including alongside Newton. See Newton's `migration guide
-<https://newton-physics.github.io/newton/migration.html>`__ and Warp's
+<https://newton-physics.github.io/newton/latest/migration.html>`__ and Warp's
 :doc:`/project/publications` page for examples.
 
 Installation and Compatibility
@@ -184,8 +184,10 @@ Which operating systems, Python versions, and GPUs does Warp support?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Warp requires Python 3.10 or newer and supports Windows and Linux on x86-64,
-Linux on ARM64, and Apple Silicon macOS. CUDA acceleration needs a supported
-NVIDIA GPU and driver; macOS uses the CPU backend.
+Linux on ARM64, and Apple Silicon macOS. PyPI and nightly wheels for Linux and
+Windows use CUDA Toolkit 13.4. They require an NVIDIA R580-series or newer driver
+and a Turing (``sm_75``) or newer GPU for CUDA acceleration. Warp can still run
+on the CPU without a compatible GPU or driver; macOS uses the CPU backend.
 
 Python, operating-system, GPU-architecture, and driver requirements may change
 between releases. Check :doc:`compatibility` for the current requirements.
@@ -200,10 +202,9 @@ requirements. Run :func:`wp.print_diagnostics() <warp.print_diagnostics>` to
 see the installed Warp build and the devices it detects.
 
 On DGX Spark, use ``warp-lang[examples]`` when the examples or Universal Scene
-Description (USD) rendering are needed. It installs ``usd-exchange`` because
-``usd-core`` does not publish Linux AArch64 wheels. The core ``warp-lang``
-package does not require either one. See :doc:`installation` for the current
-package choices.
+Description (USD) rendering are needed. The core ``warp-lang`` package does not
+require OpenUSD. See the :ref:`OpenUSD dependency guidance <openusd-dependencies>`
+for how the examples extra provides the ``pxr`` modules on supported platforms.
 
 CPU/GPU coherence does not make ordinary Warp CPU and CUDA arrays
 interchangeable. Standard Warp CUDA arrays are not managed-memory allocations.
@@ -234,10 +235,10 @@ A pre-built Warp package does not require a system CUDA Toolkit. CUDA-enabled
 packages include the components that Warp needs, but the system still needs a
 compatible NVIDIA driver.
 
-Building Warp with CUDA support from source does require a CUDA Toolkit. If a
-build uses shared CUDA libraries, those libraries must also be available at
-runtime. The current driver and build requirements are in
-:doc:`installation`.
+Building Warp with CUDA support from source requires a CUDA Toolkit. CUDA 12
+builds are still supported. Builds that use shared CUDA libraries also require
+those libraries at runtime. See :doc:`installation` for the current driver and
+build requirements.
 
 Which Warp package or build should I install?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -245,8 +246,9 @@ Which Warp package or build should I install?
 Most users should install the stable ``warp-lang`` package from PyPI. The
 `warp-lang packages on conda-forge <https://anaconda.org/conda-forge/warp-lang>`__
 provide managed CPU and CUDA variants. Nightly packages contain unreleased
-changes, GitHub Releases provide wheels for alternate CUDA runtimes, and source
-builds support custom toolchains or build options.
+changes. For CUDA 12 environments, install a ``+cu12`` wheel from
+:ref:`GitHub Releases <github-release-wheels>` or :ref:`build from source with CUDA 12 <building-from-source>`.
+Source builds also support custom toolchains or build options.
 
 Package variants and commands change over time. Follow :doc:`installation`
 instead of copying a version-specific command from an old issue or message.
@@ -339,9 +341,11 @@ respect to Python. Both devices use the same kernel language, but they have
 different performance and concurrency characteristics.
 
 Tile kernels need additional care on the CPU backend because its effective
-``block_dim`` is one. Consult :ref:`CPU Tile Semantics <cpu_tile_semantics>`
-when the same tile kernel must run on both backends. Other device differences
-are covered in :ref:`devices`.
+``block_dim`` is one by default. The experimental
+:attr:`warp.config.enable_cpu_blocks` option honors explicit CPU block dimensions
+through 1024 with cooperative fibers on one host thread. Consult
+:ref:`CPU Tile Semantics <cpu_tile_semantics>` when the same tile kernel must run
+on both backends. Other device differences are covered in :ref:`devices`.
 
 When do I need to synchronize explicitly?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -497,6 +501,14 @@ currently implement this themselves. The `fluid checkpointing example
 <https://github.com/NVIDIA/warp/blob/main/warp/examples/optim/example_fluid_checkpoint.py>`__
 shows one implementation. See :doc:`differentiability` for the full overwrite
 and replay rules.
+
+For fixed linear operations, the derivative does not depend on the intermediate
+values. The `fluid checkpointing example with a custom pressure-solve backward
+pass
+<https://github.com/NVIDIA/warp/blob/main/warp/examples/optim/example_fluid_checkpoint_custom_backward.py>`__
+uses :meth:`warp.Tape.record_func` to differentiate a fixed number of pressure
+iterations with two reusable scratch grids. It preserves the gradient through
+the pressure warm start and combines this with checkpointing across time steps.
 
 Why can array overwrites produce unexpected gradients?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

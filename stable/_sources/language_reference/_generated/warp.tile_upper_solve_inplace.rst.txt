@@ -1,12 +1,14 @@
 ﻿warp.tile\_upper\_solve\_inplace
 ================================
 
-.. function:: warp._src.lang.tile_upper_solve_inplace(U: Tile[Float, tuple[int, int]], z: Tile[Float, tuple[int]]) -> None
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: tile_upper_solve_inplace(U: Tile[Float, tuple[int, int]], z: Tile[Float, tuple[int]]) -> None
 
-      * Kernel
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Solve for ``x`` in ``Ux = z``, where ``U`` is an upper triangular matrix by overwriting ``z`` with ``x``.
    

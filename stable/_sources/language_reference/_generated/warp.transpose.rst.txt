@@ -1,13 +1,13 @@
 ﻿warp.transpose
 ==============
 
-.. function:: warp._src.lang.transpose(a: Matrix[Scalar, Any, Any]) -> Matrix[Scalar, Any, Any]
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: transpose(a: Matrix[Scalar, Any, Any]) -> Matrix[Scalar, Any, Any]
 
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Compute the transpose of matrix ``a``.

@@ -1,13 +1,14 @@
 ﻿warp.rint
 =========
 
-.. function:: warp._src.lang.rint(x: Float) -> Float
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: rint(x: Float) -> Float
 
-      * Kernel
-      * Python
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Compute the nearest integer value to ``x``, rounding halfway cases to nearest even integer.
    

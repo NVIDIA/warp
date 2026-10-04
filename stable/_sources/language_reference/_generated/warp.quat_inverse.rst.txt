@@ -1,13 +1,13 @@
 ﻿warp.quat\_inverse
 ==================
 
-.. function:: warp._src.lang.quat_inverse(quat: Quaternion[Float]) -> Quaternion[Float]
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: quat_inverse(quat: Quaternion[Float]) -> Quaternion[Float]
 
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Compute quaternion conjugate.

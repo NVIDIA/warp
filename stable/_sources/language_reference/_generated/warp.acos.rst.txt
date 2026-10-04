@@ -1,14 +1,14 @@
 ﻿warp.acos
 =========
 
-.. function:: warp._src.lang.acos(x: Float) -> Float
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: acos(x: Float) -> Float
 
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Compute arccos of ``x`` in radians.
    

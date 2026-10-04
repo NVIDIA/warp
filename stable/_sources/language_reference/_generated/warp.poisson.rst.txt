@@ -1,13 +1,14 @@
 ﻿warp.poisson
 ============
 
-.. function:: warp._src.lang.poisson(state: uint32, lam: float32) -> uint32
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: poisson(state: uint32, lam: float32) -> uint32
 
-      * Kernel
-      * Python
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Generate a random sample from a Poisson distribution.
    

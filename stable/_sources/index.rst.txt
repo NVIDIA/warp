@@ -19,7 +19,13 @@ Install Warp from `PyPI <https://pypi.org/project/warp-lang>`_:
 
     $ pip install warp-lang
 
-For conda, nightly builds, CUDA 13 builds, building from source, and driver requirements,
+PyPI and nightly wheels for Linux and Windows use CUDA Toolkit 13.4. They require an
+NVIDIA R580-series or newer driver and a Turing (``sm_75``) or newer GPU for CUDA acceleration.
+For CUDA 12 environments, download a ``+cu12`` wheel from
+`GitHub Releases <https://github.com/NVIDIA/warp/releases>`_ or build Warp from source with CUDA 12.
+Warp can also run on the CPU. The Apple Silicon macOS wheel is CPU-only.
+
+For conda, nightly builds, CUDA 12 compatibility wheels, building from source, and driver requirements,
 see :doc:`user_guide/installation`.
 
 Example Gallery
@@ -45,44 +51,61 @@ warp/examples/core
            :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_fluid.py
       - .. image:: ./img/examples/core_graph_capture.png
            :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_graph_capture.py
-      - .. image:: ./img/examples/core_marching_cubes.png
-           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_marching_cubes.py
+      - .. image:: ./img/examples/core_mesh.png
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_mesh.py
     * - dem
       - fluid
       - graph capture
-      - marching cubes
-    * - .. image:: ./img/examples/core_mesh.png
-           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_mesh.py
-      - .. image:: ./img/examples/core_nvdb.png
+      - mesh
+    * - .. image:: ./img/examples/core_nvdb.png
            :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_nvdb.py
       - .. image:: ./img/examples/core_raycast.png
            :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_raycast.py
       - .. image:: ./img/examples/core_raymarch.png
            :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_raymarch.py
-    * - mesh
-      - nvdb
+      - .. image:: ./img/examples/core_sample_mesh.png
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_sample_mesh.py
+    * - nvdb
       - raycast
       - raymarch
-    * - .. image:: ./img/examples/core_sample_mesh.png
-           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_sample_mesh.py
-      - .. image:: ./img/examples/core_sph.png
+      - sample_mesh
+    * - .. image:: ./img/examples/core_sph.png
            :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_sph.py
       - .. image:: ./img/examples/core_torch.png
            :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_torch.py
       - .. image:: ./img/examples/core_wave.png
            :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_wave.py
-    * - sample_mesh
-      - sph
+      - .. image:: ./img/examples/core_fft_poisson_navier_stokes_2d.png
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_fft_poisson_navier_stokes_2d.py
+    * - sph
       - torch
       - wave
-    * - .. image:: ./img/examples/core_fft_poisson_navier_stokes_2d.png
-           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_fft_poisson_navier_stokes_2d.py
-      - .. image:: ./img/examples/core_fdtd_3d.png
+      - 2-D incompressible turbulence in a periodic box
+    * - .. image:: ./img/examples/core_fdtd_3d.png
            :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_fdtd_3d.py
       -
       -
-    * - 2-D incompressible turbulence in a periodic box
-      - 3-D FDTD Luneburg lens
+      -
+    * - 3-D FDTD Luneburg lens
+      -
+      -
+      -
+
+warp/examples/geometry
+^^^^^^^^^^^^^^^^^^^^^^
+
+.. list-table::
+    :widths: 25 25 25 25
+    :class: gallery
+
+    * - .. image:: ./img/examples/geometry_isosurface.png
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/geometry/example_isosurface.py
+      - .. image:: ./img/examples/geometry_sparse_marching_cubes.png
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/geometry/example_sparse_marching_cubes.py
+      -
+      -
+    * - isosurface
+      - sparse marching cubes
       -
       -
 
@@ -129,6 +152,32 @@ warp/examples/fem
       - nonconforming contact
       - darcy level-set optimization
       - elastic shape optimization
+    * - .. image:: ./img/examples/fem_cantilever_topology_optimization.png
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_cantilever_topology_optimization.py
+      -
+      -
+      -
+    * - cantilever topology optimization
+      -
+      -
+      -
+
+warp/examples/geometry
+^^^^^^^^^^^^^^^^^^^^^^
+
+.. list-table::
+    :widths: 25 25 25 25
+    :class: gallery
+
+    * - .. image:: ./img/examples/geometry_swept_volume.png
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/geometry/example_swept_volume.py
+      -
+      -
+      -
+    * - swept volume
+      -
+      -
+      -
 
 warp/examples/optim
 ^^^^^^^^^^^^^^^^^^^
@@ -146,7 +195,8 @@ warp/examples/optim
       - .. image:: ./img/examples/optim_navier_stokes_perturbation.png
            :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/optim/example_navier_stokes_perturbation.py
     * - diffray
-      - fluid checkpoint
+      - | fluid checkpoint
+        | `basic <https://github.com/NVIDIA/warp/blob/main/warp/examples/optim/example_fluid_checkpoint.py>`__ · `custom backward <https://github.com/NVIDIA/warp/blob/main/warp/examples/optim/example_fluid_checkpoint_custom_backward.py>`__
       - particle repulsion
       - navier-stokes perturbation
 
@@ -202,6 +252,7 @@ warp/examples/tile
     api_reference/warp_build_experimental
     api_reference/warp_config
     api_reference/warp_fem
+    api_reference/warp_geometry
     api_reference/warp_optim
     api_reference/warp_render
     api_reference/warp_sparse

@@ -1,13 +1,14 @@
 ﻿warp.closest\_point\_edge\_edge
 ===============================
 
-.. function:: warp._src.lang.closest_point_edge_edge(p1: vec3f, q1: vec3f, p2: vec3f, q2: vec3f, epsilon: float32) -> vec3f
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: closest_point_edge_edge(p1: vec3f, q1: vec3f, p2: vec3f, q2: vec3f, epsilon: float32) -> vec3f
 
-      * Kernel
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Find the closest points between two edges (line segments) ``[p1, q1]`` and ``[p2, q2]``.
    

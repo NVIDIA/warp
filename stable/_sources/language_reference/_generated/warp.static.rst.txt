@@ -1,12 +1,14 @@
 ﻿warp.static
 ===========
 
-.. function:: warp._src.lang.static(expr: Any) -> Any
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: static(expr: Any) -> Any
 
-      * Kernel
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Evaluate a static Python expression and replaces it with its result.
    

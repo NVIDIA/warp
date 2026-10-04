@@ -1,13 +1,14 @@
 ﻿warp.trunc
 ==========
 
-.. function:: warp._src.lang.trunc(x: Float) -> Float
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: trunc(x: Float) -> Float
 
-      * Kernel
-      * Python
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Compute the nearest integer that is closer to zero than ``x``.
    

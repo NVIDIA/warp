@@ -1,13 +1,14 @@
 ﻿warp.frac
 =========
 
-.. function:: warp._src.lang.frac(x: Float) -> Float
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: frac(x: Float) -> Float
 
-      * Kernel
-      * Python
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Retrieve the fractional part of ``x``.
    

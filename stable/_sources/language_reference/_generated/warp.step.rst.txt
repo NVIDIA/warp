@@ -1,12 +1,13 @@
 ﻿warp.step
 =========
 
-.. function:: warp._src.lang.step(x: Scalar) -> Scalar
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: step(x: Scalar) -> Scalar
 
-      * Kernel
-      * Python
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Compute 1.0 if ``x`` < 0.0, otherwise 0.0.

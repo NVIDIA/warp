@@ -1,13 +1,14 @@
 ﻿warp.tile\_sum
 ==============
 
-.. function:: warp._src.lang.tile_sum(a: Tile[Any, tuple[int, ...]], axis: int32) -> Tile[Any, tuple[int, ...]]
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: tile_sum(a: Tile[Any, tuple[int, ...]], axis: int32) -> Tile[Any, tuple[int, ...]]
 
-      * Kernel
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Cooperatively compute the sum of the tile elements.
    
@@ -37,14 +38,13 @@
        [8 8 8 8 8 8 8 8] = tile(shape=(8), storage=register)
    
 
-.. function:: warp._src.lang.tile_sum(a: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[Literal[1]]]
+.. function:: tile_sum(a: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[Literal[1]]]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Cooperatively compute the sum of the tile elements.
    

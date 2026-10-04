@@ -1,12 +1,14 @@
 ﻿warp.texture\_sample
 ====================
 
-.. function:: warp._src.lang.texture_sample(tex: Texture1D, u: float32, dtype: Any, lod: float32) -> Any
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: texture_sample(tex: Texture1D, u: float32, dtype: Any, lod: float32 = -1.0) -> Any
 
-      * Kernel
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Sample the 1D texture at the given U coordinate.
    
@@ -32,9 +34,9 @@
                :attr:`warp.TextureFilterMode.LINEAR`; the coordinate is evaluated independently at
                each level used in the blend. The ``lod`` argument is ignored for textures created with a single mip level.
    
-   :returns: The sampled value of the specified ``dtype``. The CPU backend normalizes unsigned integer
-             data to ``[0, 1]`` and signed integer data to ``[-1, 1]``. On CUDA devices, normalized
-             integer sampling is supported only for 8- and 16-bit formats; use an 8- or 16-bit integer
+   :returns: The sampled value of the specified ``dtype``. The backends normalize unsigned 8- and 16-bit
+             integer data to ``[0, 1]`` and signed 8- and 16-bit integer data to ``[-1, 1]``. Sampling an
+             ``int32`` or ``uint32`` texture causes kernel execution to fail; use an 8- or 16-bit integer
              or floating-point texture. Floating-point texture data is returned as ``float32`` channel
              values without normalization.
    
@@ -72,13 +74,13 @@
        5.0 1.0 1.0
    
 
-.. function:: warp._src.lang.texture_sample(tex: Texture2D, uv: vec2f, dtype: Any, lod: float32) -> Any
+.. function:: texture_sample(tex: Texture2D, uv: vec2f, dtype: Any, lod: float32 = -1.0) -> Any
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Sample the 2D texture at the given UV coordinates.
    
@@ -105,9 +107,9 @@
                :attr:`warp.TextureFilterMode.LINEAR`; the coordinates are evaluated independently at
                each level used in the blend. The ``lod`` argument is ignored for textures created with a single mip level.
    
-   :returns: The sampled value of the specified ``dtype``. The CPU backend normalizes unsigned integer
-             data to ``[0, 1]`` and signed integer data to ``[-1, 1]``. On CUDA devices, normalized
-             integer sampling is supported only for 8- and 16-bit formats; use an 8- or 16-bit integer
+   :returns: The sampled value of the specified ``dtype``. The backends normalize unsigned 8- and 16-bit
+             integer data to ``[0, 1]`` and signed 8- and 16-bit integer data to ``[-1, 1]``. Sampling an
+             ``int32`` or ``uint32`` texture causes kernel execution to fail; use an 8- or 16-bit integer
              or floating-point texture. Floating-point texture data is returned as ``float32`` channel
              values without normalization.
    
@@ -116,13 +118,13 @@
    :class:`warp.Texture`. Currently, CUDA textures with unnormalized coordinates support only
    ``CLAMP`` and ``BORDER`` address modes. Use normalized coordinates with ``WRAP`` or ``MIRROR``.
 
-.. function:: warp._src.lang.texture_sample(tex: Texture2D, u: float32, v: float32, dtype: Any, lod: float32) -> Any
+.. function:: texture_sample(tex: Texture2D, u: float32, v: float32, dtype: Any, lod: float32 = -1.0) -> Any
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Sample the 2D texture at the given UV coordinates.
    
@@ -151,9 +153,9 @@
                :attr:`warp.TextureFilterMode.LINEAR`; the coordinates are evaluated independently at
                each level used in the blend. The ``lod`` argument is ignored for textures created with a single mip level.
    
-   :returns: The sampled value of the specified ``dtype``. The CPU backend normalizes unsigned integer
-             data to ``[0, 1]`` and signed integer data to ``[-1, 1]``. On CUDA devices, normalized
-             integer sampling is supported only for 8- and 16-bit formats; use an 8- or 16-bit integer
+   :returns: The sampled value of the specified ``dtype``. The backends normalize unsigned 8- and 16-bit
+             integer data to ``[0, 1]`` and signed 8- and 16-bit integer data to ``[-1, 1]``. Sampling an
+             ``int32`` or ``uint32`` texture causes kernel execution to fail; use an 8- or 16-bit integer
              or floating-point texture. Floating-point texture data is returned as ``float32`` channel
              values without normalization.
    
@@ -162,13 +164,13 @@
    :class:`warp.Texture`. Currently, CUDA textures with unnormalized coordinates support only
    ``CLAMP`` and ``BORDER`` address modes. Use normalized coordinates with ``WRAP`` or ``MIRROR``.
 
-.. function:: warp._src.lang.texture_sample(tex: Texture3D, uvw: vec3f, dtype: Any, lod: float32) -> Any
+.. function:: texture_sample(tex: Texture3D, uvw: vec3f, dtype: Any, lod: float32 = -1.0) -> Any
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Sample the 3D texture at the given UVW coordinates.
    
@@ -195,9 +197,9 @@
                :attr:`warp.TextureFilterMode.LINEAR`; the coordinates are evaluated independently at
                each level used in the blend. The ``lod`` argument is ignored for textures created with a single mip level.
    
-   :returns: The sampled value of the specified ``dtype``. The CPU backend normalizes unsigned integer
-             data to ``[0, 1]`` and signed integer data to ``[-1, 1]``. On CUDA devices, normalized
-             integer sampling is supported only for 8- and 16-bit formats; use an 8- or 16-bit integer
+   :returns: The sampled value of the specified ``dtype``. The backends normalize unsigned 8- and 16-bit
+             integer data to ``[0, 1]`` and signed 8- and 16-bit integer data to ``[-1, 1]``. Sampling an
+             ``int32`` or ``uint32`` texture causes kernel execution to fail; use an 8- or 16-bit integer
              or floating-point texture. Floating-point texture data is returned as ``float32`` channel
              values without normalization.
    
@@ -206,13 +208,13 @@
    :class:`warp.Texture`. Currently, CUDA textures with unnormalized coordinates support only
    ``CLAMP`` and ``BORDER`` address modes. Use normalized coordinates with ``WRAP`` or ``MIRROR``.
 
-.. function:: warp._src.lang.texture_sample(tex: Texture3D, u: float32, v: float32, w: float32, dtype: Any, lod: float32) -> Any
+.. function:: texture_sample(tex: Texture3D, u: float32, v: float32, w: float32, dtype: Any, lod: float32 = -1.0) -> Any
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Sample the 3D texture at the given UVW coordinates.
    
@@ -244,9 +246,9 @@
                :attr:`warp.TextureFilterMode.LINEAR`; the coordinates are evaluated independently at
                each level used in the blend. The ``lod`` argument is ignored for textures created with a single mip level.
    
-   :returns: The sampled value of the specified ``dtype``. The CPU backend normalizes unsigned integer
-             data to ``[0, 1]`` and signed integer data to ``[-1, 1]``. On CUDA devices, normalized
-             integer sampling is supported only for 8- and 16-bit formats; use an 8- or 16-bit integer
+   :returns: The sampled value of the specified ``dtype``. The backends normalize unsigned 8- and 16-bit
+             integer data to ``[0, 1]`` and signed 8- and 16-bit integer data to ``[-1, 1]``. Sampling an
+             ``int32`` or ``uint32`` texture causes kernel execution to fail; use an 8- or 16-bit integer
              or floating-point texture. Floating-point texture data is returned as ``float32`` channel
              values without normalization.
    

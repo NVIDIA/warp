@@ -1,13 +1,14 @@
 ﻿warp.sample\_unit\_sphere\_surface
 ==================================
 
-.. function:: warp._src.lang.sample_unit_sphere_surface(state: uint32) -> vec3f
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: sample_unit_sphere_surface(state: uint32) -> vec3f
 
-      * Kernel
-      * Python
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Uniformly sample a point on the surface of the unit sphere (radius 1).
    

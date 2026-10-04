@@ -1,14 +1,14 @@
 ﻿warp.volume\_world\_to\_index\_dir
 ==================================
 
-.. function:: warp._src.lang.volume_world_to_index_dir(id: uint64, xyz: vec3f) -> vec3f
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: volume_world_to_index_dir(id: uint64, xyz: vec3f) -> vec3f
 
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Transform the direction ``xyz`` from world space to the volume's index space using the linear
    part of the volume's affine transform.
@@ -23,15 +23,13 @@
    
    See :func:`~warp.volume_index_to_world` for a usage example.
 
-.. function:: warp._src.lang.volume_world_to_index_dir(id: uint64, xyz: vec3d) -> vec3d
+.. function:: volume_world_to_index_dir(id: uint64, xyz: vec3d) -> vec3d
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Transform the direction ``xyz`` from world space to the volume's index space using the linear
    part of the volume's affine transform (float64 precision).

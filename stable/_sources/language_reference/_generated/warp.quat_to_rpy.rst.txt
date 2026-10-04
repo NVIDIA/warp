@@ -1,13 +1,15 @@
 ﻿warp.quat\_to\_rpy
 ==================
 
-.. function:: warp._src.lang.quat_to_rpy(q: quatf) -> vec3f
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: quat_to_rpy(q: quatf) -> vec3f
 
-      * Kernel
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+      :source: https://github.com/NVIDIA/warp/blob/release-1.18/warp/_src/math.py#L220-L250
 
    Convert a quaternion to roll-pitch-yaw angles (ZYX convention).
    

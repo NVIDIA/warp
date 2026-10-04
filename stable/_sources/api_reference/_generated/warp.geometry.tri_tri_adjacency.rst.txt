@@ -1,0 +1,6 @@
+﻿warp.geometry.tri\_tri\_adjacency
+=================================
+
+.. currentmodule:: warp.geometry
+
+.. autofunction:: tri_tri_adjacency

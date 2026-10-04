@@ -27,7 +27,7 @@ on platforms with NVIDIA CUDA support. The following table summarizes platform s
     +=====================+==============+======================+====================+=====================+
     | **Windows** 10/11   | ``x86-64``   | PC                   | Supported ✅       | CUDA                |
     +---------------------+--------------+----------------------+--------------------+---------------------+
-    | **Windows** 11      | ``arm64``    | PC                   | Source build ✅    | CPU Only            |
+    | **Windows** 11      | ``arm64``    | PC                   | Experimental       | CUDA 13.4+          |
     +---------------------+--------------+----------------------+--------------------+---------------------+
     | **Linux**           | ``x86-64``   | PC / Server          | Supported ✅       | CUDA                |
     +---------------------+--------------+----------------------+--------------------+---------------------+
@@ -38,7 +38,8 @@ on platforms with NVIDIA CUDA support. The following table summarizes platform s
     | **macOS**           | ``x86-64``   | Intel-based Mac      | Discontinued       | None                |
     +---------------------+--------------+----------------------+--------------------+---------------------+
 
-Warp supports CPU execution on Windows ARM64 when built from source. We do not currently publish pre-built wheels for this platform.
+Windows on Arm supports CPU execution and experimental CUDA acceleration through source builds.
+See :ref:`windows-arm64-builds` for requirements and current limitations.
 
 Runtime requirements
 --------------------
@@ -57,6 +58,11 @@ The following requirements apply when running Warp:
 
 **GPU Acceleration**:
 
+PyPI and nightly wheels for Linux and Windows use CUDA Toolkit 13.4. They require an
+NVIDIA R580-series or newer driver and a Turing (``sm_75``) or newer GPU for CUDA acceleration.
+For CUDA 12 environments, download a ``+cu12`` wheel from
+:ref:`GitHub Releases <github-release-wheels>` or :ref:`build Warp from source with CUDA 12 <building-from-source>`.
+
 .. table:: GPU Compute Capability Requirements
     :align: left
 
@@ -68,19 +74,24 @@ The following requirements apply when running Warp:
     | CUDA 13.x                  | Turing              | 7.5 (``sm_75``)        | GeForce RTX 20xx series                  |
     +----------------------------+---------------------+------------------------+------------------------------------------+
 
-To determine your GPU's compute capability, see `NVIDIA CUDA GPUs <https://developer.nvidia.com/cuda-gpus>`__.
+To determine your GPU's compute capability, see `NVIDIA CUDA GPUs <https://developer.nvidia.com/cuda/gpus>`__.
+
+CUDA 12.9 builds for Linux AArch64, including ``+cu12`` wheels, omit the
+``sm_52``, ``sm_60``, ``sm_61``, and ``sm_70`` targets.
+For those targets on Linux AArch64, build from source with CUDA Toolkit 12.0 through 12.8;
+see the :ref:`cuda-12-arm-limitation`.
 
 * **Driver Requirements**: The driver requirements are determined by the CUDA Toolkit version used to build the Warp
   library, not the version installed on the system when running Warp.
 
-  * Warp packages built with CUDA Toolkit 12.x require NVIDIA driver 525 or newer.
-  * Warp packages built with CUDA Toolkit 13.x require NVIDIA driver 580 or newer.
-  * PyPI wheels for Windows/Linux are currently built with CUDA 12.9.
+  * Warp packages built with CUDA Toolkit 12.x require an NVIDIA R525-series or newer driver.
+  * Warp packages built with CUDA Toolkit 13.x require an NVIDIA R580-series or newer driver.
+  * Builds using ``--quick`` can require a newer driver; see :ref:`cuda-requirements`.
 
 * **Advanced Features**: Half-precision (``float16``) atomic operations require compute capability 7.0+ (Volta). 
   On older GPUs, these operations return zero.
 
-* **CPU-only execution** is supported on all platforms for users without a GPU.
+* **CPU-only execution** is supported on all supported platforms for users without a compatible GPU or driver.
 
 Building from source
 --------------------
@@ -103,12 +114,15 @@ To build Warp from source, you need:
 
 * CUDA Toolkit (required to build Warp with GPU support, not available on macOS):
 
-  * Minimum: CUDA Toolkit 12.0
+  * Minimum: CUDA Toolkit 12.0 (13.4 on Windows on Arm)
   * For full libmathdx support: CUDA Toolkit 12.6.3+
   * For conditional graph node support: CUDA Toolkit 12.4+
 
 * libmathdx (auto-fetched via Packman by default)
 * LLVM/Clang (auto-fetched via Packman by default)
+
+Building from source with CUDA 12 remains supported on Windows x86-64 and Linux, subject to the
+driver and GPU architecture requirements above. A CUDA Toolkit is not needed for a CPU-only build.
 
 **Building:**
 
@@ -310,8 +324,9 @@ Warp feature releases following our standard deprecation practices.
 
 **Optional dependencies**
 
-Warp includes optional features and examples that depend on additional packages (e.g., ``usd-core``, 
-``matplotlib``, ``warp-lang[examples]``). For these optional dependencies:
+Some examples and optional features, such as integrations with other frameworks, require additional packages.
+Version and platform restrictions for declared dependencies are listed in Warp's package metadata.
+For these optional dependencies:
 
 * We aim to test against recent versions in our CI/CD pipeline.
 * Version support may be adjusted if specific package versions cause CI/CD issues or compatibility 
@@ -341,11 +356,11 @@ CUDA versions
 Warp supports the two most recent CUDA major versions. Features with specific CUDA version
 requirements are noted in the documentation.
 
-Pre-built wheels are available for the two supported CUDA major versions, although the specific minor version
-used is set at our discretion.
+The default PyPI and nightly Linux and Windows wheels use CUDA Toolkit 13.4. CUDA 12 compatibility
+wheels are available with a ``+cu12`` version suffix on :ref:`GitHub Releases <github-release-wheels>`.
+Building from source with CUDA 12 also remains supported.
 
-The specific CUDA minor version used for PyPI wheels is selected at our discretion based on what we
-believe is most useful for the average user.
+The CUDA minor version used for pre-built wheels may change between releases.
 
 NVIDIA driver compatibility
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -369,7 +384,7 @@ We follow NVIDIA's driver compatibility policies:
   associated with your driver during initialization.
 
 For the most up-to-date driver compatibility information, consult the 
-`CUDA Compatibility Guide <https://docs.nvidia.com/deploy/cuda-compatibility/>`__.
+`CUDA Compatibility Guide <https://docs.nvidia.com/deploy/cuda-compatibility/latest/>`__.
 
 GPU architectures
 ~~~~~~~~~~~~~~~~~

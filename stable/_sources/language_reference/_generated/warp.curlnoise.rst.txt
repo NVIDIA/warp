@@ -1,14 +1,14 @@
 ﻿warp.curlnoise
 ==============
 
-.. function:: warp._src.lang.curlnoise(state: uint32, xy: vec2f, octaves: uint32, lacunarity: float32, gain: float32) -> vec2f
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: curlnoise(state: uint32, xy: vec2f, octaves: uint32 = uint32(1), lacunarity: float32 = 2.0, gain: float32 = 0.5) -> vec2f
 
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Sample a divergence-free 2D vector field derived from Perlin noise.
    
@@ -48,15 +48,13 @@
        wp.launch(advect, dim=len(positions), inputs=[42, positions, 0.1])
    
 
-.. function:: warp._src.lang.curlnoise(state: uint32, xyz: vec3f, octaves: uint32, lacunarity: float32, gain: float32) -> vec3f
+.. function:: curlnoise(state: uint32, xyz: vec3f, octaves: uint32 = uint32(1), lacunarity: float32 = 2.0, gain: float32 = 0.5) -> vec3f
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Sample a divergence-free 3D vector field derived from Perlin noise.
    
@@ -72,15 +70,13 @@
              ``xyz``. The resulting vector field is divergence-free. The vector is not normalized.
    
 
-.. function:: warp._src.lang.curlnoise(state: uint32, xyzt: vec4f, octaves: uint32, lacunarity: float32, gain: float32) -> vec3f
+.. function:: curlnoise(state: uint32, xyzt: vec4f, octaves: uint32 = uint32(1), lacunarity: float32 = 2.0, gain: float32 = 0.5) -> vec3f
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Sample a divergence-free 3D vector field that also varies along a fourth axis.
    

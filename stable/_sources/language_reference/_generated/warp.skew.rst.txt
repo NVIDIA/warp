@@ -1,13 +1,13 @@
 ﻿warp.skew
 =========
 
-.. function:: warp._src.lang.skew(vec: Vector[Scalar, Literal[3]]) -> Matrix[Scalar, Literal[3], Literal[3]]
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: skew(vec: Vector[Scalar, Literal[3]]) -> Matrix[Scalar, Literal[3], Literal[3]]
 
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Compute the skew-symmetric 3x3 matrix for a 3D vector ``vec``.

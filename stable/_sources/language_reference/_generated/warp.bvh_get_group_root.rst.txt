@@ -1,12 +1,14 @@
 ﻿warp.bvh\_get\_group\_root
 ==========================
 
-.. function:: warp._src.lang.bvh_get_group_root(id: uint64, group: int32) -> int
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: bvh_get_group_root(id: uint64, group: int32) -> int
 
-      * Kernel
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Get the root of a group in a BVH.
    

@@ -1,13 +1,15 @@
 ﻿warp.norm\_pseudo\_huber
 ========================
 
-.. function:: warp._src.lang.norm_pseudo_huber(v: Any, delta: float) -> float
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: norm_pseudo_huber(v: Any, delta: float = 1.0) -> float
 
-      * Kernel
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+      :source: https://github.com/NVIDIA/warp/blob/release-1.18/warp/_src/math.py#L91-L109
 
    Compute the "pseudo" Huber norm of a vector v with a given delta.
    
@@ -19,7 +21,7 @@
    
    :param v: The vector to compute the Huber norm of.
    :type v: Vector[Float, Any]
-   :param delta: The threshold value, defaults to 1.0.
+   :param delta: The threshold value.
    :type delta: float
    
    :returns: The Huber norm of the vector.

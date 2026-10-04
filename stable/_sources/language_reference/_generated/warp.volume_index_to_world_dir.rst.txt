@@ -1,14 +1,14 @@
 ﻿warp.volume\_index\_to\_world\_dir
 ==================================
 
-.. function:: warp._src.lang.volume_index_to_world_dir(id: uint64, uvw: vec3f) -> vec3f
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: volume_index_to_world_dir(id: uint64, uvw: vec3f) -> vec3f
 
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Transform the direction ``uvw`` from the volume's index space to world space using the linear
    part of the volume's affine transform.
@@ -23,15 +23,13 @@
    
    See :func:`~warp.volume_index_to_world` for a usage example.
 
-.. function:: warp._src.lang.volume_index_to_world_dir(id: uint64, uvw: vec3d) -> vec3d
+.. function:: volume_index_to_world_dir(id: uint64, uvw: vec3d) -> vec3d
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Transform the direction ``uvw`` from the volume's index space to world space using the linear
    part of the volume's affine transform (float64 precision).

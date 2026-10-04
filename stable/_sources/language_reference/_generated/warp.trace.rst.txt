@@ -1,13 +1,13 @@
 ﻿warp.trace
 ==========
 
-.. function:: warp._src.lang.trace(a: Matrix[Scalar, Any, Any]) -> Scalar
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: trace(a: Matrix[Scalar, Any, Any]) -> Scalar
 
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Compute the trace of matrix ``a``.

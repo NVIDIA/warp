@@ -1,24 +1,23 @@
 ﻿warp.mod
 ========
 
-.. function:: warp._src.lang.mod(a: Scalar, b: Scalar) -> Scalar
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: mod(a: Scalar, b: Scalar) -> Scalar
 
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Modulo operation using truncated division.
 
-.. function:: warp._src.lang.mod(a: Vector[Scalar, Any], b: Vector[Scalar, Any]) -> Vector[Scalar, Any]
+.. function:: mod(a: Vector[Scalar, Any], b: Vector[Scalar, Any]) -> Vector[Scalar, Any]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Modulo operation using truncated division.

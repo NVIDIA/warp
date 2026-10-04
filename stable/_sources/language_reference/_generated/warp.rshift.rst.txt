@@ -1,36 +1,36 @@
 ﻿warp.rshift
 ===========
 
-.. function:: warp._src.lang.rshift(a: Int, b: Int) -> Int
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: rshift(a: Int, b: Int) -> Int
 
-      * Kernel
-      * Python
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Compute ``a`` right-shifted by ``b`` bits.
 
-.. function:: warp._src.lang.rshift(a: Vector[Int, Any], b: Vector[Int, Any]) -> Vector[Int, Any]
+.. function:: rshift(a: Vector[Int, Any], b: Vector[Int, Any]) -> Vector[Int, Any]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Python
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Compute ``a`` right-shifted by ``b`` bits.
    
    Apply the operation element-wise to vectors.
 
-.. function:: warp._src.lang.rshift(a: Matrix[Int, Any, Any], b: Matrix[Int, Any, Any]) -> Matrix[Int, Any, Any]
+.. function:: rshift(a: Matrix[Int, Any, Any], b: Matrix[Int, Any, Any]) -> Matrix[Int, Any, Any]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Compute ``a`` right-shifted by ``b`` bits.
    

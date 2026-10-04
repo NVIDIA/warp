@@ -1,13 +1,14 @@
 ﻿warp.volume\_lookup\_index
 ==========================
 
-.. function:: warp._src.lang.volume_lookup_index(id: uint64, i: int32, j: int32, k: int32) -> int32
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: volume_lookup_index(id: uint64, i: int32, j: int32, k: int32) -> int32
 
-      * Kernel
-      * Python
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Return the linear index associated with integer index-space coordinates ``i``, ``j``, ``k``.
    

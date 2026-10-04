@@ -1,13 +1,14 @@
 ﻿warp.tile\_matmul
 =================
 
-.. function:: warp._src.lang.tile_matmul(a: Tile[Float, tuple[int, int]], b: Tile[Float, tuple[int, int]], out: Tile[Float, tuple[int, int]], alpha: Float, beta: Float) -> None
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: tile_matmul(a: Tile[Float, tuple[int, int]], b: Tile[Float, tuple[int, int]], out: Tile[Float, tuple[int, int]], alpha: Float = 1.0, beta: Float = 1.0) -> None
 
-      * Kernel
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Compute the matrix product ``a*b``.
    
@@ -24,18 +25,17 @@
    :param a: A tile with ``shape=(M, K)``
    :param b: A tile with ``shape=(K, N)``
    :param out: A tile with ``shape=(M, N)``
-   :param alpha: Scaling factor (default 1.0)
-   :param beta: Accumulator factor (default 1.0)
+   :param alpha: Scaling factor
+   :param beta: Accumulator factor
    
 
-.. function:: warp._src.lang.tile_matmul(a: Tile[Float, tuple[int, int]], b: Tile[Float, tuple[int, int]], alpha: Float) -> Tile[Float, tuple[int, int]]
+.. function:: tile_matmul(a: Tile[Float, tuple[int, int]], b: Tile[Float, tuple[int, int]], alpha: Float = 1.0) -> Tile[Float, tuple[int, int]]
    :noindex:
 
-   .. hlist::
-      :columns: 8
-
-      * Kernel
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
 
    Compute the matrix product ``a*b``.
    
@@ -51,7 +51,7 @@
    
    :param a: A tile with ``shape=(M, K)``
    :param b: A tile with ``shape=(K, N)``
-   :param alpha: Scaling factor (default 1.0)
+   :param alpha: Scaling factor
    
    :returns: A tile with ``shape=(M, N)``
    

@@ -1,14 +1,14 @@
 ﻿warp.asin
 =========
 
-.. function:: warp._src.lang.asin(x: Float) -> Float
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: asin(x: Float) -> Float
 
-      * Kernel
-      * Python
-      * Differentiable
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
 
    Compute arcsin of ``x`` in radians.
    

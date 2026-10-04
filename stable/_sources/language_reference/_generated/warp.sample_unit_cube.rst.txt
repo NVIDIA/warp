@@ -1,13 +1,14 @@
 ﻿warp.sample\_unit\_cube
 =======================
 
-.. function:: warp._src.lang.sample_unit_cube(state: uint32) -> vec3f
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: sample_unit_cube(state: uint32) -> vec3f
 
-      * Kernel
-      * Python
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
 
    Uniformly sample a point in the unit cube ``[-0.5, 0.5)^3``, centered at the origin.
    

@@ -1,11 +1,13 @@
 ﻿warp.breakpoint
 ===============
 
-.. function:: warp._src.lang.breakpoint() -> None
+.. currentmodule:: warp._src.lang
 
-   .. hlist::
-      :columns: 8
+.. function:: breakpoint() -> None
 
-      * Kernel
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
 
    Trigger a debugger breakpoint.
