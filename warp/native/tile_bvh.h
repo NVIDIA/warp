@@ -21,6 +21,7 @@ struct bvh_query_thread_block_t {
         , is_ray(false)
         , input_lower()
         , input_upper()
+        , ray_direction()
         , ray_direction_kind(BvhRayDirectionKind::FINITE)
     {
     }
@@ -47,6 +48,7 @@ struct bvh_query_thread_block_t {
     // inputs
     wp::vec3 input_lower;
     wp::vec3 input_upper;
+    wp::vec3 ray_direction;  // original direction for slab-time overflow
     bool is_ray;
     BvhRayDirectionKind ray_direction_kind;
 };
@@ -59,7 +61,9 @@ bvh_query_intersection_test(const bvh_query_thread_block_t& query, const vec3& n
         float t = 0.0f;
         if (query.ray_direction_kind == BvhRayDirectionKind::OVERFLOW)
             return bvh_ray_intersect_aabb_overflow(query.input_lower, query.input_upper, node_lower, node_upper, t);
-        return bvh_ray_intersect_aabb(query.input_lower, query.input_upper, node_lower, node_upper, t);
+        return bvh_ray_intersect_aabb(
+            query.input_lower, query.ray_direction, query.input_upper, node_lower, node_upper, t
+        );
     } else {
         return intersect_aabb_aabb(query.input_lower, query.input_upper, node_lower, node_upper);
     }
@@ -331,6 +335,8 @@ bvh_query_aabb_thread_block_impl(uint64_t id, const vec3& lower, const vec3& upp
 // by the AABB and ray tiled entry points, so dispatch on the query's stored kind.
 CUDA_CALLABLE inline bool bvh_query_next_thread_block_impl(bvh_query_thread_block_t& query, int& index)
 {
+    if (query.kind == BvhQueryKind::RAY)
+        return bvh_query_next_impl<BvhQueryKind::RAY, true>(query, index, INFINITY);
     return bvh_query_next_dynamic(query, index, FLT_MAX);
 }
 
@@ -374,6 +380,7 @@ CUDA_CALLABLE inline bvh_query_thread_block_t tile_bvh_query_aabb(uint64_t id, c
 CUDA_CALLABLE inline bvh_query_thread_block_t tile_bvh_query_ray(uint64_t id, const vec3& start, const vec3& dir)
 {
     bvh_query_thread_block_t query = bvh_query_thread_block(id, true, start, 1.0f / dir);
+    query.ray_direction = dir;
     if (bvh_ray_has_reciprocal_overflow(dir, query.input_upper)) {
         query.ray_direction_kind = BvhRayDirectionKind::OVERFLOW;
         query.input_upper = dir;
@@ -391,7 +398,7 @@ template <int Length> inline auto tile_bvh_query_next_impl(bvh_query_thread_bloc
     // On CPU, bvh_query_thread_block_t is aliased to bvh_query_t and is shared by the AABB
     // and ray tiled entry points, so dispatch on the query's stored kind.
     int index = -1;
-    bvh_query_next_dynamic(query, index, FLT_MAX);
+    bvh_query_next_thread_block_impl(query, index);
     query.last_query_valid = (index >= 0);
 
     // Create a tile with the index in the first element, -1 in all others

@@ -838,6 +838,136 @@ def tile_bvh_query_ray_kernel(
             wp.atomic_add(bounds_intersected, result_idx, 1)
 
 
+@wp.kernel(module_options={"fast_math": True}, module="unique")
+def tile_bvh_query_ray_fast_math_kernel(
+    bvh_id: wp.uint64,
+    start: wp.vec3,
+    dir: wp.vec3,
+    bounds_intersected: wp.array[int],
+):
+    query = wp.tile_bvh_query_ray(bvh_id, start, dir)
+
+    while wp.tile_query_valid(query):
+        result_idx = wp.untile(wp.tile_bvh_query_next(query))
+        if result_idx >= 0:
+            wp.atomic_add(bounds_intersected, result_idx, 1)
+
+
+def test_tile_bvh_ray_beyond_float_max(test, device):
+    """Keep tiled rays unbounded when slab times exceed float32's range."""
+    for scale, speed in ((1.0, 1.0e-39), (1.0e20, 1.0e-20)):
+        # The first case overflows the reciprocal; the second has a finite
+        # reciprocal but overflows the float32 slab times. Both enter beyond FLT_MAX.
+        for num_bounds in (1, 2):
+            lowers = wp.array(
+                [(scale, -1.0, -1.0), (-2.0 * scale, -1.0, -1.0)][:num_bounds], dtype=wp.vec3, device=device
+            )
+            uppers = wp.array([(2.0 * scale, 1.0, 1.0), (-scale, 1.0, 1.0)][:num_bounds], dtype=wp.vec3, device=device)
+            hits = wp.zeros(num_bounds, dtype=int, device=device)
+            cases = (
+                ("unit direction", wp.vec3(0.0), wp.vec3(1.0, 0.0, 0.0), (1, 0)),
+                ("forward", wp.vec3(0.0), wp.vec3(speed, 0.0, 0.0), (1, 0)),
+                ("reverse", wp.vec3(0.0), wp.vec3(-speed, 0.0, 0.0), (0, 1)),
+                ("parallel face", wp.vec3(0.0, 1.0, 0.0), wp.vec3(speed, 0.0, 0.0), (1, 0)),
+                ("outside parallel slab", wp.vec3(0.0, -2.0, 0.0), wp.vec3(speed, 0.0, 0.0), (0, 0)),
+                ("outside stationary ray", wp.vec3(0.0, -2.0, 0.0), wp.vec3(0.0), (0, 0)),
+                ("behind origin", wp.vec3(3.0 * scale, 0.0, 0.0), wp.vec3(speed, 0.0, 0.0), (0, 0)),
+            )
+            for leaf_size in (1, 4):
+                bvh = wp.Bvh(lowers, uppers, leaf_size=leaf_size)
+                for name, start, direction, expected in cases:
+                    for query_kernel in (tile_bvh_query_ray_kernel, tile_bvh_query_ray_fast_math_kernel):
+                        with test.subTest(
+                            scale=scale, num_bounds=num_bounds, leaf_size=leaf_size, case=name, kernel=query_kernel.key
+                        ):
+                            hits.zero_()
+                            wp.launch_tiled(
+                                query_kernel,
+                                dim=1,
+                                inputs=[bvh.id, start, direction, hits],
+                                block_dim=64,
+                                device=device,
+                            )
+                            np.testing.assert_array_equal(hits.numpy(), expected[:num_bounds])
+
+                # Scalar queries must still honor an explicit finite distance limit.
+                hits.zero_()
+                wp.launch(
+                    bvh_query_ray_with_max_dist,
+                    dim=1,
+                    inputs=[bvh.id, wp.vec3(0.0), wp.vec3(speed, 0.0, 0.0), float(np.finfo(np.float32).max), hits],
+                    device=device,
+                )
+                np.testing.assert_array_equal(hits.numpy(), np.zeros(num_bounds, dtype=int))
+
+    # Both X and Y slab times overflow, but only the first box has overlapping intervals.
+    lowers = wp.array([(1.0e20, 1.0e20, -1.0e20), (1.0e20, 3.0e20, -1.0e20)], dtype=wp.vec3, device=device)
+    uppers = wp.array([(2.0e20, 2.0e20, 1.0e20), (2.0e20, 4.0e20, 1.0e20)], dtype=wp.vec3, device=device)
+    hits = wp.zeros(2, dtype=int, device=device)
+    for leaf_size in (1, 4):
+        bvh = wp.Bvh(lowers, uppers, leaf_size=leaf_size)
+        # Nonzero Z components also exercise the CPU finite-ray specialization.
+        for speed, direction_z in (
+            (1.0, 0.0),
+            (1.0e-20, 0.0),
+            (1.0e-39, 0.0),
+            (1.0, 1.0),
+            (1.0e-20, 1.0e-20),
+            (1.0e-39, 1.0e-39),
+        ):
+            for query_kernel in (tile_bvh_query_ray_kernel, tile_bvh_query_ray_fast_math_kernel):
+                with test.subTest(
+                    case="disjoint slabs",
+                    speed=speed,
+                    direction_z=direction_z,
+                    leaf_size=leaf_size,
+                    kernel=query_kernel.key,
+                ):
+                    hits.zero_()
+                    wp.launch_tiled(
+                        query_kernel,
+                        dim=1,
+                        inputs=[bvh.id, wp.vec3(0.0), wp.vec3(speed, speed, direction_z), hits],
+                        block_dim=64,
+                        device=device,
+                    )
+                    np.testing.assert_array_equal(hits.numpy(), (1, 0))
+
+    # Widening a rounded reciprocal must not separate intervals that meet at a corner.
+    for scale, speed in ((1.0, 1.0), (2.0**65, 2.0**-70), (1.0, 2.0**-140)):
+        lowers = wp.array([(3.0 * scale, 0.0, -1.0)], dtype=wp.vec3, device=device)
+        uppers = wp.array([(6.0 * scale, scale, 1.0)], dtype=wp.vec3, device=device)
+        bvh = wp.Bvh(lowers, uppers)
+        hits = wp.zeros(1, dtype=int, device=device)
+        for query_kernel in (tile_bvh_query_ray_kernel, tile_bvh_query_ray_fast_math_kernel):
+            with test.subTest(case="corner contact", scale=scale, speed=speed, kernel=query_kernel.key):
+                hits.zero_()
+                wp.launch_tiled(
+                    query_kernel,
+                    dim=1,
+                    inputs=[bvh.id, wp.vec3(0.0), wp.vec3(3.0 * speed, speed, 0.0), hits],
+                    block_dim=64,
+                    device=device,
+                )
+                np.testing.assert_array_equal(hits.numpy(), (1,))
+
+    max_float = float(np.finfo(np.float32).max)
+    lowers = wp.array([(max_float, -1.0, -1.0)], dtype=wp.vec3, device=device)
+    uppers = wp.array([(max_float, 1.0, 1.0)], dtype=wp.vec3, device=device)
+    bvh = wp.Bvh(lowers, uppers)
+    hits = wp.zeros(1, dtype=int, device=device)
+    inputs = [bvh.id, wp.vec3(0.0), wp.vec3(1.0, 0.0, 0.0)]
+    for query_kernel in (tile_bvh_query_ray_kernel, tile_bvh_query_ray_fast_math_kernel):
+        with test.subTest(case="contact at FLT_MAX", kernel=query_kernel.key):
+            hits.zero_()
+            wp.launch_tiled(query_kernel, dim=1, inputs=[*inputs, hits], block_dim=64, device=device)
+            np.testing.assert_array_equal(hits.numpy(), (1,))
+
+    hits.zero_()
+    wp.launch(bvh_query_ray_with_max_dist, dim=1, inputs=[*inputs, max_float, hits], device=device)
+    np.testing.assert_array_equal(hits.numpy(), (0,))
+
+
 def test_tile_bvh_query(test, device):
     """Test tile-based BVH query and compare with single-threaded version."""
     rng = np.random.default_rng(456)
@@ -1285,6 +1415,7 @@ add_function_test(
 add_function_test(TestBvh, "test_bvh_refit_root_leaves", test_bvh_refit_root_leaves, devices=cuda_devices)
 add_function_test(TestBvh, "test_tile_bvh_query_aabb", test_tile_bvh_query, devices=devices)
 add_function_test(TestBvh, "test_tile_bvh_query_ray", test_tile_bvh_query_ray, devices=devices)
+add_function_test(TestBvh, "test_tile_bvh_ray_beyond_float_max", test_tile_bvh_ray_beyond_float_max, devices=devices)
 
 # Compatibility tests for the deprecated bvh_query_*_tiled() aliases.
 add_function_test(TestBvh, "test_bvh_query_aabb_tiled", test_bvh_query_aabb_tiled, devices=devices)
@@ -1293,6 +1424,7 @@ add_function_test(TestBvh, "test_bvh_query_ray_tiled", test_bvh_query_ray_tiled,
 for name, func in (
     ("test_tile_bvh_query_aabb", test_tile_bvh_query),
     ("test_tile_bvh_query_ray", test_tile_bvh_query_ray),
+    ("test_tile_bvh_ray_beyond_float_max", test_tile_bvh_ray_beyond_float_max),
     ("test_bvh_query_aabb_tiled", test_bvh_query_aabb_tiled),
     ("test_bvh_query_ray_tiled", test_bvh_query_ray_tiled),
 ):

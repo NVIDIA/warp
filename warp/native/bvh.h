@@ -427,27 +427,6 @@ struct bvh_stack_t {
 enum class BvhQueryKind : uint8_t { AABB = 0, RAY = 1, CAPSULE = 2, SPHERE = 3 };
 enum class BvhRayDirectionKind : uint8_t { FINITE = 0, PARALLEL = 1, FALLBACK = 2, OVERFLOW = 3 };
 
-CUDA_CALLABLE inline bool
-bvh_ray_intersect_aabb(const vec3& start, const vec3& rcp_dir, const vec3& lower, const vec3& upper, float& t)
-{
-    float lmin = -FLT_MAX;
-    float lmax = FLT_MAX;
-
-    // Distribute the interval clamp over each endpoint. With fmin/fmax
-    // semantics, a NaN from 0 * infinity then leaves the interval unchanged.
-    for (int i = 0; i < 3; ++i) {
-        const float l1 = (lower[i] - start[i]) * rcp_dir[i];
-        const float l2 = (upper[i] - start[i]) * rcp_dir[i];
-        lmin = min(max(l1, lmin), max(l2, lmin));
-        lmax = max(min(l1, lmax), min(l2, lmax));
-    }
-
-    const bool hit = (lmax >= 0.0f) & (lmax >= lmin);
-    if (hit)
-        t = lmin;
-    return hit;
-}
-
 // Floating-point classification must also work in fast-math kernels, where
 // isnan/isinf may be folded to false or subnormal comparisons flushed to zero.
 CUDA_CALLABLE inline uint32_t bvh_float_abs_bits(float value)
@@ -483,14 +462,14 @@ CUDA_CALLABLE inline double bvh_float_to_double(float value)
 #endif
 }
 
-// An infinite reciprocal of a nonzero direction still constrains the ray.
-// Widen before division so subnormal directions and their slab times survive
-// reciprocal overflow, including CUDA fast-math's flush-to-zero behavior.
+// Widen slab arithmetic when the reciprocal or the slab times overflow.
+// Preserve subnormal inputs, including CUDA fast-math's flush-to-zero behavior.
 CUDA_CALLABLE inline bool
 bvh_ray_intersect_aabb_overflow(const vec3& start, const vec3& dir, const vec3& lower, const vec3& upper, float& t)
 {
-    double lmin = -double(FLT_MAX);
-    double lmax = double(FLT_MAX);
+    // Finite float32 inputs can produce slab times beyond FLT_MAX.
+    double lmin = -HUGE_VAL;
+    double lmax = HUGE_VAL;
     for (int i = 0; i < 3; ++i) {
         const double origin = bvh_float_to_double(start[i]);
         const double slab_lower = bvh_float_to_double(lower[i]);
@@ -511,6 +490,34 @@ bvh_ray_intersect_aabb_overflow(const vec3& start, const vec3& dir, const vec3& 
     const bool hit = (lmax >= 0.0) & (lmax >= lmin);
     if (hit)
         t = float(lmin);
+    return hit;
+}
+
+CUDA_CALLABLE inline bool bvh_ray_intersect_aabb(
+    const vec3& start, const vec3& dir, const vec3& rcp_dir, const vec3& lower, const vec3& upper, float& t
+)
+{
+    // Tiled rays are unbounded; scalar queries apply max_dist separately.
+    float lmin = -INFINITY;
+    float lmax = INFINITY;
+
+    // Distribute the interval clamp over each endpoint. With fmin/fmax
+    // semantics, a NaN from 0 * infinity then leaves the interval unchanged.
+    for (int i = 0; i < 3; ++i) {
+        const float l1 = (lower[i] - start[i]) * rcp_dir[i];
+        const float l2 = (upper[i] - start[i]) * rcp_dir[i];
+        lmin = min(max(l1, lmin), max(l2, lmin));
+        lmax = max(min(l1, lmax), min(l2, lmax));
+    }
+
+    const bool hit = (lmax >= 0.0f) & (lmax >= lmin);
+    // Distinct slab intervals can collapse to +infinity. Recompute them in
+    // double precision using the original direction to preserve corner contact,
+    // also rejecting origins outside parallel slabs.
+    if (hit && lmin > 0.0f && bvh_float_abs_bits(lmin) == 0x7f800000U)
+        return bvh_ray_intersect_aabb_overflow(start, dir, lower, upper, t);
+    if (hit)
+        t = lmin;
     return hit;
 }
 
@@ -536,12 +543,13 @@ inline float bvh_nan_safe_max(float a, float b)
     return std_max(a, b);
 }
 
+template <bool UNBOUNDED_RAY = false>
 inline bool bvh_ray_intersect_aabb_cpu_fallback(
-    const vec3& start, const vec3& rcp_dir, const vec3& lower, const vec3& upper, float& t
+    const vec3& start, const vec3& dir, const vec3& rcp_dir, const vec3& lower, const vec3& upper, float& t
 )
 {
-    float lmin = -FLT_MAX;
-    float lmax = FLT_MAX;
+    float lmin = UNBOUNDED_RAY ? -INFINITY : -FLT_MAX;
+    float lmax = UNBOUNDED_RAY ? INFINITY : FLT_MAX;
     for (int i = 0; i < 3; ++i) {
         const float l1 = (lower[i] - start[i]) * rcp_dir[i];
         const float l2 = (upper[i] - start[i]) * rcp_dir[i];
@@ -549,6 +557,10 @@ inline bool bvh_ray_intersect_aabb_cpu_fallback(
         lmax = bvh_nan_safe_max(bvh_nan_safe_min(l1, lmax), bvh_nan_safe_min(l2, lmax));
     }
     const bool hit = (lmax >= 0.0f) & (lmax >= lmin);
+    if constexpr (UNBOUNDED_RAY) {
+        if (hit && lmin > 0.0f && bvh_float_is_inf(lmin))
+            return bvh_ray_intersect_aabb_overflow(start, dir, lower, upper, t);
+    }
     if (hit)
         t = lmin;
     return hit;
@@ -556,16 +568,17 @@ inline bool bvh_ray_intersect_aabb_cpu_fallback(
 
 // The CPU ray query classifies its inputs once. Finite rays and bounds use
 // comparison-based min/max operations; parallel axes need a slab check.
-template <bool HAS_PARALLEL_AXES>
-inline bool
-bvh_ray_intersect_aabb_cpu(const vec3& start, const vec3& rcp_dir, const vec3& lower, const vec3& upper, float& t)
+template <bool HAS_PARALLEL_AXES, bool UNBOUNDED_RAY = false>
+inline bool bvh_ray_intersect_aabb_cpu(
+    const vec3& start, const vec3& dir, const vec3& rcp_dir, const vec3& lower, const vec3& upper, float& t
+)
 {
     if (bvh_float_is_nan(lower[0]) || bvh_float_is_nan(lower[1]) || bvh_float_is_nan(lower[2])
         || bvh_float_is_nan(upper[0]) || bvh_float_is_nan(upper[1]) || bvh_float_is_nan(upper[2]))
-        return bvh_ray_intersect_aabb_cpu_fallback(start, rcp_dir, lower, upper, t);
+        return bvh_ray_intersect_aabb_cpu_fallback<UNBOUNDED_RAY>(start, dir, rcp_dir, lower, upper, t);
 
-    float lmin = -FLT_MAX;
-    float lmax = FLT_MAX;
+    float lmin = UNBOUNDED_RAY ? -INFINITY : -FLT_MAX;
+    float lmax = UNBOUNDED_RAY ? INFINITY : FLT_MAX;
 
     for (int i = 0; i < 3; ++i) {
         if constexpr (HAS_PARALLEL_AXES) {
@@ -583,6 +596,10 @@ bvh_ray_intersect_aabb_cpu(const vec3& start, const vec3& rcp_dir, const vec3& l
     }
 
     const bool hit = (lmax >= 0.0f) & (lmax >= lmin);
+    if constexpr (UNBOUNDED_RAY) {
+        if (hit && lmin > 0.0f && bvh_float_is_inf(lmin))
+            return bvh_ray_intersect_aabb_overflow(start, dir, lower, upper, t);
+    }
     if (hit)
         t = lmin;
     return hit;
@@ -599,6 +616,7 @@ struct bvh_query_t {
         , prim_end(0)
         , input_lower()
         , input_upper()
+        , ray_direction()
         , bounds_nr(0)
         , last_query_valid(true)
         , kind(BvhQueryKind::AABB)
@@ -631,6 +649,7 @@ struct bvh_query_t {
     // inputs
     wp::vec3 input_lower;  // start for ray
     wp::vec3 input_upper;  // reciprocal dir for rays, original dir for OVERFLOW
+    wp::vec3 ray_direction;  // original direction for slab-time overflow
 
     int bounds_nr;
     // Tracks whether the most recent bvh_query_next() / tile_bvh_query_next() call
@@ -653,7 +672,8 @@ struct bvh_query_t {
 // Inline this small dispatcher to avoid a function call for every visited node.
 // The ray variants also apply the max_dist predicate (closed endpoint for capsules,
 // half-open for plain rays, matching the original behavior of each).
-template <BvhQueryKind QUERY_KIND>
+// CPU tiled rays use UNBOUNDED_RAY to omit distance clipping entirely.
+template <BvhQueryKind QUERY_KIND, bool UNBOUNDED_RAY = false>
 CUDA_CALLABLE WP_FORCEINLINE bool
 bvh_query_test(const bvh_query_t& query, const vec3& node_lower, const vec3& node_upper, const float& max_dist)
 {
@@ -679,21 +699,28 @@ bvh_query_test(const bvh_query_t& query, const vec3& node_lower, const vec3& nod
             hit = bvh_ray_intersect_aabb_overflow(query.input_lower, query.input_upper, node_lower, node_upper, t);
         else {
 #if defined(__CUDA_ARCH__)
-            hit = bvh_ray_intersect_aabb(query.input_lower, query.input_upper, node_lower, node_upper, t);
+            hit = bvh_ray_intersect_aabb(
+                query.input_lower, query.ray_direction, query.input_upper, node_lower, node_upper, t
+            );
 #else
             if (query.ray_direction_kind == BvhRayDirectionKind::FINITE)
-                hit = bvh_ray_intersect_aabb_cpu<false>(
-                    query.input_lower, query.input_upper, node_lower, node_upper, t
+                hit = bvh_ray_intersect_aabb_cpu<false, UNBOUNDED_RAY>(
+                    query.input_lower, query.ray_direction, query.input_upper, node_lower, node_upper, t
                 );
             else if (query.ray_direction_kind == BvhRayDirectionKind::PARALLEL)
-                hit = bvh_ray_intersect_aabb_cpu<true>(query.input_lower, query.input_upper, node_lower, node_upper, t);
+                hit = bvh_ray_intersect_aabb_cpu<true, UNBOUNDED_RAY>(
+                    query.input_lower, query.ray_direction, query.input_upper, node_lower, node_upper, t
+                );
             else
-                hit = bvh_ray_intersect_aabb_cpu_fallback(
-                    query.input_lower, query.input_upper, node_lower, node_upper, t
+                hit = bvh_ray_intersect_aabb_cpu_fallback<UNBOUNDED_RAY>(
+                    query.input_lower, query.ray_direction, query.input_upper, node_lower, node_upper, t
                 );
 #endif
         }
-        return hit && !(t >= max_dist);
+        if constexpr (UNBOUNDED_RAY)
+            return hit;
+        else
+            return hit && !(t >= max_dist);
     } else {
         return intersect_aabb_aabb(query.input_lower, query.input_upper, node_lower, node_upper);
     }
@@ -738,6 +765,7 @@ CUDA_CALLABLE inline bvh_query_t bvh_query_ray(uint64_t id, const vec3& start, c
 {
     bvh_query_t query = bvh_query(id, start, 1.0f / dir, root);
     query.kind = BvhQueryKind::RAY;
+    query.ray_direction = dir;
 #if !defined(__CUDA_ARCH__)
     if (bvh_float_abs_bits(start[0]) >= 0x7f800000U || bvh_float_abs_bits(start[1]) >= 0x7f800000U
         || bvh_float_abs_bits(start[2]) >= 0x7f800000U || bvh_float_abs_bits(dir[0]) >= 0x7f800000U
@@ -786,7 +814,7 @@ CUDA_CALLABLE inline bvh_query_t bvh_query_sphere(uint64_t id, const vec3& cente
 // Shared traversal skeleton for all bvh query kinds, written once and instantiated per
 // query type. Each instantiation compiles to a dispatch-free loop (bvh_query_test folds
 // the query-kind branches at compile time), matching the original per-kind behavior.
-template <BvhQueryKind QUERY_KIND>
+template <BvhQueryKind QUERY_KIND, bool UNBOUNDED_RAY = false>
 CUDA_CALLABLE inline bool bvh_query_next_impl(bvh_query_t& query, int& index, const float& max_dist)
 {
     BVH bvh = query.bvh;
@@ -800,10 +828,10 @@ CUDA_CALLABLE inline bool bvh_query_next_impl(bvh_query_t& query, int& index, co
             if constexpr (QUERY_KIND == BvhQueryKind::AABB) {
                 const vec3 item_lower = bvh_load_vec3(bvh.item_lowers, primitive_index);
                 const vec3 item_upper = bvh_load_vec3(bvh.item_uppers, primitive_index);
-                if (!bvh_query_test<QUERY_KIND>(query, item_lower, item_upper, max_dist)) {
+                if (!bvh_query_test<QUERY_KIND, UNBOUNDED_RAY>(query, item_lower, item_upper, max_dist)) {
                     continue;
                 }
-            } else if (!bvh_query_test<QUERY_KIND>(
+            } else if (!bvh_query_test<QUERY_KIND, UNBOUNDED_RAY>(
                            query, bvh.item_lowers[primitive_index], bvh.item_uppers[primitive_index], max_dist
                        )) {
                 continue;
@@ -821,7 +849,7 @@ CUDA_CALLABLE inline bool bvh_query_next_impl(bvh_query_t& query, int& index, co
         BVHPackedNodeHalf node_lower = bvh_load_node(bvh.node_lowers, node_index);
         BVHPackedNodeHalf node_upper = bvh_load_node(bvh.node_uppers, node_index);
 
-        if (!bvh_query_test<QUERY_KIND>(
+        if (!bvh_query_test<QUERY_KIND, UNBOUNDED_RAY>(
                 query, reinterpret_cast<vec3&>(node_lower), reinterpret_cast<vec3&>(node_upper), max_dist
             )) {
             continue;
