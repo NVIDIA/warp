@@ -777,6 +777,16 @@ inline CUDA_CALLABLE void adj_eig3(
     mat_t<3, 3, Type> D = mat_t<3, 3, Type>(d[0], 0, 0, 0, d[1], 0, 0, 0, d[2]);
     mat_t<3, 3, Type> D_bar = mat_t<3, 3, Type>(adj_d[0], 0, 0, 0, adj_d[1], 0, 0, 0, adj_d[2]);
 
+    // Eigenvalue-only losses do not need reciprocal eigenvalue gaps. Avoid evaluating
+    // singular eigenvector derivatives that would multiply zero adjoints when eigenvalues repeat.
+    if (adj_Q == mat_t<3, 3, Type>()) {
+        if (adj_d == vec_t<3, Type>())
+            return;
+
+        adj_A = adj_A + mul(Q, mul(D_bar, transpose(Q)));
+        return;
+    }
+
     Type dyx = d[1] - d[0];
     Type dzx = d[2] - d[0];
     Type dzy = d[2] - d[1];

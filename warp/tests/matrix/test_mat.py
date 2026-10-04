@@ -1121,6 +1121,123 @@ def test_qr(test, device, dtype, register_kernels=False):
                 assert_np_equal((plusval - minusval) / (2 * dx), m3grads[ii, jj], tol=fdtol)
 
 
+def _eig_gradient_matrices(dtype):
+    matrices = [
+        np.diag([1.0, 2.0, 3.0]),
+        np.diag([2.0, 2.0, 3.0]),
+        np.diag([2.0, 3.0, 2.0]),
+        np.diag([3.0, 2.0, 2.0]),
+        2.0 * np.eye(3),
+        np.zeros((3, 3)),
+        np.diag([-2.0, -2.0, 3.0]),
+    ]
+    rotation, _ = np.linalg.qr(np.random.default_rng(2010).standard_normal((3, 3)))
+    matrices.append(rotation @ np.diag([2.0, 2.0, 3.0]) @ rotation.T)
+    return np.array(matrices, dtype=dtype)
+
+
+def test_eig_eigenvalue_gradients(test, device, dtype):
+    scalar = wp.dtype_from_numpy(np.dtype(dtype))
+    matrix = wp.types.matrix((3, 3), dtype=scalar)
+    tolerance = {np.float16: 2.0e-2, np.float32: 1.0e-5, np.float64: 1.0e-12}[dtype]
+
+    @wp.kernel(module="unique")
+    def evaluate(a: wp.array[matrix], mode: int, loss: wp.array[scalar]):
+        i = wp.tid()
+        _q, d = wp.eig3(a[i])
+        if mode == 1:
+            loss[i] = wp.dot(d, d)
+        elif mode == 2:
+            loss[i] = d[0] + d[1] + d[2] + wp.trace(a[i])
+        else:
+            loss[i] = d[0] + d[1] + d[2]
+
+    values = _eig_gradient_matrices(dtype)
+    count = len(values)
+    for mode in (0, 1, 2):
+        with test.subTest(mode=mode):
+            a = wp.array(values, dtype=matrix, requires_grad=True, device=device)
+            loss = wp.zeros(count, dtype=scalar, requires_grad=True, device=device)
+            with wp.Tape() as tape:
+                wp.launch(evaluate, dim=count, inputs=[a, mode], outputs=[loss], device=device)
+            tape.backward(grads={loss: wp.ones_like(loss)})
+            reference = (
+                2.0 * values.astype(float)
+                if mode == 1
+                else np.broadcast_to((2.0 if mode == 2 else 1.0) * np.eye(3), values.shape)
+            )
+            forward = (
+                np.sum(values.astype(float) ** 2, axis=(1, 2))
+                if mode == 1
+                else ((2.0 if mode == 2 else 1.0) * np.trace(values.astype(float), axis1=1, axis2=2))
+            )
+            np.testing.assert_allclose(loss.numpy(), forward, atol=tolerance, rtol=tolerance)
+            np.testing.assert_allclose(a.grad.numpy(), reference, atol=tolerance, rtol=tolerance)
+
+
+def test_eig_disconnected_loss(test, device, dtype):
+    scalar = wp.dtype_from_numpy(np.dtype(dtype))
+    matrix = wp.types.matrix((3, 3), dtype=scalar)
+    vector = wp.types.vector(3, dtype=scalar)
+    tolerance = {np.float16: 2.0e-2, np.float32: 1.0e-5, np.float64: 1.0e-12}[dtype]
+
+    @wp.kernel(module="unique")
+    def diagnostic(a: wp.array[matrix], q: wp.array[matrix], d: wp.array[vector]):
+        i = wp.tid()
+        qi, di = wp.eig3(a[i])
+        q[i] = qi
+        d[i] = di
+
+    @wp.kernel(module="unique")
+    def trace_loss(a: wp.array[matrix], loss: wp.array[scalar]):
+        i = wp.tid()
+        loss[i] = wp.trace(a[i])
+
+    values = _eig_gradient_matrices(dtype)
+    count = len(values)
+    for record_diagnostic in (False, True):
+        with test.subTest(record_diagnostic=record_diagnostic):
+            a = wp.array(values, dtype=matrix, requires_grad=True, device=device)
+            q = wp.zeros(count, dtype=matrix, requires_grad=True, device=device)
+            d = wp.zeros(count, dtype=vector, requires_grad=True, device=device)
+            loss = wp.zeros(count, dtype=scalar, requires_grad=True, device=device)
+            with wp.Tape() as tape:
+                if record_diagnostic:
+                    wp.launch(diagnostic, dim=count, inputs=[a], outputs=[q, d], device=device)
+                wp.launch(trace_loss, dim=count, inputs=[a], outputs=[loss], device=device)
+            tape.backward(grads={loss: wp.ones_like(loss)})
+            np.testing.assert_allclose(loss.numpy(), np.trace(values, axis1=1, axis2=2), atol=tolerance, rtol=tolerance)
+            np.testing.assert_allclose(a.grad.numpy(), np.broadcast_to(np.eye(3), values.shape), atol=0, rtol=0)
+
+
+def test_eig_masked_parameter(test, device, dtype):
+    scalar = wp.dtype_from_numpy(np.dtype(dtype))
+    matrix = wp.types.matrix((3, 3), dtype=scalar)
+    tolerance = {np.float16: 2.0e-2, np.float32: 1.0e-5, np.float64: 1.0e-12}[dtype]
+
+    @wp.kernel(module="unique")
+    def evaluate(p: wp.array[scalar], bases: wp.array[matrix], loss: wp.array[scalar]):
+        i = wp.tid()
+        _q, d = wp.eig3(p[0] * bases[i])
+        loss[i] = d[0] + d[1] + d[2]
+
+    bases = wp.array(
+        np.array([np.diag([2.0, 2.0, 3.0]), np.diag([1.0, 2.0, 3.0])], dtype=dtype),
+        dtype=matrix,
+        device=device,
+    )
+    for seeds in ([0.0, 1.0], [0.0, 0.0], [1.0, 1.0]):
+        with test.subTest(seeds=seeds):
+            p = wp.array([1.0], dtype=scalar, requires_grad=True, device=device)
+            loss = wp.zeros(2, dtype=scalar, requires_grad=True, device=device)
+            with wp.Tape() as tape:
+                wp.launch(evaluate, dim=2, inputs=[p, bases], outputs=[loss], device=device)
+            tape.backward(grads={loss: wp.array(seeds, dtype=scalar, device=device)})
+            np.testing.assert_allclose(loss.numpy(), [7.0, 6.0], atol=tolerance, rtol=tolerance)
+            expected = 7.0 * seeds[0] + 6.0 * seeds[1]
+            np.testing.assert_allclose(p.grad.numpy(), [expected], atol=tolerance, rtol=tolerance)
+
+
 def test_eig(test, device, dtype, register_kernels=False):
     tol = {
         np.float16: 4.0e-2,
@@ -3463,6 +3580,23 @@ for dtype in np_float_types:
     )
     add_function_test_register_kernel(TestMat, f"test_qr_{dtype.__name__}", test_qr, devices=devices, dtype=dtype)
     add_function_test_register_kernel(TestMat, f"test_eig_{dtype.__name__}", test_eig, devices=devices, dtype=dtype)
+    add_function_test(
+        TestMat,
+        f"test_eig_eigenvalue_gradients_{dtype.__name__}",
+        test_eig_eigenvalue_gradients,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test(
+        TestMat,
+        f"test_eig_disconnected_loss_{dtype.__name__}",
+        test_eig_disconnected_loss,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test(
+        TestMat, f"test_eig_masked_parameter_{dtype.__name__}", test_eig_masked_parameter, devices=devices, dtype=dtype
+    )
     add_function_test_register_kernel(
         TestMat, f"test_transform_point_{dtype.__name__}", test_transform_point, devices=devices, dtype=dtype
     )
