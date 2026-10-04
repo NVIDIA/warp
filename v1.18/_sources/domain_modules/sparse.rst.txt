@@ -145,7 +145,7 @@ Do not assume that the current value of ``A.nnz`` is exact. Before exporting a c
     necessarily the active block count. Warp reuses the transfer resources
     allocated by previous calls on the same matrix.
 
-.. deprecated:: 1.18
+.. deprecated:: 1.10
 
     :meth:`BsrMatrix.copy_nnz_async` starts an asynchronous transfer but will be
     removed in a future release. The pending transfer can be unsafe when matrix

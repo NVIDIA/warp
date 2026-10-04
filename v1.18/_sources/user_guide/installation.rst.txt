@@ -3,6 +3,8 @@ Installation
 
 Warp requires Python 3.10 or newer. We publish ``warp-lang`` wheels on PyPI for Windows (x86-64), Linux (x86-64 and AArch64), and macOS (Apple Silicon). The Windows x86-64 and Linux wheels support CPU execution and CUDA acceleration. The macOS wheels support CPU execution but not Metal acceleration.
 
+For experimental Windows on Arm support, see :ref:`windows-arm64-builds`.
+
 PyPI and nightly wheels for Linux and Windows use CUDA Toolkit 13.4. They require an
 NVIDIA R580-series or newer driver and a Turing (``sm_75``) or newer GPU for CUDA acceleration.
 For CUDA 12 environments, download a ``+cu12`` wheel from :ref:`GitHub Releases <github-release-wheels>`
@@ -191,9 +193,9 @@ For developers who want to build the library themselves, the following tools are
 * `Git Large File Storage <https://git-lfs.com>`_
 
 A CUDA Toolkit is not required for a CPU-only build. CUDA-enabled builds on Windows and Linux require
-`CUDA Toolkit <https://developer.nvidia.com/cuda/toolkit>`_ 12.0 or newer.
-Building from source with CUDA 12 remains supported. Choose a toolkit compatible with your
-driver and GPU; see :ref:`cuda-requirements` and the :ref:`cuda-12-arm-limitation`.
+`CUDA Toolkit <https://developer.nvidia.com/cuda/toolkit>`_ 12.0 or newer (13.4 or newer on Windows on Arm).
+Building from source with CUDA 12 remains supported on Windows x86-64 and Linux. Choose a toolkit
+compatible with your driver and GPU; see :ref:`cuda-requirements` and the :ref:`cuda-12-arm-limitation`.
 
 After cloning the repository, users should run:
 
@@ -229,6 +231,20 @@ After building, the Warp package should be installed using:
 
 The ``-e`` option is optional but ensures that subsequent modifications to the
 library will be reflected in the Python package.
+
+.. _windows-arm64-builds:
+
+Experimental Windows on Arm builds
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Build Warp from the ``main`` branch with CUDA Toolkit 13.4 or newer, an Arm64 Python environment,
+and Visual Studio's ARM64 C++ build tools.
+
+Windows on Arm currently receives less extensive testing than officially supported platforms.
+We do not yet publish wheels for it on PyPI or GitHub Releases.
+
+libmathdx builds for Windows on Arm are not currently available. To build without it, pass
+``--no-use-libmathdx`` to ``build_lib.py``.
 
 CMake build
 ~~~~~~~~~~~

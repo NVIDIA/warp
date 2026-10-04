@@ -551,6 +551,7 @@
   <section id="installation">
 <h1>Installation<a class="headerlink" href="#installation" title="Link to this heading">#</a></h1>
 <p>Warp requires Python 3.10 or newer. We publish <code class="docutils literal notranslate"><span class="pre">warp-lang</span></code> wheels on PyPI for Windows (x86-64), Linux (x86-64 and AArch64), and macOS (Apple Silicon). The Windows x86-64 and Linux wheels support CPU execution and CUDA acceleration. The macOS wheels support CPU execution but not Metal acceleration.</p>
+<p>For experimental Windows on Arm support, see <a class="reference internal" href="#windows-arm64-builds"><span class="std std-ref">Experimental Windows on Arm builds</span></a>.</p>
 <p>PyPI and nightly wheels for Linux and Windows use CUDA Toolkit 13.4. They require an
 NVIDIA R580-series or newer driver and a Turing (<code class="docutils literal notranslate"><span class="pre">sm_75</span></code>) or newer GPU for CUDA acceleration.
 For CUDA 12 environments, download a <code class="docutils literal notranslate"><span class="pre">+cu12</span></code> wheel from <a class="reference internal" href="#github-release-wheels"><span class="std std-ref">GitHub Releases</span></a>
@@ -689,9 +690,9 @@ build for your system.</p>
 <li><p><a class="reference external" href="https://git-lfs.com">Git Large File Storage</a></p></li>
 </ul>
 <p>A CUDA Toolkit is not required for a CPU-only build. CUDA-enabled builds on Windows and Linux require
-<a class="reference external" href="https://developer.nvidia.com/cuda/toolkit">CUDA Toolkit</a> 12.0 or newer.
-Building from source with CUDA 12 remains supported. Choose a toolkit compatible with your
-driver and GPU; see <a class="reference internal" href="#cuda-requirements"><span class="std std-ref">CUDA Requirements</span></a> and the <a class="reference internal" href="#cuda-12-arm-limitation"><span class="std std-ref">CUDA 12.9 limitation on Linux ARM platforms</span></a>.</p>
+<a class="reference external" href="https://developer.nvidia.com/cuda/toolkit">CUDA Toolkit</a> 12.0 or newer (13.4 or newer on Windows on Arm).
+Building from source with CUDA 12 remains supported on Windows x86-64 and Linux. Choose a toolkit
+compatible with your driver and GPU; see <a class="reference internal" href="#cuda-requirements"><span class="std std-ref">CUDA Requirements</span></a> and the <a class="reference internal" href="#cuda-12-arm-limitation"><span class="std std-ref">CUDA 12.9 limitation on Linux ARM platforms</span></a>.</p>
 <p>After cloning the repository, users should run:</p>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>python<span class="w"> </span>build_lib.py
 </pre></div>
@@ -717,6 +718,15 @@ pass <code class="docutils literal notranslate"><span class="pre">--use-dynamic-
 </div>
 <p>The <code class="docutils literal notranslate"><span class="pre">-e</span></code> option is optional but ensures that subsequent modifications to the
 library will be reflected in the Python package.</p>
+<section id="experimental-windows-on-arm-builds">
+<span id="windows-arm64-builds"></span><h3>Experimental Windows on Arm builds<a class="headerlink" href="#experimental-windows-on-arm-builds" title="Link to this heading">#</a></h3>
+<p>Build Warp from the <code class="docutils literal notranslate"><span class="pre">main</span></code> branch with CUDA Toolkit 13.4 or newer, an Arm64 Python environment,
+and Visual Studio’s ARM64 C++ build tools.</p>
+<p>Windows on Arm currently receives less extensive testing than officially supported platforms.
+We do not yet publish wheels for it on PyPI or GitHub Releases.</p>
+<p>libmathdx builds for Windows on Arm are not currently available. To build without it, pass
+<code class="docutils literal notranslate"><span class="pre">--no-use-libmathdx</span></code> to <code class="docutils literal notranslate"><span class="pre">build_lib.py</span></code>.</p>
+</section>
 <section id="cmake-build">
 <h3>CMake build<a class="headerlink" href="#cmake-build" title="Link to this heading">#</a></h3>
 <p>Developers who have CMake installed can use the alternate CMake build path.
@@ -1034,6 +1044,7 @@ for more details on how to use Warp in Omniverse.</p>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#dependencies">Dependencies</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#building-from-source">Building from Source</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#experimental-windows-on-arm-builds">Experimental Windows on Arm builds</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#cmake-build">CMake build</a></li>
 </ul>
 </li>

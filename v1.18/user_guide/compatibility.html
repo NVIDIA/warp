@@ -583,8 +583,8 @@ on platforms with NVIDIA CUDA support. The following table summarizes platform s
 <tr class="row-odd"><td><p><strong>Windows</strong> 11</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">arm64</span></code></p></td>
 <td><p>PC</p></td>
-<td><p>Source build ✅</p></td>
-<td><p>CPU Only</p></td>
+<td><p>Experimental</p></td>
+<td><p>CUDA 13.4+</p></td>
 </tr>
 <tr class="row-even"><td><p><strong>Linux</strong></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">x86-64</span></code></p></td>
@@ -613,7 +613,8 @@ on platforms with NVIDIA CUDA support. The following table summarizes platform s
 </tbody>
 </table>
 </div>
-<p>Warp supports CPU execution on Windows ARM64 when built from source. We do not currently publish pre-built wheels for this platform.</p>
+<p>Windows on Arm supports CPU execution and experimental CUDA acceleration through source builds.
+See <a class="reference internal" href="installation.html#windows-arm64-builds"><span class="std std-ref">Experimental Windows on Arm builds</span></a> for requirements and current limitations.</p>
 </section>
 <section id="runtime-requirements">
 <h3>Runtime requirements<a class="headerlink" href="#runtime-requirements" title="Link to this heading">#</a></h3>
@@ -692,7 +693,7 @@ On older GPUs, these operations return zero.</p></li>
 <ul class="simple">
 <li><p>CUDA Toolkit (required to build Warp with GPU support, not available on macOS):</p>
 <ul>
-<li><p>Minimum: CUDA Toolkit 12.0</p></li>
+<li><p>Minimum: CUDA Toolkit 12.0 (13.4 on Windows on Arm)</p></li>
 <li><p>For full libmathdx support: CUDA Toolkit 12.6.3+</p></li>
 <li><p>For conditional graph node support: CUDA Toolkit 12.4+</p></li>
 </ul>
@@ -700,8 +701,8 @@ On older GPUs, these operations return zero.</p></li>
 <li><p>libmathdx (auto-fetched via Packman by default)</p></li>
 <li><p>LLVM/Clang (auto-fetched via Packman by default)</p></li>
 </ul>
-<p>Building from source with CUDA 12 remains supported, subject to the driver and GPU architecture
-requirements above. A CUDA Toolkit is not needed for a CPU-only build.</p>
+<p>Building from source with CUDA 12 remains supported on Windows x86-64 and Linux, subject to the
+driver and GPU architecture requirements above. A CUDA Toolkit is not needed for a CPU-only build.</p>
 <p><strong>Building:</strong></p>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>python<span class="w"> </span>build_lib.py
 <span class="gp">$ </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.

@@ -844,7 +844,7 @@ or equal to the true <code class="docutils literal notranslate"><span class="pre
 <span class="sig-name descname"><span class="pre">copy_nnz_async</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.18/warp/_src/sparse.py#L346-L364"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.BsrMatrix.copy_nnz_async" title="Link to this definition">#</a></dt>
 <dd><p>Start an asynchronous transfer of <code class="docutils literal notranslate"><span class="pre">offsets[nrow]</span></code> to host memory.</p>
 <div class="deprecated">
-<p><span class="versionmodified deprecated">Deprecated since version 1.18: </span>This method will be removed in a future release. Prefer <a class="reference internal" href="#warp.sparse.BsrMatrix.nnz_sync" title="warp.sparse.BsrMatrix.nnz_sync"><code class="xref py py-meth docutils literal notranslate"><span class="pre">nnz_sync()</span></code></a>, which avoids keeping a
+<p><span class="versionmodified deprecated">Deprecated since version 1.10: </span>This method will be removed in a future release. Prefer <a class="reference internal" href="#warp.sparse.BsrMatrix.nnz_sync" title="warp.sparse.BsrMatrix.nnz_sync"><code class="xref py py-meth docutils literal notranslate"><span class="pre">nnz_sync()</span></code></a>, which avoids keeping a
 potentially stale transfer pending between calls. An asynchronous transfer may be unsafe when matrix
 topology updates use other streams or when the transfer is captured and replayed in a CUDA graph.</p>
 </div>
