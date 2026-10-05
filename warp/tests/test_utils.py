@@ -87,9 +87,7 @@ def test_quat_between_nearly_opposite_vectors_preserves_rotation_plane(test, dev
     quaternion_axis = rotations.numpy()[0, :3]
     quaternion_axis /= np.linalg.norm(quaternion_axis)
 
-    np.testing.assert_allclose(
-        abs(np.dot(quaternion_axis, expected_axis)), 1.0, rtol=2e-6, atol=2e-6
-    )
+    np.testing.assert_allclose(abs(np.dot(quaternion_axis, expected_axis)), 1.0, rtol=2e-6, atol=2e-6)
     np.testing.assert_allclose(rotated.numpy()[0], target, rtol=2e-6, atol=2e-6)
 
 
