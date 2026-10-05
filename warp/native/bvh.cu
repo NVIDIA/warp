@@ -35,6 +35,37 @@ __global__ void memset_kernel(int* dest, int value, size_t n)
     }
 }
 
+__global__ void bvh_clear_ray_bounds_kernel(BVHPackedNodeHalf* uppers, const int* root)
+{
+    if (threadIdx.x == 0)
+        uppers[*root].b = 0;
+}
+
+__global__ void bvh_check_ray_bounds_kernel(
+    int n, const vec3* lowers, const vec3* uppers, BVHPackedNodeHalf* node_uppers, const int* root
+)
+{
+    const int index = blockDim.x * blockIdx.x + threadIdx.x;
+    const bool needs_check = index < n && bvh_ray_bounds_need_check(lowers[index], uppers[index]);
+    // One atomic per exceptional block; ordinary geometry needs none.
+    if (__syncthreads_or(needs_check) && threadIdx.x == 0)
+        atomicOr(reinterpret_cast<unsigned int*>(&node_uppers[*root]) + 3, 0x80000000U);
+}
+
+void bvh_update_ray_bounds_device(BVH& bvh)
+{
+    if (!bvh.root || !bvh.node_uppers || bvh.num_items <= 0)
+        return;
+    ContextGuard guard(bvh.context);
+    // Separate launches order the reset before every block's contribution,
+    // and stay on the current stream for graph capture and replay.
+    wp_launch_device(WP_CURRENT_CONTEXT, bvh_clear_ray_bounds_kernel, 1, (bvh.node_uppers, bvh.root));
+    wp_launch_device(
+        WP_CURRENT_CONTEXT, bvh_check_ray_bounds_kernel, bvh.num_items,
+        (bvh.num_items, bvh.item_lowers, bvh.item_uppers, bvh.node_uppers, bvh.root)
+    );
+}
+
 // for LBVH: this will start with some muted leaf nodes, but that is okay, we can still trace up because there parents
 // information is still valid the only thing worth mentioning is that when the parent leaf node is also a leaf node, we
 // need to recompute its bounds, since their child information are lost for a compact tree such as those from SAH or
@@ -743,6 +774,7 @@ void bvh_create_device(
 
         LinearBVHBuilderGPU builder;
         builder.build(bvh_device_on_host, lowers, uppers, num_items, NULL, groups);
+        bvh_update_ray_bounds_device(bvh_device_on_host);
     } else {
         printf(
             "Unrecognized Constructor type: %d! For GPU constructor it should be SAH (0), Median (1), or LBVH (2)!\n",
@@ -785,6 +817,7 @@ void bvh_refit_device(BVH& bvh)
         (bvh.num_leaf_nodes, bvh.node_parents, bvh.node_counts, bvh.primitive_indices, bvh.node_lowers, bvh.node_uppers,
          bvh.item_lowers, bvh.item_uppers)
     );
+    bvh_update_ray_bounds_device(bvh);
 }
 
 void bvh_rebuild_device(BVH& bvh)
@@ -800,6 +833,7 @@ void bvh_rebuild_device(BVH& bvh)
     LinearBVHBuilderGPU builder;
     builder.build(bvh, bvh.item_lowers, bvh.item_uppers, bvh.num_items, NULL, bvh.item_groups);
     bvh.constructor_type = BVH_CONSTRUCTOR_LBVH;
+    bvh_update_ray_bounds_device(bvh);
 }
 
 

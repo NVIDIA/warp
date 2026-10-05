@@ -231,6 +231,7 @@ void bvh_refit_with_solid_angle_device(BVH& bvh, Mesh& mesh)
         (bvh.num_leaf_nodes, bvh.node_parents, bvh.node_counts, bvh.node_lowers, bvh.node_uppers, mesh.points,
          mesh.indices, bvh.primitive_indices, mesh.solid_angle_props)
     );
+    bvh_update_ray_bounds_device(bvh);
 }
 
 }  // namespace wp

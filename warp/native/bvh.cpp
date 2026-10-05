@@ -732,7 +732,28 @@ void bvh_refit_recursive(BVH& bvh, int index)
     }
 }
 
-void bvh_refit_host(BVH& bvh) { bvh_refit_recursive(bvh, *bvh.root); }
+void bvh_update_ray_bounds_host(BVH& bvh)
+{
+    if (!bvh.root || !bvh.node_uppers || bvh.num_items <= 0)
+        return;
+    // A flat reduction can be vectorized; early exits through vec3 helpers
+    // otherwise make this scan expensive relative to a small CPU refit.
+    static_assert(sizeof(vec3) == 3 * sizeof(float), "BVH bounds must be packed");
+    const float* lowers = reinterpret_cast<const float*>(bvh.item_lowers);
+    const float* uppers = reinterpret_cast<const float*>(bvh.item_uppers);
+    uint32_t needs_check = 0;
+    for (size_t i = 0; i < size_t(bvh.num_items) * 3; ++i) {
+        needs_check |= uint32_t(!bvh_ray_float_in_fast_range(bvh_float_abs_bits(lowers[i])))
+            | uint32_t(!bvh_ray_float_in_fast_range(bvh_float_abs_bits(uppers[i])));
+    }
+    bvh.node_uppers[*bvh.root].b = needs_check != 0;
+}
+
+void bvh_refit_host(BVH& bvh)
+{
+    bvh_refit_recursive(bvh, *bvh.root);
+    bvh_update_ray_bounds_host(bvh);
+}
 void bvh_rebuild_host(BVH& bvh, int constructor_type)
 {
     if (constructor_type == BVH_CONSTRUCTOR_CUBQL) {
@@ -757,6 +778,7 @@ void bvh_rebuild_host(BVH& bvh, int constructor_type)
     TopDownBVHBuilder builder;
     builder.rebuild(bvh, constructor_type);
     bvh.constructor_type = constructor_type;
+    bvh_update_ray_bounds_host(bvh);
 }
 
 }  // namespace wp
@@ -815,6 +837,7 @@ void bvh_create_host(
 
     TopDownBVHBuilder builder;
     builder.build(bvh, lowers, uppers, num_items, constructor_type, groups);
+    bvh_update_ray_bounds_host(bvh);
 }
 
 
