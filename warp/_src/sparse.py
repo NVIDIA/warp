@@ -633,7 +633,8 @@ def _bsr_set_zero_topology(
         if row_capacity is not None:
             if is_array(row_capacity):
                 bsr.offsets[:1].zero_()
-                warp._src.utils.array_scan(row_capacity, bsr.offsets[1:], inclusive=True)
+                # offsets may be longer than nrow + 1 after shrinking
+                warp._src.utils.array_scan(row_capacity, bsr.offsets[1 : bsr.nrow + 1], inclusive=True)
                 nnz = None
             else:
                 wp.launch(

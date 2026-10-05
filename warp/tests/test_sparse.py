@@ -1677,6 +1677,19 @@ def test_bsr_alloc(test, device):
     assert bsr.values.shape[0] >= 6
 
 
+def test_bsr_set_zero_row_capacity_after_shrink(test, device):
+    bsr = bsr_zeros(5, 4, block_type=float, device=device)
+
+    # Shrinking keeps the larger offsets allocation
+    bsr_set_zero(bsr, rows_of_blocks=3)
+    row_capacity = wp.array([2, 0, 1], dtype=int, device=device)
+    bsr_set_zero(bsr, topology="padded", row_capacity=row_capacity)
+
+    test.assertEqual(bsr.nnz_sync(), 3)
+    np.testing.assert_array_equal(bsr.offsets.numpy()[: bsr.nrow + 1], np.array([0, 2, 2, 3], dtype=np.int32))
+    np.testing.assert_array_equal(bsr.row_counts.numpy()[: bsr.nrow], np.zeros(3, dtype=np.int32))
+
+
 def test_bsr_scaled_expression_add_sub(test, device):
     # Scaled expressions must give the same result on either side of + and -
     rng = np.random.default_rng(123)
@@ -1854,6 +1867,12 @@ add_function_test(
 add_function_test(TestSparse, "test_bsr_mm_max_new_nnz", test_bsr_mm_max_new_nnz, devices=devices, check_output=False)
 
 add_function_test(TestSparse, "test_bsr_alloc", test_bsr_alloc, devices=devices)
+add_function_test(
+    TestSparse,
+    "test_bsr_set_zero_row_capacity_after_shrink",
+    test_bsr_set_zero_row_capacity_after_shrink,
+    devices=devices,
+)
 add_function_test(TestSparse, "test_bsr_scaled_expression_add_sub", test_bsr_scaled_expression_add_sub, devices=devices)
 
 if __name__ == "__main__":
