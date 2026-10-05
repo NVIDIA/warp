@@ -23,7 +23,7 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: 3 :: Only",
     "Environment :: GPU :: NVIDIA CUDA",
-    "Environment :: GPU :: NVIDIA CUDA :: 12",
+    "Environment :: GPU :: NVIDIA CUDA :: 13",
     "Operating System :: OS Independent",
     "Topic :: Scientific/Engineering",
 ]
