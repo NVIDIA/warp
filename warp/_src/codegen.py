@@ -3410,6 +3410,11 @@ class Adjoint:
 
         adj.blocks[-1].body_reverse.extend(reversed(reverse))
 
+        # An enclosing loop must also zero this loop's adjoints at each of its reverse iterations:
+        # a later sibling loop that reassigns one of these vars reads its adjoint via adj_assign.
+        adj.blocks[-1].vars.extend(cond_block.vars)
+        adj.blocks[-1].vars.extend(body_block.vars)
+
     # define a while loop
     def begin_while(adj, cond):
         # evaluate condition in its own block
