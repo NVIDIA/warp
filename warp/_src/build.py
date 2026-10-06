@@ -174,6 +174,8 @@ def build_cpu(
     obj_path = obj_path.encode("utf-8")
 
     flags_list = extra_flags.split()
+    if flags_list and flags_list[-1] == "-mllvm":
+        raise ValueError("-mllvm requires one LLVM option argument")
     for include_dir in _get_extra_include_dirs(extra_include_dirs):
         flags_list.extend(("-I", include_dir))
     flags_array = (ctypes.c_char_p * (len(flags_list) + 1))(*[f.encode("utf-8") for f in flags_list], None)

@@ -9,6 +9,7 @@ import sys
 import tempfile
 import types
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import patch
 
 import warp as wp
@@ -223,10 +224,71 @@ def test_options_opt_level_hash(test, device):
         module.hashers.clear()
 
 
+def _make_cpu_llvm_options_kernel(flags: str | None, *, name: str | None = None):
+    @wp.kernel(name=name, module="unique", module_options={"cpu_compiler_flags": flags})
+    def exp_result(values: wp.array[wp.float32]):
+        values[0] = wp.exp(values[0]) * 2.0 + 1.0
+
+    return exp_result
+
+
+def _run_cpu_llvm_options_kernel(kernel, x0: float = 0.5):
+    values = wp.array([x0], dtype=wp.float32, device="cpu")
+    wp.launch(kernel, dim=1, inputs=[values], device="cpu", block_dim=1)
+    return values.numpy()[0]
+
+
 devices = get_test_devices()
 
 
 class TestOptions(unittest.TestCase):
+    def test_cpu_llvm_option_forms_and_reset(self):
+        wp.init()
+        with patch.object(wp.config, "cache_kernels", False), patch.object(wp.config, "cpu_compiler_flags", None):
+            baseline_kernel = _make_cpu_llvm_options_kernel(None)
+            baseline = _run_cpu_llvm_options_kernel(baseline_kernel)
+            tuned = [
+                _make_cpu_llvm_options_kernel("-march=native -mllvm -limit-float-precision=6"),
+                _make_cpu_llvm_options_kernel("-march=native -mllvm=-limit-float-precision=6"),
+            ]
+            for kernel in tuned:
+                self.assertNotEqual(_run_cpu_llvm_options_kernel(kernel), baseline)
+            self.assertNotEqual(tuned[0].module.get_module_hash(), tuned[1].module.get_module_hash())
+            reset_kernel = _make_cpu_llvm_options_kernel(None, name="exp_result_reset")
+            self.assertIsNot(reset_kernel.module, baseline_kernel.module)
+            self.assertEqual(_run_cpu_llvm_options_kernel(reset_kernel), baseline)
+
+    def test_cpu_llvm_invalid_option_recovers(self):
+        wp.init()
+        with patch.object(wp.config, "cache_kernels", False), patch.object(wp.config, "cpu_compiler_flags", None):
+            baseline = _run_cpu_llvm_options_kernel(_make_cpu_llvm_options_kernel(None))
+            invalid = _make_cpu_llvm_options_kernel("-mllvm=-warp-unknown-llvm-option")
+            with self.assertRaisesRegex(Exception, "CPU kernel build failed"):
+                invalid.module.load("cpu", block_dim=1)
+            valid = _make_cpu_llvm_options_kernel("-march=native -mllvm=-inline-threshold=307")
+            self.assertEqual(_run_cpu_llvm_options_kernel(valid), baseline)
+
+    def test_cpu_llvm_concurrent_options(self):
+        wp.init()
+        with patch.object(wp.config, "cache_kernels", False), patch.object(wp.config, "cpu_compiler_flags", None):
+            baseline_kernel = _make_cpu_llvm_options_kernel(None)
+            baseline = _run_cpu_llvm_options_kernel(baseline_kernel)
+            tuned = [
+                _make_cpu_llvm_options_kernel("-mllvm=-limit-float-precision=5"),
+                _make_cpu_llvm_options_kernel("-march=native -mllvm=-limit-float-precision=5"),
+            ]
+            exact = [
+                _make_cpu_llvm_options_kernel("-march=native -mllvm=-inline-threshold=383"),
+                _make_cpu_llvm_options_kernel(None, name="exp_result_concurrent_default"),
+            ]
+            self.assertIsNot(exact[1].module, baseline_kernel.module)
+            with ThreadPoolExecutor(max_workers=len(tuned) + len(exact)) as executor:
+                list(executor.map(lambda kernel: kernel.module.load("cpu", block_dim=1), tuned + exact))
+            for kernel in tuned:
+                self.assertNotEqual(_run_cpu_llvm_options_kernel(kernel), baseline)
+            for kernel in exact:
+                self.assertEqual(_run_cpu_llvm_options_kernel(kernel), baseline)
+
     def test_set_module_options_via_runpy(self):
         """Verify that set_module_options/get_module_options should work when the calling module is run via runpy."""
         namespace = runpy.run_module("warp.tests.aux_test_options_runpy", run_name="__main__")

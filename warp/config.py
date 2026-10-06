@@ -304,20 +304,18 @@ This setting can be overridden at the module level by setting the
 cpu_compiler_flags: str | None = None
 """Flags controlling CPU kernel compilation.
 
-Warp acts as a compiler driver for the embedded Clang frontend. The flag
-``-march=native`` is intercepted and triggers host CPU feature detection
-(equivalent to ``llvm::sys::getHostCPUName()`` + ``getHostCPUFeatures()``).
-All other flags are passed through to the Clang frontend as-is.
+``None`` detects host CPU features (as if ``-march=native`` were set) and uses
+LLVM defaults. ``""`` compiles for a generic CPU target. A flag string can
+include ``-march=native``, Clang frontend flags, and LLVM arguments in either
+``-mllvm <option>`` or ``-mllvm=<option>`` form.
 
-The value controls both CPU target detection and extra compiler flags:
+The ``"cpu_compiler_flags"`` module option replaces this global string for
+that module. Include ``-march=native`` explicitly in a module override when
+host CPU detection is wanted.
 
-- ``None`` (default): detect host CPU features (equivalent to ``"-march=native"``).
-- ``""``: disable host CPU detection; compile for a generic target.
-- ``"-march=native"``: explicitly detect host CPU features.
-- ``"-march=native -fno-vectorize"``: detect host CPU + pass ``-fno-vectorize``.
-- ``"-fno-vectorize"``: generic target + pass ``-fno-vectorize``.
-
-Changing this setting invalidates the kernel cache.
+The resolved flag string is part of the module cache key.
+LLVM options are a power-user feature with process-wide caveats; see
+:ref:`cpu-llvm-compiler-options`.
 """
 
 llvm_cuda: bool = False

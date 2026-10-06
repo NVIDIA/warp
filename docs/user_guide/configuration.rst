@@ -114,6 +114,9 @@ The options for a module can also be queried using :func:`wp.get_module_options(
 +--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
 |``cuda_output``                       | String  | ``None``    | A module-level override of the :attr:`warp.config.cuda_output` setting.  |
 +--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
+|``cpu_compiler_flags``                | String  | ``None``    | A module-level override of the :attr:`warp.config.cpu_compiler_flags`    |
+|                                      |         |             | setting. ``None`` defers to the global setting at compile time.          |
++--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
 |``block_dim``                         | Integer | 256         | The number of CUDA threads per block that kernels in the module will be  |
 |                                      |         |             | compiled for.                                                            |
 +--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
@@ -129,6 +132,45 @@ The options for a module can also be queried using :func:`wp.get_module_options(
 |``enable_mathdx_solver``              | Boolean | ``None``    | A module-level override of the :attr:`warp.config.enable_mathdx_solver`  |
 |                                      |         |             | setting. ``None`` defers to the global setting at compile time.          |
 +--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
+
+.. _cpu-llvm-compiler-options:
+
+LLVM Options for CPU Compilation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Use :attr:`warp.config.cpu_compiler_flags` to set CPU compiler flags globally,
+or pass ``"cpu_compiler_flags"`` to
+:func:`wp.set_module_options() <warp.set_module_options>` for one module. A
+module string replaces the global string; include ``-march=native`` when the
+module should detect host CPU features. The global default ``None`` uses host
+CPU features and leaves LLVM options at their defaults. When changing a
+module's CPU compiler flags, use
+:func:`wp.set_module_options() <warp.set_module_options>` so Warp updates its
+hash. Assigning :attr:`warp.config.cpu_compiler_flags` alone does not
+invalidate hashes that have already been computed.
+
+Pass one LLVM argument with each ``-mllvm`` flag. Both forms are accepted:
+
+.. code-block:: python
+
+    wp.set_module_options({"cpu_compiler_flags": "-march=native -mllvm -inline-threshold=1000"})
+    # Equivalent LLVM argument spelling:
+    wp.set_module_options({"cpu_compiler_flags": "-march=native -mllvm=-inline-threshold=1000"})
+
+This power-user feature is intended for LLVM optimization and code generation
+options. Available options depend on Warp's bundled LLVM version, and not every
+Clang driver flag works here. Some LLVM options may have no effect in Warp's
+pipeline, affect subsequent compilations, or terminate Python. When
+experimenting, use a fresh Python process and a separate kernel cache directory
+for each configuration (setting :attr:`warp.config.cache_kernels` to ``False``
+does not prevent cache writes), and verify that the options have the intended
+effect.
+See :ref:`Global Settings <global-settings>` for cache configuration.
+
+Flag strings are split on whitespace, and LLVM ``@response`` files are
+unsupported. The flag string enters the module cache key, but files named by
+options are tracked by path only; add changing files to
+:class:`warp.ModuleBuildOptions` as ``extra_build_dependencies``.
 
 .. _kernel-settings:
 
