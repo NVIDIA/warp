@@ -4,6 +4,8 @@
 import math
 import unittest
 
+import numpy as np
+
 import warp as wp
 import warp.tests.aux_test_compile_consts_dummy
 from warp._src.codegen import codegen_func_forward
@@ -13,6 +15,64 @@ LOCAL_ONE = wp.constant(1)
 
 SQRT3_OVER_3 = wp.constant(0.57735026919)
 UNIT_VEC = wp.constant(wp.vec3(SQRT3_OVER_3, SQRT3_OVER_3, SQRT3_OVER_3))
+CAPTURED_VEC = wp.constant(wp.vec3(1.0, 2.0, 3.0))
+CAPTURED_TRANSFORM = wp.constant(wp.transform(wp.vec3(1.0, 2.0, 3.0), wp.quat(0.1, 0.2, 0.3, 0.9)))
+
+
+@wp.struct
+class CapturedStruct:
+    scalar: wp.float32
+    vector: wp.vec3
+
+
+CAPTURED_STRUCT = CapturedStruct()
+CAPTURED_STRUCT.scalar = wp.float32(4.0)
+CAPTURED_STRUCT.vector = wp.vec3(5.0, 6.0, 7.0)
+
+
+@wp.struct
+class CapturedStructWithArray:
+    scalar: wp.float32
+    array: wp.array[wp.float32]
+
+
+CAPTURED_STRUCT_WITH_ARRAY = CapturedStructWithArray()
+CAPTURED_STRUCT_WITH_ARRAY.scalar = wp.float32(8.0)
+
+
+@wp.struct
+class CapturedState:
+    x: wp.float32
+
+
+@wp.struct
+class BoxWithCapturedState:
+    state: CapturedState
+
+
+state = CapturedState()
+state.x = wp.float32(99.0)
+
+
+@wp.struct
+class CapturedStructWithUntypedScalar:
+    value: wp.int64
+
+
+CAPTURED_STRUCT_WITH_UNTYPED_SCALAR = CapturedStructWithUntypedScalar()
+CAPTURED_STRUCT_WITH_UNTYPED_SCALAR.value = 11
+
+
+@wp.func
+def captured_constant_attributes_func() -> float:
+    return CAPTURED_STRUCT.vector.y
+
+
+@wp.func
+def captured_int64_identity(value: wp.int64) -> wp.int64:
+    return value
+
+
 ONE_FP16 = wp.constant(wp.float16(1.0))
 TEST_BOOL = wp.constant(True)
 
@@ -54,6 +114,70 @@ def test_float(x: float):
     expect_near(wp.float32(ONE_FP16), 1.0, 1e-6)
 
 
+@wp.kernel
+def test_captured_constant_attributes_kernel(out: wp.array[float]):
+    out[0] = CAPTURED_VEC.y
+    out[1] = CAPTURED_TRANSFORM.q[0]
+    out[2] = CAPTURED_TRANSFORM.q[3]
+    out[3] = CAPTURED_STRUCT.scalar
+    out[4] = CAPTURED_STRUCT.vector.y
+    out[5] = captured_constant_attributes_func()
+    out[6] = wp.static(CAPTURED_STRUCT).vector.y
+    out[7] = CAPTURED_STRUCT_WITH_ARRAY.scalar
+
+
+@wp.kernel
+def test_shadowed_captured_struct_kernel(CAPTURED_STRUCT: CapturedStruct, out: wp.array[float]):
+    out[0] = CAPTURED_STRUCT.scalar
+
+
+@wp.kernel
+def test_captured_struct_scalar_type_kernel(out: wp.array[wp.int64]):
+    out[0] = captured_int64_identity(CAPTURED_STRUCT_WITH_UNTYPED_SCALAR.value)
+    out[1] = captured_int64_identity(wp.static(CAPTURED_STRUCT_WITH_UNTYPED_SCALAR).value)
+
+
+@wp.kernel
+def test_array_struct_attribute_with_shadowed_global_kernel(
+    boxes: wp.array[BoxWithCapturedState], out: wp.array[wp.float32]
+):
+    i = wp.tid()
+    out[i] = boxes[i].state.x
+
+
+def test_captured_constant_attributes(test, device):
+    out = wp.zeros(8, dtype=float, device=device)
+    wp.launch(test_captured_constant_attributes_kernel, dim=1, inputs=[out], device=device)
+    np.testing.assert_allclose(out.numpy(), [2.0, 0.1, 0.9, 4.0, 6.0, 6.0, 6.0, 8.0])
+
+
+def test_shadowed_captured_struct(test, device):
+    local_struct = CapturedStruct()
+    local_struct.scalar = wp.float32(9.0)
+    out = wp.zeros(1, dtype=float, device=device)
+    wp.launch(test_shadowed_captured_struct_kernel, dim=1, inputs=[local_struct, out], device=device)
+    np.testing.assert_allclose(out.numpy(), [9.0])
+
+
+def test_captured_struct_scalar_type(test, device):
+    out = wp.zeros(2, dtype=wp.int64, device=device)
+    wp.launch(test_captured_struct_scalar_type_kernel, dim=1, inputs=[out], device=device)
+    np.testing.assert_array_equal(out.numpy(), [11, 11])
+
+
+def test_array_struct_attribute_with_shadowed_global(test, device):
+    first = BoxWithCapturedState()
+    first.state = CapturedState()
+    first.state.x = wp.float32(3.0)
+    second = BoxWithCapturedState()
+    second.state = CapturedState()
+    second.state.x = wp.float32(7.0)
+    boxes = wp.array([first, second], dtype=BoxWithCapturedState, device=device)
+    out = wp.zeros(2, dtype=wp.float32, device=device)
+    wp.launch(test_array_struct_attribute_with_shadowed_global_kernel, dim=2, inputs=[boxes, out], device=device)
+    np.testing.assert_array_equal(out.numpy(), [3.0, 7.0])
+
+
 def test_closure_capture(test, device):
     def make_closure_kernel(cst):
         def closure_kernel_fn(expected: int):
@@ -66,6 +190,16 @@ def test_closure_capture(test, device):
 
     wp.launch(one_closure, dim=(1), inputs=[1], device=device)
     wp.launch(two_closure, dim=(1), inputs=[2], device=device)
+
+    def make_attribute_closure_kernel(cst):
+        def closure_kernel_fn(out: wp.array[float]):
+            out[0] = cst.vector.y
+
+        return wp.Kernel(func=closure_kernel_fn)
+
+    closure_out = wp.zeros(1, dtype=float, device=device)
+    wp.launch(make_attribute_closure_kernel(CAPTURED_STRUCT), dim=1, inputs=[closure_out], device=device)
+    np.testing.assert_allclose(closure_out.numpy(), [6.0])
 
 
 def test_closure_precedence(test, device):
@@ -85,6 +219,33 @@ def test_hash_global_capture(test, device):
 
     a = 0
     wp.launch(test_int, (1,), inputs=[a], device=device)
+
+
+def test_hash_captured_struct(test, device):
+    """Include captured struct type and field values in the module hash."""
+
+    @wp.kernel
+    def test_function(data: wp.array[wp.float32]):
+        data[0] = CAPTURED_STRUCT.scalar
+
+    data = wp.empty(1, dtype=wp.float32, device=device)
+    module = wp.get_module(test_function.__module__)
+    original_scalar = CAPTURED_STRUCT.scalar
+
+    try:
+        wp.launch(test_function, (1,), inputs=[data], device=device)
+        module_hash_0 = module.hash_module()
+        test.assertEqual(data.numpy()[0], 4.0)
+
+        CAPTURED_STRUCT.scalar = wp.float32(8.0)
+        module_hash_1 = module.hash_module()
+        test.assertNotEqual(module_hash_0, module_hash_1)
+
+        CAPTURED_STRUCT.scalar = original_scalar
+        module_hash_2 = module.hash_module()
+        test.assertEqual(module_hash_0, module_hash_2)
+    finally:
+        CAPTURED_STRUCT.scalar = original_scalar
 
 
 def test_hash_redefine_kernel(test, device):
@@ -316,10 +477,22 @@ devices = get_test_devices()
 add_kernel_test(TestConstants, test_bool, dim=1, inputs=[], devices=devices)
 add_kernel_test(TestConstants, test_int, dim=1, inputs=[a], devices=devices)
 add_kernel_test(TestConstants, test_float, dim=1, inputs=[x], devices=devices)
+add_function_test(
+    TestConstants, "test_captured_constant_attributes", test_captured_constant_attributes, devices=devices
+)
+add_function_test(TestConstants, "test_shadowed_captured_struct", test_shadowed_captured_struct, devices=devices)
+add_function_test(TestConstants, "test_captured_struct_scalar_type", test_captured_struct_scalar_type, devices=devices)
+add_function_test(
+    TestConstants,
+    "test_array_struct_attribute_with_shadowed_global",
+    test_array_struct_attribute_with_shadowed_global,
+    devices=devices,
+)
 
 add_function_test(TestConstants, "test_closure_capture", test_closure_capture, devices=devices)
 add_function_test(TestConstants, "test_closure_precedence", test_closure_precedence, devices=devices)
 add_function_test(TestConstants, "test_hash_global_capture", test_hash_global_capture, devices=devices)
+add_function_test(TestConstants, "test_hash_captured_struct", test_hash_captured_struct, devices=devices)
 add_function_test(TestConstants, "test_hash_redefine_kernel", test_hash_redefine_kernel, devices=devices)
 add_function_test(TestConstants, "test_hash_redefine_constant_only", test_hash_redefine_constant_only, devices=devices)
 add_function_test(TestConstants, "test_hash_shadowed_var", test_hash_shadowed_var, devices=devices)
