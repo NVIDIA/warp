@@ -678,31 +678,37 @@ setting.</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
 <td><p>A module-level override of the <a class="reference internal" href="../api_reference/_generated/warp.config.cuda_output.html#warp.config.cuda_output" title="warp.config.cuda_output"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.cuda_output</span></code></a> setting.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">block_dim</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">cpu_compiler_flags</span></code></p></td>
+<td><p>String</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>A module-level override of the <a class="reference internal" href="../api_reference/_generated/warp.config.cpu_compiler_flags.html#warp.config.cpu_compiler_flags" title="warp.config.cpu_compiler_flags"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.cpu_compiler_flags</span></code></a>
+setting. <code class="docutils literal notranslate"><span class="pre">None</span></code> defers to the global setting at compile time.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">block_dim</span></code></p></td>
 <td><p>Integer</p></td>
 <td><p>256</p></td>
 <td><p>The number of CUDA threads per block that kernels in the module will be
 compiled for.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">strip_hash</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">strip_hash</span></code></p></td>
 <td><p>Boolean</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">False</span></code></p></td>
 <td><p>If <code class="docutils literal notranslate"><span class="pre">True</span></code>, avoids using a content-based hash to identify the module
 and its functions.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">extra_build_options</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">extra_build_options</span></code></p></td>
 <td><p>Object</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
 <td><p>Experimental extra build inputs for CPU and CUDA modules. Set to an
 <a class="reference internal" href="../api_reference/_generated/warp.ModuleBuildOptions.html#warp.ModuleBuildOptions" title="warp.ModuleBuildOptions"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.ModuleBuildOptions</span></code></a> instance.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">enable_mathdx_gemm</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">enable_mathdx_gemm</span></code></p></td>
 <td><p>Boolean</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
 <td><p>A module-level override of the <a class="reference internal" href="../api_reference/_generated/warp.config.enable_mathdx_gemm.html#warp.config.enable_mathdx_gemm" title="warp.config.enable_mathdx_gemm"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.enable_mathdx_gemm</span></code></a>
 setting. <code class="docutils literal notranslate"><span class="pre">None</span></code> defers to the global setting at compile time.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">enable_mathdx_solver</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">enable_mathdx_solver</span></code></p></td>
 <td><p>Boolean</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
 <td><p>A module-level override of the <a class="reference internal" href="../api_reference/_generated/warp.config.enable_mathdx_solver.html#warp.config.enable_mathdx_solver" title="warp.config.enable_mathdx_solver"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.enable_mathdx_solver</span></code></a>
@@ -711,6 +717,38 @@ setting. <code class="docutils literal notranslate"><span class="pre">None</span
 </tbody>
 </table>
 </div>
+<section id="llvm-options-for-cpu-compilation">
+<span id="cpu-llvm-compiler-options"></span><h3>LLVM Options for CPU Compilation<a class="headerlink" href="#llvm-options-for-cpu-compilation" title="Link to this heading">#</a></h3>
+<p>Use <a class="reference internal" href="../api_reference/_generated/warp.config.cpu_compiler_flags.html#warp.config.cpu_compiler_flags" title="warp.config.cpu_compiler_flags"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.cpu_compiler_flags</span></code></a> to set CPU compiler flags globally,
+or pass <code class="docutils literal notranslate"><span class="pre">&quot;cpu_compiler_flags&quot;</span></code> to
+<a class="reference internal" href="../api_reference/_generated/warp.set_module_options.html#warp.set_module_options" title="warp.set_module_options"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.set_module_options()</span></code></a> for one module. A
+module string replaces the global string; include <code class="docutils literal notranslate"><span class="pre">-march=native</span></code> when the
+module should detect host CPU features. The global default <code class="docutils literal notranslate"><span class="pre">None</span></code> uses host
+CPU features and leaves LLVM options at their defaults. When changing a
+module’s CPU compiler flags, use
+<a class="reference internal" href="../api_reference/_generated/warp.set_module_options.html#warp.set_module_options" title="warp.set_module_options"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.set_module_options()</span></code></a> so Warp updates its
+hash. Assigning <a class="reference internal" href="../api_reference/_generated/warp.config.cpu_compiler_flags.html#warp.config.cpu_compiler_flags" title="warp.config.cpu_compiler_flags"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.cpu_compiler_flags</span></code></a> alone does not
+invalidate hashes that have already been computed.</p>
+<p>Pass one LLVM argument with each <code class="docutils literal notranslate"><span class="pre">-mllvm</span></code> flag. Both forms are accepted:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">set_module_options</span><span class="p">({</span><span class="s2">"cpu_compiler_flags"</span><span class="p">:</span> <span class="s2">"-march=native -mllvm -inline-threshold=1000"</span><span class="p">})</span>
+<span class="c1"># Equivalent LLVM argument spelling:</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">set_module_options</span><span class="p">({</span><span class="s2">"cpu_compiler_flags"</span><span class="p">:</span> <span class="s2">"-march=native -mllvm=-inline-threshold=1000"</span><span class="p">})</span>
+</pre></div>
+</div>
+<p>This power-user feature is intended for LLVM optimization and code generation
+options. Available options depend on Warp’s bundled LLVM version, and not every
+Clang driver flag works here. Some LLVM options may have no effect in Warp’s
+pipeline, affect subsequent compilations, or terminate Python. When
+experimenting, use a fresh Python process and a separate kernel cache directory
+for each configuration (setting <a class="reference internal" href="../api_reference/_generated/warp.config.cache_kernels.html#warp.config.cache_kernels" title="warp.config.cache_kernels"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.cache_kernels</span></code></a> to <code class="docutils literal notranslate"><span class="pre">False</span></code>
+does not prevent cache writes), and verify that the options have the intended
+effect.
+See <a class="reference internal" href="#global-settings"><span class="std std-ref">Global Settings</span></a> for cache configuration.</p>
+<p>Flag strings are split on whitespace, and LLVM <code class="docutils literal notranslate"><span class="pre">&#64;response</span></code> files are
+unsupported. The flag string enters the module cache key, but files named by
+options are tracked by path only; add changing files to
+<a class="reference internal" href="../api_reference/_generated/warp.ModuleBuildOptions.html#warp.ModuleBuildOptions" title="warp.ModuleBuildOptions"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.ModuleBuildOptions</span></code></a> as <code class="docutils literal notranslate"><span class="pre">extra_build_dependencies</span></code>.</p>
+</section>
 </section>
 <section id="kernel-settings">
 <span id="id4"></span><h2>Kernel Settings<a class="headerlink" href="#kernel-settings" title="Link to this heading">#</a></h2>
@@ -1001,7 +1039,10 @@ backend, so the same function remains valid for CPU and CUDA.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#experimental-cpu-block-execution">Experimental CPU Block Execution</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-settings">Module Settings</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-settings">Module Settings</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#llvm-options-for-cpu-compilation">LLVM Options for CPU Compilation</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#kernel-settings">Kernel Settings</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#cuda-thread-block-clusters">CUDA Thread Block Clusters</a></li>
 </ul>

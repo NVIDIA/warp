@@ -511,19 +511,16 @@
 <dt class="sig sig-object py" id="warp.config.cpu_compiler_flags">
 <span class="sig-prename descclassname"><span class="pre">warp.config.</span></span><span class="sig-name descname"><span class="pre">cpu_compiler_flags</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#warp.config.cpu_compiler_flags" title="Link to this definition">#</a></dt>
 <dd><p>Flags controlling CPU kernel compilation.</p>
-<p>Warp acts as a compiler driver for the embedded Clang frontend. The flag
-<code class="docutils literal notranslate"><span class="pre">-march=native</span></code> is intercepted and triggers host CPU feature detection
-(equivalent to <code class="docutils literal notranslate"><span class="pre">llvm::sys::getHostCPUName()</span></code> + <code class="docutils literal notranslate"><span class="pre">getHostCPUFeatures()</span></code>).
-All other flags are passed through to the Clang frontend as-is.</p>
-<p>The value controls both CPU target detection and extra compiler flags:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">None</span></code> (default): detect host CPU features (equivalent to <code class="docutils literal notranslate"><span class="pre">&quot;-march=native&quot;</span></code>).</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">&quot;&quot;</span></code>: disable host CPU detection; compile for a generic target.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">&quot;-march=native&quot;</span></code>: explicitly detect host CPU features.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">&quot;-march=native</span> <span class="pre">-fno-vectorize&quot;</span></code>: detect host CPU + pass <code class="docutils literal notranslate"><span class="pre">-fno-vectorize</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">&quot;-fno-vectorize&quot;</span></code>: generic target + pass <code class="docutils literal notranslate"><span class="pre">-fno-vectorize</span></code>.</p></li>
-</ul>
-<p>Changing this setting invalidates the kernel cache.</p>
+<p><code class="docutils literal notranslate"><span class="pre">None</span></code> detects host CPU features (as if <code class="docutils literal notranslate"><span class="pre">-march=native</span></code> were set) and uses
+LLVM defaults. <code class="docutils literal notranslate"><span class="pre">&quot;&quot;</span></code> compiles for a generic CPU target. A flag string can
+include <code class="docutils literal notranslate"><span class="pre">-march=native</span></code>, Clang frontend flags, and LLVM arguments in either
+<code class="docutils literal notranslate"><span class="pre">-mllvm</span> <span class="pre">&lt;option&gt;</span></code> or <code class="docutils literal notranslate"><span class="pre">-mllvm=&lt;option&gt;</span></code> form.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">&quot;cpu_compiler_flags&quot;</span></code> module option replaces this global string for
+that module. Include <code class="docutils literal notranslate"><span class="pre">-march=native</span></code> explicitly in a module override when
+host CPU detection is wanted.</p>
+<p>The resolved flag string is part of the module cache key.
+LLVM options are a power-user feature with process-wide caveats; see
+<a class="reference internal" href="../../user_guide/configuration.html#cpu-llvm-compiler-options"><span class="std std-ref">LLVM Options for CPU Compilation</span></a>.</p>
 </dd></dl>
 
 </section>
