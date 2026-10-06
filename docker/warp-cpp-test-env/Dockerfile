@@ -83,7 +83,7 @@ RUN CUDA_MAJOR=$(echo ${CUDA_VERSION} | cut -d. -f1) && \
     done
 
 # Get uv from the digest-pinned official distroless image
-FROM ghcr.io/astral-sh/uv:0.12.13@sha256:b485bd65cc2cf1c9a93b3554012c9c3778cf7b1b5fd3d3096ce9e1226c97e1e6 AS uv
+FROM ghcr.io/astral-sh/uv:0.12.23@sha256:61d393e44e249f2e4b526b6c7ddcecce245946826e608e11c93ad4f5bba55b21 AS uv
 
 # Final stage
 FROM base AS final
