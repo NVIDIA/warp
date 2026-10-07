@@ -1233,6 +1233,130 @@ def test_eig(test, device, dtype, register_kernels=False):
                 assert_np_equal((plusval - minusval) / (2 * dx), m3grads[ii, jj], tol=fdtol)
 
 
+def test_eig_value_gradients(test, device, dtype, output_arguments):
+    """Check eigenvalue-only losses and gradients at repeated and closely spaced eigenvalues."""
+    tol = {
+        np.float16: 1.0e-2,
+        np.float32: 1.0e-5,
+        np.float64: 1.0e-10,
+    }[dtype]
+
+    wptype = wp.dtype_from_numpy(np.dtype(dtype))
+    mat33 = wp.types.matrix(shape=(3, 3), dtype=wptype)
+    vec3 = wp.types.vector(length=3, dtype=wptype)
+
+    @wp.kernel(module="unique")
+    def eigenvalue_loss(matrices: wp.array[mat33], mode: int, losses: wp.array[wptype]):
+        i = wp.tid()
+        A = matrices[i]
+        Q = mat33()
+        d = vec3()
+        if wp.static(output_arguments):
+            wp.eig3(A, Q, d)
+        else:
+            Q, d = wp.eig3(A)
+
+        if mode == 1:
+            losses[i] = wp.dot(d, d)
+        elif mode == 2:
+            losses[i] = d[0] + d[1] + d[2] + wp.trace(A)
+        else:
+            losses[i] = d[0] + d[1] + d[2]
+
+    rotation = np.array(((1.0, 2.0, 2.0), (2.0, 1.0, -2.0), (-2.0, 2.0, -1.0))) / 3.0
+    cases = {
+        "repeated": np.diag([2.0, 2.0, 3.0]),
+        "identity": np.eye(3),
+        "zero": np.zeros((3, 3)),
+        "negative_repeated": np.diag([-2.0, -2.0, 3.0]),
+        "distinct": np.diag([1.0, 2.0, 3.0]),
+        "near_repeated": np.diag([2.0, 2.0 + 1.0e-5, 3.0]),
+        "small_distinct": np.diag([0.0, 1.0e-5, 1.0]),
+        "rotated_repeated": rotation @ np.diag([2.0, 2.0, 3.0]) @ rotation.T,
+    }
+    matrices_np = np.array(list(cases.values()), dtype=dtype)
+    matrices = wp.array(matrices_np, dtype=mat33, device=device, requires_grad=True)
+    losses = wp.zeros(len(cases), dtype=wptype, device=device, requires_grad=True)
+    seed = wp.ones_like(losses)
+
+    # These spectral losses equal trace(A), trace(A^2), and 2 * trace(A), even at repeated eigenvalues.
+    matrices_fp64 = matrices_np.astype(np.float64)
+    traces = np.trace(matrices_fp64, axis1=1, axis2=2)
+    identity = np.broadcast_to(np.eye(3), matrices_np.shape)
+    expected_losses = (traces, np.sum(matrices_fp64**2, axis=(1, 2)), 2.0 * traces)
+    expected_gradients = (identity, 2.0 * matrices_fp64, 2.0 * identity)
+
+    for mode in range(3):
+        with wp.Tape() as tape:
+            wp.launch(eigenvalue_loss, dim=len(cases), inputs=[matrices, mode], outputs=[losses], device=device)
+        tape.backward(grads={losses: seed})
+        losses_np = losses.numpy().astype(np.float64)
+        gradients_np = matrices.grad.numpy().astype(np.float64)
+        for i, name in enumerate(cases):
+            with test.subTest(matrix=name, mode=mode):
+                np.testing.assert_allclose(losses_np[i], expected_losses[mode][i], atol=tol, rtol=tol)
+                np.testing.assert_allclose(gradients_np[i], expected_gradients[mode][i], atol=tol, rtol=tol)
+        tape.zero()
+
+
+def test_eig_mixed_gradients(test, device, dtype, output_arguments):
+    """Check zero and small nonzero eigenvector gradients in the same batch."""
+    tol = {
+        np.float16: 1.0e-2,
+        np.float32: 1.0e-5,
+        np.float64: 1.0e-10,
+    }[dtype]
+    q_seed_scale = dtype({np.float16: 1.0e-4, np.float32: 1.0e-8, np.float64: 1.0e-12}[dtype])
+
+    wptype = wp.dtype_from_numpy(np.dtype(dtype))
+    mat33 = wp.types.matrix(shape=(3, 3), dtype=wptype)
+    vec3 = wp.types.vector(length=3, dtype=wptype)
+
+    @wp.kernel(module="unique")
+    def mixed_loss(matrices: wp.array[mat33], eigenvectors: wp.array[mat33], losses: wp.array[wptype]):
+        i = wp.tid()
+        A = matrices[i] + wp.transpose(matrices[i])
+        Q = mat33()
+        d = vec3()
+        if wp.static(output_arguments):
+            wp.eig3(A, Q, d)
+        else:
+            Q, d = wp.eig3(A)
+        eigenvectors[i] = Q
+        losses[i] = d[0] + d[1] + d[2] + wp.trace(matrices[i])
+
+    matrices_np = np.array([np.diag([1.0, 1.0, 1.5]), np.diag([0.5, 1.0, 2.0])], dtype=dtype)
+    matrices = wp.array(matrices_np, dtype=mat33, device=device, requires_grad=True)
+    eigenvectors = wp.zeros(2, dtype=mat33, device=device, requires_grad=True)
+    losses = wp.zeros(2, dtype=wptype, device=device, requires_grad=True)
+
+    with wp.Tape() as tape:
+        wp.launch(mixed_loss, dim=2, inputs=[matrices], outputs=[eigenvectors, losses], device=device)
+
+    # Keep Q's gradient zero at repeated eigenvalues. For diag(1, 2, 4), seed
+    # its first row with Q's second row to remove dependence on column order and signs.
+    q_seed_np = np.zeros((2, 3, 3), dtype=dtype)
+    q_seed_np[1, 0, :] = q_seed_scale * eigenvectors.numpy()[1, 1, :]
+    tape.backward(
+        grads={
+            losses: wp.ones_like(losses),
+            eigenvectors: wp.array(q_seed_np, dtype=mat33, device=device),
+        }
+    )
+
+    # The eigenvalue sum plus trace(matrices[i]) has gradient 3I. The seeded
+    # eigenvector contributes q_seed_scale to entries (0, 1) and (1, 0), since
+    # its eigenvalue gap is one and A is symmetrized.
+    expected_gradients = np.broadcast_to(3.0 * np.eye(3), (2, 3, 3)).copy()
+    expected_gradients[1, 0, 1] = expected_gradients[1, 1, 0] = float(q_seed_scale)
+    gradients_np = matrices.grad.numpy().astype(np.float64)
+    np.testing.assert_allclose(losses.numpy(), [10.5, 10.5], atol=tol, rtol=tol)
+    np.testing.assert_allclose(gradients_np, expected_gradients, atol=tol, rtol=tol)
+
+    # Normalize the small contribution so the absolute tolerance cannot hide its removal.
+    np.testing.assert_allclose(gradients_np[1, [0, 1], [1, 0]] / float(q_seed_scale), [1.0, 1.0], atol=tol, rtol=tol)
+
+
 def test_skew(test, device, dtype, register_kernels=False):
     tol = {
         np.float16: 1.0e-3,
@@ -3463,6 +3587,24 @@ for dtype in np_float_types:
     )
     add_function_test_register_kernel(TestMat, f"test_qr_{dtype.__name__}", test_qr, devices=devices, dtype=dtype)
     add_function_test_register_kernel(TestMat, f"test_eig_{dtype.__name__}", test_eig, devices=devices, dtype=dtype)
+    for output_arguments in (False, True):
+        overload = "output_arguments" if output_arguments else "return_values"
+        add_function_test(
+            TestMat,
+            f"test_eig_value_gradients_{overload}_{dtype.__name__}",
+            test_eig_value_gradients,
+            devices=devices,
+            dtype=dtype,
+            output_arguments=output_arguments,
+        )
+        add_function_test(
+            TestMat,
+            f"test_eig_mixed_gradients_{overload}_{dtype.__name__}",
+            test_eig_mixed_gradients,
+            devices=devices,
+            dtype=dtype,
+            output_arguments=output_arguments,
+        )
     add_function_test_register_kernel(
         TestMat, f"test_transform_point_{dtype.__name__}", test_transform_point, devices=devices, dtype=dtype
     )

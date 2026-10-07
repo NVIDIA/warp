@@ -776,6 +776,13 @@ inline CUDA_CALLABLE void adj_eig3(
     // Page 10 of https://people.maths.ox.ac.uk/gilesm/files/NA-08-01.pdf
     mat_t<3, 3, Type> D = mat_t<3, 3, Type>(d[0], 0, 0, 0, d[1], 0, 0, 0, d[2]);
     mat_t<3, 3, Type> D_bar = mat_t<3, 3, Type>(adj_d[0], 0, 0, 0, adj_d[1], 0, 0, 0, adj_d[2]);
+    mat_t<3, 3, Type> QT = transpose(Q);
+
+    // Avoid singular eigenvector derivatives when only eigenvalues contribute.
+    if (adj_Q == mat_t<3, 3, Type>()) {
+        adj_A = adj_A + mul(Q, mul(D_bar, QT));
+        return;
+    }
 
     Type dyx = d[1] - d[0];
     Type dzx = d[2] - d[0];
@@ -800,7 +807,6 @@ inline CUDA_CALLABLE void adj_eig3(
     Type F02 = Type(1) / dzx;
     Type F12 = Type(1) / dzy;
     mat_t<3, 3, Type> F = mat_t<3, 3, Type>(0, F01, F02, -F01, 0, F12, -F02, -F12, 0);
-    mat_t<3, 3, Type> QT = transpose(Q);
     adj_A = adj_A + mul(Q, mul(D_bar + cw_mul(F, mul(QT, adj_Q)), QT));
 }
 }
