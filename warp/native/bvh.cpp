@@ -205,6 +205,7 @@ void TopDownBVHBuilder::build_with_groups(BVH& bvh, const vec3* lowers, const ve
         int prim_end = bvh.node_uppers[node].i;
         // Replace this packed leaf with a full subtree over [prim_start, prim_end)
         bvh.node_lowers[node].b = 0;
+        // Group queries start at this subtree's root, so its depth budget excludes the group-level BVH.
         build_recursive(bvh, lowers, uppers, prim_start, prim_end, 0, bvh.node_parents[node], node);
     }
 
@@ -527,9 +528,9 @@ int TopDownBVHBuilder::build_recursive(
 
     bounds3 b = calc_bounds(lowers, uppers, bvh.primitive_indices, start, end);
 
-    // If the depth exceeds BVH_QUERY_STACK_SIZE, an out-of-bounds access bug may occur during querying.
-    // In that case, we merge the following nodes into a single large leaf node.
-    if (n <= bvh.leaf_size || depth >= BVH_QUERY_STACK_SIZE) {
+    // Queries that push both children need a free stack slot at every internal level.
+    // Merge the remaining primitives into a leaf before that slot is exhausted.
+    if (n <= bvh.leaf_size || depth >= BVH_QUERY_STACK_SIZE - 1) {
         bvh.node_lowers[node_index] = make_node(b.lower, start, true);
         bvh.node_uppers[node_index] = make_node(b.upper, end, false);
         bvh.node_parents[node_index] = parent;

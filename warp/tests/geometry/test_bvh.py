@@ -1,12 +1,40 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import ctypes
 import unittest
 
 import numpy as np
 
 import warp as wp
 from warp.tests.unittest_utils import *
+
+
+class _HostBvhHeader(ctypes.Structure):
+    _fields_ = [
+        ("node_lowers", ctypes.c_void_p),
+        ("node_uppers", ctypes.c_void_p),
+        ("node_parents", ctypes.POINTER(ctypes.c_int)),
+        ("node_counts", ctypes.c_void_p),
+        ("primitive_indices", ctypes.c_void_p),
+        ("max_depth", ctypes.c_int),
+        ("max_nodes", ctypes.c_int),
+        ("num_nodes", ctypes.c_int),
+    ]
+
+
+def _host_bvh_depth(bvh, root=None):
+    header = ctypes.cast(bvh.id, ctypes.POINTER(_HostBvhHeader)).contents
+    deepest = 0
+    for node in range(header.num_nodes):
+        depth = 0
+        ancestor = node
+        while ancestor != root and header.node_parents[ancestor] != -1:
+            depth += 1
+            ancestor = header.node_parents[ancestor]
+        if root is None or ancestor == root:
+            deepest = max(deepest, depth)
+    return deepest, header.max_depth
 
 
 @wp.kernel
@@ -16,6 +44,28 @@ def bvh_query_aabb(bvh_id: wp.uint64, lower: wp.vec3, upper: wp.vec3, bounds_int
 
     while wp.bvh_query_next(query, bounds_nr):
         bounds_intersected[bounds_nr] = 1
+
+
+@wp.kernel
+def bvh_get_group_roots(bvh_id: wp.uint64, group_roots: wp.array[int]):
+    group = wp.tid()
+    group_roots[group] = wp.bvh_get_group_root(bvh_id, group)
+
+
+@wp.kernel
+def bvh_query_aabb_groups(
+    bvh_id: wp.uint64,
+    lower: wp.vec3,
+    upper: wp.vec3,
+    group_roots: wp.array[int],
+    bounds_intersected: wp.array2d[int],
+):
+    group = wp.tid()
+    query = wp.bvh_query_aabb(bvh_id, lower, upper, group_roots[group])
+    bounds_nr = int(0)
+
+    while wp.bvh_query_next(query, bounds_nr):
+        bounds_intersected[group, bounds_nr] += 1
 
 
 @wp.kernel
@@ -1053,6 +1103,76 @@ cuda_devices_with_mempool = get_cuda_test_devices_with_mempool()
 
 
 class TestBvh(unittest.TestCase):
+    def test_sah_depth_fits_query_stack(self):
+        """Verify SAH traversal depth from global and group roots fits the query stack."""
+        # Skewed bounds make SAH repeatedly split off a small outer group.
+        count = 300
+        x = np.exp(np.linspace(-70.0, 0.0, count)).astype(np.float32)
+        lowers = np.zeros((count, 3), dtype=np.float32)
+        uppers = np.ones((count, 3), dtype=np.float32)
+        lowers[:, 0] = x
+        uppers[:, 0] = x * np.float32(1.001)
+
+        ungrouped_depth = None
+        for num_groups in (0, 1, 4, 16):
+            with self.subTest(num_groups=num_groups):
+                if num_groups:
+                    extra_count = num_groups - 1
+                    mesh_lowers = np.vstack((lowers, np.tile([-1.0, 0.0, 0.0], (extra_count, 1)))).astype(np.float32)
+                    mesh_uppers = np.vstack((uppers, np.tile([-0.5, 1.0, 1.0], (extra_count, 1)))).astype(np.float32)
+                    group_ids = np.concatenate(
+                        (np.zeros(count, dtype=np.int32), np.arange(1, num_groups, dtype=np.int32))
+                    )
+                    groups = wp.array(group_ids, dtype=int, device="cpu")
+                else:
+                    mesh_lowers = lowers
+                    mesh_uppers = uppers
+                    groups = None
+
+                bvh = wp.Bvh(
+                    wp.array(mesh_lowers, dtype=wp.vec3, device="cpu"),
+                    wp.array(mesh_uppers, dtype=wp.vec3, device="cpu"),
+                    groups=groups,
+                    constructor="sah",
+                    leaf_size=1,
+                )
+                depth, recorded_depth = _host_bvh_depth(bvh)
+
+                if num_groups:
+                    roots = wp.full(num_groups, -1, dtype=int, device="cpu")
+                    wp.launch(bvh_get_group_roots, dim=num_groups, inputs=[bvh.id, roots], device="cpu")
+                    for group, root in enumerate(roots.numpy()):
+                        self.assertGreaterEqual(root, 0)
+                        group_depth, _ = _host_bvh_depth(bvh, root)
+                        self.assertLessEqual(group_depth, 31)
+                        if group == 0:
+                            # Additional groups must not reduce this subtree's depth budget.
+                            self.assertEqual(group_depth, ungrouped_depth)
+                    self.assertEqual(recorded_depth, ungrouped_depth)
+                    if num_groups > 1:
+                        self.assertGreater(depth, ungrouped_depth)
+                    hits = wp.zeros((num_groups, len(mesh_lowers)), dtype=int, device="cpu")
+                    wp.launch(
+                        bvh_query_aabb_groups,
+                        dim=num_groups,
+                        inputs=[bvh.id, wp.vec3(-2.0, -1.0, -1.0), wp.vec3(2.0, 2.0, 2.0), roots, hits],
+                        device="cpu",
+                    )
+                    expected_hits = (np.arange(num_groups)[:, None] == group_ids[None, :]).astype(np.int32)
+                    np.testing.assert_array_equal(hits.numpy(), expected_hits)
+                else:
+                    ungrouped_depth = depth
+                    self.assertEqual(depth, 31)
+                    self.assertEqual(recorded_depth, depth)
+                    hits = wp.zeros(len(mesh_lowers), dtype=int, device="cpu")
+                    wp.launch(
+                        bvh_query_aabb,
+                        dim=1,
+                        inputs=[bvh.id, wp.vec3(-2.0, -1.0, -1.0), wp.vec3(2.0, 2.0, 2.0), hits],
+                        device="cpu",
+                    )
+                    np.testing.assert_array_equal(hits.numpy(), np.ones(len(mesh_lowers), dtype=np.int32))
+
     def test_bvh_codegen_adjoints_with_select(self):
         def kernel_fn(bvh: wp.uint64):
             v = wp.vec3(0.0, 0.0, 0.0)

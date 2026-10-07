@@ -5945,6 +5945,11 @@ class Bvh:
             The grouped BVH thus allows Warp to perform environment-specific queries—such as collision detection,
             sensor simulation, or rendering—within a unified BVH framework, maintaining compatibility with existing APIs
             and near-identical performance for non-grouped use cases.
+
+        Note:
+            For grouped BVHs built with ``"sah"`` or ``"median"``, the traversal depth limit applies separately
+            to each group subtree. Start queries at the desired group's root to stay within this limit.
+            Traversal from the global root is not guaranteed to fit the query stack for deep grouped trees.
         """
         if len(lowers) != len(uppers):
             raise RuntimeError("The same number of lower and upper bounds must be provided")
