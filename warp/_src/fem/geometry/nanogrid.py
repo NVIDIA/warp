@@ -240,8 +240,9 @@ class NanogridBase(Geometry):
 
             uvw = wp.volume_world_to_index(grid, pos) + vec3_type(scalar(0.5))
             env_offset = args.env_offsets[env_index]
-            packed_uvw = uvw + vec3_type(env_offset)
-            i, j, k = int(wp.floor(packed_uvw[0])), int(wp.floor(packed_uvw[1])), int(wp.floor(packed_uvw[2]))
+            i = int(wp.floor(uvw[0])) + env_offset[0]
+            j = int(wp.floor(uvw[1])) + env_offset[1]
+            k = int(wp.floor(uvw[2])) + env_offset[2]
             cell_index = grid_geo._lookup_cell_index(args, i, j, k)
 
             if cell_index != -1:
@@ -268,8 +269,14 @@ class NanogridBase(Geometry):
             closest_coords = CoordsType()
 
             while closest_cell == NULL_ELEMENT_INDEX:
-                uvw_min = wp.vec3i(uvw - offset * scales) + env_offset
-                uvw_max = wp.vec3i(uvw + offset * scales) + wp.vec3i(1) + env_offset
+                lo = uvw - offset * scales
+                hi = uvw + offset * scales
+                uvw_min = wp.vec3i(int(wp.floor(lo[0])), int(wp.floor(lo[1])), int(wp.floor(lo[2]))) + env_offset
+                uvw_max = (
+                    wp.vec3i(int(wp.floor(hi[0])), int(wp.floor(hi[1])), int(wp.floor(hi[2])))
+                    + wp.vec3i(1)
+                    + env_offset
+                )
 
                 closest_dist = min_cell_size * min_cell_size * scalar(offset * offset)
 

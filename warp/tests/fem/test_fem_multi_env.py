@@ -920,6 +920,36 @@ def test_nanogrid_multi_env(test, device):
     test.assertEqual(masked_geo.cell_grid.get_active_stats().voxel_count, 2)
 
 
+def test_nanogrid_multi_env_cell_boundary_lookup(test, device):
+    """Keep particles near cell boundaries in their allocated environment cells."""
+    with wp.ScopedDevice(device):
+        for rebuildable in (False, True):
+            for axis in range(3):
+                for coordinate in (-2.5, 2.5):
+                    for offset in (-1024, 1024):
+                        with test.subTest(rebuildable=rebuildable, axis=axis, coordinate=coordinate, offset=offset):
+                            positions = np.zeros((2, 3), dtype=np.float32)
+                            positions[1, axis] = np.nextafter(np.float32(coordinate), np.float32(-np.inf))
+                            offsets = np.zeros((2, 3), dtype=np.int32)
+                            offsets[1, axis] = offset
+                            points = wp.array(positions, dtype=wp.vec3, device=device)
+                            environments = wp.array([0, 1], dtype=wp.int32, device=device)
+                            grid = fem.Nanogrid.from_environment_voxels(
+                                points,
+                                environments,
+                                2,
+                                env_offsets=offsets,
+                                voxel_size=1.0,
+                                rebuildable=rebuildable,
+                                max_active_voxels=8 if rebuildable else None,
+                                device=device,
+                            )
+                            quadrature = fem.PicQuadrature(fem.Cells(grid), positions=points, env_indices=environments)
+                            cells = quadrature.cell_indices.numpy()
+                            test.assertTrue(np.all(cells >= 0), f"Particles missing from grid: {cells}")
+                            np.testing.assert_array_equal(grid.cell_env.numpy()[cells], [0, 1])
+
+
 def test_nanogrid_multi_env_rebuildable(test, device):
     env_cells = (
         wp.array([[0, 0, 0]], dtype=wp.vec3i, device=device),
@@ -1116,6 +1146,12 @@ add_function_test(TestFemMultiEnv, "test_grid_2d_multi_env", test_grid_2d_multi_
 add_function_test(TestFemMultiEnv, "test_grid_3d_multi_env", test_grid_3d_multi_env, devices=devices)
 add_function_test(TestFemMultiEnv, "test_deformed_grid_3d_multi_env", test_deformed_grid_3d_multi_env, devices=devices)
 add_function_test(TestFemMultiEnv, "test_mesh_multi_env", test_mesh_multi_env, devices=devices)
+add_function_test(
+    TestFemMultiEnv,
+    "test_nanogrid_multi_env_cell_boundary_lookup",
+    test_nanogrid_multi_env_cell_boundary_lookup,
+    devices=cuda_devices,
+)
 add_function_test(TestFemMultiEnv, "test_nanogrid_multi_env", test_nanogrid_multi_env, devices=cuda_devices)
 add_function_test(
     TestFemMultiEnv, "test_nanogrid_multi_env_rebuildable", test_nanogrid_multi_env_rebuildable, devices=cuda_devices
