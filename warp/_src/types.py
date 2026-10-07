@@ -261,6 +261,9 @@ class int_base(scalar_base):
 class bool:
     """Boolean scalar type for use in Warp kernels and arrays."""
 
+    __numpy_dtype__: ClassVar[np.dtype[np.bool_]] = np.dtype(np.bool_)
+    """Equivalent NumPy dtype, recognized by NumPy 2.4 and later."""
+
     _length_ = 1
     _type_ = ctypes.c_bool
 
@@ -286,6 +289,9 @@ class bool:
 class float16(float_base):
     """16-bit half-precision floating-point scalar type."""
 
+    __numpy_dtype__: ClassVar[np.dtype[np.float16]] = np.dtype(np.float16)
+    """Equivalent NumPy dtype, recognized by NumPy 2.4 and later."""
+
     _length_ = 1
     _type_ = ctypes.c_uint16
 
@@ -300,12 +306,18 @@ class bfloat16(float_base):
 class float32(float_base):
     """32-bit single-precision floating-point scalar type."""
 
+    __numpy_dtype__: ClassVar[np.dtype[np.float32]] = np.dtype(np.float32)
+    """Equivalent NumPy dtype, recognized by NumPy 2.4 and later."""
+
     _length_ = 1
     _type_ = ctypes.c_float
 
 
 class float64(float_base):
     """64-bit double-precision floating-point scalar type."""
+
+    __numpy_dtype__: ClassVar[np.dtype[np.float64]] = np.dtype(np.float64)
+    """Equivalent NumPy dtype, recognized by NumPy 2.4 and later."""
 
     _length_ = 1
     _type_ = ctypes.c_double
@@ -314,12 +326,18 @@ class float64(float_base):
 class int8(int_base):
     """8-bit signed integer scalar type."""
 
+    __numpy_dtype__: ClassVar[np.dtype[np.int8]] = np.dtype(np.int8)
+    """Equivalent NumPy dtype, recognized by NumPy 2.4 and later."""
+
     _length_ = 1
     _type_ = ctypes.c_int8
 
 
 class uint8(int_base):
     """8-bit unsigned integer scalar type."""
+
+    __numpy_dtype__: ClassVar[np.dtype[np.uint8]] = np.dtype(np.uint8)
+    """Equivalent NumPy dtype, recognized by NumPy 2.4 and later."""
 
     _length_ = 1
     _type_ = ctypes.c_uint8
@@ -328,12 +346,18 @@ class uint8(int_base):
 class int16(int_base):
     """16-bit signed integer scalar type."""
 
+    __numpy_dtype__: ClassVar[np.dtype[np.int16]] = np.dtype(np.int16)
+    """Equivalent NumPy dtype, recognized by NumPy 2.4 and later."""
+
     _length_ = 1
     _type_ = ctypes.c_int16
 
 
 class uint16(int_base):
     """16-bit unsigned integer scalar type."""
+
+    __numpy_dtype__: ClassVar[np.dtype[np.uint16]] = np.dtype(np.uint16)
+    """Equivalent NumPy dtype, recognized by NumPy 2.4 and later."""
 
     _length_ = 1
     _type_ = ctypes.c_uint16
@@ -342,12 +366,18 @@ class uint16(int_base):
 class int32(int_base):
     """32-bit signed integer scalar type."""
 
+    __numpy_dtype__: ClassVar[np.dtype[np.int32]] = np.dtype(np.int32)
+    """Equivalent NumPy dtype, recognized by NumPy 2.4 and later."""
+
     _length_ = 1
     _type_ = ctypes.c_int32
 
 
 class uint32(int_base):
     """32-bit unsigned integer scalar type."""
+
+    __numpy_dtype__: ClassVar[np.dtype[np.uint32]] = np.dtype(np.uint32)
+    """Equivalent NumPy dtype, recognized by NumPy 2.4 and later."""
 
     _length_ = 1
     _type_ = ctypes.c_uint32
@@ -356,12 +386,18 @@ class uint32(int_base):
 class int64(int_base):
     """64-bit signed integer scalar type."""
 
+    __numpy_dtype__: ClassVar[np.dtype[np.int64]] = np.dtype(np.int64)
+    """Equivalent NumPy dtype, recognized by NumPy 2.4 and later."""
+
     _length_ = 1
     _type_ = ctypes.c_int64
 
 
 class uint64(int_base):
     """64-bit unsigned integer scalar type."""
+
+    __numpy_dtype__: ClassVar[np.dtype[np.uint64]] = np.dtype(np.uint64)
+    """Equivalent NumPy dtype, recognized by NumPy 2.4 and later."""
 
     _length_ = 1
     _type_ = ctypes.c_uint64

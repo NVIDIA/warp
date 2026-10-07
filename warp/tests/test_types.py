@@ -9,7 +9,24 @@ from typing import get_origin
 
 import numpy as np
 
+from warp._src.types import float_base, int_base, scalar_base
 from warp.tests.unittest_utils import *
+
+NUMPY_DTYPE_PROTOCOL_SUPPORTED = np.lib.NumpyVersion(np.__version__) >= "2.4.0"
+NUMPY_DTYPE_PAIRS = (
+    (wp.bool, np.bool_),
+    (wp.int8, np.int8),
+    (wp.uint8, np.uint8),
+    (wp.int16, np.int16),
+    (wp.uint16, np.uint16),
+    (wp.int32, np.int32),
+    (wp.uint32, np.uint32),
+    (wp.int64, np.int64),
+    (wp.uint64, np.uint64),
+    (wp.float16, np.float16),
+    (wp.float32, np.float32),
+    (wp.float64, np.float64),
+)
 
 
 def test_integers(test, device, dtype):
@@ -682,6 +699,144 @@ class TestTypes(unittest.TestCase):
         test_conversions(wp.uint32, np.uint32)
         test_conversions(wp.uint64, np.uint64)
         test_conversions(wp.bool, np.bool_)
+
+    def test_numpy_dtype_metadata(self):
+        for warp_type, numpy_type in NUMPY_DTYPE_PAIRS:
+            with self.subTest(warp_type=warp_type.__name__):
+                dtype = warp_type.__numpy_dtype__
+                self.assertIsInstance(dtype, np.dtype)
+                self.assertEqual(dtype, np.dtype(numpy_type))
+                self.assertFalse(hasattr(warp_type, "dtype"))
+                self.assertFalse(hasattr(warp_type(1), "dtype"))
+
+        for unsupported_type in (scalar_base, int_base, float_base, wp.bfloat16, wp.vec3, wp.mat33):
+            with self.subTest(unsupported_type=unsupported_type.__name__):
+                self.assertFalse(hasattr(unsupported_type, "__numpy_dtype__"))
+        self.assertEqual(np.dtype(wp.bfloat16), np.dtype(object))
+        self.assertIs(wp.dtype_to_numpy(wp.bfloat16), np.uint16)
+
+    @unittest.skipIf(NUMPY_DTYPE_PROTOCOL_SUPPORTED, "Legacy dtype fallback only applies before NumPy 2.4")
+    def test_numpy_dtype_legacy_fallback(self):
+        for warp_type, numpy_type in NUMPY_DTYPE_PAIRS:
+            with self.subTest(warp_type=warp_type.__name__):
+                self.assertEqual(np.dtype(warp_type), np.dtype(object))
+                self.assertTrue(np.zeros(3, dtype=warp_type).dtype.hasobject)
+                source = np.array([0, 1, 2], dtype=wp.dtype_to_numpy(warp_type))
+                self.assertEqual(source.dtype, np.dtype(numpy_type))
+                self.assertFalse(source.dtype.hasobject)
+                array = wp.from_numpy(source, device="cpu")
+                self.assertIs(array.dtype, warp_type)
+                np.testing.assert_array_equal(array.numpy(), source)
+
+    @unittest.skipUnless(NUMPY_DTYPE_PROTOCOL_SUPPORTED, "NumPy dtype protocol requires NumPy 2.4 or later")
+    def test_numpy_dtype_resolution(self):
+        for warp_type, numpy_type in NUMPY_DTYPE_PAIRS:
+            with self.subTest(warp_type=warp_type.__name__):
+                self.assertEqual(np.dtype(warp_type), np.dtype(numpy_type))
+                self.assertEqual(np.dtype(warp_type(1)), np.dtype(numpy_type))
+
+        class FloatSubclass(wp.float32):
+            pass
+
+        self.assertEqual(np.dtype(FloatSubclass), np.dtype(np.float32))
+        self.assertEqual(np.dtype(wp.handle), np.dtype(np.uint64))
+        self.assertFalse(hasattr(wp.handle, "dtype"))
+
+    @unittest.skipUnless(NUMPY_DTYPE_PROTOCOL_SUPPORTED, "NumPy dtype protocol requires NumPy 2.4 or later")
+    def test_numpy_dtype_constructors(self):
+        for warp_type, numpy_type in NUMPY_DTYPE_PAIRS:
+            with self.subTest(warp_type=warp_type.__name__):
+                expected_dtype = np.dtype(numpy_type)
+                if expected_dtype.kind == "b":
+                    values = [False, True, True]
+                elif expected_dtype.kind == "f":
+                    values = [-1.5, 0.0, 2.25]
+                else:
+                    limits = np.iinfo(numpy_type)
+                    values = [limits.min, 0, limits.max]
+
+                for constructor in (np.array, np.asarray):
+                    with self.subTest(constructor=constructor.__name__):
+                        actual = constructor(values, dtype=warp_type)
+                        self.assertEqual(actual.dtype, expected_dtype)
+                        np.testing.assert_array_equal(actual, constructor(values, dtype=numpy_type))
+
+                for constructor, args in ((np.zeros, (3,)), (np.ones, (3,)), (np.full, (3, values[-1]))):
+                    with self.subTest(constructor=constructor.__name__):
+                        actual = constructor(*args, dtype=warp_type)
+                        self.assertEqual(actual.dtype, expected_dtype)
+                        self.assertEqual(actual.nbytes, actual.size * expected_dtype.itemsize)
+                        self.assertFalse(actual.dtype.hasobject)
+                        np.testing.assert_array_equal(actual, constructor(*args, dtype=numpy_type))
+
+                self.assertEqual(np.empty(3, dtype=warp_type).dtype, expected_dtype)
+                self.assertEqual(np.zeros(3, dtype=object).dtype, np.dtype(object))
+
+    @unittest.skipUnless(NUMPY_DTYPE_PROTOCOL_SUPPORTED, "NumPy dtype protocol requires NumPy 2.4 or later")
+    def test_numpy_dtype_structured_and_subarray(self):
+        for warp_type, numpy_type in NUMPY_DTYPE_PAIRS:
+            with self.subTest(warp_type=warp_type.__name__):
+                for aligned in (False, True):
+                    actual = np.dtype([("value", warp_type), ("tag", np.uint8)], align=aligned)
+                    expected = np.dtype([("value", numpy_type), ("tag", np.uint8)], align=aligned)
+                    self.assertEqual(actual, expected)
+                    self.assertFalse(actual.hasobject)
+                    np.testing.assert_array_equal(np.zeros(2, dtype=actual), np.zeros(2, dtype=expected))
+
+                actual = np.dtype((warp_type, (2, 3)))
+                self.assertEqual(actual, np.dtype((numpy_type, (2, 3))))
+                self.assertFalse(actual.hasobject)
+
+    @unittest.skipUnless(NUMPY_DTYPE_PROTOCOL_SUPPORTED, "NumPy dtype protocol requires NumPy 2.4 or later")
+    def test_numpy_dtype_casting_and_buffers(self):
+        for warp_type, numpy_type in NUMPY_DTYPE_PAIRS:
+            with self.subTest(warp_type=warp_type.__name__):
+                expected = np.array([0, 1, 2], dtype=numpy_type)
+                converted = np.arange(3).astype(warp_type)
+                self.assertEqual(converted.dtype, expected.dtype)
+                np.testing.assert_array_equal(converted, expected)
+                for actual in (expected.view(warp_type), np.frombuffer(expected.data, dtype=warp_type)):
+                    self.assertEqual(actual.dtype, expected.dtype)
+                    self.assertTrue(np.shares_memory(actual, expected))
+                    np.testing.assert_array_equal(actual, expected)
+
+    @unittest.skipUnless(NUMPY_DTYPE_PROTOCOL_SUPPORTED, "NumPy dtype protocol requires NumPy 2.4 or later")
+    def test_numpy_dtype_promotion(self):
+        for warp_type, numpy_type in NUMPY_DTYPE_PAIRS:
+            with self.subTest(warp_type=warp_type.__name__):
+                self.assertEqual(np.result_type(warp_type, np.float32), np.result_type(numpy_type, np.float32))
+                self.assertEqual(np.promote_types(warp_type, np.int16), np.promote_types(numpy_type, np.int16))
+                self.assertEqual(np.can_cast(warp_type, np.float64), np.can_cast(numpy_type, np.float64))
+                if numpy_type in (np.float16, np.float32, np.float64):
+                    self.assertEqual(np.finfo(warp_type).eps, np.finfo(numpy_type).eps)
+                elif numpy_type is not np.bool_:
+                    self.assertEqual(np.iinfo(warp_type).max, np.iinfo(numpy_type).max)
+
+    @unittest.skipUnless(NUMPY_DTYPE_PROTOCOL_SUPPORTED, "NumPy dtype protocol requires NumPy 2.4 or later")
+    def test_numpy_dtype_scalar_inference(self):
+        value = wp.float32(1.25)
+        self.assertEqual(np.asarray(value).dtype, np.dtype(object))
+        self.assertEqual(np.array([value]).dtype, np.dtype(object))
+        self.assertFalse(np.isscalar(value))
+        explicit = np.array([value], dtype=wp.float32)
+        np.testing.assert_array_equal(explicit, np.array([1.25], dtype=np.float32))
+
+    @unittest.skipUnless(NUMPY_DTYPE_PROTOCOL_SUPPORTED, "NumPy dtype protocol requires NumPy 2.4 or later")
+    def test_numpy_dtype_cpu_array_sharing(self):
+        for warp_type, numpy_type in NUMPY_DTYPE_PAIRS:
+            with self.subTest(warp_type=warp_type.__name__):
+                source = np.array([0, 1, 2], dtype=warp_type)
+                array = wp.array(source, dtype=warp_type, device="cpu", copy=False)
+                self.assertIs(array.dtype, warp_type)
+                self.assertEqual(array.ptr, source.ctypes.data)
+                view = array.numpy()
+                self.assertEqual(view.dtype, np.dtype(numpy_type))
+                self.assertTrue(np.shares_memory(source, view))
+                view[1] = 0
+                self.assertEqual(source[1], 0)
+                inferred = wp.from_numpy(source, device="cpu")
+                self.assertIs(inferred.dtype, warp_type)
+                np.testing.assert_array_equal(inferred.numpy(), source)
 
     def test_tuple_type_code_generation(self):
         """Test that tuple type annotations generate correct type codes, especially on Python 3.10."""
