@@ -4,6 +4,8 @@
 import math
 import unittest
 
+import numpy as np
+
 import warp as wp
 import warp.tests.aux_test_compile_consts_dummy
 from warp._src.codegen import codegen_func_forward
@@ -78,6 +80,143 @@ def test_closure_precedence(test, device):
         wp.expect_eq(SHADOWED_GLOBAL, 42)
 
     wp.launch(closure_kernel, dim=1, device=device)
+
+
+CAPTURED_TRANSFORM = wp.transform(wp.vec3(1.0, 2.0, 3.0), wp.quat(0.1, 0.2, 0.3, 0.9))
+CAPTURED_VEC = wp.vec3(1.0, 2.0, 3.0)
+CAPTURED_QUAT = wp.quat(0.1, 0.2, 0.3, 0.9)
+
+
+@wp.func
+def captured_rotation_x():
+    return CAPTURED_TRANSFORM.q[0]
+
+
+@wp.kernel(module="unique")
+def captured_attribute_kernel(out: wp.array[float], out_vec: wp.array[wp.vec3]):
+    out[0] = CAPTURED_TRANSFORM.q[0]
+    out[1] = CAPTURED_TRANSFORM.q[3]
+    out[2] = CAPTURED_TRANSFORM.p[2]
+    out[3] = CAPTURED_VEC.z
+    out[4] = CAPTURED_QUAT.w
+    out[5] = wp.static(CAPTURED_TRANSFORM).q[1]
+    out[6] = captured_rotation_x()
+    out_vec[0] = wp.vec3(CAPTURED_VEC.y)
+    out_vec[1] = CAPTURED_TRANSFORM.p
+
+
+def test_captured_value_attribute_access(test, device):
+    """Verify attribute access on captured vector, quaternion, and transform values reads the component."""
+
+    out = wp.zeros(7, dtype=float, device=device)
+    out_vec = wp.zeros(2, dtype=wp.vec3, device=device)
+    wp.launch(captured_attribute_kernel, dim=1, inputs=[out, out_vec], device=device)
+
+    assert_np_equal(out.numpy(), np.array([0.1, 0.9, 3.0, 3.0, 0.9, 0.2, 0.1], dtype=np.float32))
+    assert_np_equal(out_vec.numpy(), np.array([[2.0, 2.0, 2.0], [1.0, 2.0, 3.0]], dtype=np.float32))
+
+    local_transform = wp.transform(wp.vec3(4.0, 5.0, 6.0), wp.quat(0.4, 0.3, 0.2, 0.1))
+
+    @wp.kernel(module="unique")
+    def closure_kernel(out: wp.array[float]):
+        out[0] = local_transform.q[2]
+        out[1] = local_transform.p[0]
+
+    out = wp.zeros(2, dtype=float, device=device)
+    wp.launch(closure_kernel, dim=1, inputs=[out], device=device)
+    assert_np_equal(out.numpy(), np.array([0.2, 4.0], dtype=np.float32))
+
+
+def test_captured_value_unknown_attribute(test, device):
+    """Verify unknown attributes on captured values raise a clear error."""
+
+    @wp.kernel(module="unique")
+    def unknown_attribute_kernel(out: wp.array[float]):
+        out[0] = CAPTURED_VEC.foo
+
+    out = wp.zeros(1, dtype=float, device=device)
+    with test.assertRaisesRegex(AttributeError, r"`foo` is not an attribute of"):
+        wp.launch(unknown_attribute_kernel, dim=1, inputs=[out], device=device)
+
+
+@wp.struct
+class CapturedInner:
+    scale: wp.float64
+    offset: wp.vec2
+
+
+@wp.struct
+class CapturedOuter:
+    inner: CapturedInner
+    flag: wp.int32
+
+
+@wp.func
+def captured_outer_flag(o: CapturedOuter):
+    return o.flag
+
+
+def test_captured_struct_field_access(test, device):
+    """Verify fields of struct values passed through wp.static() keep their declared types."""
+
+    params = CapturedOuter()
+    params.inner.scale = 0.1
+    params.inner.offset = wp.vec2(-1.0, 4.0)
+    params.flag = 7
+
+    @wp.kernel(module="unique")
+    def struct_field_kernel(scale: wp.array[wp.float64], offset: wp.array[wp.vec2], flag: wp.array[int]):
+        scale[0] = wp.static(params).inner.scale
+        offset[0] = wp.static(params).inner.offset
+        # passing the struct to a function registers its type with the module
+        flag[0] = captured_outer_flag(wp.static(params)) + wp.static(params).flag
+
+    scale = wp.zeros(1, dtype=wp.float64, device=device)
+    offset = wp.zeros(1, dtype=wp.vec2, device=device)
+    flag = wp.zeros(1, dtype=int, device=device)
+    wp.launch(struct_field_kernel, dim=1, inputs=[scale, offset, flag], device=device)
+
+    # 0.1 is not exactly representable in float32, so this also checks the field keeps its float64 type
+    test.assertEqual(scale.numpy()[0], 0.1)
+    assert_np_equal(offset.numpy()[0], np.array([-1.0, 4.0], dtype=np.float32))
+    test.assertEqual(flag.numpy()[0], 14)
+
+
+@wp.struct
+class CapturedScalars:
+    enabled: wp.bool
+    object_handle: wp.handle
+    limit: wp.float64
+
+
+def test_captured_struct_scalar_field_types(test, device):
+    """Verify Boolean, handle, and typed infinite fields of struct values passed through wp.static()."""
+
+    params = CapturedScalars()
+    params.enabled = 1
+    params.object_handle = 123
+    params.limit = wp.float64(math.inf)
+
+    # the unused argument registers the struct type with the module
+    @wp.kernel(module="unique")
+    def scalar_field_kernel(
+        enabled: wp.array[wp.bool],
+        object_handle: wp.array[wp.uint64],
+        limit: wp.array[wp.float64],
+        registered: CapturedScalars,
+    ):
+        enabled[0] = wp.static(params).enabled
+        object_handle[0] = wp.static(params).object_handle
+        limit[0] = wp.static(params).limit
+
+    enabled = wp.zeros(1, dtype=wp.bool, device=device)
+    object_handle = wp.zeros(1, dtype=wp.uint64, device=device)
+    limit = wp.zeros(1, dtype=wp.float64, device=device)
+    wp.launch(scalar_field_kernel, dim=1, inputs=[enabled, object_handle, limit, params], device=device)
+
+    test.assertTrue(enabled.numpy()[0])
+    test.assertEqual(object_handle.numpy()[0], 123)
+    test.assertEqual(limit.numpy()[0], math.inf)
 
 
 def test_hash_global_capture(test, device):
@@ -319,6 +458,21 @@ add_kernel_test(TestConstants, test_float, dim=1, inputs=[x], devices=devices)
 
 add_function_test(TestConstants, "test_closure_capture", test_closure_capture, devices=devices)
 add_function_test(TestConstants, "test_closure_precedence", test_closure_precedence, devices=devices)
+add_function_test(
+    TestConstants, "test_captured_value_attribute_access", test_captured_value_attribute_access, devices=devices
+)
+add_function_test(
+    TestConstants, "test_captured_value_unknown_attribute", test_captured_value_unknown_attribute, devices=devices
+)
+add_function_test(
+    TestConstants, "test_captured_struct_field_access", test_captured_struct_field_access, devices=devices
+)
+add_function_test(
+    TestConstants,
+    "test_captured_struct_scalar_field_types",
+    test_captured_struct_scalar_field_types,
+    devices=devices,
+)
 add_function_test(TestConstants, "test_hash_global_capture", test_hash_global_capture, devices=devices)
 add_function_test(TestConstants, "test_hash_redefine_kernel", test_hash_redefine_kernel, devices=devices)
 add_function_test(TestConstants, "test_hash_redefine_constant_only", test_hash_redefine_constant_only, devices=devices)

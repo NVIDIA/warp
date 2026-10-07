@@ -3765,7 +3765,21 @@ class Adjoint:
                         raise WarpCodegenAttributeError(
                             f"Native type '{type(aggregate.constant).__name__}' has no field '{node.attr}'"
                         ) from e
-                return aggregate
+
+                if isinstance(aggregate.constant, StructInstance):
+                    # read the field at compile time, keeping its declared type
+                    field_type = _aggregate_vars(aggregate.type)[node.attr].type
+                    value = getattr(aggregate.constant, node.attr)
+                    if field_type is warp._src.types.handle:
+                        field_type = warp._src.types.uint64
+                    if field_type in warp._src.types.scalar_and_bool_types:
+                        # unwrap Warp scalars first so that e.g. wp.float64(inf) is not wrapped twice
+                        value = field_type(getattr(value, "value", value))
+                    return adj.add_constant(value)
+
+                # vector, quaternion, and transform constants use the regular component access below
+                if not isinstance(aggregate.constant, ctypes.Array):
+                    return aggregate
 
             if isinstance(aggregate, types.ModuleType) or isinstance(aggregate, type):
                 out = getattr(aggregate, node.attr)
