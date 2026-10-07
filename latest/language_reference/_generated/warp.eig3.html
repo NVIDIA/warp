@@ -565,8 +565,17 @@
 <dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag" data-wp-tag="python" data-wp-value="true"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Compute the eigendecomposition of a symmetric 3x3 matrix.</p>
 <p>Do not rely on a particular ordering of the eigenvalues, signs of the
 eigenvectors, or a specific eigenvector basis when eigenvalues repeat.</p>
-<p>When eigenvalues are close or repeated, small changes in <code class="docutils literal notranslate"><span class="pre">A</span></code> can change
-<code class="docutils literal notranslate"><span class="pre">Q</span></code> substantially. Gradients through <code class="docutils literal notranslate"><span class="pre">Q</span></code> may therefore be unreliable.</p>
+<p>Autodiff supports smooth losses that depend only on the eigenvalues <code class="docutils literal notranslate"><span class="pre">d</span></code>
+and are unchanged by reordering its components. Examples include the sum
+of the eigenvalues and their sum of squares. These losses can be
+differentiated even when eigenvalues repeat.</p>
+<p>Repeated eigenvalues make the corresponding eigenvectors non-unique.
+Losses that require a particular eigenvector may therefore have no
+well-defined gradient. Losses that select an individual eigenvalue may
+also be nondifferentiable when eigenvalues repeat.</p>
+<p>Currently, gradients through the eigenvector matrix <code class="docutils literal notranslate"><span class="pre">Q</span></code> may be unreliable
+when eigenvalues are close or repeated. Check gradients for the inputs
+and precision you use before relying on eigenvector-dependent losses.</p>
 <p>The current implementation uses a fixed number of Jacobi iterations.
 Check reconstruction and orthogonality when accuracy is critical.</p>
 <dl class="field-list simple">

@@ -15,8 +15,19 @@
    Do not rely on a particular ordering of the eigenvalues, signs of the
    eigenvectors, or a specific eigenvector basis when eigenvalues repeat.
    
-   When eigenvalues are close or repeated, small changes in ``A`` can change
-   ``Q`` substantially. Gradients through ``Q`` may therefore be unreliable.
+   Autodiff supports smooth losses that depend only on the eigenvalues ``d``
+   and are unchanged by reordering its components. Examples include the sum
+   of the eigenvalues and their sum of squares. These losses can be
+   differentiated even when eigenvalues repeat.
+   
+   Repeated eigenvalues make the corresponding eigenvectors non-unique.
+   Losses that require a particular eigenvector may therefore have no
+   well-defined gradient. Losses that select an individual eigenvalue may
+   also be nondifferentiable when eigenvalues repeat.
+   
+   Currently, gradients through the eigenvector matrix ``Q`` may be unreliable
+   when eigenvalues are close or repeated. Check gradients for the inputs
+   and precision you use before relying on eigenvector-dependent losses.
    
    The current implementation uses a fixed number of Jacobi iterations.
    Check reconstruction and orthogonality when accuracy is critical.
