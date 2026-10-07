@@ -100,16 +100,32 @@ Warp CPU arrays also implement the ``__array_interface__`` protocol and can be u
     print(a)
     > [1. 2. 3.]
 
-Data type conversion utilities are also available for convenience:
+.. _numpy-scalar-dtypes:
+
+Scalar data types
+^^^^^^^^^^^^^^^^^
+
+Use :func:`wp.dtype_to_numpy() <warp.dtype_to_numpy>` to convert Warp scalar types to NumPy dtype specifications. Explicit conversion ensures the intended NumPy dtype is selected across both older and newer NumPy versions:
 
 .. code:: python
 
-    warp_type = wp.float32
-    ...
-    numpy_type = wp.dtype_to_numpy(warp_type)
-    ...
-    a = wp.zeros(n, dtype=warp_type)
-    b = np.zeros(n, dtype=numpy_type)
+    import numpy as np
+    import warp as wp
+
+    indices = np.zeros(100, dtype=wp.dtype_to_numpy(wp.int32))
+    values = np.full(100, 1.25, dtype=wp.dtype_to_numpy(wp.float32))
+    assert indices.dtype == np.dtype(np.int32)
+    assert values.dtype == np.dtype(np.float32)
+
+The converted dtype can also be used with ``np.dtype()``, ``astype()``, and structured dtype fields. Warp scalar values require an explicit dtype when constructing NumPy arrays.
+
+.. note::
+
+    Warp's Boolean, signed and unsigned integer, and float16/float32/float64 types expose their equivalent NumPy dtype through the ``__numpy_dtype__`` attribute. NumPy 2.4 and later recognize this attribute, avoiding object-dtype allocations and their performance overhead when a Warp scalar type is passed directly as a dtype specification. Older NumPy versions still select the object dtype in that case. Continue using ``wp.dtype_to_numpy()`` for consistent behavior across NumPy versions. This protocol does not change dtype inference from Warp scalar values.
+
+:class:`wp.bfloat16 <warp.bfloat16>` does not expose ``__numpy_dtype__`` because NumPy has no native bfloat16 dtype.
+
+The existing ``wp.dtype_to_numpy(wp.bfloat16)`` mapping returns ``np.uint16`` for raw storage. When initializing or filling arrays with this dtype, use values that are already encoded as bfloat16 bit patterns. To convert floating-point values to bfloat16, use ``wp.array([1.5], dtype=wp.bfloat16)`` or ``ml_dtypes.bfloat16`` as the NumPy dtype.
 
 To create Warp arrays from NumPy arrays, use :func:`warp.from_numpy` or pass the NumPy array as the ``data`` argument of the :class:`warp.array` constructor directly.
 

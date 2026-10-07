@@ -656,16 +656,27 @@ FFI, and use Warp with JAX transformations and distributed computation.</p></li>
 <span class="o">&gt;</span> <span class="p">[</span><span class="mf">1.</span> <span class="mf">2.</span> <span class="mf">3.</span><span class="p">]</span>
 </pre></div>
 </div>
-<p>Data type conversion utilities are also available for convenience:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">warp_type</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span>
-<span class="o">...</span>
-<span class="n">numpy_type</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">dtype_to_numpy</span><span class="p">(</span><span class="n">warp_type</span><span class="p">)</span>
-<span class="o">...</span>
-<span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">warp_type</span><span class="p">)</span>
-<span class="n">b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">numpy_type</span><span class="p">)</span>
+<section id="scalar-data-types">
+<span id="numpy-scalar-dtypes"></span><h3>Scalar data types<a class="headerlink" href="#scalar-data-types" title="Link to this heading">#</a></h3>
+<p>Use <a class="reference internal" href="../api_reference/_generated/warp.dtype_to_numpy.html#warp.dtype_to_numpy" title="warp.dtype_to_numpy"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.dtype_to_numpy()</span></code></a> to convert Warp scalar types to NumPy dtype specifications. Explicit conversion ensures the intended NumPy dtype is selected across both older and newer NumPy versions:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+
+<span class="n">indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">dtype_to_numpy</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">))</span>
+<span class="n">values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mf">1.25</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">dtype_to_numpy</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">))</span>
+<span class="k">assert</span> <span class="n">indices</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+<span class="k">assert</span> <span class="n">values</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
 </pre></div>
 </div>
+<p>The converted dtype can also be used with <code class="docutils literal notranslate"><span class="pre">np.dtype()</span></code>, <code class="docutils literal notranslate"><span class="pre">astype()</span></code>, and structured dtype fields. Warp scalar values require an explicit dtype when constructing NumPy arrays.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Warp’s Boolean, signed and unsigned integer, and float16/float32/float64 types expose their equivalent NumPy dtype through the <code class="docutils literal notranslate"><span class="pre">__numpy_dtype__</span></code> attribute. NumPy 2.4 and later recognize this attribute, avoiding object-dtype allocations and their performance overhead when a Warp scalar type is passed directly as a dtype specification. Older NumPy versions still select the object dtype in that case. Continue using <code class="docutils literal notranslate"><span class="pre">wp.dtype_to_numpy()</span></code> for consistent behavior across NumPy versions. This protocol does not change dtype inference from Warp scalar values.</p>
+</div>
+<p><a class="reference internal" href="../api_reference/_generated/warp.bfloat16.html#warp.bfloat16" title="warp.bfloat16"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.bfloat16</span></code></a> does not expose <code class="docutils literal notranslate"><span class="pre">__numpy_dtype__</span></code> because NumPy has no native bfloat16 dtype.</p>
+<p>The existing <code class="docutils literal notranslate"><span class="pre">wp.dtype_to_numpy(wp.bfloat16)</span></code> mapping returns <code class="docutils literal notranslate"><span class="pre">np.uint16</span></code> for raw storage. When initializing or filling arrays with this dtype, use values that are already encoded as bfloat16 bit patterns. To convert floating-point values to bfloat16, use <code class="docutils literal notranslate"><span class="pre">wp.array([1.5],</span> <span class="pre">dtype=wp.bfloat16)</span></code> or <code class="docutils literal notranslate"><span class="pre">ml_dtypes.bfloat16</span></code> as the NumPy dtype.</p>
 <p>To create Warp arrays from NumPy arrays, use <a class="reference internal" href="../api_reference/_generated/warp.from_numpy.html#warp.from_numpy" title="warp.from_numpy"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.from_numpy()</span></code></a> or pass the NumPy array as the <code class="docutils literal notranslate"><span class="pre">data</span></code> argument of the <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a> constructor directly.</p>
+</section>
 </section>
 <section id="cupy-numba">
 <h2>CuPy / Numba<a class="headerlink" href="#cupy-numba" title="Link to this heading">#</a></h2>
@@ -816,7 +827,10 @@ FFI, and use Warp with JAX transformations and distributed computation.</p></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#guides-in-this-section">Guides in this section</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#quick-reference">Quick Reference</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#pass-arrays-directly">Pass Arrays Directly</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#numpy">NumPy</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#numpy">NumPy</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#scalar-data-types">Scalar data types</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cupy-numba">CuPy / Numba</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#paddle">Paddle</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#example-optimization-using-warp-to-paddle">Example: Optimization using <code class="xref py py-func docutils literal notranslate"><span class="pre">warp.to_paddle()</span></code></a></li>

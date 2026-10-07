@@ -553,6 +553,8 @@ The following scalar storage types are supported for array structures:
 
 Warp supports ``float`` and ``int`` as aliases for :class:`wp.float32 <warp.float32>` and :class:`wp.int32 <warp.int32>` respectively.
 
+Use :func:`wp.dtype_to_numpy() <warp.dtype_to_numpy>` to convert Warp scalar types to NumPy dtype specifications. See :ref:`numpy-scalar-dtypes` for examples and behavior across NumPy versions.
+
 bfloat16 and NumPy Interop
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 

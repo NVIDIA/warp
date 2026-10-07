@@ -1063,6 +1063,7 @@ using <code class="docutils literal notranslate"><span class="pre">wp.zeros(shap
 </table>
 </div>
 <p>Warp supports <code class="docutils literal notranslate"><span class="pre">float</span></code> and <code class="docutils literal notranslate"><span class="pre">int</span></code> as aliases for <a class="reference internal" href="../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.float32</span></code></a> and <a class="reference internal" href="../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.int32</span></code></a> respectively.</p>
+<p>Use <a class="reference internal" href="../api_reference/_generated/warp.dtype_to_numpy.html#warp.dtype_to_numpy" title="warp.dtype_to_numpy"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.dtype_to_numpy()</span></code></a> to convert Warp scalar types to NumPy dtype specifications. See <a class="reference internal" href="interoperability.html#numpy-scalar-dtypes"><span class="std std-ref">Scalar data types</span></a> for examples and behavior across NumPy versions.</p>
 <section id="bfloat16-and-numpy-interop">
 <h4>bfloat16 and NumPy Interop<a class="headerlink" href="#bfloat16-and-numpy-interop" title="Link to this heading">#</a></h4>
 <p>NumPy does not natively support the bfloat16 format, so Warp stores
