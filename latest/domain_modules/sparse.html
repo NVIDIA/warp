@@ -673,7 +673,7 @@ necessarily the active block count. Warp reuses the transfer resources
 allocated by previous calls on the same matrix.</p>
 </div>
 <div class="deprecated">
-<p><span class="versionmodified deprecated">Deprecated since version 1.18: </span><a class="reference internal" href="../api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.copy_nnz_async" title="warp.sparse.BsrMatrix.copy_nnz_async"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BsrMatrix.copy_nnz_async()</span></code></a> starts an asynchronous transfer but will be
+<p><span class="versionmodified deprecated">Deprecated since version 1.10: </span><a class="reference internal" href="../api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.copy_nnz_async" title="warp.sparse.BsrMatrix.copy_nnz_async"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BsrMatrix.copy_nnz_async()</span></code></a> starts an asynchronous transfer but will be
 removed in a future release. The pending transfer can be unsafe when matrix
 topology updates use multiple streams or when it is captured and replayed in
 a CUDA graph, potentially producing a stale host-side count. Prefer
