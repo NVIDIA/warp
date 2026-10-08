@@ -21,6 +21,8 @@ struct bvh_query_thread_block_t {
         , is_ray(false)
         , input_lower()
         , input_upper()
+        , ray_direction()
+        , ray_direction_kind(BvhRayDirectionKind::FINITE)
     {
     }
 
@@ -46,7 +48,9 @@ struct bvh_query_thread_block_t {
     // inputs
     wp::vec3 input_lower;
     wp::vec3 input_upper;
+    wp::vec3 ray_direction;  // original direction for widened slab arithmetic
     bool is_ray;
+    BvhRayDirectionKind ray_direction_kind;
 };
 
 
@@ -54,8 +58,10 @@ CUDA_CALLABLE inline bool
 bvh_query_intersection_test(const bvh_query_thread_block_t& query, const vec3& node_lower, const vec3& node_upper)
 {
     if (query.is_ray) {
-        float t = 0.0f;
-        return intersect_ray_aabb(query.input_lower, query.input_upper, node_lower, node_upper, t);
+        return bvh_ray_intersect_aabb<true>(
+            query.input_lower, query.ray_direction, query.input_upper, query.ray_direction_kind, node_lower, node_upper,
+            INFINITY
+        );
     } else {
         return intersect_aabb_aabb(query.input_lower, query.input_upper, node_lower, node_upper);
     }
@@ -327,6 +333,8 @@ bvh_query_aabb_thread_block_impl(uint64_t id, const vec3& lower, const vec3& upp
 // by the AABB and ray tiled entry points, so dispatch on the query's stored kind.
 CUDA_CALLABLE inline bool bvh_query_next_thread_block_impl(bvh_query_thread_block_t& query, int& index)
 {
+    if (query.kind == BvhQueryKind::RAY)
+        return bvh_query_next_impl<BvhQueryKind::RAY, true>(query, index, INFINITY);
     return bvh_query_next_dynamic(query, index, FLT_MAX);
 }
 
@@ -369,7 +377,10 @@ CUDA_CALLABLE inline bvh_query_thread_block_t tile_bvh_query_aabb(uint64_t id, c
 // New tile-based ray query function
 CUDA_CALLABLE inline bvh_query_thread_block_t tile_bvh_query_ray(uint64_t id, const vec3& start, const vec3& dir)
 {
-    return bvh_query_thread_block(id, true, start, 1.0f / dir);
+    bvh_query_thread_block_t query = bvh_query_thread_block(id, true, start, 1.0f / dir);
+    query.ray_direction = dir;
+    query.ray_direction_kind = bvh_ray_classify(start, dir, query.bvh);
+    return query;
 }
 
 #else
@@ -382,7 +393,7 @@ template <int Length> inline auto tile_bvh_query_next_impl(bvh_query_thread_bloc
     // On CPU, bvh_query_thread_block_t is aliased to bvh_query_t and is shared by the AABB
     // and ray tiled entry points, so dispatch on the query's stored kind.
     int index = -1;
-    bvh_query_next_dynamic(query, index, FLT_MAX);
+    bvh_query_next_thread_block_impl(query, index);
     query.last_query_valid = (index >= 0);
 
     // Create a tile with the index in the first element, -1 in all others
