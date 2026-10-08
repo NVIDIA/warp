@@ -12024,7 +12024,9 @@ def launch(
         )
 
         # detect illegal inter-kernel read/write access patterns if verification flag is set
-        if warp.config.verify_autograd_array_access:
+        # fwd_args is only built when there is work to launch, and a launch of no
+        # threads reads and writes nothing, so there is nothing to check either
+        if warp.config.verify_autograd_array_access and total_dim_size > 0:
             runtime.tape._check_kernel_array_access(kernel, fwd_args)
 
 
