@@ -346,7 +346,7 @@ class BsrMatrix(Generic[_BlockType]):
     def copy_nnz_async(self) -> None:
         """Start an asynchronous transfer of ``offsets[nrow]`` to host memory.
 
-        .. deprecated:: 1.18
+        .. deprecated:: 1.10
             This method will be removed in a future release. Prefer :meth:`nnz_sync`, which avoids keeping a
             potentially stale transfer pending between calls. An asynchronous transfer may be unsafe when matrix
             topology updates use other streams or when the transfer is captured and replayed in a CUDA graph.
