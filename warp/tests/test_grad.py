@@ -168,6 +168,35 @@ def test_for_loop_nested_for_grad(test, device):
     assert_np_equal(tape.gradients[x].numpy(), np.arange(0.0, 9.0, 1.0))
 
 
+@wp.kernel
+def for_loop_sibling_reassign(n: int, x: wp.array[float], y: wp.array[float]):
+    for i in range(n):
+        s = float(0.0)
+        for j in range(n):
+            v = 2.0 * x[j]
+            s += v
+        # reassigns the first inner loop's v
+        for k in range(n):
+            v = 3.0 * x[k]
+            s += v
+        y[i] = s
+
+
+def test_for_loop_sibling_reassign_grad(test, device):
+    n = 4
+    x = wp.ones(n, dtype=float, device=device, requires_grad=True)
+    y = wp.zeros(n, dtype=float, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(for_loop_sibling_reassign, dim=1, inputs=[n, x, y], device=device)
+
+    tape.backward(grads={y: wp.ones_like(y)})
+
+    assert_np_equal(y.numpy(), np.full(n, 5.0 * n))
+    assert_np_equal(x.grad.numpy(), np.full(n, 5.0 * n))
+
+
 # differentiating thought most while loops is not supported
 # since doing things like i = i + 1 breaks adjointing
 
@@ -847,6 +876,7 @@ class TestGrad(unittest.TestCase):
 
 # add_function_test(TestGrad, "test_while_loop_grad", test_while_loop_grad, devices=devices)
 add_function_test(TestGrad, "test_for_loop_nested_for_grad", test_for_loop_nested_for_grad, devices=devices)
+add_function_test(TestGrad, "test_for_loop_sibling_reassign_grad", test_for_loop_sibling_reassign_grad, devices=devices)
 add_function_test(TestGrad, "test_scalar_grad", test_scalar_grad, devices=devices)
 add_function_test(TestGrad, "test_for_loop_grad", test_for_loop_grad, devices=devices)
 add_function_test(
