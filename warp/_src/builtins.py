@@ -7903,6 +7903,8 @@ add_builtin(
     input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "axis": int},
     value_func=tile_sum_axis_value_func,
     dispatch_func=tile_sum_axis_dispatch_func,
+    native_func="tile_sum_axis",
+    adjoint_uses_template_args=True,
     doc="""Cooperatively compute the sum of the tile elements.
 
     Reduce across a tile axis using all threads in the block.

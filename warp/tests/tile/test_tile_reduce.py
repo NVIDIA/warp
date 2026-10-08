@@ -909,6 +909,162 @@ def tile_reduce_axis_tier1_sum_axis2_kernel(x: wp.array3d[float], y: wp.array2d[
     wp.tile_store(y, b)
 
 
+@wp.kernel(module="tile_sum_axis_1d_gradient")
+def tile_sum_axis_1d_gradient_kernel(x: wp.array[float], y: wp.array[float]):
+    a = wp.tile_load(x, shape=8, storage="shared")
+    wp.tile_store(y, wp.tile_sum(a, axis=0))
+
+
+@wp.kernel
+def tile_sum_axis0_gradient_kernel(x: wp.array2d[float], y: wp.array[float]):
+    a = wp.tile_load(x, shape=(2, 3), storage="shared")
+    wp.tile_store(y, wp.tile_sum(a, axis=0))
+
+
+@wp.kernel
+def tile_sum_axis1_gradient_kernel(x: wp.array2d[float], y: wp.array[float]):
+    a = wp.tile_load(x, shape=(3, 2), storage="shared")
+    wp.tile_store(y, wp.tile_sum(a, axis=1))
+
+
+@wp.kernel
+def tile_sum_axis_3d_axis0_gradient_kernel(x: wp.array3d[float], y: wp.array2d[float]):
+    a = wp.tile_load(x, shape=(2, 3, 4), storage="shared")
+    wp.tile_store(y, wp.tile_sum(a, axis=0))
+
+
+@wp.kernel
+def tile_sum_axis_3d_axis1_gradient_kernel(x: wp.array3d[float], y: wp.array2d[float]):
+    a = wp.tile_load(x, shape=(2, 3, 4), storage="shared")
+    wp.tile_store(y, wp.tile_sum(a, axis=1))
+
+
+@wp.kernel
+def tile_sum_axis_3d_axis2_gradient_kernel(x: wp.array3d[float], y: wp.array2d[float]):
+    a = wp.tile_load(x, shape=(2, 3, 4), storage="shared")
+    wp.tile_store(y, wp.tile_sum(a, axis=2))
+
+
+@wp.kernel
+def tile_sum_axis_4d_axis0_gradient_kernel(x: wp.array4d[float], y: wp.array3d[float]):
+    a = wp.tile_load(x, shape=(2, 3, 4, 5), storage="shared")
+    wp.tile_store(y, wp.tile_sum(a, axis=0))
+
+
+@wp.kernel
+def tile_sum_axis_4d_axis1_gradient_kernel(x: wp.array4d[float], y: wp.array3d[float]):
+    a = wp.tile_load(x, shape=(2, 3, 4, 5), storage="shared")
+    wp.tile_store(y, wp.tile_sum(a, axis=1))
+
+
+@wp.kernel
+def tile_sum_axis_4d_axis2_gradient_kernel(x: wp.array4d[float], y: wp.array3d[float]):
+    a = wp.tile_load(x, shape=(2, 3, 4, 5), storage="shared")
+    wp.tile_store(y, wp.tile_sum(a, axis=2))
+
+
+@wp.kernel
+def tile_sum_axis_4d_axis3_gradient_kernel(x: wp.array4d[float], y: wp.array3d[float]):
+    a = wp.tile_load(x, shape=(2, 3, 4, 5), storage="shared")
+    wp.tile_store(y, wp.tile_sum(a, axis=3))
+
+
+@wp.kernel
+def tile_sum_axis_broadcast_gradient_kernel(x: wp.array2d[float], y: wp.array[float]):
+    a = wp.tile_load(x, shape=(3, 1), storage="shared")
+    broadcasted = wp.tile_broadcast(a, shape=(3, 4))
+    wp.tile_store(y, wp.tile_sum(broadcasted, axis=0))
+
+
+@wp.kernel
+def tile_sum_axis0_large_gradient_kernel(x: wp.array2d[float], y: wp.array[float]):
+    a = wp.tile_load(x, shape=(2, 4608), storage="shared")
+    wp.tile_store(y, wp.tile_sum(a, axis=0))
+
+
+@wp.kernel(module="unique")
+def tile_sum_axis0_large_cpu_gradient_kernel(x: wp.array2d[float], y: wp.array[float]):
+    a = wp.tile_load(x, shape=(2, 14000), storage="shared")
+    wp.tile_store(y, wp.tile_sum(a, axis=0))
+
+
+def test_tile_sum_axis_gradients(test, device):
+    """Verify tile sum gradients for every axis in ranks one through four."""
+    cases = (
+        (tile_sum_axis_1d_gradient_kernel, (8,), 0),
+        (tile_sum_axis0_gradient_kernel, (2, 3), 0),
+        (tile_sum_axis1_gradient_kernel, (3, 2), 1),
+        (tile_sum_axis_3d_axis0_gradient_kernel, (2, 3, 4), 0),
+        (tile_sum_axis_3d_axis1_gradient_kernel, (2, 3, 4), 1),
+        (tile_sum_axis_3d_axis2_gradient_kernel, (2, 3, 4), 2),
+        (tile_sum_axis_4d_axis0_gradient_kernel, (2, 3, 4, 5), 0),
+        (tile_sum_axis_4d_axis1_gradient_kernel, (2, 3, 4, 5), 1),
+        (tile_sum_axis_4d_axis2_gradient_kernel, (2, 3, 4, 5), 2),
+        (tile_sum_axis_4d_axis3_gradient_kernel, (2, 3, 4, 5), 3),
+    )
+
+    for kernel, shape, axis in cases:
+        with test.subTest(kernel=kernel.key, shape=shape, axis=axis):
+            input_values = np.arange(1, np.prod(shape) + 1, dtype=np.float32).reshape(shape)
+            expected_output = np.atleast_1d(np.sum(input_values, axis=axis, dtype=np.float32))
+            output_gradient = np.arange(1, expected_output.size + 1, dtype=np.float32).reshape(expected_output.shape)
+            output_gradient += 0.25
+            if len(shape) == 1:
+                expected_gradient = np.full(shape, output_gradient[0], dtype=np.float32)
+            else:
+                expected_gradient = np.broadcast_to(np.expand_dims(output_gradient, axis), shape)
+
+            x = wp.array(input_values, dtype=float, requires_grad=True, device=device)
+            y = wp.zeros(expected_output.shape, dtype=float, requires_grad=True, device=device)
+
+            with wp.Tape() as tape:
+                wp.launch_tiled(kernel, dim=[1], inputs=[x], outputs=[y], block_dim=32, device=device)
+
+            y.grad = wp.array(output_gradient, dtype=float, device=device)
+            tape.backward()
+
+            np.testing.assert_array_equal(y.numpy(), expected_output)
+            np.testing.assert_array_equal(x.grad.numpy(), expected_gradient)
+
+
+def test_tile_sum_axis_broadcast_gradient(test, device):
+    """Verify gradients of tile sums over broadcast views."""
+    x = wp.array([[1.0], [2.0], [3.0]], dtype=float, requires_grad=True, device=device)
+    y = wp.zeros(4, dtype=float, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            tile_sum_axis_broadcast_gradient_kernel, dim=[1], inputs=[x], outputs=[y], block_dim=32, device=device
+        )
+
+    y.grad = wp.array([1.25, 2.25, 3.25, 4.25], dtype=float, device=device)
+    tape.backward()
+
+    np.testing.assert_array_equal(y.numpy(), [6.0] * 4)
+    np.testing.assert_array_equal(x.grad.numpy(), [[11.0], [11.0], [11.0]])
+
+
+def test_tile_sum_axis_large_gradient(test, device):
+    """Verify a large CUDA tile sum propagates distinct output gradients."""
+    if device.max_shared_memory_per_block < 96 * 1024:
+        test.skipTest("Requires at least 96 KiB of shared memory per block")
+
+    x = wp.ones((2, 4608), dtype=float, requires_grad=True, device=device)
+    y = wp.zeros(4608, dtype=float, requires_grad=True, device=device)
+    output_gradient = np.arange(4608, dtype=np.float32) / 16.0
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            tile_sum_axis0_large_gradient_kernel, dim=[1], inputs=[x], outputs=[y], block_dim=32, device=device
+        )
+
+    y.grad = wp.array(output_gradient, dtype=float, device=device)
+    tape.backward()
+
+    np.testing.assert_array_equal(y.numpy(), np.full(4608, 2.0, dtype=np.float32))
+    np.testing.assert_array_equal(x.grad.numpy(), np.stack((output_gradient, output_gradient)))
+
+
 # Tier 2: 32 < axis size <= 256
 @wp.kernel
 def tile_reduce_axis_tier2_sum_axis0_kernel(x: wp.array2d[float], y: wp.array[float]):
@@ -932,8 +1088,8 @@ def tile_reduce_axis_tier2_sum_axis2_kernel(x: wp.array3d[float], y: wp.array2d[
 
 
 # Tier 2 with a block whose warps are not all full. Small enough to stay well inside
-# shared memory on every architecture, so the only thing under test is axis coverage.
-@wp.kernel(module="unique", enable_backward=False)
+# shared memory on every architecture, so we can check axis coverage and gradients.
+@wp.kernel(module="unique")
 def tile_reduce_axis_tier2_partial_warp_kernel(x: wp.array2d[float], y: wp.array[float]):
     a = wp.tile_load(x, shape=(100, 8), storage="shared")
     b = wp.tile_sum(a, axis=0)
@@ -1073,7 +1229,7 @@ def test_tile_reduce_axis_lengths_33_to_256(test, device, block_dim=TILE_DIM):
 
 
 def test_tile_reduce_axis_partial_warp_block(test, device):
-    """Reduce a tier 2 axis from blocks whose warps are not all full.
+    """Check tier 2 axis sums and gradients from blocks whose warps are not all full.
 
     The lanes a warp runs are not always the architectural warp size. A block narrower
     than a warp leaves the upper lanes inactive, and a block_dim that is not a multiple
@@ -1082,25 +1238,32 @@ def test_tile_reduce_axis_partial_warp_block(test, device):
     go unread and the reduction returns a partial result. The multiples of the warp size
     are controls.
     """
-    x = wp.ones((100, 8), dtype=float, device=device)
+    output_gradient = np.arange(1, 9, dtype=np.float32)
+    expected_gradient = np.broadcast_to(output_gradient, (100, 8))
 
     for block_dim in (4, 8, 16, 32, 33, 48, 64, 65, 96):
-        y = wp.zeros(8, dtype=float, device=device)
+        with test.subTest(block_dim=block_dim):
+            x = wp.ones((100, 8), dtype=float, requires_grad=True, device=device)
+            y = wp.zeros(8, dtype=float, requires_grad=True, device=device)
 
-        wp.launch_tiled(
-            tile_reduce_axis_tier2_partial_warp_kernel,
-            dim=[1],
-            inputs=[x],
-            outputs=[y],
-            block_dim=block_dim,
-            device=device,
-        )
+            with wp.Tape() as tape:
+                wp.launch_tiled(
+                    tile_reduce_axis_tier2_partial_warp_kernel,
+                    dim=[1],
+                    inputs=[x],
+                    outputs=[y],
+                    block_dim=block_dim,
+                    device=device,
+                )
 
-        np.testing.assert_allclose(
-            y.numpy(),
-            np.ones(8, dtype=float) * 100.0,
-            err_msg=f"axis of 100 elements was not fully reduced at block_dim={block_dim}",
-        )
+            np.testing.assert_allclose(
+                y.numpy(),
+                np.ones(8, dtype=float) * 100.0,
+                err_msg=f"axis of 100 elements was not fully reduced at block_dim={block_dim}",
+            )
+
+            tape.backward(grads={y: wp.array(output_gradient, dtype=float, device=device)})
+            np.testing.assert_array_equal(x.grad.numpy(), expected_gradient)
 
 
 def test_tile_reduce_axis_lengths_over_256(test, device, block_dim=TILE_DIM):
@@ -1389,6 +1552,31 @@ cpu_devices = get_cpu_test_devices()
 
 
 class TestTileReduce(unittest.TestCase):
+    def test_tile_sum_axis_large_cpu_gradient(self):
+        """Verify a large CPU tile sum propagates distinct output gradients.
+
+        The tile size exercises gradient storage reuse during the backward pass.
+        """
+        x = wp.ones((2, 14000), dtype=float, requires_grad=True, device="cpu")
+        y = wp.zeros(14000, dtype=float, requires_grad=True, device="cpu")
+        output_gradient = np.arange(14000, dtype=np.float32) / 16.0
+
+        with wp.Tape() as tape:
+            wp.launch_tiled(
+                tile_sum_axis0_large_cpu_gradient_kernel,
+                dim=[1],
+                inputs=[x],
+                outputs=[y],
+                block_dim=32,
+                device="cpu",
+            )
+
+        y.grad = wp.array(output_gradient, dtype=float, device="cpu")
+        tape.backward()
+
+        np.testing.assert_array_equal(y.numpy(), np.full(14000, 2.0, dtype=np.float32))
+        np.testing.assert_array_equal(x.grad.numpy(), np.stack((output_gradient, output_gradient)))
+
     def test_tile_reduce_has_no_dynamic_shared_initialization(self):
         """Compile a vector reduction without dynamic shared-memory initialization."""
         supported_archs = wp.get_cuda_supported_archs()
@@ -1440,6 +1628,26 @@ add_function_test(
 )
 add_function_test(TestTileReduce, "test_tile_reduce_grouped_sum", test_tile_reduce_grouped_sum, devices=devices)
 add_function_test(TestTileReduce, "test_tile_reduce_simt", test_tile_reduce_simt, devices=devices)
+add_function_test(
+    TestTileReduce,
+    "test_tile_sum_axis_gradients",
+    test_tile_sum_axis_gradients,
+    devices=devices,
+    enable_cpu_blocks=True,
+)
+add_function_test(
+    TestTileReduce,
+    "test_tile_sum_axis_broadcast_gradient",
+    test_tile_sum_axis_broadcast_gradient,
+    devices=devices,
+    enable_cpu_blocks=True,
+)
+add_function_test(
+    TestTileReduce,
+    "test_tile_sum_axis_large_gradient",
+    test_tile_sum_axis_large_gradient,
+    devices=get_cuda_test_devices(),
+)
 add_function_test(
     TestTileReduce,
     "test_tile_reduce_axis_lengths_up_to_32",

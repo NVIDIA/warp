@@ -264,6 +264,7 @@ class Function:
         require_original_output_arg: bool = False,
         scope_locals: dict[str, Any] | None = None,
         inline_hint: Literal["noinline", "forceinline"] | None = None,
+        adjoint_uses_template_args: bool = False,
     ):
         if code_transformers is None:
             code_transformers = []
@@ -276,6 +277,7 @@ class Function:
         self.export_func = export_func
         self.dispatch_func = dispatch_func
         self.lto_dispatch_func = lto_dispatch_func
+        self.adjoint_uses_template_args = adjoint_uses_template_args
         self.input_types = {}
         self.export = export
         self.doc = doc
@@ -2441,6 +2443,7 @@ def add_builtin(
     native_func: str | None = None,
     defaults: dict[str, Any] | None = None,
     require_original_output_arg: bool = False,
+    adjoint_uses_template_args: bool = False,
 ):
     """Register a new built-in function.
 
@@ -2494,6 +2497,7 @@ def add_builtin(
         require_original_output_arg: Used during the codegen stage to
             specify whether an adjoint parameter corresponding to the return
             value should be included in the signature of the backward function.
+        adjoint_uses_template_args: Pass the dispatch template arguments to the native adjoint.
     """
     if input_types is None:
         input_types = {}
@@ -2619,6 +2623,7 @@ def add_builtin(
                     skip_replay=skip_replay,
                     is_differentiable=is_differentiable,
                     native_func=native_func,
+                    adjoint_uses_template_args=adjoint_uses_template_args,
                     defaults=defaults,
                     require_original_output_arg=require_original_output_arg,
                 )
@@ -2643,6 +2648,7 @@ def add_builtin(
         is_differentiable=is_differentiable,
         generic=generic,
         native_func=native_func,
+        adjoint_uses_template_args=adjoint_uses_template_args,
         defaults=defaults,
         require_original_output_arg=require_original_output_arg,
     )
@@ -3271,7 +3277,7 @@ class ModuleHasher:
 
     @staticmethod
     def hash_builtin_function(func: Function) -> bytes:
-        """Hash the identity of a built-in function used as a specialization input.
+        """Hash the identity of a built-in function that affects generated code.
 
         Built-in function targets do not add module dependency edges, but they
         still change generated code. Including their stable identity in the
@@ -3290,6 +3296,13 @@ class ModuleHasher:
         ch.update(bytes("builtin", "utf-8"))
         ch.update(bytes(func.key, "utf-8"))
         ch.update(bytes(func.native_func, "utf-8"))
+
+        # Most Warp builtins rely on the versioned cache directory. Builtins
+        # with a templated adjoint also affect reverse-call codegen, so include
+        # their overload dispatch metadata in the module hash.
+        if any(overload.adjoint_uses_template_args for overload in func.overloads):
+            dispatch = tuple((overload.native_func, overload.adjoint_uses_template_args) for overload in func.overloads)
+            ch.update(repr(dispatch).encode("utf-8"))
 
         external_contracts = (
             overload._external_builtin_contract
