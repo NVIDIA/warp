@@ -931,6 +931,15 @@ def tile_reduce_axis_tier2_sum_axis2_kernel(x: wp.array3d[float], y: wp.array2d[
     wp.tile_store(y, b)
 
 
+# Tier 2 with a block whose warps are not all full. Small enough to stay well inside
+# shared memory on every architecture, so the only thing under test is axis coverage.
+@wp.kernel(module="unique", enable_backward=False)
+def tile_reduce_axis_tier2_partial_warp_kernel(x: wp.array2d[float], y: wp.array[float]):
+    a = wp.tile_load(x, shape=(100, 8), storage="shared")
+    b = wp.tile_sum(a, axis=0)
+    wp.tile_store(y, b)
+
+
 # Tier 3: axis size > 256
 @wp.kernel
 def tile_reduce_axis_tier3_sum_axis0_kernel(x: wp.array2d[float], y: wp.array[float]):
@@ -1061,6 +1070,37 @@ def test_tile_reduce_axis_lengths_33_to_256(test, device, block_dim=TILE_DIM):
 
     assert_np_equal(y.numpy(), np.ones((8, 8), dtype=float) * 128.0)
     assert_np_equal(x.grad.numpy(), np.ones((8, 8, 128), dtype=float))
+
+
+def test_tile_reduce_axis_partial_warp_block(test, device):
+    """Reduce a tier 2 axis from blocks whose warps are not all full.
+
+    The lanes a warp runs are not always the architectural warp size. A block narrower
+    than a warp leaves the upper lanes inactive, and a block_dim that is not a multiple
+    of the warp size gives the last warp a partial one. Either way the axis has to be
+    walked in chunks of the lanes the warp has, or the elements owned by the absent lanes
+    go unread and the reduction returns a partial result. The multiples of the warp size
+    are controls.
+    """
+    x = wp.ones((100, 8), dtype=float, device=device)
+
+    for block_dim in (4, 8, 16, 32, 33, 48, 64, 65, 96):
+        y = wp.zeros(8, dtype=float, device=device)
+
+        wp.launch_tiled(
+            tile_reduce_axis_tier2_partial_warp_kernel,
+            dim=[1],
+            inputs=[x],
+            outputs=[y],
+            block_dim=block_dim,
+            device=device,
+        )
+
+        np.testing.assert_allclose(
+            y.numpy(),
+            np.ones(8, dtype=float) * 100.0,
+            err_msg=f"axis of 100 elements was not fully reduced at block_dim={block_dim}",
+        )
 
 
 def test_tile_reduce_axis_lengths_over_256(test, device, block_dim=TILE_DIM):
@@ -1425,6 +1465,12 @@ add_function_test(
     test_tile_reduce_axis_lengths_33_to_256,
     devices=devices,
     block_dim=32,
+)
+add_function_test(
+    TestTileReduce,
+    "test_tile_reduce_axis_partial_warp_block",
+    test_tile_reduce_axis_partial_warp_block,
+    devices=devices,
 )
 add_function_test(
     TestTileReduce,

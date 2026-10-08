@@ -444,7 +444,24 @@ tile_reduce_axis_impl(Op f, Tile& t, typename Tile::Type empty_identity, bool ha
         const int warp_index = threadIdx.x / WP_TILE_WARP_SIZE;
         const int lane_index = threadIdx.x % WP_TILE_WARP_SIZE;
 
-        constexpr int chunks_per_slice = (reduce_dim_size + WP_TILE_WARP_SIZE - 1) / WP_TILE_WARP_SIZE;
+        // the lanes a warp actually runs are not always the architectural warp size: a
+        // block narrower than a warp leaves the upper lanes inactive, and a block_dim that
+        // is not a multiple of the warp size gives the last warp a partial one. Walk the
+        // axis in chunks of the lanes this warp has, or the elements owned by the absent
+        // lanes are never read and the reduction returns a partial result.
+        //
+        // Only a block that both exceeds one warp and is not a multiple of one has warps of
+        // differing widths, and then only its last warp is short. Keep every other geometry
+        // off warp_index: active_lanes and chunks_per_slice stay compile-time constants
+        // there, so the chunk loop below still unrolls and its division still folds.
+        constexpr bool uniform_warps
+            = WP_TILE_BLOCK_DIM <= WP_TILE_WARP_SIZE || WP_TILE_BLOCK_DIM % WP_TILE_WARP_SIZE == 0;
+        constexpr int nominal_lanes = WP_TILE_BLOCK_DIM < WP_TILE_WARP_SIZE ? WP_TILE_BLOCK_DIM : WP_TILE_WARP_SIZE;
+
+        const int active_lanes
+            = (!uniform_warps && warp_index == warp_count - 1) ? WP_TILE_BLOCK_DIM % WP_TILE_WARP_SIZE : nominal_lanes;
+
+        const int chunks_per_slice = (reduce_dim_size + active_lanes - 1) / active_lanes;
 
         // shared memory: one accumulator per warp
         // CUDA ignores the constructor a __shared__ array of T would run, and NVRTC
@@ -460,9 +477,9 @@ tile_reduce_axis_impl(Op f, Tile& t, typename Tile::Type empty_identity, bool ha
         for (int out_idx = warp_index; out_idx < output_size; out_idx += warp_count) {
             auto out_coord = OutputLayout::coord_from_linear(out_idx);
 
-            // process the reduction axis in chunks of 32
+            // process the reduction axis one chunk of active lanes at a time
             for (int chunk = 0; chunk < chunks_per_slice; ++chunk) {
-                int axis_idx = chunk * WP_TILE_WARP_SIZE + lane_index;
+                int axis_idx = chunk * active_lanes + lane_index;
                 bool valid = axis_idx < reduce_dim_size;
 
                 T val;
