@@ -1067,7 +1067,8 @@ def broadcast_shapes(shapes: list[tuple[int]]) -> tuple[int]:
                 if s == r:
                     broad.append(s)
                 elif s == 1 or r == 1:
-                    broad.append(max(s, r))
+                    # Size 0 must win over size 1. max(0, 1) is 1.
+                    broad.append(s if r == 1 else r)
                 else:
                     raise ValueError(f"Shapes {ref} and {shape} are not broadcastable")
             elif j <= len(ref):
