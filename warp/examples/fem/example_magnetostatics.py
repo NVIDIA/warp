@@ -5,7 +5,7 @@
 # Example Magnetostatics
 #
 # This example demonstrates solving a 3d magnetostatics problem
-# (a copper coil with radial current around a cylindrical iron core)
+# (a copper coil with azimuthal current around a cylindrical iron core)
 # using a curl-curl formulation and H(curl)-conforming function space
 #
 # 1/mu Curl B + j = 0
@@ -115,7 +115,7 @@ def permeability_field(
 
 
 @wp.func
-def current_field(
+def current_potential_field(
     pos: Any,
     current: float,
     coil_internal_radius: float,
@@ -133,16 +133,21 @@ def current_field(
     er = type(x)(coil_external_radius)
     j = type(x)(current)
 
-    return wp.where(
-        y < ch and r >= ir and r <= er,
-        type(pos)(z, pos.dtype(0.0), -x) * j / r,
-        type(pos)(pos.dtype(0.0)),
-    )
+    # J = curl(T): a radial ramp in T_y produces the azimuthal coil current.
+    # T is normal to the end caps, so the height cutoff adds no surface current.
+    amplitude = j * wp.clamp(er - r, pos.dtype(0.0), er - ir)
+    return type(pos)(pos.dtype(0.0), wp.where(y < ch, amplitude, pos.dtype(0.0)), pos.dtype(0.0))
 
 
 @fem.integrand
 def curl_curl_form(s: fem.Sample, domain: fem.Domain, u: fem.Field, v: fem.Field, mu: fem.Field):
     return wp.dot(fem.curl(u, s), fem.curl(v, s)) / mu(s)
+
+
+@fem.integrand
+def current_form(s: fem.Sample, v: fem.Field, potential: fem.Field):
+    # Integration by parts: (J, v) = (T, curl(v)) for homogeneous tangential boundary conditions.
+    return wp.dot(potential(s), fem.curl(v, s))
 
 
 @fem.integrand
@@ -206,7 +211,9 @@ class Example:
         self._permeability_field = fem.ImplicitField(
             domain, func=permeability_field, values=dict(**coil_config, **core_config)
         )
-        self._current_field = fem.ImplicitField(domain, func=current_field, values=dict(current=current, **coil_config))
+        self._current_potential_field = fem.ImplicitField(
+            domain, func=current_potential_field, values=dict(current=current, **coil_config)
+        )
 
         vec3_type = wp.vec3d if fp64 else wp.vec3
         A_space = fem.make_polynomial_space(
@@ -229,7 +236,9 @@ class Example:
         lhs = fem.integrate(
             curl_curl_form, fields={"u": u, "v": v, "mu": self._permeability_field}, output_dtype=scalar_type
         )
-        rhs = fem.integrate(mass_form, fields={"v": v, "u": self._current_field}, output_dtype=scalar_type)
+        rhs = fem.integrate(
+            current_form, fields={"v": v, "potential": self._current_potential_field}, output_dtype=scalar_type
+        )
 
         # Dirichlet BC
         boundary = fem.BoundarySides(sim_geo)
@@ -240,7 +249,7 @@ class Example:
         )
         fem.project_linear_system(lhs, rhs, dirichlet_bd_proj)
 
-        # solve using Conjugate Residual (numerically rhs may not be in image of lhs)
+        # The curl-based load is orthogonal to the gradient nullspace.
         fem_example_utils.bsr_cg(lhs, b=rhs, x=self.A_field.dof_values, method="cr", max_iters=250, quiet=False)
 
         # compute B as curl(A)
