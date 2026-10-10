@@ -3,7 +3,7 @@
 Pre-configured Docker image for testing Warp C++ examples in CI/CD pipelines.
 
 **Contents**: Ubuntu 24.04 + CUDA 13.4.2 (selective components via `parse_redist.py`) + CMake +
-`build-essential` + uv 0.12.23
+`build-essential` + uv 0.13.0
 
 **Architecture**: x86_64/amd64 only (ARM64 support can be added later if needed)
 
@@ -37,7 +37,7 @@ The default command builds `warp-cpp-test-env:cuda13.4.2-ubuntu24.04` locally.
 - **CUDA**: Minimal components via `parse_redist.py` (`nvcc`, headers, and runtime only)
 - **CMake**: Installed from the Kitware package repository
 - **Build tools**: GCC, G++, and Make from `build-essential`
-- **uv**: Version 0.12.23 from a digest-pinned official image
+- **uv**: Version 0.13.0 from a digest-pinned official image
 
 The image excludes NVRTC and `libnvjitlink`, which are needed when building Warp itself but not when testing
 against pre-built Warp libraries. It also avoids a Packman download in the C++ examples job.
