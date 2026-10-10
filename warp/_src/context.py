@@ -1534,10 +1534,14 @@ def func(
     inline_hint = None if inline is None else ("forceinline" if inline else "noinline")
 
     frame = inspect.currentframe()
-    if frame is None or frame.f_back is None:
-        scope_locals = {}
-    else:
-        scope_locals = frame.f_back.f_locals
+    try:
+        if frame is None or frame.f_back is None:
+            scope_locals = {}
+        else:
+            scope_locals = frame.f_back.f_locals
+    finally:
+        # Avoid a reference cycle that would retain the caller stack.
+        del frame
 
     def wrapper(f, *args, **kwargs):
         if name is None:
@@ -1673,10 +1677,14 @@ def func_native(snippet: str, adj_snippet: str | None = None, replay_snippet: st
     """
 
     frame = inspect.currentframe()
-    if frame is None or frame.f_back is None:
-        scope_locals = {}
-    else:
-        scope_locals = frame.f_back.f_locals
+    try:
+        if frame is None or frame.f_back is None:
+            scope_locals = {}
+        else:
+            scope_locals = frame.f_back.f_locals
+    finally:
+        # Avoid a reference cycle that would retain the caller stack.
+        del frame
 
     def snippet_func(f: Callable) -> Callable:
         name = warp._src.codegen.make_full_qualified_name(f)
