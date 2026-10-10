@@ -950,6 +950,10 @@ def vector(length, dtype):
     elif dtype is builtins.bool:
         dtype = bool
 
+    # A component name is one of the first `length` letters of "xyzw", the same
+    # names `Adjoint.vector_component_index` accepts inside a kernel.
+    component_indices = {} if length is Any else {c: i for i, c in enumerate("xyzw"[:length])}
+
     class vec_t(ctypes.Array):
         # ctypes.Array data for length, shape and c type:
         _length_ = 0 if length is Any else length
@@ -1096,16 +1100,22 @@ def vector(length, dtype):
                 raise KeyError(f"Invalid key {key}, expected int or slice")
 
         def __getattr__(self, name):
-            idx = "xyzw".find(name)
-            if idx != -1:
+            idx = component_indices.get(name)
+            if idx is not None:
                 return self.__getitem__(idx)
 
             return self.__getattribute__(name)
 
         def __setattr__(self, name, value):
-            idx = "xyzw".find(name)
-            if idx != -1:
+            idx = component_indices.get(name)
+            if idx is not None:
                 return self.__setitem__(idx, value)
+
+            # A name spelled entirely from component letters asks for a
+            # component, so storing it as an attribute would shadow the vector
+            # without touching it. Names outside that alphabet stay assignable.
+            if name and not name.strip("xyzw"):
+                raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
 
             return super().__setattr__(name, value)
 
