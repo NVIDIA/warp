@@ -137,7 +137,7 @@ class BsrMvMixedPrecision:
     def setup(self, matrix_dtype, blocks_per_row, tile_size, transpose):
         self._setup(matrix_dtype, blocks_per_row, tile_size, transpose)
 
-    def _setup(self, matrix_dtype, blocks_per_row, tile_size, transpose):
+    def _setup(self, matrix_dtype, blocks_per_row, tile_size, transpose, rows_per_block=1):
         wp.init()
         self.device = wp.get_device("cuda:0")
         nrow = 32768
@@ -153,13 +153,27 @@ class BsrMvMixedPrecision:
             A.values = wp.array(rng.uniform(-1, 1, size=A.nnz).astype(np.float32), dtype=getattr(wp, matrix_dtype))
             x = wp.array(rng.uniform(-1, 1, size=nrow), dtype=wp.float64)
             y = wp.empty_like(x)
-            wps.bsr_mv(A, x, y, tile_size=tile_size, transpose=transpose)
+            wps.bsr_mv(A, x, y, tile_size=tile_size, transpose=transpose, rows_per_block=rows_per_block)
             with wp.ScopedCapture() as capture:
-                wps.bsr_mv(A, x, y, tile_size=tile_size, transpose=transpose)
+                wps.bsr_mv(A, x, y, tile_size=tile_size, transpose=transpose, rows_per_block=rows_per_block)
             self._graph = capture.graph
             self._arrays = A, x, y
         wp.synchronize_device(self.device)
 
     def time_cuda(self, matrix_dtype, blocks_per_row, tile_size, transpose):
+        wp.capture_launch(self._graph)
+        wp.synchronize_device(self.device)
+
+
+class BsrMvRowPacked(BsrMvMixedPrecision):
+    """Compare row packing for mixed-precision products of different row lengths."""
+
+    params = [[8, 32, 128], [1, 16, 32, 64]]
+    param_names = ["blocks_per_row", "rows_per_block"]
+
+    def setup(self, blocks_per_row, rows_per_block):
+        self._setup("float32", blocks_per_row, 128 if rows_per_block > 1 else 0, False, rows_per_block)
+
+    def time_cuda(self, blocks_per_row, rows_per_block):
         wp.capture_launch(self._graph)
         wp.synchronize_device(self.device)

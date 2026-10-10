@@ -31,6 +31,22 @@ The matrix values retain their original storage precision; using double-precisio
 arithmetic cannot recover precision already lost when constructing the matrix.
 Other mixed scalar-type combinations are not supported.
 
+On CUDA, non-transposed products can explicitly pack several scalar output rows
+into one thread block. For example, ``tile_size=128, rows_per_block=32`` assigns
+four threads to each row:
+
+.. code-block:: python
+
+    y = bsr_mv(A, x, tile_size=128, rows_per_block=32)
+
+Here ``tile_size`` is the total thread count per block, and ``rows_per_block``
+counts scalar rows, including individual rows inside a BSR block. Row packing
+requires a power-of-two block size from 32 to 1024 and 1, 2, 4, 8, 16, or 32
+threads per row. Benchmark the intended matrices before selecting a configuration:
+packing can help medium-length rows but can slow down short rows. Calls that omit
+``rows_per_block`` retain the existing automatic dispatch. Explicit row packing
+is not supported for CPU or transposed products.
+
 Creating Sparse Matrices
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
