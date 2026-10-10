@@ -1195,6 +1195,7 @@ def make_test_bsr_mv(block_shape, scalar_type):
 
 
 def test_bsr_mv_mixed_precision(test, device):
+    """Check mixed-precision products for block shapes, padding, and transposition."""
     rng = np.random.default_rng(2069)
     for block_shape in ((1, 1), (2, 3), (3, 3)):
         block_type = wp.float32 if block_shape == (1, 1) else wp.types.matrix(block_shape, wp.float32)
@@ -1238,6 +1239,7 @@ def test_bsr_mv_mixed_precision(test, device):
 
 
 def test_bsr_mv_mixed_precision_arithmetic(test, device):
+    """Check that products, reductions, and scaling retain float64 precision."""
     # Casting after a float32 product or reduction would lose these contributions.
     A = bsr_from_triplets(
         1,
@@ -1264,6 +1266,7 @@ def test_bsr_mv_mixed_precision_arithmetic(test, device):
 
 
 def test_bsr_mv_mixed_precision_edges(test, device):
+    """Check mixed-precision aliasing, zero scaling, array views, and type validation."""
     A = bsr_identity(3, block_type=wp.float32, device=device)
     for transpose in (False, True):
         for tile_size in (-1, 64) if device.is_cuda else (-1,):
@@ -1301,6 +1304,7 @@ def test_bsr_mv_mixed_precision_edges(test, device):
 
 
 def test_bsr_mv_mixed_precision_capture(test, device):
+    """Check replay of captured mixed-precision products with aliased vectors."""
     A = bsr_identity(3, block_type=wp.float32, device=device)
     x = wp.ones(3, dtype=wp.float64, device=device)
     work = wp.empty_like(x)
@@ -1316,6 +1320,7 @@ def test_bsr_mv_mixed_precision_capture(test, device):
 
 
 def test_bsr_mv_row_packed(test, device):
+    """Check packed products across scalar types, block shapes, and thread layouts."""
     rng = np.random.default_rng(2069)
     configurations = ((32, 8), (512, 128), (1024, 256), (64, 64), (64, 32), (128, 32), (128, 16), (256, 16), (256, 8))
     for storage, compute in ((wp.float32, wp.float32), (wp.float64, wp.float64), (wp.float32, wp.float64)):
@@ -1357,6 +1362,7 @@ def test_bsr_mv_row_packed(test, device):
 
 
 def test_bsr_mv_row_packed_edges(test, device):
+    """Check packed products with aliasing, graph capture, empty matrices, and strides."""
     A = bsr_identity(35, block_type=wp.float32, device=device)
     x = wp.ones(35, dtype=wp.float64, device=device)
     work = wp.empty_like(x)
@@ -1390,6 +1396,7 @@ def test_bsr_mv_row_packed_edges(test, device):
 
 
 def test_bsr_mv_row_packed_invalid(test, device):
+    """Check that invalid row-packing requests leave the output unchanged."""
     A = bsr_identity(3, block_type=wp.float32, device=device)
     x = wp.ones(3, dtype=wp.float32, device=device)
     y = wp.full(3, 7.0, dtype=wp.float32, device=device)

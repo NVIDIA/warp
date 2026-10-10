@@ -4631,6 +4631,7 @@ def bsr_mm(
 
 @cache
 def make_bsr_mv_kernel(block_cols: int):
+    """Create a scalar BSR product kernel specialized for the block column count."""
 
     @wp.kernel(enable_backward=False, module="unique")
     def bsr_mv_kernel(
@@ -4643,6 +4644,7 @@ def make_bsr_mv_kernel(block_cols: int):
         beta: Any,
         y: wp.array(dtype=Any),
     ):
+        """Compute each scalar output row in one thread using the vector scalar type."""
         row, subrow = wp.tid()
 
         block_rows = A_values.shape[1]
@@ -4672,6 +4674,7 @@ def make_bsr_mv_kernel(block_cols: int):
 
 @cache
 def make_bsr_mv_tiled_kernel(tile_size: int):
+    """Create a BSR product kernel with one tile per scalar output row."""
 
     @wp.kernel(enable_backward=False, module="unique")
     def bsr_mv_tiled_kernel(
@@ -4684,6 +4687,7 @@ def make_bsr_mv_tiled_kernel(tile_size: int):
         beta: Any,
         y: wp.array(dtype=Any),
     ):
+        """Reduce each scalar row across a tile using the vector scalar type."""
         row, subrow, lane = wp.tid()
 
         scalar_zero = type(alpha)(0)
@@ -4723,6 +4727,7 @@ def make_bsr_mv_tiled_kernel(tile_size: int):
 
 @cache
 def make_bsr_mv_row_packed_kernel(tile_size: int, rows_per_block: int, block_shape: tuple[int, int]):
+    """Create a CUDA BSR product kernel specialized for row packing and block shape."""
     threads_per_row = tile_size // rows_per_block
     block_rows, block_cols = block_shape
 
@@ -4737,6 +4742,7 @@ def make_bsr_mv_row_packed_kernel(tile_size: int, rows_per_block: int, block_sha
         beta: Any,
         y: wp.array[Any],
     ):
+        """Reduce packed scalar rows while keeping padded lanes in the collective."""
         thread = wp.tid()
         group = thread // tile_size
         lane = thread % threads_per_row
@@ -4765,6 +4771,7 @@ def make_bsr_mv_row_packed_kernel(tile_size: int, rows_per_block: int, block_sha
 
 @cache
 def make_bsr_mv_transpose_kernel(block_rows: int):
+    """Create a transposed BSR product kernel specialized for the block row count."""
 
     @wp.kernel(enable_backward=False, module="unique")
     def bsr_mv_transpose_kernel(
@@ -4777,6 +4784,7 @@ def make_bsr_mv_transpose_kernel(block_rows: int):
         x: wp.array(dtype=Any),
         y: wp.array(dtype=Any),
     ):
+        """Accumulate transposed block products atomically using the vector scalar type."""
         block, subcol = wp.tid()
 
         row = bsr_row_index(A_offsets, A_row_count, block, A_row_counts)

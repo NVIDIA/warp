@@ -41,7 +41,7 @@ four threads to each row:
 
 Here ``tile_size`` is the total thread count per block, and ``rows_per_block``
 counts scalar rows, including individual rows inside a BSR block. Row packing
-requires a power-of-two block size from 32 to 1024 and 1, 2, 4, 8, 16, or 32
+requires a power-of-two ``tile_size`` from 32 to 1024 and 1, 2, 4, 8, 16, or 32
 threads per row. Benchmark the intended matrices before selecting a configuration:
 packing can help medium-length rows but can slow down short rows. Calls that omit
 ``rows_per_block`` retain the existing automatic dispatch. Explicit row packing

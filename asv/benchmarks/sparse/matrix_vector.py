@@ -135,9 +135,11 @@ class BsrMvMixedPrecision:
     number = 10
 
     def setup(self, matrix_dtype, blocks_per_row, tile_size, transpose):
+        """Prepare a captured product for the requested storage type and dispatch."""
         self._setup(matrix_dtype, blocks_per_row, tile_size, transpose)
 
     def _setup(self, matrix_dtype, blocks_per_row, tile_size, transpose, rows_per_block=1):
+        """Build reproducible coefficients and capture a warmed-up CUDA product."""
         wp.init()
         self.device = wp.get_device("cuda:0")
         nrow = 32768
@@ -161,6 +163,7 @@ class BsrMvMixedPrecision:
         wp.synchronize_device(self.device)
 
     def time_cuda(self, matrix_dtype, blocks_per_row, tile_size, transpose):
+        """Time one captured mixed-precision product through device completion."""
         wp.capture_launch(self._graph)
         wp.synchronize_device(self.device)
 
@@ -172,8 +175,10 @@ class BsrMvRowPacked(BsrMvMixedPrecision):
     param_names = ["blocks_per_row", "rows_per_block"]
 
     def setup(self, blocks_per_row, rows_per_block):
+        """Prepare a captured product with the requested row length and packing."""
         self._setup("float32", blocks_per_row, 128 if rows_per_block > 1 else 0, False, rows_per_block)
 
     def time_cuda(self, blocks_per_row, rows_per_block):
+        """Time one captured row-packing configuration through device completion."""
         wp.capture_launch(self._graph)
         wp.synchronize_device(self.device)
