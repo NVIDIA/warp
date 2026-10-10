@@ -368,7 +368,7 @@ jobs:
         if: ${{ env.SKIP_BUILD != '1' && !startsWith(matrix.platform, 'linux') }}
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
         with:
-          version: "0.12.23"
+          version: "0.13.0"
           # This workflow runs once or twice a year; caching would only
           # churn the repository's 10 GB Actions cache quota.
           enable-cache: false

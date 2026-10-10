@@ -90,7 +90,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
         with:
-          version: "0.12.23"
+          version: "0.13.0"
       - name: Set up Python
         run: uv python install
       - name: Build Warp without CUDA Support

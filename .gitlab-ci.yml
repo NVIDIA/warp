@@ -46,9 +46,9 @@ variables:
   UV_PYTHON_PREFERENCE: only-managed
   
   # Standard container images (pinned with SHA256 for supply chain security)
-  UV_TRIXIE_IMAGE: "ghcr.io/astral-sh/uv:0.12.23-trixie@sha256:9892f1c4d43a27b73b94c4490510fcb47d89ece25ddf9ecf5672fd8df89f0cd7"
-  UV_TRIXIE_SLIM_IMAGE: "ghcr.io/astral-sh/uv:0.12.23-trixie-slim@sha256:310dcfe0a36d996bec9f8508cd526a2d6011787cd7211920b2b5faa8c2e040d4"
-  UV_TRIXIE_SLIM_ARM_IMAGE: "ghcr.io/astral-sh/uv:0.12.23-trixie-slim@sha256:7df3121f353f330a9d111d08c9b4dd45c0e236ea84a30e5e8ec47fe88a8e4c4d"
+  UV_TRIXIE_IMAGE: "ghcr.io/astral-sh/uv:0.13.0-trixie@sha256:a59268be16ac86fb4db0cd64abdd7f3e6beb7013eec071642eeee6c6fdacbecc"
+  UV_TRIXIE_SLIM_IMAGE: "ghcr.io/astral-sh/uv:0.13.0-trixie-slim@sha256:a83c72867064d791e84878aae09e248b05c54102ce838ed74c4405a54ff7706b"
+  UV_TRIXIE_SLIM_ARM_IMAGE: "ghcr.io/astral-sh/uv:0.13.0-trixie-slim@sha256:5949e98db1588f58522f056858e414d5282a8abf72033406da7d840346525fa1"
   MINIFORGE_IMAGE: "condaforge/miniforge3:25.11.0-0@sha256:d2fadb08950045962fd1cfb1eeb6224442027f03095862e725f4c1c7b17a3caf"
   # Warp builder images are pinned per architecture for supply chain security.
   WARP_BUILDER_IMAGE_CU12_X86_64: "${CI_REGISTRY_IMAGE}/warp-builder:manylinux_2_28-cuda12.9.2-uv0.12.13-x86_64@sha256:6a00ce1bb59bfc350e121fb74641c15bcc423986253cc0462d99e9d25e7c2b0a"
