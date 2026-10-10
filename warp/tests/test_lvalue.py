@@ -393,6 +393,31 @@ class TestLValue(unittest.TestCase):
         except AttributeError:
             self.fail()
 
+    def test_swizzle_error_invalid_component(self):
+        v = wp.vec3(1, 2, 3)
+        for name in ("xy", "yz", "zw", "xyz", "xyzw"):
+            with self.assertRaisesRegex(AttributeError, rf"no attribute '{name}'$"):
+                getattr(v, name)
+
+        v2 = wp.vec2(1, 2)
+        for name in ("z", "w"):
+            with self.assertRaisesRegex(AttributeError, rf"no attribute '{name}'$"):
+                getattr(v2, name)
+        self.assertFalse(hasattr(v2, "w"))
+
+        v3 = wp.vec3(1, 2, 3)
+        for name in ("xy", "yz", "zw", "xyz", "xyzw"):
+            with self.assertRaisesRegex(AttributeError, rf"no attribute '{name}'$"):
+                setattr(v3, name, 9)
+        self.assertEqual(list(v3), [1.0, 2.0, 3.0])
+
+        v4 = wp.vec2(1, 2)
+        for name in ("z", "w"):
+            with self.assertRaisesRegex(AttributeError, rf"no attribute '{name}'$"):
+                setattr(v4, name, 9)
+        self.assertEqual(list(v4), [1.0, 2.0])
+        self.assertFalse(hasattr(v4, "w"))
+
 
 add_function_test(TestLValue, "test_rmw_array", test_rmw_array, devices=devices)
 add_function_test(TestLValue, "test_rmw_array_struct", test_rmw_array_struct, devices=devices)
