@@ -583,6 +583,38 @@ svd3(const mat_t<3, 3, Type>& A, mat_t<3, 3, Type>& U, vec_t<3, Type>& sigma, ma
     );
 }
 
+template <>
+inline CUDA_CALLABLE void
+svd3(const mat_t<3, 3, half>& A, mat_t<3, 3, half>& U, vec_t<3, half>& sigma, mat_t<3, 3, half>& V)
+{
+    // Half arithmetic can overflow in A^T A or underflow when squaring the QR epsilon.
+    mat_t<3, 3, float> A_float(A);
+    float scale = 0.0f;
+    bool all_zero = true;
+    for (unsigned i = 0; i < 3; ++i) {
+        for (unsigned j = 0; j < 3; ++j) {
+            scale = max(scale, abs(A_float.data[i][j]));
+            all_zero = all_zero && A_float.data[i][j] == 0.0f;
+        }
+    }
+
+    // max ignores NaNs, so a zero scale alone does not imply an all-zero input.
+    if (all_zero) {
+        U = identity<3, half>();
+        sigma = vec_t<3, half>();
+        V = identity<3, half>();
+        return;
+    }
+
+    // Normalize in float so small half inputs remain above the float QR threshold.
+    mat_t<3, 3, float> U_float, V_float;
+    vec_t<3, float> sigma_float;
+    svd3(div(A_float, scale), U_float, sigma_float, V_float);
+    U = mat_t<3, 3, half>(U_float);
+    sigma = vec_t<3, half>(mul(sigma_float, scale));
+    V = mat_t<3, 3, half>(V_float);
+}
+
 template <typename Type>
 inline CUDA_CALLABLE void adj_svd3(
     const mat_t<3, 3, Type>& A,
