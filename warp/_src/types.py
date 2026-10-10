@@ -1045,17 +1045,34 @@ def vector(length, dtype):
             else:
                 raise KeyError(f"Invalid key {key}, expected int or slice")
 
+        def _component_index(self, name):
+            # A component name is one of the first `_length_` letters of "xyzw".
+            # `str.find()` on its own is substring search, so it takes a longer
+            # name as a prefix, and it ignores the length, so it takes a letter
+            # past the end. `Adjoint.vector_component_index` rejects both for
+            # the same syntax inside a kernel.
+            if len(name) != 1:
+                return -1
+
+            return "xyzw"[: self._length_].find(name)
+
         def __getattr__(self, name):
-            idx = "xyzw".find(name)
+            idx = self._component_index(name)
             if idx != -1:
                 return self.__getitem__(idx)
 
             return self.__getattribute__(name)
 
         def __setattr__(self, name, value):
-            idx = "xyzw".find(name)
+            idx = self._component_index(name)
             if idx != -1:
                 return self.__setitem__(idx, value)
+
+            # A name spelled entirely from component letters asks for a
+            # component, so storing it as an attribute would shadow the vector
+            # without touching it. Names outside that alphabet stay assignable.
+            if name and not set(name).difference("xyzw"):
+                raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
 
             return super().__setattr__(name, value)
 
