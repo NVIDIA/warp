@@ -543,7 +543,7 @@ in <code class="docutils literal notranslate"><span class="pre">src</span></code
 temporary allocation. This path is not differentiable. With
 <code class="docutils literal notranslate"><span class="pre">topology=&quot;compact&quot;</span></code>, active blocks are also packed into compact
 row storage. If <code class="docutils literal notranslate"><span class="pre">False</span></code>, use differentiable value accumulation.</p></li>
-<li><p><strong>topology</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><em>Literal</em></a><em>[</em><em>'compact'</em><em>, </em><em>'padded'</em><em>] </em><em>| </em><em>None</em>) – Topology policy for the compressed arrays. Defaults to
+<li><p><strong>topology</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.15)"><em>Literal</em></a><em>[</em><em>'compact'</em><em>, </em><em>'padded'</em><em>] </em><em>| </em><em>None</em>) – Topology policy for the compressed arrays. Defaults to
 <code class="docutils literal notranslate"><span class="pre">&quot;compact&quot;</span></code>. <code class="docutils literal notranslate"><span class="pre">&quot;padded&quot;</span></code> preserves existing row capacity; it
 cannot report row-capacity overflow because compression never
 increases the active block count.</p></li>

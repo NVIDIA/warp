@@ -617,10 +617,10 @@ non-differentiable.</p>
 <h3>Custom Loggers<a class="headerlink" href="#custom-loggers" title="Link to this heading">#</a></h3>
 <p>By default Warp routes diagnostics through a built-in logger that writes
 debug and info messages to <code class="docutils literal notranslate"><span class="pre">sys.stdout</span></code>, errors to <code class="docutils literal notranslate"><span class="pre">sys.stderr</span></code>, and
-routes warnings through Python’s <a class="reference external" href="https://docs.python.org/3/library/warnings.html#module-warnings" title="(in Python v3.14)"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warnings</span></code></a> filter machinery so that
-<code class="docutils literal notranslate"><span class="pre">-W</span></code> flags and <a class="reference external" href="https://docs.python.org/3/library/warnings.html#warnings.simplefilter" title="(in Python v3.14)"><code class="xref py py-func docutils literal notranslate"><span class="pre">warnings.simplefilter()</span></code></a> work as expected.</p>
+routes warnings through Python’s <a class="reference external" href="https://docs.python.org/3/library/warnings.html#module-warnings" title="(in Python v3.15)"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warnings</span></code></a> filter machinery so that
+<code class="docutils literal notranslate"><span class="pre">-W</span></code> flags and <a class="reference external" href="https://docs.python.org/3/library/warnings.html#warnings.simplefilter" title="(in Python v3.15)"><code class="xref py py-func docutils literal notranslate"><span class="pre">warnings.simplefilter()</span></code></a> work as expected.</p>
 <p>Frameworks that want to capture Warp’s output can supply a custom logger.
-<a class="reference internal" href="../api_reference/_generated/warp.Logger.html#warp.Logger" title="warp.Logger"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Logger</span></code></a> is a runtime-checkable <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Protocol" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Protocol</span></code></a>,
+<a class="reference internal" href="../api_reference/_generated/warp.Logger.html#warp.Logger" title="warp.Logger"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Logger</span></code></a> is a runtime-checkable <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Protocol" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Protocol</span></code></a>,
 so any object with the four methods below works. There is no need to inherit
 from a Warp base class; framework integrators typically wrap an existing
 logger in a small adapter:</p>
@@ -637,9 +637,9 @@ logger in a small adapter:</p>
 arguments even if the adapter ignores them: the internal emitter passes them
 by name, so an adapter without those parameters raises <code class="docutils literal notranslate"><span class="pre">TypeError</span></code> at the
 first warning. The built-in default logger uses them to integrate with
-Python’s <a class="reference external" href="https://docs.python.org/3/library/warnings.html#module-warnings" title="(in Python v3.14)"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warnings</span></code></a> filter machinery.</p>
-<p>To forward Warp’s diagnostics into an existing <a class="reference external" href="https://docs.python.org/3/library/logging.html#module-logging" title="(in Python v3.14)"><code class="xref py py-mod docutils literal notranslate"><span class="pre">logging</span></code></a> pipeline, wrap
-<a class="reference external" href="https://docs.python.org/3/library/logging.html#logging.Logger" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">logging.Logger</span></code></a> in a small adapter:</p>
+Python’s <a class="reference external" href="https://docs.python.org/3/library/warnings.html#module-warnings" title="(in Python v3.15)"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warnings</span></code></a> filter machinery.</p>
+<p>To forward Warp’s diagnostics into an existing <a class="reference external" href="https://docs.python.org/3/library/logging.html#module-logging" title="(in Python v3.15)"><code class="xref py py-mod docutils literal notranslate"><span class="pre">logging</span></code></a> pipeline, wrap
+<a class="reference external" href="https://docs.python.org/3/library/logging.html#logging.Logger" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">logging.Logger</span></code></a> in a small adapter:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
 
@@ -654,10 +654,10 @@ Python’s <a class="reference external" href="https://docs.python.org/3/library
 <span class="n">wp</span><span class="o">.</span><span class="n">set_logger</span><span class="p">(</span><span class="n">StdlibAdapter</span><span class="p">())</span>
 </pre></div>
 </div>
-<p>This routes all of Warp’s output through stdlib <a class="reference external" href="https://docs.python.org/3/library/logging.html#module-logging" title="(in Python v3.14)"><code class="xref py py-mod docutils literal notranslate"><span class="pre">logging</span></code></a> (and any
+<p>This routes all of Warp’s output through stdlib <a class="reference external" href="https://docs.python.org/3/library/logging.html#module-logging" title="(in Python v3.15)"><code class="xref py py-mod docutils literal notranslate"><span class="pre">logging</span></code></a> (and any
 handlers, filters, or formatters configured on it). Note that this loses
-the default logger’s integration with Python’s <a class="reference external" href="https://docs.python.org/3/library/warnings.html#module-warnings" title="(in Python v3.14)"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warnings</span></code></a> filter
-machinery (e.g. <code class="docutils literal notranslate"><span class="pre">-W</span></code> flags, <a class="reference external" href="https://docs.python.org/3/library/warnings.html#warnings.filterwarnings" title="(in Python v3.14)"><code class="xref py py-func docutils literal notranslate"><span class="pre">warnings.filterwarnings()</span></code></a>); the adapter
+the default logger’s integration with Python’s <a class="reference external" href="https://docs.python.org/3/library/warnings.html#module-warnings" title="(in Python v3.15)"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warnings</span></code></a> filter
+machinery (e.g. <code class="docutils literal notranslate"><span class="pre">-W</span></code> flags, <a class="reference external" href="https://docs.python.org/3/library/warnings.html#warnings.filterwarnings" title="(in Python v3.15)"><code class="xref py py-func docutils literal notranslate"><span class="pre">warnings.filterwarnings()</span></code></a>); the adapter
 emits warnings as plain log records instead.</p>
 <p>To temporarily install a logger, use <a class="reference internal" href="../api_reference/_generated/warp.ScopedLogger.html#warp.ScopedLogger" title="warp.ScopedLogger"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedLogger</span></code></a>,
 which restores the previous logger on context exit:</p>
@@ -740,7 +740,7 @@ debugger should be attached, and a breakpoint inserted into the generated code.<
 </div>
 <p>Also see <a class="extlink-github reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/tests/walkthrough_debug.py">warp/tests/walkthrough_debug.py</a> for an example of how to debug Warp kernel code running on the CPU.</p>
 <p>Breakpoints can also be inserted into Warp kernels running on GPU devices on Linux systems by using the
-<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#breakpoint" title="(in Python v3.14)"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.breakpoint()</span></code></a> function and <a class="reference external" href="https://docs.nvidia.com/cuda/cuda-gdb/index.html">CUDA-GDB</a>
+<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#breakpoint" title="(in Python v3.15)"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.breakpoint()</span></code></a> function and <a class="reference external" href="https://docs.nvidia.com/cuda/cuda-gdb/index.html">CUDA-GDB</a>
 or the <a class="reference external" href="https://developer.nvidia.com/nsight-visual-studio-code-edition">NVIDIA Nsight Visual Studio Code Edition (VSCE)</a>
 extension.</p>
 <p>An example <a class="reference external" href="https://code.visualstudio.com/docs/debugtest/debugging-configuration#_launch-configurations">launch configuration</a>
