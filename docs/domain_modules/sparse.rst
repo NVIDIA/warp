@@ -8,6 +8,45 @@ Warp includes a sparse linear algebra module :mod:`warp.sparse` that implements 
 Working with Sparse Matrices
 ----------------------------
 
+Mixed-Precision Matrix-Vector Products
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+:func:`bsr_mv` supports a matrix stored in ``wp.float32`` with input and output
+vectors of scalar type ``wp.float64``. Matrix entries are converted before
+multiplication, and products, accumulation, and scaling use ``wp.float64``.
+This avoids allocating a double-precision copy of the matrix:
+
+.. code-block:: python
+
+    import warp as wp
+    from warp.sparse import bsr_identity, bsr_mv
+
+    A = bsr_identity(4, block_type=wp.float32)
+    x = wp.ones(4, dtype=wp.float64, device=A.device)
+    y = bsr_mv(A, x)  # Allocated with scalar type wp.float64.
+
+The same rules apply to BSR blocks, transposed products, and matrix scaling
+expressions. An explicit output must have the same scalar type as the input.
+The matrix values retain their original storage precision; using double-precision
+arithmetic cannot recover precision already lost when constructing the matrix.
+Other mixed scalar-type combinations are not supported.
+
+On CUDA, non-transposed products can explicitly pack several scalar output rows
+into one thread block. For example, ``tile_size=128, rows_per_block=32`` assigns
+four threads to each row:
+
+.. code-block:: python
+
+    y = bsr_mv(A, x, tile_size=128, rows_per_block=32)
+
+Here ``tile_size`` is the total thread count per block, and ``rows_per_block``
+counts scalar rows, including individual rows inside a BSR block. Row packing
+requires a power-of-two ``tile_size`` from 32 to 1024 and 1, 2, 4, 8, 16, or 32
+threads per row. Benchmark the intended matrices before selecting a configuration:
+packing can help medium-length rows but can slow down short rows. Calls that omit
+``rows_per_block`` retain the existing automatic dispatch. Explicit row packing
+is not supported for CPU or transposed products.
+
 Creating Sparse Matrices
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
