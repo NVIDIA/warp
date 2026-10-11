@@ -145,11 +145,6 @@ nitpick_ignore_regex = [
     ),
     # Matrix accessor methods
     (r"py:obj", r"warp\.(mat|spatial_matrix)\w*\.(get_col|get_row|set_col|set_row)"),
-    # Built-in numeric methods/properties inherited by enums/int/float subclasses
-    (
-        r"py:obj",
-        r".*\.(conjugate|bit_length|bit_count|to_bytes|from_bytes|as_integer_ratio|is_integer|real|imag|numerator|denominator)",
-    ),
 ]
 
 
@@ -356,12 +351,44 @@ for _builtin_name in wp._src.context.builtin_functions:
 from docs._ext.warp_function_reference import describe_function, source_url  # noqa: E402
 
 
+def _is_inherited_builtin_member(cls, member):
+    for owner in inspect.getmro(cls):
+        if member in vars(owner):
+            return owner is not cls and owner.__module__ == "builtins"
+
+    return False
+
+
+def _hide_inherited_builtin_members(context):
+    module_name = context.get("module")
+    object_name = context.get("objname")
+    if not module_name or not object_name:
+        return
+
+    try:
+        module = importlib.import_module(module_name)
+        cls = operator.attrgetter(object_name)(module)
+    except (AttributeError, ImportError):
+        return
+
+    if not inspect.isclass(cls):
+        return
+
+    for member_group in ("methods", "attributes"):
+        context[member_group] = [
+            member for member in context.get(member_group, ()) if not _is_inherited_builtin_member(cls, member)
+        ]
+
+
 class AutosummaryRenderer(AutosummaryRenderer):
     # Template documenting built-ins and other Warp functions, requiring special handling.
     WARP_FUNCTION_TEMPLATE_FILE = "warp_function.rst"
 
     def render(self, template_name, context):
         context["wp_annotation_override"] = AUTOSUMMARY_ANNOTATION_OVERRIDES.get(context.get("fullname"))
+
+        if context.get("objtype") == "class":
+            _hide_inherited_builtin_members(context)
 
         # Autosummary classifies a `warp._src.context.Function` as data, which renders
         # its `repr()` in place of a signature.  Route the registered ones through the
