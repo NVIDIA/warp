@@ -5,11 +5,24 @@
 
 // Internal lane-participation masks for tile warp collectives, not logical
 // tile masks. Keep this block before builtin.h because its tile headers use it.
+//
+// Each macro is guarded so a build targeting a different lane width can
+// pre-define the whole set consistently, without patching this file. Nothing in
+// this tree pre-defines them, so the definitions below are what every build here
+// gets.
+#ifndef WP_TILE_WARP_SIZE
 #define WP_TILE_WARP_SIZE 32
+#endif
 
+#ifndef WP_TILE_LANE_MASK_ALL
 #define WP_TILE_LANE_MASK_ALL 0xffffffffu
+#endif
+#ifndef WP_TILE_LANE_MASK_POPC
 #define WP_TILE_LANE_MASK_POPC(mask) __popc(mask)
+#endif
+#ifndef WP_TILE_LANE_MASK_FFS
 #define WP_TILE_LANE_MASK_FFS(mask) __ffs(mask)
+#endif
 
 using wp_tile_lane_mask_bits_t = decltype(WP_TILE_LANE_MASK_ALL);
 
