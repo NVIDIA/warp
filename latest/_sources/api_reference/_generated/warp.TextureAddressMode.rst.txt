@@ -6,18 +6,6 @@
 .. autoclass:: TextureAddressMode
    
    
-   .. rubric:: Methods
-
-   .. autosummary::
-   
-      ~TextureAddressMode.conjugate
-      ~TextureAddressMode.bit_length
-      ~TextureAddressMode.bit_count
-      ~TextureAddressMode.to_bytes
-      ~TextureAddressMode.from_bytes
-      ~TextureAddressMode.as_integer_ratio
-      ~TextureAddressMode.is_integer
-   
    
    
    
@@ -25,10 +13,6 @@
 
    .. autosummary::
    
-      ~TextureAddressMode.real
-      ~TextureAddressMode.imag
-      ~TextureAddressMode.numerator
-      ~TextureAddressMode.denominator
       ~TextureAddressMode.WRAP
       ~TextureAddressMode.CLAMP
       ~TextureAddressMode.MIRROR

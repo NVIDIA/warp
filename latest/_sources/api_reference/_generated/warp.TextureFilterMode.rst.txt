@@ -6,18 +6,6 @@
 .. autoclass:: TextureFilterMode
    
    
-   .. rubric:: Methods
-
-   .. autosummary::
-   
-      ~TextureFilterMode.conjugate
-      ~TextureFilterMode.bit_length
-      ~TextureFilterMode.bit_count
-      ~TextureFilterMode.to_bytes
-      ~TextureFilterMode.from_bytes
-      ~TextureFilterMode.as_integer_ratio
-      ~TextureFilterMode.is_integer
-   
    
    
    
@@ -25,10 +13,6 @@
 
    .. autosummary::
    
-      ~TextureFilterMode.real
-      ~TextureFilterMode.imag
-      ~TextureFilterMode.numerator
-      ~TextureFilterMode.denominator
       ~TextureFilterMode.CLOSEST
       ~TextureFilterMode.LINEAR
    

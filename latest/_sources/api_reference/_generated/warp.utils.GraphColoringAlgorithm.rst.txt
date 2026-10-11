@@ -6,18 +6,6 @@
 .. autoclass:: GraphColoringAlgorithm
    
    
-   .. rubric:: Methods
-
-   .. autosummary::
-   
-      ~GraphColoringAlgorithm.conjugate
-      ~GraphColoringAlgorithm.bit_length
-      ~GraphColoringAlgorithm.bit_count
-      ~GraphColoringAlgorithm.to_bytes
-      ~GraphColoringAlgorithm.from_bytes
-      ~GraphColoringAlgorithm.as_integer_ratio
-      ~GraphColoringAlgorithm.is_integer
-   
    
    
    
@@ -25,10 +13,6 @@
 
    .. autosummary::
    
-      ~GraphColoringAlgorithm.real
-      ~GraphColoringAlgorithm.imag
-      ~GraphColoringAlgorithm.numerator
-      ~GraphColoringAlgorithm.denominator
       ~GraphColoringAlgorithm.MCS
       ~GraphColoringAlgorithm.GREEDY
    

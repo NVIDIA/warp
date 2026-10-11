@@ -6,18 +6,6 @@
 .. autoclass:: DeterministicMode
    
    
-   .. rubric:: Methods
-
-   .. autosummary::
-   
-      ~DeterministicMode.conjugate
-      ~DeterministicMode.bit_length
-      ~DeterministicMode.bit_count
-      ~DeterministicMode.to_bytes
-      ~DeterministicMode.from_bytes
-      ~DeterministicMode.as_integer_ratio
-      ~DeterministicMode.is_integer
-   
    
    
    
@@ -25,10 +13,6 @@
 
    .. autosummary::
    
-      ~DeterministicMode.real
-      ~DeterministicMode.imag
-      ~DeterministicMode.numerator
-      ~DeterministicMode.denominator
       ~DeterministicMode.NOT_GUARANTEED
       ~DeterministicMode.RUN_TO_RUN
       ~DeterministicMode.GPU_TO_GPU

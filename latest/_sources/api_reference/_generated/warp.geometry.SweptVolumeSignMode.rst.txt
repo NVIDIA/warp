@@ -6,18 +6,6 @@
 .. autoclass:: SweptVolumeSignMode
    
    
-   .. rubric:: Methods
-
-   .. autosummary::
-   
-      ~SweptVolumeSignMode.conjugate
-      ~SweptVolumeSignMode.bit_length
-      ~SweptVolumeSignMode.bit_count
-      ~SweptVolumeSignMode.to_bytes
-      ~SweptVolumeSignMode.from_bytes
-      ~SweptVolumeSignMode.as_integer_ratio
-      ~SweptVolumeSignMode.is_integer
-   
    
    
    
@@ -25,10 +13,6 @@
 
    .. autosummary::
    
-      ~SweptVolumeSignMode.real
-      ~SweptVolumeSignMode.imag
-      ~SweptVolumeSignMode.numerator
-      ~SweptVolumeSignMode.denominator
       ~SweptVolumeSignMode.NORMAL
       ~SweptVolumeSignMode.WINDING_NUMBER
       ~SweptVolumeSignMode.PARITY
