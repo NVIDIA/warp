@@ -142,9 +142,13 @@ Use :attr:`warp.config.cpu_compiler_flags` to set CPU compiler flags globally,
 or pass ``"cpu_compiler_flags"`` to
 :func:`wp.set_module_options() <warp.set_module_options>` for one module. A
 module string replaces the global string; include ``-march=native`` when the
-module should detect host CPU features. The global default ``None`` uses host
-CPU features and leaves LLVM options at their defaults. When changing a
-module's CPU compiler flags, use
+module should detect host CPU features. The global default uses host CPU
+features and sets ``-inline-threshold=3000`` and
+``-inline-cold-callsite-threshold=3000`` to make LLVM more eager to inline CPU
+helpers. Set the global value to ``None`` before a module is first hashed to
+keep host CPU detection with LLVM's default thresholds. For one module, use
+``"-march=native"``; a module-level ``None`` inherits the global setting.
+When changing a module's CPU compiler flags, use
 :func:`wp.set_module_options() <warp.set_module_options>` so Warp updates its
 hash. Assigning :attr:`warp.config.cpu_compiler_flags` alone does not
 invalidate hashes that have already been computed.

@@ -2806,7 +2806,7 @@ def _resolve_cpu_compiler_flags(module_flags, config_flags):
     """Return the effective CPU compiler flags string (never None).
 
     Resolves ``None`` at the module level to the config value, and ``None``
-    at the config level to ``"-march=native"`` (the default).
+    at the config level to ``"-march=native"`` with LLVM defaults.
 
     When ``warp-clang`` itself was built with AddressSanitizer, ``-fsanitize=address``
     is appended automatically so JIT-compiled CPU kernels are instrumented to match the
