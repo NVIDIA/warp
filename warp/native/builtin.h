@@ -647,6 +647,46 @@ DECLARE_INT_OPS(uint16)
 DECLARE_INT_OPS(uint32)
 DECLARE_INT_OPS(uint64)
 
+inline CUDA_CALLABLE int32 bit_count(uint32 x)
+{
+#if defined(__CUDA_ARCH__)
+    return __popc(static_cast<unsigned int>(x));
+#elif defined(__clang__) || defined(__GNUC__)
+    return __builtin_popcount(static_cast<unsigned int>(x));
+#else
+    int32 count = 0;
+    while (x) {
+        x &= x - uint32(1);
+        ++count;
+    }
+    return count;
+#endif
+}
+
+inline CUDA_CALLABLE int32 bit_count(uint64 x)
+{
+#if defined(__CUDA_ARCH__)
+    return __popcll(static_cast<unsigned long long>(x));
+#elif defined(__clang__) || defined(__GNUC__)
+    return __builtin_popcountll(static_cast<unsigned long long>(x));
+#else
+    int32 count = 0;
+    while (x) {
+        x &= x - uint64(1);
+        ++count;
+    }
+    return count;
+#endif
+}
+
+inline CUDA_CALLABLE int32 bit_count(uint8 x) { return bit_count(static_cast<uint32>(x)); }
+inline CUDA_CALLABLE int32 bit_count(uint16 x) { return bit_count(static_cast<uint32>(x)); }
+// Convert signed inputs to their unsigned width before widening to avoid sign extension.
+inline CUDA_CALLABLE int32 bit_count(int8 x) { return bit_count(static_cast<uint8>(x)); }
+inline CUDA_CALLABLE int32 bit_count(int16 x) { return bit_count(static_cast<uint16>(x)); }
+inline CUDA_CALLABLE int32 bit_count(int32 x) { return bit_count(static_cast<uint32>(x)); }
+inline CUDA_CALLABLE int32 bit_count(int64 x) { return bit_count(static_cast<uint64>(x)); }
+
 /* C++ integer division truncates toward zero; adjust signed, non-exact
    results with opposite signs to round toward negative infinity. */
 template <typename T> inline CUDA_CALLABLE T floordiv_signed(T a, T b)

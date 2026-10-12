@@ -173,6 +173,16 @@ functions is the same type as the input:
     a = round(0.5) # a is 0
     c = round(1.5) # c is 2
 
+Bit Count
+"""""""""
+
+:func:`wp.bit_count() <warp._src.lang.bit_count>` counts set bits in an integer's fixed-width binary
+representation, including the sign bit for signed inputs. In contrast, Python's
+:external+python:py:meth:`int.bit_count` counts set bits in the absolute value.
+
+For example, ``wp.bit_count(wp.int8(-1))`` returns ``8``, whereas Python's ``(-1).bit_count()`` returns ``1``.
+The difference applies both in Warp kernels and when calling ``wp.bit_count()`` from Python.
+
 Variable Scope
 --------------
 
