@@ -509,42 +509,19 @@
 <h1>warp.Int<a class="headerlink" href="#warp-int" title="Link to this heading">#</a></h1>
 <dl class="py data">
 <dt class="sig sig-object py" id="warp.Int">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Int</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">~Int</span></span><a class="headerlink" href="#warp.Int" title="Link to this definition">#</a></dt>
-<dd><p>Type variable.</p>
-<p>The preferred way to construct a type variable is via the dedicated
-syntax for generic functions, classes, and type aliases:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Sequence</span><span class="p">[</span><span class="n">T</span><span class="p">]:</span>  <span class="c1"># T is a TypeVar</span>
-    <span class="o">...</span>
-</pre></div>
-</div>
-<p>This syntax can also be used to create bound and constrained type
-variables:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># S is a TypeVar bound to str</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">StrSequence</span><span class="p">[</span><span class="n">S</span><span class="p">:</span> <span class="nb">str</span><span class="p">]:</span>
-    <span class="o">...</span>
-
-<span class="c1"># A is a TypeVar constrained to str or bytes</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">StrOrBytesSequence</span><span class="p">[</span><span class="n">A</span><span class="p">:</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">)]:</span>
-    <span class="o">...</span>
-</pre></div>
-</div>
-<p>However, if desired, reusable type variables can also be constructed
-manually, like so:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">T</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">'T'</span><span class="p">)</span>  <span class="c1"># Can be anything</span>
-<span class="n">S</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">'S'</span><span class="p">,</span> <span class="n">bound</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>  <span class="c1"># Can be any subtype of str</span>
-<span class="n">A</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">'A'</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">)</span>  <span class="c1"># Must be exactly str or bytes</span>
-</pre></div>
-</div>
-<p>Type variables exist primarily for the benefit of static type
-checkers.  They serve as the parameters for generic types as well
-as for generic function and type alias definitions.</p>
-<p>The variance of type variables is inferred by type checkers when they
-are created through the type parameter syntax and when
-<code class="docutils literal notranslate"><span class="pre">infer_variance=True</span></code> is passed. Manually created type variables may
-be explicitly marked covariant or contravariant by passing
-<code class="docutils literal notranslate"><span class="pre">covariant=True</span></code> or <code class="docutils literal notranslate"><span class="pre">contravariant=True</span></code>. By default, manually
-created type variables are invariant. See PEP 484 and PEP 695 for more
-details.</p>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Int</span></span><a class="headerlink" href="#warp.Int" title="Link to this definition">#</a></dt>
+<dd><p>Generic annotation for any Warp integer scalar type.</p>
+<p>Use <code class="docutils literal notranslate"><span class="pre">Int</span></code> to annotate parameters of generic Warp kernels and functions,
+either directly or as the <code class="docutils literal notranslate"><span class="pre">dtype</span></code> of a generic array, vector, or matrix.
+<code class="docutils literal notranslate"><span class="pre">Int</span></code> matches the following integer types:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="warp.int8.html#warp.int8" title="warp.int8"><code class="xref py py-class docutils literal notranslate"><span class="pre">int8</span></code></a>, <a class="reference internal" href="warp.int16.html#warp.int16" title="warp.int16"><code class="xref py py-class docutils literal notranslate"><span class="pre">int16</span></code></a>, <a class="reference internal" href="warp.int32.html#warp.int32" title="warp.int32"><code class="xref py py-class docutils literal notranslate"><span class="pre">int32</span></code></a>, or <a class="reference internal" href="warp.int64.html#warp.int64" title="warp.int64"><code class="xref py py-class docutils literal notranslate"><span class="pre">int64</span></code></a>.</p></li>
+<li><p><a class="reference internal" href="warp.uint8.html#warp.uint8" title="warp.uint8"><code class="xref py py-class docutils literal notranslate"><span class="pre">uint8</span></code></a>, <a class="reference internal" href="warp.uint16.html#warp.uint16" title="warp.uint16"><code class="xref py py-class docutils literal notranslate"><span class="pre">uint16</span></code></a>, <a class="reference internal" href="warp.uint32.html#warp.uint32" title="warp.uint32"><code class="xref py py-class docutils literal notranslate"><span class="pre">uint32</span></code></a>, or <a class="reference internal" href="warp.uint64.html#warp.uint64" title="warp.uint64"><code class="xref py py-class docutils literal notranslate"><span class="pre">uint64</span></code></a>.</p></li>
+<li><p>Python <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>, which Warp treats as <a class="reference internal" href="warp.int32.html#warp.int32" title="warp.int32"><code class="xref py py-class docutils literal notranslate"><span class="pre">int32</span></code></a>.</p></li>
+</ul>
+<p>Use <a class="reference internal" href="warp.Scalar.html#warp.Scalar" title="warp.Scalar"><code class="xref py py-data docutils literal notranslate"><span class="pre">Scalar</span></code></a> to accept both integer and floating-point types.</p>
+<p>For more on writing generic kernels and functions with <code class="docutils literal notranslate"><span class="pre">Int</span></code>, see
+<a class="reference internal" href="../../user_guide/programming_model/generics.html#generic-type-annotations"><span class="std std-ref">Generic Type Annotations</span></a>.</p>
 </dd></dl>
 
 </section>

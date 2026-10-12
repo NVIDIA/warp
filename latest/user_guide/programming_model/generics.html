@@ -722,6 +722,38 @@ Module __main__ load on device 'cuda:0' took 179.49 ms
 </div>
 <p>A generic function can be used in regular and generic kernels.  It’s not necessary to explicitly overload generic functions.  All required function overloads are generated automatically when those functions are used in kernels.</p>
 </section>
+<section id="generic-type-annotations">
+<span id="id4"></span><h2>Generic Type Annotations<a class="headerlink" href="#generic-type-annotations" title="Link to this heading">#</a></h2>
+<p>Annotating a parameter of a generic kernel or function with <code class="docutils literal notranslate"><span class="pre">typing.Any</span></code> lets it accept any type. To accept only
+one family of scalar types, annotate it with <a class="reference internal" href="../../api_reference/_generated/warp.Int.html#warp.Int" title="warp.Int"><code class="xref py py-data docutils literal notranslate"><span class="pre">wp.Int</span></code></a>, <a class="reference internal" href="../../api_reference/_generated/warp.Float.html#warp.Float" title="warp.Float"><code class="xref py py-data docutils literal notranslate"><span class="pre">wp.Float</span></code></a>, or
+<a class="reference internal" href="../../api_reference/_generated/warp.Scalar.html#warp.Scalar" title="warp.Scalar"><code class="xref py py-data docutils literal notranslate"><span class="pre">wp.Scalar</span></code></a> instead.
+These annotations can also serve as the <code class="docutils literal notranslate"><span class="pre">dtype</span></code> of generic arrays, such as <code class="docutils literal notranslate"><span class="pre">wp.array[wp.Float]</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">square</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">Float</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">x</span> <span class="o">*</span> <span class="n">x</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">square_all</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">Float</span><span class="p">]):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">a</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">square</span><span class="p">(</span><span class="n">a</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+<span class="n">a16</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float16</span><span class="p">)</span>
+<span class="n">a64</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">square_all</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a16</span><span class="p">])</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">square_all</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a64</span><span class="p">])</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">a16</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">a64</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[1. 4. 9.]
+[1. 4. 9.]
+</pre></div>
+</div>
+<p>Launching <code class="docutils literal notranslate"><span class="pre">square_all</span></code> with an array of <a class="reference internal" href="../../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.int32</span></code></a> raises an error, because <code class="docutils literal notranslate"><span class="pre">int32</span></code>
+doesn’t match <code class="docutils literal notranslate"><span class="pre">wp.Float</span></code>.</p>
+</section>
 <section id="type-operator">
 <h2>type() Operator<a class="headerlink" href="#type-operator" title="Link to this heading">#</a></h2>
 <p>Consider the following generic function:</p>
@@ -869,6 +901,7 @@ Module __main__ load on device 'cuda:0' took 164.83 ms
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#generic-functions">Generic Functions</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#generic-type-annotations">Generic Type Annotations</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#type-operator">type() Operator</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#limitations-and-rough-edges">Limitations and Rough Edges</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#module-reloading-behavior">Module Reloading Behavior</a></li>

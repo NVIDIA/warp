@@ -509,9 +509,18 @@
 <h1>warp.DeviceLike<a class="headerlink" href="#warp-devicelike" title="Link to this heading">#</a></h1>
 <dl class="py data">
 <dt class="sig sig-object py" id="warp.DeviceLike">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">DeviceLike</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">warp._src.context.Device</span> <span class="pre">|</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span></span><a class="headerlink" href="#warp.DeviceLike" title="Link to this definition">#</a></dt>
-<dd><p>Represent a PEP 604 union type</p>
-<p>E.g. for int | str</p>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">DeviceLike</span></span><span class="property"><span class="w"> </span><span class="pre">=</span> <span class="pre">warp.Device</span> <span class="pre">|</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span></span><a class="headerlink" href="#warp.DeviceLike" title="Link to this definition">#</a></dt>
+<dd><p>Annotation for arguments that Warp resolves to a <a class="reference internal" href="warp.Device.html#warp.Device" title="warp.Device"><code class="xref py py-class docutils literal notranslate"><span class="pre">Device</span></code></a>.</p>
+<p>A <code class="docutils literal notranslate"><span class="pre">DeviceLike</span></code> value can be:</p>
+<ul class="simple">
+<li><p>A <a class="reference internal" href="warp.Device.html#warp.Device" title="warp.Device"><code class="xref py py-class docutils literal notranslate"><span class="pre">Device</span></code></a> object, used as is.</p></li>
+<li><p>A device alias, such as <code class="docutils literal notranslate"><span class="pre">&quot;cpu&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;cuda:0&quot;</span></code>, or an alias registered with
+<a class="reference internal" href="warp.map_cuda_device.html#warp.map_cuda_device" title="warp.map_cuda_device"><code class="xref py py-func docutils literal notranslate"><span class="pre">map_cuda_device()</span></code></a>. The alias <code class="docutils literal notranslate"><span class="pre">&quot;cuda&quot;</span></code> refers to the current CUDA device.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">None</span></code>, which refers to the default device. Some functions may document a
+different meaning for <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
+</ul>
+<p><a class="reference internal" href="warp.get_device.html#warp.get_device" title="warp.get_device"><code class="xref py py-func docutils literal notranslate"><span class="pre">get_device()</span></code></a> returns the <a class="reference internal" href="warp.Device.html#warp.Device" title="warp.Device"><code class="xref py py-class docutils literal notranslate"><span class="pre">Device</span></code></a> that a value refers to.
+See <a class="reference internal" href="../../user_guide/runtime.html#devices"><span class="std std-ref">Devices</span></a> for the available aliases and how to change the default device.</p>
 </dd></dl>
 
 </section>
