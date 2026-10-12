@@ -723,9 +723,13 @@ setting. <code class="docutils literal notranslate"><span class="pre">None</span
 or pass <code class="docutils literal notranslate"><span class="pre">&quot;cpu_compiler_flags&quot;</span></code> to
 <a class="reference internal" href="../api_reference/_generated/warp.set_module_options.html#warp.set_module_options" title="warp.set_module_options"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.set_module_options()</span></code></a> for one module. A
 module string replaces the global string; include <code class="docutils literal notranslate"><span class="pre">-march=native</span></code> when the
-module should detect host CPU features. The global default <code class="docutils literal notranslate"><span class="pre">None</span></code> uses host
-CPU features and leaves LLVM options at their defaults. When changing a
-module’s CPU compiler flags, use
+module should detect host CPU features. The global default uses host CPU
+features and sets <code class="docutils literal notranslate"><span class="pre">-inline-threshold=3000</span></code> and
+<code class="docutils literal notranslate"><span class="pre">-inline-cold-callsite-threshold=3000</span></code> to make LLVM more eager to inline CPU
+helpers. Set the global value to <code class="docutils literal notranslate"><span class="pre">None</span></code> before a module is first hashed to
+keep host CPU detection with LLVM’s default thresholds. For one module, use
+<code class="docutils literal notranslate"><span class="pre">&quot;-march=native&quot;</span></code>; a module-level <code class="docutils literal notranslate"><span class="pre">None</span></code> inherits the global setting.
+When changing a module’s CPU compiler flags, use
 <a class="reference internal" href="../api_reference/_generated/warp.set_module_options.html#warp.set_module_options" title="warp.set_module_options"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.set_module_options()</span></code></a> so Warp updates its
 hash. Assigning <a class="reference internal" href="../api_reference/_generated/warp.config.cpu_compiler_flags.html#warp.config.cpu_compiler_flags" title="warp.config.cpu_compiler_flags"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.cpu_compiler_flags</span></code></a> alone does not
 invalidate hashes that have already been computed.</p>
