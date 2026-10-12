@@ -4011,6 +4011,22 @@ class array(Array[DType, NDim]):
             pass
 
     @property
+    def __array__(self):
+        # raising an AttributeError here makes hasattr() return False, so CPU arrays keep converting through
+        # __array_interface__
+        if self.device is not None and self.device.is_cpu:
+            raise AttributeError(f"__array__ not supported because device is {self.device}")
+
+        # NumPy calls the value returned by this property, so return a function that raises the error
+        def reject(dtype=None, copy=None):
+            raise TypeError(
+                f"Warp does not support implicit NumPy conversion for arrays on device {self.device}. "
+                "Call array.numpy() explicitly to obtain a NumPy array."
+            )
+
+        return reject
+
+    @property
     def __array_interface__(self):
         # raising an AttributeError here makes hasattr() return False
         if self.device is None or not self.device.is_cpu:

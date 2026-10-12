@@ -91,14 +91,21 @@ When passing CUDA arrays, ensure the device on which the arrays reside matches t
 NumPy
 -----
 
-Warp arrays may be converted to a NumPy array through the :meth:`array.numpy() <warp.array.numpy>` method. When the Warp array lives on the ``cpu`` device this returns a zero-copy view onto the underlying Warp allocation. If the array lives on a ``cuda`` device, it is first copied back to a temporary buffer and then copied to NumPy.
+Warp arrays may be converted to a NumPy array through the :meth:`array.numpy() <warp.array.numpy>` method. When the Warp array lives on the ``cpu`` device, this returns a zero-copy view onto the underlying Warp allocation. When the array lives on a ``cuda`` device, this method synchronously copies the data to a temporary CPU allocation and returns a NumPy view of that allocation.
 
-Warp CPU arrays also implement the ``__array_interface__`` protocol and can be used to construct NumPy arrays directly::
+Warp CPU arrays also implement the ``__array_interface__`` protocol, so NumPy can create zero-copy views of them directly:
+
+.. testcode::
 
     w = wp.array([1.0, 2.0, 3.0], dtype=float, device="cpu")
-    a = np.array(w)
+    a = np.asarray(w)
     print(a)
-    > [1. 2. 3.]
+
+.. testoutput::
+
+    [1. 2. 3.]
+
+Warp does not support implicit NumPy conversion of arrays on CUDA devices, such as passing them to ``np.asarray()``. Call :meth:`array.numpy() <warp.array.numpy>` explicitly to obtain a NumPy array.
 
 .. _numpy-scalar-dtypes:
 
