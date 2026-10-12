@@ -23,8 +23,14 @@ namespace wp {
 // memory, so every shuffle below has a stride of at most 16 and stays inside its
 // group. The overloads below are not full-warp collectives when WP_TILE_WARP_SIZE
 // differs from WP_TILE_BITONIC_GROUP_SIZE.
+//
+// The group size is a property of the algorithm and stays 32 everywhere: the
+// stride-16 bound above is what keeps a 32-lane group correct, so it is not
+// overridable. Only the participation mask is lane-width dependent.
 #define WP_TILE_BITONIC_GROUP_SIZE 32
+#ifndef WP_TILE_BITONIC_GROUP_MASK
 #define WP_TILE_BITONIC_GROUP_MASK 0xffffffffu
+#endif
 
 struct UintKeyToUint {
     inline CUDA_CALLABLE uint32_t convert(uint32 value) { return value; }

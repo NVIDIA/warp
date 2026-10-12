@@ -110,7 +110,7 @@ struct Graph {
     bool valid = true;
 };
 
-void convert_to_color_groups(
+bool convert_to_color_groups(
     const int num_colors, const std::vector<int>& node_colors, std::vector<std::vector<int>>& color_groups
 )
 {
@@ -118,8 +118,18 @@ void convert_to_color_groups(
 
     for (int node_idx = 0; node_idx < node_colors.size(); node_idx++) {
         int color = node_colors[node_idx];
+
+        if (color < 0 || color >= num_colors) {
+            wp::set_error_string(
+                "Node %d has color %d, but valid colors are in the range [0, %d).", node_idx, color, num_colors
+            );
+            return false;
+        }
+
         color_groups[color].push_back(node_idx);
     }
+
+    return true;
 }
 
 float find_largest_smallest_groups(
@@ -612,7 +622,9 @@ float balance_coloring(
     memcpy(graph.node_colors.data(), node_colors.data, num_nodes * sizeof(int));
     if (num_colors > 1) {
         std::vector<std::vector<int>> color_groups;
-        convert_to_color_groups(num_colors, graph.node_colors, color_groups);
+        if (!convert_to_color_groups(num_colors, graph.node_colors, color_groups)) {
+            return -1.f;
+        }
 
         float max_min_ratio
             = balance_color_groups(target_max_min_ratio, max_iterations, graph, color_groups, iteration_limit_reached);

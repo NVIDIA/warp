@@ -5,7 +5,7 @@
 
 set -euo pipefail
 
-expected_uv_version="${EXPECTED_UV_VERSION:-0.12.23}"
+expected_uv_version="${EXPECTED_UV_VERSION:-0.13.0}"
 expected_cuda_version="${EXPECTED_CUDA_VERSION:?EXPECTED_CUDA_VERSION must be set}"
 expected_cuda_platform="${EXPECTED_CUDA_PLATFORM:?EXPECTED_CUDA_PLATFORM must be set}"
 expected_python_dir="${UV_PYTHON_INSTALL_DIR:-}"

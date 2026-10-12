@@ -2806,7 +2806,7 @@ def _resolve_cpu_compiler_flags(module_flags, config_flags):
     """Return the effective CPU compiler flags string (never None).
 
     Resolves ``None`` at the module level to the config value, and ``None``
-    at the config level to ``"-march=native"`` (the default).
+    at the config level to ``"-march=native"`` with LLVM defaults.
 
     When ``warp-clang`` itself was built with AddressSanitizer, ``-fsanitize=address``
     is appended automatically so JIT-compiled CPU kernels are instrumented to match the
@@ -6363,9 +6363,20 @@ def _validate_cuda_arch_suffix(
     return suffix
 
 
-""" Meta-type for arguments that can be resolved to a concrete Device.
-"""
 DeviceLike = Device | str | None
+"""Annotation for arguments that Warp resolves to a :class:`~warp.Device`.
+
+A ``DeviceLike`` value can be:
+
+- A :class:`~warp.Device` object, used as is.
+- A device alias, such as ``"cpu"``, ``"cuda:0"``, or an alias registered with
+  :func:`~warp.map_cuda_device`. The alias ``"cuda"`` refers to the current CUDA device.
+- ``None``, which refers to the default device. Some functions may document a
+  different meaning for ``None``.
+
+:func:`~warp.get_device` returns the :class:`~warp.Device` that a value refers to.
+See :ref:`devices` for the available aliases and how to change the default device.
+"""
 
 
 class Graph:
