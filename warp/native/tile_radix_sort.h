@@ -768,13 +768,14 @@ inline CUDA_CALLABLE void radix_sort_thread_block_core(
 #endif
 
         if (warp_id == 0) {
-            int value = lane_id < num_scan_buckets ? buckets[lane_id] : 0;
-            value = warp_scan_exclusive(lane_id, value);
+            int count = lane_id < num_scan_buckets ? buckets[lane_id] : 0;
+            int value = warp_scan_exclusive(lane_id, count);
             if (lane_id < num_scan_buckets)
                 buckets_cumulative_sum[lane_id] = value;
 
+            // The exclusive sum stops short of the last bucket, so add its count to get the total.
             if (lane_id == num_scan_buckets - 1)
-                assert(value == num_elements_to_sort);
+                assert(value + count == num_elements_to_sort);
         }
 
         __syncthreads();
