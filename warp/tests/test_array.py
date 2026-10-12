@@ -3330,6 +3330,52 @@ def test_numpy_array_interface_empty(test, device):
     test.assertEqual(na.strides, (0, 8, 4))
 
 
+def test_numpy_array_conversion(test, device):
+    """Verify that implicit NumPy conversion is limited to CPU arrays."""
+    a = wp.zeros((2, 3), dtype=wp.float32, device=device)
+
+    if device.is_cpu:
+        na = np.asarray(a)
+
+        test.assertEqual(na.shape, (2, 3))
+        test.assertEqual(na.dtype, np.dtype(np.float32))
+        test.assertTrue(np.shares_memory(na, a.numpy()))
+
+        converted_na = np.asarray(a, dtype=np.float64)
+        test.assertEqual(converted_na.shape, (2, 3))
+        test.assertEqual(converted_na.dtype, np.dtype(np.float64))
+        test.assertFalse(np.shares_memory(converted_na, na))
+
+        no_copy_na = np.array(a, dtype=np.float32, copy=False)
+        test.assertTrue(np.shares_memory(no_copy_na, na))
+
+        copied_na = np.array(a, copy=True)
+        test.assertFalse(np.shares_memory(copied_na, na))
+        return
+
+    na = a.numpy()
+
+    np.testing.assert_array_equal(na, np.zeros((2, 3), dtype=np.float32))
+    test.assertEqual(na.shape, (2, 3))
+    test.assertEqual(na.dtype, np.dtype(np.float32))
+
+    errors = []
+    conversions = (
+        ("default dtype", lambda: np.asarray(a)),
+        ("requested dtype", lambda: np.asarray(a, dtype=np.float64)),
+    )
+    for label, convert in conversions:
+        with test.subTest(label):
+            with test.assertRaises(TypeError) as context:
+                convert()
+            errors.append(str(context.exception))
+
+    test.assertEqual(errors[0], errors[1])
+    test.assertIn(str(device), errors[0])
+    test.assertIn("implicit NumPy conversion", errors[0])
+    test.assertIn("array.numpy()", errors[0])
+
+
 @wp.kernel
 def kernel_indexing_types(
     arr_1d: wp.array[wp.int32],
@@ -4241,6 +4287,7 @@ add_function_test(TestArray, "test_array_from_numpy", test_array_from_numpy, dev
 add_function_test(TestArray, "test_array_aliasing_from_numpy", test_array_aliasing_from_numpy, devices=["cpu"])
 add_function_test(TestArray, "test_numpy_array_interface", test_numpy_array_interface, devices=["cpu"])
 add_function_test(TestArray, "test_numpy_array_interface_empty", test_numpy_array_interface_empty, devices=["cpu"])
+add_function_test(TestArray, "test_numpy_array_conversion", test_numpy_array_conversion, devices=devices)
 
 add_function_test(TestArray, "test_array_inplace_diff_ops", test_array_inplace_diff_ops, devices=devices)
 add_function_test(TestArray, "test_array_inplace_non_diff_ops", test_array_inplace_non_diff_ops, devices=devices)

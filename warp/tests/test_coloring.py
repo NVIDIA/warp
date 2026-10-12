@@ -565,6 +565,25 @@ class TestColoring(unittest.TestCase):
                         f"Graph edge 0 has endpoints {invalid_edge}, but valid node indices are in the range [0, 2).",
                     )
 
+    def test_coloring_balance_rejects_invalid_node_colors(self):
+        """Verify graph coloring balance rejects node colors outside the color range."""
+        edges = wp.array([[0, 1]], dtype=wp.int32, device="cpu")
+
+        with suppress_native_error_output():
+            for invalid_color in (-(2**31), -1, 2, 2**31 - 1):
+                with self.subTest(invalid_color=invalid_color):
+                    node_colors = wp.array([0, invalid_color], dtype=wp.int32, device="cpu")
+
+                    with self.assertRaises(RuntimeError) as exception_context:
+                        wp.utils.graph_coloring_balance(edges, node_colors, color_count=2, target_max_min_ratio=1.1)
+
+                    self.assertEqual(
+                        str(exception_context.exception),
+                        "Graph coloring balance failed: "
+                        f"Node 1 has color {invalid_color}, but valid colors are in the range [0, 2).",
+                    )
+                    np.testing.assert_array_equal(node_colors.numpy(), [0, invalid_color])
+
     def test_coloring_corner_case(self):
         """Test corner cases: empty graph and simple 2-node graph."""
         # Test 1: Simple 2-node graph with one edge connecting the nodes

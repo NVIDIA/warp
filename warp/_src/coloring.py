@@ -113,8 +113,8 @@ def graph_coloring_balance(
             row ``[i, j]`` represents an undirected edge between nodes ``i`` and ``j``.
             Must be a CPU array with ``int32`` dtype.
         node_colors: A 1D array of shape ``(node_count,)`` containing the current color
-            assignments. Will be modified in-place with the balanced coloring.
-            Must be a CPU array with ``int32`` dtype.
+            assignments, each in the range ``[0, color_count)``. Will be modified in-place
+            with the balanced coloring. Must be a CPU array with ``int32`` dtype.
         color_count: The number of colors in the current coloring (as returned by
             :func:`graph_coloring_assign`).
         target_max_min_ratio: The target ratio between the largest and smallest color

@@ -211,6 +211,45 @@ Like Warp kernels, we can also define generic Warp functions:
 A generic function can be used in regular and generic kernels.  It's not necessary to explicitly overload generic functions.  All required function overloads are generated automatically when those functions are used in kernels.
 
 
+.. _generic_type_annotations:
+
+Generic Type Annotations
+------------------------
+
+Annotating a parameter of a generic kernel or function with ``typing.Any`` lets it accept any type. To accept only
+one family of scalar types, annotate it with :data:`wp.Int <Int>`, :data:`wp.Float <Float>`, or
+:data:`wp.Scalar <Scalar>` instead.
+These annotations can also serve as the ``dtype`` of generic arrays, such as ``wp.array[wp.Float]``:
+
+.. testcode::
+
+    @wp.func
+    def square(x: wp.Float):
+        return x * x
+
+    @wp.kernel
+    def square_all(a: wp.array[wp.Float]):
+        i = wp.tid()
+        a[i] = square(a[i])
+
+    a16 = wp.array([1.0, 2.0, 3.0], dtype=wp.float16)
+    a64 = wp.array([1.0, 2.0, 3.0], dtype=wp.float64)
+
+    wp.launch(square_all, dim=3, inputs=[a16])
+    wp.launch(square_all, dim=3, inputs=[a64])
+
+    print(a16)
+    print(a64)
+
+.. testoutput::
+
+    [1. 4. 9.]
+    [1. 4. 9.]
+
+Launching ``square_all`` with an array of :class:`wp.int32 <int32>` raises an error, because ``int32``
+doesn't match ``wp.Float``.
+
+
 type() Operator
 ---------------
 

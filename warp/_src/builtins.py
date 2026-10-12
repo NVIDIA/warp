@@ -167,6 +167,36 @@ add_builtin(
 )
 
 add_builtin(
+    "bit_count",
+    input_types={"x": Int},
+    value_type=int32,
+    doc="""Return the number of set bits in an integer.
+
+    Signed inputs use their two's-complement representation, including the sign
+    bit. In contrast, Python's ``int.bit_count()`` counts set bits in the
+    absolute value, so the results can differ for negative inputs.
+
+    Args:
+        x: A signed or unsigned scalar integer of 8, 16, 32, or 64 bits.
+            Python ``int`` inputs are treated as ``int32``.
+
+    Returns:
+        The number of set bits in the fixed-width binary representation of ``x``.
+
+    Example:
+        >>> wp.bit_count(45)
+        4
+        >>> wp.bit_count(wp.int8(-1))
+        8
+        >>> wp.bit_count(wp.int64(-1))
+        64
+        >>> (-1).bit_count()  # Python counts bits in the absolute value.
+        1""",
+    group="Scalar Math",
+    is_differentiable=False,
+)
+
+add_builtin(
     "sin",
     input_types={"x": Float},
     value_func=sametypes_create_value_func(Float),

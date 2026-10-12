@@ -7452,7 +7452,7 @@ def cuda_kernel_backward_name(kernel, name=None):
 
 cpu_kernel_template_forward = """
 
-void {name}_cpu_kernel_forward(
+static void {name}_cpu_kernel_forward(
     {forward_args},
     wp_args_{name} *_wp_args)
 {{
@@ -7462,7 +7462,7 @@ void {name}_cpu_kernel_forward(
 
 cpu_kernel_template_backward = """
 
-void {name}_cpu_kernel_backward(
+static void {name}_cpu_kernel_backward(
     {reverse_args},
     wp_args_{name} *_wp_args,
     wp_args_{name} *_wp_adj_args)

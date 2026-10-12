@@ -168,6 +168,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_atomic_bitwise import TestAtomicBitwise
     from warp.tests.test_atomic_cas import TestAtomicCAS
     from warp.tests.test_bf16 import TestBf16, TestBf16MlDtypes
+    from warp.tests.test_bit_count import TestBitCount
     from warp.tests.test_block_dim_dispatch import TestBlockDimDispatch
     from warp.tests.test_bool import TestBool
     from warp.tests.test_builtins_resolution import TestBuiltinsResolution
@@ -321,6 +322,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestAtomicCAS,
         TestBf16,
         TestBf16MlDtypes,
+        TestBitCount,
         TestBlockDimDispatch,
         TestBool,
         TestBuiltinsResolution,
@@ -610,6 +612,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.test_atomic_bitwise import TestAtomicBitwise
     from warp.tests.test_atomic_cas import TestAtomicCAS
     from warp.tests.test_bf16 import TestBf16, TestBf16MlDtypes
+    from warp.tests.test_bit_count import TestBitCount
     from warp.tests.test_block_dim_dispatch import TestBlockDimDispatch
     from warp.tests.test_bool import TestBool
     from warp.tests.test_builtins_resolution import TestBuiltinsResolution
@@ -796,6 +799,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         # Types & operators
         TestArithmetic,
         TestAtomic,
+        TestBitCount,
         TestFp16,
         TestLValue,
         TestStruct,
