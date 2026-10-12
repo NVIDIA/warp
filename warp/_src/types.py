@@ -425,9 +425,41 @@ native_scalar_types = (int32, float32, bool)
 
 # TypeVars with proper constraints now that scalar types are defined
 # Note: TypeVar constraints must be listed explicitly (Pyright doesn't support unpacking)
-# Keep these in sync with the tuples above when adding new scalar types
+# Keep these (and their docstrings) in sync with the tuples above when adding new scalar types
 Int = TypeVar("Int", int, int8, uint8, int16, uint16, int32, uint32, int64, uint64)
+"""Generic annotation for any Warp integer scalar type.
+
+Use ``Int`` to annotate parameters of generic Warp kernels and functions,
+either directly or as the ``dtype`` of a generic array, vector, or matrix.
+``Int`` matches the following integer types:
+
+- :class:`~warp.int8`, :class:`~warp.int16`, :class:`~warp.int32`, or :class:`~warp.int64`.
+- :class:`~warp.uint8`, :class:`~warp.uint16`, :class:`~warp.uint32`, or :class:`~warp.uint64`.
+- Python :class:`int`, which Warp treats as :class:`~warp.int32`.
+
+Use :data:`~warp.Scalar` to accept both integer and floating-point types.
+
+For more on writing generic kernels and functions with ``Int``, see
+:ref:`generic_type_annotations`.
+"""
+
 Float = TypeVar("Float", float, float16, bfloat16, float32, float64)
+"""Generic annotation for any Warp floating-point scalar type.
+
+Use ``Float`` to annotate parameters of generic Warp kernels and functions,
+either directly or as the ``dtype`` of a generic array, vector, or matrix.
+``Float`` matches the following floating-point types:
+
+- :class:`~warp.float16`, :class:`~warp.float32`, or :class:`~warp.float64`.
+- :class:`~warp.bfloat16`.
+- Python :class:`float`, which Warp treats as :class:`~warp.float32`.
+
+Use :data:`~warp.Scalar` to accept both integer and floating-point types.
+
+For more on writing generic kernels and functions with ``Float``, see
+:ref:`generic_type_annotations`.
+"""
+
 Scalar = TypeVar(
     "Scalar",
     int,
@@ -445,6 +477,24 @@ Scalar = TypeVar(
     float32,
     float64,
 )
+"""Generic annotation for any Warp integer or floating-point scalar type.
+
+Use ``Scalar`` to annotate parameters of generic Warp kernels and functions,
+either directly or as the ``dtype`` of a generic array, vector, or matrix.
+``Scalar`` matches the types that :data:`~warp.Int` and :data:`~warp.Float` match:
+
+- :class:`~warp.int8`, :class:`~warp.int16`, :class:`~warp.int32`, or :class:`~warp.int64`.
+- :class:`~warp.uint8`, :class:`~warp.uint16`, :class:`~warp.uint32`, or :class:`~warp.uint64`.
+- :class:`~warp.float16`, :class:`~warp.float32`, or :class:`~warp.float64`.
+- :class:`~warp.bfloat16`.
+- Python :class:`int` or :class:`float`, which Warp treats as :class:`~warp.int32`
+  or :class:`~warp.float32`, respectively.
+
+:class:`~warp.bool` doesn't match ``Scalar``.
+
+For more on writing generic kernels and functions with ``Scalar``, see
+:ref:`generic_type_annotations`.
+"""
 
 
 def _unwrap_literal(value):

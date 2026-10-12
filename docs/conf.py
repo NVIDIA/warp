@@ -15,6 +15,8 @@ import os
 import pkgutil
 import re
 import sys
+import types
+from typing import TypeVar
 
 import docutils
 import sphinx
@@ -336,6 +338,8 @@ AUTOSUMMARY_ANNOTATION_OVERRIDES = {
         ": warp.config.LaunchArrayAccessMode = warp.config.LaunchArrayAccessMode.RELAXED"
     ),
     "warp.config.log_level": ": int = warp.LOG_INFO",
+    # Hide the internal module path that ``repr()`` exposes.
+    "warp.DeviceLike": "= warp.Device | str | None",
 }
 
 # Map internal builtin function paths to public names for output filenames.
@@ -380,12 +384,24 @@ def _hide_inherited_builtin_members(context):
         ]
 
 
+def _is_type_var(fullname):
+    """Return whether ``fullname`` resolves to a :class:`typing.TypeVar`."""
+    module_name, _, attr_name = fullname.rpartition(".")
+    try:
+        obj = getattr(importlib.import_module(module_name), attr_name)
+    except (ImportError, AttributeError, ValueError):
+        return False
+
+    return isinstance(obj, TypeVar)
+
+
 class AutosummaryRenderer(AutosummaryRenderer):
     # Template documenting built-ins and other Warp functions, requiring special handling.
     WARP_FUNCTION_TEMPLATE_FILE = "warp_function.rst"
 
     def render(self, template_name, context):
         context["wp_annotation_override"] = AUTOSUMMARY_ANNOTATION_OVERRIDES.get(context.get("fullname"))
+        context["wp_no_value"] = _is_type_var(context.get("fullname", ""))
 
         if context.get("objtype") == "class":
             _hide_inherited_builtin_members(context)
@@ -643,18 +659,23 @@ def populate_reexported_docstrings(app, what, name, obj, options, lines):
     from the source module using string literals that follow constant
     assignments.
     """
-    if lines:
-        # Already has a docstring, nothing to do
+    if what != "data":
         return
 
-    if what != "data":
+    if isinstance(obj, (TypeVar, types.UnionType)) and obj.__doc__ == type(obj).__doc__:
+        # Type annotation objects inherit their class docstring, such as the
+        # ``typing.TypeVar`` one, which says nothing about this annotation.
+        lines.clear()
+
+    if lines:
+        # Already has a docstring, nothing to do
         return
 
     # Extract the simple name from the full qualified name
     simple_name = name.split(".")[-1]
 
     if simple_name in CONSTANT_DOCS_CACHE:
-        lines.append(CONSTANT_DOCS_CACHE[simple_name])
+        lines.extend(CONSTANT_DOCS_CACHE[simple_name].splitlines())
 
 
 def rewrite_internal_module_paths(app, doctree, docname):

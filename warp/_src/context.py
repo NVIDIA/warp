@@ -6363,9 +6363,20 @@ def _validate_cuda_arch_suffix(
     return suffix
 
 
-""" Meta-type for arguments that can be resolved to a concrete Device.
-"""
 DeviceLike = Device | str | None
+"""Annotation for arguments that Warp resolves to a :class:`~warp.Device`.
+
+A ``DeviceLike`` value can be:
+
+- A :class:`~warp.Device` object, used as is.
+- A device alias, such as ``"cpu"``, ``"cuda:0"``, or an alias registered with
+  :func:`~warp.map_cuda_device`. The alias ``"cuda"`` refers to the current CUDA device.
+- ``None``, which refers to the default device. Some functions may document a
+  different meaning for ``None``.
+
+:func:`~warp.get_device` returns the :class:`~warp.Device` that a value refers to.
+See :ref:`devices` for the available aliases and how to change the default device.
+"""
 
 
 class Graph:
