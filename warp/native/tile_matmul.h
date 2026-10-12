@@ -216,6 +216,10 @@ inline CUDA_CALLABLE void scalar_matmul(const StorageA& A, const StorageB& B, St
     constexpr bool aligned_m = (M % BM == 0);
     constexpr bool aligned_n = (N % BN == 0);
 
+    // As in BLAS, C is not read when beta is zero, so non-finite values in C
+    // cannot reach the result through beta * C.
+    const bool read_c = Accumulate && beta != T(0);
+
     for (int t = WP_TILE_THREAD_IDX; t < num_blocks; t += WP_TILE_BLOCK_DIM) {
         const int block_i = t / blocks_n;
         const int block_j = t % blocks_n;
@@ -315,14 +319,14 @@ inline CUDA_CALLABLE void scalar_matmul(const StorageA& A, const StorageB& B, St
             for (int sj = 0; sj < BN; sj++) {
                 if constexpr (aligned_m && aligned_n) {
                     const int idx = (base_i + si) * sc0 + (base_j + sj) * sc1;
-                    if constexpr (Accumulate)
+                    if (read_c)
                         c_ptr[idx] = ElemC(alpha * sum[si][sj] + beta * T(c_ptr[idx]));
                     else
                         c_ptr[idx] = ElemC(alpha * sum[si][sj]);
                 } else {
                     if (base_i + si < M && base_j + sj < N) {
                         const int idx = (base_i + si) * sc0 + (base_j + sj) * sc1;
-                        if constexpr (Accumulate)
+                        if (read_c)
                             c_ptr[idx] = ElemC(alpha * sum[si][sj] + beta * T(c_ptr[idx]));
                         else
                             c_ptr[idx] = ElemC(alpha * sum[si][sj]);
@@ -386,7 +390,7 @@ CUDA_CALLABLE TileC& tile_matmul(
     return C;
 }
 
-// tile_matmul_acc: C = alpha * A @ B + beta * C (accumulates into C)
+// tile_matmul_acc: C = alpha * A @ B + beta * C (accumulates into C, does not read C when beta == 0)
 template <
     typename Fwd,
     typename AdjA,

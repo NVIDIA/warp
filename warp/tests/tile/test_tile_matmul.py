@@ -387,6 +387,35 @@ def test_tile_matmul_return_form(test, device):
         wp.config.verify_fp = old_verify_fp
 
 
+@wp.kernel
+def tile_matmul_overwrite_kernel(A: wp.array2d[float], B: wp.array2d[float], C: wp.array2d[float], beta: float):
+    a = wp.tile_load(A, shape=(TILE_M, TILE_K))
+    b = wp.tile_load(B, shape=(TILE_K, TILE_N))
+    c = wp.tile_load(C, shape=(TILE_M, TILE_N))
+
+    wp.tile_matmul(a, b, c, beta=beta)
+
+    wp.tile_store(C, c)
+
+
+def test_tile_matmul_beta_zero_ignores_out(test, device):
+    """Verify that ``beta=0`` overwrites ``out`` without reading its non-finite values.
+
+    A reused output tile can hold NaN or infinite values from earlier work, and scaling those by zero still
+    produces NaN, so ``out`` must not be read at all.
+    """
+    out = np.full((TILE_M, TILE_N), np.nan, dtype=np.float32)
+    out[::2] = np.inf
+
+    A = wp.ones((TILE_M, TILE_K), dtype=float, device=device)
+    B = wp.ones((TILE_K, TILE_N), dtype=float, device=device)
+    C = wp.array(out, device=device)
+
+    wp.launch_tiled(tile_matmul_overwrite_kernel, dim=[1], inputs=[A, B, C, 0.0], block_dim=TILE_DIM, device=device)
+
+    assert_np_equal(C.numpy(), np.full((TILE_M, TILE_N), TILE_K, dtype=np.float32))
+
+
 @wp.kernel(module="unique")
 def f32_to_bf16_kernel(input: wp.array2d[wp.float32], output: wp.array2d[wp.bfloat16]):
     i, j = wp.tid()
@@ -1114,6 +1143,9 @@ add_function_test(
 )
 add_function_test(TestTileMatmul, "test_tile_transpose_matmul", test_tile_transpose_matmul, devices=devices)
 add_function_test(TestTileMatmul, "test_tile_matmul_return_form", test_tile_matmul_return_form, devices=devices)
+add_function_test(
+    TestTileMatmul, "test_tile_matmul_beta_zero_ignores_out", test_tile_matmul_beta_zero_ignores_out, devices=devices
+)
 
 cpu_devices = get_cpu_test_devices()
 for name, func in (
