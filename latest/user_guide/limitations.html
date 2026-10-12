@@ -713,6 +713,14 @@ functions is the same type as the input:</p>
 </pre></div>
 </div>
 </section>
+<section id="bit-count">
+<h3>Bit Count<a class="headerlink" href="#bit-count" title="Link to this heading">#</a></h3>
+<p><a class="reference internal" href="../language_reference/_generated/warp.bit_count.html#warp._src.lang.bit_count" title="warp._src.lang.bit_count"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.bit_count()</span></code></a> counts set bits in an integer’s fixed-width binary
+representation, including the sign bit for signed inputs. In contrast, Python’s
+<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#int.bit_count" title="(in Python v3.15)"><code class="xref py py-meth docutils literal notranslate"><span class="pre">int.bit_count()</span></code></a> counts set bits in the absolute value.</p>
+<p>For example, <code class="docutils literal notranslate"><span class="pre">wp.bit_count(wp.int8(-1))</span></code> returns <code class="docutils literal notranslate"><span class="pre">8</span></code>, whereas Python’s <code class="docutils literal notranslate"><span class="pre">(-1).bit_count()</span></code> returns <code class="docutils literal notranslate"><span class="pre">1</span></code>.
+The difference applies both in Warp kernels and when calling <code class="docutils literal notranslate"><span class="pre">wp.bit_count()</span></code> from Python.</p>
+</section>
 </section>
 <section id="variable-scope">
 <h2>Variable Scope<a class="headerlink" href="#variable-scope" title="Link to this heading">#</a></h2>
@@ -881,6 +889,7 @@ kernel rather than relying on struct-value accumulation.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#power-operator">Power Operator</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#inverse-sine-and-cosine">Inverse Sine and Cosine</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#rounding">Rounding</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#bit-count">Bit Count</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#variable-scope">Variable Scope</a></li>
