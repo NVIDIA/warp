@@ -10,6 +10,7 @@ import warp as wp
 from warp._src.fem import cache
 from warp._src.fem.polynomial import Polynomial, is_closed, lagrange_scales, quadrature_1d
 from warp._src.fem.types import cached_coords_type
+from warp._src.fem.utils import type_basis_element
 
 from .cube_shape_function import CubeBSplineShapeFunctions
 from .shape_function import ShapeFunction
@@ -299,6 +300,9 @@ class SquareBipolynomialShapeFunctions(SquareShapeFunction):
             return cache.get_func(element_inner_weight_gradient_linear, self.name)
 
         return cache.get_func(element_inner_weight_gradient, self.name)
+
+    def make_node_dual_weight(self):
+        return self._make_unit_node_dual_weight()
 
     def element_node_triangulation(self):
         from warp._src.fem.utils import grid_to_tris  # noqa: PLC0415
@@ -607,6 +611,9 @@ class SquareSerendipityShapeFunctions(SquareShapeFunction):
 
         return element_inner_weight_gradient
 
+    def make_node_dual_weight(self):
+        return self._make_unit_node_dual_weight()
+
     def element_node_triangulation(self):
         if self.ORDER == 2:
             element_triangles = [
@@ -771,6 +778,9 @@ class SquareNonConformingPolynomialShapeFunctions(ShapeFunction):
 
         return element_inner_weight_gradient
 
+    def make_node_dual_weight(self):
+        return self._make_unit_node_dual_weight()
+
 
 class SquareNedelecFirstKindShapeFunctions(SquareShapeFunction):
     """Nédélec first-kind (edge) shape functions on quadrilateral elements for H(curl) spaces."""
@@ -890,6 +900,17 @@ class SquareNedelecFirstKindShapeFunctions(SquareShapeFunction):
 
         return element_inner_weight_gradient
 
+    def make_node_dual_weight(self):
+        basis_element = type_basis_element(cache.cached_vec_type(2, self.scalar_type))
+
+        # The node weight at the node is the unit edge tangent, which is also its dual
+        @cache.dynamic_func(suffix=self.name)
+        def node_dual_weight(node_index_in_elt: int):
+            node_type, _type_instance, _type_index = self.node_type_and_type_index(node_index_in_elt)
+            return basis_element(node_type - SquareShapeFunction.EDGE_X)
+
+        return node_dual_weight
+
 
 class SquareRaviartThomasShapeFunctions(SquareShapeFunction):
     """Raviart-Thomas (face) shape functions on quadrilateral elements for H(div) spaces."""
@@ -1008,6 +1029,17 @@ class SquareRaviartThomasShapeFunctions(SquareShapeFunction):
             return grad
 
         return element_inner_weight_gradient
+
+    def make_node_dual_weight(self):
+        basis_element = type_basis_element(cache.cached_vec_type(2, self.scalar_type))
+
+        # The node weight at the node is the unit edge normal, which is also its dual
+        @cache.dynamic_func(suffix=self.name)
+        def node_dual_weight(node_index_in_elt: int):
+            node_type, _type_instance, _type_index = self.node_type_and_type_index(node_index_in_elt)
+            return basis_element(1 - (node_type - SquareShapeFunction.EDGE_X))
+
+        return node_dual_weight
 
 
 class SquareBSplineShapeFunctions(SquareShapeFunction):
@@ -1132,6 +1164,10 @@ class SquareBSplineShapeFunctions(SquareShapeFunction):
             return wp.vec2(dx * wy, dy * wx)
 
         return cache.get_func(element_inner_weight_gradient, self.name)
+
+    def make_node_dual_weight(self):
+        # B-splines do not interpolate node values, but using node values as dofs still reproduces linear fields
+        return self._make_unit_node_dual_weight()
 
     def element_node_quads(self):
         from warp._src.fem.utils import grid_to_quads  # noqa: PLC0415

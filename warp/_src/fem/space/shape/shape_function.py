@@ -62,6 +62,56 @@ class ShapeFunction:
         """Create a device function returning the gradient of the shape function associated to a given node at given coordinates."""
         raise NotImplementedError()
 
+    def make_node_dual_weight(self):
+        """Create a device function returning the reference-space dual weight of each node.
+
+        The degree of freedom of node ``i`` reproducing a reference-space value ``v`` is ``v * d_i`` for scalar-valued
+        shape functions, or ``dot(v, d_i)`` for vector-valued ones, with ``d_i`` the returned dual weight.
+        For vector-valued shape functions, ``d_i`` is aligned with the edge tangent (covariant) or side normal (contravariant)
+        associated to the node, and scaled such that ``dot(d_i, w_i) = 1``, with ``w_i`` the node weight at the node coordinates.
+
+        The default implementation returns ``1 / w_i`` for scalar-valued shape functions, and must be overridden
+        for vector-valued ones.
+        """
+        if self.value != ShapeFunction.Value.Scalar:
+            raise NotImplementedError()
+
+        node_coords_in_element = self.make_node_coords_in_element()
+        element_inner_weight = self.make_element_inner_weight()
+        ONE = wp.constant(getattr(self, "scalar_type", wp.float32)(1.0))
+
+        @cache.dynamic_func(suffix=self.name)
+        def node_dual_weight(node_index_in_elt: int):
+            return ONE / element_inner_weight(node_coords_in_element(node_index_in_elt), node_index_in_elt)
+
+        return node_dual_weight
+
+    def _make_unit_node_dual_weight(self):
+        """Unit dual weights, using node values as degrees of freedom.
+
+        Exact for shape functions that are one at their own node and zero at the other nodes.
+        """
+        ONE = wp.constant(self.scalar_type(1.0))
+
+        @cache.dynamic_func(suffix=self.name)
+        def node_dual_weight(node_index_in_elt: int):
+            return ONE
+
+        return node_dual_weight
+
+    def _make_normalized_node_dual_weight(self, node_dof_axis: wp.Function):
+        """Scale node degree-of-freedom axes so that their dot product with the node weight at the node is one."""
+        node_coords_in_element = self.make_node_coords_in_element()
+        element_inner_weight = self.make_element_inner_weight()
+
+        @cache.dynamic_func(suffix=self.name)
+        def node_dual_weight(node_index_in_elt: int):
+            axis = node_dof_axis(node_index_in_elt)
+            node_weight = element_inner_weight(node_coords_in_element(node_index_in_elt), node_index_in_elt)
+            return axis / wp.dot(axis, node_weight)
+
+        return node_dual_weight
+
 
 class ConstantShapeFunction(ShapeFunction):
     """Shape function that is constant over the element."""
@@ -135,6 +185,9 @@ class ConstantShapeFunction(ShapeFunction):
             return grad_type(scalar(0.0))
 
         return element_inner_weight_gradient
+
+    def make_node_dual_weight(self):
+        return self._make_unit_node_dual_weight()
 
     def element_vtk_cells(self):
         cell_type = 1  # VTK_VERTEX

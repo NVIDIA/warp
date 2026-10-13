@@ -39,7 +39,6 @@ from warp._src.fem.types import (
     NULL_DOF_INDEX,
     NULL_ELEMENT_INDEX,
     NULL_NODE_INDEX,
-    NULL_QP_INDEX,
     OUTSIDE,
     DofIndex,
     Domain,
@@ -2201,17 +2200,11 @@ def _get_dof_value_function(
         node_coords = space.basis.node_coords_in_element(
             elt_arg, topo_arg, basis_arg, element_index, node_index_in_element
         )
-        node_weight = space.basis.element_inner_weight(
-            elt_arg,
-            topo_arg,
-            basis_arg,
-            element_index,
-            node_coords,
-            node_index_in_element,
-            NULL_QP_INDEX,
+        node_dual_weight = space.basis.node_dual_weight(
+            elt_arg, topo_arg, basis_arg, element_index, node_index_in_element
         )
-        local_value_map = space.local_value_map_inner(elt_arg, element_index, node_coords)
-        dof_value = space.dof_value(space_value, node_weight, local_value_map)
+        local_inverse_value_map = space.local_inverse_value_map_inner(elt_arg, element_index, node_coords)
+        dof_value = space.dof_value(space_value, node_dual_weight, local_inverse_value_map)
 
         return dof_value
 

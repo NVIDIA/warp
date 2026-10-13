@@ -17,6 +17,7 @@ from warp.fem.utils import (
     grid_to_tets,
     grid_to_tris,
 )
+from warp.sparse import bsr_zeros
 from warp.tests.fem.utils import grad_field
 from warp.tests.unittest_utils import *
 
@@ -159,6 +160,83 @@ def _expect_tangential_continuity(s: fem.Sample, domain: fem.Domain, field: fem.
 
     _expect_near(in_t, out_t, 0.0001)
     return 0.0
+
+
+@wp.func
+def _curl_conforming_exact_field(x: wp.vec2):
+    # Constant plus rotation, spanned by lowest-order Nédélec elements
+    return wp.vec2(1.0 - 0.5 * x[1], 2.0 + 0.5 * x[0])
+
+
+@wp.func
+def _curl_conforming_exact_field(x: wp.vec3):
+    return wp.vec3(1.0, 2.0, 3.0) + wp.cross(wp.vec3(0.5, -0.25, 0.75), x)
+
+
+@wp.func
+def _div_conforming_exact_field(x: wp.vec2):
+    # Constant plus dilation, spanned by lowest-order Raviart-Thomas elements
+    return wp.vec2(1.0, 2.0) + 0.7 * x
+
+
+@wp.func
+def _div_conforming_exact_field(x: wp.vec3):
+    return wp.vec3(1.0, 2.0, 3.0) + 0.7 * x
+
+
+@wp.func
+def _vector_space_exact_field(x: Any, curl_conforming: int):
+    if curl_conforming:
+        return _curl_conforming_exact_field(x)
+    return _div_conforming_exact_field(x)
+
+
+@fem.integrand
+def _vector_space_exact_value(s: fem.Sample, domain: fem.Domain, curl_conforming: int):
+    return _vector_space_exact_field(domain(s), curl_conforming)
+
+
+@fem.integrand
+def _vector_space_cell_error(s: fem.Sample, domain: fem.Domain, u: fem.Field, curl_conforming: int):
+    return wp.length_sq(u(s) - _vector_space_exact_field(domain(s), curl_conforming))
+
+
+@fem.integrand
+def _vector_space_boundary_trace_error(s: fem.Sample, domain: fem.Domain, u: fem.Field, curl_conforming: int):
+    # Tangential (curl-conforming) or normal (div-conforming) traces only depend on boundary nodes
+    err = u(s) - _vector_space_exact_field(domain(s), curl_conforming)
+    nor = fem.normal(domain, s)
+    err_n = wp.dot(err, nor)
+    if curl_conforming:
+        return wp.length_sq(err - err_n * nor)
+    return err_n * err_n
+
+
+@fem.integrand
+def _vector_space_trial_value(s: fem.Sample, u: fem.Field):
+    return u(s)
+
+
+@wp.func
+def _bspline_exact_field(x: wp.vec2):
+    # Linear field, reproduced exactly by B-spline interpolation
+    return 2.0 + x[0] - 0.5 * x[1]
+
+
+@wp.func
+def _bspline_exact_field(x: wp.vec3):
+    return 2.0 + x[0] - 0.5 * x[1] + 0.25 * x[2]
+
+
+@fem.integrand
+def _bspline_exact_value(s: fem.Sample, domain: fem.Domain):
+    return _bspline_exact_field(domain(s))
+
+
+@fem.integrand
+def _bspline_cell_error(s: fem.Sample, domain: fem.Domain, u: fem.Field):
+    err = u(s) - _bspline_exact_field(domain(s))
+    return err * err
 
 
 @fem.integrand
@@ -676,6 +754,106 @@ def test_vector_spaces(test, device):
         )
 
 
+def test_vector_space_interpolation(test, device):
+    """Test that interpolation reproduces fields spanned by H(curl) and H(div) spaces."""
+
+    # Affine maps shear the reference grids, so that edges and sides are not axis-aligned
+    shear_2d = np.array([[1.0, 0.6], [-0.3, 0.9]])
+    shear_3d = np.array([[1.0, 0.6, 0.2], [-0.3, 0.9, 0.1], [0.1, -0.2, 1.1]])
+
+    def _shear(positions, shear):
+        return wp.array(positions.numpy() @ shear.T, dtype=positions.dtype)
+
+    with wp.ScopedDevice(device):
+        positions, vidx = _gen_trimesh(3, 4)
+        tri_geo = fem.Trimesh2D(tri_vertex_indices=vidx, positions=_shear(positions, shear_2d))
+
+        positions, vidx = _gen_quadmesh(3)
+        quad_geo = fem.Quadmesh2D(quad_vertex_indices=vidx, positions=_shear(positions, shear_2d))
+
+        positions, vidx = _gen_tetmesh(2, 3, 2)
+        tet_geo = fem.Tetmesh(tet_vertex_indices=vidx, positions=_shear(positions, shear_3d))
+
+        positions, vidx = _gen_hexmesh(2)
+        hex_geo = fem.Hexmesh(hex_vertex_indices=vidx, positions=_shear(positions, shear_3d))
+
+        for geo in (tri_geo, quad_geo, tet_geo, hex_geo):
+            vec_dtype = wp.types.vector(length=geo.dimension, dtype=float)
+
+            for element_basis in (fem.ElementBasis.NEDELEC_FIRST_KIND, fem.ElementBasis.RAVIART_THOMAS):
+                curl_conforming = int(element_basis == fem.ElementBasis.NEDELEC_FIRST_KIND)
+                values = {"curl_conforming": curl_conforming}
+                msg = f"{geo.name}, {element_basis}"
+
+                space = fem.make_polynomial_space(geo, degree=1, element_basis=element_basis, dtype=vec_dtype)
+
+                # Interpolation at all nodes
+                field = space.make_field()
+                fem.interpolate(_vector_space_exact_value, dest=field, values=values)
+
+                cell_error = fem.integrate(
+                    _vector_space_cell_error,
+                    quadrature=fem.RegularQuadrature(fem.Cells(geo), order=2),
+                    fields={"u": field},
+                    values=values,
+                )
+                test.assertLess(cell_error, 1.0e-8, msg=msg)
+
+                # Interpolation at boundary nodes only, through the trace space
+                boundary = fem.BoundarySides(geo)
+                boundary_field = space.make_field()
+                fem.interpolate(_vector_space_exact_value, dest=boundary_field, at=boundary, values=values)
+
+                boundary_error = fem.integrate(
+                    _vector_space_boundary_trace_error,
+                    quadrature=fem.RegularQuadrature(boundary, order=2),
+                    fields={"u": boundary_field.trace()},
+                    values=values,
+                )
+                test.assertLess(boundary_error, 1.0e-8, msg=msg)
+
+                # Jacobian of the interpolation from a Lagrange field, which also spans the exact field
+                lagrange_space = fem.make_polynomial_space(geo, degree=1, dtype=vec_dtype)
+                lagrange_field = lagrange_space.make_field()
+                fem.interpolate(_vector_space_exact_value, dest=lagrange_field, values=values)
+
+                jacobian = bsr_zeros(
+                    rows_of_blocks=space.node_count(),
+                    cols_of_blocks=lagrange_space.node_count(),
+                    block_type=wp.types.matrix(shape=(1, geo.dimension), dtype=float),
+                )
+                fem.interpolate(
+                    _vector_space_trial_value,
+                    dest=jacobian,
+                    dest_space=space,
+                    at=fem.make_space_restriction(space_topology=space.topology, domain=fem.Cells(geo)),
+                    fields={"u": fem.make_trial(lagrange_space)},
+                )
+                assert_np_equal(
+                    (jacobian @ lagrange_field.dof_values).numpy().flatten(),
+                    field.dof_values.numpy(),
+                    tol=1.0e-5,
+                )
+
+
+def test_bspline_space_interpolation(test, device):
+    """Test that interpolation into B-spline spaces reproduces linear fields."""
+
+    with wp.ScopedDevice(device):
+        for geo in (fem.Grid2D(res=wp.vec2i(4)), fem.Grid3D(res=wp.vec3i(4))):
+            for degree in (1, 2, 3):
+                space = fem.make_polynomial_space(geo, degree=degree, element_basis=fem.ElementBasis.BSPLINE)
+                field = space.make_field()
+                fem.interpolate(_bspline_exact_value, dest=field)
+
+                cell_error = fem.integrate(
+                    _bspline_cell_error,
+                    quadrature=fem.RegularQuadrature(fem.Cells(geo), order=2 * degree),
+                    fields={"u": field},
+                )
+                test.assertLess(cell_error, 1.0e-8, msg=f"{geo.name}, degree {degree}")
+
+
 def test_traced_cells_field_lookup_is_correct(test, device):
     """Verify that U(s) on boundary sides with traced field gives correct results."""
 
@@ -734,6 +912,8 @@ class TestFemField(unittest.TestCase):
 
 
 add_function_test(TestFemField, "test_vector_spaces", test_vector_spaces, devices=devices)
+add_function_test(TestFemField, "test_vector_space_interpolation", test_vector_space_interpolation, devices=devices)
+add_function_test(TestFemField, "test_bspline_space_interpolation", test_bspline_space_interpolation, devices=devices)
 add_function_test(TestFemField, "test_dof_mapper", test_dof_mapper)
 add_function_test(
     TestFemField, "test_implicit_field_function_identity", test_implicit_field_function_identity, devices=devices
