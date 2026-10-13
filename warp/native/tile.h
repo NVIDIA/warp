@@ -1882,7 +1882,8 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
                 // use shared memory atomics to accumulate gradients
                 // since for broadcast tiles (e.g.: a bias vector) multiple incoming threads
                 // may map to a single location in shared memory
-                tile_adj_atomic_add_value(&grad(linear), tile.data[i]);
+                // Convert contributions to this tile's gradient dtype before accumulation.
+                tile_adj_atomic_add_value(&grad(linear), T(tile.data[i]));
         }
 
         WP_TILE_SYNC();
@@ -5995,8 +5996,8 @@ inline CUDA_CALLABLE void adj_tile_assign(
     tile_register_t<typename TileA::Type, GradLayout> staged;
 
     // linear_from_register() is monotone, so after the first invalid
-    // register slot all later slots are invalid too. The accumulation loop
-    // uses the same guard before reading staged.data[reg].
+    // register slot all later slots are invalid too. grad_add() uses the
+    // same guard before reading staged.data[reg].
     WP_PRAGMA_UNROLL
     for (int reg = 0; reg < GradLayout::NumRegs; ++reg) {
         int linear = GradLayout::linear_from_register(reg);
@@ -6020,16 +6021,9 @@ inline CUDA_CALLABLE void adj_tile_assign(
     // zeroing must complete before accumulating into (potentially aliasing) src gradients
     WP_TILE_SYNC();
 
-    WP_PRAGMA_UNROLL
-    for (int reg = 0; reg < GradLayout::NumRegs; ++reg) {
-        int linear = GradLayout::linear_from_register(reg);
-        if (!GradLayout::valid(linear)) {
-            break;
-        }
-        src.grad(GradLayout::coord_from_linear(linear)) += staged.data[reg];
-    }
-
-    WP_TILE_SYNC();
+    // src may be a broadcast view whose coordinates share one gradient element;
+    // grad_add() accumulates atomically for such non-unique layouts
+    src.grad_add(staged);
 }
 
 template <
