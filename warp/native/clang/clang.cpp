@@ -1116,7 +1116,7 @@ static llvm::orc::LLJIT* find_jit_for_module(const char* module_name)
 // the sanitizer runtime (there must be a single in-process copy and shadow
 // memory). This gates both the reported sanitizer (wp_warp_clang_sanitizer) and
 // the process-symbol generator that resolves a kernel's __asan_* callbacks
-// (wp_load_obj).
+// (load_obj_buffer).
 static bool warp_clang_is_asan_build()
 {
 #if defined(__SANITIZE_ADDRESS__)
@@ -1129,13 +1129,15 @@ static bool warp_clang_is_asan_build()
     return false;
 }
 
-// Load an object file into an in-memory DLL named `module_name`.
+// Add an object to a new in-memory DLL named `module_name`. Shared by
+// wp_load_obj() and wp_load_obj_from_bytes(), which differ only in where the
+// object's bytes come from.
 // When `use_legacy_linker` is true, the legacy RTDyld linker is used instead
 // of JITLink; this provides debug support with pre-built LLVM but is less
 // robust against virtual address space fragmentation.
 // Debug support (GDB/LLDB step-through) is enabled automatically in debug
 // builds (WP_ENABLE_DEBUG=1).
-WP_API int wp_load_obj(const char* object_file, const char* module_name, bool use_legacy_linker)
+static int load_obj_buffer(std::unique_ptr<llvm::MemoryBuffer> buffer, const char* module_name, bool use_legacy_linker)
 {
     // Windows ARM64 COFF objects require RTDyld.
     use_legacy_linker = use_legacy_linker || force_legacy_cpu_linker;
@@ -1271,20 +1273,39 @@ WP_API int wp_load_obj(const char* object_file, const char* module_name, bool us
         (*dll).addGenerator(std::move(*generator));
     }
 
-    // Load the object file into a memory buffer
+    auto err = jit->addObjectFile(*dll, std::move(buffer));
+    if (err) {
+        std::cerr << "Failed to add object file: " << llvm::toString(std::move(err)) << std::endl;
+        // Remove the empty DLL after addObjectFile fails.
+        if (auto remove_err = jit->getExecutionSession().removeJITDylib(*dll))
+            llvm::consumeError(std::move(remove_err));
+        return -1;
+    }
+
+    return 0;
+}
+
+WP_API int wp_load_obj(const char* object_file, const char* module_name, bool use_legacy_linker)
+{
     auto buffer = llvm::MemoryBuffer::getFile(object_file);
     if (!buffer) {
         std::cerr << "Failed to load object file: " << buffer.getError().message() << std::endl;
         return -1;
     }
+    return load_obj_buffer(std::move(*buffer), module_name, use_legacy_linker);
+}
 
-    auto err = jit->addObjectFile(*dll, std::move(*buffer));
-    if (err) {
-        std::cerr << "Failed to add object file: " << llvm::toString(std::move(err)) << std::endl;
+WP_API int wp_load_obj_from_bytes(const void* data, size_t size, const char* module_name, bool use_legacy_linker)
+{
+    if (!data || !module_name) {
+        std::cerr << "Failed to load object: null data or module name" << std::endl;
         return -1;
     }
-
-    return 0;
+    // Copy the object, because the JIT links it lazily on the first symbol
+    // lookup, which can happen after the caller has released its buffer.
+    auto buffer
+        = llvm::MemoryBuffer::getMemBufferCopy(llvm::StringRef(static_cast<const char*>(data), size), module_name);
+    return load_obj_buffer(std::move(buffer), module_name, use_legacy_linker);
 }
 
 WP_API int wp_unload_obj(const char* module_name)

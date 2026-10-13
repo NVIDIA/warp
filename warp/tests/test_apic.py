@@ -85,6 +85,7 @@ class TestApic(unittest.TestCase):
 
 
 # Must match APICSectionType in warp/native/apic_types.h.
+_APIC_SECTION_METADATA = 1
 _APIC_SECTION_MEMORY = 2
 _APIC_SECTION_OPERATIONS = 3
 _APIC_FORMAT_VERSION = 16
@@ -300,6 +301,33 @@ def _corrupt_apic_memtile_record(path, *, srcsize=None, count=None):
         wrp_file.write(_APIC_MEMTILE_RECORD.pack(*memtile))
 
 
+def _patch_apic_file_header(path, **fields):
+    """Overwrite selected fields of a WRP file's header prefix."""
+    names = ("magic", "version", "flags", "num_sections", "section_table_offset")
+    with open(path, "r+b") as wrp_file:
+        prefix = _APIC_FILE_HEADER_PREFIX.unpack(wrp_file.read(_APIC_FILE_HEADER_PREFIX.size))
+        header = dict(zip(names, prefix, strict=True))
+        header.update(fields)
+        wrp_file.seek(0)
+        wrp_file.write(_APIC_FILE_HEADER_PREFIX.pack(*(header[name] for name in names)))
+
+
+def _patch_apic_section_size(path, section_type, size):
+    """Overwrite the stored size of one WRP section-table entry."""
+    with open(path, "r+b") as wrp_file:
+        wrp_data = wrp_file.read()
+        _, _, _, section_count, section_table_offset = _APIC_FILE_HEADER_PREFIX.unpack_from(wrp_data)
+        for section_index in range(section_count):
+            entry_offset = section_table_offset + _APIC_SECTION_ENTRY.size * section_index
+            entry = list(_APIC_SECTION_ENTRY.unpack_from(wrp_data, entry_offset))
+            if entry[0] == section_type:
+                entry[3] = size
+                wrp_file.seek(entry_offset)
+                wrp_file.write(_APIC_SECTION_ENTRY.pack(*entry))
+                return
+    raise ValueError(f"No WRP section of type {section_type}")
+
+
 def test_save_apic_false_error(test, device):
     """Verify that capture_save() should raise when apic=False."""
     n = 64
@@ -452,6 +480,44 @@ def test_capture_load_rejects_malformed_memory_regions(test, device):
                 device,
                 r"region 4294967294 has invalid initial-data flag 2",
             )
+
+
+def test_capture_load_rejects_out_of_bounds_sections(test, device):
+    """Reject section tables, sections, and metadata that extend past their data.
+
+    Each case patches one size or offset in a valid file so that a read would
+    leave the file or the metadata section. Loading must fail with a
+    diagnostic instead of reading out of bounds.
+    """
+    cases = {
+        "section table offset": (
+            lambda path: _patch_apic_file_header(path, section_table_offset=1 << 40),
+            r"section table is out of bounds",
+        ),
+        "section count": (
+            lambda path: _patch_apic_file_header(path, num_sections=0xFFFFFFFF),
+            r"section table is out of bounds",
+        ),
+        "section size": (
+            lambda path: _patch_apic_section_size(path, _APIC_SECTION_MEMORY, 1 << 40),
+            r"section \d+ is out of bounds",
+        ),
+        "metadata header": (
+            lambda path: _patch_apic_section_size(path, _APIC_SECTION_METADATA, 27),
+            r"metadata section: truncated header",
+        ),
+        "metadata binding": (
+            lambda path: _patch_apic_section_size(path, _APIC_SECTION_METADATA, 30),
+            r"metadata section: truncated binding",
+        ),
+    }
+    with tempfile.TemporaryDirectory() as tmpdir:
+        for case, (corrupt, message_pattern) in cases.items():
+            with test.subTest(case=case):
+                path = os.path.join(tmpdir, case.replace(" ", "_") + ".wrp")
+                _save_apic_memory_validation_graph(path, device)
+                corrupt(path)
+                _assert_apic_load_rejected(test, path, device, message_pattern)
 
 
 def test_live_hashgrid_capture_does_not_snapshot_inputs(test, device):
@@ -3722,6 +3788,12 @@ add_function_test(
     TestApic,
     "test_capture_load_rejects_malformed_memory_regions",
     test_capture_load_rejects_malformed_memory_regions,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_capture_load_rejects_out_of_bounds_sections",
+    test_capture_load_rejects_out_of_bounds_sections,
     devices=[d for d in devices if d.is_cpu],
 )
 add_function_test(

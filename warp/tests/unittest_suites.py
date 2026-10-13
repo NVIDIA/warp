@@ -159,6 +159,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestTorchAllocator,
     )
     from warp.tests.test_apic import TestApic
+    from warp.tests.test_apic_from_bytes import TestApicFromBytes
     from warp.tests.test_apic_mesh import TestApicMesh
     from warp.tests.test_apic_utility_algorithms import TestApicSegmentedSort, TestApicUtilityAlgorithms
     from warp.tests.test_arithmetic import TestArithmetic
@@ -309,6 +310,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestAllocTracker,
         TestAllocatorProtocol,
         TestApic,
+        TestApicFromBytes,
         TestApicMesh,
         TestApicSegmentedSort,
         TestApicUtilityAlgorithms,
@@ -602,6 +604,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestTorchAllocator,
     )
     from warp.tests.test_apic import TestApic
+    from warp.tests.test_apic_from_bytes import TestApicFromBytes
     from warp.tests.test_apic_mesh import TestApicMesh
     from warp.tests.test_apic_utility_algorithms import TestApicSegmentedSort, TestApicUtilityAlgorithms
     from warp.tests.test_arithmetic import TestArithmetic
@@ -872,6 +875,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestRmmAllocator,
         TestTorchAllocator,
         TestApic,
+        TestApicFromBytes,
         TestApicMesh,
         TestArray,
         TestArrayReduce,

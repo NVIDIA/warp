@@ -190,6 +190,7 @@ from warp._src.context import capture_end as capture_end
 from warp._src.context import capture_launch as capture_launch
 from warp._src.context import capture_save as capture_save
 from warp._src.context import capture_load as capture_load
+from warp._src.context import capture_load_from_bytes as capture_load_from_bytes
 from warp._src.context import capture_if as capture_if
 from warp._src.context import capture_while as capture_while
 from warp._src.context import capture_debug_dot_print as capture_debug_dot_print

@@ -111,3 +111,16 @@ class APICLaunchInfo(ctypes.Structure):
         ("_pad2", ctypes.c_uint32),
         ("relocs", ctypes.POINTER(APICLaunchPtrLocation)),
     ]
+
+
+class APICModuleBytes(ctypes.Structure):
+    """One module binary passed to ``wp_apic_load_graph_from_bytes``.
+
+    Must match apic.h APICModuleBytes (naturally aligned, not packed).
+    """
+
+    _fields_ = [
+        ("filename", ctypes.c_char_p),
+        ("data", ctypes.c_void_p),
+        ("size", ctypes.c_size_t),
+    ]

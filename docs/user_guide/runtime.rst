@@ -2190,6 +2190,37 @@ family. This is currently a caller requirement: the experimental loader does
 not reliably diagnose a mismatch when it first opens the file. Architecture and
 platform constraints are listed under the current limitations below.
 
+Loading from bytes
+^^^^^^^^^^^^^^^^^^
+
+:func:`wp.capture_load_from_bytes() <warp.capture_load_from_bytes>` loads a
+saved graph from memory instead of files. It suits applications that store a
+capture inside another artifact, such as a model file. Pass the contents of the
+``.wrp`` file and a mapping from each file in the companion ``_modules``
+directory to its contents:
+
+.. code:: python
+
+    import os
+
+    import warp as wp
+
+    with open("simulation.wrp", "rb") as f:
+        wrp_data = f.read()
+
+    modules = {}
+    for filename in os.listdir("simulation_modules"):
+        with open(os.path.join("simulation_modules", filename), "rb") as f:
+            modules[filename] = f.read()
+
+    graph = wp.capture_load_from_bytes(wrp_data, modules, device="cuda")
+
+The returned graph behaves the same as one returned by
+:func:`wp.capture_load() <warp.capture_load>`. Module names are the filenames
+:func:`wp.capture_save() <warp.capture_save>` wrote, without a directory
+prefix. Entries the graph doesn't use are ignored. Warp copies everything it
+needs while loading, so the buffers can be released once the call returns.
+
 Standalone C++ replay
 ^^^^^^^^^^^^^^^^^^^^^
 
@@ -2202,6 +2233,16 @@ declared in `warp/native/apic.h <https://github.com/NVIDIA/warp/blob/main/warp/n
     // Load a .wrp file. device_type: 0 = CUDA, 1 = CPU.
     // For CUDA, context is a CUcontext; for CPU it is ignored (pass NULL).
     APICGraph* wp_apic_load_graph(void* context, const char* path, int device_type);
+
+    // Load from memory: the .wrp contents plus the modules for a CUDA graph.
+    // Each APICModuleBytes entry holds a module's recorded filename
+    // (const char* filename) and its contents (const void* data, size_t size).
+    // Buffers must be host memory that is not modified during the call.
+    // For a CPU graph the module list is not used: load each object with
+    // wp_load_obj_from_bytes() instead (see below).
+    APICGraph* wp_apic_load_graph_from_bytes(void* context, const void* data, size_t size,
+                                             const APICModuleBytes* modules,
+                                             uint32_t num_modules, int device_type);
 
     // Update or read named parameter regions on the loaded graph.
     bool wp_apic_set_param(APICGraph* graph, const char* name,
@@ -2313,13 +2354,15 @@ resolved from the ``.o`` files in the companion ``_modules/`` directory. The
 CPU example links against ``warp-clang`` at build time, loads each object with
 ``wp_load_obj()``, resolves its functions with ``wp_lookup()``, and registers
 each pointer with the loaded graph via
-``wp_apic_register_loaded_cpu_kernel()``.
+``wp_apic_register_loaded_cpu_kernel()``. When the object files are in memory,
+``wp_load_obj_from_bytes()`` loads one from a buffer instead of a path.
 
-Before the first call to ``wp_load_obj()``, a standalone native consumer must
-pass the core runtime table returned by ``wp_cpu_block_runtime_get_api()`` to
-``wp_llvm_set_cpu_block_runtime()``. This lets JIT-loaded kernels resolve the
-cooperative CPU block entry points implemented by the core Warp library. Warp's
-Python runtime performs the same binding during initialization.
+Before the first call to ``wp_load_obj()`` or ``wp_load_obj_from_bytes()``, a
+standalone native consumer must pass the core runtime table returned by
+``wp_cpu_block_runtime_get_api()`` to ``wp_llvm_set_cpu_block_runtime()``. This
+lets JIT-loaded kernels resolve the cooperative CPU block entry points
+implemented by the core Warp library. Warp's Python runtime performs the same
+binding during initialization.
 
 The example walks every kernel returned by ``wp_apic_get_num_kernels()`` and
 does this resolution once at startup. Kernel metadata includes both the kernel
@@ -2342,8 +2385,11 @@ surface for this lookup is:
 Loading a CPU ``.wrp`` graph uses the pure-C++ APIC loader in the Warp native
 library and does not require a CUDA-enabled build. CPU replay
 (``wp_apic_cpu_replay_graph``) still requires the warp-clang backend and the
-companion ``_modules`` directory described above. Loading a CUDA ``.wrp`` graph
-requires a CUDA-enabled build.
+compiled kernel objects. These can come from the companion ``_modules``
+directory, from the module buffers passed to
+:func:`wp.capture_load_from_bytes() <warp.capture_load_from_bytes>`, or, in a
+native program, from buffers loaded with ``wp_load_obj_from_bytes()``. Loading
+a CUDA ``.wrp`` graph requires a CUDA-enabled build.
 
 Building and running
 """"""""""""""""""""
@@ -2390,11 +2436,12 @@ Current limitations of API Capture:
   JIT-compiled on architectures supported by its target and the installed
   driver, but PTX is not an unconditional cross-architecture guarantee. One
   APIC graph cannot span multiple GPUs.
-- Loading CPU ``.wrp`` graphs requires the warp-clang backend and the companion
-  ``_modules`` directory with compatible CPU kernel object files. Those
-  ``.o`` files are tied to their platform, architecture, compiler ABI, and Warp
-  runtime. CPU loading does not require a CUDA-enabled Warp native library;
-  loading CUDA ``.wrp`` graphs does.
+- Loading CPU ``.wrp`` graphs requires the warp-clang backend and compatible
+  CPU kernel object files, either in the companion ``_modules`` directory or
+  passed to :func:`wp.capture_load_from_bytes() <warp.capture_load_from_bytes>`.
+  Those ``.o`` files are tied to their platform, architecture, compiler ABI,
+  and Warp runtime. CPU loading does not require a CUDA-enabled Warp native
+  library; loading CUDA ``.wrp`` graphs does.
 - Both CPU and CUDA ``.wrp`` graph replay support APIC-recorded
   :func:`wp.capture_if() <warp.capture_if>` and
   :func:`wp.capture_while() <warp.capture_while>` conditionals and loops. Stream

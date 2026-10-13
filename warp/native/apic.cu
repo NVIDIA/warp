@@ -989,8 +989,10 @@ static bool apic_replay_ops_into_cuda_capture(
 
 static bool apic_rebuild_cuda_graph(APICGraph* graph, CUstream stream)
 {
-    // Precondition: graph->operations_validated is true. Enforced by
-    // wp_apic_load_graph, which is the only path that produces an APICGraph.
+    // Precondition: graph->operations_validated is true. Enforced by the
+    // shared graph loader behind wp_apic_load_graph and
+    // wp_apic_load_graph_from_bytes, which is the only code that produces an
+    // APICGraph.
     if (graph->cuda_graph_exec) {
         cudaGraphExecDestroy((cudaGraphExec_t)graph->cuda_graph_exec);
         graph->cuda_graph_exec = nullptr;
@@ -1045,21 +1047,31 @@ static bool apic_rebuild_cuda_graph(APICGraph* graph, CUstream stream)
 }
 
 // ============================================================================
-// CUDA-side graph load setup (called from wp_apic_load_graph in apic.cpp)
+// CUDA-side graph load setup (called from apic_load_graph_from_image in apic.cpp)
 // ============================================================================
 
 bool apic_load_graph_cuda_setup(
-    APICGraph* graph, void* context, const std::string& modules_dir, const uint8_t* memory_ptr, size_t memory_size
+    APICGraph* graph,
+    void* context,
+    const std::unordered_map<std::string, std::vector<uint8_t>>& module_images,
+    const uint8_t* memory_ptr,
+    size_t memory_size
 )
 {
     for (auto& pair : graph->modules) {
-        std::string cubin_path = modules_dir + "/" + pair.second.cubin_filename;
-#ifdef _WIN32
-        std::replace(cubin_path.begin(), cubin_path.end(), '/', '\\');
-#endif
-        CUmodule cuda_module = (CUmodule)wp_cuda_load_module(context, cubin_path.c_str());
+        const std::string& filename = pair.second.cubin_filename;
+        auto image_it = module_images.find(pair.first);
+        if (image_it == module_images.end()) {
+            wp::set_error_string("Warp APIC error: No image was resolved for module %s", filename.c_str());
+            return false;
+        }
+        const std::vector<uint8_t>& image = image_it->second;
+        CUmodule cuda_module = (CUmodule)cuda_load_module_image(
+            context, reinterpret_cast<const char*>(image.data()), image.size(),
+            cuda_module_path_is_ptx(filename.c_str())
+        );
         if (!cuda_module) {
-            wp::set_error_string("Warp APIC error: Failed to load module %s", cubin_path.c_str());
+            wp::set_error_string("Warp APIC error: Failed to load module %s", filename.c_str());
             return false;
         }
         pair.second.cuda_module = cuda_module;

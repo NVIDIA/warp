@@ -432,6 +432,7 @@ Graph Management
    capture_if
    capture_launch
    capture_load
+   capture_load_from_bytes
    capture_save
    capture_while
    is_conditional_graph_supported
