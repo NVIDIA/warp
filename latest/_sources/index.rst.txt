@@ -86,7 +86,8 @@ warp/examples/core
       -
       -
       -
-    * - 3-D FDTD Luneburg lens
+    * - | 3-D FDTD Luneburg lens
+        | `single GPU <https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_fdtd_3d.py>`__ · `multi GPU <https://github.com/NVIDIA/warp/blob/main/warp/examples/distributed/example_fdtd_3d_nccl.py>`__
       -
       -
       -
