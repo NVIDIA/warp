@@ -563,6 +563,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">out</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tile</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../api_reference/_generated/warp.Float.html#warp.Float" title="warp.Float"><span class="pre">Float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.15)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.Float.html#warp.Float" title="warp.Float"><span class="pre">Float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1.0</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">beta</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.Float.html#warp.Float" title="warp.Float"><span class="pre">Float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1.0</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">precision</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'default'</span></span></em>,</dd>
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#warp._src.lang.tile_matmul" title="Link to this definition">#</a></dt>
@@ -575,7 +576,7 @@
 </dd>
 </dl>
 <p>All input and output tiles must have the same datatype. Tile data will automatically be migrated
-to shared memory if necessary and will use TensorCore operations when available.</p>
+to shared memory if necessary and may use Tensor Core operations, depending on the GEMM configuration.</p>
 <p>Note that computing the adjoints of alpha and beta are not yet supported.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -585,6 +586,22 @@ to shared memory if necessary and will use TensorCore operations when available.
 <li><p><strong>out</strong> – A tile with <code class="docutils literal notranslate"><span class="pre">shape=(M,</span> <span class="pre">N)</span></code></p></li>
 <li><p><strong>alpha</strong> – Scaling factor</p></li>
 <li><p><strong>beta</strong> – Accumulator factor</p></li>
+<li><p><strong>precision</strong> – Compute precision, specified as the string literal <code class="docutils literal notranslate"><span class="pre">&quot;default&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;tf32&quot;</span></code>.
+<code class="docutils literal notranslate"><span class="pre">&quot;default&quot;</span></code> uses the tile data type. <code class="docutils literal notranslate"><span class="pre">&quot;tf32&quot;</span></code> uses TF32 input precision with
+<code class="docutils literal notranslate"><span class="pre">float32</span></code> accumulation, without changing tile storage. The adjoint products use
+the same precision. Tensor Core use depends on the GEMM configuration. Honored by
+the cuBLASDx GEMM on CUDA compile targets of compute capability 8.0 or higher. On
+the CPU, on older CUDA compile targets, or when MathDx GEMM is unavailable or
+disabled (see <a class="reference internal" href="../../api_reference/_generated/warp.config.enable_mathdx_gemm.html#warp.config.enable_mathdx_gemm" title="warp.config.enable_mathdx_gemm"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.enable_mathdx_gemm</span></code></a>), Warp computes in <code class="docutils literal notranslate"><span class="pre">float32</span></code>
+and logs a warning when the module is compiled. The same fallback applies when
+operand strides cannot be represented by cuBLASDx leading dimensions.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#TypeError" title="(in Python v3.15)"><strong>TypeError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">precision=&quot;tf32&quot;</span></code> is used with tiles other than <code class="docutils literal notranslate"><span class="pre">float32</span></code> for
+<code class="docutils literal notranslate"><span class="pre">a</span></code>, <code class="docutils literal notranslate"><span class="pre">b</span></code>, and <code class="docutils literal notranslate"><span class="pre">out</span></code>.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.15)"><strong>ValueError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">precision</span></code> is not the string literal <code class="docutils literal notranslate"><span class="pre">&quot;default&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;tf32&quot;</span></code>.</p></li>
 </ul>
 </dd>
 </dl>
@@ -598,6 +615,7 @@ to shared memory if necessary and will use TensorCore operations when available.
 <dd><em class="sig-param"><span class="n"><span class="pre">a</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tile</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../api_reference/_generated/warp.Float.html#warp.Float" title="warp.Float"><span class="pre">Float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.15)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">b</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tile</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../api_reference/_generated/warp.Float.html#warp.Float" title="warp.Float"><span class="pre">Float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.15)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.Float.html#warp.Float" title="warp.Float"><span class="pre">Float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1.0</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">precision</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'default'</span></span></em>,</dd>
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tile</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../api_reference/_generated/warp.Float.html#warp.Float" title="warp.Float"><span class="pre">Float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.15)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span></dt>
@@ -610,7 +628,7 @@ to shared memory if necessary and will use TensorCore operations when available.
 </dd>
 </dl>
 <p>Both input tiles must have the same datatype. Tile data will automatically be migrated
-to shared memory if necessary and will use TensorCore operations when available.</p>
+to shared memory if necessary and may use Tensor Core operations, depending on the GEMM configuration.</p>
 <p>Note that computing the adjoints of alpha is not yet supported.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -618,10 +636,26 @@ to shared memory if necessary and will use TensorCore operations when available.
 <li><p><strong>a</strong> – A tile with <code class="docutils literal notranslate"><span class="pre">shape=(M,</span> <span class="pre">K)</span></code></p></li>
 <li><p><strong>b</strong> – A tile with <code class="docutils literal notranslate"><span class="pre">shape=(K,</span> <span class="pre">N)</span></code></p></li>
 <li><p><strong>alpha</strong> – Scaling factor</p></li>
+<li><p><strong>precision</strong> – Compute precision, specified as the string literal <code class="docutils literal notranslate"><span class="pre">&quot;default&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;tf32&quot;</span></code>.
+<code class="docutils literal notranslate"><span class="pre">&quot;default&quot;</span></code> uses the tile data type. <code class="docutils literal notranslate"><span class="pre">&quot;tf32&quot;</span></code> uses TF32 input precision with
+<code class="docutils literal notranslate"><span class="pre">float32</span></code> accumulation, without changing tile storage. The adjoint products use
+the same precision. Tensor Core use depends on the GEMM configuration. Honored by
+the cuBLASDx GEMM on CUDA compile targets of compute capability 8.0 or higher. On
+the CPU, on older CUDA compile targets, or when MathDx GEMM is unavailable or
+disabled (see <a class="reference internal" href="../../api_reference/_generated/warp.config.enable_mathdx_gemm.html#warp.config.enable_mathdx_gemm" title="warp.config.enable_mathdx_gemm"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.enable_mathdx_gemm</span></code></a>), Warp computes in <code class="docutils literal notranslate"><span class="pre">float32</span></code>
+and logs a warning when the module is compiled. The same fallback applies when
+operand strides cannot be represented by cuBLASDx leading dimensions.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>A tile with <code class="docutils literal notranslate"><span class="pre">shape=(M,</span> <span class="pre">N)</span></code></p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#TypeError" title="(in Python v3.15)"><strong>TypeError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">precision=&quot;tf32&quot;</span></code> is used with tiles other than <code class="docutils literal notranslate"><span class="pre">float32</span></code> for
+<code class="docutils literal notranslate"><span class="pre">a</span></code> and <code class="docutils literal notranslate"><span class="pre">b</span></code>.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.15)"><strong>ValueError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">precision</span></code> is not the string literal <code class="docutils literal notranslate"><span class="pre">&quot;default&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;tf32&quot;</span></code>.</p></li>
+</ul>
 </dd>
 </dl>
 </dd></dl>

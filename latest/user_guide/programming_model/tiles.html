@@ -903,6 +903,37 @@ See <a class="reference internal" href="#vectorized-tile-loads"><span class="std
 </pre></div>
 </div>
 </section>
+<section id="reduced-precision-matrix-multiply-tf32">
+<h2>Reduced-Precision Matrix Multiply (TF32)<a class="headerlink" href="#reduced-precision-matrix-multiply-tf32" title="Link to this heading">#</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">precision</span></code> keyword of <a class="reference internal" href="../../language_reference/_generated/warp.tile_matmul.html#warp._src.lang.tile_matmul" title="warp._src.lang.tile_matmul"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_matmul</span></code></a> defaults to
+<code class="docutils literal notranslate"><span class="pre">&quot;default&quot;</span></code>, which computes in the tile data type. Passing <code class="docutils literal notranslate"><span class="pre">precision=&quot;tf32&quot;</span></code> uses reduced
+TF32 input precision with <code class="docutils literal notranslate"><span class="pre">float32</span></code> accumulation. Tile storage remains <code class="docutils literal notranslate"><span class="pre">float32</span></code>, and the
+backward pass uses the same precision for its matrix products. Tensor Core use depends on
+the GEMM configuration.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">module</span><span class="o">=</span><span class="s2">"unique"</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">tile_gemm_tf32</span><span class="p">(</span><span class="n">A</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array2d</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">B</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array2d</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">C</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array2d</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">32</span><span class="p">))</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">32</span><span class="p">))</span>
+    <span class="n">c</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_matmul</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">precision</span><span class="o">=</span><span class="s2">"tf32"</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">C</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span>
+
+<span class="n">A</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="mi">32</span><span class="p">,</span> <span class="mi">32</span><span class="p">),</span> <span class="mf">1.25</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda:0"</span><span class="p">)</span>
+<span class="n">B</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="mi">32</span><span class="p">,</span> <span class="mi">32</span><span class="p">),</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda:0"</span><span class="p">)</span>
+<span class="n">C</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="mi">32</span><span class="p">,</span> <span class="mi">32</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda:0"</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch_tiled</span><span class="p">(</span><span class="n">tile_gemm_tf32</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">A</span><span class="p">,</span> <span class="n">B</span><span class="p">,</span> <span class="n">C</span><span class="p">],</span> <span class="n">block_dim</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda:0"</span><span class="p">)</span>
+<span class="n">np</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">assert_allclose</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="mf">80.0</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Accuracy depends on the inputs and application; performance depends on the GPU and workload.
+Check results and benchmark both precision settings for your application.</p>
+<p>TF32 requires the cuBLASDx GEMM and a CUDA compile target of compute capability 8.0 or higher.
+On the CPU, Warp computes in <code class="docutils literal notranslate"><span class="pre">float32</span></code> and logs a warning when the module is compiled.
+See <a class="reference internal" href="../../language_reference/_generated/warp.tile_matmul.html#warp._src.lang.tile_matmul" title="warp._src.lang.tile_matmul"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_matmul</span></code></a> for other fallback cases and datatype
+requirements.</p>
+</section>
 <section id="tile-operations">
 <h2>Tile Operations<a class="headerlink" href="#tile-operations" title="Link to this heading">#</a></h2>
 <section id="construction">
@@ -1609,6 +1640,9 @@ only when it depends on a block having <em>more than one</em> lane. That depende
 enters in three ways. The CPU and GPU outputs are shown as comments. Enabling CPU
 blocks with the same explicit dimension exercises the cooperative behavior, but
 portable applications should not assume that the experimental option is enabled.</p>
+<p>Separately from the lane count, <code class="docutils literal notranslate"><span class="pre">precision=&quot;tf32&quot;</span></code> in
+<a class="reference internal" href="../../language_reference/_generated/warp.tile_matmul.html#warp._src.lang.tile_matmul" title="warp._src.lang.tile_matmul"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_matmul</span></code></a> can also produce different CPU and GPU results,
+because only the CUDA cuBLASDx path honors it; see <a class="reference internal" href="#reduced-precision-matrix-multiply-tf32">Reduced-Precision Matrix Multiply (TF32)</a>.</p>
 <p><strong>Problem 1: arithmetic that uses</strong> <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> <strong>or the lane index.</strong> On CPU,
 <a class="reference internal" href="../../language_reference/_generated/warp.block_dim.html#warp._src.lang.block_dim" title="warp._src.lang.block_dim"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.block_dim()</span></code></a> returns <code class="docutils literal notranslate"><span class="pre">1</span></code> and the lane index (the
 trailing value of <a class="reference internal" href="../../language_reference/_generated/warp.tid.html#warp._src.lang.tid" title="warp._src.lang.tid"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tid()</span></code></a> in a tiled launch) is always <code class="docutils literal notranslate"><span class="pre">0</span></code>.
@@ -2357,6 +2391,7 @@ values for continued SIMT work. See <a class="reference internal" href="#tiles-a
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#example-general-matrix-multiply-gemm">Example: General Matrix Multiply (GEMM)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#reduced-precision-matrix-multiply-tf32">Reduced-Precision Matrix Multiply (TF32)</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#tile-operations">Tile Operations</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#construction">Construction</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#load-store">Load/Store</a></li>

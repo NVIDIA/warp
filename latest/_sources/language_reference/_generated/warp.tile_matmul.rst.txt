@@ -3,7 +3,7 @@
 
 .. currentmodule:: warp._src.lang
 
-.. function:: tile_matmul(a: Tile[Float, tuple[int, int]], b: Tile[Float, tuple[int, int]], out: Tile[Float, tuple[int, int]], alpha: Float = 1.0, beta: Float = 1.0) -> None
+.. function:: tile_matmul(a: Tile[Float, tuple[int, int]], b: Tile[Float, tuple[int, int]], out: Tile[Float, tuple[int, int]], alpha: Float = 1.0, beta: Float = 1.0, precision: str = "default") -> None
 
    .. wp-function-tags::
       :kernel: true
@@ -18,7 +18,7 @@
        * fp16, bf16, fp32, fp64
    
    All input and output tiles must have the same datatype. Tile data will automatically be migrated
-   to shared memory if necessary and will use TensorCore operations when available.
+   to shared memory if necessary and may use Tensor Core operations, depending on the GEMM configuration.
    
    Note that computing the adjoints of alpha and beta are not yet supported.
    
@@ -27,9 +27,22 @@
    :param out: A tile with ``shape=(M, N)``
    :param alpha: Scaling factor
    :param beta: Accumulator factor
+   :param precision: Compute precision, specified as the string literal ``"default"`` or ``"tf32"``.
+                     ``"default"`` uses the tile data type. ``"tf32"`` uses TF32 input precision with
+                     ``float32`` accumulation, without changing tile storage. The adjoint products use
+                     the same precision. Tensor Core use depends on the GEMM configuration. Honored by
+                     the cuBLASDx GEMM on CUDA compile targets of compute capability 8.0 or higher. On
+                     the CPU, on older CUDA compile targets, or when MathDx GEMM is unavailable or
+                     disabled (see :attr:`warp.config.enable_mathdx_gemm`), Warp computes in ``float32``
+                     and logs a warning when the module is compiled. The same fallback applies when
+                     operand strides cannot be represented by cuBLASDx leading dimensions.
+   
+   :raises TypeError: If ``precision="tf32"`` is used with tiles other than ``float32`` for
+       ``a``, ``b``, and ``out``.
+   :raises ValueError: If ``precision`` is not the string literal ``"default"`` or ``"tf32"``.
    
 
-.. function:: tile_matmul(a: Tile[Float, tuple[int, int]], b: Tile[Float, tuple[int, int]], alpha: Float = 1.0) -> Tile[Float, tuple[int, int]]
+.. function:: tile_matmul(a: Tile[Float, tuple[int, int]], b: Tile[Float, tuple[int, int]], alpha: Float = 1.0, precision: str = "default") -> Tile[Float, tuple[int, int]]
    :noindex:
 
    .. wp-function-tags::
@@ -45,13 +58,26 @@
        * fp16, bf16, fp32, fp64
    
    Both input tiles must have the same datatype. Tile data will automatically be migrated
-   to shared memory if necessary and will use TensorCore operations when available.
+   to shared memory if necessary and may use Tensor Core operations, depending on the GEMM configuration.
    
    Note that computing the adjoints of alpha is not yet supported.
    
    :param a: A tile with ``shape=(M, K)``
    :param b: A tile with ``shape=(K, N)``
    :param alpha: Scaling factor
+   :param precision: Compute precision, specified as the string literal ``"default"`` or ``"tf32"``.
+                     ``"default"`` uses the tile data type. ``"tf32"`` uses TF32 input precision with
+                     ``float32`` accumulation, without changing tile storage. The adjoint products use
+                     the same precision. Tensor Core use depends on the GEMM configuration. Honored by
+                     the cuBLASDx GEMM on CUDA compile targets of compute capability 8.0 or higher. On
+                     the CPU, on older CUDA compile targets, or when MathDx GEMM is unavailable or
+                     disabled (see :attr:`warp.config.enable_mathdx_gemm`), Warp computes in ``float32``
+                     and logs a warning when the module is compiled. The same fallback applies when
+                     operand strides cannot be represented by cuBLASDx leading dimensions.
    
    :returns: A tile with ``shape=(M, N)``
+   
+   :raises TypeError: If ``precision="tf32"`` is used with tiles other than ``float32`` for
+       ``a`` and ``b``.
+   :raises ValueError: If ``precision`` is not the string literal ``"default"`` or ``"tf32"``.
    
