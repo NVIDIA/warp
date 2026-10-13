@@ -584,6 +584,31 @@ def test_save_load_round_trip(test, device):
         np.testing.assert_allclose(result.numpy(), expected)
 
 
+def test_load_same_capture_twice(test, device):
+    """Release the first of two loads of one capture and launch the second."""
+    n = 16
+    a = wp.array(np.arange(n, dtype=np.float32), device=device)
+    b = wp.zeros(n, dtype=float, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.launch(scale_kernel, dim=n, inputs=[a, b, 2.0], device=device)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "loaded_twice")
+        wp.capture_save(capture.graph, path, inputs={"a": a}, outputs={"b": b})
+        first = wp.capture_load(path, device=device)
+        second = wp.capture_load(path, device=device)
+
+    del first
+    gc.collect()
+
+    wp.capture_launch(second)
+    result = wp.zeros(n, dtype=float, device=device)
+    second.get_param("b", result)
+    np.testing.assert_allclose(result.numpy(), np.arange(n, dtype=np.float32) * 2.0)
+
+
 def test_save_load_block_dependent_static_kernel(test, device):
     """Serialize the selected executable's symbols after switching block sizes."""
 
@@ -3727,6 +3752,12 @@ add_function_test(
     TestApic,
     "test_save_load_round_trip",
     test_save_load_round_trip,
+    devices=devices_with_cuda_graph_module_load,
+)
+add_function_test(
+    TestApic,
+    "test_load_same_capture_twice",
+    test_load_same_capture_twice,
     devices=devices_with_cuda_graph_module_load,
 )
 add_function_test(

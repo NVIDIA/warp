@@ -14268,6 +14268,12 @@ def capture_load(path: str, device: DeviceLike = None) -> Graph:
     return graph
 
 
+# Each loaded CPU graph gets its own LLVM JIT dylib names. Without a per-load
+# prefix, two loads of the same capture would register dylibs with the same
+# name, and unloading one graph's dylib would remove code the other still calls.
+_apic_cpu_load_ids = itertools.count()
+
+
 def _apic_load_cpu_modules(native_graph, wrp_path: str) -> list[str]:
     """Load CPU modules from the _modules/ directory and register kernel function pointers.
 
@@ -14282,13 +14288,15 @@ def _apic_load_cpu_modules(native_graph, wrp_path: str) -> list[str]:
     base_name = wrp_path[:-4] if wrp_path.endswith(".wrp") else wrp_path
     modules_dir = base_name + "_modules"
 
+    load_id = next(_apic_cpu_load_ids)
+
     # Load all .o modules from the modules directory
     loaded_handles = {}  # binary filename -> handle string
     if os.path.isdir(modules_dir):
         for filename in os.listdir(modules_dir):
             if filename.endswith(".o"):
                 o_path = os.path.join(modules_dir, filename)
-                handle = f"wp_apic_{os.path.splitext(filename)[0]}"
+                handle = f"wp_apic_{load_id}_{os.path.splitext(filename)[0]}"
                 if (
                     runtime.llvm.wp_load_obj(
                         o_path.encode("utf-8"),
