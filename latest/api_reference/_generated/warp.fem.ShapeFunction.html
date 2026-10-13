@@ -509,7 +509,7 @@
 <h1>warp.fem.ShapeFunction<a class="headerlink" href="#warp-fem-shapefunction" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.fem.ShapeFunction">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">ShapeFunction</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/shape_function.py#L15-L63"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ShapeFunction" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">ShapeFunction</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/shape_function.py#L15-L113"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ShapeFunction" title="Link to this definition">#</a></dt>
 <dd><p>Interface class for defining scalar-valued shape functions over a single element.</p>
 <p class="rubric">Methods</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
@@ -523,10 +523,13 @@
 <tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.ShapeFunction.make_node_coords_in_element" title="warp.fem.ShapeFunction.make_node_coords_in_element"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_node_coords_in_element</span></code></a>()</p></td>
 <td><p>Create a device function returning the coordinates of each node.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.ShapeFunction.make_node_quadrature_weight" title="warp.fem.ShapeFunction.make_node_quadrature_weight"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_node_quadrature_weight</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.ShapeFunction.make_node_dual_weight" title="warp.fem.ShapeFunction.make_node_dual_weight"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_node_dual_weight</span></code></a>()</p></td>
+<td><p>Create a device function returning the reference-space dual weight of each node.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.ShapeFunction.make_node_quadrature_weight" title="warp.fem.ShapeFunction.make_node_quadrature_weight"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_node_quadrature_weight</span></code></a>()</p></td>
 <td><p>Create a device function returning the weight of each node when used as a quadrature point over the element.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.ShapeFunction.make_trace_node_quadrature_weight" title="warp.fem.ShapeFunction.make_trace_node_quadrature_weight"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_trace_node_quadrature_weight</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.ShapeFunction.make_trace_node_quadrature_weight" title="warp.fem.ShapeFunction.make_trace_node_quadrature_weight"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_trace_node_quadrature_weight</span></code></a>()</p></td>
 <td><p>Create a device function returning the weight of each node when used as a quadrature point over the element boundary.</p></td>
 </tr>
 </tbody>
@@ -627,6 +630,18 @@
 <dd><p>Create a device function returning the gradient of the shape function associated to a given node at given coordinates.</p>
 </dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.ShapeFunction.make_node_dual_weight">
+<span class="sig-name descname"><span class="pre">make_node_dual_weight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/shape_function.py#L65-L87"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ShapeFunction.make_node_dual_weight" title="Link to this definition">#</a></dt>
+<dd><p>Create a device function returning the reference-space dual weight of each node.</p>
+<p>The degree of freedom of node <code class="docutils literal notranslate"><span class="pre">i</span></code> reproducing a reference-space value <code class="docutils literal notranslate"><span class="pre">v</span></code> is <code class="docutils literal notranslate"><span class="pre">v</span> <span class="pre">*</span> <span class="pre">d_i</span></code> for scalar-valued
+shape functions, or <code class="docutils literal notranslate"><span class="pre">dot(v,</span> <span class="pre">d_i)</span></code> for vector-valued ones, with <code class="docutils literal notranslate"><span class="pre">d_i</span></code> the returned dual weight.
+For vector-valued shape functions, <code class="docutils literal notranslate"><span class="pre">d_i</span></code> is aligned with the edge tangent (covariant) or side normal (contravariant)
+associated to the node, and scaled such that <code class="docutils literal notranslate"><span class="pre">dot(d_i,</span> <span class="pre">w_i)</span> <span class="pre">=</span> <span class="pre">1</span></code>, with <code class="docutils literal notranslate"><span class="pre">w_i</span></code> the node weight at the node coordinates.</p>
+<p>The default implementation returns <code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">/</span> <span class="pre">w_i</span></code> for scalar-valued shape functions, and must be overridden
+for vector-valued ones.</p>
+</dd></dl>
+
 </dd></dl>
 
 </section>
@@ -696,6 +711,7 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.ShapeFunction.make_trace_node_quadrature_weight"><code class="docutils literal notranslate"><span class="pre">make_trace_node_quadrature_weight()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.ShapeFunction.make_element_inner_weight"><code class="docutils literal notranslate"><span class="pre">make_element_inner_weight()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.ShapeFunction.make_element_inner_weight_gradient"><code class="docutils literal notranslate"><span class="pre">make_element_inner_weight_gradient()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.ShapeFunction.make_node_dual_weight"><code class="docutils literal notranslate"><span class="pre">make_node_dual_weight()</span></code></a></li>
 </ul>
 </li>
 </ul>

@@ -14,6 +14,7 @@
       ~ConstantShapeFunction.make_element_inner_weight
       ~ConstantShapeFunction.make_element_inner_weight_gradient
       ~ConstantShapeFunction.make_node_coords_in_element
+      ~ConstantShapeFunction.make_node_dual_weight
       ~ConstantShapeFunction.make_node_quadrature_weight
       ~ConstantShapeFunction.make_trace_node_quadrature_weight
    

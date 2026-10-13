@@ -509,7 +509,7 @@
 <h1>warp.fem.FunctionSpace<a class="headerlink" href="#warp-fem-functionspace" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.fem.FunctionSpace">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">FunctionSpace</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">basis</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L16-L220"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">FunctionSpace</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">basis</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L16-L240"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace" title="Link to this definition">#</a></dt>
 <dd><p>Interface class for function spaces, i.e. geometry + interpolation basis.</p>
 <dl class="simple">
 <dt>The value of a function <code class="docutils literal notranslate"><span class="pre">f</span></code> at a position <code class="docutils literal notranslate"><span class="pre">x</span></code> is generally computed as</dt><dd><p><code class="docutils literal notranslate"><span class="pre">f(x)</span> <span class="pre">=</span> <span class="pre">L(x)[sum_i</span> <span class="pre">f_i</span> <span class="pre">N_i(x)]</span></code></p>
@@ -527,11 +527,17 @@
 <tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.FunctionSpace.divergence_valid" title="warp.fem.FunctionSpace.divergence_valid"><code class="xref py py-obj docutils literal notranslate"><span class="pre">divergence_valid</span></code></a>()</p></td>
 <td><p>Whether divergence of this field can be computed.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.FunctionSpace.dof_value" title="warp.fem.FunctionSpace.dof_value"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dof_value</span></code></a>(space_value, node_weight, ...)</p></td>
-<td><p>Compute the projection of a world-space value onto the basis of a single degree of freedom.</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.FunctionSpace.dof_value" title="warp.fem.FunctionSpace.dof_value"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dof_value</span></code></a>(space_value, node_dual_weight, ...)</p></td>
+<td><p>Compute the degree-of-freedom value of a single node that reproduces a world-space value at the node location.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.FunctionSpace.gradient_valid" title="warp.fem.FunctionSpace.gradient_valid"><code class="xref py py-obj docutils literal notranslate"><span class="pre">gradient_valid</span></code></a>()</p></td>
 <td><p>Whether gradient operator can be computed.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.FunctionSpace.local_inverse_value_map_inner" title="warp.fem.FunctionSpace.local_inverse_value_map_inner"><code class="xref py py-obj docutils literal notranslate"><span class="pre">local_inverse_value_map_inner</span></code></a>(elt_arg, ...)</p></td>
+<td><p>Build the local map transforming from world to node space, (pseudo-)inverse of <code class="docutils literal notranslate"><span class="pre">local_value_map_inner</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.FunctionSpace.local_inverse_value_map_outer" title="warp.fem.FunctionSpace.local_inverse_value_map_outer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">local_inverse_value_map_outer</span></code></a>(elt_arg, ...)</p></td>
+<td><p>Build the local map transforming from world to node space, (pseudo-)inverse of <code class="docutils literal notranslate"><span class="pre">local_value_map_outer</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.FunctionSpace.local_value_map_inner" title="warp.fem.FunctionSpace.local_value_map_inner"><code class="xref py py-obj docutils literal notranslate"><span class="pre">local_value_map_inner</span></code></a>(elt_arg, ...)</p></td>
 <td><p>Build the local value map transforming from node to world space.</p></td>
@@ -813,8 +819,54 @@
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.FunctionSpace.local_inverse_value_map_inner">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">local_inverse_value_map_inner</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">elt_arg</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">element_index</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">coords</span></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L162-L169"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace.local_inverse_value_map_inner" title="Link to this definition">#</a></dt>
+<dd><p>Build the local map transforming from world to node space, (pseudo-)inverse of <code class="docutils literal notranslate"><span class="pre">local_value_map_inner</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>elt_arg</strong> (<a class="reference internal" href="warp.fem.SpaceTopology.html#warp.fem.SpaceTopology.ElementArg" title="warp.fem.SpaceTopology.ElementArg"><em>SpaceTopology.ElementArg</em></a>)</p></li>
+<li><p><strong>element_index</strong> (<a class="reference internal" href="warp.fem.ElementIndex.html#warp.fem.ElementIndex" title="warp.fem.ElementIndex"><em>ElementIndex</em></a>)</p></li>
+<li><p><strong>coords</strong> (<a class="reference internal" href="warp.fem.Coords.html#warp.fem.Coords" title="warp.fem.Coords"><em>Coords</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.FunctionSpace.local_inverse_value_map_outer">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">local_inverse_value_map_outer</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">elt_arg</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">element_index</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">coords</span></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L171-L178"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace.local_inverse_value_map_outer" title="Link to this definition">#</a></dt>
+<dd><p>Build the local map transforming from world to node space, (pseudo-)inverse of <code class="docutils literal notranslate"><span class="pre">local_value_map_outer</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>elt_arg</strong> (<a class="reference internal" href="warp.fem.SpaceTopology.html#warp.fem.SpaceTopology.ElementArg" title="warp.fem.SpaceTopology.ElementArg"><em>SpaceTopology.ElementArg</em></a>)</p></li>
+<li><p><strong>element_index</strong> (<a class="reference internal" href="warp.fem.ElementIndex.html#warp.fem.ElementIndex" title="warp.fem.ElementIndex"><em>ElementIndex</em></a>)</p></li>
+<li><p><strong>coords</strong> (<a class="reference internal" href="warp.fem.Coords.html#warp.fem.Coords" title="warp.fem.Coords"><em>Coords</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.FunctionSpace.space_value">
-<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">space_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dof_value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">node_weight</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">local_value_map</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L162-L175"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace.space_value" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">space_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dof_value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">node_weight</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">local_value_map</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L180-L193"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace.space_value" title="Link to this definition">#</a></dt>
 <dd><p>Assemble the world-space value of the function space.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -837,7 +889,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">local_value_map</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L177-L190"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace.space_gradient" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L195-L208"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace.space_gradient" title="Link to this definition">#</a></dt>
 <dd><p>Assemble the world-space gradient of the function space.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -860,7 +912,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">local_value_map</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L192-L205"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace.space_divergence" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L210-L223"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace.space_divergence" title="Link to this definition">#</a></dt>
 <dd><p>Assemble the world-space divergence of the function space.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -875,14 +927,23 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.FunctionSpace.dof_value">
-<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">dof_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">space_value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">node_weight</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">local_value_map</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L207-L220"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace.dof_value" title="Link to this definition">#</a></dt>
-<dd><p>Compute the projection of a world-space value onto the basis of a single degree of freedom.</p>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">dof_value</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">space_value</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">node_dual_weight</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">local_inverse_value_map</span></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L225-L240"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace.dof_value" title="Link to this definition">#</a></dt>
+<dd><p>Compute the degree-of-freedom value of a single node that reproduces a world-space value at the node location.</p>
+<p>This is the inverse of <a class="reference internal" href="#warp.fem.FunctionSpace.space_value" title="warp.fem.FunctionSpace.space_value"><code class="xref py py-meth docutils literal notranslate"><span class="pre">space_value()</span></code></a>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>space_value</strong> (<a class="reference internal" href="#warp.fem.FunctionSpace.dtype" title="warp.fem.FunctionSpace.dtype"><em>FunctionSpace.dtype</em></a>) – World-space value.</p></li>
-<li><p><strong>node_weight</strong> (<a class="reference internal" href="#warp.fem.FunctionSpace.weight_dtype" title="warp.fem.FunctionSpace.weight_dtype"><em>FunctionSpace.weight_dtype</em></a>) – Weight associated to the node, as given per the basis space.</p></li>
-<li><p><strong>local_value_map</strong> (<a class="reference internal" href="#warp.fem.FunctionSpace.LocalValueMap" title="warp.fem.FunctionSpace.LocalValueMap"><em>FunctionSpace.LocalValueMap</em></a>) – Data encoding local transformation from node space to world space, as given per <code class="docutils literal notranslate"><span class="pre">local_map_value_(inn|out)er</span></code>.</p></li>
+<li><p><strong>node_dual_weight</strong> (<a class="reference internal" href="#warp.fem.FunctionSpace.weight_dtype" title="warp.fem.FunctionSpace.weight_dtype"><em>FunctionSpace.weight_dtype</em></a>) – Dual weight associated to the node, as given per <a class="reference internal" href="warp.fem.BasisSpace.html#warp.fem.BasisSpace.make_node_dual_weight" title="warp.fem.BasisSpace.make_node_dual_weight"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BasisSpace.make_node_dual_weight()</span></code></a>.</p></li>
+<li><p><strong>local_inverse_value_map</strong> (<em>Any</em>) – Data encoding local transformation from world space to node space, as given per <code class="docutils literal notranslate"><span class="pre">local_inverse_value_map_(inn|out)er</span></code>.</p></li>
 </ul>
 </dd>
 </dl>
@@ -965,6 +1026,8 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.FunctionSpace.value_basis_element"><code class="docutils literal notranslate"><span class="pre">value_basis_element()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.FunctionSpace.local_value_map_inner"><code class="docutils literal notranslate"><span class="pre">local_value_map_inner()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.FunctionSpace.local_value_map_outer"><code class="docutils literal notranslate"><span class="pre">local_value_map_outer()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.FunctionSpace.local_inverse_value_map_inner"><code class="docutils literal notranslate"><span class="pre">local_inverse_value_map_inner()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.FunctionSpace.local_inverse_value_map_outer"><code class="docutils literal notranslate"><span class="pre">local_inverse_value_map_outer()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.FunctionSpace.space_value"><code class="docutils literal notranslate"><span class="pre">space_value()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.FunctionSpace.space_gradient"><code class="docutils literal notranslate"><span class="pre">space_gradient()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.FunctionSpace.space_divergence"><code class="docutils literal notranslate"><span class="pre">space_divergence()</span></code></a></li>

@@ -515,7 +515,7 @@
 <h1>warp.fem.space.shape.TetrahedronPolynomialShapeFunctions<a class="headerlink" href="#warp-fem-space-shape-tetrahedronpolynomialshapefunctions" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.fem.space.shape.TetrahedronPolynomialShapeFunctions">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.fem.space.shape.</span></span><span class="sig-name descname"><span class="pre">TetrahedronPolynomialShapeFunctions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">degree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scalar_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">warp.float32</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/tet_shape_function.py#L160-L530"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.TetrahedronPolynomialShapeFunctions" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.fem.space.shape.</span></span><span class="sig-name descname"><span class="pre">TetrahedronPolynomialShapeFunctions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">degree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scalar_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">warp.float32</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/tet_shape_function.py#L160-L533"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.TetrahedronPolynomialShapeFunctions" title="Link to this definition">#</a></dt>
 <dd><p>Polynomial Lagrange shape functions on tetrahedral elements.</p>
 <p class="rubric">Methods</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
@@ -535,13 +535,16 @@
 <tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.space.shape.TetrahedronPolynomialShapeFunctions.make_node_coords_in_element" title="warp.fem.space.shape.TetrahedronPolynomialShapeFunctions.make_node_coords_in_element"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_node_coords_in_element</span></code></a>()</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.space.shape.TetrahedronPolynomialShapeFunctions.make_node_quadrature_weight" title="warp.fem.space.shape.TetrahedronPolynomialShapeFunctions.make_node_quadrature_weight"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_node_quadrature_weight</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.space.shape.TetrahedronPolynomialShapeFunctions.make_node_dual_weight" title="warp.fem.space.shape.TetrahedronPolynomialShapeFunctions.make_node_dual_weight"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_node_dual_weight</span></code></a>()</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.space.shape.TetrahedronPolynomialShapeFunctions.make_trace_node_quadrature_weight" title="warp.fem.space.shape.TetrahedronPolynomialShapeFunctions.make_trace_node_quadrature_weight"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_trace_node_quadrature_weight</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.space.shape.TetrahedronPolynomialShapeFunctions.make_node_quadrature_weight" title="warp.fem.space.shape.TetrahedronPolynomialShapeFunctions.make_node_quadrature_weight"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_node_quadrature_weight</span></code></a>()</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">node_type_and_index</span></code>(node_index_in_elt)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.space.shape.TetrahedronPolynomialShapeFunctions.make_trace_node_quadrature_weight" title="warp.fem.space.shape.TetrahedronPolynomialShapeFunctions.make_trace_node_quadrature_weight"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_trace_node_quadrature_weight</span></code></a>()</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">node_type_and_index</span></code>(node_index_in_elt)</p></td>
 <td><p></p></td>
 </tr>
 </tbody>
@@ -634,13 +637,18 @@
 <dd></dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.space.shape.TetrahedronPolynomialShapeFunctions.make_node_dual_weight">
+<span class="sig-name descname"><span class="pre">make_node_dual_weight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/tet_shape_function.py#L505-L506"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.TetrahedronPolynomialShapeFunctions.make_node_dual_weight" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.space.shape.TetrahedronPolynomialShapeFunctions.element_node_tets">
-<span class="sig-name descname"><span class="pre">element_node_tets</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/tet_shape_function.py#L505-L522"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.TetrahedronPolynomialShapeFunctions.element_node_tets" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">element_node_tets</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/tet_shape_function.py#L508-L525"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.TetrahedronPolynomialShapeFunctions.element_node_tets" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.space.shape.TetrahedronPolynomialShapeFunctions.element_vtk_cells">
-<span class="sig-name descname"><span class="pre">element_vtk_cells</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/tet_shape_function.py#L524-L530"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.TetrahedronPolynomialShapeFunctions.element_vtk_cells" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">element_vtk_cells</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/tet_shape_function.py#L527-L533"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.TetrahedronPolynomialShapeFunctions.element_vtk_cells" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -703,6 +711,7 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.space.shape.TetrahedronPolynomialShapeFunctions.make_trace_node_quadrature_weight"><code class="docutils literal notranslate"><span class="pre">make_trace_node_quadrature_weight()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.space.shape.TetrahedronPolynomialShapeFunctions.make_element_inner_weight"><code class="docutils literal notranslate"><span class="pre">make_element_inner_weight()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.space.shape.TetrahedronPolynomialShapeFunctions.make_element_inner_weight_gradient"><code class="docutils literal notranslate"><span class="pre">make_element_inner_weight_gradient()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.space.shape.TetrahedronPolynomialShapeFunctions.make_node_dual_weight"><code class="docutils literal notranslate"><span class="pre">make_node_dual_weight()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.space.shape.TetrahedronPolynomialShapeFunctions.element_node_tets"><code class="docutils literal notranslate"><span class="pre">element_node_tets()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.space.shape.TetrahedronPolynomialShapeFunctions.element_vtk_cells"><code class="docutils literal notranslate"><span class="pre">element_vtk_cells()</span></code></a></li>
 </ul>

@@ -522,7 +522,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">scalar_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">warp.float32</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/triangle_shape_function.py#L511-L622"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/triangle_shape_function.py#L517-L639"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions" title="Link to this definition">#</a></dt>
 <dd><p>Nédélec first-kind (edge) shape functions on triangular elements for H(curl) spaces.</p>
 <p class="rubric">Methods</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
@@ -536,13 +536,16 @@
 <tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions.make_node_coords_in_element" title="warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions.make_node_coords_in_element"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_node_coords_in_element</span></code></a>()</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions.make_node_quadrature_weight" title="warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions.make_node_quadrature_weight"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_node_quadrature_weight</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions.make_node_dual_weight" title="warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions.make_node_dual_weight"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_node_dual_weight</span></code></a>()</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions.make_trace_node_quadrature_weight" title="warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions.make_trace_node_quadrature_weight"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_trace_node_quadrature_weight</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions.make_node_quadrature_weight" title="warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions.make_node_quadrature_weight"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_node_quadrature_weight</span></code></a>()</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">node_type_and_index</span></code>(node_index_in_elt)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions.make_trace_node_quadrature_weight" title="warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions.make_trace_node_quadrature_weight"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_trace_node_quadrature_weight</span></code></a>()</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">node_type_and_index</span></code>(node_index_in_elt)</p></td>
 <td><p></p></td>
 </tr>
 </tbody>
@@ -600,32 +603,37 @@
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions.name">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">name</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/triangle_shape_function.py#L533-L536"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions.name" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">name</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/triangle_shape_function.py#L539-L542"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions.name" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions.make_node_coords_in_element">
-<span class="sig-name descname"><span class="pre">make_node_coords_in_element</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/triangle_shape_function.py#L547-L559"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions.make_node_coords_in_element" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">make_node_coords_in_element</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/triangle_shape_function.py#L553-L565"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions.make_node_coords_in_element" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions.make_node_quadrature_weight">
-<span class="sig-name descname"><span class="pre">make_node_quadrature_weight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/triangle_shape_function.py#L561-L569"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions.make_node_quadrature_weight" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">make_node_quadrature_weight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/triangle_shape_function.py#L567-L575"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions.make_node_quadrature_weight" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions.make_trace_node_quadrature_weight">
-<span class="sig-name descname"><span class="pre">make_trace_node_quadrature_weight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/triangle_shape_function.py#L571-L579"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions.make_trace_node_quadrature_weight" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">make_trace_node_quadrature_weight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/triangle_shape_function.py#L577-L585"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions.make_trace_node_quadrature_weight" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions.make_element_inner_weight">
-<span class="sig-name descname"><span class="pre">make_element_inner_weight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/triangle_shape_function.py#L588-L606"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions.make_element_inner_weight" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">make_element_inner_weight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/triangle_shape_function.py#L594-L612"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions.make_element_inner_weight" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions.make_element_inner_weight_gradient">
-<span class="sig-name descname"><span class="pre">make_element_inner_weight_gradient</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/triangle_shape_function.py#L608-L622"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions.make_element_inner_weight_gradient" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">make_element_inner_weight_gradient</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/triangle_shape_function.py#L614-L628"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions.make_element_inner_weight_gradient" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions.make_node_dual_weight">
+<span class="sig-name descname"><span class="pre">make_node_dual_weight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/triangle_shape_function.py#L630-L639"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions.make_node_dual_weight" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -689,6 +697,7 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions.make_trace_node_quadrature_weight"><code class="docutils literal notranslate"><span class="pre">make_trace_node_quadrature_weight()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions.make_element_inner_weight"><code class="docutils literal notranslate"><span class="pre">make_element_inner_weight()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions.make_element_inner_weight_gradient"><code class="docutils literal notranslate"><span class="pre">make_element_inner_weight_gradient()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions.make_node_dual_weight"><code class="docutils literal notranslate"><span class="pre">make_node_dual_weight()</span></code></a></li>
 </ul>
 </li>
 </ul>

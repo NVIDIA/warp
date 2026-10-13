@@ -515,7 +515,7 @@
 <h1>warp.fem.space.shape.CubeBSplineShapeFunctions<a class="headerlink" href="#warp-fem-space-shape-cubebsplineshapefunctions" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.fem.space.shape.CubeBSplineShapeFunctions">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.fem.space.shape.</span></span><span class="sig-name descname"><span class="pre">CubeBSplineShapeFunctions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">degree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scalar_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">warp.float32</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/cube_shape_function.py#L1186-L1408"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.CubeBSplineShapeFunctions" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.fem.space.shape.</span></span><span class="sig-name descname"><span class="pre">CubeBSplineShapeFunctions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">degree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scalar_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">warp.float32</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/cube_shape_function.py#L1218-L1444"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.CubeBSplineShapeFunctions" title="Link to this definition">#</a></dt>
 <dd><p class="rubric">Methods</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
@@ -534,10 +534,13 @@
 <tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.space.shape.CubeBSplineShapeFunctions.make_node_coords_in_element" title="warp.fem.space.shape.CubeBSplineShapeFunctions.make_node_coords_in_element"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_node_coords_in_element</span></code></a>()</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.space.shape.CubeBSplineShapeFunctions.make_node_quadrature_weight" title="warp.fem.space.shape.CubeBSplineShapeFunctions.make_node_quadrature_weight"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_node_quadrature_weight</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.space.shape.CubeBSplineShapeFunctions.make_node_dual_weight" title="warp.fem.space.shape.CubeBSplineShapeFunctions.make_node_dual_weight"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_node_dual_weight</span></code></a>()</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.space.shape.CubeBSplineShapeFunctions.make_trace_node_quadrature_weight" title="warp.fem.space.shape.CubeBSplineShapeFunctions.make_trace_node_quadrature_weight"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_trace_node_quadrature_weight</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.space.shape.CubeBSplineShapeFunctions.make_node_quadrature_weight" title="warp.fem.space.shape.CubeBSplineShapeFunctions.make_node_quadrature_weight"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_node_quadrature_weight</span></code></a>()</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.space.shape.CubeBSplineShapeFunctions.make_trace_node_quadrature_weight" title="warp.fem.space.shape.CubeBSplineShapeFunctions.make_trace_node_quadrature_weight"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_trace_node_quadrature_weight</span></code></a>()</p></td>
 <td><p></p></td>
 </tr>
 </tbody>
@@ -583,42 +586,47 @@
 </dl>
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.space.shape.CubeBSplineShapeFunctions.name">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">name</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/cube_shape_function.py#L1203-L1206"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.CubeBSplineShapeFunctions.name" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">name</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/cube_shape_function.py#L1235-L1238"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.CubeBSplineShapeFunctions.name" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.space.shape.CubeBSplineShapeFunctions.make_node_coords_in_element">
-<span class="sig-name descname"><span class="pre">make_node_coords_in_element</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/cube_shape_function.py#L1223-L1231"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.CubeBSplineShapeFunctions.make_node_coords_in_element" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">make_node_coords_in_element</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/cube_shape_function.py#L1255-L1263"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.CubeBSplineShapeFunctions.make_node_coords_in_element" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.space.shape.CubeBSplineShapeFunctions.make_node_quadrature_weight">
-<span class="sig-name descname"><span class="pre">make_node_quadrature_weight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/cube_shape_function.py#L1233-L1242"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.CubeBSplineShapeFunctions.make_node_quadrature_weight" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">make_node_quadrature_weight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/cube_shape_function.py#L1265-L1274"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.CubeBSplineShapeFunctions.make_node_quadrature_weight" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.space.shape.CubeBSplineShapeFunctions.make_trace_node_quadrature_weight">
-<span class="sig-name descname"><span class="pre">make_trace_node_quadrature_weight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/cube_shape_function.py#L1244-L1253"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.CubeBSplineShapeFunctions.make_trace_node_quadrature_weight" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">make_trace_node_quadrature_weight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/cube_shape_function.py#L1276-L1285"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.CubeBSplineShapeFunctions.make_trace_node_quadrature_weight" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.space.shape.CubeBSplineShapeFunctions.make_element_inner_weight">
-<span class="sig-name descname"><span class="pre">make_element_inner_weight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/cube_shape_function.py#L1341-L1363"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.CubeBSplineShapeFunctions.make_element_inner_weight" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">make_element_inner_weight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/cube_shape_function.py#L1373-L1395"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.CubeBSplineShapeFunctions.make_element_inner_weight" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.space.shape.CubeBSplineShapeFunctions.make_element_inner_weight_gradient">
-<span class="sig-name descname"><span class="pre">make_element_inner_weight_gradient</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/cube_shape_function.py#L1365-L1395"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.CubeBSplineShapeFunctions.make_element_inner_weight_gradient" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">make_element_inner_weight_gradient</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/cube_shape_function.py#L1397-L1427"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.CubeBSplineShapeFunctions.make_element_inner_weight_gradient" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.space.shape.CubeBSplineShapeFunctions.make_node_dual_weight">
+<span class="sig-name descname"><span class="pre">make_node_dual_weight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/cube_shape_function.py#L1429-L1431"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.CubeBSplineShapeFunctions.make_node_dual_weight" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.space.shape.CubeBSplineShapeFunctions.element_node_hexes">
-<span class="sig-name descname"><span class="pre">element_node_hexes</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/cube_shape_function.py#L1397-L1402"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.CubeBSplineShapeFunctions.element_node_hexes" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">element_node_hexes</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/cube_shape_function.py#L1433-L1438"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.CubeBSplineShapeFunctions.element_node_hexes" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.space.shape.CubeBSplineShapeFunctions.element_vtk_cells">
-<span class="sig-name descname"><span class="pre">element_vtk_cells</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/cube_shape_function.py#L1404-L1408"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.CubeBSplineShapeFunctions.element_vtk_cells" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">element_vtk_cells</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/cube_shape_function.py#L1440-L1444"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.CubeBSplineShapeFunctions.element_vtk_cells" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -681,6 +689,7 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.space.shape.CubeBSplineShapeFunctions.make_trace_node_quadrature_weight"><code class="docutils literal notranslate"><span class="pre">make_trace_node_quadrature_weight()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.space.shape.CubeBSplineShapeFunctions.make_element_inner_weight"><code class="docutils literal notranslate"><span class="pre">make_element_inner_weight()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.space.shape.CubeBSplineShapeFunctions.make_element_inner_weight_gradient"><code class="docutils literal notranslate"><span class="pre">make_element_inner_weight_gradient()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.space.shape.CubeBSplineShapeFunctions.make_node_dual_weight"><code class="docutils literal notranslate"><span class="pre">make_node_dual_weight()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.space.shape.CubeBSplineShapeFunctions.element_node_hexes"><code class="docutils literal notranslate"><span class="pre">element_node_hexes()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.space.shape.CubeBSplineShapeFunctions.element_vtk_cells"><code class="docutils literal notranslate"><span class="pre">element_vtk_cells()</span></code></a></li>
 </ul>

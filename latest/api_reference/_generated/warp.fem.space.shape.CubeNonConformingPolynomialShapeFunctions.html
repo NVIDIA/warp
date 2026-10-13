@@ -522,7 +522,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">scalar_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">warp.float32</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/cube_shape_function.py#L815-L930"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/cube_shape_function.py#L822-L940"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions" title="Link to this definition">#</a></dt>
 <dd><p>Non-conforming polynomial shape functions on hexahedral elements using embedded tetrahedra.</p>
 <p class="rubric">Methods</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
@@ -536,10 +536,13 @@
 <tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions.make_node_coords_in_element" title="warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions.make_node_coords_in_element"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_node_coords_in_element</span></code></a>()</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions.make_node_quadrature_weight" title="warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions.make_node_quadrature_weight"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_node_quadrature_weight</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions.make_node_dual_weight" title="warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions.make_node_dual_weight"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_node_dual_weight</span></code></a>()</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions.make_trace_node_quadrature_weight" title="warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions.make_trace_node_quadrature_weight"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_trace_node_quadrature_weight</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions.make_node_quadrature_weight" title="warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions.make_node_quadrature_weight"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_node_quadrature_weight</span></code></a>()</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions.make_trace_node_quadrature_weight" title="warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions.make_trace_node_quadrature_weight"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_trace_node_quadrature_weight</span></code></a>()</p></td>
 <td><p></p></td>
 </tr>
 </tbody>
@@ -573,32 +576,37 @@
 </dl>
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions.name">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">name</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/cube_shape_function.py#L844-L847"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions.name" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">name</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/cube_shape_function.py#L851-L854"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions.name" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions.make_node_coords_in_element">
-<span class="sig-name descname"><span class="pre">make_node_coords_in_element</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/cube_shape_function.py#L849-L865"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions.make_node_coords_in_element" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">make_node_coords_in_element</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/cube_shape_function.py#L856-L872"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions.make_node_coords_in_element" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions.make_node_quadrature_weight">
-<span class="sig-name descname"><span class="pre">make_node_quadrature_weight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/cube_shape_function.py#L867-L877"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions.make_node_quadrature_weight" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">make_node_quadrature_weight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/cube_shape_function.py#L874-L884"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions.make_node_quadrature_weight" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions.make_trace_node_quadrature_weight">
-<span class="sig-name descname"><span class="pre">make_trace_node_quadrature_weight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/cube_shape_function.py#L879-L890"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions.make_trace_node_quadrature_weight" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">make_trace_node_quadrature_weight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/cube_shape_function.py#L886-L897"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions.make_trace_node_quadrature_weight" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions.make_element_inner_weight">
-<span class="sig-name descname"><span class="pre">make_element_inner_weight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/cube_shape_function.py#L892-L910"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions.make_element_inner_weight" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">make_element_inner_weight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/cube_shape_function.py#L899-L917"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions.make_element_inner_weight" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions.make_element_inner_weight_gradient">
-<span class="sig-name descname"><span class="pre">make_element_inner_weight_gradient</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/cube_shape_function.py#L912-L930"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions.make_element_inner_weight_gradient" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">make_element_inner_weight_gradient</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/cube_shape_function.py#L919-L937"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions.make_element_inner_weight_gradient" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions.make_node_dual_weight">
+<span class="sig-name descname"><span class="pre">make_node_dual_weight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/cube_shape_function.py#L939-L940"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions.make_node_dual_weight" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -661,6 +669,7 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions.make_trace_node_quadrature_weight"><code class="docutils literal notranslate"><span class="pre">make_trace_node_quadrature_weight()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions.make_element_inner_weight"><code class="docutils literal notranslate"><span class="pre">make_element_inner_weight()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions.make_element_inner_weight_gradient"><code class="docutils literal notranslate"><span class="pre">make_element_inner_weight_gradient()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions.make_node_dual_weight"><code class="docutils literal notranslate"><span class="pre">make_node_dual_weight()</span></code></a></li>
 </ul>
 </li>
 </ul>

@@ -575,16 +575,19 @@ will always lead to a discontinuous basis space. Moreover, for PicQuadrature, ev
 <tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.PointBasisSpace.make_node_coords_in_element" title="warp.fem.PointBasisSpace.make_node_coords_in_element"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_node_coords_in_element</span></code></a>()</p></td>
 <td><p>Create a device function returning node coordinates within an element.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.PointBasisSpace.make_node_quadrature_weight" title="warp.fem.PointBasisSpace.make_node_quadrature_weight"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_node_quadrature_weight</span></code></a>()</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_node_dual_weight</span></code>()</p></td>
+<td><p>Create a device function returning the dual weight of each element node.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.PointBasisSpace.make_node_quadrature_weight" title="warp.fem.PointBasisSpace.make_node_quadrature_weight"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_node_quadrature_weight</span></code></a>()</p></td>
 <td><p>Create a device function returning node quadrature weights.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.PointBasisSpace.make_trace_node_quadrature_weight" title="warp.fem.PointBasisSpace.make_trace_node_quadrature_weight"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_trace_node_quadrature_weight</span></code></a>(trace_basis)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.PointBasisSpace.make_trace_node_quadrature_weight" title="warp.fem.PointBasisSpace.make_trace_node_quadrature_weight"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_trace_node_quadrature_weight</span></code></a>(trace_basis)</p></td>
 <td><p>Create a device function returning trace node quadrature weights.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">node_positions</span></code>([out])</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">node_positions</span></code>([out])</p></td>
 <td><p>Return a temporary array containing the world position for each node.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">trace</span></code>()</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">trace</span></code>()</p></td>
 <td><p>Return a trace basis space on lower-dimensional elements.</p></td>
 </tr>
 </tbody>

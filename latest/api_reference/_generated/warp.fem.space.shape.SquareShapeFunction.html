@@ -515,7 +515,7 @@
 <h1>warp.fem.space.shape.SquareShapeFunction<a class="headerlink" href="#warp-fem-space-shape-squareshapefunction" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.fem.space.shape.SquareShapeFunction">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.fem.space.shape.</span></span><span class="sig-name descname"><span class="pre">SquareShapeFunction</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/square_shape_function.py#L19-L40"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.SquareShapeFunction" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.fem.space.shape.</span></span><span class="sig-name descname"><span class="pre">SquareShapeFunction</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/square_shape_function.py#L20-L41"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.shape.SquareShapeFunction" title="Link to this definition">#</a></dt>
 <dd><p>Base class for shape functions defined on quadrilateral (square) elements.</p>
 <p class="rubric">Methods</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
@@ -529,10 +529,13 @@
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_node_coords_in_element</span></code>()</p></td>
 <td><p>Create a device function returning the coordinates of each node.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_node_quadrature_weight</span></code>()</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_node_dual_weight</span></code>()</p></td>
+<td><p>Create a device function returning the reference-space dual weight of each node.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_node_quadrature_weight</span></code>()</p></td>
 <td><p>Create a device function returning the weight of each node when used as a quadrature point over the element.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_trace_node_quadrature_weight</span></code>()</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_trace_node_quadrature_weight</span></code>()</p></td>
 <td><p>Create a device function returning the weight of each node when used as a quadrature point over the element boundary.</p></td>
 </tr>
 </tbody>

@@ -512,7 +512,7 @@
 <h1>warp.fem.space.CovariantFunctionSpace<a class="headerlink" href="#warp-fem-space-covariantfunctionspace" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.fem.space.CovariantFunctionSpace">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.fem.space.</span></span><span class="sig-name descname"><span class="pre">CovariantFunctionSpace</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">basis</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/basis_function_space.py#L301-L333"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.CovariantFunctionSpace" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.fem.space.</span></span><span class="sig-name descname"><span class="pre">CovariantFunctionSpace</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">basis</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/basis_function_space.py#L303-L352"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.CovariantFunctionSpace" title="Link to this definition">#</a></dt>
 <dd><p>Function space whose values are covariant vectors.</p>
 <p class="rubric">Methods</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
@@ -520,11 +520,17 @@
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">divergence_valid</span></code>()</p></td>
 <td><p>Whether divergence of this field can be computed.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">dof_value</span></code>(space_value, node_weight, ...)</p></td>
-<td><p>Compute the projection of a world-space value onto the basis of a single degree of freedom.</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">dof_value</span></code>(space_value, node_dual_weight, ...)</p></td>
+<td><p>Compute the degree-of-freedom value of a single node that reproduces a world-space value at the node location.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">gradient_valid</span></code>()</p></td>
 <td><p>Whether gradient operator can be computed.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">local_inverse_value_map_inner</span></code>(elt_arg, ...)</p></td>
+<td><p>Build the local map transforming from world to node space, (pseudo-)inverse of <code class="docutils literal notranslate"><span class="pre">local_value_map_inner</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">local_inverse_value_map_outer</span></code>(elt_arg, ...)</p></td>
+<td><p>Build the local map transforming from world to node space, (pseudo-)inverse of <code class="docutils literal notranslate"><span class="pre">local_value_map_outer</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">local_value_map_inner</span></code>(elt_arg, ...)</p></td>
 <td><p>Build the local value map transforming from node to world space.</p></td>
@@ -617,7 +623,7 @@
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.space.CovariantFunctionSpace.trace">
-<span class="sig-name descname"><span class="pre">trace</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/basis_function_space.py#L314-L316"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.CovariantFunctionSpace.trace" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">trace</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/basis_function_space.py#L318-L320"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.space.CovariantFunctionSpace.trace" title="Link to this definition">#</a></dt>
 <dd><p>Return the trace of this space on lower-dimensional elements.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>

@@ -13,6 +13,7 @@
       ~SquareRaviartThomasShapeFunctions.make_element_inner_weight
       ~SquareRaviartThomasShapeFunctions.make_element_inner_weight_gradient
       ~SquareRaviartThomasShapeFunctions.make_node_coords_in_element
+      ~SquareRaviartThomasShapeFunctions.make_node_dual_weight
       ~SquareRaviartThomasShapeFunctions.make_node_quadrature_weight
       ~SquareRaviartThomasShapeFunctions.make_trace_node_quadrature_weight
    

@@ -16,6 +16,7 @@
       ~SquareBSplineShapeFunctions.make_element_inner_weight
       ~SquareBSplineShapeFunctions.make_element_inner_weight_gradient
       ~SquareBSplineShapeFunctions.make_node_coords_in_element
+      ~SquareBSplineShapeFunctions.make_node_dual_weight
       ~SquareBSplineShapeFunctions.make_node_quadrature_weight
       ~SquareBSplineShapeFunctions.make_trace_node_quadrature_weight
    

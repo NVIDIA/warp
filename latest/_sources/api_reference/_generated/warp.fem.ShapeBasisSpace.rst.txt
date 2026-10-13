@@ -17,6 +17,7 @@
       ~ShapeBasisSpace.make_element_outer_weight
       ~ShapeBasisSpace.make_element_outer_weight_gradient
       ~ShapeBasisSpace.make_node_coords_in_element
+      ~ShapeBasisSpace.make_node_dual_weight
       ~ShapeBasisSpace.make_node_quadrature_weight
       ~ShapeBasisSpace.make_trace_node_quadrature_weight
       ~ShapeBasisSpace.node_positions

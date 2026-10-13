@@ -13,6 +13,8 @@
       ~ContravariantFunctionSpace.divergence_valid
       ~ContravariantFunctionSpace.dof_value
       ~ContravariantFunctionSpace.gradient_valid
+      ~ContravariantFunctionSpace.local_inverse_value_map_inner
+      ~ContravariantFunctionSpace.local_inverse_value_map_outer
       ~ContravariantFunctionSpace.local_value_map_inner
       ~ContravariantFunctionSpace.local_value_map_outer
       ~ContravariantFunctionSpace.make_field
