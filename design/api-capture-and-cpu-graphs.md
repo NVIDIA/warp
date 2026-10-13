@@ -301,7 +301,8 @@ The sibling ``<stem>_modules/`` directory contains the exact compiled modules re
 
 - CPU graphs use ``.o`` files.
 - CUDA graphs use ``.cubin`` or ``.ptx`` files according to the module's compilation output.
-- ``.meta`` files are copied when present for CUDA shared-memory metadata.
+
+Module ``.meta`` files are not part of the artifact. Kernel shared-memory sizes and symbol names come from the ``.wrp`` metadata.
 
 The ``.wrp`` file and modules directory are one artifact. Moving, copying, or shipping one without the other does not produce a loadable kernel graph.
 

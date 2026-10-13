@@ -14206,7 +14206,7 @@ def capture_save(graph: Graph, path: str, inputs: dict | None = None, outputs: d
                 ctypes.c_void_p(base_ptr),
             )
 
-    # Export CUBIN files to {path}_modules/
+    # Copy each compiled module binary (.cubin, .ptx, or .o) to {path}_modules/
     wrp_path = path if path.endswith(".wrp") else path + ".wrp"
     base_name = wrp_path[:-4]
     modules_dir = base_name + "_modules"
@@ -14218,15 +14218,6 @@ def capture_save(graph: Graph, path: str, inputs: dict | None = None, outputs: d
 
         if binary_path and os.path.exists(binary_path):
             shutil.copy2(binary_path, os.path.join(modules_dir, binary_filename))
-            # Also copy the .meta file. CUDA modules require .meta at load time
-            # to resolve kernel shared-memory metadata. For CPU (APIC) modules,
-            # _apic_load_cpu_modules resolves kernel names directly from the
-            # C++ graph via wp_apic_get_kernel_forward_name / _backward_name,
-            # so copying .meta for CPU is harmless but unnecessary.
-            meta_filename = os.path.splitext(binary_filename)[0] + ".meta"
-            meta_path = os.path.join(os.path.dirname(binary_path), meta_filename)
-            if os.path.exists(meta_path):
-                shutil.copy2(meta_path, os.path.join(modules_dir, meta_filename))
         else:
             raise RuntimeError(
                 f"APIC: Could not find compiled binary for module {info['module_name']} "
