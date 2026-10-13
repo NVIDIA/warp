@@ -10821,6 +10821,7 @@ def tile_matmul(
     a: Tile[Float, tuple[int, int]],
     b: Tile[Float, tuple[int, int]],
     alpha: Float | float = 1.0,
+    precision: str = "default",
 ) -> Tile[Float, tuple[int, int]]:
     """Compute the matrix product ``a*b``.
 
@@ -10830,7 +10831,7 @@ def tile_matmul(
         * fp16, bf16, fp32, fp64
 
     Both input tiles must have the same datatype. Tile data will automatically be migrated
-    to shared memory if necessary and will use TensorCore operations when available.
+    to shared memory if necessary and may use Tensor Core operations, depending on the GEMM configuration.
 
     Note that computing the adjoints of alpha is not yet supported.
 
@@ -10838,9 +10839,23 @@ def tile_matmul(
         a: A tile with ``shape=(M, K)``
         b: A tile with ``shape=(K, N)``
         alpha: Scaling factor
+        precision: Compute precision, specified as the string literal ``"default"`` or ``"tf32"``.
+            ``"default"`` uses the tile data type. ``"tf32"`` uses TF32 input precision with
+            ``float32`` accumulation, without changing tile storage. The adjoint products use
+            the same precision. Tensor Core use depends on the GEMM configuration. Honored by
+            the cuBLASDx GEMM on CUDA compile targets of compute capability 8.0 or higher. On
+            the CPU, on older CUDA compile targets, or when MathDx GEMM is unavailable or
+            disabled (see :attr:`warp.config.enable_mathdx_gemm`), Warp computes in ``float32``
+            and logs a warning when the module is compiled. The same fallback applies when
+            operand strides cannot be represented by cuBLASDx leading dimensions.
 
     Returns:
-        A tile with ``shape=(M, N)``"""
+        A tile with ``shape=(M, N)``
+
+    Raises:
+        TypeError: If ``precision="tf32"`` is used with tiles other than ``float32`` for
+            ``a`` and ``b``.
+        ValueError: If ``precision`` is not the string literal ``"default"`` or ``"tf32"``."""
     ...
 
 @over
@@ -10850,6 +10865,7 @@ def tile_matmul(
     out: Tile[Float, tuple[int, int]],
     alpha: Float | float = 1.0,
     beta: Float | float = 1.0,
+    precision: str = "default",
 ) -> None:
     """Compute the matrix product ``a*b``.
 
@@ -10859,7 +10875,7 @@ def tile_matmul(
         * fp16, bf16, fp32, fp64
 
     All input and output tiles must have the same datatype. Tile data will automatically be migrated
-    to shared memory if necessary and will use TensorCore operations when available.
+    to shared memory if necessary and may use Tensor Core operations, depending on the GEMM configuration.
 
     Note that computing the adjoints of alpha and beta are not yet supported.
 
@@ -10868,7 +10884,21 @@ def tile_matmul(
         b: A tile with ``shape=(K, N)``
         out: A tile with ``shape=(M, N)``
         alpha: Scaling factor
-        beta: Accumulator factor"""
+        beta: Accumulator factor
+        precision: Compute precision, specified as the string literal ``"default"`` or ``"tf32"``.
+            ``"default"`` uses the tile data type. ``"tf32"`` uses TF32 input precision with
+            ``float32`` accumulation, without changing tile storage. The adjoint products use
+            the same precision. Tensor Core use depends on the GEMM configuration. Honored by
+            the cuBLASDx GEMM on CUDA compile targets of compute capability 8.0 or higher. On
+            the CPU, on older CUDA compile targets, or when MathDx GEMM is unavailable or
+            disabled (see :attr:`warp.config.enable_mathdx_gemm`), Warp computes in ``float32``
+            and logs a warning when the module is compiled. The same fallback applies when
+            operand strides cannot be represented by cuBLASDx leading dimensions.
+
+    Raises:
+        TypeError: If ``precision="tf32"`` is used with tiles other than ``float32`` for
+            ``a``, ``b``, and ``out``.
+        ValueError: If ``precision`` is not the string literal ``"default"`` or ``"tf32"``."""
     ...
 
 def tile_fft(inout: Tile[Vector[Float, Literal[2]], tuple[int, ...]]) -> None:

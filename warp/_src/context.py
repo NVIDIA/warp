@@ -3404,7 +3404,9 @@ class ModuleHasher:
 
 
 class ModuleBuilder:
-    def __init__(self, module, options, hasher=None):
+    def __init__(self, module, options, hasher=None, *, target: str | None = None):
+        # None means backend-neutral analysis, such as resolving deferred wp.static() expressions.
+        self.target = target
         self.functions = {}
         self.structs = {}
         self.native_types = {}
@@ -4693,6 +4695,7 @@ class Module:
             self,
             options,
             hasher=self.hashers.get(options["block_dim"], None),
+            target="cpu" if is_cpu else "cuda",
         )
         if is_cpu:
             ext = "cpp"
