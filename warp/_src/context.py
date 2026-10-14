@@ -14266,7 +14266,7 @@ def capture_load(path: str, device: DeviceLike = None) -> Graph:
     Returns:
         A :class:`Graph` object that can be launched with :func:`capture_launch`.
     """
-    device = runtime.get_device(device)
+    device = get_device(device)
     wrp_path = path if path.endswith(".wrp") else path + ".wrp"
 
     device_type = 1 if device.is_cpu else 0
@@ -14340,7 +14340,7 @@ def capture_load_from_bytes(
     """
     from warp._src.apic.types import APICModuleBytes  # noqa: PLC0415
 
-    device = runtime.get_device(device)
+    device = get_device(device)
 
     if modules is None:
         modules = {}

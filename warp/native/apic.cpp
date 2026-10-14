@@ -2161,9 +2161,8 @@ static bool apic_cpu_replay_stream(
     FindKernelFn find_kernel
 )
 {
-    // Stream was validated at close time (wp_apic_end_recording or the shared
-    // graph loader behind wp_apic_load_graph and wp_apic_load_graph_from_bytes)
-    // via apic_validate_operation_stream — no per-op bounds checks needed here.
+    // Capture and load validate the stream before replay; no per-op bounds
+    // checks are needed here.
     const uint8_t* ptr = stream_data;
 
     // Grow-only heap scratch reused across all kernel-launch ops in this stream,
@@ -2876,10 +2875,7 @@ bool wp_apic_cpu_replay_graph(APICGraph* graph)
         return false;
     if (graph->operation_stream.empty())
         return true;
-    // Precondition: graph->operations_validated is true. Enforced by the
-    // shared graph loader behind wp_apic_load_graph and
-    // wp_apic_load_graph_from_bytes, which is the only code that produces an
-    // APICGraph.
+    // The shared graph loader guarantees graph->operations_validated is true.
     return apic_cpu_replay_container(
         graph,
         [graph](int32_t region_id, uint64_t offset, size_t access_size) {
@@ -3272,14 +3268,11 @@ bool wp_apic_get_param(APICGraph* graph, const char* name, void* data, size_t si
 // Graph load: shared core for wp_apic_load_graph and wp_apic_load_graph_from_bytes
 // ============================================================================
 
-// Supplies the bytes of a module recorded in a .wrp, given its recorded
-// filename. Sets the error string and returns false if it cannot.
+// Resolve module bytes by recorded filename; set an error on failure.
 using APICModuleResolver = std::function<bool(const std::string& filename, std::vector<uint8_t>& image)>;
 
-// Parse and validate a complete .wrp image, then build a loaded graph from it.
-// `data` is only read during the call; the graph copies everything it keeps.
-// CUDA modules are obtained through `resolve_module`. CPU modules are loaded
-// by the caller after this returns.
+// Parse and validate a .wrp image into graph-owned storage.
+// Resolve CUDA modules through resolve_module; the caller loads CPU objects.
 static APICGraph* apic_load_graph_from_image(
     void* context, const uint8_t* data, size_t size, const APICModuleResolver& resolve_module, int device_type
 )
@@ -3311,8 +3304,7 @@ static APICGraph* apic_load_graph_from_image(
         return nullptr;
     }
 
-    // Check the section table and every section against the image size before
-    // reading them; the caller, not the file system, supplies `size`.
+    // Validate section bounds before reading from the caller's buffer.
     if (header.section_table_offset > size
         || header.num_sections > (size - header.section_table_offset) / sizeof(APICSectionEntry)) {
         wp::set_error_string("Warp APIC error: Invalid WRP data: section table is out of bounds");
@@ -3347,11 +3339,8 @@ static APICGraph* apic_load_graph_from_image(
         }
     }
 
-    // Copy the operation stream out of the caller's buffer, then validate the
-    // copy before allocating or reconstructing graph resources. The graph keeps
-    // this copy, so the bytes that replay trusts are the bytes that were
-    // validated even if the caller's buffer changes during the rest of the load.
-    // The later recursive scan relies on validation for safe traversal.
+    // Validate a private copy before reconstructing resources so replay and
+    // recursive scans use exactly the validated bytes.
     uint32_t operation_count = 0;
     std::vector<uint8_t> operation_stream;
     if (operations_ptr) {
@@ -3439,7 +3428,6 @@ static APICGraph* apic_load_graph_from_image(
     }
     apic_fixup_ptr_locations(graph);
 
-    // Hand over the operation stream that was validated above.
     graph->operation_count = operation_count;
     graph->operation_stream = std::move(operation_stream);
     graph->operations_validated = true;

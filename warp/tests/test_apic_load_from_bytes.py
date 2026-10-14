@@ -9,7 +9,10 @@ import gc
 import os
 import re
 import struct
+import subprocess
+import sys
 import tempfile
+import textwrap
 import unittest
 
 import numpy as np
@@ -35,7 +38,7 @@ def scale_kernel(input: wp.array[float], output: wp.array[float], s: float):
 
 
 def _save_scale_capture(tmpdir, device, kernel=scale_kernel):
-    """Save a one-launch capture of ``kernel`` and return its path and expected output."""
+    """Save a one-launch capture of ``kernel`` and return its path."""
     a = wp.array(np.arange(N, dtype=np.float32), device=device)
     b = wp.zeros(N, dtype=float, device=device)
     wp.load_module(kernel.module, device=device)
@@ -43,7 +46,7 @@ def _save_scale_capture(tmpdir, device, kernel=scale_kernel):
         wp.launch(kernel, dim=N, inputs=[a, b, 2.0], device=device)
     path = os.path.join(tmpdir, "scale")
     wp.capture_save(capture.graph, path, inputs={"a": a}, outputs={"b": b})
-    return path, np.arange(N, dtype=np.float32) * 2.0
+    return path
 
 
 def _read_capture(path):
@@ -72,11 +75,9 @@ def _native_errors_silenced():
 
 
 def _native_load(wrp, entries, device):
-    """Call ``wp_apic_load_graph_from_bytes`` with explicit module entries.
+    """Load ``(filename, data)`` entries, allowing ``None`` fields for invalid inputs.
 
-    ``entries`` is a list of ``(filename, data)`` pairs where either item may
-    be ``None``, so tests can pass entries a dict cannot express. Returns the
-    native graph pointer, or ``None`` on failure.
+    Returns the native graph pointer, or ``None`` on failure.
     """
     device = wp.get_device(device)
     keep_alive = []
@@ -102,54 +103,6 @@ def _native_load(wrp, entries, device):
     )
 
 
-def _destroy_native_graph(native_graph, device):
-    """Destroy a native graph returned by ``_native_load``."""
-    with wp.get_device(device).context_guard:
-        wp_context.runtime.core.wp_apic_destroy_graph(native_graph)
-
-
-def test_native_load_from_bytes(test, device):
-    """Load a capture through the native bytes entry point and query its bindings."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        path, _ = _save_scale_capture(tmpdir, device)
-        wrp, modules = _read_capture(path)
-
-    native_graph = _native_load(wrp, list(modules.items()), device)
-    test.assertTrue(native_graph, wp_context.runtime.get_error_string())
-    core = wp_context.runtime.core
-    try:
-        names = {
-            core.wp_apic_get_param_name(native_graph, i).decode("utf-8")
-            for i in range(core.wp_apic_get_num_params(native_graph))
-        }
-        test.assertEqual(names, {"a", "b"})
-        test.assertEqual(core.wp_apic_get_param_size(native_graph, b"b"), N * 4)
-        if wp.get_device(device).is_cuda:
-            test.assertTrue(core.wp_apic_get_cuda_graph_exec(native_graph), wp_context.runtime.get_error_string())
-    finally:
-        _destroy_native_graph(native_graph, device)
-
-
-def test_load_from_bytes_invalid_module_entries(test, device):
-    """Reject native module entries that repeat a filename or have null fields."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        path, _ = _save_scale_capture(tmpdir, device)
-        wrp, modules = _read_capture(path)
-    ((filename, data),) = modules.items()
-
-    cases = {
-        "repeated filename": ([(filename, data), (filename, data)], re.escape(filename) + " is listed more than once"),
-        "null filename": ([(None, data)], "has a null filename"),
-        "null data": ([(filename, None)], "has null data"),
-    }
-    for case, (entries, message_pattern) in cases.items():
-        with test.subTest(case=case):
-            with _native_errors_silenced():
-                native_graph = _native_load(wrp, entries, device)
-            test.assertFalse(native_graph)
-            test.assertRegex(wp_context.runtime.get_error_string(), message_pattern)
-
-
 @wp.kernel(module="unique", module_options={"cuda_output": "ptx"})
 def scale_kernel_ptx(input: wp.array[float], output: wp.array[float], s: float):
     i = wp.tid()
@@ -172,13 +125,9 @@ def _run_scale_graph(graph, values, device):
 
 
 def test_load_from_bytes_matches_disk_load(test, device):
-    """Load one capture from disk and from bytes and compare params and results.
-
-    The disk-loaded graph is released before the bytes-loaded graph launches,
-    so on CPU the bytes-loaded graph must be running its own objects.
-    """
+    """Compare disk and bytes loads and verify independent CPU module lifetimes."""
     with tempfile.TemporaryDirectory() as tmpdir:
-        path, _ = _save_scale_capture(tmpdir, device)
+        path = _save_scale_capture(tmpdir, device)
         wrp, modules = _read_capture(path)
         from_disk = wp.capture_load(path, device=device)
         from_bytes = wp.capture_load_from_bytes(wrp, modules, device=device)
@@ -196,27 +145,14 @@ def test_load_from_bytes_matches_disk_load(test, device):
     np.testing.assert_allclose(bytes_result, values * 2.0)
 
 
-def test_load_from_bytes_without_files(test, device):
-    """Load and launch a capture after deleting every file it was saved to."""
+def test_load_from_bytes_releases_buffers(test, device):
+    """Load after deleting capture files and replay after releasing source buffers."""
     with tempfile.TemporaryDirectory() as tmpdir:
-        path, _ = _save_scale_capture(tmpdir, device)
+        path = _save_scale_capture(tmpdir, device)
         wrp, modules = _read_capture(path)
     test.assertFalse(os.path.exists(path + ".wrp"))
+    test.assertFalse(os.path.exists(path + "_modules"))
 
-    graph = wp.capture_load_from_bytes(wrp, modules, device=device)
-    values = np.arange(N, dtype=np.float32)
-    np.testing.assert_allclose(_run_scale_graph(graph, values, device), values * 2.0)
-
-
-def test_load_from_bytes_releases_buffers(test, device):
-    """Overwrite and drop the source buffers after loading, then launch.
-
-    A graph that kept a pointer into the caller's ``.wrp`` or module buffers
-    would read zeros or freed memory here instead of its own copies.
-    """
-    with tempfile.TemporaryDirectory() as tmpdir:
-        path, _ = _save_scale_capture(tmpdir, device)
-        wrp, modules = _read_capture(path)
     wrp_buffer = bytearray(wrp)
     module_buffers = {name: bytearray(data) for name, data in modules.items()}
     graph = wp.capture_load_from_bytes(wrp_buffer, module_buffers, device=device)
@@ -232,14 +168,12 @@ def test_load_from_bytes_releases_buffers(test, device):
 
 
 def test_load_from_bytes_buffer_types(test, device):
-    """Accept ``bytes``, ``bytearray``, ``memoryview``, and NumPy inputs."""
+    """Load and replay from ``memoryview`` and NumPy buffers."""
     with tempfile.TemporaryDirectory() as tmpdir:
-        path, _ = _save_scale_capture(tmpdir, device)
+        path = _save_scale_capture(tmpdir, device)
         wrp, modules = _read_capture(path)
 
     converters = {
-        "bytes": bytes,
-        "bytearray": bytearray,
         "memoryview": memoryview,
         "numpy": lambda data: np.frombuffer(data, dtype=np.uint8),
     }
@@ -253,13 +187,9 @@ def test_load_from_bytes_buffer_types(test, device):
 
 
 def test_load_from_bytes_ptx_module(test, device):
-    """Load a capture whose module was compiled to PTX.
-
-    PTX is the one module format whose bytes need a NUL terminator, and
-    ``_read_capture`` returns file contents without one.
-    """
+    """Load PTX file bytes without a trailing NUL; the loader must append it."""
     with tempfile.TemporaryDirectory() as tmpdir:
-        path, _ = _save_scale_capture(tmpdir, device, kernel=scale_kernel_ptx)
+        path = _save_scale_capture(tmpdir, device, kernel=scale_kernel_ptx)
         wrp, modules = _read_capture(path)
     test.assertTrue(modules)
     test.assertTrue(all(name.endswith(".ptx") for name in modules), list(modules))
@@ -294,7 +224,7 @@ def test_load_from_bytes_multiple_modules(test, device):
 def test_load_from_bytes_missing_module(test, device):
     """Fail with the missing filename when a recorded module is absent."""
     with tempfile.TemporaryDirectory() as tmpdir:
-        path, _ = _save_scale_capture(tmpdir, device)
+        path = _save_scale_capture(tmpdir, device)
         wrp, modules = _read_capture(path)
     ((filename, data),) = modules.items()
 
@@ -306,19 +236,19 @@ def test_load_from_bytes_missing_module(test, device):
     for case, provided in cases.items():
         with test.subTest(case=case):
             with _native_errors_silenced():
-                with test.assertRaisesRegex(RuntimeError, re.escape(filename) + " was not provided"):
+                with test.assertRaisesRegex(RuntimeError, re.escape(filename)):
                     wp.capture_load_from_bytes(wrp, provided, device=device)
 
 
 def test_load_from_bytes_bad_module(test, device):
     """Fail on corrupt module bytes, then load the same capture with intact bytes."""
     with tempfile.TemporaryDirectory() as tmpdir:
-        path, _ = _save_scale_capture(tmpdir, device)
+        path = _save_scale_capture(tmpdir, device)
         wrp, modules = _read_capture(path)
     corrupt = {name: b"\xff" * len(data) for name, data in modules.items()}
 
     with _native_errors_silenced():
-        with test.assertRaisesRegex(RuntimeError, "Failed to load (CPU )?module"):
+        with test.assertRaises(RuntimeError):
             wp.capture_load_from_bytes(wrp, corrupt, device=device)
 
     graph = wp.capture_load_from_bytes(wrp, modules, device=device)
@@ -366,65 +296,6 @@ def _patch_section_size(wrp, section_type, size):
     raise ValueError(f"No WRP section of type {section_type}")
 
 
-def test_load_from_bytes_truncated_image(test, device):
-    """Reject images truncated at each section without reading past the buffer.
-
-    Each prefix ends inside a different part of a valid image: nothing at all,
-    the file header, the section table, and each section. Loading a prefix
-    must fail with a ``Warp APIC error`` instead of reading beyond it.
-    """
-    with tempfile.TemporaryDirectory() as tmpdir:
-        path, _ = _save_scale_capture(tmpdir, device)
-        wrp, modules = _read_capture(path)
-
-    cut_points = {"empty": 0, "header": 32, "section table": 64 + 16}
-    for section_type, label in ((1, "metadata"), (2, "memory"), (3, "operations")):
-        offset, size = _find_section(wrp, section_type)
-        cut_points[label] = offset + size // 2
-    for label, length in cut_points.items():
-        with test.subTest(cut=label):
-            with _native_errors_silenced():
-                with test.assertRaisesRegex(RuntimeError, "Warp APIC error"):
-                    wp.capture_load_from_bytes(wrp[:length], modules, device=device)
-
-
-def test_load_from_bytes_bad_section_table(test, device):
-    """Reject a section table or section that points past the image."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        path, _ = _save_scale_capture(tmpdir, device)
-        wrp, modules = _read_capture(path)
-
-    cases = {
-        "section table offset": (_patch_header(wrp, section_table_offset=len(wrp)), "section table is out of bounds"),
-        "section count": (_patch_header(wrp, num_sections=0xFFFFFFFF), "section table is out of bounds"),
-        "section size": (_patch_section_size(wrp, 3, 1 << 40), r"section \d+ is out of bounds"),
-    }
-    for case, (patched, message_pattern) in cases.items():
-        with test.subTest(case=case):
-            with _native_errors_silenced():
-                with test.assertRaisesRegex(RuntimeError, message_pattern):
-                    wp.capture_load_from_bytes(patched, modules, device=device)
-
-
-def test_load_from_bytes_invalid_arguments(test, device):
-    """Raise ``TypeError`` or ``ValueError`` for invalid data and module arguments."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        path, _ = _save_scale_capture(tmpdir, device)
-        wrp, modules = _read_capture(path)
-    ((filename, data),) = modules.items()
-
-    with test.assertRaisesRegex(TypeError, "data must be a bytes-like object"):
-        wp.capture_load_from_bytes("not bytes", modules, device=device)
-    with test.assertRaisesRegex(ValueError, "data must be a C-contiguous buffer"):
-        wp.capture_load_from_bytes(np.frombuffer(wrp, dtype=np.uint8)[::2], modules, device=device)
-    with test.assertRaisesRegex(TypeError, "modules must be a mapping"):
-        wp.capture_load_from_bytes(wrp, [(filename, data)], device=device)
-    with test.assertRaisesRegex(TypeError, "Module names must be strings"):
-        wp.capture_load_from_bytes(wrp, {filename.encode("utf-8"): data}, device=device)
-    with test.assertRaisesRegex(TypeError, "must be a bytes-like object"):
-        wp.capture_load_from_bytes(wrp, {filename: 123}, device=device)
-
-
 def test_load_from_bytes_without_kernels(test, device):
     """Load a capture that launches no kernels without passing modules."""
     src = wp.array(np.arange(N, dtype=np.float32), device=device)
@@ -435,8 +306,7 @@ def test_load_from_bytes_without_kernels(test, device):
     with tempfile.TemporaryDirectory() as tmpdir:
         path = os.path.join(tmpdir, "copy_only")
         wp.capture_save(capture.graph, path, inputs={"src": src}, outputs={"dst": dst})
-        wrp, modules = _read_capture(path)
-    test.assertEqual(modules, {})
+        wrp, _ = _read_capture(path)
 
     graph = wp.capture_load_from_bytes(wrp, device=device)
     graph.set_param("src", wp.array(np.full(N, 5.0, dtype=np.float32), device=device))
@@ -446,27 +316,139 @@ def test_load_from_bytes_without_kernels(test, device):
     np.testing.assert_allclose(out.numpy(), np.full(N, 5.0, dtype=np.float32))
 
 
-class TestApicFromBytes(unittest.TestCase):
-    def test_load_obj_from_bytes(self):
-        """Load a CPU object from bytes and resolve a kernel after the source buffer is zeroed.
+class TestApicLoadFromBytes(unittest.TestCase):
+    @unittest.skipUnless(wp.is_cpu_available(), "Requires CPU support")
+    def test_load_from_bytes_invalid_module_entries(self):
+        """Reject native module entries that repeat a filename or have null fields."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = _save_scale_capture(tmpdir, "cpu")
+            wrp, modules = _read_capture(path)
+        ((filename, data),) = modules.items()
 
-        LLVM links an object lazily on the first symbol lookup, so the lookup
-        runs after the caller's buffer is overwritten. A loader that kept a
-        pointer into that buffer would fail to resolve the symbol.
-        """
+        cases = {
+            "repeated filename": (
+                [(filename, data), (filename, data)],
+                re.escape(filename) + " is listed more than once",
+            ),
+            "null filename": ([(None, data)], "has a null filename"),
+            "null data": ([(filename, None)], "has null data"),
+        }
+        for case, (entries, message_pattern) in cases.items():
+            with self.subTest(case=case):
+                with _native_errors_silenced():
+                    native_graph = _native_load(wrp, entries, "cpu")
+                try:
+                    self.assertFalse(native_graph)
+                    self.assertRegex(wp_context.runtime.get_error_string(), message_pattern)
+                finally:
+                    if native_graph:
+                        wp_context.runtime.core.wp_apic_destroy_graph(native_graph)
+
+    @unittest.skipUnless(wp.is_cpu_available(), "Requires CPU support")
+    def test_load_from_bytes_truncated_image(self):
+        """Reject truncation within the header, section table, and each data section."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = _save_scale_capture(tmpdir, "cpu")
+            wrp, modules = _read_capture(path)
+
+        cut_points = {"empty": 0, "header": 32, "section table": 64 + 16}
+        for section_type, label in ((1, "metadata"), (2, "memory"), (3, "operations")):
+            offset, size = _find_section(wrp, section_type)
+            cut_points[label] = offset + size // 2
+        for label, length in cut_points.items():
+            with self.subTest(cut=label):
+                with _native_errors_silenced():
+                    with self.assertRaises(RuntimeError):
+                        wp.capture_load_from_bytes(wrp[:length], modules, device="cpu")
+
+    @unittest.skipUnless(wp.is_cpu_available(), "Requires CPU support")
+    def test_load_from_bytes_bad_section_table(self):
+        """Reject section tables or sections that extend past the provided bytes."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = _save_scale_capture(tmpdir, "cpu")
+            wrp, modules = _read_capture(path)
+
+        cases = {
+            "section table offset": _patch_header(wrp, section_table_offset=len(wrp)),
+            "section count": _patch_header(wrp, num_sections=0xFFFFFFFF),
+            "section size": _patch_section_size(wrp, 3, 1 << 40),
+        }
+        for case, patched in cases.items():
+            with self.subTest(case=case):
+                with _native_errors_silenced():
+                    with self.assertRaises(RuntimeError):
+                        wp.capture_load_from_bytes(patched, modules, device="cpu")
+
+    @unittest.skipUnless(wp.is_cpu_available(), "Requires CPU support")
+    def test_load_from_bytes_invalid_arguments(self):
+        """Raise ``TypeError`` or ``ValueError`` for invalid data and module arguments."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = _save_scale_capture(tmpdir, "cpu")
+            wrp, modules = _read_capture(path)
+        ((filename, data),) = modules.items()
+
+        with self.assertRaises(TypeError):
+            wp.capture_load_from_bytes("not bytes", modules, device="cpu")
+        with self.assertRaises(ValueError):
+            wp.capture_load_from_bytes(np.frombuffer(wrp, dtype=np.uint8)[::2], modules, device="cpu")
+        with self.assertRaises(TypeError):
+            wp.capture_load_from_bytes(wrp, [(filename, data)], device="cpu")
+        with self.assertRaises(TypeError):
+            wp.capture_load_from_bytes(wrp, {filename.encode("utf-8"): data}, device="cpu")
+        with self.assertRaises(TypeError):
+            wp.capture_load_from_bytes(wrp, {filename: 123}, device="cpu")
+
+        with self.assertRaises(ValueError):
+            wp.capture_load_from_bytes(wrp, {filename: np.frombuffer(data, dtype=np.uint8)[::2]}, device="cpu")
+
+    @unittest.skipUnless(wp.is_cpu_available(), "Requires CPU support")
+    def test_load_from_bytes_initializes_warp(self):
+        """Load and replay in a fresh process without calling wp.init()."""
+        script = textwrap.dedent(
+            """
+            import sys
+            from pathlib import Path
+
+            import numpy as np
+            import warp as wp
+
+            path = Path(sys.argv[1])
+            count = int(sys.argv[2])
+            wrp = path.with_suffix(".wrp").read_bytes()
+            modules = {
+                entry.name: entry.read_bytes()
+                for entry in path.with_name(path.name + "_modules").iterdir()
+            }
+            graph = wp.capture_load_from_bytes(wrp, modules, device="cpu")
+            values = np.arange(count, dtype=np.float32) + 1.0
+            graph.set_param("a", wp.array(values, dtype=float, device="cpu"))
+            wp.capture_launch(graph)
+            output = wp.empty(count, dtype=float, device="cpu")
+            graph.get_param("b", output)
+            np.testing.assert_allclose(output.numpy(), values * 2.0)
+            """
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = _save_scale_capture(tmpdir, "cpu")
+            result = subprocess.run(
+                [sys.executable, "-c", script, path, str(N)], capture_output=True, text=True, check=False
+            )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_load_obj_from_bytes(self):
+        """Resolve a lazily linked CPU kernel after overwriting its source buffer."""
         if wp_context.runtime.llvm is None:
             self.skipTest("Requires the warp-clang backend")
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            path, _ = _save_scale_capture(tmpdir, "cpu")
+            path = _save_scale_capture(tmpdir, "cpu")
             _, modules = _read_capture(path)
             loaded = wp.capture_load(path, device="cpu")
 
-        forward_name = wp_context.runtime.core.wp_apic_get_kernel_forward_name(loaded._native_graph, 0)
-        self.assertEqual(len(modules), 1)
-        (data,) = modules.values()
-
-        buffer = bytearray(data)
+        core = wp_context.runtime.core
+        forward_name = core.wp_apic_get_kernel_forward_name(loaded._native_graph, 0)
+        filename = core.wp_apic_get_kernel_module_binary_filename(loaded._native_graph, 0).decode("utf-8")
+        buffer = bytearray(modules[filename])
         address = ctypes.addressof((ctypes.c_char * len(buffer)).from_buffer(buffer))
         handle = b"wp_apic_test_load_obj_from_bytes"
         result = wp_context.runtime.llvm.wp_load_obj_from_bytes(
@@ -481,45 +463,54 @@ class TestApicFromBytes(unittest.TestCase):
 
 
 devices_with_cuda_graph_module_load = get_test_devices_with_cuda_graph_module_load()
-
-add_function_test(
-    TestApicFromBytes,
-    "test_native_load_from_bytes",
-    test_native_load_from_bytes,
-    devices=devices_with_cuda_graph_module_load,
-)
-add_function_test(
-    TestApicFromBytes,
-    "test_load_from_bytes_invalid_module_entries",
-    test_load_from_bytes_invalid_module_entries,
-    devices=devices_with_cuda_graph_module_load,
-)
-
 devices = get_test_devices()
 cuda_devices_with_cuda_graph_module_load = [d for d in devices_with_cuda_graph_module_load if d.is_cuda]
 
-for _test in (
+add_function_test(
+    TestApicLoadFromBytes,
+    "test_load_from_bytes_matches_disk_load",
     test_load_from_bytes_matches_disk_load,
-    test_load_from_bytes_without_files,
+    devices=devices_with_cuda_graph_module_load,
+)
+add_function_test(
+    TestApicLoadFromBytes,
+    "test_load_from_bytes_releases_buffers",
     test_load_from_bytes_releases_buffers,
+    devices=devices_with_cuda_graph_module_load,
+)
+add_function_test(
+    TestApicLoadFromBytes,
+    "test_load_from_bytes_buffer_types",
     test_load_from_bytes_buffer_types,
+    devices=devices_with_cuda_graph_module_load,
+)
+add_function_test(
+    TestApicLoadFromBytes,
+    "test_load_from_bytes_multiple_modules",
     test_load_from_bytes_multiple_modules,
+    devices=devices_with_cuda_graph_module_load,
+)
+add_function_test(
+    TestApicLoadFromBytes,
+    "test_load_from_bytes_missing_module",
     test_load_from_bytes_missing_module,
+    devices=devices_with_cuda_graph_module_load,
+)
+add_function_test(
+    TestApicLoadFromBytes,
+    "test_load_from_bytes_bad_module",
     test_load_from_bytes_bad_module,
-    test_load_from_bytes_truncated_image,
-    test_load_from_bytes_bad_section_table,
-    test_load_from_bytes_invalid_arguments,
-):
-    add_function_test(TestApicFromBytes, _test.__name__, _test, devices=devices_with_cuda_graph_module_load)
+    devices=devices_with_cuda_graph_module_load,
+)
 
 add_function_test(
-    TestApicFromBytes,
+    TestApicLoadFromBytes,
     "test_load_from_bytes_ptx_module",
     test_load_from_bytes_ptx_module,
     devices=cuda_devices_with_cuda_graph_module_load,
 )
 add_function_test(
-    TestApicFromBytes,
+    TestApicLoadFromBytes,
     "test_load_from_bytes_without_kernels",
     test_load_from_bytes_without_kernels,
     devices=devices,

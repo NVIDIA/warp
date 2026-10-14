@@ -7,7 +7,10 @@ import ctypes
 import gc
 import os
 import struct
+import subprocess
+import sys
 import tempfile
+import textwrap
 import unittest
 import weakref
 from functools import partial
@@ -81,7 +84,21 @@ def bvh_query_aabb_hits(bvh: wp.uint64, lower: wp.vec3, upper: wp.vec3, hits: wp
 
 
 class TestApic(unittest.TestCase):
-    pass
+    def test_capture_load_initializes_warp(self):
+        """Call wp.capture_load() in a fresh process before Warp is initialized."""
+        script = textwrap.dedent(
+            """
+            import warp as wp
+
+            try:
+                wp.capture_load("missing_graph", device="cpu")
+            except RuntimeError as e:
+                print("RuntimeError:", e)
+            """
+        )
+        result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, check=False)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("RuntimeError: Failed to load APIC graph from missing_graph.wrp", result.stdout)
 
 
 # Must match APICSectionType in warp/native/apic_types.h.
@@ -483,12 +500,7 @@ def test_capture_load_rejects_malformed_memory_regions(test, device):
 
 
 def test_capture_load_rejects_out_of_bounds_sections(test, device):
-    """Reject section tables, sections, and metadata that extend past their data.
-
-    Each case patches one size or offset in a valid file so that a read would
-    leave the file or the metadata section. Loading must fail with a
-    diagnostic instead of reading out of bounds.
-    """
+    """Reject section tables, sections, and metadata that extend past their data."""
     cases = {
         "section table offset": (
             lambda path: _patch_apic_file_header(path, section_table_offset=1 << 40),

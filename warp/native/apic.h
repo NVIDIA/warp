@@ -193,17 +193,11 @@ struct APICModuleBytes {
     size_t size;
 };
 
-// Load a graph from an in-memory .wrp image and its module binaries. Behaves
-// like wp_apic_load_graph(), but reads the .wrp contents from `data` and each
-// CUDA module from the entry in `modules` whose filename matches the recorded
-// one. Entries that match no recorded module are ignored; an entry with a null
-// filename, null data with a nonzero size, or a repeated filename fails the
-// load. For APIC_DEVICE_CPU, modules are not loaded here: load each object with
-// wp_load_obj_from_bytes() and register its kernels with
-// wp_apic_register_loaded_cpu_kernel(). `data` and every module buffer must be
-// host memory that is not modified during the call; they are only read, and
-// the graph keeps its own copies. A device pointer, such as the data pointer of
-// a CUDA tensor, is not valid here.
+// Load a .wrp graph from host memory, matching CUDA modules by their recorded
+// filenames. Unused module entries are ignored. Buffers must remain unchanged
+// during the call and may be released afterward.
+// For CPU graphs, load objects with wp_load_obj_from_bytes() and register
+// their kernels with wp_apic_register_loaded_cpu_kernel().
 WP_API APICGraph* wp_apic_load_graph_from_bytes(
     void* context, const void* data, size_t size, const APICModuleBytes* modules, uint32_t num_modules, int device_type
 );

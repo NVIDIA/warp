@@ -1129,9 +1129,7 @@ static bool warp_clang_is_asan_build()
     return false;
 }
 
-// Add an object to a new in-memory DLL named `module_name`. Shared by
-// wp_load_obj() and wp_load_obj_from_bytes(), which differ only in where the
-// object's bytes come from.
+// Add an object to a new in-memory DLL named `module_name`.
 // When `use_legacy_linker` is true, the legacy RTDyld linker is used instead
 // of JITLink; this provides debug support with pre-built LLVM but is less
 // robust against virtual address space fragmentation.

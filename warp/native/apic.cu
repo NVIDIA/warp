@@ -989,10 +989,7 @@ static bool apic_replay_ops_into_cuda_capture(
 
 static bool apic_rebuild_cuda_graph(APICGraph* graph, CUstream stream)
 {
-    // Precondition: graph->operations_validated is true. Enforced by the
-    // shared graph loader behind wp_apic_load_graph and
-    // wp_apic_load_graph_from_bytes, which is the only code that produces an
-    // APICGraph.
+    // The shared graph loader guarantees graph->operations_validated is true.
     if (graph->cuda_graph_exec) {
         cudaGraphExecDestroy((cudaGraphExec_t)graph->cuda_graph_exec);
         graph->cuda_graph_exec = nullptr;

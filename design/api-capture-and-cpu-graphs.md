@@ -447,7 +447,7 @@ Coverage is organized across:
 
 - [``warp/tests/test_graph.py``](../warp/tests/test_graph.py) for common live graph behavior, including replay, memory operations, and CUDA allocation ownership.
 - [``warp/tests/test_apic.py``](../warp/tests/test_apic.py) for lifecycle, ownership, aliases, argument relocation, backward launches, control flow, save/load, binding updates, malformed streams, device scoping, and failure cleanup.
-- [``warp/tests/test_apic_from_bytes.py``](../warp/tests/test_apic_from_bytes.py) for loading from memory: parity with file loads, borrowed buffers, module matching, and malformed images.
+- [``warp/tests/test_apic_load_from_bytes.py``](../warp/tests/test_apic_load_from_bytes.py) for loading from memory: parity with file loads, borrowed buffers, module matching, and malformed images.
 - [``warp/tests/test_apic_utility_algorithms.py``](../warp/tests/test_apic_utility_algorithms.py) for scans, sorts, and run-length encoding.
 - [``warp/tests/test_apic_mesh.py``](../warp/tests/test_apic_mesh.py) for mesh reconstruction and handle relocation.
 - [``warp/examples/cpp/02_apic_visualization``](../warp/examples/cpp/02_apic_visualization) and [``warp/examples/cpp/03_apic_visualization_cpu``](../warp/examples/cpp/03_apic_visualization_cpu) for standalone CUDA and CPU loading.
