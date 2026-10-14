@@ -520,7 +520,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">prune_numerical_zeros</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/sparse.py#L1530-L1580"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_from_triplets" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/sparse.py#L1802-L1852"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_from_triplets" title="Link to this definition">#</a></dt>
 <dd><p>Construct a BSR matrix with values defined by coordinate-oriented (COO) triplets.</p>
 <p>The first dimension of the three input arrays must match and indicates the number of COO triplets.
 This convenience constructor always builds compact storage. To build into reserved row capacity,
@@ -538,8 +538,8 @@ converting the matrix back to COO.</p>
 <li><p><strong>cols_of_blocks</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a>) – Number of columns of blocks.</p></li>
 <li><p><strong>rows</strong> (<em>Array</em><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a><em>]</em>) – Row index for each non-zero.</p></li>
 <li><p><strong>columns</strong> (<em>Array</em><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a><em>]</em>) – Columns index for each non-zero.</p></li>
-<li><p><strong>values</strong> (<em>Array</em><em>[</em><a class="reference internal" href="warp.Scalar.html#warp.Scalar" title="warp.Scalar"><em>Scalar</em></a><em> | </em><em>BlockType</em><em>[</em><em>Rows</em><em>, </em><em>Cols</em><em>, </em><a class="reference internal" href="warp.Scalar.html#warp.Scalar" title="warp.Scalar"><em>Scalar</em></a><em>]</em><em>]</em>) – Block values for each non-zero. Must be either a one-dimensional array with data type identical
-to the <code class="docutils literal notranslate"><span class="pre">dest</span></code> matrix’s block type, or a 3d array with data type equal to the <code class="docutils literal notranslate"><span class="pre">dest</span></code> matrix’s scalar type.</p></li>
+<li><p><strong>values</strong> (<em>Array</em><em>[</em><a class="reference internal" href="warp.Scalar.html#warp.Scalar" title="warp.Scalar"><em>Scalar</em></a><em> | </em><em>BlockType</em><em>[</em><em>Rows</em><em>, </em><em>Cols</em><em>, </em><a class="reference internal" href="warp.Scalar.html#warp.Scalar" title="warp.Scalar"><em>Scalar</em></a><em>]</em><em>]</em>) – Block values for each non-zero. Must be contiguous and either a one-dimensional array with data type
+identical to the matrix block type, or a 3d array with data type equal to the matrix scalar type.</p></li>
 <li><p><strong>prune_numerical_zeros</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, will ignore the zero-valued blocks.</p></li>
 </ul>
 </dd>

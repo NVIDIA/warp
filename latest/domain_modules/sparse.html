@@ -775,6 +775,62 @@ Call it after the graph launch instead, keeping the matrix alive beyond the capt
 </div>
 <p>When entries are generated directly into existing padded BSR row capacity, call <a class="reference internal" href="../api_reference/_generated/warp.sparse.bsr_compress.html#warp.sparse.bsr_compress" title="warp.sparse.bsr_compress"><code class="xref py py-func docutils literal notranslate"><span class="pre">bsr_compress()</span></code></a> with <code class="docutils literal notranslate"><span class="pre">inplace=True</span></code> to sort and coalesce each active row range.</p>
 </section>
+<section id="repeated-fixed-topology-value-assembly">
+<h3>Repeated Fixed-Topology Value Assembly<a class="headerlink" href="#repeated-fixed-topology-value-assembly" title="Link to this heading">#</a></h3>
+<p>When a sequence of sparse matrices has the same compact topology and COO
+contribution ordering, build a <a class="reference internal" href="../api_reference/_generated/warp.sparse.BsrTripletMap.html#warp.sparse.BsrTripletMap" title="warp.sparse.BsrTripletMap"><code class="xref py py-class docutils literal notranslate"><span class="pre">BsrTripletMap</span></code></a> while constructing the
+matrix and reuse it to replace only the numerical values:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">warp.sparse</span><span class="w"> </span><span class="kn">import</span> <span class="n">bsr_set_from_mapped_values</span><span class="p">,</span> <span class="n">bsr_set_from_triplets</span>
+
+<span class="n">mapping</span> <span class="o">=</span> <span class="n">bsr_set_from_triplets</span><span class="p">(</span>
+    <span class="n">A</span><span class="p">,</span>
+    <span class="n">rows</span><span class="p">,</span>
+    <span class="n">columns</span><span class="p">,</span>
+    <span class="n">initial_values</span><span class="p">,</span>
+    <span class="n">prune_numerical_zeros</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">build_mapping</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># Atomic-free reduction: one output owner gathers all duplicate values.</span>
+<span class="n">bsr_set_from_mapped_values</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">mapping</span><span class="p">,</span> <span class="n">updated_values</span><span class="p">,</span> <span class="n">reduction</span><span class="o">=</span><span class="s2">"gather"</span><span class="p">)</span>
+
+<span class="c1"># Atomic reduction: one worker accumulates each input value.</span>
+<span class="n">bsr_set_from_mapped_values</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">mapping</span><span class="p">,</span> <span class="n">updated_values</span><span class="p">,</span> <span class="n">reduction</span><span class="o">=</span><span class="s2">"atomic"</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Numerical-zero pruning must be disabled when creating a reusable mapping so
+that its topology does not depend on the initial values. The destination
+dimensions and topology arrays must remain unchanged while a mapping is reused.
+Reusing a mapping after any topology mutation has undefined behavior, including
+changes made through Warp sparse APIs, custom kernels, external libraries, or a
+captured graph replay.</p>
+<p>Building the mapping does not synchronize with the host, so it can be recorded
+in a CUDA graph. Mapped value updates are dimensioned by the host-side
+<code class="docutils literal notranslate"><span class="pre">A.nnz</span></code> upper bound; calling <code class="docutils literal notranslate"><span class="pre">A.nnz_sync()</span></code> once after building the mapping,
+outside of graph capture, tightens that bound for all subsequent updates.</p>
+<p>A mapping built with <code class="docutils literal notranslate"><span class="pre">build_mapping=True</span></code> during graph capture is allocated by
+the graph, like any array allocated during capture. To keep the mapping
+independent from the graph, or to rebuild it without reallocating, preallocate
+it and pass it as <code class="docutils literal notranslate"><span class="pre">build_mapping</span></code>; it is then rebuilt in place:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">warp.sparse</span><span class="w"> </span><span class="kn">import</span> <span class="n">BsrTripletMap</span><span class="p">,</span> <span class="n">bsr_zeros</span>
+
+<span class="n">A</span> <span class="o">=</span> <span class="n">bsr_zeros</span><span class="p">(</span>
+    <span class="n">rows_of_blocks</span><span class="p">,</span>
+    <span class="n">cols_of_blocks</span><span class="p">,</span>
+    <span class="n">block_type</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
+    <span class="n">nnz_capacity</span><span class="o">=</span><span class="n">rows</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+<span class="p">)</span>
+<span class="n">mapping</span> <span class="o">=</span> <span class="n">BsrTripletMap</span><span class="p">(</span><span class="n">capacity</span><span class="o">=</span><span class="n">rows</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">A</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+
+<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedCapture</span><span class="p">()</span> <span class="k">as</span> <span class="n">capture</span><span class="p">:</span>
+    <span class="n">bsr_set_from_triplets</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">rows</span><span class="p">,</span> <span class="n">columns</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="n">prune_numerical_zeros</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">build_mapping</span><span class="o">=</span><span class="n">mapping</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>When constructing topology without initialized values,
+<a class="reference internal" href="../api_reference/_generated/warp.sparse.bsr_compress.html#warp.sparse.bsr_compress" title="warp.sparse.bsr_compress"><code class="xref py py-func docutils literal notranslate"><span class="pre">bsr_compress()</span></code></a> with <code class="docutils literal notranslate"><span class="pre">structure_only=True</span></code> sorts and coalesces row-local
+column candidates without reading or moving values.</p>
+</section>
 <section id="converting-back-to-coo-format">
 <h3>Converting back to COO Format<a class="headerlink" href="#converting-back-to-coo-format" title="Link to this heading">#</a></h3>
 <p>You can convert a BSR matrix back to coordinate (COO) format using the matrix’s properties:</p>
@@ -956,6 +1012,7 @@ Custom operators can be implemented using the <a class="reference internal" href
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#block-sizes">Block Sizes</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stored-block-count">Stored Block Count</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#row-capacity-and-padded-topology">Row Capacity and Padded Topology</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#repeated-fixed-topology-value-assembly">Repeated Fixed-Topology Value Assembly</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#converting-back-to-coo-format">Converting back to COO Format</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#matrix-operations">Matrix Operations</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#kernel-level-utilities">Kernel-level utilities</a></li>

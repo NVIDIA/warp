@@ -274,6 +274,69 @@ With the default ``inplace=False``, :func:`bsr_compress` rebuilds the topology n
 
 When entries are generated directly into existing padded BSR row capacity, call :func:`bsr_compress` with ``inplace=True`` to sort and coalesce each active row range.
 
+Repeated Fixed-Topology Value Assembly
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When a sequence of sparse matrices has the same compact topology and COO
+contribution ordering, build a :class:`BsrTripletMap` while constructing the
+matrix and reuse it to replace only the numerical values:
+
+.. code-block:: python
+
+    from warp.sparse import bsr_set_from_mapped_values, bsr_set_from_triplets
+
+    mapping = bsr_set_from_triplets(
+        A,
+        rows,
+        columns,
+        initial_values,
+        prune_numerical_zeros=False,
+        build_mapping=True,
+    )
+
+    # Atomic-free reduction: one output owner gathers all duplicate values.
+    bsr_set_from_mapped_values(A, mapping, updated_values, reduction="gather")
+
+    # Atomic reduction: one worker accumulates each input value.
+    bsr_set_from_mapped_values(A, mapping, updated_values, reduction="atomic")
+
+Numerical-zero pruning must be disabled when creating a reusable mapping so
+that its topology does not depend on the initial values. The destination
+dimensions and topology arrays must remain unchanged while a mapping is reused.
+Reusing a mapping after any topology mutation has undefined behavior, including
+changes made through Warp sparse APIs, custom kernels, external libraries, or a
+captured graph replay.
+
+Building the mapping does not synchronize with the host, so it can be recorded
+in a CUDA graph. Mapped value updates are dimensioned by the host-side
+``A.nnz`` upper bound; calling ``A.nnz_sync()`` once after building the mapping,
+outside of graph capture, tightens that bound for all subsequent updates.
+
+A mapping built with ``build_mapping=True`` during graph capture is allocated by
+the graph, like any array allocated during capture. To keep the mapping
+independent from the graph, or to rebuild it without reallocating, preallocate
+it and pass it as ``build_mapping``; it is then rebuilt in place:
+
+.. code-block:: python
+
+    from warp.sparse import BsrTripletMap, bsr_zeros
+
+    A = bsr_zeros(
+        rows_of_blocks,
+        cols_of_blocks,
+        block_type,
+        device=device,
+        nnz_capacity=rows.shape[0],
+    )
+    mapping = BsrTripletMap(capacity=rows.shape[0], device=A.device)
+
+    with wp.ScopedCapture() as capture:
+        bsr_set_from_triplets(A, rows, columns, values, prune_numerical_zeros=False, build_mapping=mapping)
+
+When constructing topology without initialized values,
+:func:`bsr_compress` with ``structure_only=True`` sorts and coalesces row-local
+column candidates without reading or moving values.
+
 Converting back to COO Format
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

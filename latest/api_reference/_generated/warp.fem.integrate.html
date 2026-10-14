@@ -528,7 +528,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">bsr_options</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/integrate.py#L1904-L2081"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.integrate" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/integrate.py#L2071-L2276"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.integrate" title="Link to this definition">#</a></dt>
 <dd><p>Integrates a constant, linear or bilinear form, and returns a scalar, array, or sparse matrix, respectively.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -561,7 +561,25 @@ currently it uses row compression for bilinear assembly when possible.
 <code class="docutils literal notranslate"><span class="pre">construction=&quot;row_compress&quot;</span></code> forces row-ordered candidate writes followed by
 <a class="reference internal" href="warp.sparse.bsr_compress.html#warp.sparse.bsr_compress" title="warp.sparse.bsr_compress"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.sparse.bsr_compress()</span></code></a>. For row compression, <a class="reference internal" href="warp.sparse.bsr_compress.html#warp.sparse.bsr_compress" title="warp.sparse.bsr_compress"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.sparse.bsr_compress()</span></code></a>
 uses <code class="docutils literal notranslate"><span class="pre">inplace=False</span></code> when <code class="docutils literal notranslate"><span class="pre">output.values.requires_grad</span></code> is true; non-differentiable outputs use
-in-place compression for the lowest memory overhead.</p></li>
+in-place compression for the lowest memory overhead.
+<code class="docutils literal notranslate"><span class="pre">construction=&quot;mapped&quot;</span></code> assembles from triplets and caches the resulting triplet-to-block map
+(see <code class="docutils literal notranslate"><span class="pre">build_mapping</span></code> in <a class="reference internal" href="warp.sparse.bsr_set_from_triplets.html#warp.sparse.bsr_set_from_triplets" title="warp.sparse.bsr_set_from_triplets"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.sparse.bsr_set_from_triplets()</span></code></a>) when <code class="docutils literal notranslate"><span class="pre">capacity=&quot;auto&quot;</span></code>;
+calls with <code class="docutils literal notranslate"><span class="pre">capacity=&quot;reuse&quot;</span></code> on the same output matrix then skip topology construction and
+perform atomic-free gather reduction through the cached map.
+<code class="docutils literal notranslate"><span class="pre">construction=&quot;mapped_atomic&quot;</span></code> reuses the same map and fuses atomic accumulation directly into
+the integration kernel, avoiding temporary triplet-value storage. Its floating-point
+accumulation order is non-deterministic; use <code class="docutils literal notranslate"><span class="pre">construction=&quot;mapped&quot;</span></code> when run-to-run
+deterministic reduction is required.
+Both mapped policies require compact topology. They are intended for repeated assembly whose mesh,
+spaces, restrictions, and quadrature topology remain unchanged; call again with <code class="docutils literal notranslate"><span class="pre">capacity=&quot;auto&quot;</span></code>
+to rebuild the map after any of those change. Building the map does not synchronize with the host;
+calling <code class="docutils literal notranslate"><span class="pre">output.nnz_sync()</span></code> once after it has been built tightens the launch dimensions of
+subsequent mapped assemblies.
+Between mapped calls, no other operation may modify the output matrix, including another
+<a class="reference internal" href="#warp.fem.integrate" title="warp.fem.integrate"><code class="xref py py-func docutils literal notranslate"><span class="pre">integrate()</span></code></a> or <a class="reference internal" href="warp.fem.interpolate.html#warp.fem.interpolate" title="warp.fem.interpolate"><code class="xref py py-func docutils literal notranslate"><span class="pre">interpolate()</span></code></a> call writing through a different assembly strategy, and
+the mapped assembly strategy must remain unchanged. Non-mapped FEM writes invalidate the cached map,
+but in-place changes made by custom kernels or external libraries cannot be detected; violating this
+requirement has undefined behavior.</p></li>
 </ul>
 </dd>
 </dl>
