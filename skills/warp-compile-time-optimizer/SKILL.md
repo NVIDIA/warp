@@ -10,7 +10,7 @@ description: >-
   build times.
 license: Apache-2.0
 compatibility: Requires Python 3.10+ and an installed warp-lang package. A CUDA device is needed to diagnose CUDA-specific mechanisms.
-allowed-tools: Bash, Read, Edit, Write, Glob, Grep, env
+allowed-tools: Bash Read Edit Write Glob Grep env
 metadata:
   version: "0.1.0"
   author: "Warp Team <warp-python@nvidia.com>"
