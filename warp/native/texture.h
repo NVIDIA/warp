@@ -151,64 +151,75 @@ struct Texture {
     int32 mip_depths_arr[WP_TEXTURE_MAX_MIP_LEVELS] = {};
 };
 
-// Kernel-facing texture descriptors pack the channel count, dtype, and sampling
-// configuration into one 32-bit word so the 1D descriptor fits in 16 bytes and
-// the 2D/3D descriptors in 24 bytes. The sampling configuration is mirrored from
-// the owning texture so that adj_texture_sample can differentiate without
-// host-side lookups. Keep this layout in sync with _pack_texture_info() in
-// warp/_src/texture.py.
-#define WP_TEXTURE_INFO_NUM_CHANNELS_SHIFT 0  // 4 bits: 1, 2, or 4
-#define WP_TEXTURE_INFO_DTYPE_SHIFT 4  // 4 bits: WP_TEXTURE_DTYPE_*
-#define WP_TEXTURE_INFO_FILTER_MODE_SHIFT 8  // 1 bit: WP_TEXTURE_FILTER_*
-#define WP_TEXTURE_INFO_MIP_FILTER_MODE_SHIFT 9  // 1 bit: WP_TEXTURE_FILTER_*
-#define WP_TEXTURE_INFO_NORMALIZED_COORDS_SHIFT 10  // 1 bit
-#define WP_TEXTURE_INFO_NUM_MIP_LEVELS_SHIFT 11  // 5 bits: [1, WP_TEXTURE_MAX_MIP_LEVELS]
-
-struct texture_info_t {
-    uint32 bits;
-
-    CUDA_CALLABLE inline int32 num_channels() const
-    {
-        return int32((bits >> WP_TEXTURE_INFO_NUM_CHANNELS_SHIFT) & 0xFu);
-    }
-    CUDA_CALLABLE inline int32 dtype() const { return int32((bits >> WP_TEXTURE_INFO_DTYPE_SHIFT) & 0xFu); }
-    CUDA_CALLABLE inline int32 filter_mode() const { return int32((bits >> WP_TEXTURE_INFO_FILTER_MODE_SHIFT) & 0x1u); }
-    CUDA_CALLABLE inline int32 mip_filter_mode() const
-    {
-        return int32((bits >> WP_TEXTURE_INFO_MIP_FILTER_MODE_SHIFT) & 0x1u);
-    }
-    CUDA_CALLABLE inline int32 use_normalized_coords() const
-    {
-        return int32((bits >> WP_TEXTURE_INFO_NORMALIZED_COORDS_SHIFT) & 0x1u);
-    }
-    CUDA_CALLABLE inline int32 num_mip_levels() const
-    {
-        return int32((bits >> WP_TEXTURE_INFO_NUM_MIP_LEVELS_SHIFT) & 0x1Fu);
-    }
-};
-
-// Descriptor word for an empty texture: one mip level, normalized coordinates.
-#define WP_TEXTURE_INFO_DEFAULT                                                                                        \
-    ((1u << WP_TEXTURE_INFO_NUM_MIP_LEVELS_SHIFT) | (1u << WP_TEXTURE_INFO_NORMALIZED_COORDS_SHIFT))
-
 // Texture descriptor passed to kernels
 // Contains the CUDA texture object handle (GPU) or pointer to cpu_texture*_data (CPU)
+CUDA_CALLABLE inline uint32 texture_metadata(
+    int32 num_channels,
+    int32 dtype,
+    int32 filter_mode,
+    int32 mip_filter_mode,
+    int32 num_mip_levels,
+    int32 use_normalized_coords,
+    int32 address_mode_u = WP_TEXTURE_ADDRESS_CLAMP,
+    int32 address_mode_v = WP_TEXTURE_ADDRESS_CLAMP,
+    int32 address_mode_w = WP_TEXTURE_ADDRESS_CLAMP
+)
+{
+    return (uint32)num_channels | ((uint32)dtype << 3) | ((uint32)filter_mode << 6) | ((uint32)mip_filter_mode << 7)
+        | ((uint32)num_mip_levels << 8) | ((uint32)use_normalized_coords << 13) | ((uint32)address_mode_u << 14)
+        | ((uint32)address_mode_v << 16) | ((uint32)address_mode_w << 18);
+}
+
+#define WP_TEXTURE_METADATA_ACCESSORS                                                                                  \
+    CUDA_CALLABLE inline int32 get_num_channels() const { return (int32)(metadata & 0x7u); }                           \
+    CUDA_CALLABLE inline int32 get_dtype() const { return (int32)((metadata >> 3) & 0x7u); }                           \
+    CUDA_CALLABLE inline int32 get_filter_mode() const { return (int32)((metadata >> 6) & 0x1u); }                     \
+    CUDA_CALLABLE inline int32 get_mip_filter_mode() const { return (int32)((metadata >> 7) & 0x1u); }                 \
+    CUDA_CALLABLE inline int32 get_num_mip_levels() const { return (int32)((metadata >> 8) & 0x1fu); }                 \
+    CUDA_CALLABLE inline int32 get_use_normalized_coords() const { return (int32)((metadata >> 13) & 0x1u); } \
+    CUDA_CALLABLE inline int32 get_address_mode_u() const { return (int32)((metadata >> 14) & 0x3u); } \
+    CUDA_CALLABLE inline int32 get_address_mode_v() const { return (int32)((metadata >> 16) & 0x3u); } \
+    CUDA_CALLABLE inline int32 get_address_mode_w() const { return (int32)((metadata >> 18) & 0x3u); }
+
 struct texture1d_t {
     uint64 tex;  // CUtexObject handle (GPU) or Texture* (CPU)
     int32 width;
-    texture_info_t info;
+    uint32 metadata;
+    WP_TEXTURE_METADATA_ACCESSORS
 
     CUDA_CALLABLE inline texture1d_t()
         : tex(0)
         , width(0)
-        , info { WP_TEXTURE_INFO_DEFAULT }
+        , metadata(texture_metadata(0, 0, 0, 0, 1, 1))
     {
     }
 
-    CUDA_CALLABLE inline texture1d_t(uint64 tex, int32 width, uint32 info)
+    CUDA_CALLABLE inline texture1d_t(
+        uint64 tex,
+        int32 width,
+        int32 num_channels,
+        int32 dtype,
+        int32 filter_mode,
+        int32 mip_filter_mode,
+        int32 num_mip_levels,
+        int32 use_normalized_coords,
+        int32 address_mode_u = WP_TEXTURE_ADDRESS_CLAMP,
+        int32 address_mode_v = WP_TEXTURE_ADDRESS_CLAMP,
+        int32 address_mode_w = WP_TEXTURE_ADDRESS_CLAMP
+    )
         : tex(tex)
         , width(width)
-        , info { info }
+        , metadata(texture_metadata(
+              num_channels,
+              dtype,
+              filter_mode,
+              mip_filter_mode,
+              num_mip_levels,
+              use_normalized_coords,
+              address_mode_u,
+              address_mode_v,
+              address_mode_w
+          ))
     {
     }
 };
@@ -217,21 +228,45 @@ struct texture2d_t {
     uint64 tex;  // CUtexObject handle (GPU) or Texture* (CPU)
     int32 width;
     int32 height;
-    texture_info_t info;
+    uint32 metadata;
+    WP_TEXTURE_METADATA_ACCESSORS
 
     CUDA_CALLABLE inline texture2d_t()
         : tex(0)
         , width(0)
         , height(0)
-        , info { WP_TEXTURE_INFO_DEFAULT }
+        , metadata(texture_metadata(0, 0, 0, 0, 1, 1))
     {
     }
 
-    CUDA_CALLABLE inline texture2d_t(uint64 tex, int32 width, int32 height, uint32 info)
+    CUDA_CALLABLE inline texture2d_t(
+        uint64 tex,
+        int32 width,
+        int32 height,
+        int32 num_channels,
+        int32 dtype,
+        int32 filter_mode,
+        int32 mip_filter_mode,
+        int32 num_mip_levels,
+        int32 use_normalized_coords,
+        int32 address_mode_u = WP_TEXTURE_ADDRESS_CLAMP,
+        int32 address_mode_v = WP_TEXTURE_ADDRESS_CLAMP,
+        int32 address_mode_w = WP_TEXTURE_ADDRESS_CLAMP
+    )
         : tex(tex)
         , width(width)
         , height(height)
-        , info { info }
+        , metadata(texture_metadata(
+              num_channels,
+              dtype,
+              filter_mode,
+              mip_filter_mode,
+              num_mip_levels,
+              use_normalized_coords,
+              address_mode_u,
+              address_mode_v,
+              address_mode_w
+          ))
     {
     }
 };
@@ -241,26 +276,57 @@ struct texture3d_t {
     int32 width;
     int32 height;
     int32 depth;
-    texture_info_t info;
+    uint32 metadata;
+    WP_TEXTURE_METADATA_ACCESSORS
 
     CUDA_CALLABLE inline texture3d_t()
         : tex(0)
         , width(0)
         , height(0)
         , depth(0)
-        , info { WP_TEXTURE_INFO_DEFAULT }
+        , metadata(texture_metadata(0, 0, 0, 0, 1, 1))
     {
     }
 
-    CUDA_CALLABLE inline texture3d_t(uint64 tex, int32 width, int32 height, int32 depth, uint32 info)
+    CUDA_CALLABLE inline texture3d_t(
+        uint64 tex,
+        int32 width,
+        int32 height,
+        int32 depth,
+        int32 num_channels,
+        int32 dtype,
+        int32 filter_mode,
+        int32 mip_filter_mode,
+        int32 num_mip_levels,
+        int32 use_normalized_coords,
+        int32 address_mode_u = WP_TEXTURE_ADDRESS_CLAMP,
+        int32 address_mode_v = WP_TEXTURE_ADDRESS_CLAMP,
+        int32 address_mode_w = WP_TEXTURE_ADDRESS_CLAMP
+    )
         : tex(tex)
         , width(width)
         , height(height)
         , depth(depth)
-        , info { info }
+        , metadata(texture_metadata(
+              num_channels,
+              dtype,
+              filter_mode,
+              mip_filter_mode,
+              num_mip_levels,
+              use_normalized_coords,
+              address_mode_u,
+              address_mode_v,
+              address_mode_w
+          ))
     {
     }
 };
+
+static_assert(sizeof(texture1d_t) == 16, "texture1d_t metadata must remain packed");
+static_assert(sizeof(texture2d_t) == 24, "texture2d_t metadata must remain packed");
+static_assert(sizeof(texture3d_t) == 24, "texture3d_t metadata must remain packed");
+
+#undef WP_TEXTURE_METADATA_ACCESSORS
 
 struct cuda_array_desc_t {
     int32 ndim;
@@ -273,52 +339,48 @@ struct cuda_array_desc_t {
 // CPU Software Texture Sampling Helpers
 // ============================================================================
 
-// Apply address mode to get a valid texture coordinate
+#if !defined(__CUDA_ARCH__)
+
+// Reduce periodic coordinates before division or scaling can discard the
+// fractional position (or overflow). Unnormalized CPU textures also support
+// periodic addressing, unlike CUDA textures.
+inline float cpu_texture_normalized_coord(float coord, int normalized, int base_dim, int address_mode)
+{
+    if (address_mode == WP_TEXTURE_ADDRESS_WRAP || address_mode == WP_TEXTURE_ADDRESS_MIRROR) {
+        const float period
+            = (normalized ? 1.0f : float(base_dim)) * (address_mode == WP_TEXTURE_ADDRESS_MIRROR ? 2.0f : 1.0f);
+        coord = fmodf(coord, period);
+        if (coord < 0.0f)
+            coord += period;
+    }
+    return normalized ? coord : coord / float(base_dim);
+}
+
+// Convert reduced normalized coordinates to bounded texel coordinates.
+// Apply periodic addressing to integer indices after rounding, so CLOSEST
+// filtering chooses the same side of a MIRROR boundary as the CUDA sampler.
 inline float cpu_apply_address_mode_1d(float coord, int size, int address_mode)
 {
-    // Normalized coordinates to texel space
-    float texel = coord * size - 0.5f;
-    float fsize = (float)size;
-
-    switch (address_mode) {
-    case WP_TEXTURE_ADDRESS_WRAP:
-        texel = texel - floor(texel / fsize) * fsize;
-        if (texel < 0)
-            texel += fsize;
-        break;
-    case WP_TEXTURE_ADDRESS_CLAMP:
-        if (texel < 0.0f)
-            texel = 0.0f;
-        if (texel > fsize - 1.0f)
-            texel = fsize - 1.0f;
-        break;
-    case WP_TEXTURE_ADDRESS_MIRROR: {
-        float period = 2.0f * fsize;
-        texel = texel - floor(texel / period) * period;
-        if (texel < 0)
-            texel += period;
-        if (texel >= fsize)
-            texel = period - texel - 1.0f;
-    } break;
-    case WP_TEXTURE_ADDRESS_BORDER:
-    default:
-        // Border mode: values outside [0, size-1] return 0
-        // This is handled by bounds checking in the fetch function
-        break;
-    }
+    float texel = coord * float(size) - 0.5f;
+    if (address_mode == WP_TEXTURE_ADDRESS_CLAMP)
+        texel = max(0.0f, min(texel, float(size - 1)));
+    else if (address_mode != WP_TEXTURE_ADDRESS_WRAP && address_mode != WP_TEXTURE_ADDRESS_MIRROR)
+        // Keep both neighboring indices outside the texture without converting
+        // an unbounded float to int, including when finite coord * size overflows.
+        texel = max(-2.0f, min(texel, float(size)));
     return texel;
 }
 
 // Clamp integer index to valid range
-inline int cpu_clamp_index(int idx, int size) { return (idx < 0) ? 0 : ((idx >= size) ? size - 1 : idx); }
+inline int64 cpu_clamp_index(int64 idx, int size) { return (idx < 0) ? 0 : ((idx >= size) ? size - 1 : idx); }
 
 // Apply address mode to an integer texel index
 // This is used for neighbor indices in linear filtering to properly handle wrap/mirror
-inline int cpu_apply_address_mode_index(int idx, int size, int address_mode)
+inline int64 cpu_apply_address_mode_index(int64 idx, int size, int address_mode)
 {
     switch (address_mode) {
     case WP_TEXTURE_ADDRESS_WRAP: {
-        int m = idx % size;
+        int64 m = idx % size;
         if (m < 0)
             m += size;
         return m;
@@ -326,8 +388,8 @@ inline int cpu_apply_address_mode_index(int idx, int size, int address_mode)
     case WP_TEXTURE_ADDRESS_CLAMP:
         return cpu_clamp_index(idx, size);
     case WP_TEXTURE_ADDRESS_MIRROR: {
-        int period = 2 * size;
-        int m = idx % period;
+        int64 period = 2 * int64(size);
+        int64 m = idx % period;
         if (m < 0)
             m += period;
         if (m >= size)
@@ -340,12 +402,32 @@ inline int cpu_apply_address_mode_index(int idx, int size, int address_mode)
     }
 }
 
+// Nearest filtering rounds the original coordinate down to a texel index.
+// Avoid the linear sampler's subtract/add-half round trip, which can erase a
+// small negative coordinate before BORDER addressing. Wide arithmetic also
+// preserves its sign through normalization, including float32 subnormals.
+inline int64 cpu_nearest_texel_index(float coord, int normalized, int base_dim, int level_dim, int address_mode)
+{
+    double reduced = double(coord);
+    if (address_mode == WP_TEXTURE_ADDRESS_WRAP || address_mode == WP_TEXTURE_ADDRESS_MIRROR) {
+        const double period
+            = (normalized ? 1.0 : double(base_dim)) * (address_mode == WP_TEXTURE_ADDRESS_MIRROR ? 2.0 : 1.0);
+        // Keep negative remainders: adding the period can round them up to its
+        // endpoint. Integer addressing below handles either sign directly.
+        reduced = fmod(reduced, period);
+    }
+    double texel = normalized ? reduced * double(level_dim) : reduced * double(level_dim) / double(base_dim);
+    if (address_mode != WP_TEXTURE_ADDRESS_WRAP && address_mode != WP_TEXTURE_ADDRESS_MIRROR)
+        texel = max(-1.0, min(texel, double(level_dim)));
+    return cpu_apply_address_mode_index(int64(floor(texel)), level_dim, address_mode);
+}
+
 // Check if index is within bounds (for border mode)
-inline bool cpu_in_bounds_1d(int x, int w) { return x >= 0 && x < w; }
+inline bool cpu_in_bounds_1d(int64 x, int w) { return x >= 0 && x < w; }
 
-inline bool cpu_in_bounds_2d(int x, int y, int w, int h) { return x >= 0 && x < w && y >= 0 && y < h; }
+inline bool cpu_in_bounds_2d(int64 x, int64 y, int w, int h) { return x >= 0 && x < w && y >= 0 && y < h; }
 
-inline bool cpu_in_bounds_3d(int x, int y, int z, int w, int h, int d)
+inline bool cpu_in_bounds_3d(int64 x, int64 y, int64 z, int w, int h, int d)
 {
     return x >= 0 && x < w && y >= 0 && y < h && z >= 0 && z < d;
 }
@@ -398,7 +480,7 @@ inline float cpu_half_to_float(uint16_t h)
 // Decode a raw texel at ``idx`` into a normalized float.
 // Unsigned integers are normalized to [0, 1], signed integers to [-1, 1],
 // float types are returned as-is.
-inline float cpu_decode_texel(const void* level_data, int dtype, int idx)
+inline float cpu_decode_texel(const void* level_data, int dtype, size_t idx)
 {
     switch (dtype) {
     case WP_TEXTURE_DTYPE_UINT8:
@@ -428,28 +510,28 @@ inline float cpu_decode_texel(const void* level_data, int dtype, int idx)
 }
 
 // Fetch a single texel value from the given mip level.
-inline float cpu_fetch_texel_1d(const Texture* tex, int level, int x, int channel)
+inline float cpu_fetch_texel_1d(const Texture* tex, int level, int64 x, int channel)
 {
     const int w = tex->mip_widths_arr[level];
     if (!cpu_in_bounds_1d(x, w) || channel < 0 || channel >= tex->num_channels) {
         return 0.0f;
     }
-    int idx = x * tex->num_channels + channel;
+    size_t idx = size_t(x) * tex->num_channels + channel;
     return cpu_decode_texel(tex->mip_data[level], tex->dtype, idx);
 }
 
-inline float cpu_fetch_texel_2d(const Texture* tex, int level, int x, int y, int channel)
+inline float cpu_fetch_texel_2d(const Texture* tex, int level, int64 x, int64 y, int channel)
 {
     const int w = tex->mip_widths_arr[level];
     const int h = tex->mip_heights_arr[level];
     if (!cpu_in_bounds_2d(x, y, w, h) || channel < 0 || channel >= tex->num_channels) {
         return 0.0f;
     }
-    int idx = (y * w + x) * tex->num_channels + channel;
+    size_t idx = (size_t(y) * w + x) * tex->num_channels + channel;
     return cpu_decode_texel(tex->mip_data[level], tex->dtype, idx);
 }
 
-inline float cpu_fetch_texel_3d(const Texture* tex, int level, int x, int y, int z, int channel)
+inline float cpu_fetch_texel_3d(const Texture* tex, int level, int64 x, int64 y, int64 z, int channel)
 {
     const int w = tex->mip_widths_arr[level];
     const int h = tex->mip_heights_arr[level];
@@ -457,7 +539,7 @@ inline float cpu_fetch_texel_3d(const Texture* tex, int level, int x, int y, int
     if (!cpu_in_bounds_3d(x, y, z, w, h, d) || channel < 0 || channel >= tex->num_channels) {
         return 0.0f;
     }
-    int idx = ((z * h + y) * w + x) * tex->num_channels + channel;
+    size_t idx = ((size_t(z) * h + y) * w + x) * tex->num_channels + channel;
     return cpu_decode_texel(tex->mip_data[level], tex->dtype, idx);
 }
 
@@ -466,24 +548,15 @@ inline float cpu_sample_1d_channel_at_level(const Texture* tex, int level, float
 {
     const int w = tex->mip_widths_arr[level];
 
-    // Convert to texel space if using normalized coordinates
-    float coord_u = tex->use_normalized_coords ? u : (u / (float)tex->width);
-
-    float tx = cpu_apply_address_mode_1d(coord_u, w, tex->address_mode_u);
-
     if (tex->filter_mode == WP_TEXTURE_FILTER_CLOSEST) {
-        // Nearest neighbor
-        int x = (int)floor(tx + 0.5f);
-
-        if (tex->address_mode_u != WP_TEXTURE_ADDRESS_BORDER) {
-            x = cpu_clamp_index(x, w);
-        }
-
+        const int64 x = cpu_nearest_texel_index(u, tex->use_normalized_coords, tex->width, w, tex->address_mode_u);
         return cpu_fetch_texel_1d(tex, level, x, channel);
     } else {
         // Linear interpolation
-        int x0 = (int)floor(tx);
-        int x1 = x0 + 1;
+        float coord_u = cpu_texture_normalized_coord(u, tex->use_normalized_coords, tex->width, tex->address_mode_u);
+        float tx = cpu_apply_address_mode_1d(coord_u, w, tex->address_mode_u);
+        int64 x0 = (int64)floor(tx);
+        int64 x1 = x0 + 1;
 
         float fx = tx - x0;
 
@@ -504,29 +577,19 @@ inline float cpu_sample_2d_channel_at_level(const Texture* tex, int level, float
     const int w = tex->mip_widths_arr[level];
     const int h = tex->mip_heights_arr[level];
 
-    float coord_u = tex->use_normalized_coords ? u : (u / (float)tex->width);
-    float coord_v = tex->use_normalized_coords ? v : (v / (float)tex->height);
-
-    float tx = cpu_apply_address_mode_1d(coord_u, w, tex->address_mode_u);
-    float ty = cpu_apply_address_mode_1d(coord_v, h, tex->address_mode_v);
-
     if (tex->filter_mode == WP_TEXTURE_FILTER_CLOSEST) {
-        int x = (int)floor(tx + 0.5f);
-        int y = (int)floor(ty + 0.5f);
-
-        if (tex->address_mode_u != WP_TEXTURE_ADDRESS_BORDER) {
-            x = cpu_clamp_index(x, w);
-        }
-        if (tex->address_mode_v != WP_TEXTURE_ADDRESS_BORDER) {
-            y = cpu_clamp_index(y, h);
-        }
-
+        const int64 x = cpu_nearest_texel_index(u, tex->use_normalized_coords, tex->width, w, tex->address_mode_u);
+        const int64 y = cpu_nearest_texel_index(v, tex->use_normalized_coords, tex->height, h, tex->address_mode_v);
         return cpu_fetch_texel_2d(tex, level, x, y, channel);
     } else {
-        int x0 = (int)floor(tx);
-        int y0 = (int)floor(ty);
-        int x1 = x0 + 1;
-        int y1 = y0 + 1;
+        float coord_u = cpu_texture_normalized_coord(u, tex->use_normalized_coords, tex->width, tex->address_mode_u);
+        float coord_v = cpu_texture_normalized_coord(v, tex->use_normalized_coords, tex->height, tex->address_mode_v);
+        float tx = cpu_apply_address_mode_1d(coord_u, w, tex->address_mode_u);
+        float ty = cpu_apply_address_mode_1d(coord_v, h, tex->address_mode_v);
+        int64 x0 = (int64)floor(tx);
+        int64 y0 = (int64)floor(ty);
+        int64 x1 = x0 + 1;
+        int64 y1 = y0 + 1;
 
         float fx = tx - x0;
         float fy = ty - y0;
@@ -554,37 +617,26 @@ inline float cpu_sample_3d_channel_at_level(const Texture* tex, int level, float
     const int h = tex->mip_heights_arr[level];
     const int d = tex->mip_depths_arr[level];
 
-    float coord_u = tex->use_normalized_coords ? u : (u / (float)tex->width);
-    float coord_v = tex->use_normalized_coords ? v : (v / (float)tex->height);
-    float coord_w = tex->use_normalized_coords ? w_coord : (w_coord / (float)tex->depth);
-
-    float tx = cpu_apply_address_mode_1d(coord_u, w, tex->address_mode_u);
-    float ty = cpu_apply_address_mode_1d(coord_v, h, tex->address_mode_v);
-    float tz = cpu_apply_address_mode_1d(coord_w, d, tex->address_mode_w);
-
     if (tex->filter_mode == WP_TEXTURE_FILTER_CLOSEST) {
-        int x = (int)floor(tx + 0.5f);
-        int y = (int)floor(ty + 0.5f);
-        int z = (int)floor(tz + 0.5f);
-
-        if (tex->address_mode_u != WP_TEXTURE_ADDRESS_BORDER) {
-            x = cpu_clamp_index(x, w);
-        }
-        if (tex->address_mode_v != WP_TEXTURE_ADDRESS_BORDER) {
-            y = cpu_clamp_index(y, h);
-        }
-        if (tex->address_mode_w != WP_TEXTURE_ADDRESS_BORDER) {
-            z = cpu_clamp_index(z, d);
-        }
-
+        const int64 x = cpu_nearest_texel_index(u, tex->use_normalized_coords, tex->width, w, tex->address_mode_u);
+        const int64 y = cpu_nearest_texel_index(v, tex->use_normalized_coords, tex->height, h, tex->address_mode_v);
+        const int64 z
+            = cpu_nearest_texel_index(w_coord, tex->use_normalized_coords, tex->depth, d, tex->address_mode_w);
         return cpu_fetch_texel_3d(tex, level, x, y, z, channel);
     } else {
-        int x0 = (int)floor(tx);
-        int y0 = (int)floor(ty);
-        int z0 = (int)floor(tz);
-        int x1 = x0 + 1;
-        int y1 = y0 + 1;
-        int z1 = z0 + 1;
+        float coord_u = cpu_texture_normalized_coord(u, tex->use_normalized_coords, tex->width, tex->address_mode_u);
+        float coord_v = cpu_texture_normalized_coord(v, tex->use_normalized_coords, tex->height, tex->address_mode_v);
+        float coord_w
+            = cpu_texture_normalized_coord(w_coord, tex->use_normalized_coords, tex->depth, tex->address_mode_w);
+        float tx = cpu_apply_address_mode_1d(coord_u, w, tex->address_mode_u);
+        float ty = cpu_apply_address_mode_1d(coord_v, h, tex->address_mode_v);
+        float tz = cpu_apply_address_mode_1d(coord_w, d, tex->address_mode_w);
+        int64 x0 = (int64)floor(tx);
+        int64 y0 = (int64)floor(ty);
+        int64 z0 = (int64)floor(tz);
+        int64 x1 = x0 + 1;
+        int64 y1 = y0 + 1;
+        int64 z1 = z0 + 1;
 
         float fx = tx - x0;
         float fy = ty - y0;
@@ -681,6 +733,8 @@ inline float cpu_sample_3d_channel(const Texture* tex, float u, float v, float w
     float v1 = cpu_sample_3d_channel_at_level(tex, level1, u, v, w, channel);
     return v0 * (1.0f - fl) + v1 * fl;
 }
+
+#endif  // !defined(__CUDA_ARCH__)
 
 // ============================================================================
 // Texture Sampling Functions
@@ -1032,14 +1086,14 @@ texture_sample_divergent(const texture3d_t& tex, float u, float v, float w, floa
 // 1D texture sampling with scalar coordinate
 template <typename T> CUDA_CALLABLE T texture_sample(const texture1d_t& tex, float u, float lod)
 {
-    texture_assert_sampleable(tex.info.dtype());
+    texture_assert_sampleable(tex.get_dtype());
     return texture_sample_helper<T>::sample_1d(tex, u, lod);
 }
 
 // 2D texture sampling with vec2 coordinates
 template <typename T> CUDA_CALLABLE T texture_sample(const texture2d_t& tex, const vec2f& uv, float lod)
 {
-    texture_assert_sampleable(tex.info.dtype());
+    texture_assert_sampleable(tex.get_dtype());
 #if defined(WP_WORKAROUND_CUDA_TEXTURE_CUBIN)
     if (!texture_handle_is_uniform(tex.tex))
         return texture_sample_divergent<T>(tex, uv[0], uv[1], lod);
@@ -1050,7 +1104,7 @@ template <typename T> CUDA_CALLABLE T texture_sample(const texture2d_t& tex, con
 // 2D texture sampling with separate u, v coordinates
 template <typename T> CUDA_CALLABLE T texture_sample(const texture2d_t& tex, float u, float v, float lod)
 {
-    texture_assert_sampleable(tex.info.dtype());
+    texture_assert_sampleable(tex.get_dtype());
 #if defined(WP_WORKAROUND_CUDA_TEXTURE_CUBIN)
     if (!texture_handle_is_uniform(tex.tex))
         return texture_sample_divergent<T>(tex, u, v, lod);
@@ -1061,7 +1115,7 @@ template <typename T> CUDA_CALLABLE T texture_sample(const texture2d_t& tex, flo
 // 3D texture sampling with vec3 coordinates
 template <typename T> CUDA_CALLABLE T texture_sample(const texture3d_t& tex, const vec3f& uvw, float lod)
 {
-    texture_assert_sampleable(tex.info.dtype());
+    texture_assert_sampleable(tex.get_dtype());
 #if defined(WP_WORKAROUND_CUDA_TEXTURE_CUBIN)
     if (!texture_handle_is_uniform(tex.tex))
         return texture_sample_divergent<T>(tex, uvw[0], uvw[1], uvw[2], lod);
@@ -1072,7 +1126,7 @@ template <typename T> CUDA_CALLABLE T texture_sample(const texture3d_t& tex, con
 // 3D texture sampling with separate u, v, w coordinates
 template <typename T> CUDA_CALLABLE T texture_sample(const texture3d_t& tex, float u, float v, float w, float lod)
 {
-    texture_assert_sampleable(tex.info.dtype());
+    texture_assert_sampleable(tex.get_dtype());
 #if defined(WP_WORKAROUND_CUDA_TEXTURE_CUBIN)
     if (!texture_handle_is_uniform(tex.tex))
         return texture_sample_divergent<T>(tex, u, v, w, lod);
@@ -1084,40 +1138,60 @@ template <typename T> CUDA_CALLABLE T texture_sample(const texture3d_t& tex, flo
 // Texture Sampling Adjoints
 // ============================================================================
 //
-// Coordinate gradients are computed by re-sampling the texture through the same
-// forward sampler at two interior points of the current interpolation cell.
-// With linear filtering the forward function restricted to one cell is exactly
-// a lerp of the cell's corner values, and every address-mode coordinate mapping
-// (wrap, clamp, mirror, border) is piecewise affine with slope in {0, +/-1},
-// folding only at cell boundaries in raw texel space. A scaled difference of
-// two in-cell samples is therefore the exact derivative of the actual forward
-// function, with each mode's boundary behavior (clamp's zero slope, mirror's
-// sign flip, wrap's periodicity, border's zero padding) inherited from the
-// sampler itself, on both the CPU and CUDA backends.
+// Coordinate gradients interpolate differences of neighboring texels. Subtract
+// before interpolation: differencing interpolated samples can lose small slopes
+// when the texels share a large offset. CUDA reads exact corners with integer
+// coordinates after applying the texture's address modes explicitly.
 //
-// The samples are taken at the cell's quarter points (fractions 0.25 and
-// 0.75) rather than at the texel centers on the cell boundary: quarter points
-// sit a safe distance from any fold or floor rounding, and both fractions are
-// exactly representable in the CUDA hardware's 9-bit fixed-point interpolation
-// weights, so the difference recovers the lerp slope. With linear mip
-// filtering, the coordinate gradient is the blend-weighted sum of the
-// per-level gradients.
-//
-// The LOD gradient is computed separately. Linear mip filtering blends two
-// adjacent levels by the fractional LOD, so between integer LODs the sample is
-// linear in the LOD with slope sample(level1) - sample(level0). Each level is
-// sampled at the original coordinates.
+// LOD gradients use sample(level1) - sample(level0), the derivative of the
+// linear blend between adjacent mip levels. They are zero when mip filtering is
+// closest or the LOD is clamped.
 //
 // Gradients with respect to the texel data (``adj_tex``) are not implemented.
 
-// dot(adjoint, delta) for the supported sample value types
-CUDA_CALLABLE inline float texture_grad_dot(float a, float b) { return a * b; }
-
-CUDA_CALLABLE inline float texture_grad_dot(const vec2f& a, const vec2f& b) { return a[0] * b[0] + a[1] * b[1]; }
-
-CUDA_CALLABLE inline float texture_grad_dot(const vec4f& a, const vec4f& b)
+// Internal adjoint samples validate the dtype once in adj_texture_sample() on
+// CUDA. The CPU path retains the public sampler's validation, where skipping it
+// does not improve performance.
+template <typename T> CUDA_CALLABLE inline T texture_adjoint_sample(const texture2d_t& tex, float u, float v, float lod)
 {
-    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3];
+#if defined(__CUDA_ARCH__)
+#if defined(WP_WORKAROUND_CUDA_TEXTURE_CUBIN)
+    if (!texture_handle_is_uniform(tex.tex))
+        return texture_sample_divergent<T>(tex, u, v, lod);
+#endif
+    return texture_sample_helper<T>::sample_2d(tex, u, v, lod);
+#else
+    return texture_sample<T>(tex, u, v, lod);
+#endif
+}
+
+template <typename T>
+CUDA_CALLABLE inline T texture_adjoint_sample(const texture3d_t& tex, float u, float v, float w, float lod)
+{
+#if defined(__CUDA_ARCH__)
+#if defined(WP_WORKAROUND_CUDA_TEXTURE_CUBIN)
+    if (!texture_handle_is_uniform(tex.tex))
+        return texture_sample_divergent<T>(tex, u, v, w, lod);
+#endif
+    return texture_sample_helper<T>::sample_3d(tex, u, v, w, lod);
+#else
+    return texture_sample<T>(tex, u, v, w, lod);
+#endif
+}
+
+// Contract each active output channel independently so a zero seed cannot
+// turn an overflowing difference in an inactive channel into NaN.
+CUDA_CALLABLE inline float texture_grad_dot(float seed, float delta) { return seed == 0.0f ? 0.0f : seed * delta; }
+
+CUDA_CALLABLE inline float texture_grad_dot(const vec2f& seed, const vec2f& delta)
+{
+    return texture_grad_dot(seed[0], delta[0]) + texture_grad_dot(seed[1], delta[1]);
+}
+
+CUDA_CALLABLE inline float texture_grad_dot(const vec4f& seed, const vec4f& delta)
+{
+    return texture_grad_dot(seed[0], delta[0]) + texture_grad_dot(seed[1], delta[1])
+        + texture_grad_dot(seed[2], delta[2]) + texture_grad_dot(seed[3], delta[3]);
 }
 
 // Dimension of a mip level (mip chains always use floor-halving)
@@ -1135,72 +1209,302 @@ CUDA_CALLABLE inline float texture_coord_scale(int use_normalized_coords, int le
     return use_normalized_coords ? (float)level_dim : ((float)level_dim / (float)base_dim);
 }
 
-// Quarter points of the interpolation cell containing texel-space coordinate
-// t, mapped back to coordinate space (coord = (t + 0.5) / scale).
-CUDA_CALLABLE inline void texture_grad_cell_points(float coord, float scale, float& coord_a, float& coord_b)
+#if defined(__CUDA_ARCH__)
+// Reduce periodic coordinates before scaling to texels so large offsets do not
+// round away the half-texel shift or the reconstructed corner coordinates.
+CUDA_CALLABLE inline float texture_grad_periodic_coord(float coord, int use_normalized_coords, int address_mode)
 {
-    float n = floor(coord * scale - 0.5f);
-    coord_a = (n + 0.75f) / scale;
-    coord_b = (n + 1.25f) / scale;
+    if (use_normalized_coords) {
+        if (address_mode == WP_TEXTURE_ADDRESS_WRAP)
+            return coord - floor(coord);
+        if (address_mode == WP_TEXTURE_ADDRESS_MIRROR)
+            return coord - 2.0f * floor(coord * 0.5f);
+    }
+    return coord;
+}
+#endif
+
+// CPU dimensions can approach INT_MAX; a reflected cell and its upper neighbor
+// need wider indices even though every addressed texel lies inside the texture.
+#if defined(__CUDA_ARCH__)
+using texture_grad_index = int;
+#else
+using texture_grad_index = int64;
+#endif
+
+// Select an equivalent bounded interpolation cell before converting to int.
+// Clamped axes must still select the correct edge for derivatives in other axes.
+CUDA_CALLABLE inline texture_grad_index
+texture_grad_cell(float coord, int normalized, int base_dim, int level_dim, int address_mode, float& fraction)
+{
+#if defined(__CUDA_ARCH__)
+    // CUDA treats unnormalized WRAP/MIRROR as CLAMP. Normalized periodic
+    // coordinates were already reduced by adj_texture_sample().
+    if (!normalized && (address_mode == WP_TEXTURE_ADDRESS_WRAP || address_mode == WP_TEXTURE_ADDRESS_MIRROR))
+        address_mode = WP_TEXTURE_ADDRESS_CLAMP;
+    float t = coord * texture_coord_scale(normalized, level_dim, base_dim) - 0.5f;
+#else
+    // Use the same normalization as the CPU forward sampler, including the
+    // order of division and multiplication for non-power-of-two dimensions.
+    coord = cpu_texture_normalized_coord(coord, normalized, base_dim, address_mode);
+    float t = coord * float(level_dim) - 0.5f;
+#endif
+    if (address_mode == WP_TEXTURE_ADDRESS_CLAMP)
+        t = max(-1.0f, min(t, float(level_dim - 1)));
+    else if (address_mode == WP_TEXTURE_ADDRESS_BORDER)
+        t = max(-2.0f, min(t, float(level_dim)));
+    const float cell = floor(t);
+    fraction = t - cell;
+#if defined(__CUDA_ARCH__)
+    // Match the CUDA sampler's eight fractional bits on the other axes.
+    fraction = rintf(fraction * 256.0f) / 256.0f;
+#endif
+    return (texture_grad_index)cell;
 }
 
-// Per-level coordinate gradients accumulated via quarter-point differences.
-// ``sample_lod`` is the LOD passed to the sampler (an integer level for
-// mipmapped textures so that exactly one level is read, or the original
-// ``lod`` argument when the texture has a single level).
+#if !defined(__CUDA_ARCH__)
+// Read CPU corners directly so coordinate round trips cannot interpolate them.
+template <typename T> inline T cpu_texture_grad_texel(const Texture* tex, int level, int64 x, int64 y = 0, int64 z = 0)
+{
+    x = cpu_apply_address_mode_index(x, tex->mip_widths_arr[level], tex->address_mode_u);
+    y = cpu_apply_address_mode_index(y, tex->mip_heights_arr[level], tex->address_mode_v);
+    z = cpu_apply_address_mode_index(z, tex->mip_depths_arr[level], tex->address_mode_w);
+    if constexpr (sizeof(T) == sizeof(float)) {
+        return cpu_fetch_texel_3d(tex, level, x, y, z, 0);
+    } else {
+        T value;
+        for (int channel = 0; channel < sizeof(T) / sizeof(float); ++channel)
+            value[channel] = cpu_fetch_texel_3d(tex, level, x, y, z, channel);
+        return value;
+    }
+}
+
+#endif  // !defined(__CUDA_ARCH__)
+
+#if defined(__CUDA_ARCH__)
+// Integer coordinates bypass texture filtering. CUDA arrays, including 1D
+// arrays, use the 2D array-fetch instruction; the 1D integer instruction is for
+// linear-memory textures. Always fetch four channels to avoid mixed-width
+// texture instruction compiler bugs, then select the requested components.
+CUDA_CALLABLE_DEVICE inline vec4f cuda_texture_grad_fetch(uint64 tex, int level, int x, int y)
+{
+    vec4f value;
+    asm("tex.level.2d.v4.f32.s32 {%0, %1, %2, %3}, [%4, {%5, %6}], %7;"
+        : "=f"(value[0]), "=f"(value[1]), "=f"(value[2]), "=f"(value[3])
+        : "l"(tex), "r"(x), "r"(y), "r"(level));
+    return value;
+}
+
+CUDA_CALLABLE_DEVICE inline vec4f cuda_texture_grad_fetch(uint64 tex, int level, int x, int y, int z)
+{
+    vec4f value;
+    asm("tex.level.3d.v4.f32.s32 {%0, %1, %2, %3}, [%4, {%5, %6, %7, 0}], %8;"
+        : "=f"(value[0]), "=f"(value[1]), "=f"(value[2]), "=f"(value[3])
+        : "l"(tex), "r"(x), "r"(y), "r"(z), "r"(level));
+    return value;
+}
+
+#if defined(WP_WORKAROUND_CUDA_TEXTURE_CUBIN)
+CUDA_CALLABLE_DEVICE __noinline__ vec4f cuda_texture_grad_fetch_divergent(uint64 tex, int level, int x, int y)
+{
+    return cuda_texture_grad_fetch(tex, level, x, y);
+}
+
+CUDA_CALLABLE_DEVICE __noinline__ vec4f cuda_texture_grad_fetch_divergent(uint64 tex, int level, int x, int y, int z)
+{
+    return cuda_texture_grad_fetch(tex, level, x, y, z);
+}
+#endif
+
+CUDA_CALLABLE_DEVICE inline vec4f cuda_texture_grad_fetch_protected(uint64 tex, int level, int x, int y)
+{
+#if defined(WP_WORKAROUND_CUDA_TEXTURE_CUBIN)
+    if (!texture_handle_is_uniform(tex))
+        return cuda_texture_grad_fetch_divergent(tex, level, x, y);
+#endif
+    return cuda_texture_grad_fetch(tex, level, x, y);
+}
+
+CUDA_CALLABLE_DEVICE inline vec4f cuda_texture_grad_fetch_protected(uint64 tex, int level, int x, int y, int z)
+{
+#if defined(WP_WORKAROUND_CUDA_TEXTURE_CUBIN)
+    if (!texture_handle_is_uniform(tex))
+        return cuda_texture_grad_fetch_divergent(tex, level, x, y, z);
+#endif
+    return cuda_texture_grad_fetch(tex, level, x, y, z);
+}
+
+// Integer fetches do not apply periodic or border addressing. CUDA texture
+// dimensions are hardware-bounded, so their indices and periods fit in int32.
+CUDA_CALLABLE_DEVICE inline int cuda_texture_grad_index(int index, int size, int mode, int normalized)
+{
+    if (!normalized && (mode == WP_TEXTURE_ADDRESS_WRAP || mode == WP_TEXTURE_ADDRESS_MIRROR))
+        mode = WP_TEXTURE_ADDRESS_CLAMP;
+    if (mode == WP_TEXTURE_ADDRESS_WRAP) {
+        const int m = index % size;
+        return m < 0 ? m + size : m;
+    }
+    if (mode == WP_TEXTURE_ADDRESS_MIRROR) {
+        const int period = 2 * size;
+        int m = index % period;
+        if (m < 0)
+            m += period;
+        return m < size ? m : period - m - 1;
+    }
+    if (mode == WP_TEXTURE_ADDRESS_CLAMP)
+        return max(0, min(index, size - 1));
+    return index;
+}
+
+template <typename T> CUDA_CALLABLE_DEVICE inline T texture_grad_components(const vec4f& value)
+{
+    if constexpr (sizeof(T) == sizeof(float)) {
+        return value[0];
+    } else {
+        T result;
+        for (int channel = 0; channel < sizeof(T) / sizeof(float); ++channel)
+            result[channel] = value[channel];
+        return result;
+    }
+}
+#endif
+
+template <typename T> CUDA_CALLABLE inline T texture_grad_texel(const texture1d_t& tex, int level, texture_grad_index x)
+{
+#if defined(__CUDA_ARCH__)
+    const int width = texture_mip_dim(tex.width, level);
+    x = cuda_texture_grad_index(x, width, tex.get_address_mode_u(), tex.get_use_normalized_coords());
+    if (x < 0 || x >= width)
+        return texture_sample_helper<T>::zero();
+    return texture_grad_components<T>(cuda_texture_grad_fetch_protected(tex.tex, level, x, 0));
+#else
+    return cpu_texture_grad_texel<T>((const Texture*)tex.tex, level, x);
+#endif
+}
+
 template <typename T>
-CUDA_CALLABLE inline void texture_grad_coords_1d(
-    const texture1d_t& tex, float u, float sample_lod, int level, float weight, const T& adj_ret, float& adj_u
-)
+CUDA_CALLABLE inline T texture_grad_texel(const texture2d_t& tex, int level, texture_grad_index x, texture_grad_index y)
+{
+#if defined(__CUDA_ARCH__)
+    const int width = texture_mip_dim(tex.width, level);
+    const int height = texture_mip_dim(tex.height, level);
+    x = cuda_texture_grad_index(x, width, tex.get_address_mode_u(), tex.get_use_normalized_coords());
+    y = cuda_texture_grad_index(y, height, tex.get_address_mode_v(), tex.get_use_normalized_coords());
+    if (x < 0 || x >= width || y < 0 || y >= height)
+        return texture_sample_helper<T>::zero();
+    return texture_grad_components<T>(cuda_texture_grad_fetch_protected(tex.tex, level, x, y));
+#else
+    return cpu_texture_grad_texel<T>((const Texture*)tex.tex, level, x, y);
+#endif
+}
+
+template <typename T>
+CUDA_CALLABLE inline T
+texture_grad_texel(const texture3d_t& tex, int level, texture_grad_index x, texture_grad_index y, texture_grad_index z)
+{
+#if defined(__CUDA_ARCH__)
+    const int width = texture_mip_dim(tex.width, level);
+    const int height = texture_mip_dim(tex.height, level);
+    const int depth = texture_mip_dim(tex.depth, level);
+    x = cuda_texture_grad_index(x, width, tex.get_address_mode_u(), tex.get_use_normalized_coords());
+    y = cuda_texture_grad_index(y, height, tex.get_address_mode_v(), tex.get_use_normalized_coords());
+    z = cuda_texture_grad_index(z, depth, tex.get_address_mode_w(), tex.get_use_normalized_coords());
+    if (x < 0 || x >= width || y < 0 || y >= height || z < 0 || z >= depth)
+        return texture_sample_helper<T>::zero();
+    return texture_grad_components<T>(cuda_texture_grad_fetch_protected(tex.tex, level, x, y, z));
+#else
+    return cpu_texture_grad_texel<T>((const Texture*)tex.tex, level, x, y, z);
+#endif
+}
+
+// Keep the corner reference separate from the interpolated differences so a
+// large shared texel offset cannot erase the difference between mip samples.
+template <typename T> struct texture_grad_sample {
+    T anchor;
+    T residual;
+};
+
+// Opposite-sign finite texels can overflow centered differences even when the
+// interpolated samples and their LOD difference are finite.
+template <typename T> CUDA_CALLABLE inline bool texture_grad_lod_isfinite(const T& value)
+{
+    if constexpr (sizeof(T) == sizeof(float)) {
+        return isfinite(value);
+    } else {
+        for (int channel = 0; channel < sizeof(T) / sizeof(float); ++channel)
+            if (!isfinite(value[channel]))
+                return false;
+        return true;
+    }
+}
+
+// Preserve stable differences in the other channels, including small slopes
+// atop large offsets. Forward sampling also preserves genuine NaN inputs.
+template <typename T> CUDA_CALLABLE inline T texture_grad_lod_fallback(T value, const T& sampled_difference)
+{
+    if constexpr (sizeof(T) == sizeof(float)) {
+        return isfinite(value) ? value : sampled_difference;
+    } else {
+        for (int channel = 0; channel < sizeof(T) / sizeof(float); ++channel)
+            if (!isfinite(value[channel]))
+                value[channel] = sampled_difference[channel];
+        return value;
+    }
+}
+
+// The returned sample reuses the fetched corners when an LOD gradient is also
+// needed. Ignored results let the compiler remove the residual interpolation.
+template <typename T>
+CUDA_CALLABLE inline texture_grad_sample<T>
+texture_grad_coords_1d(const texture1d_t& tex, float u, int level, float weight, const T& adj_ret, float& adj_u)
 {
     const int level_w = texture_mip_dim(tex.width, level);
-    const float su = texture_coord_scale(tex.info.use_normalized_coords(), level_w, tex.width);
+    const float su = texture_coord_scale(tex.get_use_normalized_coords(), level_w, tex.width);
 
-    float ua, ub;
-    texture_grad_cell_points(u, su, ua, ub);
-    const T va = texture_sample<T>(tex, ua, sample_lod);
-    const T vb = texture_sample<T>(tex, ub, sample_lod);
-    adj_u += weight * 2.0f * su * texture_grad_dot(adj_ret, vb - va);
+    float fu;
+    const texture_grad_index x
+        = texture_grad_cell(u, tex.get_use_normalized_coords(), tex.width, level_w, tex.get_address_mode_u(), fu);
+    const T v0 = texture_grad_texel<T>(tex, level, x);
+    const T v1 = texture_grad_texel<T>(tex, level, x + 1);
+    // At integer LODs the next level is sampled only for the LOD derivative.
+    if (weight != 0.0f)
+        adj_u += weight * su * texture_grad_dot(adj_ret, v1 - v0);
+    return { v0, (v1 - v0) * fu };
 }
 
 template <typename T>
-CUDA_CALLABLE inline void texture_grad_coords_2d(
-    const texture2d_t& tex,
-    float u,
-    float v,
-    float sample_lod,
-    int level,
-    float weight,
-    const T& adj_ret,
-    float& adj_u,
-    float& adj_v
+CUDA_CALLABLE inline texture_grad_sample<T> texture_grad_coords_2d(
+    const texture2d_t& tex, float u, float v, int level, float weight, const T& adj_ret, float& adj_u, float& adj_v
 )
 {
     const int level_w = texture_mip_dim(tex.width, level);
     const int level_h = texture_mip_dim(tex.height, level);
-    const float su = texture_coord_scale(tex.info.use_normalized_coords(), level_w, tex.width);
-    const float sv = texture_coord_scale(tex.info.use_normalized_coords(), level_h, tex.height);
+    const float su = texture_coord_scale(tex.get_use_normalized_coords(), level_w, tex.width);
+    const float sv = texture_coord_scale(tex.get_use_normalized_coords(), level_h, tex.height);
 
-    float a, b;
+    float fu, fv;
+    const texture_grad_index x
+        = texture_grad_cell(u, tex.get_use_normalized_coords(), tex.width, level_w, tex.get_address_mode_u(), fu);
+    const texture_grad_index y
+        = texture_grad_cell(v, tex.get_use_normalized_coords(), tex.height, level_h, tex.get_address_mode_v(), fv);
+    const T v00 = texture_grad_texel<T>(tex, level, x, y);
+    const T v10 = texture_grad_texel<T>(tex, level, x + 1, y);
+    const T v01 = texture_grad_texel<T>(tex, level, x, y + 1);
+    const T v11 = texture_grad_texel<T>(tex, level, x + 1, y + 1);
 
-    texture_grad_cell_points(u, su, a, b);
-    const T vua = texture_sample<T>(tex, a, v, sample_lod);
-    const T vub = texture_sample<T>(tex, b, v, sample_lod);
-    adj_u += weight * 2.0f * su * texture_grad_dot(adj_ret, vub - vua);
-
-    texture_grad_cell_points(v, sv, a, b);
-    const T vva = texture_sample<T>(tex, u, a, sample_lod);
-    const T vvb = texture_sample<T>(tex, u, b, sample_lod);
-    adj_v += weight * 2.0f * sv * texture_grad_dot(adj_ret, vvb - vva);
+    if (weight != 0.0f) {
+        adj_u += weight * su * lerp(texture_grad_dot(adj_ret, v10 - v00), texture_grad_dot(adj_ret, v11 - v01), fv);
+        adj_v += weight * sv * lerp(texture_grad_dot(adj_ret, v01 - v00), texture_grad_dot(adj_ret, v11 - v10), fu);
+    }
+    return { v00, lerp((v10 - v00) * fu, lerp(v01 - v00, v11 - v00, fu), fv) };
 }
 
 template <typename T>
-CUDA_CALLABLE inline void texture_grad_coords_3d(
+CUDA_CALLABLE inline texture_grad_sample<T> texture_grad_coords_3d(
     const texture3d_t& tex,
     float u,
     float v,
     float w,
-    float sample_lod,
     int level,
     float weight,
     const T& adj_ret,
@@ -1212,26 +1516,40 @@ CUDA_CALLABLE inline void texture_grad_coords_3d(
     const int level_w = texture_mip_dim(tex.width, level);
     const int level_h = texture_mip_dim(tex.height, level);
     const int level_d = texture_mip_dim(tex.depth, level);
-    const float su = texture_coord_scale(tex.info.use_normalized_coords(), level_w, tex.width);
-    const float sv = texture_coord_scale(tex.info.use_normalized_coords(), level_h, tex.height);
-    const float sw = texture_coord_scale(tex.info.use_normalized_coords(), level_d, tex.depth);
+    const float su = texture_coord_scale(tex.get_use_normalized_coords(), level_w, tex.width);
+    const float sv = texture_coord_scale(tex.get_use_normalized_coords(), level_h, tex.height);
+    const float sw = texture_coord_scale(tex.get_use_normalized_coords(), level_d, tex.depth);
 
-    float a, b;
+    float fu, fv, fw;
+    const texture_grad_index x
+        = texture_grad_cell(u, tex.get_use_normalized_coords(), tex.width, level_w, tex.get_address_mode_u(), fu);
+    const texture_grad_index y
+        = texture_grad_cell(v, tex.get_use_normalized_coords(), tex.height, level_h, tex.get_address_mode_v(), fv);
+    const texture_grad_index z
+        = texture_grad_cell(w, tex.get_use_normalized_coords(), tex.depth, level_d, tex.get_address_mode_w(), fw);
+    const T v000 = texture_grad_texel<T>(tex, level, x, y, z);
+    const T v100 = texture_grad_texel<T>(tex, level, x + 1, y, z);
+    const T v010 = texture_grad_texel<T>(tex, level, x, y + 1, z);
+    const T v110 = texture_grad_texel<T>(tex, level, x + 1, y + 1, z);
+    const T v001 = texture_grad_texel<T>(tex, level, x, y, z + 1);
+    const T v101 = texture_grad_texel<T>(tex, level, x + 1, y, z + 1);
+    const T v011 = texture_grad_texel<T>(tex, level, x, y + 1, z + 1);
+    const T v111 = texture_grad_texel<T>(tex, level, x + 1, y + 1, z + 1);
 
-    texture_grad_cell_points(u, su, a, b);
-    const T vua = texture_sample<T>(tex, a, v, w, sample_lod);
-    const T vub = texture_sample<T>(tex, b, v, w, sample_lod);
-    adj_u += weight * 2.0f * su * texture_grad_dot(adj_ret, vub - vua);
-
-    texture_grad_cell_points(v, sv, a, b);
-    const T vva = texture_sample<T>(tex, u, a, w, sample_lod);
-    const T vvb = texture_sample<T>(tex, u, b, w, sample_lod);
-    adj_v += weight * 2.0f * sv * texture_grad_dot(adj_ret, vvb - vva);
-
-    texture_grad_cell_points(w, sw, a, b);
-    const T vwa = texture_sample<T>(tex, u, v, a, sample_lod);
-    const T vwb = texture_sample<T>(tex, u, v, b, sample_lod);
-    adj_w += weight * 2.0f * sw * texture_grad_dot(adj_ret, vwb - vwa);
+    if (weight != 0.0f) {
+        adj_u += weight * su
+            * lerp(lerp(texture_grad_dot(adj_ret, v100 - v000), texture_grad_dot(adj_ret, v110 - v010), fv),
+                   lerp(texture_grad_dot(adj_ret, v101 - v001), texture_grad_dot(adj_ret, v111 - v011), fv), fw);
+        adj_v += weight * sv
+            * lerp(lerp(texture_grad_dot(adj_ret, v010 - v000), texture_grad_dot(adj_ret, v110 - v100), fu),
+                   lerp(texture_grad_dot(adj_ret, v011 - v001), texture_grad_dot(adj_ret, v111 - v101), fu), fw);
+        adj_w += weight * sw
+            * lerp(lerp(texture_grad_dot(adj_ret, v001 - v000), texture_grad_dot(adj_ret, v101 - v100), fu),
+                   lerp(texture_grad_dot(adj_ret, v011 - v010), texture_grad_dot(adj_ret, v111 - v110), fu), fv);
+    }
+    const T lower = lerp((v100 - v000) * fu, lerp(v010 - v000, v110 - v000, fu), fv);
+    const T upper = lerp(lerp(v001 - v000, v101 - v000, fu), lerp(v011 - v000, v111 - v000, fu), fv);
+    return { v000, lerp(lower, upper, fw) };
 }
 
 // Resolve the mip levels and blend weights the forward pass reads for a given
@@ -1267,10 +1585,9 @@ texture_grad_mip_levels(int num_mip_levels, int mip_filter_mode, float lod, int*
     return 2;
 }
 
-// Levels for the LOD gradient: the mip-linear blend is piecewise linear in the
-// clamped LOD, with derivative sample(level1) - sample(level0) between levels
-// and zero in the clamped ranges or with a CLOSEST mip filter. At an integer
-// LOD the derivative toward increasing LOD values is used.
+// LOD gradient: the mip-linear blend is piecewise linear in the clamped LOD,
+// with derivative sample(level1) - sample(level0) between levels and zero in
+// the clamped ranges or with a CLOSEST mip filter.
 CUDA_CALLABLE inline bool
 texture_grad_lod_levels(int num_mip_levels, int mip_filter_mode, float lod, int& level0, int& level1)
 {
@@ -1291,26 +1608,42 @@ CUDA_CALLABLE void adj_texture_sample(
     if (tex.tex == 0)
         return;
 
-    const bool mipmapped = tex.info.num_mip_levels() > 1 && lod >= 0.0f;
+#if defined(__CUDA_ARCH__)
+    texture_assert_sampleable(tex.get_dtype());
+    u = texture_grad_periodic_coord(u, tex.get_use_normalized_coords(), tex.get_address_mode_u());
+#endif
 
-    if (tex.info.filter_mode() == WP_TEXTURE_FILTER_LINEAR) {
-        if (!mipmapped) {
-            texture_grad_coords_1d(tex, u, lod, 0, 1.0f, adj_ret, adj_u);
+    const bool mipmapped = tex.get_num_mip_levels() > 1 && lod >= 0.0f;
+    int level0, level1;
+    const bool grad_lod = mipmapped
+        && texture_grad_lod_levels(tex.get_num_mip_levels(), tex.get_mip_filter_mode(), lod, level0, level1);
+
+    if (tex.get_filter_mode() == WP_TEXTURE_FILTER_LINEAR) {
+        if (grad_lod) {
+            const float fl = lod - (float)level0;
+            const texture_grad_sample<T> sample0 = texture_grad_coords_1d(tex, u, level0, 1.0f - fl, adj_ret, adj_u);
+            const texture_grad_sample<T> sample1 = texture_grad_coords_1d(tex, u, level1, fl, adj_ret, adj_u);
+            T difference = (sample1.anchor - sample0.anchor) + (sample1.residual - sample0.residual);
+            if (!texture_grad_lod_isfinite(difference)) {
+                const T v0 = texture_sample_helper<T>::sample_1d(tex, u, (float)level0);
+                const T v1 = texture_sample_helper<T>::sample_1d(tex, u, (float)level1);
+                difference = texture_grad_lod_fallback(difference, v1 - v0);
+            }
+            adj_lod += texture_grad_dot(adj_ret, difference);
+        } else if (!mipmapped) {
+            texture_grad_coords_1d(tex, u, 0, 1.0f, adj_ret, adj_u);
         } else {
             int levels[2];
             float weights[2];
             const int n
-                = texture_grad_mip_levels(tex.info.num_mip_levels(), tex.info.mip_filter_mode(), lod, levels, weights);
+                = texture_grad_mip_levels(tex.get_num_mip_levels(), tex.get_mip_filter_mode(), lod, levels, weights);
             for (int i = 0; i < n; ++i)
-                texture_grad_coords_1d(tex, u, (float)levels[i], levels[i], weights[i], adj_ret, adj_u);
+                texture_grad_coords_1d(tex, u, levels[i], weights[i], adj_ret, adj_u);
         }
-    }
-
-    int level0, level1;
-    if (mipmapped
-        && texture_grad_lod_levels(tex.info.num_mip_levels(), tex.info.mip_filter_mode(), lod, level0, level1)) {
-        const T v0 = texture_sample<T>(tex, u, (float)level0);
-        const T v1 = texture_sample<T>(tex, u, (float)level1);
+    } else if (grad_lod) {
+        // CLOSEST spatial filtering needs only the two selected texels.
+        const T v0 = texture_sample_helper<T>::sample_1d(tex, u, (float)level0);
+        const T v1 = texture_sample_helper<T>::sample_1d(tex, u, (float)level1);
         adj_lod += texture_grad_dot(adj_ret, v1 - v0);
     }
 }
@@ -1331,26 +1664,44 @@ CUDA_CALLABLE void adj_texture_sample(
     if (tex.tex == 0)
         return;
 
-    const bool mipmapped = tex.info.num_mip_levels() > 1 && lod >= 0.0f;
+#if defined(__CUDA_ARCH__)
+    texture_assert_sampleable(tex.get_dtype());
+    u = texture_grad_periodic_coord(u, tex.get_use_normalized_coords(), tex.get_address_mode_u());
+    v = texture_grad_periodic_coord(v, tex.get_use_normalized_coords(), tex.get_address_mode_v());
+#endif
 
-    if (tex.info.filter_mode() == WP_TEXTURE_FILTER_LINEAR) {
-        if (!mipmapped) {
-            texture_grad_coords_2d(tex, u, v, lod, 0, 1.0f, adj_ret, adj_u, adj_v);
+    const bool mipmapped = tex.get_num_mip_levels() > 1 && lod >= 0.0f;
+    int level0, level1;
+    const bool grad_lod = mipmapped
+        && texture_grad_lod_levels(tex.get_num_mip_levels(), tex.get_mip_filter_mode(), lod, level0, level1);
+
+    if (tex.get_filter_mode() == WP_TEXTURE_FILTER_LINEAR) {
+        if (grad_lod) {
+            const float fl = lod - (float)level0;
+            const texture_grad_sample<T> sample0
+                = texture_grad_coords_2d(tex, u, v, level0, 1.0f - fl, adj_ret, adj_u, adj_v);
+            const texture_grad_sample<T> sample1 = texture_grad_coords_2d(tex, u, v, level1, fl, adj_ret, adj_u, adj_v);
+            T difference = (sample1.anchor - sample0.anchor) + (sample1.residual - sample0.residual);
+            if (!texture_grad_lod_isfinite(difference)) {
+                const T v0 = texture_adjoint_sample<T>(tex, u, v, (float)level0);
+                const T v1 = texture_adjoint_sample<T>(tex, u, v, (float)level1);
+                difference = texture_grad_lod_fallback(difference, v1 - v0);
+            }
+            adj_lod += texture_grad_dot(adj_ret, difference);
+        } else if (!mipmapped) {
+            texture_grad_coords_2d(tex, u, v, 0, 1.0f, adj_ret, adj_u, adj_v);
         } else {
             int levels[2];
             float weights[2];
             const int n
-                = texture_grad_mip_levels(tex.info.num_mip_levels(), tex.info.mip_filter_mode(), lod, levels, weights);
+                = texture_grad_mip_levels(tex.get_num_mip_levels(), tex.get_mip_filter_mode(), lod, levels, weights);
             for (int i = 0; i < n; ++i)
-                texture_grad_coords_2d(tex, u, v, (float)levels[i], levels[i], weights[i], adj_ret, adj_u, adj_v);
+                texture_grad_coords_2d(tex, u, v, levels[i], weights[i], adj_ret, adj_u, adj_v);
         }
-    }
-
-    int level0, level1;
-    if (mipmapped
-        && texture_grad_lod_levels(tex.info.num_mip_levels(), tex.info.mip_filter_mode(), lod, level0, level1)) {
-        const T v0 = texture_sample<T>(tex, u, v, (float)level0);
-        const T v1 = texture_sample<T>(tex, u, v, (float)level1);
+    } else if (grad_lod) {
+        // CLOSEST spatial filtering needs only the two selected texels.
+        const T v0 = texture_adjoint_sample<T>(tex, u, v, (float)level0);
+        const T v1 = texture_adjoint_sample<T>(tex, u, v, (float)level1);
         adj_lod += texture_grad_dot(adj_ret, v1 - v0);
     }
 }
@@ -1387,28 +1738,46 @@ CUDA_CALLABLE void adj_texture_sample(
     if (tex.tex == 0)
         return;
 
-    const bool mipmapped = tex.info.num_mip_levels() > 1 && lod >= 0.0f;
+#if defined(__CUDA_ARCH__)
+    texture_assert_sampleable(tex.get_dtype());
+    u = texture_grad_periodic_coord(u, tex.get_use_normalized_coords(), tex.get_address_mode_u());
+    v = texture_grad_periodic_coord(v, tex.get_use_normalized_coords(), tex.get_address_mode_v());
+    w = texture_grad_periodic_coord(w, tex.get_use_normalized_coords(), tex.get_address_mode_w());
+#endif
 
-    if (tex.info.filter_mode() == WP_TEXTURE_FILTER_LINEAR) {
-        if (!mipmapped) {
-            texture_grad_coords_3d(tex, u, v, w, lod, 0, 1.0f, adj_ret, adj_u, adj_v, adj_w);
+    const bool mipmapped = tex.get_num_mip_levels() > 1 && lod >= 0.0f;
+    int level0, level1;
+    const bool grad_lod = mipmapped
+        && texture_grad_lod_levels(tex.get_num_mip_levels(), tex.get_mip_filter_mode(), lod, level0, level1);
+
+    if (tex.get_filter_mode() == WP_TEXTURE_FILTER_LINEAR) {
+        if (grad_lod) {
+            const float fl = lod - (float)level0;
+            const texture_grad_sample<T> sample0
+                = texture_grad_coords_3d(tex, u, v, w, level0, 1.0f - fl, adj_ret, adj_u, adj_v, adj_w);
+            const texture_grad_sample<T> sample1
+                = texture_grad_coords_3d(tex, u, v, w, level1, fl, adj_ret, adj_u, adj_v, adj_w);
+            T difference = (sample1.anchor - sample0.anchor) + (sample1.residual - sample0.residual);
+            if (!texture_grad_lod_isfinite(difference)) {
+                const T v0 = texture_adjoint_sample<T>(tex, u, v, w, (float)level0);
+                const T v1 = texture_adjoint_sample<T>(tex, u, v, w, (float)level1);
+                difference = texture_grad_lod_fallback(difference, v1 - v0);
+            }
+            adj_lod += texture_grad_dot(adj_ret, difference);
+        } else if (!mipmapped) {
+            texture_grad_coords_3d(tex, u, v, w, 0, 1.0f, adj_ret, adj_u, adj_v, adj_w);
         } else {
             int levels[2];
             float weights[2];
             const int n
-                = texture_grad_mip_levels(tex.info.num_mip_levels(), tex.info.mip_filter_mode(), lod, levels, weights);
+                = texture_grad_mip_levels(tex.get_num_mip_levels(), tex.get_mip_filter_mode(), lod, levels, weights);
             for (int i = 0; i < n; ++i)
-                texture_grad_coords_3d(
-                    tex, u, v, w, (float)levels[i], levels[i], weights[i], adj_ret, adj_u, adj_v, adj_w
-                );
+                texture_grad_coords_3d(tex, u, v, w, levels[i], weights[i], adj_ret, adj_u, adj_v, adj_w);
         }
-    }
-
-    int level0, level1;
-    if (mipmapped
-        && texture_grad_lod_levels(tex.info.num_mip_levels(), tex.info.mip_filter_mode(), lod, level0, level1)) {
-        const T v0 = texture_sample<T>(tex, u, v, w, (float)level0);
-        const T v1 = texture_sample<T>(tex, u, v, w, (float)level1);
+    } else if (grad_lod) {
+        // CLOSEST spatial filtering needs only the two selected texels.
+        const T v0 = texture_adjoint_sample<T>(tex, u, v, w, (float)level0);
+        const T v1 = texture_adjoint_sample<T>(tex, u, v, w, (float)level1);
         adj_lod += texture_grad_dot(adj_ret, v1 - v0);
     }
 }

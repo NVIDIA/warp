@@ -13240,11 +13240,11 @@ add_builtin(
             texture's available mip-level range. Fractional values blend between neighbouring mip
             levels when ``mip_filter_mode`` is
             :attr:`warp.TextureFilterMode.LINEAR`; the coordinate is evaluated independently at
-            each level used in the blend. The ``lod`` argument is ignored for textures created with a
-            single mip level. The ``lod`` adjoint is nonzero only for mipmapped textures with
-            ``mip_filter_mode=TextureFilterMode.LINEAR`` and a nonnegative LOD. At an unclamped
-            integer LOD, the mip-blend derivative may differ on either side. Warp uses the
-            derivative toward increasing LOD values. The LOD gradient is zero when the LOD is
+            each level used in the blend. Ignored for textures created with a single mip level.
+            The ``lod`` adjoint is nonzero only for mipmapped textures with
+            ``mip_filter_mode=TextureFilterMode.LINEAR`` and an unclamped, nonnegative LOD. At an
+            unclamped integer LOD, the mip-blend derivative may differ on either side. Warp uses
+            the derivative toward increasing LOD values. The LOD gradient is zero when the LOD is
             clamped.
 
     Returns:
@@ -13349,11 +13349,11 @@ add_builtin(
             texture's available mip-level range. Fractional values blend between neighbouring mip
             levels when ``mip_filter_mode`` is
             :attr:`warp.TextureFilterMode.LINEAR`; the coordinates are evaluated independently at
-            each level used in the blend. The ``lod`` argument is ignored for textures created with a
-            single mip level. The ``lod`` adjoint is nonzero only for mipmapped textures with
-            ``mip_filter_mode=TextureFilterMode.LINEAR`` and a nonnegative LOD. At an unclamped
-            integer LOD, the mip-blend derivative may differ on either side. Warp uses the
-            derivative toward increasing LOD values. The LOD gradient is zero when the LOD is
+            each level used in the blend. Ignored for textures created with a single mip level.
+            The ``lod`` adjoint is nonzero only for mipmapped textures with
+            ``mip_filter_mode=TextureFilterMode.LINEAR`` and an unclamped, nonnegative LOD. At an
+            unclamped integer LOD, the mip-blend derivative may differ on either side. Warp uses
+            the derivative toward increasing LOD values. The LOD gradient is zero when the LOD is
             clamped.
 
     Returns:
@@ -13413,11 +13413,11 @@ add_builtin(
             texture's available mip-level range. Fractional values blend between neighbouring mip
             levels when ``mip_filter_mode`` is
             :attr:`warp.TextureFilterMode.LINEAR`; the coordinates are evaluated independently at
-            each level used in the blend. The ``lod`` argument is ignored for textures created with a
-            single mip level. The ``lod`` adjoint is nonzero only for mipmapped textures with
-            ``mip_filter_mode=TextureFilterMode.LINEAR`` and a nonnegative LOD. At an unclamped
-            integer LOD, the mip-blend derivative may differ on either side. Warp uses the
-            derivative toward increasing LOD values. The LOD gradient is zero when the LOD is
+            each level used in the blend. Ignored for textures created with a single mip level.
+            The ``lod`` adjoint is nonzero only for mipmapped textures with
+            ``mip_filter_mode=TextureFilterMode.LINEAR`` and an unclamped, nonnegative LOD. At an
+            unclamped integer LOD, the mip-blend derivative may differ on either side. Warp uses
+            the derivative toward increasing LOD values. The LOD gradient is zero when the LOD is
             clamped.
 
     Returns:
@@ -13494,11 +13494,11 @@ add_builtin(
             texture's available mip-level range. Fractional values blend between neighbouring mip
             levels when ``mip_filter_mode`` is
             :attr:`warp.TextureFilterMode.LINEAR`; the coordinates are evaluated independently at
-            each level used in the blend. The ``lod`` argument is ignored for textures created with a
-            single mip level. The ``lod`` adjoint is nonzero only for mipmapped textures with
-            ``mip_filter_mode=TextureFilterMode.LINEAR`` and a nonnegative LOD. At an unclamped
-            integer LOD, the mip-blend derivative may differ on either side. Warp uses the
-            derivative toward increasing LOD values. The LOD gradient is zero when the LOD is
+            each level used in the blend. Ignored for textures created with a single mip level.
+            The ``lod`` adjoint is nonzero only for mipmapped textures with
+            ``mip_filter_mode=TextureFilterMode.LINEAR`` and an unclamped, nonnegative LOD. At an
+            unclamped integer LOD, the mip-blend derivative may differ on either side. Warp uses
+            the derivative toward increasing LOD values. The LOD gradient is zero when the LOD is
             clamped.
 
     Returns:
@@ -13561,11 +13561,11 @@ add_builtin(
             texture's available mip-level range. Fractional values blend between neighbouring mip
             levels when ``mip_filter_mode`` is
             :attr:`warp.TextureFilterMode.LINEAR`; the coordinates are evaluated independently at
-            each level used in the blend. The ``lod`` argument is ignored for textures created with a
-            single mip level. The ``lod`` adjoint is nonzero only for mipmapped textures with
-            ``mip_filter_mode=TextureFilterMode.LINEAR`` and a nonnegative LOD. At an unclamped
-            integer LOD, the mip-blend derivative may differ on either side. Warp uses the
-            derivative toward increasing LOD values. The LOD gradient is zero when the LOD is
+            each level used in the blend. Ignored for textures created with a single mip level.
+            The ``lod`` adjoint is nonzero only for mipmapped textures with
+            ``mip_filter_mode=TextureFilterMode.LINEAR`` and an unclamped, nonnegative LOD. At an
+            unclamped integer LOD, the mip-blend derivative may differ on either side. Warp uses
+            the derivative toward increasing LOD values. The LOD gradient is zero when the LOD is
             clamped.
 
     Returns:
