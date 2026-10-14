@@ -888,6 +888,7 @@ def make_bilinear_dispatch_kernel(
     accumulate_dtype: type,
     tile_size: int = 1,
     kernel_options: dict[str, Any] | None = None,
+    fused_mapped_atomic: bool = False,
 ):
     global_test: TestField = test.global_field
     space_restriction = global_test.space_restriction
@@ -929,7 +930,14 @@ def make_bilinear_dispatch_kernel(
     val_t = cache.cached_mat_type(shape=(test.node_dof_count, trial.node_dof_count), dtype=accumulate_dtype)
 
     @cache.dynamic_kernel(
-        (trial.name, test.name, quadrature.name, cache.pod_type_key(accumulate_dtype), tile_size),
+        (
+            trial.name,
+            test.name,
+            quadrature.name,
+            cache.pod_type_key(accumulate_dtype),
+            tile_size,
+            fused_mapped_atomic,
+        ),
         kernel_options=kernel_options,
     )
     def dispatch_bilinear_kernel_fn(
@@ -946,6 +954,7 @@ def make_bilinear_dispatch_kernel(
         local_result: wp.array4d(dtype=local_scalar_type),
         triplet_rows: wp.array(dtype=int),
         triplet_cols: wp.array(dtype=int),
+        triplet_blocks: wp.array(dtype=int),
         triplet_values: wp.array3d(dtype=Any),
     ):
         test_node_offset, trial_node, lane = wp.tid()
@@ -969,7 +978,8 @@ def make_bilinear_dispatch_kernel(
             block_offset = test_node_offset * max_nodes_per_element + trial_node
             if triplet_rows:
                 triplet_rows[block_offset] = NULL_NODE_INDEX
-            triplet_cols[block_offset] = NULL_NODE_INDEX
+            if triplet_cols:
+                triplet_cols[block_offset] = NULL_NODE_INDEX
             return
 
         qp_point_count = quadrature.point_count(
@@ -1090,15 +1100,23 @@ def make_bilinear_dispatch_kernel(
                 test_node_dof = dof // TRIAL_NODE_DOF_COUNT
                 trial_node_dof = dof - TRIAL_NODE_DOF_COUNT * test_node_dof
 
-                triplet_values[block_offset, test_node_dof, trial_node_dof] = triplet_values.dtype(
-                    val_sum[test_node_dof, trial_node_dof]
-                )
+                value = triplet_values.dtype(val_sum[test_node_dof, trial_node_dof])
+                if wp.static(fused_mapped_atomic):
+                    block_index = triplet_blocks[block_offset]
+                    if block_index >= 0:
+                        wp.atomic_add(triplet_values, block_index, test_node_dof, trial_node_dof, value)
+                else:
+                    triplet_values[block_offset, test_node_dof, trial_node_dof] = value
         else:
             for test_node_dof in range(TEST_NODE_DOF_COUNT):
                 for trial_node_dof in range(TRIAL_NODE_DOF_COUNT):
-                    triplet_values[block_offset, test_node_dof, trial_node_dof] = triplet_values.dtype(
-                        val_sum[test_node_dof, trial_node_dof]
-                    )
+                    value = triplet_values.dtype(val_sum[test_node_dof, trial_node_dof])
+                    if wp.static(fused_mapped_atomic):
+                        block_index = triplet_blocks[block_offset]
+                        if block_index >= 0:
+                            wp.atomic_add(triplet_values, block_index, test_node_dof, trial_node_dof, value)
+                    else:
+                        triplet_values[block_offset, test_node_dof, trial_node_dof] = value
 
         # Set row and column indices
         if lane == 0:
@@ -1112,6 +1130,7 @@ def make_bilinear_dispatch_kernel(
 
             if triplet_rows:
                 triplet_rows[block_offset] = test_node_index
-            triplet_cols[block_offset] = trial_node_index
+            if triplet_cols:
+                triplet_cols[block_offset] = trial_node_index
 
     return dispatch_bilinear_kernel_fn

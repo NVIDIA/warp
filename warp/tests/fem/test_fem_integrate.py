@@ -7,6 +7,7 @@ import numpy as np
 
 import warp as wp
 import warp.fem as fem
+from warp._src.fem.integrate import _fem_bsr_triplet_maps
 from warp.fem import (
     D,
     Domain,
@@ -78,6 +79,11 @@ def scaled_bilinear_form(s: Sample, u: Field, v: Field, scale: wp.array[float]):
     return u(s) * v(s) * scale[0]
 
 
+@integrand
+def deterministic_bilinear_form(s: Sample, u: Field, v: Field):
+    return u(s) * v(s)
+
+
 @wp.func
 def constant_point_kernel(distance_squared: float, point_index: int):
     return 1.0
@@ -96,6 +102,11 @@ def vector_component_form(s: Sample, v: Field):
 @integrand
 def first_sample_form(s: Sample, u: Field):
     return u(s) * float(s.element_index + 1)
+
+
+@integrand
+def unused_bilinear_form(s: Sample, u: Field, v: Field):
+    return 0.0
 
 
 # -- Test functions --
@@ -808,6 +819,412 @@ def test_padded_sparse_assembly(test, device):
         test.assertAlmostEqual(loss.numpy()[0], scale.grad.numpy()[0], places=4)
 
 
+def test_mapped_sparse_assembly(test, device):
+    with wp.ScopedDevice(device):
+        geo = fem.Grid3D(res=(4, 4, 4))
+        space = fem.make_polynomial_space(geo, degree=1)
+        test_field = fem.make_test(space)
+        trial_field = fem.make_trial(space)
+        fields = {"v": test_field, "u": trial_field}
+        kernel_options = {"enable_backward": False}
+
+        reference = fem.integrate(
+            bilinear_form,
+            fields=fields,
+            output_dtype=float,
+            assembly="dispatch",
+            kernel_options=kernel_options,
+        )
+        x = wp.array(np.linspace(1.0, 2.0, reference.shape[1], dtype=np.float32), dtype=float, device=device)
+        expected = (reference @ x).numpy()
+        contribution_count = (
+            test_field.space_restriction.total_node_element_count() * trial_field.space.topology.MAX_NODES_PER_ELEMENT
+        )
+
+        for construction in ("mapped", "mapped_atomic"):
+            with test.assertRaisesRegex(ValueError, "Mapped FEM assembly requires"):
+                fem.integrate(
+                    bilinear_form,
+                    fields=fields,
+                    output_dtype=float,
+                    assembly="dispatch",
+                    kernel_options=kernel_options,
+                    bsr_options={"construction": construction, "prune_numerical_zeros": True},
+                )
+
+        for construction in ("mapped", "mapped_atomic"):
+            options = {"construction": construction}
+            reuse_options = {**options, "capacity": "reuse"}
+            temporary_store = fem.TemporaryStore()
+            mapped = fem.integrate(
+                bilinear_form,
+                fields=fields,
+                output_dtype=float,
+                assembly="dispatch",
+                kernel_options=kernel_options,
+                bsr_options=options,
+                temporary_store=temporary_store,
+            )
+
+            # fem.integrate() does not synchronize; nnz stays at the contribution count upper bound
+            test.assertEqual(mapped.nnz, contribution_count)
+
+            columns_ptr = mapped.columns.ptr
+            values_ptr = mapped.values.ptr
+            first_map = _fem_bsr_triplet_maps[mapped]
+            # Optional user-side synchronization, tightening launches of the reuse call below
+            first_values = mapped.values.numpy()[: mapped.nnz_sync()].copy()
+            test.assertLess(mapped.nnz, contribution_count)
+            if construction == "mapped_atomic":
+                mapped.values[mapped.nnz :].fill_(123.0)
+            fem.integrate(
+                bilinear_form,
+                fields=fields,
+                output=mapped,
+                assembly="dispatch",
+                kernel_options=kernel_options,
+                bsr_options=reuse_options,
+                temporary_store=temporary_store,
+            )
+            test.assertEqual(mapped.columns.ptr, columns_ptr)
+            test.assertEqual(mapped.values.ptr, values_ptr)
+            test.assertIs(_fem_bsr_triplet_maps[mapped], first_map)
+            assert_np_equal((mapped @ x).numpy(), expected, tol=1.0e-5)
+            if construction == "mapped":
+                # Gather sums duplicates in the same order as bsr_set_from_triplets()
+                np.testing.assert_array_equal(mapped.values.numpy()[: mapped.nnz], first_values)
+            else:
+                # Fused atomic reuse clears active blocks without touching unused capacity.
+                assert_np_equal(
+                    mapped.values.numpy()[mapped.nnz :],
+                    np.full(mapped.values.shape[0] - mapped.nnz, 123.0),
+                )
+
+            # capacity='auto' rebuilds the map, e.g. after a topology change, reusing its storage
+            first_map_ptrs = (
+                first_map._triplet_blocks.ptr,
+                first_map._block_ends.ptr,
+                first_map._triplet_indices.ptr,
+            )
+            fem.integrate(
+                bilinear_form,
+                fields=fields,
+                output=mapped,
+                assembly="dispatch",
+                kernel_options=kernel_options,
+                bsr_options=options,
+                temporary_store=temporary_store,
+            )
+            rebuilt_map = _fem_bsr_triplet_maps[mapped]
+            test.assertIs(rebuilt_map, first_map)
+            test.assertEqual(
+                (rebuilt_map._triplet_blocks.ptr, rebuilt_map._block_ends.ptr, rebuilt_map._triplet_indices.ptr),
+                first_map_ptrs,
+            )
+            assert_np_equal((mapped @ x).numpy(), expected, tol=1.0e-5)
+
+            # Reuse with the unsynchronized upper bound
+            test.assertEqual(mapped.nnz, contribution_count)
+            with wp.ScopedCapture(force_module_load=False) as capture:
+                fem.integrate(
+                    bilinear_form,
+                    fields=fields,
+                    output=mapped,
+                    assembly="dispatch",
+                    kernel_options=kernel_options,
+                    bsr_options=reuse_options,
+                )
+            wp.capture_launch(capture.graph)
+            assert_np_equal((mapped @ x).numpy(), expected, tol=1.0e-5)
+
+            if device.is_cuda:
+                # The initial mapped assembly must also be capturable
+                with wp.ScopedCapture(force_module_load=False) as capture:
+                    capture_first = fem.integrate(
+                        bilinear_form,
+                        fields=fields,
+                        output_dtype=float,
+                        assembly="dispatch",
+                        kernel_options=kernel_options,
+                        bsr_options=options,
+                    )
+                wp.capture_launch(capture.graph)
+                capture_first_map = _fem_bsr_triplet_maps[capture_first]
+                test.assertEqual(capture_first_map.triplet_count, contribution_count)
+                test.assertEqual(capture_first.nnz, contribution_count)
+                assert_np_equal((capture_first @ x).numpy(), expected, tol=1.0e-5)
+
+                # The map built during capture remains usable outside of the graph, after its destruction
+                del capture
+                fem.integrate(
+                    bilinear_form,
+                    fields=fields,
+                    output=capture_first,
+                    assembly="dispatch",
+                    kernel_options=kernel_options,
+                    bsr_options=reuse_options,
+                )
+                test.assertLessEqual(capture_first.nnz_sync(), contribution_count)
+                assert_np_equal((capture_first @ x).numpy(), expected, tol=1.0e-5)
+
+            if construction == "mapped":
+                fem.integrate(
+                    unused_bilinear_form,
+                    fields=fields,
+                    output=mapped,
+                    assembly="dispatch",
+                    kernel_options=kernel_options,
+                    bsr_options=reuse_options,
+                    temporary_store=temporary_store,
+                )
+                active_values = mapped.values.numpy()[: mapped.nnz_sync()]
+                assert_np_equal(active_values, np.zeros_like(active_values))
+
+        # Rewriting a mapped output through another FEM construction path invalidates its cached map.
+        invalidated = fem.integrate(
+            bilinear_form,
+            fields=fields,
+            output_dtype=float,
+            assembly="dispatch",
+            kernel_options=kernel_options,
+            bsr_options={"construction": "mapped"},
+        )
+        test.assertIn(invalidated, _fem_bsr_triplet_maps)
+        fem.integrate(
+            bilinear_form,
+            fields=fields,
+            output=invalidated,
+            assembly="dispatch",
+            kernel_options=kernel_options,
+            bsr_options={"construction": "triplets"},
+        )
+        test.assertNotIn(invalidated, _fem_bsr_triplet_maps)
+        with test.assertRaisesRegex(RuntimeError, "requires output from an earlier mapped assembly"):
+            fem.integrate(
+                bilinear_form,
+                fields=fields,
+                output=invalidated,
+                assembly="dispatch",
+                kernel_options=kernel_options,
+                bsr_options={"construction": "mapped", "capacity": "reuse"},
+            )
+
+        # Sparse interpolation also rewrites topology and invalidates a cached integration map.
+        fem.integrate(
+            bilinear_form,
+            fields=fields,
+            output=invalidated,
+            assembly="dispatch",
+            kernel_options=kernel_options,
+            bsr_options={"construction": "mapped"},
+        )
+        test.assertIn(invalidated, _fem_bsr_triplet_maps)
+        fem.interpolate(
+            linear_form,
+            dest=invalidated,
+            dest_space=space,
+            at=test_field.space_restriction,
+            fields={"u": trial_field},
+            kernel_options=kernel_options,
+        )
+        test.assertNotIn(invalidated, _fem_bsr_triplet_maps)
+
+        # Exercise padded trial-node slots using a point topology with varying
+        # node counts per element. Invalid contributions must use a negative
+        # sentinel so the generic mapped-atomic kernel skips them.
+        point_geo = fem.Grid2D(res=(2, 2))
+        point_domain = fem.Cells(point_geo)
+        points = wp.array([[0.25, 0.33], [0.33, 0.25], [0.8, 0.8]], dtype=wp.vec2, device=device)
+        point_quadrature = fem.PicQuadrature(point_domain, positions=points)
+        point_basis = fem.PointBasisSpace(point_quadrature)
+        point_space = fem.make_collocated_function_space(point_basis)
+        point_test = fem.make_test(point_space, domain=point_domain)
+        point_trial = fem.make_trial(point_space, domain=point_domain)
+        point_fields = {"v": point_test, "u": point_trial}
+
+        point_reference = fem.integrate(
+            bilinear_form,
+            quadrature=point_quadrature,
+            fields=point_fields,
+            assembly="generic",
+            kernel_options=kernel_options,
+            bsr_options={"construction": "mapped"},
+        )
+        point_mapped = fem.integrate(
+            bilinear_form,
+            quadrature=point_quadrature,
+            fields=point_fields,
+            assembly="generic",
+            kernel_options=kernel_options,
+            bsr_options={"construction": "mapped_atomic"},
+        )
+        point_map = _fem_bsr_triplet_maps[point_mapped]
+        test.assertTrue(np.any(point_map._triplet_blocks.numpy() == -1))
+
+        # Reuse goes through the fused mapped-atomic kernel
+        fem.integrate(
+            bilinear_form,
+            quadrature=point_quadrature,
+            fields=point_fields,
+            assembly="generic",
+            kernel_options=kernel_options,
+            output=point_mapped,
+            bsr_options={"construction": "mapped_atomic", "capacity": "reuse"},
+        )
+
+        point_x = wp.array(
+            np.linspace(1.0, 2.0, point_reference.shape[1], dtype=np.float32), dtype=float, device=device
+        )
+        assert_np_equal((point_mapped @ point_x).numpy(), (point_reference @ point_x).numpy(), tol=1.0e-5)
+
+        # Nodal assembly
+        nodal_reference = fem.integrate(
+            bilinear_form, fields=fields, assembly="nodal", output_dtype=float, kernel_options=kernel_options
+        )
+        nodal_expected = (nodal_reference @ x).numpy()
+        for construction in ("mapped", "mapped_atomic"):
+            nodal_mapped = fem.integrate(
+                bilinear_form,
+                fields=fields,
+                assembly="nodal",
+                output_dtype=float,
+                kernel_options=kernel_options,
+                bsr_options={"construction": construction},
+            )
+            fem.integrate(
+                bilinear_form,
+                fields=fields,
+                assembly="nodal",
+                output=nodal_mapped,
+                kernel_options=kernel_options,
+                bsr_options={"construction": construction, "capacity": "reuse"},
+            )
+            assert_np_equal((nodal_mapped @ x).numpy(), nodal_expected, tol=1.0e-5)
+
+        # Nodal assembly on a boundary restriction, whose host-side node count is an upper bound.
+        # Synchronizing that count between the build and reuse calls must not invalidate the map.
+        boundary = fem.BoundarySides(geo)
+        for construction in ("mapped", "mapped_atomic"):
+            boundary_test = fem.make_test(space, domain=boundary)
+            boundary_fields = {"v": boundary_test, "u": fem.make_trial(space, domain=boundary)}
+            boundary_reference = fem.integrate(
+                bilinear_form,
+                fields=boundary_fields,
+                assembly="nodal",
+                output_dtype=float,
+                kernel_options=kernel_options,
+            )
+            boundary_mapped = fem.integrate(
+                bilinear_form,
+                fields=boundary_fields,
+                assembly="nodal",
+                output_dtype=float,
+                kernel_options=kernel_options,
+                bsr_options={"construction": construction},
+            )
+            restriction = boundary_test.space_restriction
+            node_count_bound = restriction.node_count()
+            test.assertLess(restriction.node_count_sync(), node_count_bound)
+            fem.integrate(
+                bilinear_form,
+                fields=boundary_fields,
+                assembly="nodal",
+                output=boundary_mapped,
+                kernel_options=kernel_options,
+                bsr_options={"construction": construction, "capacity": "reuse"},
+            )
+            assert_np_equal((boundary_mapped @ x).numpy(), (boundary_reference @ x).numpy(), tol=1.0e-5)
+
+
+def test_deterministic_mapped_sparse_assembly(test, device):
+    """Keep ordinary FEM kernels free of deterministic scatter lowering."""
+    with wp.ScopedDevice(device):
+        geo = fem.Grid3D(res=(4, 4, 4))
+        space = fem.make_polynomial_space(geo, degree=1)
+        fields = {"v": fem.make_test(space), "u": fem.make_trial(space)}
+        kernel_options = {
+            "enable_backward": False,
+            "deterministic": wp.DeterministicMode.RUN_TO_RUN,
+            # A Q1 grid node is incident to at most eight cells. This keeps the
+            # intentionally atomic variant valid while its dynamic loop is
+            # lowered deterministically.
+            "deterministic_max_records": 8,
+        }
+
+        reference = fem.integrate(
+            deterministic_bilinear_form,
+            fields=fields,
+            output_dtype=float,
+            assembly="generic",
+            kernel_options=kernel_options,
+        )
+
+        plain_kernel = next(
+            kernel for key, (kernel, _, _) in deterministic_bilinear_form.cached_kernels.items() if key[2][-1] is False
+        )
+        plain_kernel.module.load(device)
+        test.assertFalse(plain_kernel.adj.det_meta.needs_deterministic)
+        test.assertEqual(len(plain_kernel.adj.det_meta.scatter_targets), 0)
+
+        mapped = fem.integrate(
+            deterministic_bilinear_form,
+            fields=fields,
+            output_dtype=float,
+            assembly="generic",
+            kernel_options=kernel_options,
+            bsr_options={"construction": "mapped_atomic"},
+        )
+        fem.integrate(
+            deterministic_bilinear_form,
+            fields=fields,
+            output=mapped,
+            assembly="generic",
+            kernel_options=kernel_options,
+            bsr_options={"construction": "mapped_atomic", "capacity": "reuse"},
+        )
+
+        atomic_kernel = next(
+            kernel for key, (kernel, _, _) in deterministic_bilinear_form.cached_kernels.items() if key[2][-1] is True
+        )
+        atomic_kernel.module.load(device)
+        test.assertTrue(atomic_kernel.adj.det_meta.needs_deterministic)
+        test.assertEqual(len(atomic_kernel.adj.det_meta.scatter_targets), 1)
+
+        x = wp.array(np.linspace(1.0, 2.0, reference.shape[1], dtype=np.float32), dtype=float, device=device)
+        assert_np_equal((mapped @ x).numpy(), (reference @ x).numpy(), tol=1.0e-5)
+
+
+def test_triplet_assembly_unused_restriction_slots(test, device):
+    with wp.ScopedDevice(device):
+        # The point-basis test restriction has more node-element slots than active references
+        geo = fem.Grid2D(res=(2, 2))
+        domain = fem.Cells(geo)
+        points = wp.array([[0.25, 0.33], [0.33, 0.25], [0.8, 0.8]], dtype=wp.vec2)
+        quadrature = fem.PicQuadrature(domain, positions=points)
+        space = fem.make_collocated_function_space(fem.PointBasisSpace(quadrature))
+        fields = {"v": fem.make_test(space, domain=domain), "u": fem.make_trial(space, domain=domain)}
+
+        # Poison the temporaries that will be reused for triplet rows, columns and values
+        temporary_store = fem.TemporaryStore()
+        poisoned = [(fem.borrow_temporary(temporary_store, shape=(1024,), dtype=int), 0) for _ in range(2)]
+        poisoned.append((fem.borrow_temporary(temporary_store, shape=(1024,), dtype=float), float("nan")))
+        for temporary, poison in poisoned:
+            temporary.fill_(poison)
+            temporary.release()
+
+        matrix = fem.integrate(
+            bilinear_form,
+            quadrature=quadrature,
+            fields=fields,
+            assembly="generic",
+            bsr_options={"construction": "triplets"},
+            temporary_store=temporary_store,
+        )
+        values = matrix.values.numpy()[: matrix.nnz_sync()]
+        test.assertFalse(np.any(np.isnan(values)))
+        assert_np_equal(values, np.array([0.125, 0.125, 0.25]))
+
+
 def test_capturability(test, device):
     A = bsr_zeros(0, 0, block_type=wp.float32, device=device)
 
@@ -990,6 +1407,19 @@ add_function_test(
     TestFemIntegrate, "test_integrate_scalar_output_layouts", test_integrate_scalar_output_layouts, devices=devices
 )
 add_function_test(TestFemIntegrate, "test_padded_sparse_assembly", test_padded_sparse_assembly, devices=cuda_devices)
+add_function_test(TestFemIntegrate, "test_mapped_sparse_assembly", test_mapped_sparse_assembly, devices=devices)
+add_function_test(
+    TestFemIntegrate,
+    "test_deterministic_mapped_sparse_assembly",
+    test_deterministic_mapped_sparse_assembly,
+    devices=devices,
+)
+add_function_test(
+    TestFemIntegrate,
+    "test_triplet_assembly_unused_restriction_slots",
+    test_triplet_assembly_unused_restriction_slots,
+    devices=devices,
+)
 add_function_test(TestFemIntegrate, "test_interpolate_reduction", test_interpolate_reduction, devices=devices)
 add_function_test(
     TestFemIntegrate, "test_interpolate_first_row_compression", test_interpolate_first_row_compression, devices=devices
