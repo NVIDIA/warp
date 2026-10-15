@@ -136,6 +136,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.geometry.test_mesh_query_point import TestMeshQueryPoint
     from warp.tests.geometry.test_mesh_query_ray import TestMeshQueryRay
     from warp.tests.geometry.test_sparse_marching_cubes import TestSparseMarchingCubes
+    from warp.tests.geometry.test_surface_nets import TestSurfaceNets
     from warp.tests.geometry.test_swept_volume import TestSweptVolume
     from warp.tests.geometry.test_volume import TestVolume
     from warp.tests.geometry.test_volume_validation import TestVolumeValidation
@@ -405,6 +406,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestLValue,
         TestMarchingCubes,
         TestSparseMarchingCubes,
+        TestSurfaceNets,
         TestMat,
         TestMatConstructors,
         TestMatLite,
@@ -584,6 +586,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.geometry.test_mesh import TestMesh
     from warp.tests.geometry.test_mesh_query_point import TestMeshQueryPoint
     from warp.tests.geometry.test_mesh_query_ray import TestMeshQueryRay
+    from warp.tests.geometry.test_surface_nets import TestSurfaceNets
     from warp.tests.geometry.test_volume import TestVolume
     from warp.tests.geometry.test_volume_validation import TestVolumeValidation
     from warp.tests.geometry.test_volume_write import TestVolumeWrite
@@ -859,6 +862,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestFemLinalg,
         TestHashGrid,
         TestMarchingCubes,
+        TestSurfaceNets,
         TestVolume,
         TestVolumeValidation,
         TestVolumeWrite,

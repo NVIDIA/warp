@@ -5,16 +5,25 @@
 # Example Isosurface
 #
 # Shows how to use the built-in isosurface extraction functionality to
-# extract a mesh from a density field, via the wp.geometry.IsoSurfaceBase
-# interface implemented by wp.geometry.IsoSurfaceMarchingCubes.
+# extract a mesh from a density field. The --method option switches
+# between the available wp.geometry.IsoSurfaceBase backends so their outputs can
+# be compared on the same scene, and --topology selects the type of the
+# extracted faces for the backends offering more than one.
 #
 # Note: requires a CUDA-capable device
 ###########################################################################
 
 
+import numpy as np
+
 import warp as wp
 import warp.geometry
 import warp.render
+
+METHODS = {
+    "marching_cubes": wp.geometry.IsoSurfaceMarchingCubes,
+    "surface_nets": wp.geometry.IsoSurfaceNets,
+}
 
 
 @wp.func
@@ -100,8 +109,11 @@ def make_field(
 
 
 class Example:
-    def __init__(self, stage_path="example_isosurface.usd", verbose=False):
+    def __init__(
+        self, stage_path="example_isosurface.usd", verbose=False, method="marching_cubes", topology="triangle"
+    ):
         self.verbose = verbose
+        self.topology = topology
 
         self.dim = 64
 
@@ -117,7 +129,14 @@ class Example:
 
         # The rest of the example only relies on the wp.geometry.IsoSurfaceBase
         # interface, so extraction methods can be swapped freely.
-        self.iso = wp.geometry.IsoSurfaceMarchingCubes(self.dim, self.dim, self.dim)
+        extractor_class = METHODS[method]
+        options = {}
+        if extractor_class is wp.geometry.IsoSurfaceNets:
+            options["topology"] = topology
+        elif topology != "triangle":
+            raise ValueError(f"The '{method}' method only supports the 'triangle' topology.")
+
+        self.iso = extractor_class(self.dim, self.dim, self.dim, **options)
 
         self.renderer = None
         if stage_path:
@@ -148,11 +167,18 @@ class Example:
             return
 
         with wp.ScopedTimer("Render"):
+            indices = self.iso.indices.numpy()
+            if self.topology == "quad":
+                # The renderer only draws triangle meshes, so split each
+                # extracted quad along its first diagonal.
+                quads = indices.reshape(-1, 4)
+                indices = np.hstack((quads[:, (0, 1, 2)], quads[:, (0, 2, 3)])).reshape(-1)
+
             self.renderer.begin_frame(self.frame / self.fps)
             self.renderer.render_mesh(
                 "surface",
                 self.iso.verts.numpy(),
-                self.iso.indices.numpy(),
+                indices,
                 colors=(0.35, 0.55, 0.9),
                 update_topology=True,
             )
@@ -171,12 +197,26 @@ if __name__ == "__main__":
         help="Path to the output USD file.",
     )
     parser.add_argument("--num-frames", type=int, default=240, help="Total number of frames.")
+    parser.add_argument(
+        "--method",
+        type=str,
+        choices=tuple(METHODS.keys()),
+        default="marching_cubes",
+        help="Isosurface extraction method to use.",
+    )
+    parser.add_argument(
+        "--topology",
+        type=str,
+        choices=("triangle", "quad"),
+        default="triangle",
+        help="Type of the extracted faces. The 'marching_cubes' method supports only triangles.",
+    )
     parser.add_argument("--verbose", action="store_true", help="Print out additional status messages during execution.")
 
     args = parser.parse_known_args()[0]
 
     with wp.ScopedDevice(args.device):
-        example = Example(stage_path=args.stage_path, verbose=args.verbose)
+        example = Example(stage_path=args.stage_path, verbose=args.verbose, method=args.method, topology=args.topology)
         for _ in range(args.num_frames):
             example.step()
             example.render()
