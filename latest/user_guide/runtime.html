@@ -3329,10 +3329,80 @@ graph retains the array inputs captured by <code class="docutils literal notrans
 normalized views and their backing allocations.</p>
 </section>
 </section>
+<section id="isosurface-extraction">
+<h2>Isosurface Extraction<a class="headerlink" href="#isosurface-extraction" title="Link to this heading">#</a></h2>
+<p>An isosurface is the surface where a 3-D scalar field equals a given threshold,
+such as the zero level of a signed distance field. Warp provides several methods
+to extract a mesh approximating it.</p>
+<p>For dense fields, Warp provides <a class="reference internal" href="../api_reference/_generated/warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes" title="warp.geometry.IsoSurfaceMarchingCubes"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.geometry.IsoSurfaceMarchingCubes</span></code></a> and <a class="reference internal" href="../api_reference/_generated/warp.geometry.IsoSurfaceNets.html#warp.geometry.IsoSurfaceNets" title="warp.geometry.IsoSurfaceNets"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.geometry.IsoSurfaceNets</span></code></a>, which implement the common
+<a class="reference internal" href="../api_reference/_generated/warp.geometry.IsoSurfaceBase.html#warp.geometry.IsoSurfaceBase" title="warp.geometry.IsoSurfaceBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.geometry.IsoSurfaceBase</span></code></a> interface.
+They share the same domain-bounds semantics, face winding, and flat
+<a class="reference internal" href="../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.int32</span></code></a> index arrays. Switching between them only
+requires changing the class being instantiated.</p>
+<section id="choosing-an-extractor">
+<h3>Choosing an Extractor<a class="headerlink" href="#choosing-an-extractor" title="Link to this heading">#</a></h3>
+<div class="pst-scrollable-table-container"><table class="table">
+<colgroup>
+<col style="width: 16.0%" />
+<col style="width: 20.0%" />
+<col style="width: 12.0%" />
+<col style="width: 26.0%" />
+<col style="width: 26.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Method</p></th>
+<th class="head"><p>Input</p></th>
+<th class="head"><p>Faces</p></th>
+<th class="head"><p>Strengths</p></th>
+<th class="head"><p>Trade-offs</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="#marching-cubes">Marching Cubes</a></p></td>
+<td><p>Dense 3-D array</p></td>
+<td><p>Triangles</p></td>
+<td><p>Places vertices at interpolated surface crossings on grid edges.
+Meshes up to the edge of the grid.</p></td>
+<td><p>Can produce thin, sliver triangles where the surface passes close to
+grid nodes.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#sparse-marching-cubes">Sparse Marching Cubes</a></p></td>
+<td><p>Function sampled only near the surface, or near-surface cells and
+their sampled corner values</p></td>
+<td><p>Triangles</p></td>
+<td><p>Avoids sampling the whole grid, which makes high resolutions affordable.
+Produces the same mesh as Marching Cubes.</p></td>
+<td><p>Needs a function with a known Lipschitz bound, or precomputed
+near-surface cells and their sampled corner values.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#surface-nets">Surface Nets</a></p></td>
+<td><p>Dense 3-D array</p></td>
+<td><p>Triangles or quads</p></td>
+<td><p>Typically produces more regular faces and fewer sliver triangles.</p></td>
+<td><p>Averages edge crossings within each cell, which can move vertices away
+from the isosurface and smooth features. The mesh may stop slightly
+before the edge of the grid.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>All of these methods support reverse-mode automatic differentiation from the
+field values to the vertex positions. None of them closes off the mesh where the
+surface leaves the grid.</p>
+<p>To compare the dense extractors on the same scene, run
+<a class="extlink-github reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/examples/geometry/example_isosurface.py">warp/examples/geometry/example_isosurface.py</a> with <code class="docutils literal notranslate"><span class="pre">&lt;method&gt;</span></code> set to
+<code class="docutils literal notranslate"><span class="pre">marching_cubes</span></code> or <code class="docutils literal notranslate"><span class="pre">surface_nets</span></code>:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>warp.examples.geometry.example_isosurface<span class="w"> </span>--method<span class="w"> </span>&lt;method&gt;
+</pre></div>
+</div>
+<p>Methods that produce quads, as listed in the table above, also accept
+<code class="docutils literal notranslate"><span class="pre">--topology</span> <span class="pre">quad</span></code>.</p>
+</section>
 <section id="marching-cubes">
-<h2>Marching Cubes<a class="headerlink" href="#marching-cubes" title="Link to this heading">#</a></h2>
+<h3>Marching Cubes<a class="headerlink" href="#marching-cubes" title="Link to this heading">#</a></h3>
 <p>The <a class="reference internal" href="../api_reference/_generated/warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes" title="warp.geometry.IsoSurfaceMarchingCubes"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.geometry.IsoSurfaceMarchingCubes</span></code></a> class can be used to extract a 2-D mesh
-approximating an isosurface of a 3-D scalar field. The resulting triangle mesh
+approximating an isosurface of a 3-D scalar field. Each vertex lies on a grid
+edge, at the point where the surface crosses it. The resulting triangle mesh
 can be saved to a USD file using the <a class="reference internal" href="../api_reference/_generated/warp.render.UsdRenderer.html#warp.render.UsdRenderer" title="warp.render.UsdRenderer"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.render.UsdRenderer</span></code></a>.</p>
 <div class="deprecated">
 <p><span class="versionmodified deprecated">Deprecated since version 1.18: </span><code class="docutils literal notranslate"><span class="pre">wp.MarchingCubes</span></code> is a deprecated alias of
@@ -3367,6 +3437,7 @@ True
 <p>The resulting mesh is stored in <code class="docutils literal notranslate"><span class="pre">mc.verts</span></code> as a <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.array</span></code></a> of
 <a class="reference internal" href="../api_reference/_generated/warp.vec3.html#warp.vec3" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.vec3</span></code></a> vertices and in <code class="docutils literal notranslate"><span class="pre">mc.indices</span></code> as a flat <a class="reference internal" href="../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.int32</span></code></a> index array.</p>
 <p>See <a class="extlink-github reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/examples/geometry/example_isosurface.py">warp/examples/geometry/example_isosurface.py</a> for a complete usage example.</p>
+</section>
 <section id="sparse-marching-cubes">
 <h3>Sparse Marching Cubes<a class="headerlink" href="#sparse-marching-cubes" title="Link to this heading">#</a></h3>
 <p>If we have access to a scalar field as a samplable function, we can extract its
@@ -3570,6 +3641,24 @@ bit <em>i</em> is set if corner <em>i</em> is inside the surface:</p>
 <li><p>Edges 4-7: Top face (z=1), cycling 4→5→6→7→4</p></li>
 <li><p>Edges 8-11: Vertical edges connecting corner <em>i</em> to corner <em>i+4</em></p></li>
 </ul>
+</section>
+<section id="surface-nets">
+<h3>Surface Nets<a class="headerlink" href="#surface-nets" title="Link to this heading">#</a></h3>
+<p>The <a class="reference internal" href="../api_reference/_generated/warp.geometry.IsoSurfaceNets.html#warp.geometry.IsoSurfaceNets" title="warp.geometry.IsoSurfaceNets"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.geometry.IsoSurfaceNets</span></code></a> class
+extracts a triangle or quad mesh approximating an isosurface of a 3-D scalar
+field. It places vertices inside the grid cells, at the average of the points
+where the surface crosses each cell’s edges. A surface that lies entirely inside
+the grid produces a closed mesh with no holes. The implementation is based on
+OpenVDB’s volume-to-mesh tool.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">topology</span></code> parameter selects the type of the faces in <code class="docutils literal notranslate"><span class="pre">indices</span></code>:
+<code class="docutils literal notranslate"><span class="pre">&quot;triangle&quot;</span></code> (the default) stores three consecutive vertex indices per face,
+and <code class="docutils literal notranslate"><span class="pre">&quot;quad&quot;</span></code> stores four. For example, to extract quads from the field of the
+<a class="reference internal" href="#marching-cubes">Marching Cubes</a> example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">iso</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">geometry</span><span class="o">.</span><span class="n">IsoSurfaceNets</span><span class="p">(</span><span class="n">nx</span><span class="o">=</span><span class="n">dim</span><span class="p">,</span> <span class="n">ny</span><span class="o">=</span><span class="n">dim</span><span class="p">,</span> <span class="n">nz</span><span class="o">=</span><span class="n">dim</span><span class="p">,</span> <span class="n">topology</span><span class="o">=</span><span class="s2">"quad"</span><span class="p">)</span>
+<span class="n">iso</span><span class="o">.</span><span class="n">surface</span><span class="p">(</span><span class="n">field</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+<span class="n">quads</span> <span class="o">=</span> <span class="n">iso</span><span class="o">.</span><span class="n">indices</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+</pre></div>
+</div>
 </section>
 </section>
 <section id="profiling">
@@ -3936,12 +4025,15 @@ Journal of Computer Graphics Techniques (JCGT), vol. 9, no. 3, 20–38, 2020.</p
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#object-lifetime-pitfall">Object Lifetime Pitfall</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#marching-cubes">Marching Cubes</a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#isosurface-extraction">Isosurface Extraction</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#choosing-an-extractor">Choosing an Extractor</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#marching-cubes">Marching Cubes</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sparse-marching-cubes">Sparse Marching Cubes</a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#extracting-from-an-explicit-cell-set">Extracting from an explicit cell set</a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#custom-marching-cubes-implementations">Custom Marching Cubes Implementations</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#surface-nets">Surface Nets</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#profiling">Profiling</a></li>

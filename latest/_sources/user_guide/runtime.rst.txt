@@ -2948,12 +2948,78 @@ This caller-ownership contract is the same for live CPU and CUDA graphs. The
 graph retains the array inputs captured by ``HashGrid.build()``, including
 normalized views and their backing allocations.
 
+Isosurface Extraction
+---------------------
+
+An isosurface is the surface where a 3-D scalar field equals a given threshold,
+such as the zero level of a signed distance field. Warp provides several methods
+to extract a mesh approximating it.
+
+For dense fields, Warp provides :class:`wp.geometry.IsoSurfaceMarchingCubes
+<warp.geometry.IsoSurfaceMarchingCubes>` and :class:`wp.geometry.IsoSurfaceNets
+<warp.geometry.IsoSurfaceNets>`, which implement the common
+:class:`wp.geometry.IsoSurfaceBase <warp.geometry.IsoSurfaceBase>` interface.
+They share the same domain-bounds semantics, face winding, and flat
+:class:`wp.int32 <warp.int32>` index arrays. Switching between them only
+requires changing the class being instantiated.
+
+Choosing an Extractor
+#####################
+
+.. list-table::
+    :header-rows: 1
+    :widths: 16 20 12 26 26
+
+    * - Method
+      - Input
+      - Faces
+      - Strengths
+      - Trade-offs
+    * - `Marching Cubes`_
+      - Dense 3-D array
+      - Triangles
+      - Places vertices at interpolated surface crossings on grid edges.
+        Meshes up to the edge of the grid.
+      - Can produce thin, sliver triangles where the surface passes close to
+        grid nodes.
+    * - `Sparse Marching Cubes`_
+      - Function sampled only near the surface, or near-surface cells and
+        their sampled corner values
+      - Triangles
+      - Avoids sampling the whole grid, which makes high resolutions affordable.
+        Produces the same mesh as Marching Cubes.
+      - Needs a function with a known Lipschitz bound, or precomputed
+        near-surface cells and their sampled corner values.
+    * - `Surface Nets`_
+      - Dense 3-D array
+      - Triangles or quads
+      - Typically produces more regular faces and fewer sliver triangles.
+      - Averages edge crossings within each cell, which can move vertices away
+        from the isosurface and smooth features. The mesh may stop slightly
+        before the edge of the grid.
+
+All of these methods support reverse-mode automatic differentiation from the
+field values to the vertex positions. None of them closes off the mesh where the
+surface leaves the grid.
+
+To compare the dense extractors on the same scene, run
+:github:`warp/examples/geometry/example_isosurface.py` with ``<method>`` set to
+``marching_cubes`` or ``surface_nets``:
+
+.. code-block:: shell
+
+    python -m warp.examples.geometry.example_isosurface --method <method>
+
+Methods that produce quads, as listed in the table above, also accept
+``--topology quad``.
+
 Marching Cubes
---------------
+##############
 
 The :class:`wp.geometry.IsoSurfaceMarchingCubes
 <warp.geometry.IsoSurfaceMarchingCubes>` class can be used to extract a 2-D mesh
-approximating an isosurface of a 3-D scalar field. The resulting triangle mesh
+approximating an isosurface of a 3-D scalar field. Each vertex lies on a grid
+edge, at the point where the surface crosses it. The resulting triangle mesh
 can be saved to a USD file using the :class:`warp.render.UsdRenderer`.
 
 .. deprecated:: 1.18
@@ -3226,6 +3292,29 @@ bit *i* is set if corner *i* is inside the surface:
 - Edges 0-3: Bottom face (z=0), cycling 0→1→2→3→0
 - Edges 4-7: Top face (z=1), cycling 4→5→6→7→4
 - Edges 8-11: Vertical edges connecting corner *i* to corner *i+4*
+
+
+Surface Nets
+############
+
+The :class:`wp.geometry.IsoSurfaceNets <warp.geometry.IsoSurfaceNets>` class
+extracts a triangle or quad mesh approximating an isosurface of a 3-D scalar
+field. It places vertices inside the grid cells, at the average of the points
+where the surface crosses each cell's edges. A surface that lies entirely inside
+the grid produces a closed mesh with no holes. The implementation is based on
+OpenVDB's volume-to-mesh tool.
+
+The ``topology`` parameter selects the type of the faces in ``indices``:
+``"triangle"`` (the default) stores three consecutive vertex indices per face,
+and ``"quad"`` stores four. For example, to extract quads from the field of the
+`Marching Cubes`_ example:
+
+.. testcode::
+    :skipif: wp.get_cuda_device_count() == 0
+
+    iso = wp.geometry.IsoSurfaceNets(nx=dim, ny=dim, nz=dim, topology="quad")
+    iso.surface(field, threshold=0.0)
+    quads = iso.indices.numpy().reshape(-1, 4)
 
 
 Profiling
