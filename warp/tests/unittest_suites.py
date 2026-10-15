@@ -203,6 +203,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_fast_math import TestFastMath
     from warp.tests.test_fixedarray import TestFixedArray
     from warp.tests.test_fp16 import TestFp16
+    from warp.tests.test_fsai import TestFSAI
     from warp.tests.test_func import TestFunc
     from warp.tests.test_func_inline import TestFuncInline
     from warp.tests.test_func_parameter_targets import TestFuncParameterTargets
@@ -378,6 +379,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestFemShape,
         TestFixedArray,
         TestFp16,
+        TestFSAI,
         TestFunc,
         TestFuncInline,
         TestFuncParameterTargets,
@@ -640,6 +642,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.test_fast_math import TestFastMath
     from warp.tests.test_fixedarray import TestFixedArray
     from warp.tests.test_fp16 import TestFp16
+    from warp.tests.test_fsai import TestFSAI
     from warp.tests.test_func import TestFunc
     from warp.tests.test_func_parameter_targets import TestFuncParameterTargets
     from warp.tests.test_future_annotations import TestFutureAnnotations
@@ -866,6 +869,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestMatElementwiseOps,
         TestMatLite,
         TestAdam,
+        TestFSAI,
         TestAllocTracker,
         TestAllocatorProtocol,
         TestCustomAllocator,

@@ -255,6 +255,8 @@ def preconditioner(A: _Matrix, ptype: str = "diag") -> LinearOperator:
            positive-definite, and ``A``'s scalar type must be ``float32`` or ``float64``. A
            non-symmetric block is zero-safe (becomes identity); a symmetric but non-positive-definite
            block is not (undefined, per :func:`wp.tile_cholesky`).
+         - ``"fsai"``: Adaptive factorized sparse approximate inverse for an SPD BSR matrix.
+           Use :class:`warp.optim.linear.FSAI` directly to configure its sparsity and reuse.
          - ``"id"``: Identity (null) preconditioner
 
          All ``"block_jacobi*"`` variants require ``A`` to be a square :class:`warp.sparse.BsrMatrix`
@@ -268,9 +270,16 @@ def preconditioner(A: _Matrix, ptype: str = "diag") -> LinearOperator:
         ValueError: ``ptype`` is not one of the supported values, a ``"block_jacobi*"``
             ``ptype`` is requested with a non-\\ :class:`warp.sparse.BsrMatrix` ``A``, one that
             isn't square, or one whose blocks aren't square; or ``ptype="block_jacobi_tile"``
-            is requested with an ``A`` whose scalar type isn't ``float32``/``float64``.
+            is requested with an ``A`` whose scalar type isn't ``float32``/``float64``;
+            or ``ptype="fsai"`` is requested with an input that fails
+            :class:`warp.optim.linear.FSAI` validation.
+        TypeError: ``ptype="fsai"`` is requested with an unsupported scalar type.
     """
 
+    if ptype == "fsai":
+        from warp._src.optim.fsai import FSAI  # noqa: PLC0415
+
+        return FSAI(A)
     if ptype == "id":
         return None
     if ptype in ("diag", "diag_abs"):
@@ -2942,7 +2951,9 @@ def _cr_kernel_1(
     bid = _find_entry_batch(i, batch_offsets, dofs_per_entry)
 
     if bid >= 0:
-        alpha = wp.where(resid[bid] > tol[bid] and y_Ap[bid] > 0.0, zAz_old[bid] / y_Ap[bid], zAz_old.dtype(0.0))
+        alpha = wp.where(
+            resid[bid] > tol[bid] and y_Ap[bid] > y_Ap.dtype(0.0), zAz_old[bid] / y_Ap[bid], zAz_old.dtype(0.0)
+        )
 
         x[i] = x[i] + alpha * p[i]
         r[i] = r[i] - alpha * Ap[i]
@@ -2967,7 +2978,9 @@ def _cr_kernel_2(
     bid = _find_entry_batch(i, batch_offsets, dofs_per_entry)
 
     if bid >= 0:
-        beta = wp.where(resid[bid] > tol[bid] and zAz_old[bid] > 0.0, zAz_new[bid] / zAz_old[bid], zAz_old.dtype(0.0))
+        beta = wp.where(
+            resid[bid] > tol[bid] and zAz_old[bid] > zAz_old.dtype(0.0), zAz_new[bid] / zAz_old[bid], zAz_old.dtype(0.0)
+        )
 
         p[i] = z[i] + beta * p[i]
         Ap[i] = Az[i] + beta * Ap[i]

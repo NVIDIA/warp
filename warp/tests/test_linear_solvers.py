@@ -17,6 +17,20 @@ from warp.sparse import bsr_from_triplets, bsr_identity, bsr_mv, bsr_set_from_tr
 from warp.tests.unittest_utils import *
 
 
+def _dense_matrix(A):
+    """Return ``A`` as a dense NumPy array, whether it is a dense Warp array or a BSR matrix."""
+    if not hasattr(A, "offsets"):
+        return A.numpy()
+    rows, cols = A.block_shape
+    dense = np.zeros(A.shape)
+    offsets, columns = A.offsets.numpy(), A.columns.numpy()
+    values = A.values.numpy().astype(np.float64).reshape(-1, rows, cols)
+    for row in range(A.nrow):
+        for slot in range(offsets[row], offsets[row + 1]):
+            dense[row * rows : (row + 1) * rows, columns[slot] * cols : (columns[slot] + 1) * cols] = values[slot]
+    return dense
+
+
 def _check_linear_solve(test, A, b, func, *args, **kwargs):
     # test from zero
     x = wp.zeros_like(b)
@@ -58,10 +72,10 @@ def _check_linear_solve(test, A, b, func, *args, **kwargs):
     # In CG and BiCGSTAB residual norm is evaluating from running residual
     # rather then being computed from scratch as Ax - b
     # This can lead to accumulated inaccuracies over iterations, esp in float32
-    residual = A.numpy() @ x.numpy() - b.numpy()
+    residual = _dense_matrix(A) @ x.numpy().ravel() - b.numpy().ravel()
     err_np = np.linalg.norm(residual)
 
-    if A.dtype == wp.float64:
+    if getattr(A, "scalar_type", A.dtype) == wp.float64:
         test.assertLessEqual(err_np, 2.0 * atol)
     else:
         test.assertLessEqual(err_np, 32.0 * atol)
@@ -1060,12 +1074,12 @@ def test_block_jacobi_preconditioner_scalar_fallback(test, device):
 
 
 def test_block_jacobi_preconditioner_dtype_coverage(test, device):
-    """Verify "direct"/"sequential" succeed for float16, unlike "block_jacobi_tile".
+    """Verify Jacobi, direct/sequential block Jacobi and FSAI support float16/32/64.
 
     They perform plain scalar arithmetic (no ``wp.tile_cholesky`` involved), so they support any
     floating scalar type, including ``float16``, in addition to ``float32``/``float64``.
     """
-    for ptype, block_size in (("block_jacobi_direct", 3), ("block_jacobi_sequential", 8)):
+    for ptype, block_size in (("diag", 3), ("block_jacobi_direct", 3), ("block_jacobi_sequential", 8), ("fsai", 8)):
         for dtype in (wp.float16, wp.float32, wp.float64):
             A, _b, _diag_blocks = _make_block_spd_system(
                 num_blocks=4, block_size=block_size, seed=55, dtype=dtype, device=device
@@ -1224,13 +1238,13 @@ def test_block_jacobi_preconditioner_well_conditioned_scaled_block(test, device)
     A relative-pivot tolerance that isn't dtype-aware rejects invertible, merely differently
     scaled blocks as singular and silently falls back to the identity. The scale each dtype can
     resolve differs: float16's tolerance is already ~1 ulp, so ``diag(1, 1e-4)`` is genuinely
-    below its noise floor and ``diag(1, 1e-2)`` is used there instead. Covers both the QR
-    ("direct") and LDL^T ("sequential") strategies.
+    below its noise floor and ``diag(1, 1e-2)`` is used there instead. Covers the QR
+    ("direct") and LDL^T ("sequential") strategies, scalar Jacobi and FSAI.
     """
     rows = wp.array(np.array([0], dtype=np.int32), dtype=int, device=device)
     cols = wp.array(np.array([0], dtype=np.int32), dtype=int, device=device)
 
-    for ptype in ("block_jacobi_direct", "block_jacobi_sequential"):
+    for ptype in ("diag", "block_jacobi_direct", "block_jacobi_sequential", "fsai"):
         for dtype, scale in ((wp.float16, 1.0e-2), (wp.float32, 1.0e-4), (wp.float64, 1.0e-4)):
             block = np.array([[1.0, 0.0], [0.0, scale]])
             expected_inv = np.diag(1.0 / np.diag(block))
@@ -1392,6 +1406,44 @@ def test_block_jacobi_preconditioner_unsupported_dtype(test, device):
 
     with test.assertRaises(ValueError):
         preconditioner(A, "block_jacobi_tile")
+
+
+def test_float16_preconditioned_solvers(test, device):
+    """Check CG and CR against true residuals with every half-compatible preconditioner."""
+    A, b, _ = _make_block_spd_system(num_blocks=4, block_size=3, seed=55, dtype=wp.float16, device=device)
+    n = A.shape[0]
+    dense = np.zeros((n, n))
+    offsets, columns, values = A.offsets.numpy(), A.columns.numpy(), A.values.numpy().astype(np.float64)
+    for row in range(A.nrow):
+        for slot in range(offsets[row], offsets[row + 1]):
+            col = columns[slot]
+            dense[3 * row : 3 * row + 3, 3 * col : 3 * col + 3] = values[slot]
+    rhs = b.numpy().astype(np.float64)
+    for ptype in ("diag", "block_jacobi_direct", "block_jacobi_sequential", "fsai"):
+        M = preconditioner(A, ptype)
+        for solver in (cg, cr):
+            for vector_rhs in (False, True):
+                b_view = b.reshape((-1, 3)).view(wp.vec3h) if vector_rhs else b
+                x = wp.zeros_like(b_view)
+                with wp.ScopedDevice(device):
+                    iterations, error, tolerance = solver(A, b_view, x, M=M, tol=1e-2, maxiter=100)
+                test.assertLess(iterations, 100)
+                test.assertLessEqual(error, tolerance)
+                residual = dense @ x.numpy().ravel().astype(np.float64) - rhs
+                test.assertLess(np.linalg.norm(residual) / np.linalg.norm(rhs), 1.5e-2)
+
+
+def test_fsai_preconditioned_solvers(test, device):
+    """Solve block SPD systems with every Krylov solver and FSAI, including capturable solver loops."""
+    for dtype in (wp.float32, wp.float64):
+        A, b, _ = _make_block_spd_system(num_blocks=8, block_size=3, seed=77, dtype=dtype, device=device)
+        M = preconditioner(A, "fsai")
+        tol = 1.0e-5 if dtype == wp.float32 else 1.0e-10
+        for solver in (cg, cr):
+            _check_linear_solve(test, A, b, solver, M=M, maxiter=1000, tol=tol)
+        for solver in (bicgstab, gmres):
+            _check_linear_solve(test, A, b, solver, M=M, maxiter=1000, tol=tol)
+            _check_linear_solve(test, A, b, solver, M=M, maxiter=1000, tol=tol, is_left_preconditioner=True)
 
 
 class TestLinearSolvers(unittest.TestCase):
@@ -1574,6 +1626,13 @@ add_function_test(
     "test_block_jacobi_direct_explicit_choice_honored_for_unsupported_dtype",
     test_block_jacobi_direct_explicit_choice_honored_for_unsupported_dtype,
     devices=devices,
+)
+
+add_function_test(
+    TestLinearSolvers, "test_fsai_preconditioned_solvers", test_fsai_preconditioned_solvers, devices=devices
+)
+add_function_test(
+    TestLinearSolvers, "test_float16_preconditioned_solvers", test_float16_preconditioned_solvers, devices=devices
 )
 
 if __name__ == "__main__":
