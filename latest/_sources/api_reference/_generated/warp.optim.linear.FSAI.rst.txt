@@ -1,0 +1,31 @@
+﻿warp.optim.linear.FSAI
+======================
+
+.. currentmodule:: warp.optim.linear
+
+.. autoclass:: FSAI
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~FSAI.update
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~FSAI.batch_count
+      ~FSAI.batch_offsets
+      ~FSAI.device
+      ~FSAI.dtype
+      ~FSAI.matvec
+      ~FSAI.max_batch_length
+      ~FSAI.scalar_type
+      ~FSAI.shape
+   
+   

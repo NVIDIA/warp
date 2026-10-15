@@ -570,31 +570,34 @@ residual (CR), and generalized minimal residual (GMRES) methods.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.optim.linear.CR.html#warp.optim.linear.CR" title="warp.optim.linear.CR"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CR</span></code></a></p></td>
 <td><p>Pre-allocated state for the Conjugate Residual solver.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.optim.linear.GMRES.html#warp.optim.linear.GMRES" title="warp.optim.linear.GMRES"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GMRES</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.optim.linear.FSAI.html#warp.optim.linear.FSAI" title="warp.optim.linear.FSAI"><code class="xref py py-obj docutils literal notranslate"><span class="pre">FSAI</span></code></a></p></td>
+<td><p>Build an adaptive factorized sparse approximate inverse of an SPD BSR matrix.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.optim.linear.GMRES.html#warp.optim.linear.GMRES" title="warp.optim.linear.GMRES"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GMRES</span></code></a></p></td>
 <td><p>Pre-allocated state for the restarted Generalized Minimum Residual solver.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.optim.linear.LinearOperator.html#warp.optim.linear.LinearOperator" title="warp.optim.linear.LinearOperator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LinearOperator</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.optim.linear.LinearOperator.html#warp.optim.linear.LinearOperator" title="warp.optim.linear.LinearOperator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LinearOperator</span></code></a></p></td>
 <td><p>Linear operator to be used as left-hand-side of linear iterative solvers.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.optim.linear.LinearSolverState.html#warp.optim.linear.LinearSolverState" title="warp.optim.linear.LinearSolverState"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LinearSolverState</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.optim.linear.LinearSolverState.html#warp.optim.linear.LinearSolverState" title="warp.optim.linear.LinearSolverState"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LinearSolverState</span></code></a></p></td>
 <td><p>Pre-allocated state for a linear iterative solver.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.optim.linear.aslinearoperator.html#warp.optim.linear.aslinearoperator" title="warp.optim.linear.aslinearoperator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">aslinearoperator</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.optim.linear.aslinearoperator.html#warp.optim.linear.aslinearoperator" title="warp.optim.linear.aslinearoperator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">aslinearoperator</span></code></a></p></td>
 <td><p>Cast the dense or sparse matrix <code class="docutils literal notranslate"><span class="pre">A</span></code> as a <a class="reference internal" href="_generated/warp.optim.linear.LinearOperator.html#warp.optim.linear.LinearOperator" title="warp.optim.linear.LinearOperator"><code class="xref py py-class docutils literal notranslate"><span class="pre">LinearOperator</span></code></a>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.optim.linear.bicgstab_function.html#warp.optim.linear.bicgstab" title="warp.optim.linear.bicgstab"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bicgstab</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.optim.linear.bicgstab_function.html#warp.optim.linear.bicgstab" title="warp.optim.linear.bicgstab"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bicgstab</span></code></a></p></td>
 <td><p>Compute an approximate solution to a linear system using the Biconjugate Gradient Stabilized method (BiCGSTAB).</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.optim.linear.cg_function.html#warp.optim.linear.cg" title="warp.optim.linear.cg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cg</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.optim.linear.cg_function.html#warp.optim.linear.cg" title="warp.optim.linear.cg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cg</span></code></a></p></td>
 <td><p>Compute an approximate solution to a symmetric, positive-definite linear system using the Conjugate Gradient algorithm.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.optim.linear.cr_function.html#warp.optim.linear.cr" title="warp.optim.linear.cr"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cr</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.optim.linear.cr_function.html#warp.optim.linear.cr" title="warp.optim.linear.cr"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cr</span></code></a></p></td>
 <td><p>Compute an approximate solution to a symmetric, positive-definite linear system using the Conjugate Residual algorithm.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.optim.linear.gmres_function.html#warp.optim.linear.gmres" title="warp.optim.linear.gmres"><code class="xref py py-obj docutils literal notranslate"><span class="pre">gmres</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.optim.linear.gmres_function.html#warp.optim.linear.gmres" title="warp.optim.linear.gmres"><code class="xref py py-obj docutils literal notranslate"><span class="pre">gmres</span></code></a></p></td>
 <td><p>Compute an approximate solution to a linear system using the restarted Generalized Minimum Residual method (GMRES[k]).</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.optim.linear.preconditioner.html#warp.optim.linear.preconditioner" title="warp.optim.linear.preconditioner"><code class="xref py py-obj docutils literal notranslate"><span class="pre">preconditioner</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.optim.linear.preconditioner.html#warp.optim.linear.preconditioner" title="warp.optim.linear.preconditioner"><code class="xref py py-obj docutils literal notranslate"><span class="pre">preconditioner</span></code></a></p></td>
 <td><p>Construct and return a preconditioner for an input matrix.</p></td>
 </tr>
 </tbody>
