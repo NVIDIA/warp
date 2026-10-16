@@ -8,13 +8,12 @@
 ARG ROCM_VERSION=7.2
 ARG UBUNTU_VERSION=24.04
 ARG BASE_IMAGE=rocm/pytorch:rocm10.1.0_ubuntu24.04_py3.12_pytorch_release_2.14.0
+
 FROM rocm/dev-ubuntu-${UBUNTU_VERSION}:${ROCM_VERSION}-complete AS warp_gfx942
 
 ARG ROCM_VERSION=7.2
-ARG PY_VERSION=3.12
 ARG TORCH_VERSION=2.9.1
 ARG TORCH_VISION_VERSION=0.24.0
-ARG MAMBA_ENV_NAME=base
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
@@ -33,19 +32,21 @@ ENV PYOPENGL_PLATFORM=egl
 
 WORKDIR /root/
 
-RUN curl -L micro.mamba.pm/install.sh | bash && \
-    ~/.local/bin/micromamba run -n ${MAMBA_ENV_NAME} ~/.local/bin/micromamba install python=${PY_VERSION} -c conda-forge --override-channels -y && \
-    ~/.local/bin/micromamba run -n ${MAMBA_ENV_NAME} pip install cmake pybind11 build ninja scikit-build-core setuptools-scm numpy pytest pytest-xdist matplotlib "coverage[toml]" && \
-    ~/.local/bin/micromamba run -n ${MAMBA_ENV_NAME} pip install torch==${TORCH_VERSION} torchvision==${TORCH_VISION_VERSION} -f https://repo.radeon.com/rocm/manylinux/rocm-rel-${ROCM_VERSION}/
+# python3 (3.12), pip and the Python headers come with the base image.
+RUN ln -sf /usr/bin/python3 /usr/local/bin/python
+
+RUN pip install --break-system-packages \
+    cmake pybind11 build ninja scikit-build-core setuptools-scm numpy pytest pytest-xdist matplotlib "coverage[toml]" && \
+    pip install --break-system-packages \
+    torch==${TORCH_VERSION} torchvision==${TORCH_VISION_VERSION} -f https://repo.radeon.com/rocm/manylinux/rocm-rel-${ROCM_VERSION}/
 
 ARG HIP_ARCH=gfx942
 
 COPY . /workspace/warp
 WORKDIR /workspace/warp
 
-RUN ROCM_PATH=/opt/rocm ~/.local/bin/micromamba run -n ${MAMBA_ENV_NAME} \
-        python build_lib.py --hip-arch=${HIP_ARCH} --hipcc-options="-Xarch_device -fno-inline" && \
-    ~/.local/bin/micromamba run -n ${MAMBA_ENV_NAME} pip install -e . --break-system-packages
+RUN ROCM_PATH=/opt/rocm python build_lib.py --hip-arch=${HIP_ARCH} --hipcc-options="-Xarch_device -fno-inline" && \
+    pip install -e . --break-system-packages
 
 
 
