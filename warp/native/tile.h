@@ -1195,10 +1195,12 @@ template <typename T, int... Dims> auto tile_register()
     return tile_register_t<T, tile_layout_register_t<tile_shape_t<Dims...>>>();
 }
 
+// must match tile.alignment in Python types.py
+constexpr int tile_alignment = 16;
+
 inline CUDA_CALLABLE int tile_align(int num_bytes)
 {
-    // note this much match value in Python types.py
-    const int alignment = 16;
+    const int alignment = tile_alignment;
 
     const int num_bytes_abs = num_bytes < 0 ? -num_bytes : num_bytes;
     const int sign = num_bytes < 0 ? -1 : 1;
@@ -1349,10 +1351,12 @@ public:
         // Keep this path separate from the checked CPU arithmetic below. NVRTC
         // targeting sm_89 otherwise fails to hoist repeated shared-memory
         // address calculations in tiled kernels.
-        const unsigned int offset = smem_base[WP_TILE_THREAD_IDX];
+        // The counter is kept in alignment units so the compiler can prove each
+        // offset is aligned and vectorize shared-memory accesses to the tile.
+        const unsigned int offset = smem_base[WP_TILE_THREAD_IDX] * tile_alignment;
 
         // one entry per-thread so no need for synchronization
-        smem_base[WP_TILE_THREAD_IDX] += tile_align(num_bytes);
+        smem_base[WP_TILE_THREAD_IDX] += tile_align(num_bytes) / tile_alignment;
 #else
         const int thread_idx = WP_TILE_THREAD_IDX;
         const unsigned int offset = smem_base[thread_idx];
