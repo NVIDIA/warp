@@ -511,7 +511,8 @@
 <dt class="sig sig-object py" id="warp.config.deterministic_debug">
 <span class="sig-prename descclassname"><span class="pre">warp.config.</span></span><span class="sig-name descname"><span class="pre">deterministic_debug</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></span><a class="headerlink" href="#warp.config.deterministic_debug" title="Link to this definition">#</a></dt>
 <dd><p>Enable debug diagnostics for deterministic execution mode.</p>
-<p>When enabled, deterministic scatter overflows may emit device-side diagnostics.
+<p>When enabled, deterministic buffer overflows and slot-assignment mismatches may
+emit device-side diagnostics, including during CUDA graph replay.
 This setting is intended for debugging capacity issues and should remain disabled
 for normal execution, especially when CUDA graph capture is performance-critical.</p>
 </dd></dl>

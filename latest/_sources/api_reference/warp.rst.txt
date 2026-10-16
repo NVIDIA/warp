@@ -278,6 +278,7 @@ Kernel Programming
    WarpCodegenKeyError
    WarpCodegenTypeError
    WarpCodegenValueError
+   WarpDeterminismError
    address_of
    func
    func_grad
