@@ -62,13 +62,23 @@ def test_record_cmd_deterministic_launch(test, device):
     np.testing.assert_array_equal(output_2.numpy(), expected)
 
     output_3 = wp.zeros(out_size, dtype=wp.float32, device=device)
-    with test.assertRaisesRegex(RuntimeError, "raw ctypes"):
+    with test.assertRaisesRegex(wp.WarpDeterminismError, "raw ctypes"):
         cmd.set_param_by_name_from_ctype("output", output_3.__ctype__())
 
     cmd.set_param_by_name("output", output_3)
     cmd.launch()
 
     np.testing.assert_array_equal(output_3.numpy(), expected)
+
+    alias = wp.array(ptr=output_3.ptr, shape=out_size, dtype=wp.int32, device=device)
+    with test.assertRaisesRegex(wp.WarpDeterminismError, "raw ctypes"):
+        cmd.set_param_by_name_from_ctype("dest_indices", alias.__ctype__())
+    cmd.set_dim(out_size)
+    output_3.zero_()
+    cmd.set_param_by_name("dest_indices", alias)
+    with test.assertRaisesRegex(wp.WarpDeterminismError, "overlaps argument 'dest_indices'"):
+        cmd.launch()
+    np.testing.assert_array_equal(output_3.numpy(), np.zeros(out_size))
 
 
 def test_graph_capture_deterministic_launch(test, device):
@@ -302,7 +312,7 @@ def test_counter_large_launch_rejected(test, device):
     counter = wp.zeros(1, dtype=wp.int32, device=device)
     output = wp.zeros(1, dtype=wp.float32, device=device)
 
-    with test.assertRaisesRegex(RuntimeError, "up to 2\\^31 - 1 threads"):
+    with test.assertRaisesRegex(wp.WarpDeterminismError, "supports at most 2\\^31 - 1 threads"):
         wp.launch(counter_kernel, dim=(46341, 46341), inputs=[data, counter], outputs=[output], device=device)
 
 
@@ -320,7 +330,7 @@ def test_apic_capture_rejects_deterministic_cuda_kernel(test, device):
     wp.launch(scatter_add_kernel, dim=n, inputs=[data, indices], outputs=[output], device=device)
     output.zero_()
 
-    with test.assertRaisesRegex(RuntimeError, "APIC serialization"):
+    with test.assertRaisesRegex(wp.WarpDeterminismError, "cannot serialize.*with APIC"):
         with wp.ScopedCapture(device=device, apic=True, force_module_load=False):
             wp.launch(scatter_add_kernel, dim=n, inputs=[data, indices], outputs=[output], device=device)
 

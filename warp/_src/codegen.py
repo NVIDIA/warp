@@ -28,7 +28,7 @@ from typing import Any, ClassVar, Literal, NamedTuple, get_args, get_origin
 import numpy as np
 
 import warp.config
-from warp._src.deterministic import DeterministicCodegen
+from warp._src.deterministic import DeterministicCodegen, WarpDeterminismError
 from warp._src.logger import log_debug, log_warning
 from warp._src.types import *
 
@@ -2282,6 +2282,7 @@ class Adjoint:
             # code to the CUDA/C++ file to avoid a broken function from affecting
             # the compilation of valid ones.
             adj._validate_return_type()
+            adj.deterministic.end_build()
 
         except Exception as original_exc:
             try:
@@ -2963,6 +2964,7 @@ class Adjoint:
 
         # Deterministic mode: intercept atomic builtins and emit scatter or
         # two-pass code instead of the normal atomic call.
+        adj.deterministic.track_array_access(func, bound_args)
         det_output = adj.deterministic.emit_atomic_call(
             func, bound_args, return_type, output, output_list, return_value_used=return_value_used
         )
@@ -4767,6 +4769,7 @@ class Adjoint:
                     )
                 # handles array loads (where each dimension has an index specified)
                 out = adj.add_builtin_call("address", [target, *indices])
+                adj.deterministic.track_array_reference(out, target)
                 if origin := adj.reference_origin_for_var(target):
                     out.ref_origin = origin.extend_array(indices)
 
@@ -5804,8 +5807,6 @@ class Adjoint:
             )
 
         array_root = slot.root
-        if adj.deterministic.enabled:
-            adj.det_meta.has_component_updates = True
         array_expression = adj._array_slot_root_expr(array_root)
         index_expressions = ", ".join(index.emit() for index in slot.indices)
         slot_accessor = f"[&](auto& _e) -> auto& {{ return _e{slot.access}; }}"
@@ -5826,9 +5827,10 @@ class Adjoint:
                     return True
                 scalar_type = getattr(slot.type, "_wp_scalar_type_", slot.type)
                 if operation in ("add", "sub") and type_is_float(scalar_type):
-                    raise WarpCodegenError(
-                        "Deterministic mode does not yet support floating-point composite slot augmented assignment "
-                        "atomics."
+                    raise WarpDeterminismError(
+                        "Deterministic mode cannot compile this kernel. Cause: floating-point composite slot "
+                        "augmented assignment atomics are not supported. Fix: accumulate whole composite values "
+                        "with atomic_add(), use separate scalar arrays, or disable deterministic mode for this kernel."
                     )
                 forward_statement = adj.deterministic.wrap_side_effect_call(forward_statement)
             reverse_operation = f"atomic_{operation}"

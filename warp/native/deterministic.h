@@ -26,9 +26,10 @@ template <typename T> struct det_scatter_buf_t {
 struct det_counter_buf_t {
     int64_t* keys;
     int* values;
+    int* destinations;  // Phase-0 destination by record ordinal; keys are reordered during the scan.
     int* prefixes;
     int* record_slots;
-    int* cursors;
+    int* cursors;  // Per-thread reservation count for the active counting or execution pass.
     int* count;
     int capacity;
     int records_per_thread;
@@ -46,6 +47,33 @@ struct det_ctx {
 };
 
 namespace deterministic {
+
+enum ErrorCode {
+    ERROR_OVERFLOW = 1,
+    // The execution pass changed a consumed-return counter reservation recorded by the counting pass.
+    ERROR_COUNTER_REPLAY_DIVERGENCE = 2,
+};
+
+inline CUDA_CALLABLE void report_counter_replay_divergence(det_ctx& ctx, int cursor, int dest_flat_idx, int value)
+{
+#ifdef __CUDA_ARCH__
+    if (ctx.overflow != nullptr) {
+        int prev = atomicCAS(ctx.overflow, 0, ERROR_COUNTER_REPLAY_DIVERGENCE);
+        if (ctx.debug && prev == 0) {
+            printf(
+                "Warp deterministic mode: atomic_add() call changed while assigning stable slots; "
+                "thread=%llu call=%d actual_array_offset=%d actual_increment=%d\n",
+                static_cast<unsigned long long>(ctx.idx), cursor, dest_flat_idx, value
+            );
+        }
+    }
+#else
+    (void)ctx;
+    (void)cursor;
+    (void)dest_flat_idx;
+    (void)value;
+#endif
+}
 
 // Device-side function called from generated kernel code in deterministic mode.
 // Writes a (key, value) record to the scatter buffer.
@@ -66,9 +94,13 @@ inline CUDA_CALLABLE void scatter(det_ctx& ctx, det_scatter_buf_t<T>& buf, int d
             | static_cast<int64_t>(static_cast<unsigned int>(ctx.idx & 0xFFFFFFFFu));
         buf.vals[slot] = value;
     } else if (ctx.overflow != nullptr) {
-        int prev = atomicCAS(ctx.overflow, 0, 1);
+        int prev = atomicCAS(ctx.overflow, 0, ERROR_OVERFLOW);
         if (ctx.debug && prev == 0) {
-            printf("Warp deterministic scatter overflow: capacity=%d dest=%d\n", buf.capacity, dest_flat_idx);
+            printf(
+                "Warp deterministic mode: too many atomic updates for the temporary capacity; "
+                "capacity=%d array_offset=%d. Increase deterministic_max_records.\n",
+                buf.capacity, dest_flat_idx
+            );
         }
     }
 #else
@@ -86,11 +118,12 @@ inline CUDA_CALLABLE int counter_add(det_ctx& ctx, det_counter_buf_t& buf, int d
     int cursor = atomicAdd(&buf.cursors[ctx.idx], 1);
     if (cursor >= buf.records_per_thread) {
         if (ctx.overflow != nullptr) {
-            int prev = atomicCAS(ctx.overflow, 0, 1);
+            int prev = atomicCAS(ctx.overflow, 0, ERROR_OVERFLOW);
             if (ctx.debug && prev == 0) {
                 printf(
-                    "Warp deterministic counter overflow: records_per_thread=%d dest=%d\n", buf.records_per_thread,
-                    dest_flat_idx
+                    "Warp deterministic mode: this thread made too many atomic_add() calls; "
+                    "per_thread_limit=%d array_offset=%d. Increase deterministic_max_records.\n",
+                    buf.records_per_thread, dest_flat_idx
                 );
             }
         }
@@ -100,9 +133,13 @@ inline CUDA_CALLABLE int counter_add(det_ctx& ctx, det_counter_buf_t& buf, int d
     int64_t record_ordinal64 = static_cast<int64_t>(ctx.idx) * buf.records_per_thread + cursor;
     if (record_ordinal64 < 0 || record_ordinal64 >= buf.capacity) {
         if (ctx.overflow != nullptr) {
-            int prev = atomicCAS(ctx.overflow, 0, 1);
+            int prev = atomicCAS(ctx.overflow, 0, ERROR_OVERFLOW);
             if (ctx.debug && prev == 0) {
-                printf("Warp deterministic counter overflow: capacity=%d dest=%d\n", buf.capacity, dest_flat_idx);
+                printf(
+                    "Warp deterministic mode: too many atomic_add() calls for the temporary capacity; "
+                    "capacity=%d array_offset=%d. Increase deterministic_max_records.\n",
+                    buf.capacity, dest_flat_idx
+                );
             }
         }
         return 0;
@@ -114,13 +151,18 @@ inline CUDA_CALLABLE int counter_add(det_ctx& ctx, det_counter_buf_t& buf, int d
         int slot = atomicAdd(buf.count, 1);
         if (slot < buf.capacity) {
             buf.record_slots[record_ordinal] = slot;
+            buf.destinations[record_ordinal] = dest_flat_idx;
             buf.keys[slot] = (static_cast<int64_t>(dest_flat_idx) << 32)
                 | static_cast<int64_t>(static_cast<unsigned int>(record_ordinal));
             buf.values[slot] = value;
         } else if (ctx.overflow != nullptr) {
-            int prev = atomicCAS(ctx.overflow, 0, 1);
+            int prev = atomicCAS(ctx.overflow, 0, ERROR_OVERFLOW);
             if (ctx.debug && prev == 0) {
-                printf("Warp deterministic counter overflow: capacity=%d dest=%d\n", buf.capacity, dest_flat_idx);
+                printf(
+                    "Warp deterministic mode: too many atomic_add() calls for the temporary capacity; "
+                    "capacity=%d array_offset=%d. Increase deterministic_max_records.\n",
+                    buf.capacity, dest_flat_idx
+                );
             }
         }
         return 0;
@@ -130,6 +172,11 @@ inline CUDA_CALLABLE int counter_add(det_ctx& ctx, det_counter_buf_t& buf, int d
     // the contiguous range [slot, slot + value); caller code writes each element.
     int slot = buf.record_slots[record_ordinal];
     if (slot < 0 || slot >= buf.capacity) {
+        report_counter_replay_divergence(ctx, cursor, dest_flat_idx, value);
+        return 0;
+    }
+    if (buf.destinations[record_ordinal] != dest_flat_idx || buf.values[slot] != value) {
+        report_counter_replay_divergence(ctx, cursor, dest_flat_idx, value);
         return 0;
     }
     return buf.prefixes[slot];

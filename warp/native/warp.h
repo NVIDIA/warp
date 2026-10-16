@@ -568,6 +568,9 @@ WP_API void wp_deterministic_counter_scan_device(
 WP_API void wp_deterministic_counter_writeback_device(
     uint64_t keys, int count, uint64_t counter_totals, uint64_t counters, int counter_size
 );
+WP_API void wp_deterministic_counter_validate_replay_device(
+    uint64_t expected_counts, uint64_t replay_counts, int count, uint64_t error, int debug
+);
 
 WP_API void wp_bsr_matrix_from_triplets_host(
     int block_size,

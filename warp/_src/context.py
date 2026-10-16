@@ -173,9 +173,12 @@ class det_scatter_buf_t(ctypes.Structure):
 
 
 class det_counter_buf_t(ctypes.Structure):
+    """Native counter buffer layout, including replay-validation state."""
+
     _fields_ = [
         ("keys", ctypes.c_void_p),
         ("values", ctypes.c_void_p),
+        ("destinations", ctypes.c_void_p),
         ("prefixes", ctypes.c_void_p),
         ("record_slots", ctypes.c_void_p),
         ("cursors", ctypes.c_void_p),
@@ -7380,6 +7383,14 @@ class Runtime:
                 ctypes.c_int,
             ]
             self.core.wp_deterministic_counter_writeback_device.restype = None
+            self.core.wp_deterministic_counter_validate_replay_device.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_int,
+                ctypes.c_uint64,
+                ctypes.c_int,
+            ]
+            self.core.wp_deterministic_counter_validate_replay_device.restype = None
 
             self.core.wp_bvh_create_host.restype = ctypes.c_uint64
             self.core.wp_bvh_create_host.argtypes = [
@@ -11788,13 +11799,9 @@ def launch(
         det_meta = hooks.det_launch_meta
         counter_replay_targets = getattr(det_meta, "counter_replay_targets", ())
         if adjoint and det_meta is not None and det_meta.needs_deterministic and counter_replay_targets:
-            target_names = ", ".join(target.target_label for target in counter_replay_targets)
-            raise RuntimeError(
-                "Deterministic mode does not support generated backward replay of consumed-return counter atomics "
-                f"in kernel '{kernel.key}' for target(s): {target_names}. Store and replay the slot mapping "
-                "explicitly with @wp.func_replay, mark the kernel with enable_backward=False if it is not "
-                "differentiable, or disable deterministic mode for this kernel."
-            )
+            from warp._src.deterministic import unsupported_consumed_counter_backward_error  # noqa: PLC0415
+
+            raise unsupported_consumed_counter_backward_error(kernel.key)
         if det_meta is not None and det_meta.needs_deterministic and device.is_cuda:
             from warp._src.deterministic import create_deterministic_launch, launch_deterministic  # noqa: PLC0415
 

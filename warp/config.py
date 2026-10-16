@@ -437,7 +437,8 @@ option.
 deterministic_debug: bool = False
 """Enable debug diagnostics for deterministic execution mode.
 
-When enabled, deterministic scatter overflows may emit device-side diagnostics.
+When enabled, deterministic buffer overflows and slot-assignment mismatches may
+emit device-side diagnostics, including during CUDA graph replay.
 This setting is intended for debugging capacity issues and should remain disabled
 for normal execution, especially when CUDA graph capture is performance-critical.
 """

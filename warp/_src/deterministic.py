@@ -27,19 +27,59 @@ from __future__ import annotations
 import ast
 import ctypes
 import itertools
+import math
 import re
 from collections.abc import Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
-from warp._src.types import array_t, float_types, int32, is_array, type_is_int, type_repr, type_size_in_bytes
+from warp._src.types import (
+    array_t,
+    float_types,
+    indexedarray,
+    int32,
+    is_array,
+    type_is_int,
+    type_repr,
+    type_size_in_bytes,
+)
 from warp.config import DeterministicMode
 
 if TYPE_CHECKING:
     from warp._src.codegen import Var
     from warp._src.context import Device, KernelHooks, Stream
     from warp._src.types import launch_bounds_t
+
+
+class WarpDeterminismError(RuntimeError):
+    """Error raised when Warp cannot safely provide the requested determinism."""
+
+
+def _internal_error(context: str, cause: str) -> WarpDeterminismError:
+    """Return an error for a broken invariant in Warp's deterministic implementation."""
+    return WarpDeterminismError(
+        f"Internal Warp error while {context}. Cause: {cause}. Fix: please report this as a Warp bug and include "
+        "the kernel source and complete exception."
+    )
+
+
+def _direct_access_error(target_label: str, operation: str) -> WarpDeterminismError:
+    """Return the error for an array that is both a deferred atomic target and accessed directly."""
+    return WarpDeterminismError(
+        f"Deterministic mode cannot compile this kernel. Cause: array {target_label!r} receives deterministic atomic "
+        f"updates and is also {operation}. Warp would change the operation order. Fix: use separate input and output "
+        "arrays, or split the direct access and atomic update into separate kernel launches."
+    )
+
+
+def _counter_side_effect_conflict_error(target_label: str) -> WarpDeterminismError:
+    """Return the error for an array used both as a slot counter and by an untransformed atomic."""
+    return WarpDeterminismError(
+        f"Deterministic mode cannot compile this kernel. Cause: array {target_label!r} is used both to assign slots "
+        "from the return value of atomic_add() and by another atomic operation. Fix: use separate arrays or split the "
+        "operations into separate kernel launches."
+    )
 
 
 # Dedicated non-capturing allocation streams, one per device. Used to keep
@@ -94,7 +134,11 @@ def det_buffer_allocation_scope(device, stream_is_capturing):
     alloc_stream = _det_capture_alloc_stream(device)
     previous_mode = runtime.core.wp_cuda_thread_exchange_capture_mode(int(CaptureMode.RELAXED))
     if previous_mode < 0:
-        raise RuntimeError(f"Failed to switch thread capture mode: {runtime.get_error_string()}")
+        raise WarpDeterminismError(
+            "Internal Warp error while preparing deterministic CUDA graph capture. Cause: CUDA rejected the "
+            f"temporary capture-mode change: {runtime.get_error_string()}. Fix: retry outside graph capture; if "
+            "the error remains, report it as a Warp bug.",
+        )
     try:
         with warp.ScopedStream(alloc_stream, sync_enter=False):
             yield
@@ -106,7 +150,11 @@ def det_buffer_allocation_scope(device, stream_is_capturing):
         runtime.core.wp_cuda_stream_synchronize(alloc_stream.cuda_stream)
     finally:
         if runtime.core.wp_cuda_thread_exchange_capture_mode(previous_mode) < 0:
-            raise RuntimeError(f"Failed to restore thread capture mode: {runtime.get_error_string()}")
+            raise WarpDeterminismError(
+                "Internal Warp error after deterministic CUDA graph capture. Cause: CUDA rejected restoring the "
+                f"thread capture mode: {runtime.get_error_string()}. Fix: stop using the current capture and retry; "
+                "if the error remains, report it as a Warp bug.",
+            )
 
 
 def _det_dest_size_elements(arr) -> int:
@@ -148,11 +196,22 @@ REDUCE_OP_ADD = 0
 REDUCE_OP_MIN = 1
 REDUCE_OP_MAX = 2
 
-UNSUPPORTED_CONSUMED_COUNTER_BACKWARD_MESSAGE = (
-    "Deterministic mode does not support consumed-return counter atomics in generated backward "
-    "or custom adjoint code. Move the slot allocation to a forward kernel and replay the stored "
-    "slot mapping, or disable deterministic mode for this kernel."
-)
+# Status written when the execution pass changes a consumed-return counter
+# reservation recorded by the counting pass. Keep this synchronized with the
+# native replay-divergence error codes in deterministic.h and deterministic.cu.
+DETERMINISTIC_ERROR_COUNTER_REPLAY_DIVERGENCE = 2
+
+
+def unsupported_consumed_counter_backward_error(kernel_key: str | None = None) -> WarpDeterminismError:
+    """Return the error for generated backward replay of a consumed-return counter."""
+    kernel = "this kernel" if kernel_key is None else f"kernel {kernel_key!r}"
+    return WarpDeterminismError(
+        f"Deterministic mode cannot differentiate {kernel} automatically. Cause: the forward kernel uses the value "
+        "returned by atomic_add() as a slot, but the counter has changed by the time the backward kernel runs. Fix: "
+        "save the forward slot mapping and return it from @wp.func_replay, set enable_backward=False when the kernel "
+        "is not differentiable, or disable deterministic mode for this kernel."
+    )
+
 
 DETERMINISTIC_NOT_GUARANTEED = DeterministicMode.NOT_GUARANTEED
 DETERMINISTIC_RUN_TO_RUN = DeterministicMode.RUN_TO_RUN
@@ -286,8 +345,22 @@ class ArrayStoreTarget:
 
 
 @dataclass(frozen=True)
+class ArrayLoadTarget:
+    """Array target read directly in the current body."""
+
+    array_var_label: str
+    attr_path: tuple[str, ...] = ()
+    adjoint: bool = False
+
+    @property
+    def target_label(self) -> str:
+        label = target_label(self.array_var_label, self.attr_path)
+        return f"adjoint({label})" if self.adjoint else label
+
+
+@dataclass(frozen=True)
 class SideEffectAtomicTarget:
-    """Target identity for ordinary integer atomics in two-pass kernels."""
+    """Target of an ordinary atomic that may conflict with deferred updates."""
 
     array_var_label: str
     attr_path: tuple[str, ...] = ()
@@ -314,14 +387,21 @@ class DeterministicMeta:
     scatter_records_per_thread: dict[ScatterTarget, int] = field(default_factory=dict)
     counter_records_per_thread: dict[CounterTarget, int] = field(default_factory=dict)
     counter_replay_targets: set[CounterTarget] = field(default_factory=set)
+    load_targets_seen: set[ArrayLoadTarget] = field(default_factory=set)
     store_targets_seen: set[ArrayStoreTarget] = field(default_factory=set)
+    # Stores from custom adjoints run only in backward launches. They order
+    # backward reductions but cannot conflict with deferred forward updates.
+    backward_store_targets_seen: set[ArrayStoreTarget] = field(default_factory=set)
     side_effect_atomic_targets: set[SideEffectAtomicTarget] = field(default_factory=set)
     needs_context: bool = False
     # Set by Adjoint.build() once the body has been pre-scanned.
     has_consumed_atomic: bool = False
     has_side_effect_store: bool = False
     has_unsupported_consumed_counter_backward: bool = False
-    has_component_updates: bool = False
+    # First untransformed side effect whose return value is used, e.g. ``"wp.atomic_cas() in claim() at f.py:6"``,
+    # and the source line in this function that uses it, so a rejection points at that call.
+    consumed_side_effect_return: str | None = None
+    consumed_side_effect_lineno: int | None = None
 
     def add_scatter_target(self, target: ScatterTarget, records_per_thread: int = 1):
         """Record a scatter target requirement for this function or kernel."""
@@ -342,12 +422,14 @@ class DeterministicMeta:
     def include(self, other: DeterministicMeta):
         """Merge the transitive deterministic requirements of another adjoint."""
         self.needs_context |= other.needs_context
-        self.has_component_updates |= other.has_component_updates
+        self.consumed_side_effect_return = self.consumed_side_effect_return or other.consumed_side_effect_return
         for target, count in other.scatter_records_per_thread.items():
             self.add_scatter_target(target, records_per_thread=count)
         for target, count in other.counter_records_per_thread.items():
             self.add_counter_target(target, records_per_thread=count)
+        self.load_targets_seen |= other.load_targets_seen
         self.store_targets_seen |= other.store_targets_seen
+        self.backward_store_targets_seen |= other.backward_store_targets_seen
         self.side_effect_atomic_targets |= other.side_effect_atomic_targets
 
     @property
@@ -363,6 +445,11 @@ class DeterministicMeta:
         return self.needs_context or self.has_scatter or self.has_counter
 
     @property
+    def backward_store_targets(self) -> set[ArrayStoreTarget]:
+        """Return stores that can execute during a backward launch."""
+        return self.store_targets_seen | self.backward_store_targets_seen
+
+    @property
     def ordered_backward_targets(self) -> list[ScatterTarget]:
         """Return backward reductions that cannot be deferred past an array mutation.
 
@@ -371,16 +458,14 @@ class DeterministicMeta:
         overwrite gradients directly. Both require updates in program order.
         Target identity is conservative: indices and composite slots are ignored.
         """
+        stores = self.backward_store_targets
         return [
             target
             for target in self.scatter_targets
             if target.use_backward
             and (
-                ArrayStoreTarget(target.array_var_label, target.attr_path, target.adjoint) in self.store_targets_seen
-                or (
-                    target.adjoint
-                    and ArrayStoreTarget(target.array_var_label, target.attr_path, False) in self.store_targets_seen
-                )
+                ArrayStoreTarget(target.array_var_label, target.attr_path, target.adjoint) in stores
+                or (target.adjoint and ArrayStoreTarget(target.array_var_label, target.attr_path, False) in stores)
             )
         ]
 
@@ -437,8 +522,6 @@ class DeterministicCodegen:
         if not self.enabled:
             return
 
-        from warp._src.codegen import WarpCodegenError  # noqa: PLC0415
-
         func_det_meta = getattr(func.adj, "det_meta", None)
         if func_det_meta is not None:
             try:
@@ -446,7 +529,7 @@ class DeterministicCodegen:
                     self.adj, func_det_meta, bound_args, include_replay_targets=func.custom_replay_func is None
                 )
             except ValueError as e:
-                raise WarpCodegenError(str(e)) from e
+                raise WarpDeterminismError(str(e)) from e
 
         if func.custom_grad_func is None:
             return
@@ -459,11 +542,11 @@ class DeterministicCodegen:
             return
 
         if getattr(custom_grad_det_meta, "has_unsupported_consumed_counter_backward", False):
-            raise WarpCodegenError(UNSUPPORTED_CONSUMED_COUNTER_BACKWARD_MESSAGE)
+            raise unsupported_consumed_counter_backward_error()
         try:
-            _include_deterministic_call_meta(self.adj, custom_grad_det_meta, bound_args)
+            _include_deterministic_call_meta(self.adj, custom_grad_det_meta, bound_args, backward_only=True)
         except ValueError as e:
-            raise WarpCodegenError(str(e)) from e
+            raise WarpDeterminismError(str(e)) from e
 
     def emit_atomic_call(self, func, bound_args, return_type, output, output_list, *, return_value_used: bool):
         """Emit deterministic atomic lowering when ``func`` is intercepted."""
@@ -553,6 +636,62 @@ class DeterministicCodegen:
 
         return det_args
 
+    def track_array_access(self, func, bound_args) -> None:
+        """Record array accesses that can conflict with deferred updates."""
+        # Custom reverse bodies read incoming adjoints while codegen also builds
+        # backward-only target metadata; those accesses do not share an
+        # executable phase with the generated target operation.
+        if self.adj.custom_reverse_mode or not (self.enabled and func.is_builtin()):
+            return
+
+        args = list(bound_args.values())
+        if not args:
+            return
+
+        if func.key in _DET_UNINTERCEPTED_SIDE_EFFECT_ATOMICS or func.key in (
+            "tile_atomic_add",
+            "tile_atomic_add_indexed",
+        ):
+            self.mark_side_effect_atomic(args[0])
+            return
+        if func.key in ("tile_store", "tile_store_indexed"):
+            self.mark_store_target(args[0])
+            return
+        if func.key not in ("load", "tile_load", "tile_load_indexed"):
+            return
+
+        from warp._src.codegen import strip_reference  # noqa: PLC0415
+
+        # Loading an array descriptor from a struct field does not access the
+        # array's elements. Element references carry the enclosing array type
+        # separately through ``track_array_reference()``.
+        if func.key == "load" and is_array(strip_reference(args[0].type)):
+            return
+
+        target_info = _deterministic_target_info(args[0])
+        if target_info is None:
+            return
+
+        target_root_label, target_attr_path, target_type, target_is_adjoint = target_info
+        if not is_array(target_type):
+            return
+
+        load_target = ArrayLoadTarget(target_root_label, tuple(target_attr_path), bool(target_is_adjoint))
+        _reject_deterministic_target_access(self.adj.det_meta, load_target, "read directly")
+        self.adj.det_meta.load_targets_seen.add(load_target)
+
+    def mark_side_effect_atomic(self, array_var) -> None:
+        """Track an atomic that executes directly instead of through a deferred helper."""
+        if self.adj.custom_reverse_mode:
+            return
+        target_info = _deterministic_target_info(array_var)
+        if target_info is None:
+            return
+        root_label, attr_path, _, is_adjoint = target_info
+        target = SideEffectAtomicTarget(root_label, tuple(attr_path), bool(is_adjoint))
+        _reject_side_effect_atomic_target(self.adj.det_meta, target)
+        self.adj.det_meta.side_effect_atomic_targets.add(target)
+
     def wrap_unintercepted_side_effect_atomic(
         self,
         func,
@@ -561,18 +700,40 @@ class DeterministicCodegen:
         *,
         return_value_used: bool,
     ) -> tuple[str, str]:
-        """Phase-guard non-intercepted atomic side effects in two-pass kernels."""
-        if not (func.is_builtin() and func.key in _DET_UNINTERCEPTED_SIDE_EFFECT_ATOMICS):
+        """Phase-guard non-intercepted side effects in two-pass kernels."""
+        if not (func.is_builtin() and func.key in _DET_UNINTERCEPTED_SIDE_EFFECT_BUILTINS):
             return forward_call, replay_call
 
-        if self.needs_store_guard() and return_value_used:
-            from warp._src.codegen import WarpCodegenError  # noqa: PLC0415
+        if self.enabled and self.adj.is_user_function:
+            # Resolve aliases here as well as in the source pre-scan: a helper
+            # can call an atomic or store through a local function alias.
+            self.adj.det_meta.has_side_effect_store = True
 
-            raise WarpCodegenError(
-                f"Deterministic mode does not support consuming the return of wp.{func.key} in two-pass kernels."
-            )
+        if self.enabled and return_value_used and self.adj.det_meta.consumed_side_effect_return is None:
+            # Only a kernel's completed build shows whether it runs a counting pass; see ``end_build()``.
+            description = f"wp.{func.key}()"
+            if self.adj.is_user_function:
+                line = self.adj.fun_lineno + self.adj.lineno
+                description += f" in {self.adj.fun_name}() at {self.adj.filename}:{line}"
+            self.adj.det_meta.consumed_side_effect_return = description
+            self.adj.det_meta.consumed_side_effect_lineno = self.adj.lineno
 
         return self.wrap_side_effect_call(forward_call), self.wrap_side_effect_call(replay_call)
+
+    def end_build(self) -> None:
+        """Reject side-effect return values that a kernel's counting pass cannot reproduce."""
+        meta = self.adj.det_meta
+        if meta is None or self.adj.is_user_function or not meta.has_counter or not meta.consumed_side_effect_return:
+            return
+        if meta.consumed_side_effect_lineno is not None:
+            # Report the statement that uses the return value, not the last statement parsed.
+            self.adj.lineno = meta.consumed_side_effect_lineno
+        raise WarpDeterminismError(
+            "Deterministic mode cannot compile this kernel. Cause: the kernel uses the value returned by "
+            f"{meta.consumed_side_effect_return} while also using atomic_add() to assign stable slots; Warp "
+            "cannot reproduce that return value when it determines the slots. Fix: move the operation to a separate "
+            "kernel, do not use its return value, or disable deterministic mode for this kernel.",
+        )
 
     def wrap_side_effect_call(self, statement: str) -> str:
         """Phase-guard a non-counter side effect emitted inside a two-pass body."""
@@ -590,7 +751,7 @@ class DeterministicCodegen:
         scatter/sort/reduce helper used by forward scatter atomics so tape
         backward passes get a fixed reduction order.
         """
-        from warp._src.codegen import Var, WarpCodegenError  # noqa: PLC0415
+        from warp._src.codegen import Var  # noqa: PLC0415
 
         # A custom adjoint executes its forward statements during backward;
         # its own reverse statements are never called or reduced.
@@ -608,7 +769,7 @@ class DeterministicCodegen:
             if target_info is None:
                 return fallback_call
 
-            target_root_label, target_attr_path, arr_type, target_is_adjoint = target_info
+            target_root_label, target_attr_path, arr_type, _target_is_adjoint = target_info
             if not is_array(arr_type):
                 return fallback_call
 
@@ -621,11 +782,6 @@ class DeterministicCodegen:
 
             if not any(arg.label == target_root_label for arg in self.adj.args):
                 return fallback_call
-
-            if not self.adj.det_meta.has_component_updates:
-                store_target = ArrayStoreTarget(target_root_label, tuple(target_attr_path), bool(target_is_adjoint))
-                if store_target in self.adj.det_meta.store_targets_seen:
-                    return fallback_call
 
             value_ctype = Var.dtype_to_ctype(value_dtype)
             target = get_or_create_scatter_target(
@@ -646,7 +802,7 @@ class DeterministicCodegen:
             # a source-adjacent error if an unsupported gradient type appears.
             warp_scalar_type_to_id(scalar_dtype)
         except (AttributeError, KeyError, TypeError, ValueError) as e:
-            raise WarpCodegenError(f"Deterministic mode could not lower adjoint address accumulation: {e}") from e
+            raise _internal_error("compiling deterministic gradient accumulation", str(e)) from e
 
         loaded_prefix = [self.adj.load(var) for var in view_prefix_vars]
         idx_loaded_list = loaded_prefix + list(fwd_args[1:])
@@ -695,7 +851,7 @@ class DeterministicCodegen:
         if not self.enabled or operation not in ("add", "sub"):
             return False
 
-        from warp._src.codegen import Var, WarpCodegenError  # noqa: PLC0415
+        from warp._src.codegen import Var  # noqa: PLC0415
 
         # Follow integer-index views and prepend their reduction indices.
         # Sliced views do not provide this reduction mapping.
@@ -722,9 +878,9 @@ class DeterministicCodegen:
                 return False
 
             if not any(arg.label == target_root_label for arg in self.adj.args):
-                raise WarpCodegenError(
-                    f"Deterministic mode could not map atomic target '{target_root_label}' "
-                    "for composite slot augmented assignment to a kernel argument."
+                raise _internal_error(
+                    "compiling deterministic component gradient accumulation",
+                    f"array {target_root_label!r} could not be mapped to a kernel argument",
                 )
 
             value_ctype = Var.dtype_to_ctype(value_dtype)
@@ -743,12 +899,10 @@ class DeterministicCodegen:
                 has_component_slot_scatter=True,
             )
             warp_scalar_type_to_id(scalar_dtype)
-        except WarpCodegenError:
+        except WarpDeterminismError:
             raise
         except (AttributeError, KeyError, TypeError, ValueError) as e:
-            raise WarpCodegenError(
-                f"Deterministic mode could not lower composite slot augmented assignment: {e}"
-            ) from e
+            raise _internal_error("compiling deterministic component gradient accumulation", str(e)) from e
 
         # Convert the complete view-plus-element index into the flat destination
         # used by deterministic reduction buffers.
@@ -839,7 +993,7 @@ class DeterministicCodegen:
             ]
             for target in self.adj.det_meta.counter_targets:
                 decls.append(
-                    f"wp::det_counter_buf_t {target.helper_name}{{nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0, 0, wp::array_t<int>{{}}, 0}};"
+                    f"wp::det_counter_buf_t {target.helper_name}{{nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0, 0, wp::array_t<int>{{}}, 0}};"
                 )
             for target in self.adj.det_meta.scatter_targets:
                 decls.append(
@@ -864,7 +1018,12 @@ class DeterministicCodegen:
         return f"wp::store(&({slot_lvalue}), {value_expr});"
 
     def mark_store_target(self, target) -> None:
-        """Record an array target whose backward adjoints must not be deferred."""
+        """Record a direct array store.
+
+        Stores order backward reductions (see
+        :attr:`DeterministicMeta.ordered_backward_targets`) and must not touch
+        memory that receives deferred forward atomic updates.
+        """
         if self.adj.det_meta is None:
             return
 
@@ -879,10 +1038,14 @@ class DeterministicCodegen:
             return
 
         target_root_label, target_attr_path, target_type, target_is_adjoint = store_target_info
-        if is_array(target_type):
-            self.adj.det_meta.store_targets_seen.add(
-                ArrayStoreTarget(target_root_label, tuple(target_attr_path), bool(target_is_adjoint))
-            )
+        if not is_array(target_type):
+            return
+
+        store_target = ArrayStoreTarget(target_root_label, tuple(target_attr_path), bool(target_is_adjoint))
+        # See ``track_array_access()`` for why custom reverse bodies are exempt.
+        if not self.adj.custom_reverse_mode:
+            _reject_deterministic_target_access(self.adj.det_meta, store_target, "written directly")
+        self.adj.det_meta.store_targets_seen.add(store_target)
 
     def add_array_store(self, target, indices, rhs) -> None:
         """Emit a deterministic guarded whole-array store."""
@@ -930,6 +1093,31 @@ class DeterministicCodegen:
             out.deterministic_adjoint_target = True
             out.deterministic_adjoint_root_label = getattr(target, "deterministic_adjoint_root_label", None)
 
+    def track_array_reference(self, out, target) -> None:
+        """Carry a deterministic array identity onto an element reference."""
+        if not self.enabled:
+            return
+
+        from warp._src.codegen import strip_reference  # noqa: PLC0415
+
+        while getattr(target, "deterministic_view_alias_source", None) is not None:
+            target = target.deterministic_view_alias_source
+
+        target_info = _deterministic_target_info(target)
+        if target_info is None:
+            return
+
+        root_label, attr_path, target_type, target_is_adjoint = target_info
+        if not is_array(strip_reference(target_type)):
+            return
+
+        out.deterministic_ref_root_label = root_label
+        out.deterministic_ref_attr_path = tuple(attr_path)
+        out.deterministic_ref_array_type = strip_reference(target_type)
+        if target_is_adjoint:
+            out.deterministic_adjoint_target = True
+            out.deterministic_adjoint_root_label = root_label
+
     def mark_adjoint_target(self, var, root_label: str) -> None:
         """Mark ``var`` as an adjoint view of the array named by ``root_label``."""
         var.deterministic_adjoint_target = True
@@ -963,18 +1151,24 @@ def get_or_create_scatter_target(
     key = (array_var_label, attr_path, bool(adjoint))
     label = target_label(array_var_label, attr_path)
     helper_label = f"adj_{label}" if adjoint else label
+    if use_forward:
+        _reject_seen_direct_access(meta, array_var_label, attr_path, adjoint, helper_label)
+        if SideEffectAtomicTarget(array_var_label, attr_path, bool(adjoint)) in meta.side_effect_atomic_targets:
+            raise _direct_access_error(helper_label, "updated by another atomic operation")
     if key in registry._counter_targets_by_array:
-        raise ValueError(
-            f"Deterministic mode does not support using array '{helper_label}' as both a counter target "
-            "and a scatter target in the same function or kernel."
+        raise WarpDeterminismError(
+            f"Deterministic mode cannot compile this kernel. Cause: array {helper_label!r} is used both for "
+            "deterministic accumulation and for atomic_add() slot assignment. Fix: use separate arrays or split the "
+            "operations into separate kernel launches.",
         )
     target = registry._scatter_targets_by_array.get(key)
 
     if target is not None:
         if target.family != family:
-            raise ValueError(
-                f"Deterministic mode does not support mixing '{target.family}' and '{family}' reductions on array "
-                f"'{helper_label}' in the same function or kernel."
+            raise WarpDeterminismError(
+                f"Deterministic mode cannot compile this kernel. Cause: array {helper_label!r} receives both "
+                f"{target.family!r} and {family!r} atomic operations. Fix: write each operation to a separate array, "
+                "or split them into separate kernel launches.",
             )
         if (
             target.value_dtype != value_dtype
@@ -982,9 +1176,10 @@ def get_or_create_scatter_target(
             or target.scalar_dtype != scalar_dtype
             or target.reduce_op != reduce_op
         ):
-            raise ValueError(
-                f"Deterministic mode does not support multiple value layouts for array '{label}' "
-                f"within the same reduction family."
+            raise WarpDeterminismError(
+                f"Deterministic mode cannot compile this kernel. Cause: atomic operations treat array {label!r} as "
+                "different value layouts. Fix: use one value type for that array, or pass separate arrays for the "
+                "different layouts.",
             )
         target.use_forward |= bool(use_forward)
         target.use_backward |= bool(use_backward)
@@ -1022,17 +1217,17 @@ def get_or_create_counter_target(
     key = (array_var_label, attr_path, bool(adjoint))
     label = target_label(array_var_label, attr_path)
     helper_label = f"adj_{label}" if adjoint else label
+    if use_forward:
+        _reject_seen_direct_access(meta, array_var_label, attr_path, adjoint, helper_label)
     if key in registry._scatter_targets_by_array:
-        raise ValueError(
-            f"Deterministic mode does not support using array '{helper_label}' as both a counter target "
-            "and a scatter target in the same function or kernel."
+        raise WarpDeterminismError(
+            f"Deterministic mode cannot compile this kernel. Cause: array {helper_label!r} is used both for "
+            "deterministic accumulation and for atomic_add() slot assignment. Fix: use separate arrays or split the "
+            "operations into separate kernel launches.",
         )
     side_effect_target = SideEffectAtomicTarget(array_var_label, attr_path, bool(adjoint))
     if side_effect_target in meta.side_effect_atomic_targets:
-        raise ValueError(
-            "Deterministic mode does not support mixing ordinary integer atomic side effects and "
-            f"consumed-return counter atomics on array '{side_effect_target.target_label}' in the same function or kernel."
-        )
+        raise _counter_side_effect_conflict_error(side_effect_target.target_label)
     target = registry._counter_targets_by_array.get(key)
     if target is None:
         index = registry._next_target_index
@@ -1110,9 +1305,28 @@ _DET_INTERCEPTABLE_ATOMICS = frozenset(
 # mutate user state and must not double-execute under two-pass counter replay.
 _DET_UNINTERCEPTED_SIDE_EFFECT_ATOMICS = frozenset(
     {
+        "atomic_cas",
+        "atomic_exch",
         "atomic_xor",
         "atomic_and",
         "atomic_or",
+    }
+)
+
+# Builtins that mutate externally visible state but are not transformed into a
+# deterministic scatter or counter operation. Two-pass counter kernels execute
+# them only during the execution pass.
+_DET_UNINTERCEPTED_SIDE_EFFECT_BUILTINS = _DET_UNINTERCEPTED_SIDE_EFFECT_ATOMICS | frozenset(
+    {
+        "printf",
+        "tile_atomic_add",
+        "tile_atomic_add_indexed",
+        "tile_store",
+        "tile_store_indexed",
+        "volume_store",
+        "volume_store_f",
+        "volume_store_i",
+        "volume_store_v",
     }
 )
 
@@ -1143,7 +1357,7 @@ def _deterministic_contains_subscript_target(node):
 
 
 def _deterministic_has_propagating_side_effect(tree):
-    """Return whether ``tree`` contains an array store or unintercepted bitwise atomic."""
+    """Return whether ``tree`` contains a side effect that needs a phase guard."""
     for node in ast.walk(tree):
         if isinstance(node, ast.Assign):
             if any(_deterministic_contains_subscript_target(target) for target in node.targets):
@@ -1152,7 +1366,7 @@ def _deterministic_has_propagating_side_effect(tree):
             if _deterministic_contains_subscript_target(node.target):
                 return True
         elif isinstance(node, ast.Call):
-            if _deterministic_call_name(node.func) in _DET_UNINTERCEPTED_SIDE_EFFECT_ATOMICS:
+            if _deterministic_call_name(node.func) in _DET_UNINTERCEPTED_SIDE_EFFECT_BUILTINS:
                 return True
 
     return False
@@ -1327,7 +1541,7 @@ def emit_deterministic_atomic(adj, func, bound_args, return_type, output, output
     atomic operations whose ordinary implementation is already
     deterministic.
     """
-    from warp._src.codegen import Var, WarpCodegenError  # noqa: PLC0415
+    from warp._src.codegen import Var  # noqa: PLC0415
 
     args_list = list(bound_args.values())
     arr_var = args_list[0]  # the target array, possibly a view such as arr[i]
@@ -1340,12 +1554,12 @@ def emit_deterministic_atomic(adj, func, bound_args, return_type, output, output
     try:
         target_info = _deterministic_target_info(arr_var)
         if target_info is None:
-            raise WarpCodegenError(f"Deterministic mode could not resolve the target array for {func.key}.")
+            raise _internal_error(f"compiling wp.{func.key}()", "Warp could not identify the target array")
 
         target_root_label, target_attr_path, arr_type, target_is_adjoint = target_info
         if not is_array(arr_type):
-            raise WarpCodegenError(
-                f"Deterministic mode expected {func.key} to target an array, got {type_repr(arr_type)}."
+            raise _internal_error(
+                f"compiling wp.{func.key}()", f"the atomic target resolved to {type_repr(arr_type)}, not an array"
             )
 
         value_dtype = arr_type.dtype
@@ -1354,14 +1568,14 @@ def emit_deterministic_atomic(adj, func, bound_args, return_type, output, output
             scalar_dtype = scalar_dtype._wp_scalar_type_
 
         if not any(arg.label == target_root_label for arg in adj.args):
-            raise WarpCodegenError(
-                f"Deterministic mode could not map atomic target '{target_root_label}' "
-                f"for {func.key} to a kernel argument."
+            raise _internal_error(
+                f"compiling wp.{func.key}() for array {target_root_label!r}",
+                "Warp could not map the atomic target to a kernel argument",
             )
-    except WarpCodegenError:
+    except WarpDeterminismError:
         raise
     except (AttributeError, KeyError, TypeError, ValueError) as e:
-        raise WarpCodegenError(f"Deterministic mode could not lower {func.key}: {e}") from e
+        raise _internal_error(f"compiling wp.{func.key}()", str(e)) from e
 
     # Determine if the return value is actually consumed by the caller.
     # When called from emit_AugAssign (arr[i] += val) or a bare expression,
@@ -1408,21 +1622,11 @@ def emit_deterministic_atomic(adj, func, bound_args, return_type, output, output
     # during phase 0.  The pre-scan handles atomics that appear before the
     # counter atomic in source order.
     if scalar_dtype not in float_types and not return_is_consumed:
-        if adj.det_meta.has_consumed_atomic:
-            side_effect_target = SideEffectAtomicTarget(
-                target_root_label, tuple(target_attr_path), bool(target_is_adjoint)
-            )
-            if _deterministic_find_target(
-                adj.det_meta.counter_targets,
-                side_effect_target.array_var_label,
-                side_effect_target.attr_path,
-                adjoint=side_effect_target.adjoint,
-            ):
-                raise WarpCodegenError(
-                    "Deterministic mode does not support mixing ordinary integer atomic side effects and "
-                    f"consumed-return counter atomics on array '{side_effect_target.target_label}' in the same function or kernel."
-                )
-            adj.det_meta.side_effect_atomic_targets.add(side_effect_target)
+        adj.deterministic.mark_side_effect_atomic(arr_var)
+        # A helper may be called by a two-pass kernel even when it has no
+        # consumed atomic of its own. Thread the caller's phase through it.
+        if adj.deterministic.needs_store_guard() or adj.is_user_function:
+            adj.det_meta.needs_context = True
             adj.add_forward(f"WP_DET_SIDE_EFFECT_IF_ACTIVE(det_ctx, {fallback_call});")
             return output
         return None  # fall through to normal codegen
@@ -1430,19 +1634,23 @@ def emit_deterministic_atomic(adj, func, bound_args, return_type, output, output
     if return_is_consumed:
         # Consumed-return counter: assign slots by replaying after a prefix sum.
         if func.key != "atomic_add":
-            raise WarpCodegenError(
-                "Deterministic mode currently supports consumed-return counter atomics only for atomic_add, "
-                f"got {func.key}."
+            raise WarpDeterminismError(
+                f"Deterministic mode cannot compile this kernel. Cause: the kernel uses the value returned by "
+                f"wp.{func.key}(), but stable slot assignment supports only the return value of wp.atomic_add(). "
+                "Fix: do not use this atomic return value, replace the algorithm with atomic_add() slot assignment, "
+                "or disable deterministic mode for this kernel.",
             )
 
         if scalar_dtype != int32:
-            raise WarpCodegenError(
-                "Deterministic mode currently supports consumed-return counter atomics only for int32 counter arrays."
+            raise WarpDeterminismError(
+                "Deterministic mode cannot compile this kernel. Cause: the kernel uses the return value of "
+                "atomic_add() as a slot, but the counter is not an int32 array. Fix: use an int32 counter, do not "
+                "use the atomic return value, or disable deterministic mode for this kernel.",
             )
 
         if adj.custom_reverse_mode or target_is_adjoint:
             adj.det_meta.has_unsupported_consumed_counter_backward = True
-            raise WarpCodegenError(UNSUPPORTED_CONSUMED_COUNTER_BACKWARD_MESSAGE)
+            raise unsupported_consumed_counter_backward_error()
 
         try:
             target = get_or_create_counter_target(
@@ -1456,7 +1664,7 @@ def emit_deterministic_atomic(adj, func, bound_args, return_type, output, output
                 use_backward=adj.custom_reverse_mode or target_is_adjoint,
             )
         except ValueError as e:
-            raise WarpCodegenError(str(e)) from e
+            raise WarpDeterminismError(str(e)) from e
         helper_name = target.helper_name
         adj.det_meta.counter_replay_targets.add(target)
 
@@ -1465,9 +1673,9 @@ def emit_deterministic_atomic(adj, func, bound_args, return_type, output, output
         idx_loaded_list = loaded_prefix + list(loaded_args[1:-1])
         target_expr = _deterministic_array_expr(adj, target_root_label, target_attr_path)
         if target_expr is None:
-            raise WarpCodegenError(
-                f"Deterministic mode could not build a generated target expression for {func.key} "
-                f"on '{target_root_label}'."
+            raise _internal_error(
+                f"compiling wp.{func.key}() for array {target_root_label!r}",
+                "Warp could not generate the target address",
             )
         flat_idx_expr = _deterministic_flat_index_expr(adj, target_expr, idx_loaded_list, func.key, target.value_ctype)
 
@@ -1494,7 +1702,7 @@ def emit_deterministic_atomic(adj, func, bound_args, return_type, output, output
             use_backward=adj.custom_reverse_mode or target_is_adjoint,
         )
     except ValueError as e:
-        raise WarpCodegenError(str(e)) from e
+        raise WarpDeterminismError(str(e)) from e
     helper_name = target.helper_name
 
     val_loaded = loaded_args[-1]
@@ -1503,8 +1711,8 @@ def emit_deterministic_atomic(adj, func, bound_args, return_type, output, output
 
     target_expr = _deterministic_array_expr(adj, target_root_label, target_attr_path)
     if target_expr is None:
-        raise WarpCodegenError(
-            f"Deterministic mode could not build a generated target expression for {func.key} on '{target_root_label}'."
+        raise _internal_error(
+            f"compiling wp.{func.key}() for array {target_root_label!r}", "Warp could not generate the target address"
         )
 
     flat_idx_expr = _deterministic_flat_index_expr(adj, target_expr, idx_loaded_list, func.key, target.value_ctype)
@@ -1657,15 +1865,14 @@ def _add_deterministic_array_store(adj, target, indices, rhs):
 
 def _deterministic_flat_index_expr(adj, target_expr, idx_loaded_list, func_key, value_ctype):
     """Element offset from ``ptr`` via ``strides``, so non-contiguous views work."""
-    from warp._src.codegen import WarpCodegenError  # noqa: PLC0415
-
     del adj
 
     ndim = len(idx_loaded_list)
     if ndim < 1 or ndim > 4:
-        raise WarpCodegenError(
-            f"Deterministic mode currently supports arrays up to 4 dimensions, got {ndim}D indexing for "
-            f"{func_key} on {target_expr}."
+        raise WarpDeterminismError(
+            f"Deterministic mode cannot compile wp.{func_key}() with {ndim} array indices. Cause: transformed "
+            "atomics currently support one- through four-dimensional indexing. Fix: flatten or reshape the array, "
+            "or disable deterministic mode for this kernel.",
         )
 
     terms = " + ".join(
@@ -1724,19 +1931,73 @@ def _deterministic_find_target(targets, array_var_label, attr_path, *, adjoint=F
     return None
 
 
-def _include_deterministic_call_meta(adj, meta, bound_args, *, include_replay_targets=True):
-    """Merge deterministic requirements from a called ``@wp.func`` into ``adj``."""
-    if adj.det_meta is None or adj.det_registry is None or meta is None or not meta.needs_deterministic:
+def _reject_deterministic_target_access(meta, access_target, operation):
+    """Reject a direct access to an existing deferred forward target."""
+    targets = [target for target in (*meta.scatter_targets, *meta.counter_targets) if target.use_forward]
+    if _deterministic_find_target(
+        targets,
+        access_target.array_var_label,
+        access_target.attr_path,
+        adjoint=access_target.adjoint,
+    ):
+        raise _direct_access_error(access_target.target_label, operation)
+
+
+def _reject_seen_direct_access(meta, array_var_label, attr_path, adjoint, helper_label):
+    """Reject a new deferred forward target that was already accessed directly."""
+    if ArrayLoadTarget(array_var_label, attr_path, bool(adjoint)) in meta.load_targets_seen:
+        raise _direct_access_error(helper_label, "read directly")
+    if ArrayStoreTarget(array_var_label, attr_path, bool(adjoint)) in meta.store_targets_seen:
+        raise _direct_access_error(helper_label, "written directly")
+
+
+def _reject_side_effect_atomic_target(meta, target):
+    """Reject an ordinary atomic operation on a deferred forward target."""
+    if _deterministic_find_target(
+        meta.counter_targets, target.array_var_label, target.attr_path, adjoint=target.adjoint
+    ):
+        raise _counter_side_effect_conflict_error(target.target_label)
+    _reject_deterministic_target_access(meta, target, "updated by another atomic operation")
+
+
+def _include_deterministic_call_meta(adj, meta, bound_args, *, include_replay_targets=True, backward_only=False):
+    """Merge deterministic requirements from a called ``@wp.func`` into ``adj``.
+
+    ``backward_only`` marks custom-adjoint metadata, whose accesses never run in
+    a forward launch. Only its stores are kept, to order backward reductions.
+    """
+    if adj.det_meta is None or adj.det_registry is None or meta is None:
+        return
+    if (
+        not meta.needs_deterministic
+        and not meta.load_targets_seen
+        and not meta.backward_store_targets
+        and not meta.side_effect_atomic_targets
+    ):
         return
 
     adj.det_meta.needs_context |= meta.needs_context
-    adj.det_meta.has_component_updates |= meta.has_component_updates
 
-    for target in meta.store_targets_seen:
+    def map_access(target_type, target):
         mapped_label, mapped_attr_path = _deterministic_map_target(target, bound_args)
-        adj.det_meta.store_targets_seen.add(
-            ArrayStoreTarget(mapped_label, tuple(mapped_attr_path), bool(getattr(target, "adjoint", False)))
-        )
+        return target_type(mapped_label, tuple(mapped_attr_path), bool(getattr(target, "adjoint", False)))
+
+    if not backward_only:
+        if meta.consumed_side_effect_return and adj.det_meta.consumed_side_effect_return is None:
+            adj.det_meta.consumed_side_effect_return = meta.consumed_side_effect_return
+            adj.det_meta.consumed_side_effect_lineno = adj.lineno  # The helper call site.
+        for target in meta.load_targets_seen:
+            mapped_target = map_access(ArrayLoadTarget, target)
+            _reject_deterministic_target_access(adj.det_meta, mapped_target, "read directly")
+            adj.det_meta.load_targets_seen.add(mapped_target)
+
+        for target in meta.store_targets_seen:
+            mapped_target = map_access(ArrayStoreTarget, target)
+            _reject_deterministic_target_access(adj.det_meta, mapped_target, "written directly")
+            adj.det_meta.store_targets_seen.add(mapped_target)
+
+    backward_stores = meta.backward_store_targets if backward_only else meta.backward_store_targets_seen
+    adj.det_meta.backward_store_targets_seen.update(map_access(ArrayStoreTarget, target) for target in backward_stores)
 
     for target, count in meta.scatter_records_per_thread.items():
         mapped_label, mapped_attr_path = _deterministic_map_target(target, bound_args)
@@ -1762,12 +2023,7 @@ def _include_deterministic_call_meta(adj, meta, bound_args, *, include_replay_ta
             mapped_label, tuple(mapped_attr_path), bool(getattr(target, "adjoint", False))
         )
         if side_effect_target in adj.det_meta.side_effect_atomic_targets:
-            from warp._src.codegen import WarpCodegenError  # noqa: PLC0415
-
-            raise WarpCodegenError(
-                "Deterministic mode does not support mixing ordinary integer atomic side effects and "
-                f"consumed-return counter atomics on array '{side_effect_target.target_label}' in the same function or kernel."
-            )
+            raise _counter_side_effect_conflict_error(side_effect_target.target_label)
         mapped_target = get_or_create_counter_target(
             adj.det_registry,
             adj.det_meta,
@@ -1782,23 +2038,15 @@ def _include_deterministic_call_meta(adj, meta, bound_args, *, include_replay_ta
         if include_replay_targets and target in meta.counter_replay_targets:
             adj.det_meta.counter_replay_targets.add(mapped_target)
 
+    if backward_only:
+        return
+
     for target in meta.side_effect_atomic_targets:
         mapped_label, mapped_attr_path = _deterministic_map_target(target, bound_args)
         mapped_target = SideEffectAtomicTarget(
             mapped_label, tuple(mapped_attr_path), bool(getattr(target, "adjoint", False))
         )
-        if _deterministic_find_target(
-            adj.det_meta.counter_targets,
-            mapped_target.array_var_label,
-            mapped_target.attr_path,
-            adjoint=mapped_target.adjoint,
-        ):
-            from warp._src.codegen import WarpCodegenError  # noqa: PLC0415
-
-            raise WarpCodegenError(
-                "Deterministic mode does not support mixing ordinary integer atomic side effects and "
-                f"consumed-return counter atomics on array '{mapped_target.target_label}' in the same function or kernel."
-            )
+        _reject_side_effect_atomic_target(adj.det_meta, mapped_target)
         adj.det_meta.side_effect_atomic_targets.add(mapped_target)
 
 
@@ -1815,6 +2063,22 @@ def _cinit_expr(dtype):
 # ---------------------------------------------------------------------------
 
 
+@dataclass
+class CounterBuffer:
+    """Temporary arrays for one deterministic consumed-return counter target."""
+
+    keys: Any
+    values: Any
+    destinations: Any  # Phase-0 destinations by record ordinal; keys are reordered during the scan.
+    prefixes: Any
+    record_slots: Any
+    phase0_cursors: Any  # Per-thread reservation counts from the counting pass.
+    phase1_cursors: Any  # Per-thread reservation counts from the execution pass.
+    count: Any
+    capacity: int
+    records_per_thread: int
+
+
 def allocate_scatter_buffers(scatter_targets, meta, dim_size, device, max_records=0, initialize_unused=False):
     """Allocate buffers for atomics reduced after the kernel finishes.
 
@@ -1828,10 +2092,11 @@ def allocate_scatter_buffers(scatter_targets, meta, dim_size, device, max_record
         records_per_thread = max(meta.scatter_records_per_thread.get(target, 0), max_records)
         capacity = max(dim_size * records_per_thread, 1024)
         if capacity > DETERMINISTIC_SCATTER_MAX_CAPACITY:
-            raise RuntimeError(
-                "Deterministic scatter buffer capacity exceeds the supported int32 limit "
-                f"({capacity} > {DETERMINISTIC_SCATTER_MAX_CAPACITY}). "
-                "Reduce the launch size or deterministic_max_records."
+            raise WarpDeterminismError(
+                f"Deterministic mode cannot allocate temporary storage for array {target.target_label!r}. Cause: "
+                f"this launch needs {capacity} atomic-update slots, but Warp supports at most "
+                f"{DETERMINISTIC_SCATTER_MAX_CAPACITY}. Fix: reduce the launch size or "
+                "deterministic_max_records.",
             )
         if initialize_unused:
             keys = warp.full(shape=(capacity,), value=-1, dtype=warp.int64, device=device)
@@ -1864,14 +2129,13 @@ def get_scatter_record_count(scatter_buffer, stream_is_capturing=False):
 
 def get_counter_record_count(counter_buffer, stream_is_capturing=False):
     """Return the number of counter records that should be sorted/scanned."""
-    _keys, _values, _prefixes, _record_slots, _cursors, count, capacity, _records_per_thread = counter_buffer
     if stream_is_capturing:
-        return capacity
+        return counter_buffer.capacity
 
-    emitted_count = int(count.numpy()[0])
+    emitted_count = int(counter_buffer.count.numpy()[0])
     if emitted_count < 0:
-        return capacity
-    return min(emitted_count, capacity)
+        return counter_buffer.capacity
+    return min(emitted_count, counter_buffer.capacity)
 
 
 def allocate_counter_state_buffers(runtime, counter_arrays, device, stream, stream_is_capturing=False):
@@ -1898,7 +2162,11 @@ def allocate_counter_state_buffers(runtime, counter_arrays, device, stream, stre
         if not runtime.core.wp_memcpy_d2d(
             device.context, bases.ptr, counter_arr.ptr, bytes_to_copy, stream.cuda_stream
         ):
-            raise RuntimeError(f"Warp deterministic counter snapshot error: {runtime.get_error_string()}")
+            raise WarpDeterminismError(
+                "Internal Warp error while preparing deterministic slot assignment. Cause: copying the initial "
+                f"counter values failed: {runtime.get_error_string()}. Fix: retry after checking the CUDA error; "
+                "if the error remains, report it as a Warp bug.",
+            )
 
         buffers.append((bases, totals, counter_size_elements))
 
@@ -1914,10 +2182,11 @@ def allocate_counter_buffers(counter_targets, meta, dim_size, device, max_record
         records_per_thread = max(meta.counter_records_per_thread.get(target, 0), max_records, 1)
         capacity = dim_size * records_per_thread
         if capacity > DETERMINISTIC_SCATTER_MAX_CAPACITY:
-            raise RuntimeError(
-                "Deterministic counter buffer capacity exceeds the supported int32 limit "
-                f"({capacity} > {DETERMINISTIC_SCATTER_MAX_CAPACITY}). "
-                "Reduce the launch size or deterministic_max_records."
+            raise WarpDeterminismError(
+                f"Deterministic mode cannot allocate temporary storage for array {target.target_label!r}. Cause: "
+                f"this launch needs {capacity} atomic-call slots, but Warp supports at most "
+                f"{DETERMINISTIC_SCATTER_MAX_CAPACITY}. Fix: reduce the launch size or "
+                "deterministic_max_records.",
             )
         if initialize_unused:
             keys = warp.full(shape=(capacity,), value=-1, dtype=warp.int64, device=device)
@@ -1925,11 +2194,28 @@ def allocate_counter_buffers(counter_targets, meta, dim_size, device, max_record
         else:
             keys = warp.empty(shape=(capacity,), dtype=warp.int64, device=device)
             values = warp.empty(shape=(capacity,), dtype=warp.int32, device=device)
+        destinations = warp.empty(shape=(capacity,), dtype=warp.int32, device=device)
         prefixes = warp.empty(shape=(capacity,), dtype=warp.int32, device=device)
         record_slots = warp.full(shape=(capacity,), value=-1, dtype=warp.int32, device=device)
-        cursors = warp.zeros(shape=(dim_size,), dtype=warp.int32, device=device)
+        # Separate cursors allow one linear validation kernel after replay instead of
+        # adding another contended global atomic to every counter reservation.
+        phase0_cursors = warp.zeros(shape=(dim_size,), dtype=warp.int32, device=device)
+        phase1_cursors = warp.zeros(shape=(dim_size,), dtype=warp.int32, device=device)
         count = warp.zeros(shape=(1,), dtype=warp.int32, device=device)
-        buffers.append((keys, values, prefixes, record_slots, cursors, count, capacity, records_per_thread))
+        buffers.append(
+            CounterBuffer(
+                keys=keys,
+                values=values,
+                destinations=destinations,
+                prefixes=prefixes,
+                record_slots=record_slots,
+                phase0_cursors=phase0_cursors,
+                phase1_cursors=phase1_cursors,
+                count=count,
+                capacity=capacity,
+                records_per_thread=records_per_thread,
+            )
+        )
     return buffers
 
 
@@ -1964,11 +2250,11 @@ def run_sort_reduce(
 
         try:
             scalar_type_id = warp_scalar_type_to_id(target.scalar_dtype)
-        except ValueError:
-            from warp._src import utils as warp_utils  # noqa: PLC0415
-
-            warp_utils.warn(f"Unsupported value type '{target.value_ctype}' for deterministic sort-reduce.")
-            continue
+        except ValueError as e:
+            raise _internal_error(
+                "applying deterministic atomic updates",
+                f"array {target.target_label!r} uses unsupported value type {target.value_ctype!r}",
+            ) from e
 
         components = getattr(target.value_dtype, "_length_", 1)
         workspace_size = runtime.core.wp_deterministic_sort_reduce_workspace_size(
@@ -2015,10 +2301,9 @@ def run_counter_scan(
     workspaces = []
 
     for i, counter_buffer in enumerate(counter_buffers):
-        keys, values, prefixes, _record_slots, _cursors, _count, capacity, _records_per_thread = counter_buffer
         counter_arr = counter_arrays[i]
         counter_bases, counter_totals, counter_size_elements = counter_state_buffers[i]
-        record_count = capacity if record_counts is None else record_counts[i]
+        record_count = counter_buffer.capacity if record_counts is None else record_counts[i]
 
         if counter_arr is None:
             continue
@@ -2033,10 +2318,10 @@ def run_counter_scan(
         workspaces.append(workspace)
 
         runtime.core.wp_deterministic_counter_scan_device(
-            keys.ptr,
-            values.ptr,
+            counter_buffer.keys.ptr,
+            counter_buffer.values.ptr,
             record_count,
-            prefixes.ptr,
+            counter_buffer.prefixes.ptr,
             counter_bases.ptr,
             counter_totals.ptr,
             counter_size_elements,
@@ -2047,13 +2332,24 @@ def run_counter_scan(
     return workspaces
 
 
+def run_counter_replay_validation(runtime, counter_buffers, dim_size, error_buffer, debug):
+    """Flag counter reservation sequences that changed between deterministic passes."""
+    for counter_buffer in counter_buffers:
+        runtime.core.wp_deterministic_counter_validate_replay_device(
+            counter_buffer.phase0_cursors.ptr,
+            counter_buffer.phase1_cursors.ptr,
+            dim_size,
+            error_buffer.ptr,
+            debug,
+        )
+
+
 def run_counter_writeback(runtime, counter_buffers, counter_arrays, counter_state_buffers, record_counts=None):
     """Publish deterministic counter totals after phase 1 replay."""
     for i, counter_buffer in enumerate(counter_buffers):
-        keys, _values, _prefixes, _record_slots, _cursors, _count, capacity, _records_per_thread = counter_buffer
         counter_arr = counter_arrays[i]
         _counter_bases, counter_totals, counter_size_elements = counter_state_buffers[i]
-        record_count = capacity if record_counts is None else record_counts[i]
+        record_count = counter_buffer.capacity if record_counts is None else record_counts[i]
 
         if counter_arr is None or counter_totals is None:
             continue
@@ -2061,7 +2357,7 @@ def run_counter_writeback(runtime, counter_buffers, counter_arrays, counter_stat
             continue
 
         runtime.core.wp_deterministic_counter_writeback_device(
-            keys.ptr,
+            counter_buffer.keys.ptr,
             record_count,
             counter_totals.ptr,
             counter_arr.ptr,
@@ -2119,7 +2415,9 @@ def _deterministic_launch_class():
             targets = (
                 *self.det_meta.scatter_targets,
                 *self.det_meta.counter_targets,
-                *self.det_meta.store_targets_seen,
+                *self.det_meta.load_targets_seen,
+                *self.det_meta.backward_store_targets,
+                *self.det_meta.side_effect_atomic_targets,
             )
             return any(target.array_var_label == arg_label for target in targets)
 
@@ -2135,10 +2433,10 @@ def _deterministic_launch_class():
         ):
             if self._is_deterministic_target_arg(index):
                 arg_label = self.kernel.adj.args[index].label
-                raise RuntimeError(
-                    "Updating deterministic target argument "
-                    f"'{arg_label}' from a raw ctypes value is not supported. "
-                    "Use set_param_at_index() with a Warp array or struct object instead."
+                raise WarpDeterminismError(
+                    f"Cannot update argument {arg_label!r} of deterministic kernel {self.kernel.key!r} from a raw "
+                    "ctypes value. Cause: Warp needs the Python array or struct object to validate memory overlap. "
+                    "Fix: call set_param_at_index() with a Warp array or struct object.",
                 )
 
             super().set_param_at_index_from_ctype(index, value, adjoint)
@@ -2174,6 +2472,108 @@ def _deterministic_launch_class():
 
 def create_deterministic_launch(*args, **kwargs):
     return _deterministic_launch_class()(*args, **kwargs)
+
+
+def _same_stride_views_overlap(array_a, array_b, max_candidates=4096):
+    """Decide overlap exactly for views with equal positive strides, such as blocks of one matrix.
+
+    Elements ``i`` of ``array_a`` and ``j`` of ``array_b`` share bytes when
+    ``sum(strides * (i - j))`` lies strictly between ``delta - size_a`` and ``delta + size_b``,
+    where ``delta = array_b.ptr - array_a.ptr``. Search the index differences from the largest
+    stride down, pruning by what the remaining dimensions can reach. Return ``None`` if undecided.
+    """
+    strides = tuple(int(stride) for stride in array_a.strides)
+    if strides != tuple(int(stride) for stride in array_b.strides) or min(strides) <= 0:
+        return None
+
+    dims = sorted(zip(strides, array_a.shape, array_b.shape, strict=True), reverse=True)
+    delta = int(array_b.ptr) - int(array_a.ptr)
+    pending = [(0, delta - type_size_in_bytes(array_a.dtype), delta + type_size_in_bytes(array_b.dtype))]
+    candidates = 0
+    while pending:
+        k, lo, hi = pending.pop()
+        if k == len(dims):
+            if lo < 0 < hi:
+                return True
+            continue
+        stride, size_a, size_b = dims[k]
+        reach_up = sum(s * (n_a - 1) for s, n_a, _ in dims[k + 1 :])
+        reach_down = sum(s * (n_b - 1) for s, _, n_b in dims[k + 1 :])
+        first = max(-(size_b - 1), (lo - reach_up) // stride + 1)
+        last = min(size_a - 1, -((-hi - reach_down) // stride) - 1)
+        candidates += max(0, last - first + 1)
+        if candidates > max_candidates:
+            return None
+        pending.extend((k + 1, lo - stride * d, hi - stride * d) for d in range(first, last + 1))
+    return False
+
+
+def _deterministic_arrays_overlap(array_a, array_b):
+    """Return whether two arrays may refer to any of the same device memory."""
+    # An indexed array can reach any element of its underlying array.
+    array_a, array_b = (arr.data if isinstance(arr, indexedarray) else arr for arr in (array_a, array_b))
+    if getattr(array_a, "device", None) != getattr(array_b, "device", None):
+        return False
+
+    interval_a = _det_array_byte_bounds(array_a)
+    interval_b = _det_array_byte_bounds(array_b)
+    if interval_a is None or interval_b is None:
+        return False
+
+    if not (interval_a[0] < interval_b[1] and interval_b[0] < interval_a[1]):
+        return False
+
+    same_stride_overlap = _same_stride_views_overlap(array_a, array_b)
+    if same_stride_overlap is not None:
+        return same_stride_overlap
+
+    # Overlapping enclosing intervals do not imply that interleaved views touch
+    # the same elements. Prove common strided layouts disjoint by comparing the
+    # byte-address residue classes each array can reach. Fall back to the
+    # conservative interval result when the residue classes overlap.
+    stride_gcd = 0
+    for stride in (*array_a.strides, *array_b.strides):
+        stride_gcd = math.gcd(stride_gcd, abs(int(stride)))
+
+    if stride_gcd:
+        element_size_a = type_size_in_bytes(array_a.dtype)
+        element_size_b = type_size_in_bytes(array_b.dtype)
+        if element_size_a < stride_gcd and element_size_b < stride_gcd:
+            residues_a = {(int(array_a.ptr) + offset) % stride_gcd for offset in range(element_size_a)}
+            residues_b = {(int(array_b.ptr) + offset) % stride_gcd for offset in range(element_size_b)}
+            if residues_a.isdisjoint(residues_b):
+                return False
+
+    return True
+
+
+def _validate_nonoverlapping_deterministic_targets(kernel_key, target_arrays):
+    """Reject separate deterministic helpers backed by overlapping storage."""
+    for i, (target_a, array_a) in enumerate(target_arrays):
+        for target_b, array_b in target_arrays[i + 1 :]:
+            if _deterministic_arrays_overlap(array_a, array_b):
+                raise WarpDeterminismError(
+                    f"Deterministic mode cannot run kernel {kernel_key!r}. Cause: arguments "
+                    f"{target_a.target_label!r} and {target_b.target_label!r} overlap in memory, but both receive "
+                    "deterministic atomic updates. Fix: pass non-overlapping arrays, or perform all updates to this "
+                    "memory through one kernel argument.",
+                )
+
+
+def _validate_deterministic_target_access_aliases(kernel_key, target_arrays, access_arrays):
+    """Reject an atomic target aliased through a directly accessed argument."""
+    for atomic_target, atomic_array in target_arrays:
+        for access_target, access_array, operation in access_arrays:
+            if not _deterministic_arrays_overlap(atomic_array, access_array):
+                continue
+
+            raise WarpDeterminismError(
+                f"Deterministic mode cannot run kernel {kernel_key!r}. Cause: argument "
+                f"{atomic_target.target_label!r} receives deterministic atomic updates, but it overlaps argument "
+                f"{access_target.target_label!r}, which is {operation} by the kernel. Warp would change the "
+                "operation order. Fix: pass non-overlapping arrays, or split the direct access and atomic update "
+                "into separate kernel launches.",
+            )
 
 
 def launch_deterministic(
@@ -2212,23 +2612,18 @@ def launch_deterministic(
 
     launch_kind = "backward" if adjoint else "forward"
 
-    if hooks is None:
-        raise RuntimeError(
-            f"Failed to find {launch_kind} kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'"
-        )
-
-    launch_hook = hooks.backward if adjoint else hooks.forward
-    shared_memory_bytes = hooks.backward_smem_bytes if adjoint else hooks.forward_smem_bytes
-
+    launch_hook = None if hooks is None else (hooks.backward if adjoint else hooks.forward)
     if launch_hook is None:
         raise RuntimeError(
             f"Failed to find {launch_kind} kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'"
         )
+    shared_memory_bytes = hooks.backward_smem_bytes if adjoint else hooks.forward_smem_bytes
 
     if runtime._apic_capture is not None:
-        raise RuntimeError(
-            "APIC serialization is not currently supported for deterministic CUDA kernels. "
-            "Capture with apic=False, or disable deterministic mode for kernels captured with apic=True."
+        raise WarpDeterminismError(
+            f"Deterministic mode cannot serialize kernel {kernel.key!r} with APIC. Cause: APIC does not preserve "
+            "the temporary work needed for deterministic atomic updates. Fix: capture with apic=False, or disable "
+            "deterministic mode for this kernel.",
         )
 
     adj_args = [] if adj_args is None else list(adj_args)
@@ -2267,10 +2662,9 @@ def launch_deterministic(
             if resolved is None:
                 return None
             if not hasattr(resolved, attr):
-                raise RuntimeError(
-                    "Deterministic target "
-                    f"{target.target_label!r} could not resolve attribute {attr!r} "
-                    f"on {type(resolved).__name__}"
+                raise _internal_error(
+                    f"launching deterministic kernel {kernel.key!r}",
+                    f"array {target.target_label!r} could not be read from {type(resolved).__name__}",
                 )
             resolved = getattr(resolved, attr)
 
@@ -2294,8 +2688,9 @@ def launch_deterministic(
         if array is None:
             return False
         if not hasattr(array, "ptr"):
-            raise RuntimeError(
-                f"Deterministic target {target.target_label!r} resolved to non-array object ({type(array).__name__})"
+            raise _internal_error(
+                f"launching deterministic kernel {kernel.key!r}",
+                f"{target.target_label!r} resolved to {type(array).__name__}, not a Warp array",
             )
         return getattr(array, "ptr", None) is not None and getattr(array, "size", 0) > 0
 
@@ -2303,21 +2698,25 @@ def launch_deterministic(
     # primal store may execute in replay or clear its adjoint, while an explicit
     # adjoint store writes the gradient directly. Include both possible storage
     # intervals without reading device memory or assuming contiguous layouts.
-    check_component_order = adjoint and det_meta.has_component_updates
-    ordered_backward_targets = det_meta.ordered_backward_targets if check_component_order else []
-    if check_component_order:
-        store_bounds = []
-        for store in det_meta.store_targets_seen:
+    # A gradient target without storage, e.g. an array without requires_grad, has no reduction to order.
+    ordered_backward_targets = (
+        [target for target in det_meta.ordered_backward_targets if target_has_resolvable_destination(target)]
+        if adjoint
+        else []
+    )
+    if adjoint:
+        stored_arrays = []
+        for store in det_meta.backward_store_targets:
             for is_adjoint in (True,) if store.adjoint else (False, True):
                 storage = ArrayStoreTarget(store.array_var_label, store.attr_path, is_adjoint)
-                interval = _det_array_byte_bounds(resolve_det_target_array(storage))
-                if interval is not None:
-                    store_bounds.append(interval)
+                array = resolve_det_target_array(storage)
+                if array is not None:
+                    stored_arrays.append(array)
         for target in det_meta.scatter_targets:
             if not target.use_backward or target in ordered_backward_targets:
                 continue
-            interval = _det_array_byte_bounds(resolve_det_target_array(target))
-            if interval is not None and any(interval[0] < end and start < interval[1] for start, end in store_bounds):
+            array = resolve_det_target_array(target)
+            if any(_deterministic_arrays_overlap(array, stored) for stored in stored_arrays):
                 ordered_backward_targets.append(target)
 
     # Mutation-dependent reductions cannot be postponed to a post-kernel pass.
@@ -2326,11 +2725,11 @@ def launch_deterministic(
     serial_backward = bool(ordered_backward_targets)
     if serial_backward and bounds.size > 1:
         target_names = ", ".join(target.target_label for target in ordered_backward_targets)
-        raise RuntimeError(
-            f"Deterministic mode does not support parallel backward launches in kernel '{kernel.key}' with "
-            f"array mutation and gradient reduction on target(s): {target_names}. "
-            "Use separate mutation and reduction kernels, use a single-thread launch, "
-            "or disable deterministic mode for this kernel."
+        raise WarpDeterminismError(
+            f"Deterministic mode cannot run the backward pass of kernel {kernel.key!r} in parallel. Cause: the kernel "
+            f"both mutates and accumulates gradients into {target_names}, so Warp cannot defer the gradient "
+            "reduction. Fix: use separate mutation and reduction kernels, use a single-thread launch, or disable "
+            "deterministic mode for this kernel."
         )
 
     active_scatter_targets = []
@@ -2341,13 +2740,6 @@ def launch_deterministic(
             continue
         if adjoint and not target_has_resolvable_destination(target):
             continue
-        if target.has_component_slot_scatter:
-            destination = resolve_det_target_array(target)
-            if any(stride < 0 for stride in destination.strides):
-                raise RuntimeError(
-                    "Deterministic mode does not support negative-stride destinations for composite slot "
-                    f"reductions on target '{target.target_label}'."
-                )
         active_scatter_targets.append(target)
 
     active_counter_targets = []
@@ -2356,16 +2748,26 @@ def launch_deterministic(
             continue
         active_counter_targets.append(target)
 
+    for target in (*active_scatter_targets, *active_counter_targets):
+        destination = resolve_det_target_array(target)
+        if destination is not None and any(stride < 0 for stride in destination.strides):
+            raise WarpDeterminismError(
+                f"Deterministic mode cannot run kernel {kernel.key!r}. Cause: array {target.target_label!r} "
+                "receives deferred atomic updates through a negative-stride view. Fix: pass a view with "
+                "non-negative strides, or disable deterministic mode for this kernel."
+            )
+
     dim_size = bounds.size
     if active_scatter_targets and dim_size > (1 << 32):
-        raise RuntimeError(
-            "Deterministic scatter atomics support launch sizes up to 2^32 threads because sort keys pack the "
-            "linear thread index into 32 bits."
+        raise WarpDeterminismError(
+            f"Deterministic mode cannot run kernel {kernel.key!r} with {dim_size} threads. Cause: deterministic "
+            "accumulation supports at most 2^32 threads in one launch. Fix: split the work into smaller launches.",
         )
     if active_counter_targets and dim_size > ((1 << 31) - 1):
-        raise RuntimeError(
-            "Deterministic consumed-return counter atomics support launch sizes up to 2^31 - 1 threads because "
-            "counter prefix buffers store per-thread contributions as int32 values."
+        raise WarpDeterminismError(
+            f"Deterministic mode cannot run kernel {kernel.key!r} with {dim_size} threads. Cause: deterministic "
+            "slot assignment supports at most 2^31 - 1 threads in one launch. Fix: split the work into smaller "
+            "launches.",
         )
 
     determinism_mode = det_meta.determinism_mode
@@ -2376,6 +2778,29 @@ def launch_deterministic(
     if stream_is_capturing:
         capture_id = runtime.core.wp_cuda_stream_get_capture_id(stream.cuda_stream)
         capture_graph = runtime.captures.get(capture_id)
+
+    if not adjoint:
+        # Backward reductions are ordered against stores above. Gradient-only
+        # aliases, e.g. ``kernel(x, x)``, are safe because their reduction passes
+        # execute in a fixed order.
+        target_arrays = [
+            (target, resolve_det_target_array(target)) for target in (*active_scatter_targets, *active_counter_targets)
+        ]
+        target_arrays = [(target, array) for target, array in target_arrays if array is not None]
+        _validate_nonoverlapping_deterministic_targets(kernel.key, target_arrays)
+
+        # Forward launches do not execute generated adjoint accesses.
+        access_arrays = []
+        for access_targets, operation in (
+            (det_meta.load_targets_seen, "read directly"),
+            (det_meta.store_targets_seen, "written directly"),
+            (det_meta.side_effect_atomic_targets, "updated by another atomic operation"),
+        ):
+            for access_target in access_targets:
+                access_array = None if access_target.adjoint else resolve_det_target_array(access_target)
+                if access_array is not None:
+                    access_arrays.append((access_target, access_array, operation))
+        _validate_deterministic_target_access_aliases(kernel.key, target_arrays, access_arrays)
 
     # Allocate buffers. During graph capture, allocations are redirected to a
     # dedicated non-capturing stream (see det_buffer_allocation_scope) so the
@@ -2408,6 +2833,8 @@ def launch_deterministic(
             if active_counter_targets
             else []
         )
+        # This legacy overflow buffer is the shared status word for capacity overflow
+        # and counter replay divergence, avoiding another launch parameter.
         overflow_buf = warp.zeros(shape=(1,), dtype=warp.int32, device=device) if scatter_bufs or counter_bufs else None
 
     if stream_is_capturing:
@@ -2444,20 +2871,21 @@ def launch_deterministic(
             target_desc = counter_arr.__ctype__() if counter_arr is not None else array_t()
             target_size = _det_dest_size_elements(counter_arr) if counter_arr is not None else 0
             if counter_buf is None:
-                det_params.append(det_counter_buf_t(0, 0, 0, 0, 0, 0, 0, 0, target_desc, target_size))
+                det_params.append(det_counter_buf_t(0, 0, 0, 0, 0, 0, 0, 0, 0, target_desc, target_size))
                 continue
 
-            keys, values, prefixes, record_slots, cursors, count, capacity, records_per_thread = counter_buf
+            cursors = counter_buf.phase0_cursors if phase == 0 else counter_buf.phase1_cursors
             det_params.append(
                 det_counter_buf_t(
-                    keys.ptr,
-                    values.ptr,
-                    prefixes.ptr,
-                    record_slots.ptr,
+                    counter_buf.keys.ptr,
+                    counter_buf.values.ptr,
+                    counter_buf.destinations.ptr,
+                    counter_buf.prefixes.ptr,
+                    counter_buf.record_slots.ptr,
                     cursors.ptr,
-                    count.ptr,
-                    capacity,
-                    records_per_thread,
+                    counter_buf.count.ptr,
+                    counter_buf.capacity,
+                    counter_buf.records_per_thread,
                     target_desc,
                     target_size,
                 )
@@ -2510,10 +2938,9 @@ def launch_deterministic(
                 counter_arrays.append(None)
                 continue
             if not hasattr(counter_arr, "ptr"):
-                raise RuntimeError(
-                    "Deterministic counter target "
-                    f"{ct.target_label!r} resolved to non-array object "
-                    f"({type(counter_arr).__name__})"
+                raise _internal_error(
+                    f"launching deterministic kernel {kernel.key!r}",
+                    f"{ct.target_label!r} resolved to {type(counter_arr).__name__}, not a Warp array",
                 )
             if getattr(counter_arr, "ptr", None) is None or getattr(counter_arr, "size", 0) <= 0:
                 counter_arrays.append(None)
@@ -2525,13 +2952,13 @@ def launch_deterministic(
 
         with warp.ScopedStream(stream, sync_enter=False):
             for counter_buf in counter_bufs:
-                keys, values, _prefixes, record_slots, cursors, count, _capacity, _records_per_thread = counter_buf
-                count.zero_()
-                cursors.zero_()
-                record_slots.fill_(-1)
+                counter_buf.count.zero_()
+                counter_buf.phase0_cursors.zero_()
+                counter_buf.phase1_cursors.zero_()
+                counter_buf.record_slots.fill_(-1)
                 if stream_is_capturing:
-                    keys.fill_(-1)
-                    values.zero_()
+                    counter_buf.keys.fill_(-1)
+                    counter_buf.values.zero_()
 
         # Phase 0: counting pass (side effects suppressed, scatter disabled).
         det_params_p0 = build_det_params(phase=0, use_scatter=False)
@@ -2552,36 +2979,35 @@ def launch_deterministic(
             ct = active_counter_targets[i]
             if counter_arr is None:
                 if not stream_is_capturing:
-                    _keys, _values, _prefixes, _record_slots, _cursors, count, _capacity, _records_per_thread = (
-                        counter_bufs[i]
-                    )
-                    emitted_count = int(count.numpy()[0])
+                    emitted_count = int(counter_bufs[i].count.numpy()[0])
                     if emitted_count != 0:
-                        raise RuntimeError(
-                            f"Deterministic counter target {ct.target_label!r} resolved to None "
-                            f"but emitted {emitted_count} records."
+                        raise _internal_error(
+                            f"running deterministic kernel {kernel.key!r}",
+                            f"array {ct.target_label!r} was unavailable after the kernel recorded {emitted_count} "
+                            "atomic_add() calls",
                         )
                 counter_record_counts.append(0)
                 continue
             if stream_is_capturing:
                 record_count = get_counter_record_count(counter_bufs[i], stream_is_capturing=True)
             else:
-                _keys, _values, _prefixes, _record_slots, _cursors, count, capacity, _records_per_thread = counter_bufs[
-                    i
-                ]
-                emitted_count = int(count.numpy()[0])
-                if emitted_count < 0 or emitted_count > capacity:
-                    raise RuntimeError(
-                        f"Deterministic counter buffer overflow in kernel '{kernel.key}'. "
-                        "Increase 'deterministic_max_records' or reduce the per-thread atomic count."
+                counter_buf = counter_bufs[i]
+                emitted_count = int(counter_buf.count.numpy()[0])
+                if emitted_count < 0 or emitted_count > counter_buf.capacity:
+                    raise WarpDeterminismError(
+                        f"Deterministic mode cannot run kernel {kernel.key!r}. Cause: array {ct.target_label!r} "
+                        f"recorded {emitted_count} atomic_add() calls, but temporary storage has room for "
+                        f"{counter_buf.capacity}. Fix: set deterministic_max_records to a safe upper bound for the "
+                        "number of calls each thread can make, or reduce that number.",
                     )
                 record_count = emitted_count
             counter_record_counts.append(record_count)
 
         if overflow_buf is not None and not stream_is_capturing and int(overflow_buf.numpy()[0]) != 0:
-            raise RuntimeError(
-                f"Deterministic counter buffer overflow in kernel '{kernel.key}'. "
-                "Increase 'deterministic_max_records' or reduce the per-thread atomic count."
+            raise WarpDeterminismError(
+                f"Deterministic mode cannot run kernel {kernel.key!r}. Cause: at least one thread made more "
+                "atomic_add() calls than the temporary per-thread limit. Fix: set deterministic_max_records to a "
+                "safe upper bound for the number of calls each thread can make, or reduce that number.",
             )
 
         with warp.ScopedStream(stream, sync_enter=False):
@@ -2594,9 +3020,6 @@ def launch_deterministic(
                 record_counts=counter_record_counts,
                 stream_is_capturing=stream_is_capturing,
             )
-            for counter_buf in counter_bufs:
-                _keys, _values, _prefixes, _record_slots, cursors, _count, _capacity, _records_per_thread = counter_buf
-                cursors.zero_()
 
         # Phase 1: execution pass with deterministic slots.
         det_params_p1 = build_det_params(phase=1, use_scatter=True)
@@ -2604,6 +3027,7 @@ def launch_deterministic(
         do_cuda_launch(launch_hook, params_p1)
 
         with warp.ScopedStream(stream, sync_enter=False):
+            run_counter_replay_validation(runtime, counter_bufs, dim_size, overflow_buf, det_debug)
             run_counter_writeback(
                 runtime,
                 counter_bufs,
@@ -2630,10 +3054,9 @@ def launch_deterministic(
             if dest_array is None:
                 continue
             if not hasattr(dest_array, "ptr"):
-                raise RuntimeError(
-                    "Deterministic scatter target "
-                    f"{scatter_target.target_label!r} resolved to non-array object "
-                    f"({type(dest_array).__name__})"
+                raise _internal_error(
+                    f"launching deterministic kernel {kernel.key!r}",
+                    f"{scatter_target.target_label!r} resolved to {type(dest_array).__name__}, not a Warp array",
                 )
             if getattr(dest_array, "ptr", None) is None or getattr(dest_array, "size", 0) <= 0:
                 continue
@@ -2670,17 +3093,22 @@ def launch_deterministic(
             if buffer is not None
         )
 
-    try:
-        runtime.verify_cuda_device(device)
-    except Exception:
-        from warp._src import utils as warp_utils  # noqa: PLC0415
+    runtime.verify_cuda_device(device)
 
-        warp_utils.warn(f"Error in deterministic kernel launch: {kernel.key} on device {device}")
-        raise
-
-    if overflow_buf is not None and not stream_is_capturing and int(overflow_buf.numpy()[0]) != 0:
-        overflow_kind = "scatter" if det_meta.has_scatter else "counter"
-        raise RuntimeError(
-            f"Deterministic {overflow_kind} buffer overflow in kernel '{kernel.key}'. "
-            "Increase 'deterministic_max_records' or reduce the per-thread atomic count."
+    error_code = int(overflow_buf.numpy()[0]) if overflow_buf is not None and not stream_is_capturing else 0
+    if error_code == DETERMINISTIC_ERROR_COUNTER_REPLAY_DIVERGENCE:
+        raise WarpDeterminismError(
+            f"Deterministic mode cannot safely run kernel {kernel.key!r}. Cause: a thread called atomic_add() "
+            "differently when Warp repeated the kernel to assign stable slot numbers. The call, array index, or "
+            "increment probably depends on an array value written earlier in the same kernel. Fix: move that write "
+            "to an earlier kernel, use local or read-only input state to decide the atomic_add() calls, or disable "
+            "deterministic mode for this kernel. State: this failed launch may have modified its outputs; discard or "
+            "reset them before continuing.",
+        )
+    if error_code != 0:
+        raise WarpDeterminismError(
+            f"Deterministic mode cannot safely finish kernel {kernel.key!r}. Cause: at least one thread made more "
+            "transformed atomic calls than the temporary per-thread limit. Fix: set deterministic_max_records to a "
+            "safe upper bound for the number of calls each thread can make, or reduce that number. State: this "
+            "failed launch may have modified its outputs; discard or reset them before continuing.",
         )
