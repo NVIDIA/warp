@@ -381,17 +381,10 @@ static inline double p1evl(double x, const double* coefs, int N)
  * Copyright (c) 1984 by Stephen L. Moshier.
  * All rights reserved.
  */
-// inverse normal distribution function (ndtri)
-static inline double ndtri(double y)
+// central region of ndtri, as a function of t = y - 0.5
+static inline double ndtri_center(double t)
 {
-    // domain check
-    if (y <= 0.0 || y >= 1.0) {
-        return (y <= 0.0) ? -HUGE_VAL : HUGE_VAL;
-    }
-
-    // constants from Cephes
     const double s2pi = 2.50662827463100050242E0;  // sqrt(2*pi)
-    const double exp_neg2 = 0.13533528323661269189;  // exp(-2)
 
     // approximation for 0 <= abs(z - 0.5) <= 3/8
     static const double P0[5] = { -5.99633501014107895267e1, 9.80010754185999661536e1, -5.66762857469070293439e1,
@@ -401,6 +394,14 @@ static inline double ndtri(double y)
         = { 1.95448858338141759834e0, 4.67627912898881538453e0,  8.63602421390890590575e1, -2.25462687854119370527e2,
             2.00260212380060660359e2, -8.20372256168333339912e1, 1.59056225126211695515e1, -1.18331621121330003142e0 };
 
+    double t2 = t * t;
+    double x = t + t * (t2 * polevl(t2, P0, 4) / p1evl(t2, Q0, 8));
+    return x * s2pi;
+}
+
+// tails of ndtri: |ndtri(y)| for 0 < y <= exp(-2), as a function of log(y)
+static inline double ndtri_tail(double log_y)
+{
     // approximation for interval z = sqrt(-2 log y) between 2 and 8
     static const double P1[9] = { 4.05544892305962419923e0,   3.15251094599893866154e1,   5.71628192246421288162e1,
                                   4.40805073893200834700e1,   1.46849561928858024014e1,   2.18663306850790267539e0,
@@ -419,24 +420,7 @@ static inline double ndtri(double y)
                                   2.16236993594496635890e-1, 1.34204006088543189037e-2, 3.28014464682127739104e-4,
                                   2.89247864745380683936e-6, 6.79019408009981274425e-9 };
 
-    int code = 1;
-    double y_work = y;
-
-    if (y_work > (1.0 - exp_neg2)) {
-        y_work = 1.0 - y_work;
-        code = 0;
-    }
-
-    // middle region: 0 <= |y - 0.5| <= 3/8
-    if (y_work > exp_neg2) {
-        y_work -= 0.5;
-        double y2 = y_work * y_work;
-        double x = y_work + y_work * (y2 * polevl(y2, P0, 4) / p1evl(y2, Q0, 8));
-        x = x * s2pi;
-        return x;
-    }
-
-    double x = ::sqrt(-2.0 * ::log(y_work));
+    double x = ::sqrt(-2.0 * log_y);
     double x0 = x - ::log(x) / x;
 
     double z = 1.0 / x;
@@ -447,7 +431,34 @@ static inline double ndtri(double y)
         x1 = z * polevl(z, P2, 8) / p1evl(z, Q2, 8);
     }
 
-    x = x0 - x1;
+    return x0 - x1;
+}
+
+// inverse normal distribution function (ndtri)
+static inline double ndtri(double y)
+{
+    // domain check
+    if (y <= 0.0 || y >= 1.0) {
+        return (y <= 0.0) ? -HUGE_VAL : HUGE_VAL;
+    }
+
+    // constants from Cephes
+    const double exp_neg2 = 0.13533528323661269189;  // exp(-2)
+
+    int code = 1;
+    double y_work = y;
+
+    if (y_work > (1.0 - exp_neg2)) {
+        y_work = 1.0 - y_work;
+        code = 0;
+    }
+
+    // middle region: 0 <= |y - 0.5| <= 3/8
+    if (y_work > exp_neg2) {
+        return ndtri_center(y_work - 0.5);
+    }
+
+    double x = ndtri_tail(::log(y_work));
     if (code != 0) {
         x = -x;
     }
@@ -469,13 +480,37 @@ inline double erfinv(double z)
     if (z < -1.0 || z > 1.0)
         return NAN;  // outside valid range
 
-    // erfinv(z) = ndtri((z + 1) / 2) / sqrt(2)
-    return ndtri((z + 1.0) / 2.0) / ::sqrt(2.0);
+    // erfinv(z) = ndtri((z + 1) / 2) / sqrt(2), but rounding z + 1 loses the low bits of z, and all of a
+    // small z. Pass y - 0.5 = z / 2 to the central approximation, and y = (1 - |z|) / 2 to the tails: both
+    // are exact, except z / 2 for |z| < 2^-1021, where erfinv(z) = sqrt(pi) / 2 * z to double precision.
+    if (::fabs(z) < 4.450147717014403e-308)
+        return 0.88622692545275801365 * z;
+    const double exp_neg2 = 0.13533528323661269189;  // exp(-2)
+    double t = 0.5 * z;
+    if (::fabs(t) < 0.5 - exp_neg2)
+        return ndtri_center(t) / ::sqrt(2.0);
+    double x = -ndtri(0.5 * (1.0 - ::fabs(z))) / ::sqrt(2.0);
+    return z < 0.0 ? -x : x;
 }
 
 inline float erfinvf(float x) { return (float)erfinv((double)x); }
 
-inline double erfcinv(double x) { return erfinv(1.0 - x); }
+inline double erfcinv(double x)
+{
+    // handle special cases
+    if (x == 0.0)
+        return HUGE_VAL;  // infinity
+    if (x == 1.0)
+        return 0.0;
+    if (x < 0.0 || x > 2.0)
+        return NAN;  // outside valid range
+
+    // erfcinv(x) = -ndtri(x / 2) / sqrt(2). Unlike 1 - x in erfinv(1 - x), x / 2 is exact, so small x keeps
+    // its precision. Below 2^-1021, x / 2 would round, so pass log(x / 2) = log(x) - log(2) to the tail.
+    if (x < 4.450147717014403e-308)
+        return ndtri_tail(::log(x) - 0.69314718055994530942) / ::sqrt(2.0);
+    return -ndtri(0.5 * x) / ::sqrt(2.0);
+}
 
 inline float erfcinvf(float x) { return (float)erfcinv((double)x); }
 

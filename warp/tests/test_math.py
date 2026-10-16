@@ -97,6 +97,75 @@ def test_erf_math(test, device):
 
 
 @wp.kernel
+def erfinv_precision_kernel(x: wp.array[Any], out: wp.array[Any]):
+    i = wp.tid()
+    out[i] = wp.erfinv(x[i])
+
+
+@wp.kernel
+def erfcinv_precision_kernel(x: wp.array[Any], out: wp.array[Any]):
+    i = wp.tid()
+    out[i] = wp.erfcinv(x[i])
+
+
+def test_erfinv_precision(test, device):
+    # Small arguments lost precision on CPU: erfinv(1e-20) returned 0 and erfcinv(1e-20) returned inf.
+    # The float64 cases include subnormal arguments. The expected values are from mpmath, for the arguments
+    # rounded to each type.
+    cases = {
+        wp.float64: (
+            [1.0e-20, -1.0e-20, 1.0e-7, -1.0e-7, 0.5, -0.9, 0.999999999999, 5.0e-324, -5.0e-324],
+            [
+                8.86226925452758e-21,
+                -8.86226925452758e-21,
+                8.862269254527602e-08,
+                -8.862269254527602e-08,
+                0.4769362762044699,
+                -1.1630871536766743,
+                5.042031898572696,
+                5.0e-324,
+                -5.0e-324,
+            ],
+            [1.0e-20, 1.0e-7, 0.5, 1.5, 1.999999999999, 5.0e-324, 3.0e-310],
+            [
+                6.601580622355143,
+                3.766562581570838,
+                0.4769362762044699,
+                -0.4769362762044699,
+                -5.042021094113473,
+                27.21329321081295,
+                26.624197208448933,
+            ],
+            1.0e-14,
+        ),
+        wp.float32: (
+            [1.0e-20, -1.0e-20, 1.0e-7, -1.0e-7, 0.5, -0.9, 0.999999],
+            [
+                8.862268973288096e-21,
+                -8.862268973288096e-21,
+                8.862269358092946e-08,
+                -8.862269358092946e-08,
+                0.4769362762044699,
+                -1.1630870719457722,
+                3.45707472603595,
+            ],
+            [1.0e-20, 1.0e-7, 0.5, 1.5, 1.999999],
+            [6.601580624732017, 3.7665625800692615, 0.4769362762044699, -0.4769362762044699, -3.465505025803331],
+            1.0e-6,
+        ),
+    }
+    for dtype, (erfinv_x, erfinv_expected, erfcinv_x, erfcinv_expected, rtol) in cases.items():
+        for kernel, values, expected in (
+            (erfinv_precision_kernel, erfinv_x, erfinv_expected),
+            (erfcinv_precision_kernel, erfcinv_x, erfcinv_expected),
+        ):
+            x = wp.array(values, dtype=dtype, device=device)
+            out = wp.empty_like(x)
+            wp.launch(kernel, dim=len(values), inputs=[x], outputs=[out], device=device)
+            np.testing.assert_allclose(out.numpy(), expected, rtol=rtol)
+
+
+@wp.kernel
 def test_vec_norm_kernel(vs: wp.array[Any], out: wp.array2d[float]):
     tid = wp.tid()
     out[tid, 0] = wp.norm_l1(vs[tid])
@@ -464,6 +533,7 @@ class TestMath(unittest.TestCase):
 
 add_function_test(TestMath, "test_scalar_math", test_scalar_math, devices=devices)
 add_function_test(TestMath, "test_erf_math", test_erf_math, devices=devices)
+add_function_test(TestMath, "test_erfinv_precision", test_erfinv_precision, devices=devices)
 add_function_test(TestMath, "test_vec_norm", test_vec_norm, devices=devices)
 add_function_test(TestMath, "test_smooth_normalize", test_smooth_normalize, devices=devices)
 add_function_test(TestMath, "test_quat_helpers", quat_helpers, devices=devices)
