@@ -9007,7 +9007,12 @@ def texture_sample(tex: Texture1D, u: float32 | float, dtype: Any, lod: float32 
             texture's available mip-level range. Fractional values blend between neighbouring mip
             levels when ``mip_filter_mode`` is
             :attr:`warp.TextureFilterMode.LINEAR`; the coordinate is evaluated independently at
-            each level used in the blend. The ``lod`` argument is ignored for textures created with a single mip level.
+            each level used in the blend. The ``lod`` argument is ignored for textures created with a
+            single mip level. The ``lod`` adjoint is nonzero only for mipmapped textures with
+            ``mip_filter_mode=TextureFilterMode.LINEAR`` and a nonnegative LOD. At an unclamped
+            integer LOD, the mip-blend derivative may differ on either side. Warp uses the
+            derivative toward increasing LOD values. The LOD gradient is zero when the LOD is
+            clamped.
 
     Returns:
         The sampled value of the specified ``dtype``. The backends normalize unsigned 8- and 16-bit
@@ -9020,6 +9025,13 @@ def texture_sample(tex: Texture1D, u: float32 | float, dtype: Any, lod: float32 
     coordinates (:class:`warp.TextureAddressMode`) are those set when the texture was created; see
     :class:`warp.Texture`. Currently, CUDA textures with unnormalized coordinates support only
     ``CLAMP`` and ``BORDER`` address modes. Use normalized coordinates with ``WRAP`` or ``MIRROR``.
+
+    The backward pass propagates gradients to the sampling coordinates wherever the sample
+    is locally linear. At interpolation-cell and address-mode boundaries the mathematical
+    derivative is not unique, so Warp follows the branch selected by the forward sampler.
+    With :attr:`warp.TextureFilterMode.CLOSEST` filtering the sampled value is piecewise
+    constant in the coordinates, so coordinate gradients are zero. Gradients are not
+    propagated to the texture data itself.
 
     Example:
 
@@ -9076,7 +9088,12 @@ def texture_sample(tex: Texture2D, uv: vec2f, dtype: Any, lod: float32 | float =
             texture's available mip-level range. Fractional values blend between neighbouring mip
             levels when ``mip_filter_mode`` is
             :attr:`warp.TextureFilterMode.LINEAR`; the coordinates are evaluated independently at
-            each level used in the blend. The ``lod`` argument is ignored for textures created with a single mip level.
+            each level used in the blend. The ``lod`` argument is ignored for textures created with a
+            single mip level. The ``lod`` adjoint is nonzero only for mipmapped textures with
+            ``mip_filter_mode=TextureFilterMode.LINEAR`` and a nonnegative LOD. At an unclamped
+            integer LOD, the mip-blend derivative may differ on either side. Warp uses the
+            derivative toward increasing LOD values. The LOD gradient is zero when the LOD is
+            clamped.
 
     Returns:
         The sampled value of the specified ``dtype``. The backends normalize unsigned 8- and 16-bit
@@ -9088,7 +9105,14 @@ def texture_sample(tex: Texture2D, uv: vec2f, dtype: Any, lod: float32 | float =
     The filtering mode (:class:`warp.TextureFilterMode`) and the addressing of out-of-range
     coordinates (:class:`warp.TextureAddressMode`) are those set when the texture was created; see
     :class:`warp.Texture`. Currently, CUDA textures with unnormalized coordinates support only
-    ``CLAMP`` and ``BORDER`` address modes. Use normalized coordinates with ``WRAP`` or ``MIRROR``."""
+    ``CLAMP`` and ``BORDER`` address modes. Use normalized coordinates with ``WRAP`` or ``MIRROR``.
+
+    The backward pass propagates gradients to the sampling coordinates wherever the sample
+    is locally linear. At interpolation-cell and address-mode boundaries the mathematical
+    derivative is not unique, so Warp follows the branch selected by the forward sampler.
+    With :attr:`warp.TextureFilterMode.CLOSEST` filtering the sampled value is piecewise
+    constant in the coordinates, so coordinate gradients are zero. Gradients are not
+    propagated to the texture data itself."""
     ...
 
 @over
@@ -9125,7 +9149,12 @@ def texture_sample(
             texture's available mip-level range. Fractional values blend between neighbouring mip
             levels when ``mip_filter_mode`` is
             :attr:`warp.TextureFilterMode.LINEAR`; the coordinates are evaluated independently at
-            each level used in the blend. The ``lod`` argument is ignored for textures created with a single mip level.
+            each level used in the blend. The ``lod`` argument is ignored for textures created with a
+            single mip level. The ``lod`` adjoint is nonzero only for mipmapped textures with
+            ``mip_filter_mode=TextureFilterMode.LINEAR`` and a nonnegative LOD. At an unclamped
+            integer LOD, the mip-blend derivative may differ on either side. Warp uses the
+            derivative toward increasing LOD values. The LOD gradient is zero when the LOD is
+            clamped.
 
     Returns:
         The sampled value of the specified ``dtype``. The backends normalize unsigned 8- and 16-bit
@@ -9137,7 +9166,14 @@ def texture_sample(
     The filtering mode (:class:`warp.TextureFilterMode`) and the addressing of out-of-range
     coordinates (:class:`warp.TextureAddressMode`) are those set when the texture was created; see
     :class:`warp.Texture`. Currently, CUDA textures with unnormalized coordinates support only
-    ``CLAMP`` and ``BORDER`` address modes. Use normalized coordinates with ``WRAP`` or ``MIRROR``."""
+    ``CLAMP`` and ``BORDER`` address modes. Use normalized coordinates with ``WRAP`` or ``MIRROR``.
+
+    The backward pass propagates gradients to the sampling coordinates wherever the sample
+    is locally linear. At interpolation-cell and address-mode boundaries the mathematical
+    derivative is not unique, so Warp follows the branch selected by the forward sampler.
+    With :attr:`warp.TextureFilterMode.CLOSEST` filtering the sampled value is piecewise
+    constant in the coordinates, so coordinate gradients are zero. Gradients are not
+    propagated to the texture data itself."""
     ...
 
 @over
@@ -9166,7 +9202,12 @@ def texture_sample(tex: Texture3D, uvw: vec3f, dtype: Any, lod: float32 | float 
             texture's available mip-level range. Fractional values blend between neighbouring mip
             levels when ``mip_filter_mode`` is
             :attr:`warp.TextureFilterMode.LINEAR`; the coordinates are evaluated independently at
-            each level used in the blend. The ``lod`` argument is ignored for textures created with a single mip level.
+            each level used in the blend. The ``lod`` argument is ignored for textures created with a
+            single mip level. The ``lod`` adjoint is nonzero only for mipmapped textures with
+            ``mip_filter_mode=TextureFilterMode.LINEAR`` and a nonnegative LOD. At an unclamped
+            integer LOD, the mip-blend derivative may differ on either side. Warp uses the
+            derivative toward increasing LOD values. The LOD gradient is zero when the LOD is
+            clamped.
 
     Returns:
         The sampled value of the specified ``dtype``. The backends normalize unsigned 8- and 16-bit
@@ -9178,7 +9219,14 @@ def texture_sample(tex: Texture3D, uvw: vec3f, dtype: Any, lod: float32 | float 
     The filtering mode (:class:`warp.TextureFilterMode`) and the addressing of out-of-range
     coordinates (:class:`warp.TextureAddressMode`) are those set when the texture was created; see
     :class:`warp.Texture`. Currently, CUDA textures with unnormalized coordinates support only
-    ``CLAMP`` and ``BORDER`` address modes. Use normalized coordinates with ``WRAP`` or ``MIRROR``."""
+    ``CLAMP`` and ``BORDER`` address modes. Use normalized coordinates with ``WRAP`` or ``MIRROR``.
+
+    The backward pass propagates gradients to the sampling coordinates wherever the sample
+    is locally linear. At interpolation-cell and address-mode boundaries the mathematical
+    derivative is not unique, so Warp follows the branch selected by the forward sampler.
+    With :attr:`warp.TextureFilterMode.CLOSEST` filtering the sampled value is piecewise
+    constant in the coordinates, so coordinate gradients are zero. Gradients are not
+    propagated to the texture data itself."""
     ...
 
 @over
@@ -9219,7 +9267,12 @@ def texture_sample(
             texture's available mip-level range. Fractional values blend between neighbouring mip
             levels when ``mip_filter_mode`` is
             :attr:`warp.TextureFilterMode.LINEAR`; the coordinates are evaluated independently at
-            each level used in the blend. The ``lod`` argument is ignored for textures created with a single mip level.
+            each level used in the blend. The ``lod`` argument is ignored for textures created with a
+            single mip level. The ``lod`` adjoint is nonzero only for mipmapped textures with
+            ``mip_filter_mode=TextureFilterMode.LINEAR`` and a nonnegative LOD. At an unclamped
+            integer LOD, the mip-blend derivative may differ on either side. Warp uses the
+            derivative toward increasing LOD values. The LOD gradient is zero when the LOD is
+            clamped.
 
     Returns:
         The sampled value of the specified ``dtype``. The backends normalize unsigned 8- and 16-bit
@@ -9231,7 +9284,14 @@ def texture_sample(
     The filtering mode (:class:`warp.TextureFilterMode`) and the addressing of out-of-range
     coordinates (:class:`warp.TextureAddressMode`) are those set when the texture was created; see
     :class:`warp.Texture`. Currently, CUDA textures with unnormalized coordinates support only
-    ``CLAMP`` and ``BORDER`` address modes. Use normalized coordinates with ``WRAP`` or ``MIRROR``."""
+    ``CLAMP`` and ``BORDER`` address modes. Use normalized coordinates with ``WRAP`` or ``MIRROR``.
+
+    The backward pass propagates gradients to the sampling coordinates wherever the sample
+    is locally linear. At interpolation-cell and address-mode boundaries the mathematical
+    derivative is not unique, so Warp follows the branch selected by the forward sampler.
+    With :attr:`warp.TextureFilterMode.CLOSEST` filtering the sampled value is piecewise
+    constant in the coordinates, so coordinate gradients are zero. Gradients are not
+    propagated to the texture data itself."""
     ...
 
 @over
