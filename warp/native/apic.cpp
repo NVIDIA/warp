@@ -5,7 +5,8 @@
 // owns most of APIC: recording state, memory-region / metadata registration,
 // operation recording, CPU graph replay, .wrp serialization and load,
 // operation-stream validation, and the public Graph API dispatchers
-// (wp_apic_load_graph, wp_apic_set_param / wp_apic_get_param, etc.).
+// (wp_apic_load_graph, wp_apic_load_graph_from_bytes, wp_apic_set_param /
+// wp_apic_get_param, etc.).
 //
 // CUDA-specific code lives in apic.cu and is reached via a small set of
 // helpers declared in apic_internal.h under WP_ENABLE_CUDA
@@ -32,6 +33,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <functional>
 #include <string>
 
 // Convert a strided view into its lowest touched byte and full backing span,
@@ -1081,7 +1083,7 @@ void apic_destroy_cpu_graph_resources(APICGraph* graph)
 
 // Allocate host memory for each region, zero it, and (if memory_ptr is
 // non-null) copy initial data from the memory section of the .wrp file.
-// Called from the CPU branch of wp_apic_load_graph.
+// Called from the CPU branch of apic_load_graph_from_image.
 bool apic_init_cpu_graph_memory(APICGraph* graph, const uint8_t* memory_ptr, size_t memory_size)
 {
     for (auto& pair : graph->regions) {
@@ -1117,7 +1119,7 @@ APICGraph::~APICGraph() { apic_destroy_cpu_graph_resources(this); }
 #endif
 
 // ============================================================================
-// .wrp File Reading and Parsing (pure C++, used by wp_apic_load_graph)
+// .wrp File Reading and Parsing (pure C++, used by the graph loader)
 // ============================================================================
 
 bool apic_read_file(const char* path, std::vector<uint8_t>& data)
@@ -1142,85 +1144,127 @@ template <typename T> static T apic_read_value(const uint8_t*& ptr)
     return value;
 }
 
-static std::string apic_read_lp_string(const uint8_t*& ptr)
+namespace {
+
+// Reads fixed-size values and length-prefixed strings from a byte span,
+// failing instead of reading past its end.
+struct APICByteReader {
+    const uint8_t* ptr;
+    const uint8_t* end;
+
+    template <typename T> bool read(T& value)
+    {
+        if (static_cast<size_t>(end - ptr) < sizeof(T))
+            return false;
+        memcpy(&value, ptr, sizeof(T));
+        ptr += sizeof(T);
+        return true;
+    }
+
+    bool read_string(std::string& value)
+    {
+        uint32_t length = 0;
+        if (!read(length) || static_cast<size_t>(end - ptr) < length)
+            return false;
+        value.assign(reinterpret_cast<const char*>(ptr), length);
+        ptr += length;
+        return true;
+    }
+};
+
+bool apic_metadata_truncated(const char* part)
 {
-    uint32_t len = apic_read_value<uint32_t>(ptr);
-    std::string s(reinterpret_cast<const char*>(ptr), len);
-    ptr += len;
-    return s;
+    wp::set_error_string("Warp APIC error: Invalid APIC metadata section: truncated %s", part);
+    return false;
 }
+
+}  // namespace
 
 bool apic_parse_metadata(const uint8_t* data, size_t size, APICGraph* graph)
 {
-    if (!data || size < 28)
-        return false;
-    const uint8_t* ptr = data;
+    if (!data)
+        return apic_metadata_truncated("header");
+    APICByteReader reader { data, data + size };
 
-    /*uint32_t version =*/apic_read_value<uint32_t>(ptr);
-    graph->target_arch = apic_read_value<uint32_t>(ptr);
-    uint32_t num_modules = apic_read_value<uint32_t>(ptr);
-    uint32_t num_kernels = apic_read_value<uint32_t>(ptr);
-    uint32_t num_params = apic_read_value<uint32_t>(ptr);
-    uint32_t num_meshes = apic_read_value<uint32_t>(ptr);
-    uint32_t num_ptr_locations = apic_read_value<uint32_t>(ptr);
+    uint32_t version = 0;
+    uint32_t target_arch = 0;
+    uint32_t num_modules = 0;
+    uint32_t num_kernels = 0;
+    uint32_t num_params = 0;
+    uint32_t num_meshes = 0;
+    uint32_t num_ptr_locations = 0;
+    if (!reader.read(version) || !reader.read(target_arch) || !reader.read(num_modules) || !reader.read(num_kernels)
+        || !reader.read(num_params) || !reader.read(num_meshes) || !reader.read(num_ptr_locations))
+        return apic_metadata_truncated("header");
+    graph->target_arch = static_cast<int>(target_arch);
 
     for (uint32_t i = 0; i < num_modules; i++) {
         APICModule mod;
-        mod.module_hash = apic_read_lp_string(ptr);
-        mod.module_name = apic_read_lp_string(ptr);
-        mod.cubin_filename = apic_read_lp_string(ptr);
-        mod.target_arch = apic_read_value<uint32_t>(ptr);
+        uint32_t module_target_arch = 0;
+        if (!reader.read_string(mod.module_hash) || !reader.read_string(mod.module_name)
+            || !reader.read_string(mod.cubin_filename) || !reader.read(module_target_arch))
+            return apic_metadata_truncated("module record");
+        mod.target_arch = static_cast<int>(module_target_arch);
         graph->modules[mod.module_hash] = mod;
     }
 
     for (uint32_t i = 0; i < num_kernels; i++) {
         APICKernel info;
-        info.kernel_key = apic_read_lp_string(ptr);
-        info.module_hash = apic_read_lp_string(ptr);
-        info.forward_name = apic_read_lp_string(ptr);
-        info.backward_name = apic_read_lp_string(ptr);
-        info.forward_smem_bytes = apic_read_value<uint32_t>(ptr);
-        info.backward_smem_bytes = apic_read_value<uint32_t>(ptr);
-        info.block_dim = apic_read_value<uint32_t>(ptr);
+        uint32_t forward_smem_bytes = 0;
+        uint32_t backward_smem_bytes = 0;
+        uint32_t block_dim = 0;
+        if (!reader.read_string(info.kernel_key) || !reader.read_string(info.module_hash)
+            || !reader.read_string(info.forward_name) || !reader.read_string(info.backward_name)
+            || !reader.read(forward_smem_bytes) || !reader.read(backward_smem_bytes) || !reader.read(block_dim))
+            return apic_metadata_truncated("kernel record");
+        info.forward_smem_bytes = static_cast<int>(forward_smem_bytes);
+        info.backward_smem_bytes = static_cast<int>(backward_smem_bytes);
+        info.block_dim = static_cast<int>(block_dim);
         graph->kernels[apic_kernel_map_key(info.module_hash, info.kernel_key)] = info;
     }
 
     for (uint32_t i = 0; i < num_params; i++) {
-        std::string name = apic_read_lp_string(ptr);
-        uint32_t region_id = apic_read_value<uint32_t>(ptr);
+        std::string name;
+        uint32_t region_id = 0;
+        if (!reader.read_string(name) || !reader.read(region_id))
+            return apic_metadata_truncated("binding");
         graph->bindings[name] = region_id;
         graph->binding_names.push_back(name);
     }
 
     for (uint32_t i = 0; i < num_meshes; i++) {
         APICMeshRecord rec;
-        memcpy(&rec, ptr, sizeof(APICMeshRecord));
-        ptr += sizeof(APICMeshRecord);
+        if (!reader.read(rec))
+            return apic_metadata_truncated("mesh record");
         graph->mesh_records.push_back(rec);
     }
 
     for (uint32_t i = 0; i < num_ptr_locations; i++) {
         APICMemoryPtrLocation loc;
-        loc.region_id = apic_read_value<uint32_t>(ptr);
-        loc.offset = apic_read_value<uint64_t>(ptr);
-        loc.stride = apic_read_value<uint64_t>(ptr);
+        uint32_t region_id = 0;
+        uint64_t offset = 0;
+        uint64_t stride = 0;
+        if (!reader.read(region_id) || !reader.read(offset) || !reader.read(stride))
+            return apic_metadata_truncated("pointer location");
+        loc.region_id = region_id;
+        loc.offset = offset;
+        loc.stride = stride;
         graph->ptr_locations.push_back(loc);
     }
 
     return true;
 }
 
-bool apic_parse_operations(const uint8_t* data, size_t size, APICGraph* graph)
+bool apic_parse_operations(
+    const uint8_t* data, size_t size, uint32_t& operation_count, std::vector<uint8_t>& operation_stream
+)
 {
     if (!data || size < 4)
         return false;
     const uint8_t* ptr = data;
-    graph->operation_count = apic_read_value<uint32_t>(ptr);
+    operation_count = apic_read_value<uint32_t>(ptr);
     size_t stream_size = size - 4;
-    if (stream_size > 0) {
-        graph->operation_stream.resize(stream_size);
-        memcpy(graph->operation_stream.data(), ptr, stream_size);
-    }
+    operation_stream.assign(ptr, ptr + stream_size);
     return true;
 }
 
@@ -2117,9 +2161,8 @@ static bool apic_cpu_replay_stream(
     FindKernelFn find_kernel
 )
 {
-    // Stream was validated at close time (wp_apic_end_recording or
-    // wp_apic_load_graph) via apic_validate_operation_stream — no per-op
-    // bounds checks needed here.
+    // Capture and load validate the stream before replay; no per-op bounds
+    // checks are needed here.
     const uint8_t* ptr = stream_data;
 
     // Grow-only heap scratch reused across all kernel-launch ops in this stream,
@@ -2832,8 +2875,7 @@ bool wp_apic_cpu_replay_graph(APICGraph* graph)
         return false;
     if (graph->operation_stream.empty())
         return true;
-    // Precondition: graph->operations_validated is true. Enforced by
-    // wp_apic_load_graph, which is the only path that produces an APICGraph.
+    // The shared graph loader guarantees graph->operations_validated is true.
     return apic_cpu_replay_container(
         graph,
         [graph](int32_t region_id, uint64_t offset, size_t access_size) {
@@ -3223,8 +3265,175 @@ bool wp_apic_get_param(APICGraph* graph, const char* name, void* data, size_t si
 }
 
 // ============================================================================
-// Graph load dispatcher
+// Graph load: shared core for wp_apic_load_graph and wp_apic_load_graph_from_bytes
 // ============================================================================
+
+// Resolve module bytes by recorded filename; set an error on failure.
+using APICModuleResolver = std::function<bool(const std::string& filename, std::vector<uint8_t>& image)>;
+
+// Parse and validate a .wrp image into graph-owned storage.
+// Resolve CUDA modules through resolve_module; the caller loads CPU objects.
+static APICGraph* apic_load_graph_from_image(
+    void* context, const uint8_t* data, size_t size, const APICModuleResolver& resolve_module, int device_type
+)
+{
+#if !WP_ENABLE_CUDA
+    (void)resolve_module;
+    if (device_type != APIC_DEVICE_CPU) {
+        wp::set_error_string("Warp APIC error: CUDA graph load requested in a non-CUDA build");
+        return nullptr;
+    }
+#endif
+
+    if (!data || size < sizeof(APICFileHeader)) {
+        wp::set_error_string("Warp APIC error: Invalid WRP data: too small");
+        return nullptr;
+    }
+
+    APICFileHeader header;
+    memcpy(&header, data, sizeof(header));
+    if (memcmp(header.magic, APIC_MAGIC, 4) != 0) {
+        wp::set_error_string("Warp APIC error: Invalid WRP data: bad magic");
+        return nullptr;
+    }
+    if (header.version < APIC_MIN_SUPPORTED_FORMAT_VERSION || header.version > APIC_FORMAT_VERSION) {
+        wp::set_error_string(
+            "Warp APIC error: Unsupported WRP version: %u (supported range %u-%u)", header.version,
+            (unsigned)APIC_MIN_SUPPORTED_FORMAT_VERSION, (unsigned)APIC_FORMAT_VERSION
+        );
+        return nullptr;
+    }
+
+    // Validate section bounds before reading from the caller's buffer.
+    if (header.section_table_offset > size
+        || header.num_sections > (size - header.section_table_offset) / sizeof(APICSectionEntry)) {
+        wp::set_error_string("Warp APIC error: Invalid WRP data: section table is out of bounds");
+        return nullptr;
+    }
+
+    const uint8_t* metadata_ptr = nullptr;
+    size_t metadata_size = 0;
+    const uint8_t* memory_ptr = nullptr;
+    size_t memory_size = 0;
+    const uint8_t* operations_ptr = nullptr;
+    size_t operations_size = 0;
+
+    for (uint32_t i = 0; i < header.num_sections; i++) {
+        APICSectionEntry entry;
+        memcpy(&entry, data + header.section_table_offset + i * sizeof(APICSectionEntry), sizeof(entry));
+        if (entry.offset > size || entry.size > size - entry.offset) {
+            wp::set_error_string("Warp APIC error: Invalid WRP data: section %u is out of bounds", i);
+            return nullptr;
+        }
+        const uint8_t* section_ptr = data + entry.offset;
+        const size_t section_size = static_cast<size_t>(entry.size);
+        if (entry.type == APIC_SECTION_METADATA) {
+            metadata_ptr = section_ptr;
+            metadata_size = section_size;
+        } else if (entry.type == APIC_SECTION_MEMORY) {
+            memory_ptr = section_ptr;
+            memory_size = section_size;
+        } else if (entry.type == APIC_SECTION_OPERATIONS) {
+            operations_ptr = section_ptr;
+            operations_size = section_size;
+        }
+    }
+
+    // Validate a private copy before reconstructing resources so replay and
+    // recursive scans use exactly the validated bytes.
+    uint32_t operation_count = 0;
+    std::vector<uint8_t> operation_stream;
+    if (operations_ptr) {
+        if (!apic_parse_operations(operations_ptr, operations_size, operation_count, operation_stream)) {
+            wp::set_error_string("Warp APIC error: Failed to parse operations");
+            return nullptr;
+        }
+        if (!apic_validate_operation_stream(
+                operation_stream.data(), operation_stream.size(), operation_count, 0, header.version
+            )) {
+            wp::set_error_string("Warp APIC error: operation stream failed validation");
+            return nullptr;
+        }
+        // A well-formed .wrp never records a process-local handle (wp_apic_state_save
+        // refuses one); reject defensively in case of a hand-crafted or corrupt file,
+        // since a loaded graph cannot reconstruct the live BVH pointer or grid_id.
+        const uint32_t nonserializable_op
+            = apic_stream_first_nonserializable_op(operation_stream.data(), operation_count);
+        if (const char* bvh_op = apic_bvh_op_name(nonserializable_op)) {
+            wp::set_error_string(
+                "Warp APIC error: Cannot load a captured graph that records %s: the BVH handle is process-local and "
+                "cannot be "
+                "reconstructed from a .wrp.",
+                bvh_op
+            );
+            return nullptr;
+        }
+        if (nonserializable_op == APIC_OP_HASH_GRID_UPDATE) {
+            wp::set_error_string("Warp APIC error: HashGrid serialization is not yet supported in APIC graphs");
+            return nullptr;
+        }
+    }
+
+    APICGraph* graph = new APICGraph();
+    graph->cuda_context = context;
+    graph->target_arch = header.target_arch;
+    graph->device_type = static_cast<APICDeviceType>(device_type);
+
+    // apic_parse_metadata sets a specific error string on failure.
+    if (metadata_ptr && metadata_size > 0 && !apic_parse_metadata(metadata_ptr, metadata_size, graph)) {
+        delete graph;
+        return nullptr;
+    }
+
+    if (memory_ptr && !apic_parse_memory_regions(memory_ptr, memory_size, graph)) {
+        delete graph;
+        return nullptr;
+    }
+
+    if (device_type == APIC_DEVICE_CPU) {
+        // CPU: allocate + initialize regions. Module loading is handled by
+        // Python (LLVM) after this call returns, via wp_apic_register_loaded_cpu_kernel.
+        if (!apic_init_cpu_graph_memory(graph, memory_ptr, memory_size)) {
+            delete graph;
+            return nullptr;
+        }
+    } else {
+#if WP_ENABLE_CUDA
+        // Copy each module's bytes and append a NUL byte, which PTX images need
+        // and CUBIN loading ignores.
+        std::unordered_map<std::string, std::vector<uint8_t>> module_images;
+        for (const auto& pair : graph->modules) {
+            std::vector<uint8_t> image;
+            if (!resolve_module(pair.second.cubin_filename, image)) {
+                delete graph;
+                return nullptr;
+            }
+            image.push_back(0);
+            module_images.emplace(pair.first, std::move(image));
+        }
+        if (!apic_load_graph_cuda_setup(graph, context, module_images, memory_ptr, memory_size)) {
+            delete graph;
+            return nullptr;
+        }
+#else
+        // Unreachable — rejected above.
+        delete graph;
+        return nullptr;
+#endif
+    }
+
+    if (!apic_create_meshes(graph)) {
+        delete graph;
+        return nullptr;
+    }
+    apic_fixup_ptr_locations(graph);
+
+    graph->operation_count = operation_count;
+    graph->operation_stream = std::move(operation_stream);
+    graph->operations_validated = true;
+
+    return graph;
+}
 
 APICGraph* wp_apic_load_graph(void* context, const char* path, int device_type)
 {
@@ -3232,13 +3441,6 @@ APICGraph* wp_apic_load_graph(void* context, const char* path, int device_type)
         wp::set_error_string("Warp APIC error: Path is null");
         return nullptr;
     }
-
-#if !WP_ENABLE_CUDA
-    if (device_type != APIC_DEVICE_CPU) {
-        wp::set_error_string("Warp APIC error: CUDA graph load requested in a non-CUDA build");
-        return nullptr;
-    }
-#endif
 
     std::string path_str(path);
     std::string wgf_path = path_str;
@@ -3261,140 +3463,65 @@ APICGraph* wp_apic_load_graph(void* context, const char* path, int device_type)
         return nullptr;
     }
 
-    if (file_data.size() < sizeof(APICFileHeader)) {
-        wp::set_error_string("Warp APIC error: Invalid WRP file: too small");
-        return nullptr;
-    }
-
-    const APICFileHeader* header = reinterpret_cast<const APICFileHeader*>(file_data.data());
-    if (memcmp(header->magic, APIC_MAGIC, 4) != 0) {
-        wp::set_error_string("Warp APIC error: Invalid WRP file: bad magic");
-        return nullptr;
-    }
-    if (header->version < APIC_MIN_SUPPORTED_FORMAT_VERSION || header->version > APIC_FORMAT_VERSION) {
-        wp::set_error_string(
-            "Warp APIC error: Unsupported WRP version: %u (supported range %u-%u)", header->version,
-            (unsigned)APIC_MIN_SUPPORTED_FORMAT_VERSION, (unsigned)APIC_FORMAT_VERSION
-        );
-        return nullptr;
-    }
-
-    const APICSectionEntry* sections
-        = reinterpret_cast<const APICSectionEntry*>(file_data.data() + header->section_table_offset);
-
-    const uint8_t* metadata_ptr = nullptr;
-    size_t metadata_size = 0;
-    const uint8_t* memory_ptr = nullptr;
-    size_t memory_size = 0;
-    const uint8_t* operations_ptr = nullptr;
-    size_t operations_size = 0;
-
-    for (uint32_t i = 0; i < header->num_sections; i++) {
-        if (sections[i].type == APIC_SECTION_METADATA) {
-            metadata_ptr = file_data.data() + sections[i].offset;
-            metadata_size = sections[i].size;
-        } else if (sections[i].type == APIC_SECTION_MEMORY) {
-            memory_ptr = file_data.data() + sections[i].offset;
-            memory_size = sections[i].size;
-        } else if (sections[i].type == APIC_SECTION_OPERATIONS) {
-            operations_ptr = file_data.data() + sections[i].offset;
-            operations_size = sections[i].size;
-        }
-    }
-
-    // Validate operations before allocating or reconstructing graph resources.
-    // The later recursive scan relies on validation for safe traversal.
-    uint32_t operation_count = 0;
-    const uint8_t* operation_stream = nullptr;
-    size_t operation_stream_size = 0;
-    if (operations_ptr) {
-        if (operations_size < sizeof(operation_count)) {
-            wp::set_error_string("Warp APIC error: Failed to parse operations");
-            return nullptr;
-        }
-        memcpy(&operation_count, operations_ptr, sizeof(operation_count));
-        operation_stream = operations_ptr + sizeof(operation_count);
-        operation_stream_size = operations_size - sizeof(operation_count);
-        if (!apic_validate_operation_stream(
-                operation_stream, operation_stream_size, operation_count, 0, header->version
-            )) {
-            wp::set_error_string("Warp APIC error: operation stream failed validation");
-            return nullptr;
-        }
-        // A well-formed .wrp never records a process-local handle (wp_apic_state_save
-        // refuses one); reject defensively in case of a hand-crafted or corrupt file,
-        // since a loaded graph cannot reconstruct the live BVH pointer or grid_id.
-        const uint32_t nonserializable_op = apic_stream_first_nonserializable_op(operation_stream, operation_count);
-        if (const char* bvh_op = apic_bvh_op_name(nonserializable_op)) {
-            wp::set_error_string(
-                "Warp APIC error: Cannot load a captured graph that records %s: the BVH handle is process-local and "
-                "cannot be "
-                "reconstructed from a .wrp.",
-                bvh_op
-            );
-            return nullptr;
-        }
-        if (nonserializable_op == APIC_OP_HASH_GRID_UPDATE) {
-            wp::set_error_string("Warp APIC error: HashGrid serialization is not yet supported in APIC graphs");
-            return nullptr;
-        }
-    }
-
-    APICGraph* graph = new APICGraph();
-    graph->cuda_context = context;
-    graph->target_arch = header->target_arch;
-    graph->device_type = static_cast<APICDeviceType>(device_type);
-    graph->base_path = base_name;
-
-    if (metadata_ptr && metadata_size > 0) {
-        if (!apic_parse_metadata(metadata_ptr, metadata_size, graph)) {
-            wp::set_error_string("Warp APIC error: Failed to parse metadata");
-            delete graph;
-            return nullptr;
-        }
-    }
-
-    if (memory_ptr && !apic_parse_memory_regions(memory_ptr, memory_size, graph)) {
-        delete graph;
-        return nullptr;
-    }
-
-    if (device_type == APIC_DEVICE_CPU) {
-        // CPU: allocate + initialize regions. Module loading is handled by
-        // Python (LLVM) after this call returns, via wp_apic_register_loaded_cpu_kernel.
-        if (!apic_init_cpu_graph_memory(graph, memory_ptr, memory_size)) {
-            delete graph;
-            return nullptr;
-        }
-    } else {
-#if WP_ENABLE_CUDA
-        if (!apic_load_graph_cuda_setup(graph, context, modules_dir, memory_ptr, memory_size)) {
-            delete graph;
-            return nullptr;
-        }
-#else
-        // Unreachable — rejected above.
-        delete graph;
-        return nullptr;
+    // Module binaries live in the sibling <stem>_modules/ directory.
+    const APICModuleResolver resolve_module = [&modules_dir](const std::string& filename, std::vector<uint8_t>& image) {
+        std::string module_path = modules_dir + "/" + filename;
+#ifdef _WIN32
+        std::replace(module_path.begin(), module_path.end(), '/', '\\');
 #endif
-    }
+        if (!apic_read_file(module_path.c_str(), image)) {
+            wp::set_error_string("Warp APIC error: Failed to read module %s", module_path.c_str());
+            return false;
+        }
+        return true;
+    };
 
-    if (!apic_create_meshes(graph)) {
-        delete graph;
-        return nullptr;
-    }
-    apic_fixup_ptr_locations(graph);
-
-    if (operations_ptr && !apic_parse_operations(operations_ptr, operations_size, graph)) {
-        wp::set_error_string("Warp APIC error: Failed to parse operations");
-        delete graph;
-        return nullptr;
-    }
-
-    // The raw operation section was validated before graph resources were built.
-    graph->operations_validated = true;
-
+    APICGraph* graph
+        = apic_load_graph_from_image(context, file_data.data(), file_data.size(), resolve_module, device_type);
+    if (graph)
+        graph->base_path = base_name;
     return graph;
+}
+
+APICGraph* wp_apic_load_graph_from_bytes(
+    void* context, const void* data, size_t size, const APICModuleBytes* modules, uint32_t num_modules, int device_type
+)
+{
+    if (num_modules > 0 && !modules) {
+        wp::set_error_string("Warp APIC error: Module list is null");
+        return nullptr;
+    }
+
+    std::unordered_map<std::string, const APICModuleBytes*> modules_by_name;
+    for (uint32_t i = 0; i < num_modules; i++) {
+        const APICModuleBytes& entry = modules[i];
+        if (!entry.filename) {
+            wp::set_error_string("Warp APIC error: Module entry %u has a null filename", i);
+            return nullptr;
+        }
+        if (!entry.data && entry.size > 0) {
+            wp::set_error_string("Warp APIC error: Module %s has null data", entry.filename);
+            return nullptr;
+        }
+        if (!modules_by_name.emplace(entry.filename, &entry).second) {
+            wp::set_error_string("Warp APIC error: Module %s is listed more than once", entry.filename);
+            return nullptr;
+        }
+    }
+
+    const APICModuleResolver resolve_module
+        = [&modules_by_name](const std::string& filename, std::vector<uint8_t>& image) {
+              auto it = modules_by_name.find(filename);
+              if (it == modules_by_name.end()) {
+                  wp::set_error_string("Warp APIC error: Module %s was not provided", filename.c_str());
+                  return false;
+              }
+              const uint8_t* bytes = static_cast<const uint8_t*>(it->second->data);
+              image.assign(bytes, bytes + it->second->size);
+              return true;
+          };
+
+    return apic_load_graph_from_image(context, static_cast<const uint8_t*>(data), size, resolve_module, device_type);
 }
 
 // ============================================================================

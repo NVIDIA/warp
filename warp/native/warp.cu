@@ -5307,40 +5307,25 @@ bool wp_cuda_compile_solver(
 
 #endif
 
-void* wp_cuda_load_module(void* context, const char* path)
+// Whether a module binary's path or recorded filename names a PTX module. The
+// file extension decides, matching how Warp names its compiled modules.
+static bool cuda_module_path_is_ptx(const char* path)
+{
+    const char* ext = strrchr(path, '.');
+    return ext && strcmp(ext + 1, "ptx") == 0;
+}
+
+// Load a CUDA module from an in-memory image. A PTX image must end with a NUL
+// byte, which `size` includes. The driver copies the image, so it only needs
+// to stay valid for the call.
+static void* cuda_load_module_image(void* context, const char* image, size_t size, bool is_ptx)
 {
     ContextGuard guard(context);
-
-    // use file extension to determine whether to load PTX or CUBIN
-    const char* input_ext = strrchr(path, '.');
-    bool load_ptx = input_ext && strcmp(input_ext + 1, "ptx") == 0;
-
-    std::vector<char> input;
-
-    FILE* file = fopen(path, "rb");
-    if (file) {
-        fseek(file, 0, SEEK_END);
-        size_t length = ftell(file);
-        fseek(file, 0, SEEK_SET);
-
-        input.resize(length + 1);
-        if (fread(input.data(), 1, length, file) != length) {
-            fprintf(stderr, "Warp error: Failed to read input file '%s'\n", path);
-            fclose(file);
-            return NULL;
-        }
-        fclose(file);
-
-        input[length] = '\0';
-    } else {
-        fprintf(stderr, "Warp error: Failed to open input file '%s'\n", path);
-        return NULL;
-    }
 
     int driver_cuda_version = 0;
     CUmodule module = NULL;
 
-    if (load_ptx) {
+    if (is_ptx) {
         if (check_cu(cuDriverGetVersion_f(&driver_cuda_version)) && driver_cuda_version >= CUDA_VERSION) {
             // let the driver compile the PTX
 
@@ -5356,7 +5341,7 @@ void* wp_cuda_load_module(void* context, const char* path)
             options[1] = CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES;
             option_vals[1] = (void*)(size_t)log_size;
 
-            if (!check_cu(cuModuleLoadDataEx_f(&module, input.data(), 2, options, option_vals))) {
+            if (!check_cu(cuModuleLoadDataEx_f(&module, image, 2, options, option_vals))) {
                 fprintf(stderr, "Warp error: Loading PTX module failed\n");
                 // print error log if not empty
                 if (*error_log)
@@ -5380,7 +5365,7 @@ void* wp_cuda_load_module(void* context, const char* path)
             const char* compiler_options[] = { arch_opt };
 
             nvPTXCompilerHandle compiler = NULL;
-            if (!check_nvptx(nvPTXCompilerCreate(&compiler, input.size(), input.data())))
+            if (!check_nvptx(nvPTXCompilerCreate(&compiler, size, image)))
                 return NULL;
 
             if (!check_nvptx(nvPTXCompilerCompile(
@@ -5405,13 +5390,40 @@ void* wp_cuda_load_module(void* context, const char* path)
         }
     } else {
         // load CUBIN
-        if (!check_cu(cuModuleLoadDataEx_f(&module, input.data(), 0, NULL, NULL))) {
+        if (!check_cu(cuModuleLoadDataEx_f(&module, image, 0, NULL, NULL))) {
             fprintf(stderr, "Warp CUDA error: Loading module failed\n");
             return NULL;
         }
     }
 
     return module;
+}
+
+void* wp_cuda_load_module(void* context, const char* path)
+{
+    std::vector<char> input;
+
+    FILE* file = fopen(path, "rb");
+    if (file) {
+        fseek(file, 0, SEEK_END);
+        size_t length = ftell(file);
+        fseek(file, 0, SEEK_SET);
+
+        input.resize(length + 1);
+        if (fread(input.data(), 1, length, file) != length) {
+            fprintf(stderr, "Warp error: Failed to read input file '%s'\n", path);
+            fclose(file);
+            return NULL;
+        }
+        fclose(file);
+
+        input[length] = '\0';
+    } else {
+        fprintf(stderr, "Warp error: Failed to open input file '%s'\n", path);
+        return NULL;
+    }
+
+    return cuda_load_module_image(context, input.data(), input.size(), cuda_module_path_is_ptx(path));
 }
 
 void wp_cuda_unload_module(void* context, void* module)
