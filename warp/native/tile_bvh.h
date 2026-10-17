@@ -7,6 +7,7 @@
 #include "tile.h"
 
 namespace wp {
+WP_TILE_DEFAULT_DEVICE_BEGIN
 
 #if defined(__CUDA_ARCH__)
 
@@ -419,4 +420,5 @@ inline bvh_query_thread_block_t tile_bvh_query_ray(uint64_t id, const vec3& star
 
 #endif  // __CUDA_ARCH__
 
+WP_TILE_DEFAULT_DEVICE_END
 }  // namespace wp

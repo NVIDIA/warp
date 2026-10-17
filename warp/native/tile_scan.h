@@ -12,6 +12,7 @@
 #endif
 
 namespace wp {
+WP_TILE_DEFAULT_DEVICE_BEGIN
 
 // Operation structs for different scan types (shared between CPU and GPU)
 template <typename T> struct OpAdd {
@@ -384,6 +385,7 @@ template <typename Tile, typename AdjTile> void adj_tile_scan_min_inclusive(Tile
     // MISSINGADJOINT: subgradient: route each adj_ret[i] to argmin over [0, i]
 }
 
+WP_TILE_DEFAULT_DEVICE_END
 }  // namespace wp
 
 #if defined(__clang__)
