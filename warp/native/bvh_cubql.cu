@@ -615,6 +615,7 @@ void cubql_bvh_create_device(
         }
     }
     wp_free_device(WP_CURRENT_CONTEXT, boxes);
+    bvh_update_ray_bounds_device(bvh_device_on_host);
 }
 
 void cubql_bvh_destroy_device(BVH& bvh) { bvh_destroy_device(bvh); }
