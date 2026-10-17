@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import numpy as np
+
 import warp as wp
 import warp.fem as fem
 import warp.sparse as wps
@@ -121,3 +123,62 @@ class BsrMvAlmostDense(BsrMvFemMatrix):
 
     def time_cuda(self):
         self.run()
+
+
+class BsrMvMixedPrecision:
+    """Compare compressed matrix storage with preconverted float64 storage."""
+
+    params = [["float32", "float64"], [8, 32, 128], [-1, 0, 64], [False, True]]
+    param_names = ["matrix_dtype", "blocks_per_row", "tile_size", "transpose"]
+    rounds = 3
+    repeat = 5
+    number = 10
+
+    def setup(self, matrix_dtype, blocks_per_row, tile_size, transpose):
+        """Prepare a captured product for the requested storage type and dispatch."""
+        self._setup(matrix_dtype, blocks_per_row, tile_size, transpose)
+
+    def _setup(self, matrix_dtype, blocks_per_row, tile_size, transpose, rows_per_block=1):
+        """Build reproducible coefficients and capture a warmed-up CUDA product."""
+        wp.init()
+        self.device = wp.get_device("cuda:0")
+        nrow = 32768
+        rng = np.random.default_rng(2069)
+        with wp.ScopedDevice(self.device):
+            A = wps.bsr_zeros(nrow, nrow, getattr(wp, matrix_dtype))
+            A.nnz = nrow * blocks_per_row
+            A.offsets = wp.array(np.arange(nrow + 1, dtype=np.int32) * blocks_per_row)
+            A.columns = wp.array(
+                ((np.arange(nrow)[:, None] * 17 + np.arange(blocks_per_row) * 13) % nrow).astype(np.int32).ravel()
+            )
+            # Both storage types represent exactly the same coefficients.
+            A.values = wp.array(rng.uniform(-1, 1, size=A.nnz).astype(np.float32), dtype=getattr(wp, matrix_dtype))
+            x = wp.array(rng.uniform(-1, 1, size=nrow), dtype=wp.float64)
+            y = wp.empty_like(x)
+            wps.bsr_mv(A, x, y, tile_size=tile_size, transpose=transpose, rows_per_block=rows_per_block)
+            with wp.ScopedCapture() as capture:
+                wps.bsr_mv(A, x, y, tile_size=tile_size, transpose=transpose, rows_per_block=rows_per_block)
+            self._graph = capture.graph
+            self._arrays = A, x, y
+        wp.synchronize_device(self.device)
+
+    def time_cuda(self, matrix_dtype, blocks_per_row, tile_size, transpose):
+        """Time one captured mixed-precision product through device completion."""
+        wp.capture_launch(self._graph)
+        wp.synchronize_device(self.device)
+
+
+class BsrMvRowPacked(BsrMvMixedPrecision):
+    """Compare row packing for mixed-precision products of different row lengths."""
+
+    params = [[8, 32, 128], [1, 16, 32, 64]]
+    param_names = ["blocks_per_row", "rows_per_block"]
+
+    def setup(self, blocks_per_row, rows_per_block):
+        """Prepare a captured product with the requested row length and packing."""
+        self._setup("float32", blocks_per_row, 128 if rows_per_block > 1 else 0, False, rows_per_block)
+
+    def time_cuda(self, blocks_per_row, rows_per_block):
+        """Time one captured row-packing configuration through device completion."""
+        wp.capture_launch(self._graph)
+        wp.synchronize_device(self.device)
