@@ -3277,6 +3277,79 @@ def test_retain_grad_slice_view_store(test, device):
     assert_np_equal(y.grad.numpy(), np.zeros((1, N), dtype=float))
 
 
+def test_array_from_half_composites(test, device):
+    # float16 and bfloat16 vectors and matrices store their components as raw 16-bit integers, which used
+    # to be stored as values: wp.vec3h(3.0, -4.0, 12.0) became (16896.0, 50176.0, 18944.0).
+    vec3bf = wp.types.vector(length=3, dtype=wp.bfloat16)
+    mat22bf = wp.types.matrix(shape=(2, 2), dtype=wp.bfloat16)
+    cases = (
+        (wp.vec2h, wp.vec2h(3.0, -4.0), [3.0, -4.0]),
+        (wp.vec3h, wp.vec3h(3.0, -4.0, 12.0), [3.0, -4.0, 12.0]),
+        (wp.vec4h, wp.vec4h(1.0, 2.0, 3.0, 4.0), [1.0, 2.0, 3.0, 4.0]),
+        (wp.mat22h, wp.mat22h(1.0, 2.0, 3.0, 4.0), [[1.0, 2.0], [3.0, 4.0]]),
+        (wp.quath, wp.quath(0.0, 0.0, 0.0, 1.0), [0.0, 0.0, 0.0, 1.0]),
+        (
+            wp.transformh,
+            wp.transformh(wp.vec3h(1.0, 2.0, 3.0), wp.quath(0.0, 0.0, 0.0, 1.0)),
+            [1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 1.0],
+        ),
+        (vec3bf, vec3bf(3.0, -4.0, 12.0), [3.0, -4.0, 12.0]),
+        (mat22bf, mat22bf(1.0, 2.0, 3.0, 4.0), [[1.0, 2.0], [3.0, 4.0]]),
+    )
+
+    def values(x):
+        if isinstance(x, (list, tuple)) or hasattr(type(x), "_shape_"):
+            return [values(c) for c in x]
+        return float(x)
+
+    for dtype, value, row in cases:
+        with test.subTest(dtype=dtype.__name__):
+            expected = [row, row]
+
+            arr = wp.array([value, value], dtype=dtype, device=device)
+            test.assertEqual(arr.dtype, dtype)
+            test.assertEqual(values(arr.list()), expected)
+
+            arr = wp.zeros(2, dtype=dtype, device=device)
+            arr.assign([value, value])
+            test.assertEqual(values(arr.list()), expected)
+
+            arr = wp.array([value, value], device=device)
+            test.assertEqual(arr.dtype, dtype._wp_scalar_type_)
+            test.assertEqual(arr.shape, (2, *dtype._shape_))
+            test.assertEqual(np.asarray(values(arr.list())).ravel().tolist(), np.asarray(expected).ravel().tolist())
+
+    with test.subTest(msg="half vectors to a float32 vector dtype"):
+        arr = wp.array([wp.vec3h(3.0, -4.0, 12.0)], dtype=wp.vec3, device=device)
+        assert_np_equal(arr.numpy(), np.array([[3.0, -4.0, 12.0]]))
+
+    with test.subTest(msg="half vectors mixed with float32 vectors, no dtype"):
+        # the float32 row must keep its value instead of being cast to float16
+        arr = wp.array([wp.vec3h(1.0, 2.0, 3.0), wp.vec3(100000.0, 0.0, 0.0)], device=device)
+        assert_np_equal(arr.numpy(), np.array([[1.0, 2.0, 3.0], [100000.0, 0.0, 0.0]]))
+
+    with test.subTest(msg="half vector after a float32 vector"):
+        expected = np.array([[4.0, 5.0, 6.0], [1.0, 2.0, 3.0]])
+        data = [wp.vec3(4.0, 5.0, 6.0), wp.vec3h(1.0, 2.0, 3.0)]
+        assert_np_equal(wp.array(data, device=device).numpy(), expected)
+        assert_np_equal(wp.array(data, dtype=wp.vec3h, device=device).numpy(), expected)
+
+    with test.subTest(msg="half vector after a tuple"):
+        expected = np.array([[4.0, 5.0, 6.0], [1.0, 2.0, 3.0]])
+        data = [(4.0, 5.0, 6.0), wp.vec3h(1.0, 2.0, 3.0)]
+        assert_np_equal(wp.array(data, device=device).numpy(), expected)
+        assert_np_equal(wp.array(data, dtype=wp.vec3h, device=device).numpy(), expected)
+
+    with test.subTest(msg="half vector with a NumPy row"):
+        arr = wp.array([wp.vec3h(1.0, 1.0, 1.0), np.array([2.0, 3.0, 4.0])], dtype=wp.vec3, device=device)
+        assert_np_equal(arr.numpy(), np.array([[1.0, 1.0, 1.0], [2.0, 3.0, 4.0]]))
+
+    with test.subTest(msg="half vector with an int64 vector"):
+        # the large integer must not go through a float conversion
+        arr = wp.array([wp.vec3h(1.0, 1.0, 1.0), wp.vec3l(9007199254740993, 0, 0)], dtype=wp.vec3l, device=device)
+        test.assertEqual(arr.numpy().tolist(), [[1, 1, 1], [9007199254740993, 0, 0]])
+
+
 def test_array_from_int32_domain(test, device):
     expected_shape = (1504, 1080, 520)
     arr = wp.zeros(np.array(expected_shape, dtype=np.int32), dtype=wp.float32, device=device)
@@ -4312,6 +4385,7 @@ add_function_test(TestArray, "test_casting", test_casting, devices=devices)
 add_function_test(TestArray, "test_array_len", test_array_len, devices=devices)
 add_function_test(TestArray, "test_cuda_interface_conversion", test_cuda_interface_conversion, devices=devices)
 add_function_test(TestArray, "test_array_from_data", test_array_from_data, devices=devices)
+add_function_test(TestArray, "test_array_from_half_composites", test_array_from_half_composites, devices=devices)
 
 add_function_test(TestArray, "test_array1d_slicing", test_array1d_slicing, devices=devices)
 add_function_test(TestArray, "test_array2d_slicing", test_array2d_slicing, devices=devices)
