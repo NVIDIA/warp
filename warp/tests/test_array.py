@@ -3316,7 +3316,8 @@ def test_array_from_half_composites(test, device):
 
             arr = wp.array([value, value], device=device)
             test.assertEqual(arr.dtype, dtype._wp_scalar_type_)
-            test.assertEqual(arr.shape, (2, *dtype._shape_))
+            # flat components, as for float32 vectors and matrices
+            test.assertEqual(arr.shape, (2, int(np.prod(dtype._shape_))))
             test.assertEqual(np.asarray(values(arr.list())).ravel().tolist(), np.asarray(expected).ravel().tolist())
 
     with test.subTest(msg="half vectors to a float32 vector dtype"):
@@ -3343,6 +3344,13 @@ def test_array_from_half_composites(test, device):
     with test.subTest(msg="half vector with a NumPy row"):
         arr = wp.array([wp.vec3h(1.0, 1.0, 1.0), np.array([2.0, 3.0, 4.0])], dtype=wp.vec3, device=device)
         assert_np_equal(arr.numpy(), np.array([[1.0, 1.0, 1.0], [2.0, 3.0, 4.0]]))
+
+    with test.subTest(msg="half and float32 matrices"):
+        expected = np.array([[[1.0, 2.0], [3.0, 4.0]], [[5.0, 6.0], [7.0, 8.0]]])
+        data = [wp.mat22h(1.0, 2.0, 3.0, 4.0), wp.mat22(5.0, 6.0, 7.0, 8.0)]
+        assert_np_equal(wp.array(data, dtype=wp.mat22, device=device).numpy(), expected)
+        assert_np_equal(wp.array(data[::-1], dtype=wp.mat22h, device=device).numpy(), expected[::-1])
+        assert_np_equal(wp.array(data, device=device).numpy(), expected.reshape(2, 4))
 
     with test.subTest(msg="half vector with an int64 vector"):
         # the large integer must not go through a float conversion

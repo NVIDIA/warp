@@ -843,12 +843,16 @@ def _half_composite_kind(data):
 
 
 def _half_composites_to_floats(data):
-    """Replace float16 and bfloat16 composites in a nested sequence with lists of Python floats.
+    """Replace float16 and bfloat16 composites in a nested sequence with flat lists of Python floats.
 
-    Other values are left for NumPy to convert, so integers and NumPy arrays keep their exact values.
+    Each composite becomes its components in storage order, the same layout NumPy reads from other vectors and
+    matrices. Other values are left for NumPy to convert, so integers and NumPy arrays keep their exact values.
     """
     if _is_half_composite_type(type(data)):
-        return [_half_composites_to_floats(x) if hasattr(type(x), "_shape_") else float(x) for x in data]
+        bits = np.frombuffer(data, dtype=np.uint16)
+        if type(data)._wp_scalar_type_ is float16:
+            return bits.view(np.float16).tolist()
+        return _np_bfloat16_bits_to_float32(bits).tolist()
     if isinstance(data, (list, tuple)):
         return [_half_composites_to_floats(x) for x in data]
     return data
@@ -861,11 +865,7 @@ def _half_composites_to_numpy(data, scalar_type) -> np.ndarray:
     ``np.asarray([wp.vec3h(3.0, 0.0, 0.0)], dtype=np.float16)`` gives ``16896.0`` instead of ``3.0``.
     Read them as ``uint16`` and view them as float16, or keep them as the bfloat16 encodings.
     """
-    first, depth = data, 0
-    while isinstance(first, (list, tuple)) and len(first) > 0:
-        first, depth = first[0], depth + 1
     bits = np.asarray(data, dtype=np.uint16)
-    bits = bits.reshape(bits.shape[:depth] + tuple(type(first)._shape_))
     return bits.view(np.float16) if scalar_type is float16 else bits
 
 
