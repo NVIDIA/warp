@@ -8,6 +8,29 @@ Warp includes a sparse linear algebra module :mod:`warp.sparse` that implements 
 Working with Sparse Matrices
 ----------------------------
 
+Mixed-Precision Matrix-Vector Products
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+:func:`bsr_mv` supports a matrix stored in ``wp.float32`` with input and output
+vectors of scalar type ``wp.float64``. Matrix entries are converted before
+multiplication, and products, accumulation, and scaling use ``wp.float64``.
+This avoids allocating a double-precision copy of the matrix:
+
+.. code-block:: python
+
+    import warp as wp
+    from warp.sparse import bsr_identity, bsr_mv
+
+    A = bsr_identity(4, block_type=wp.float32)
+    x = wp.ones(4, dtype=wp.float64, device=A.device)
+    y = bsr_mv(A, x)  # Allocated with scalar type wp.float64.
+
+The same rules apply to BSR blocks, transposed products, and matrix scaling
+expressions. An explicit output must have the same scalar type as the input.
+The matrix values retain their original storage precision; using double-precision
+arithmetic cannot recover precision already lost when constructing the matrix.
+Other mixed scalar-type combinations are not supported.
+
 Creating Sparse Matrices
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
