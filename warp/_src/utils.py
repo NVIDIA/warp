@@ -615,6 +615,17 @@ def _validate_apic_array_reduction_layout(operation, inputs, out, axis, output_s
         raise RuntimeError(f"APIC capture requires {operation}() participating strides to be scalar-aligned")
 
 
+def _array_is_compact(values):
+    """Return whether the logical elements occupy dense, non-overlapping storage."""
+    expected_stride = wp._src.types.type_size_in_bytes(values.dtype)
+    for stride, size in sorted(zip(values.strides, values.shape, strict=True)):
+        if size > 1:
+            if stride != expected_stride:
+                return False
+            expected_stride *= size
+    return True
+
+
 def array_sum(
     values: wp.array, out: wp.array | None = None, value_count: int | None = None, axis: int | None = None
 ) -> wp.array | float:
@@ -622,12 +633,16 @@ def array_sum(
 
     This function computes the sum of array elements, optionally along a specified axis.
     The operation can be performed on the entire array or along a specific dimension.
+    Partial whole-array reductions process elements in logical row-major order.
+    Full reductions of compact arrays may use physical storage order.
 
     During CPU graph capture, or CUDA graph capture with ``apic=True``,
     non-empty calls require an explicit ``out`` array so replay can store the
     current result. Existing whole-array, explicit-count, composite-dtype, and
-    positive-stride axis reductions are recorded. Negative strides raise
-    ``NotImplementedError`` during API Capture (APIC) recording. Counts and
+    positive-stride axis reductions are recorded. Non-empty whole-array reductions
+    that require a contiguous copy are unsupported during API Capture (APIC)
+    recording; make inputs contiguous before capture or specify an axis for
+    strided reductions. Negative strides raise ``NotImplementedError`` during APIC recording. Counts and
     reduction strides must fit signed 32-bit integers, and participating
     addresses and strides must be aligned to the scalar type.
 
@@ -648,7 +663,8 @@ def array_sum(
             APIC-recorded call uses an unsupported count or memory layout.
         NotImplementedError: If a non-empty call during APIC recording omits
             ``out``. Also raised if any input or output array has a negative
-            stride during APIC recording, including for a zero-count call.
+            stride during APIC recording, including for a zero-count call, or a
+            non-empty whole-array reduction requires a contiguous copy during APIC recording.
     """
     if axis is not None:
         axis = _normalize_array_reduction_axis("array_sum", axis, values.ndim)
@@ -669,6 +685,9 @@ def array_sum(
     has_reduction_work = value_count > 0 and all(dim > 0 for dim in output_shape)
     type_size = wp._src.types.type_size(values.dtype)
     scalar_type = wp._src.types.type_scalar_type(values.dtype)
+    requires_copy = (
+        axis is None and not values.is_contiguous and (value_count != values.size or not _array_is_compact(values))
+    )
 
     apic_capture = context._get_apic_capture_for_device(values.device)
     if apic_capture is not None:
@@ -684,6 +703,11 @@ def array_sum(
             out is not None and any(stride < 0 for stride in out.strides)
         ):
             raise NotImplementedError("APIC capture does not support array_sum() with negative strides")
+        if has_reduction_work and requires_copy:
+            raise NotImplementedError(
+                "APIC capture does not support array_sum() with non-contiguous inputs "
+                "requiring a copy when axis is None"
+            )
 
     if apic_capture is not None and value_count == 0 and out is None and axis is None:
         return _array_reduce_host_zero(values.dtype)
@@ -731,6 +755,8 @@ def array_sum(
             raise RuntimeError(f"Unsupported data type: {type_repr(values.dtype)}")
 
     if axis is None:
+        if requires_copy:
+            values = values.contiguous()
         stride = wp._src.types.type_size_in_bytes(values.dtype)
         native_func(values.ptr, out.ptr, value_count, stride, type_size)
 
@@ -761,12 +787,16 @@ def array_inner(
 
     This function computes the dot product between two arrays with the same shape, optionally along a specified axis.
     When ``axis`` is ``None``, it computes a single inner product over the flattened arrays.
+    Partial reductions and inputs with different layouts use logical row-major order.
+    Full reductions of inputs with the same compact layout may use physical storage order.
 
     During CPU graph capture, or CUDA graph capture with ``apic=True``,
     non-empty calls require an explicit ``out`` array so replay can store the
     current result. Existing whole-array, explicit-count, composite-dtype, and
-    positive-stride axis reductions are recorded. Negative strides raise
-    ``NotImplementedError`` during API Capture (APIC) recording. Counts and
+    positive-stride axis reductions are recorded. Non-empty whole-array reductions
+    that require contiguous copies are unsupported during API Capture (APIC)
+    recording; make inputs contiguous before capture or specify an axis for
+    strided reductions. Negative strides raise ``NotImplementedError`` during APIC recording. Counts and
     reduction strides must fit signed 32-bit integers, and participating
     addresses and strides must be aligned to the scalar type.
 
@@ -789,7 +819,8 @@ def array_inner(
             unsupported count or memory layout.
         NotImplementedError: If a non-empty call during APIC recording omits
             ``out``. Also raised if any input or output array has a negative
-            stride during APIC recording, including for a zero-count call.
+            stride during APIC recording, including for a zero-count call, or a
+            non-empty whole-array reduction requires a contiguous copy during APIC recording.
     """
     if a.shape != b.shape:
         raise ValueError(f"array_inner() arguments must have the same shape, got {a.shape} and {b.shape}")
@@ -819,6 +850,17 @@ def array_inner(
     has_reduction_work = count > 0 and all(dim > 0 for dim in output_shape)
     type_size = wp._src.types.type_size(a.dtype)
     scalar_type = wp._src.types.type_scalar_type(a.dtype)
+    requires_copy = False
+    if axis is None and (not a.is_contiguous or not b.is_contiguous):
+        # A shared compact layout pairs the same logical elements in physical order.
+        requires_copy = (
+            count != a.size
+            or not _array_is_compact(a)
+            or any(
+                size > 1 and stride_a != stride_b
+                for size, stride_a, stride_b in zip(a.shape, a.strides, b.strides, strict=True)
+            )
+        )
 
     apic_capture = context._get_apic_capture_for_device(a.device)
     if apic_capture is not None:
@@ -834,6 +876,11 @@ def array_inner(
         has_negative_stride = has_negative_stride or (out is not None and any(stride < 0 for stride in out.strides))
         if has_negative_stride:
             raise NotImplementedError("APIC capture does not support array_inner() with negative strides")
+        if has_reduction_work and requires_copy:
+            raise NotImplementedError(
+                "APIC capture does not support array_inner() with non-contiguous inputs "
+                "requiring a copy when axis is None"
+            )
 
     # Users can provide a device output array for storing the inner-product result.
     # For convenience, if no output array is provided, the result is returned on the host.
@@ -879,6 +926,9 @@ def array_inner(
             raise RuntimeError(f"Unsupported data type: {type_repr(a.dtype)}")
 
     if axis is None:
+        if requires_copy:
+            a = a.contiguous()
+            b = b.contiguous()
         stride_a = wp._src.types.type_size_in_bytes(a.dtype)
         stride_b = wp._src.types.type_size_in_bytes(b.dtype)
         native_func(a.ptr, b.ptr, out.ptr, count, stride_a, stride_b, type_size)
