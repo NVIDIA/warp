@@ -65,7 +65,7 @@
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="warp.capture_while" href="warp.capture_while.html" />
-    <link rel="prev" title="warp.capture_load" href="warp.capture_load.html" />
+    <link rel="prev" title="warp.capture_load_from_bytes" href="warp.capture_load_from_bytes.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -509,7 +509,7 @@
 <h1>warp.capture_save<a class="headerlink" href="#warp-capture-save" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.capture_save">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">capture_save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">graph</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inputs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outputs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L14079-L14241"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.capture_save" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">capture_save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">graph</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inputs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outputs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L14099-L14252"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.capture_save" title="Link to this definition">#</a></dt>
 <dd><p>Serialize a captured graph to a <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> file for later replay.</p>
 <p>The graph must have been captured with <code class="docutils literal notranslate"><span class="pre">apic=True</span></code>. For graphs containing
 recorded kernels, the <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> file and its companion <code class="docutils literal notranslate"><span class="pre">_modules</span></code> directory
@@ -546,12 +546,12 @@ byte capacity as that serialized region.</p>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.capture_load.html"
+       href="warp.capture_load_from_bytes.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.capture_load</p>
+        <p class="prev-next-title">warp.capture_load_from_bytes</p>
       </div>
     </a>
     <a class="right-next"

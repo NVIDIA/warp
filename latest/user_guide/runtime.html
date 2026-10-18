@@ -2643,6 +2643,34 @@ family. This is currently a caller requirement: the experimental loader does
 not reliably diagnose a mismatch when it first opens the file. Architecture and
 platform constraints are listed under the current limitations below.</p>
 </section>
+<section id="loading-from-bytes">
+<h4>Loading from bytes<a class="headerlink" href="#loading-from-bytes" title="Link to this heading">#</a></h4>
+<p><a class="reference internal" href="../api_reference/_generated/warp.capture_load_from_bytes.html#warp.capture_load_from_bytes" title="warp.capture_load_from_bytes"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_load_from_bytes()</span></code></a> loads a
+saved graph from memory instead of files. It suits applications that store a
+capture inside another artifact, such as a model file. Pass the contents of the
+<code class="docutils literal notranslate"><span class="pre">.wrp</span></code> file and a mapping from each file in the companion <code class="docutils literal notranslate"><span class="pre">_modules</span></code>
+directory to its contents:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">"simulation.wrp"</span><span class="p">,</span> <span class="s2">"rb"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">wrp_data</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+
+<span class="n">modules</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="s2">"simulation_modules"</span><span class="p">):</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s2">"simulation_modules"</span><span class="p">,</span> <span class="n">filename</span><span class="p">),</span> <span class="s2">"rb"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">modules</span><span class="p">[</span><span class="n">filename</span><span class="p">]</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+
+<span class="n">graph</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">capture_load_from_bytes</span><span class="p">(</span><span class="n">wrp_data</span><span class="p">,</span> <span class="n">modules</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda"</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The returned graph behaves the same as one returned by
+<a class="reference internal" href="../api_reference/_generated/warp.capture_load.html#warp.capture_load" title="warp.capture_load"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_load()</span></code></a>. Module names are the filenames
+<a class="reference internal" href="../api_reference/_generated/warp.capture_save.html#warp.capture_save" title="warp.capture_save"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_save()</span></code></a> wrote, without a directory
+prefix. Entries the graph doesn’t use are ignored. Warp copies everything it
+needs while loading, so the buffers can be released once the call returns.</p>
+</section>
 <section id="standalone-c-replay">
 <h4>Standalone C++ replay<a class="headerlink" href="#standalone-c-replay" title="Link to this heading">#</a></h4>
 <p>The same <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> file can be loaded and launched from a C++ program with no
@@ -2651,6 +2679,16 @@ declared in <a class="reference external" href="https://github.com/NVIDIA/warp/b
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="c1">// Load a .wrp file. device_type: 0 = CUDA, 1 = CPU.</span>
 <span class="c1">// For CUDA, context is a CUcontext; for CPU it is ignored (pass NULL).</span>
 <span class="n">APICGraph</span><span class="o">*</span><span class="w"> </span><span class="nf">wp_apic_load_graph</span><span class="p">(</span><span class="kt">void</span><span class="o">*</span><span class="w"> </span><span class="n">context</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="n">path</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">device_type</span><span class="p">);</span>
+
+<span class="c1">// Load from memory: the .wrp contents plus the modules for a CUDA graph.</span>
+<span class="c1">// Each APICModuleBytes entry holds a module's recorded filename</span>
+<span class="c1">// (const char* filename) and its contents (const void* data, size_t size).</span>
+<span class="c1">// Buffers must be host memory that is not modified during the call.</span>
+<span class="c1">// For a CPU graph the module list is not used: load each object with</span>
+<span class="c1">// wp_load_obj_from_bytes() instead (see below).</span>
+<span class="n">APICGraph</span><span class="o">*</span><span class="w"> </span><span class="nf">wp_apic_load_graph_from_bytes</span><span class="p">(</span><span class="kt">void</span><span class="o">*</span><span class="w"> </span><span class="n">context</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">void</span><span class="o">*</span><span class="w"> </span><span class="n">data</span><span class="p">,</span><span class="w"> </span><span class="kt">size_t</span><span class="w"> </span><span class="n">size</span><span class="p">,</span>
+<span class="w">                                         </span><span class="k">const</span><span class="w"> </span><span class="n">APICModuleBytes</span><span class="o">*</span><span class="w"> </span><span class="n">modules</span><span class="p">,</span>
+<span class="w">                                         </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">num_modules</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">device_type</span><span class="p">);</span>
 
 <span class="c1">// Update or read named parameter regions on the loaded graph.</span>
 <span class="kt">bool</span><span class="w"> </span><span class="nf">wp_apic_set_param</span><span class="p">(</span><span class="n">APICGraph</span><span class="o">*</span><span class="w"> </span><span class="n">graph</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="n">name</span><span class="p">,</span>
@@ -2753,12 +2791,14 @@ resolved from the <code class="docutils literal notranslate"><span class="pre">.
 CPU example links against <code class="docutils literal notranslate"><span class="pre">warp-clang</span></code> at build time, loads each object with
 <code class="docutils literal notranslate"><span class="pre">wp_load_obj()</span></code>, resolves its functions with <code class="docutils literal notranslate"><span class="pre">wp_lookup()</span></code>, and registers
 each pointer with the loaded graph via
-<code class="docutils literal notranslate"><span class="pre">wp_apic_register_loaded_cpu_kernel()</span></code>.</p>
-<p>Before the first call to <code class="docutils literal notranslate"><span class="pre">wp_load_obj()</span></code>, a standalone native consumer must
-pass the core runtime table returned by <code class="docutils literal notranslate"><span class="pre">wp_cpu_block_runtime_get_api()</span></code> to
-<code class="docutils literal notranslate"><span class="pre">wp_llvm_set_cpu_block_runtime()</span></code>. This lets JIT-loaded kernels resolve the
-cooperative CPU block entry points implemented by the core Warp library. Warp’s
-Python runtime performs the same binding during initialization.</p>
+<code class="docutils literal notranslate"><span class="pre">wp_apic_register_loaded_cpu_kernel()</span></code>. When the object files are in memory,
+<code class="docutils literal notranslate"><span class="pre">wp_load_obj_from_bytes()</span></code> loads one from a buffer instead of a path.</p>
+<p>Before the first call to <code class="docutils literal notranslate"><span class="pre">wp_load_obj()</span></code> or <code class="docutils literal notranslate"><span class="pre">wp_load_obj_from_bytes()</span></code>, a
+standalone native consumer must pass the core runtime table returned by
+<code class="docutils literal notranslate"><span class="pre">wp_cpu_block_runtime_get_api()</span></code> to <code class="docutils literal notranslate"><span class="pre">wp_llvm_set_cpu_block_runtime()</span></code>. This
+lets JIT-loaded kernels resolve the cooperative CPU block entry points
+implemented by the core Warp library. Warp’s Python runtime performs the same
+binding during initialization.</p>
 <p>The example walks every kernel returned by <code class="docutils literal notranslate"><span class="pre">wp_apic_get_num_kernels()</span></code> and
 does this resolution once at startup. Kernel metadata includes both the kernel
 key and module hash so same-key kernels from distinct <code class="docutils literal notranslate"><span class="pre">module=&quot;unique&quot;</span></code>
@@ -2778,8 +2818,11 @@ surface for this lookup is:</p>
 <p>Loading a CPU <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> graph uses the pure-C++ APIC loader in the Warp native
 library and does not require a CUDA-enabled build. CPU replay
 (<code class="docutils literal notranslate"><span class="pre">wp_apic_cpu_replay_graph</span></code>) still requires the warp-clang backend and the
-companion <code class="docutils literal notranslate"><span class="pre">_modules</span></code> directory described above. Loading a CUDA <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> graph
-requires a CUDA-enabled build.</p>
+compiled kernel objects. These can come from the companion <code class="docutils literal notranslate"><span class="pre">_modules</span></code>
+directory, from the module buffers passed to
+<a class="reference internal" href="../api_reference/_generated/warp.capture_load_from_bytes.html#warp.capture_load_from_bytes" title="warp.capture_load_from_bytes"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_load_from_bytes()</span></code></a>, or, in a
+native program, from buffers loaded with <code class="docutils literal notranslate"><span class="pre">wp_load_obj_from_bytes()</span></code>. Loading
+a CUDA <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> graph requires a CUDA-enabled build.</p>
 </section>
 <section id="building-and-running">
 <h5>Building and running<a class="headerlink" href="#building-and-running" title="Link to this heading">#</a></h5>
@@ -2822,11 +2865,12 @@ inside CPU capture are rejected.</p></li>
 JIT-compiled on architectures supported by its target and the installed
 driver, but PTX is not an unconditional cross-architecture guarantee. One
 APIC graph cannot span multiple GPUs.</p></li>
-<li><p>Loading CPU <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> graphs requires the warp-clang backend and the companion
-<code class="docutils literal notranslate"><span class="pre">_modules</span></code> directory with compatible CPU kernel object files. Those
-<code class="docutils literal notranslate"><span class="pre">.o</span></code> files are tied to their platform, architecture, compiler ABI, and Warp
-runtime. CPU loading does not require a CUDA-enabled Warp native library;
-loading CUDA <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> graphs does.</p></li>
+<li><p>Loading CPU <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> graphs requires the warp-clang backend and compatible
+CPU kernel object files, either in the companion <code class="docutils literal notranslate"><span class="pre">_modules</span></code> directory or
+passed to <a class="reference internal" href="../api_reference/_generated/warp.capture_load_from_bytes.html#warp.capture_load_from_bytes" title="warp.capture_load_from_bytes"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_load_from_bytes()</span></code></a>.
+Those <code class="docutils literal notranslate"><span class="pre">.o</span></code> files are tied to their platform, architecture, compiler ABI,
+and Warp runtime. CPU loading does not require a CUDA-enabled Warp native
+library; loading CUDA <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> graphs does.</p></li>
 <li><p>Both CPU and CUDA <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> graph replay support APIC-recorded
 <a class="reference internal" href="../api_reference/_generated/warp.capture_if.html#warp.capture_if" title="warp.capture_if"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_if()</span></code></a> and
 <a class="reference internal" href="../api_reference/_generated/warp.capture_while.html#warp.capture_while" title="warp.capture_while"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_while()</span></code></a> conditionals and loops. Stream
@@ -3999,6 +4043,7 @@ Journal of Computer Graphics Techniques (JCGT), vol. 9, no. 3, 20–38, 2020.</p
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#api-capture-saving-and-loading-graphs">API Capture: Saving and Loading Graphs</a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#capturing-for-serialization">Capturing for serialization</a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#loading-and-replaying">Loading and replaying</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#loading-from-bytes">Loading from bytes</a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#standalone-c-replay">Standalone C++ replay</a><ul class="nav section-nav flex-column">
 <li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#cuda-replay-02-apic-visualization">CUDA replay (<code class="docutils literal notranslate"><span class="pre">02_apic_visualization</span></code>)</a></li>
 <li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#cpu-replay-03-apic-visualization-cpu">CPU replay (<code class="docutils literal notranslate"><span class="pre">03_apic_visualization_cpu</span></code>)</a></li>
