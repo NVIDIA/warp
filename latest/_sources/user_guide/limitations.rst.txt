@@ -25,6 +25,9 @@ Kernels and User Functions
 * :func:`wp.atomic_add() <warp._src.lang.atomic_add>` does not support :class:`wp.float16 <float16>` or
   :class:`wp.bfloat16 <bfloat16>` on GPUs with compute capability below 7.0.
   On such devices, the function will return ``0.0`` without modifying the target memory.
+* :func:`wp.atomic_add() <warp._src.lang.atomic_add>` does not support :class:`wp.float64 <float64>` when targeting
+  CUDA GPUs with compute capability below 6.0.
+  In this case, the function returns ``0.0`` without modifying the target memory.
 * Using ``wp.atomic_add()`` or related functions on the same memory address from
   overlapping CPU and GPU kernels is currently unsupported.
 * :func:`wp.tid() <warp._src.lang.tid>` cannot be called from user functions.

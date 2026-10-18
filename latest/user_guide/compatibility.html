@@ -670,7 +670,9 @@ library, not the version installed on the system when running Warp.</p>
 </ul>
 </li>
 <li><p><strong>Advanced Features</strong>: Half-precision (<code class="docutils literal notranslate"><span class="pre">float16</span></code>) atomic operations require compute capability 7.0+ (Volta).
-On older GPUs, these operations return zero.</p></li>
+On older GPUs, these operations return zero. Double-precision (<code class="docutils literal notranslate"><span class="pre">float64</span></code>) atomic addition
+requires compute capability 6.0+ (Pascal). When targeting older GPUs, it returns zero without modifying
+the target memory.</p></li>
 <li><p><strong>CPU-only execution</strong> is supported on all supported platforms for users without a compatible GPU or driver.</p></li>
 </ul>
 </section>
