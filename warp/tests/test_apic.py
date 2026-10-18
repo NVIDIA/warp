@@ -3424,6 +3424,120 @@ def test_array_reduction_capture_errors(test, device):
             wp.utils.array_inner(values, values, out=out, count=-1)
 
 
+def test_array_reduction_count_bounds_during_capture(test, device):
+    """Reject excessive counts without invalidating subsequent captured reductions."""
+    base = wp.array(np.arange(1.0, 25.0, dtype=np.float32), device=device)
+    values = base[:6].reshape((2, 3))
+    sum_out = wp.full(1, -1.0, dtype=wp.float32, device=device)
+    inner_out = wp.full(1, -1.0, dtype=wp.float32, device=device)
+    rejected_outputs = {
+        axis: wp.full(shape, -1.0, dtype=wp.float32, device=device)
+        for axis, shape in ((None, (1,)), (0, (1, 3)), (1, (2, 1)))
+    }
+
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        for axis in (None, 0, 1, -1, -2):
+            limit = values.size if axis is None else values.shape[axis]
+            out = rejected_outputs[None if axis is None else axis % values.ndim]
+            with test.subTest(axis=axis, operation="array_sum"):
+                with test.assertRaisesRegex(RuntimeError, r"array_sum\(\).*value_count.*exceed"):
+                    wp.utils.array_sum(values, out=out, value_count=limit + 1, axis=axis)
+            with test.subTest(axis=axis, operation="array_inner"):
+                with test.assertRaisesRegex(RuntimeError, r"array_inner\(\).*count.*exceed"):
+                    wp.utils.array_inner(values, values, out=out, count=limit + 1, axis=axis)
+
+        wp.utils.array_sum(values, out=sum_out)
+        wp.utils.array_inner(values, values, out=inner_out)
+
+    for out in rejected_outputs.values():
+        np.testing.assert_array_equal(out.numpy(), np.full(out.shape, -1.0, dtype=np.float32))
+
+    wp.capture_launch(capture.graph)
+    for out in rejected_outputs.values():
+        np.testing.assert_array_equal(out.numpy(), np.full(out.shape, -1.0, dtype=np.float32))
+    test.assertEqual(sum_out.numpy()[0], 21.0)
+    test.assertEqual(inner_out.numpy()[0], 91.0)
+
+
+def test_strided_whole_array_reductions_during_capture(test, device):
+    """Reject unsupported copies without invalidating the active capture."""
+    base = wp.array((1.0, 100.0, 2.0, 200.0, 3.0, 300.0), dtype=wp.float32, device=device)
+    values = base[::2]
+    other = wp.array((4.0, 5.0, 6.0), dtype=wp.float32, device=device)
+    sum_out = wp.empty(1, dtype=wp.float32, device=device)
+    inner_out = wp.empty(1, dtype=wp.float32, device=device)
+    axis_sum_out = wp.empty(1, dtype=wp.float32, device=device)
+    axis_inner_out = wp.empty(1, dtype=wp.float32, device=device)
+    zero_out = wp.full(1, -1.0, dtype=wp.float32, device=device)
+
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        with test.assertRaisesRegex(NotImplementedError, r"array_sum\(\).*non-contiguous"):
+            wp.utils.array_sum(values, out=sum_out)
+        for a, b in ((values, other), (other, values)):
+            with test.assertRaisesRegex(NotImplementedError, r"array_inner\(\).*non-contiguous"):
+                wp.utils.array_inner(a, b, out=inner_out)
+
+        wp.utils.array_sum(other, out=sum_out)
+        wp.utils.array_inner(other, other, out=inner_out)
+        wp.utils.array_sum(values, out=axis_sum_out, axis=0)
+        wp.utils.array_inner(values, other, out=axis_inner_out, axis=0)
+        wp.utils.array_sum(values, out=zero_out, value_count=0)
+        wp.utils.array_inner(values, other, out=zero_out, count=0)
+
+    wp.capture_launch(capture.graph)
+    test.assertEqual(sum_out.numpy()[0], 15.0)
+    test.assertEqual(inner_out.numpy()[0], 77.0)
+    test.assertEqual(axis_sum_out.numpy()[0], 6.0)
+    test.assertEqual(axis_inner_out.numpy()[0], 32.0)
+    test.assertEqual(zero_out.numpy()[0], 0.0)
+
+    base.assign((7.0, 100.0, 8.0, 200.0, 9.0, 300.0))
+    other.assign((1.0, 2.0, 3.0))
+    wp.capture_launch(capture.graph)
+    test.assertEqual(sum_out.numpy()[0], 6.0)
+    test.assertEqual(inner_out.numpy()[0], 14.0)
+    test.assertEqual(axis_sum_out.numpy()[0], 24.0)
+    test.assertEqual(axis_inner_out.numpy()[0], 50.0)
+
+
+def test_compact_whole_array_reductions_during_capture(test, device):
+    """Replay compact transposed reductions while rejecting layouts that need copies."""
+    values_base = wp.array(((1.0, 2.0, 3.0), (4.0, 5.0, 6.0)), dtype=wp.float32, device=device)
+    other_base = wp.array(((7.0, 8.0, 9.0), (10.0, 11.0, 12.0)), dtype=wp.float32, device=device)
+    values = values_base.transpose()
+    other = other_base.transpose()
+    other_contiguous = wp.array(other.numpy(), dtype=wp.float32, device=device)
+    outputs = [wp.full(1, -1.0, dtype=wp.float32, device=device) for _ in range(4)]
+
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        with test.assertRaises(NotImplementedError):
+            wp.utils.array_sum(values, out=outputs[0], value_count=2)
+        with test.assertRaises(NotImplementedError):
+            wp.utils.array_inner(values, other, out=outputs[1], count=2)
+        for a, b in ((values, other_contiguous), (other_contiguous, values)):
+            with test.assertRaises(NotImplementedError):
+                wp.utils.array_inner(a, b, out=outputs[1])
+
+        for index, count in enumerate((None, values.size)):
+            wp.utils.array_sum(values, out=outputs[2 * index], value_count=count)
+            wp.utils.array_inner(values, other, out=outputs[2 * index + 1], count=count)
+
+    for out in outputs:
+        test.assertEqual(out.numpy()[0], -1.0)
+
+    wp.capture_launch(capture.graph)
+    for index in (0, 2):
+        test.assertEqual(outputs[index].numpy()[0], 21.0)
+        test.assertEqual(outputs[index + 1].numpy()[0], 217.0)
+
+    values_base.assign(((11.0, 12.0, 13.0), (14.0, 15.0, 16.0)))
+    other_base.assign(((2.0, 4.0, 6.0), (8.0, 10.0, 12.0)))
+    wp.capture_launch(capture.graph)
+    for index in (0, 2):
+        test.assertEqual(outputs[index].numpy()[0], 81.0)
+        test.assertEqual(outputs[index + 1].numpy()[0], 602.0)
+
+
 def test_empty_array_reductions_during_capture(test, device):
     """Preserve empty array-reduction behavior during capture."""
     empty_vector = wp.empty(0, dtype=wp.vec2, device=device)
@@ -5225,6 +5339,24 @@ add_function_test(
     TestApic,
     "test_array_reduction_capture_errors",
     test_array_reduction_capture_errors,
+    devices=devices_with_graph_capture_allocation_and_cuda_graph_module_load,
+)
+add_function_test(
+    TestApic,
+    "test_array_reduction_count_bounds_during_capture",
+    test_array_reduction_count_bounds_during_capture,
+    devices=devices_with_graph_capture_allocation_and_cuda_graph_module_load,
+)
+add_function_test(
+    TestApic,
+    "test_strided_whole_array_reductions_during_capture",
+    test_strided_whole_array_reductions_during_capture,
+    devices=devices_with_graph_capture_allocation_and_cuda_graph_module_load,
+)
+add_function_test(
+    TestApic,
+    "test_compact_whole_array_reductions_during_capture",
+    test_compact_whole_array_reductions_during_capture,
     devices=devices_with_graph_capture_allocation_and_cuda_graph_module_load,
 )
 add_function_test(
