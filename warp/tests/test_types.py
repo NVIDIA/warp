@@ -994,6 +994,32 @@ class TestTypes(unittest.TestCase):
                     with self.assertRaises(OverflowError):
                         getattr(float_type(1.0), op)(huge)
 
+    def test_flatten_rectangular(self):
+        # Rectangular inputs flatten to a row-major list and the shape tuple.
+        self.assertEqual(wp._src.types.flatten(5), ([5], ()))
+        self.assertEqual(wp._src.types.flatten([]), ([], (0,)))
+        self.assertEqual(wp._src.types.flatten([1, 2, 3]), ([1, 2, 3], (3,)))
+        self.assertEqual(wp._src.types.flatten([[1, 2], [3, 4]]), ([1, 2, 3, 4], (2, 2)))
+        self.assertEqual(
+            wp._src.types.flatten([[[1], [2]], [[3], [4]]]), ([1, 2, 3, 4], (2, 2, 1))
+        )
+
+    def test_flatten_ragged_rejected(self):
+        # Ragged inputs must raise rather than silently return a bogus shape.
+        # A scalar sitting at the same level as a sibling sequence is ragged
+        # regardless of ordering (this is the regression case: a scalar listed
+        # before its sibling sequence used to be silently accepted).
+        for value in (
+            [3, [1, 2]],
+            [[1, 2], 3],
+            [[1, 2], [3, 4, 5]],
+            [[1, [2]]],
+            [[1, 2], [3, [4]]],
+        ):
+            with self.subTest(value=value):
+                with self.assertRaises(ValueError):
+                    wp._src.types.flatten(value)
+
 
 for dtype in wp._src.types.int_types:
     add_function_test(TestTypes, f"test_integers_{dtype.__name__}", test_integers, devices=devices, dtype=dtype)
