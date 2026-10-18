@@ -183,6 +183,24 @@ WP_API uint32_t wp_apic_get_operation_count(APICState* state);
 // device_type: APICDeviceType value (APIC_DEVICE_CUDA=0, APIC_DEVICE_CPU=1).
 // context is ignored for APIC_DEVICE_CPU.
 WP_API APICGraph* wp_apic_load_graph(void* context, const char* path, int device_type);
+
+// One compiled module passed to wp_apic_load_graph_from_bytes(). `filename` is
+// the module's filename as recorded in the .wrp, which is also its name in the
+// <stem>_modules/ directory written by capture_save().
+struct APICModuleBytes {
+    const char* filename;
+    const void* data;
+    size_t size;
+};
+
+// Load a .wrp graph from host memory, matching CUDA modules by their recorded
+// filenames. Unused module entries are ignored. Buffers must remain unchanged
+// during the call and may be released afterward.
+// For CPU graphs, load objects with wp_load_obj_from_bytes() and register
+// their kernels with wp_apic_register_loaded_cpu_kernel().
+WP_API APICGraph* wp_apic_load_graph_from_bytes(
+    void* context, const void* data, size_t size, const APICModuleBytes* modules, uint32_t num_modules, int device_type
+);
 WP_API void wp_apic_destroy_graph(APICGraph* graph);
 
 WP_API bool wp_apic_set_param(APICGraph* graph, const char* name, const void* data, size_t size);

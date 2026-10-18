@@ -29,7 +29,7 @@ The user guide documents the public API and its current limitations. This docume
 - **Operation stream**: The contiguous, versioned byte stream of ``APICOpHeader`` records. It is the CPU replay program and, for a saveable graph, the operations section of a ``.wrp`` file.
 - **Native CUDA graph**: The ``cudaGraph_t`` / ``cudaGraphExec_t`` captured by the CUDA driver. A live CUDA graph uses this representation directly.
 - **Live graph**: A ``Graph`` returned by ``capture_end()``. Its captured pointers refer to resources in the current process.
-- **Loaded graph**: A ``Graph`` returned by ``capture_load()``. Its memory, object handles, modules, and native graph resources are reconstructed from a ``.wrp`` file and its companion modules directory.
+- **Loaded graph**: A ``Graph`` returned by ``capture_load()`` or ``capture_load_from_bytes()``. Its memory, object handles, modules, and native graph resources are reconstructed from a ``.wrp`` image and its companion modules, read from files or passed in memory.
 - **CPU replay**: Direct interpretation of an APIC operation stream by ``wp_apic_cpu_replay_state()`` for a live graph or ``wp_apic_cpu_replay_graph()`` for a loaded graph.
 - **CUDA graph reconstruction**: Reissuing APIC operations while a fresh CUDA stream capture is active, producing a new native CUDA graph for a loaded graph.
 - **Memory region**: A base allocation identified by a stable integer within one APIC stream. Pointers in records are represented as a region ID plus a byte offset.
@@ -301,15 +301,20 @@ The sibling ``<stem>_modules/`` directory contains the exact compiled modules re
 
 - CPU graphs use ``.o`` files.
 - CUDA graphs use ``.cubin`` or ``.ptx`` files according to the module's compilation output.
-- ``.meta`` files are copied when present for CUDA shared-memory metadata.
+
+Module ``.meta`` files are not part of the artifact. Kernel shared-memory sizes and symbol names come from the ``.wrp`` metadata.
 
 The ``.wrp`` file and modules directory are one artifact. Moving, copying, or shipping one without the other does not produce a loadable kernel graph.
 
+``capture_load_from_bytes()`` and ``wp_apic_load_graph_from_bytes()`` accept the same two parts from memory: the ``.wrp`` contents and each module's contents keyed by the filename recorded in the metadata.
+
 #### Load path
+
+``wp_apic_load_graph()`` reads the ``.wrp`` file and resolves modules from the sibling ``<stem>_modules/`` directory. ``wp_apic_load_graph_from_bytes()`` takes the ``.wrp`` image and an ``APICModuleBytes`` list keyed by recorded filename; unmatched entries are ignored, and repeated or null entries fail the load. Both call one internal core, so parsing, validation, and setup are identical and only the module resolver differs. Input buffers are borrowed for the call: the graph copies the operation stream and region contents, module images are copied before the CUDA driver loads them, and warp-clang copies CPU objects because LLVM links them lazily.
 
 The common loader checks the minimum header size, magic, and supported format range, parses metadata and memory records, validates the operation stream, and rejects explicit BVH and HashGrid helper records that depend on process-local handles. This check does not reject an unresolved generic ``APIC_RELOC_HANDLE`` in a kernel argument or memory region.
 
-For CPU it allocates host regions and initializes their snapshots. Python then loads every recorded object file through the warp-clang backend, resolves forward and backward symbols, and registers the function pointers with the ``APICGraph``.
+For CPU it allocates host regions and initializes their snapshots. Python then loads every recorded object file through the warp-clang backend (``wp_load_obj()`` for files, ``wp_load_obj_from_bytes()`` for memory), resolves forward and backward symbols, and registers the function pointers with the ``APICGraph``. Each load names its LLVM dylibs with a per-load prefix so two loads of one capture never share code.
 
 For CUDA it loads every recorded PTX/CUBIN module and allocates device regions. The native CUDA graph is deliberately lazy. The first request for its graph or executable opens a Warp-managed CUDA capture and reissues the operation stream. Later launches reuse the cached executable.
 
@@ -424,7 +429,7 @@ These are limitations, not implied future commitments:
 - APIC control-flow bodies cannot reference already captured ``Graph`` objects; use callbacks.
 - A ``.wrp`` graph contains compiled modules, not source or compilation steps. Deferred compilation is not implemented.
 - The file header records the captured device family and target architecture, but load currently trusts the caller's requested device and does not reject a mismatch at the file boundary. A mismatch may fail later during module or graph setup with a less targeted diagnostic, or remain undetected when the graph does not exercise device-specific resources.
-- Operation-stream validation is substantially stronger than section-table, metadata, and memory-section bounds checking. The current loader should not be treated as hardened for untrusted ``.wrp`` files.
+- The loader bounds-checks the section table, every section, and metadata and memory records against the image size, but it validates metadata semantics far less thoroughly than the operation stream. The current loader should not be treated as hardened for untrusted ``.wrp`` data.
 - One APIC graph cannot span multiple GPUs. Cross-architecture CUDA use depends on PTX/CUBIN compatibility and is not guaranteed.
 - CPU loading requires warp-clang and compatible companion ``.o`` files.
 
@@ -442,6 +447,7 @@ Coverage is organized across:
 
 - [``warp/tests/test_graph.py``](../warp/tests/test_graph.py) for common live graph behavior, including replay, memory operations, and CUDA allocation ownership.
 - [``warp/tests/test_apic.py``](../warp/tests/test_apic.py) for lifecycle, ownership, aliases, argument relocation, backward launches, control flow, save/load, binding updates, malformed streams, device scoping, and failure cleanup.
+- [``warp/tests/test_apic_load_from_bytes.py``](../warp/tests/test_apic_load_from_bytes.py) for loading from memory: parity with file loads, borrowed buffers, module matching, and malformed images.
 - [``warp/tests/test_apic_utility_algorithms.py``](../warp/tests/test_apic_utility_algorithms.py) for scans, sorts, and run-length encoding.
 - [``warp/tests/test_apic_mesh.py``](../warp/tests/test_apic_mesh.py) for mesh reconstruction and handle relocation.
 - [``warp/examples/cpp/02_apic_visualization``](../warp/examples/cpp/02_apic_visualization) and [``warp/examples/cpp/03_apic_visualization_cpu``](../warp/examples/cpp/03_apic_visualization_cpu) for standalone CUDA and CPU loading.
@@ -456,6 +462,7 @@ Coverage is organized across:
 - Native recording and loaded-graph state: [``warp/native/apic_internal.h``](../warp/native/apic_internal.h)
 - Shared recording, validation, serialization, CPU replay, and loading: [``warp/native/apic.cpp``](../warp/native/apic.cpp)
 - CUDA snapshots, module loading, and graph reconstruction: [``warp/native/apic.cu``](../warp/native/apic.cu)
+- CPU object loading from files or memory: [``warp/native/clang/clang.cpp``](../warp/native/clang/clang.cpp) (``wp_load_obj``, ``wp_load_obj_from_bytes``)
 - Kernel and basic memory hooks: [``warp/native/warp.cpp``](../warp/native/warp.cpp) and [``warp/native/warp.cu``](../warp/native/warp.cu)
 - Semantic host-helper hooks: ``warp/native/reduce.*``, ``sort.*``, ``runlength_encode.*``, ``sparse.*``, ``bvh.*``, and ``hashgrid.*``; Python-side tracking and validation live primarily in ``warp/_src/utils.py`` and ``warp/_src/sparse.py``
 - Public usage and current limitations: [``docs/user_guide/runtime.rst``](../docs/user_guide/runtime.rst)

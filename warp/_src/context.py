@@ -6397,16 +6397,18 @@ class Graph:
     """A handle to a captured graph of Warp operations.
 
     Instances are returned by :func:`wp.capture_end` (after recording with
-    :func:`wp.capture_begin` or via :class:`wp.ScopedCapture`) or by
+    :func:`wp.capture_begin` or via :class:`wp.ScopedCapture`), by
     :func:`wp.capture_load` (after deserializing a ``.wrp`` file written by
-    :func:`wp.capture_save`). Use :func:`wp.capture_launch` to replay either
-    kind.
+    :func:`wp.capture_save`), or by :func:`wp.capture_load_from_bytes` (after
+    deserializing the same data from memory). Use :func:`wp.capture_launch` to
+    replay any of them.
 
-    Graphs returned by :func:`wp.capture_load` additionally expose parameter
-    binding through :meth:`set_param`, :meth:`get_param`, and
-    :meth:`get_param_ptr`. These methods raise :class:`RuntimeError` on graphs
-    obtained from :func:`wp.capture_end`. Use :attr:`is_loaded` to distinguish
-    the two cases at runtime.
+    Graphs returned by :func:`wp.capture_load` or
+    :func:`wp.capture_load_from_bytes` additionally expose parameter binding
+    through :meth:`set_param`, :meth:`get_param`, and :meth:`get_param_ptr`.
+    These methods raise :class:`RuntimeError` on graphs obtained from
+    :func:`wp.capture_end`. Use :attr:`is_loaded` to distinguish the two cases
+    at runtime.
     """
 
     def __init__(self, device: Device, capture_id: int = 0):
@@ -6587,8 +6589,8 @@ class Graph:
         """Mapping of parameter name to binding metadata for a loaded graph.
 
         Each value is a dict with a single ``"size"`` key giving the parameter
-        region's size in bytes. Empty for graphs that were not loaded from a
-        ``.wrp`` file.
+        region's size in bytes. Empty for graphs that were not loaded with
+        :func:`wp.capture_load` or :func:`wp.capture_load_from_bytes`.
 
         Returns:
             A dict of the form ``{"param_name": {"size": int}, ...}``.
@@ -6597,11 +6599,12 @@ class Graph:
 
     @property
     def is_loaded(self) -> bool:
-        """``True`` if this graph was loaded from a ``.wrp`` file.
+        """``True`` if this graph was loaded with :func:`wp.capture_load` or :func:`wp.capture_load_from_bytes`.
 
-        Use this to distinguish graphs returned by :func:`wp.capture_load` (which
-        support :meth:`set_param`, :meth:`get_param`, and :meth:`get_param_ptr`)
-        from graphs returned by :func:`wp.capture_end` (which do not).
+        Use this to distinguish graphs returned by :func:`wp.capture_load` or
+        :func:`wp.capture_load_from_bytes` (which support :meth:`set_param`,
+        :meth:`get_param`, and :meth:`get_param_ptr`) from graphs returned by
+        :func:`wp.capture_end` (which do not).
         """
         return self._native_graph is not None
 
@@ -6652,6 +6655,14 @@ class Runtime:
                 ctypes.c_bool,  # use_legacy_linker
             ]
             self.llvm.wp_load_obj.restype = ctypes.c_int
+
+            self.llvm.wp_load_obj_from_bytes.argtypes = [
+                ctypes.c_void_p,  # data
+                ctypes.c_size_t,  # size
+                ctypes.c_char_p,  # module_name
+                ctypes.c_bool,  # use_legacy_linker
+            ]
+            self.llvm.wp_load_obj_from_bytes.restype = ctypes.c_int
 
             self.llvm.wp_compile_cpp.argtypes = [
                 ctypes.c_char_p,  # cpp_src
@@ -6860,7 +6871,7 @@ class Runtime:
             self.core.wp_memcpy_batch.restype = ctypes.c_bool
 
             # ---- APIC (API Capture) bindings ----
-            from warp._src.apic.types import APICLaunchInfo  # noqa: PLC0415
+            from warp._src.apic.types import APICLaunchInfo, APICModuleBytes  # noqa: PLC0415
 
             self.core.wp_apic_create_state.argtypes = []
             self.core.wp_apic_create_state.restype = ctypes.c_void_p
@@ -6964,6 +6975,15 @@ class Runtime:
             # APIC loading bindings
             self.core.wp_apic_load_graph.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_int]
             self.core.wp_apic_load_graph.restype = ctypes.c_void_p
+            self.core.wp_apic_load_graph_from_bytes.argtypes = [
+                ctypes.c_void_p,  # context
+                ctypes.c_void_p,  # data
+                ctypes.c_size_t,  # size
+                ctypes.POINTER(APICModuleBytes),  # modules
+                ctypes.c_uint32,  # num_modules
+                ctypes.c_int,  # device_type
+            ]
+            self.core.wp_apic_load_graph_from_bytes.restype = ctypes.c_void_p
             self.core.wp_apic_destroy_graph.argtypes = [ctypes.c_void_p]
             self.core.wp_apic_destroy_graph.restype = None
             self.core.wp_apic_register_loaded_cpu_kernel.argtypes = [
@@ -14201,7 +14221,7 @@ def capture_save(graph: Graph, path: str, inputs: dict | None = None, outputs: d
                 ctypes.c_void_p(base_ptr),
             )
 
-    # Export CUBIN files to {path}_modules/
+    # Copy each compiled module binary (.cubin, .ptx, or .o) to {path}_modules/
     wrp_path = path if path.endswith(".wrp") else path + ".wrp"
     base_name = wrp_path[:-4]
     modules_dir = base_name + "_modules"
@@ -14213,15 +14233,6 @@ def capture_save(graph: Graph, path: str, inputs: dict | None = None, outputs: d
 
         if binary_path and os.path.exists(binary_path):
             shutil.copy2(binary_path, os.path.join(modules_dir, binary_filename))
-            # Also copy the .meta file. CUDA modules require .meta at load time
-            # to resolve kernel shared-memory metadata. For CPU (APIC) modules,
-            # _apic_load_cpu_modules resolves kernel names directly from the
-            # C++ graph via wp_apic_get_kernel_forward_name / _backward_name,
-            # so copying .meta for CPU is harmless but unnecessary.
-            meta_filename = os.path.splitext(binary_filename)[0] + ".meta"
-            meta_path = os.path.join(os.path.dirname(binary_path), meta_filename)
-            if os.path.exists(meta_path):
-                shutil.copy2(meta_path, os.path.join(modules_dir, meta_filename))
         else:
             raise RuntimeError(
                 f"APIC: Could not find compiled binary for module {info['module_name']} "
@@ -14241,13 +14252,27 @@ def capture_save(graph: Graph, path: str, inputs: dict | None = None, outputs: d
         raise RuntimeError(f"Failed to save APIC graph to {wrp_path}. {runtime.get_error_string()}")
 
 
+def _apic_wrap_loaded_graph(native_graph, device: Device) -> Graph:
+    """Wrap a native ``APICGraph*`` in a :class:`Graph` and record its parameter bindings."""
+    graph = Graph(device)
+    graph._native_graph = native_graph
+
+    num_params = runtime.core.wp_apic_get_num_params(native_graph)
+    for i in range(num_params):
+        name = runtime.core.wp_apic_get_param_name(native_graph, i).decode("utf-8")
+        size = runtime.core.wp_apic_get_param_size(native_graph, name.encode("utf-8"))
+        graph._params[name] = {"size": size}
+    return graph
+
+
 def capture_load(path: str, device: DeviceLike = None) -> Graph:
     """Load a serialized graph from a ``.wrp`` file.
 
     For graphs containing recorded kernels, the companion
     ``<stem>_modules/`` directory created by :func:`capture_save` must remain
     next to the file. ``device`` must have the same device family (CPU or CUDA)
-    as the saved graph.
+    as the saved graph. To load a graph whose files are already in memory, use
+    :func:`capture_load_from_bytes`.
 
     Args:
         path: Path to the ``.wrp`` file (extension added automatically if missing).
@@ -14256,7 +14281,7 @@ def capture_load(path: str, device: DeviceLike = None) -> Graph:
     Returns:
         A :class:`Graph` object that can be launched with :func:`capture_launch`.
     """
-    device = runtime.get_device(device)
+    device = get_device(device)
     wrp_path = path if path.endswith(".wrp") else path + ".wrp"
 
     device_type = 1 if device.is_cpu else 0
@@ -14266,25 +14291,148 @@ def capture_load(path: str, device: DeviceLike = None) -> Graph:
     if not native_graph:
         raise RuntimeError(f"Failed to load APIC graph from {wrp_path}: {runtime.get_error_string()}")
 
-    graph = Graph(device)
-    graph._native_graph = native_graph
-
-    # Populate param info
-    num_params = runtime.core.wp_apic_get_num_params(native_graph)
-    for i in range(num_params):
-        name = runtime.core.wp_apic_get_param_name(native_graph, i).decode("utf-8")
-        size = runtime.core.wp_apic_get_param_size(native_graph, name.encode("utf-8"))
-        graph._params[name] = {"size": size}
-
+    graph = _apic_wrap_loaded_graph(native_graph, device)
     if device.is_cpu:
         # Load .o modules via LLVM and resolve kernel function pointers
-        graph._llvm_handles = _apic_load_cpu_modules(native_graph, wrp_path)
-
+        base_name = wrp_path[:-4]
+        graph._llvm_handles = _apic_load_cpu_modules(
+            native_graph, _apic_cpu_objects_in_dir(base_name + "_modules"), base_name + "_modules"
+        )
     return graph
 
 
-def _apic_load_cpu_modules(native_graph, wrp_path: str) -> list[str]:
-    """Load CPU modules from the _modules/ directory and register kernel function pointers.
+def _apic_bytes_view(data, what: str) -> np.ndarray:
+    """Return a zero-copy ``uint8`` view of a bytes-like object for native calls.
+
+    Raises:
+        TypeError: If ``data`` does not support the buffer protocol.
+        ValueError: If ``data`` is not C-contiguous.
+    """
+    try:
+        view = memoryview(data)
+    except TypeError:
+        raise TypeError(f"{what} must be a bytes-like object, got {type(data).__name__}") from None
+    if not view.c_contiguous:
+        raise ValueError(f"{what} must be a C-contiguous buffer")
+    return np.frombuffer(view.cast("B"), dtype=np.uint8)
+
+
+def capture_load_from_bytes(
+    data,
+    modules: Mapping[str, Any] | None = None,
+    device: DeviceLike = None,
+) -> Graph:
+    """Load a serialized graph from in-memory bytes.
+
+    ``data`` holds the contents of a ``.wrp`` file written by
+    :func:`capture_save`, and ``modules`` holds the contents of the files in
+    its companion ``<stem>_modules/`` directory. The returned graph behaves the
+    same as one returned by :func:`capture_load`. Warp copies everything it
+    needs while loading, so the caller may release the buffers once this
+    returns.
+
+    Args:
+        data: The ``.wrp`` file contents as a bytes-like object, such as
+          :class:`bytes`, :class:`bytearray`, :class:`memoryview`, or a
+          C-contiguous NumPy array.
+        modules: Maps each module filename written to ``<stem>_modules/`` by
+          :func:`capture_save`, without a directory prefix, to the file's
+          contents as a bytes-like object. Entries the graph does not use are
+          ignored. May be omitted when the graph launches no kernels.
+        device: The device to load the graph onto. Must have the same device
+          family (CPU or CUDA) as the saved graph.
+
+    Returns:
+        A :class:`Graph` object that can be launched with :func:`capture_launch`.
+
+    Raises:
+        TypeError: If ``data`` or a module's contents are not bytes-like,
+          ``modules`` is not a mapping, or a module name is not a string.
+        ValueError: If ``data`` or a module's contents are not a C-contiguous
+          buffer.
+        RuntimeError: If ``data`` is malformed, or a module the graph uses is
+          missing or fails to load.
+    """
+    from warp._src.apic.types import APICModuleBytes  # noqa: PLC0415
+
+    device = get_device(device)
+
+    if modules is None:
+        modules = {}
+    elif not isinstance(modules, Mapping):
+        raise TypeError(f"modules must be a mapping from filename to bytes, got {type(modules).__name__}")
+
+    wrp = _apic_bytes_view(data, "data")
+    module_views = {}
+    for filename, contents in modules.items():
+        if not isinstance(filename, str):
+            raise TypeError(f"Module names must be strings, got {type(filename).__name__}")
+        module_views[filename] = _apic_bytes_view(contents, f"Module '{filename}'")
+
+    encoded_names = [filename.encode("utf-8") for filename in module_views]
+    native_modules = (APICModuleBytes * len(module_views))()
+    for entry, name, view in zip(native_modules, encoded_names, module_views.values(), strict=True):
+        entry.filename = name
+        entry.data = view.ctypes.data
+        entry.size = view.nbytes
+
+    native_graph = runtime.core.wp_apic_load_graph_from_bytes(
+        device.context if device.is_cuda else None,
+        wrp.ctypes.data,
+        wrp.nbytes,
+        native_modules,
+        len(module_views),
+        1 if device.is_cpu else 0,
+    )
+    if not native_graph:
+        raise RuntimeError(f"Failed to load APIC graph from bytes: {runtime.get_error_string()}")
+
+    graph = _apic_wrap_loaded_graph(native_graph, device)
+    if device.is_cpu:
+        objects = {}
+        for filename in _apic_recorded_module_filenames(native_graph):
+            if filename not in module_views:
+                raise RuntimeError(f"Failed to load APIC graph from bytes: module {filename} was not provided")
+            objects[filename] = module_views[filename]
+        graph._llvm_handles = _apic_load_cpu_modules(native_graph, objects, "the provided modules")
+    return graph
+
+
+def _apic_cpu_objects_in_dir(modules_dir: str) -> dict[str, str]:
+    """Return the CPU object files in a ``_modules`` directory, keyed by filename."""
+    if not os.path.isdir(modules_dir):
+        return {}
+    return {
+        filename: os.path.join(modules_dir, filename) for filename in os.listdir(modules_dir) if filename.endswith(".o")
+    }
+
+
+def _apic_recorded_module_filenames(native_graph) -> list[str]:
+    """Return the distinct module filenames recorded for a loaded graph's kernels."""
+    filenames = []
+    for i in range(runtime.core.wp_apic_get_num_kernels(native_graph)):
+        filename = runtime.core.wp_apic_get_kernel_module_binary_filename(native_graph, i)
+        if filename:
+            name = filename.decode("utf-8")
+            if name not in filenames:
+                filenames.append(name)
+    return filenames
+
+
+# Each loaded CPU graph gets its own LLVM JIT dylib names. Without a per-load
+# prefix, two loads of the same capture would register dylibs with the same
+# name, and unloading one graph's dylib would remove code the other still calls.
+_apic_cpu_load_ids = itertools.count()
+
+
+def _apic_load_cpu_modules(native_graph, objects: Mapping[str, str | np.ndarray], origin: str) -> list[str]:
+    """Load CPU object files for a loaded graph and register its kernel function pointers.
+
+    Args:
+        native_graph: The ``APICGraph*`` returned by the native loader.
+        objects: Maps each object filename to its path on disk or to its
+          contents as a ``uint8`` array.
+        origin: Where the objects came from, for error messages.
 
     Returns:
         List of LLVM handle names that were loaded (for cleanup via wp_unload_obj).
@@ -14294,69 +14442,71 @@ def _apic_load_cpu_modules(native_graph, wrp_path: str) -> list[str]:
             "Loading CPU APIC graphs requires the warp-clang backend, but it is not available in this build."
         )
 
-    base_name = wrp_path[:-4] if wrp_path.endswith(".wrp") else wrp_path
-    modules_dir = base_name + "_modules"
+    load_id = next(_apic_cpu_load_ids)
+    loaded_handles = {}  # object filename -> handle string
+    try:
+        for filename, source in objects.items():
+            handle = f"wp_apic_{load_id}_{os.path.splitext(filename)[0]}"
+            if isinstance(source, str):
+                result = runtime.llvm.wp_load_obj(
+                    source.encode("utf-8"), handle.encode("utf-8"), warp.config.legacy_cpu_linker
+                )
+            else:
+                result = runtime.llvm.wp_load_obj_from_bytes(
+                    source.ctypes.data, source.nbytes, handle.encode("utf-8"), warp.config.legacy_cpu_linker
+                )
+            if result != 0:
+                raise RuntimeError(f"Failed to load CPU module: {source if isinstance(source, str) else filename}")
+            # The module hash is embedded in the filename (e.g. wp_name_hash.o)
+            loaded_handles[filename] = handle
 
-    # Load all .o modules from the modules directory
-    loaded_handles = {}  # binary filename -> handle string
-    if os.path.isdir(modules_dir):
-        for filename in os.listdir(modules_dir):
-            if filename.endswith(".o"):
-                o_path = os.path.join(modules_dir, filename)
-                handle = f"wp_apic_{os.path.splitext(filename)[0]}"
-                if (
-                    runtime.llvm.wp_load_obj(
-                        o_path.encode("utf-8"),
-                        handle.encode("utf-8"),
-                        warp.config.legacy_cpu_linker,
-                    )
-                    != 0
-                ):
-                    raise RuntimeError(f"Failed to load CPU module: {o_path}")
-                # The module hash is embedded in the filename (e.g. wp_name_hash.o)
-                loaded_handles[filename] = handle
+        # Query kernel metadata from the loaded C++ graph and resolve function pointers
+        num_kernels = runtime.core.wp_apic_get_num_kernels(native_graph)
 
-    # Query kernel metadata from the loaded C++ graph and resolve function pointers
-    num_kernels = runtime.core.wp_apic_get_num_kernels(native_graph)
+        if not loaded_handles and num_kernels > 0:
+            raise RuntimeError(
+                f"No CPU modules found in {origin}, but the graph contains {num_kernels} kernel(s). "
+                "Ensure the .wrp file and its _modules directory are intact."
+            )
+        for i in range(num_kernels):
+            kernel_key = runtime.core.wp_apic_get_kernel_key(native_graph, i)
+            if not kernel_key:
+                continue
+            module_hash = runtime.core.wp_apic_get_kernel_module_hash(native_graph, i)
+            module_binary_filename = runtime.core.wp_apic_get_kernel_module_binary_filename(native_graph, i)
+            forward_name = runtime.core.wp_apic_get_kernel_forward_name(native_graph, i)
+            backward_name = runtime.core.wp_apic_get_kernel_backward_name(native_graph, i)
 
-    if not loaded_handles and num_kernels > 0:
-        raise RuntimeError(
-            f"No CPU modules found in {modules_dir}, but the graph contains {num_kernels} kernel(s). "
-            "Ensure the .wrp file and its _modules directory are intact."
-        )
-    for i in range(num_kernels):
-        kernel_key = runtime.core.wp_apic_get_kernel_key(native_graph, i)
-        if not kernel_key:
-            continue
-        module_hash = runtime.core.wp_apic_get_kernel_module_hash(native_graph, i)
-        module_binary_filename = runtime.core.wp_apic_get_kernel_module_binary_filename(native_graph, i)
-        forward_name = runtime.core.wp_apic_get_kernel_forward_name(native_graph, i)
-        backward_name = runtime.core.wp_apic_get_kernel_backward_name(native_graph, i)
+            if not forward_name:
+                continue
 
-        if not forward_name:
-            continue
+            # Prefer the object file recorded for this kernel's module. Fall back
+            # to scanning all handles for compatibility with older metadata.
+            handles = None
+            if module_binary_filename:
+                handle = loaded_handles.get(module_binary_filename.decode("utf-8"))
+                if handle:
+                    handles = (handle,)
+            if handles is None:
+                handles = loaded_handles.values()
 
-        # Prefer the object file recorded for this kernel's module. Fall back
-        # to scanning all handles for compatibility with older metadata.
-        handles = None
-        if module_binary_filename:
-            handle = loaded_handles.get(module_binary_filename.decode("utf-8"))
-            if handle:
-                handles = (handle,)
-        if handles is None:
-            handles = loaded_handles.values()
+            forward_fn = 0
+            backward_fn = 0
+            for handle in handles:
+                fwd = runtime.llvm.wp_lookup(handle.encode("utf-8"), forward_name)
+                if fwd:
+                    forward_fn = fwd
+                    if backward_name:
+                        backward_fn = runtime.llvm.wp_lookup(handle.encode("utf-8"), backward_name)
+                    break
 
-        forward_fn = 0
-        backward_fn = 0
-        for handle in handles:
-            fwd = runtime.llvm.wp_lookup(handle.encode("utf-8"), forward_name)
-            if fwd:
-                forward_fn = fwd
-                if backward_name:
-                    backward_fn = runtime.llvm.wp_lookup(handle.encode("utf-8"), backward_name)
-                break
+            if not forward_fn:
+                kernel_name = kernel_key.decode("utf-8")
+                module_name = module_binary_filename.decode("utf-8") if module_binary_filename else "<unknown>"
+                raise RuntimeError(
+                    f"Failed to resolve CPU kernel '{kernel_name}' from module '{module_name}' in {origin}"
+                )
 
-        if forward_fn:
             runtime.core.wp_apic_register_loaded_cpu_kernel(
                 native_graph,
                 kernel_key,
@@ -14364,6 +14514,11 @@ def _apic_load_cpu_modules(native_graph, wrp_path: str) -> list[str]:
                 ctypes.c_void_p(forward_fn),
                 ctypes.c_void_p(backward_fn) if backward_fn else None,
             )
+    except BaseException:
+        # Unload what was loaded so a failed load leaves no JIT state behind.
+        for handle in loaded_handles.values():
+            runtime.llvm.wp_unload_obj(handle.encode("utf-8"))
+        raise
 
     return list(loaded_handles.values())
 

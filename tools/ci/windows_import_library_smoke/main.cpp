@@ -45,9 +45,10 @@ int main()
     // Volatile reads keep optimized builds linked to every function declared
     // by warp_clang.h without requiring an object-file fixture.
     volatile auto load_obj = &wp_load_obj;
+    volatile auto load_obj_from_bytes = &wp_load_obj_from_bytes;
     volatile auto unload_obj = &wp_unload_obj;
     volatile auto lookup = &wp_lookup;
-    if (load_obj == nullptr || unload_obj == nullptr || lookup == nullptr) {
+    if (load_obj == nullptr || load_obj_from_bytes == nullptr || unload_obj == nullptr || lookup == nullptr) {
         std::cerr << "A warp-clang import resolved to null\n";
         return 6;
     }

@@ -537,8 +537,7 @@ struct APICGraph {
     std::vector<uint8_t> operation_stream;
     uint32_t operation_count = 0;
 
-    // Set by wp_apic_load_graph after apic_validate_operation_stream passes.
-    // Replay paths require it; see apic_validate_operation_stream.
+    // Set by the shared graph loader after validation; required by replay.
     bool operations_validated = false;
 
     std::unordered_map<uint64_t, uint64_t> handle_ptr_remap;
@@ -582,9 +581,12 @@ bool apic_validate_operation_stream(
 
 bool apic_read_file(const char* path, std::vector<uint8_t>& data);
 
-// .wrp parsing — pure C++ (defined in apic.cpp). Populate fields on `graph`.
+// .wrp parsers (apic.cpp). Metadata and memory populate graph fields;
+// operations are copied for validation before being attached to a graph.
 bool apic_parse_metadata(const uint8_t* data, size_t size, APICGraph* graph);
-bool apic_parse_operations(const uint8_t* data, size_t size, APICGraph* graph);
+bool apic_parse_operations(
+    const uint8_t* data, size_t size, uint32_t& operation_count, std::vector<uint8_t>& operation_stream
+);
 bool apic_parse_memory_regions(const uint8_t* data, size_t size, APICGraph* graph);
 
 // Reconstruct mesh objects from serialized mesh records. Dispatches to
@@ -596,9 +598,8 @@ bool apic_create_meshes(APICGraph* graph);
 // destructor (on both CUDA and non-CUDA builds).
 void apic_destroy_cpu_graph_resources(APICGraph* graph);
 
-// Allocate host memory for each region and initialize from memory_ptr (the
-// raw bytes of the memory section of a .wrp file). Called from the CPU branch
-// of wp_apic_load_graph. Returns false on allocation failure.
+// Allocate and initialize host regions from the .wrp memory section.
+// Return false on allocation failure.
 bool apic_init_cpu_graph_memory(APICGraph* graph, const uint8_t* memory_ptr, size_t memory_size);
 
 // Register a CPU mesh (host pointers) with the APIC state: registers
@@ -638,11 +639,14 @@ bool apic_set_param_cuda(APICGraph* graph, void* dst, const void* src, size_t si
 // Device-to-host copy for wp_apic_get_param on CUDA graphs.
 bool apic_get_param_cuda(APICGraph* graph, void* dst, const void* src, size_t size);
 
-// CUDA-side setup during wp_apic_load_graph: load CUmodules from the
-// modules_dir and cudaMalloc each region, then apic_init_memory (H2D) copies
-// initial data from the .wrp file into device memory. Returns false on
-// failure; the caller is responsible for deleting the graph.
+// Load CUDA module images and allocate and initialize device regions.
+// Images are keyed by module hash and include a trailing NUL for PTX.
+// On failure, the caller must delete the graph.
 bool apic_load_graph_cuda_setup(
-    APICGraph* graph, void* context, const std::string& modules_dir, const uint8_t* memory_ptr, size_t memory_size
+    APICGraph* graph,
+    void* context,
+    const std::unordered_map<std::string, std::vector<uint8_t>>& module_images,
+    const uint8_t* memory_ptr,
+    size_t memory_size
 );
 #endif
