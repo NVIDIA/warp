@@ -88,8 +88,10 @@ see the :ref:`cuda-12-arm-limitation`.
   * Warp packages built with CUDA Toolkit 13.x require an NVIDIA R580-series or newer driver.
   * Builds using ``--quick`` can require a newer driver; see :ref:`cuda-requirements`.
 
-* **Advanced Features**: Half-precision (``float16``) atomic operations require compute capability 7.0+ (Volta). 
-  On older GPUs, these operations return zero.
+* **Advanced Features**: Half-precision (``float16``) atomic operations require compute capability 7.0+ (Volta).
+  On older GPUs, these operations return zero. Double-precision (``float64``) atomic addition
+  requires compute capability 6.0+ (Pascal). When targeting older GPUs, it returns zero without modifying
+  the target memory.
 
 * **CPU-only execution** is supported on all supported platforms for users without a compatible GPU or driver.
 
