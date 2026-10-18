@@ -132,7 +132,7 @@ bool scan_device(
         }
     }
 
-    wp_free_device(WP_CURRENT_CONTEXT, temp_buffer);
+    free_device_on_stream(WP_CURRENT_CONTEXT, temp_buffer, stream);
     return success;
 }
 

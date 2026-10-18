@@ -698,6 +698,29 @@ def test_stream_is_blocking(test, device):
     test.assertTrue(wrapped._is_blocking)  # now cached
 
 
+def test_native_scratch_during_other_capture(test, device):
+    """Release scan scratch while an unrelated stream captures a graph."""
+    if not device.is_mempool_supported:
+        test.skipTest("Without mempools, cudaMalloc() is not allowed during graph capture")
+
+    capture_stream = wp.Stream(device)
+    worker = wp.Stream(device)
+    captured = wp.zeros(4, dtype=float, device=device)
+    values = wp.array([3, 1, 4, 1], dtype=wp.int32, device=device)
+    result = wp.empty_like(values)
+    wp.synchronize_device(device)
+
+    with wp.ScopedCapture(device, stream=capture_stream, capture_mode=wp.CaptureMode.RELAXED) as capture:
+        wp.launch(inc, dim=4, inputs=[captured], stream=capture_stream)
+        with wp.ScopedStream(worker, sync_enter=False):
+            wp.utils.array_scan(values, result)
+
+    wp.synchronize_stream(worker)
+    np.testing.assert_array_equal(result.numpy(), [3, 4, 8, 9])
+    wp.capture_launch(capture.graph)
+    np.testing.assert_array_equal(captured.numpy(), [1.0, 1.0, 1.0, 1.0])
+
+
 add_function_test(TestStreams, "test_stream_set", test_stream_set, devices=devices)
 add_function_test(TestStreams, "test_stream_arg_explicit_sync", test_stream_arg_explicit_sync, devices=devices)
 add_function_test(TestStreams, "test_stream_scope_implicit_sync", test_stream_scope_implicit_sync, devices=devices)
@@ -722,6 +745,10 @@ add_function_test(TestStreams, "test_graph_destroy_during_capture", test_graph_d
 add_function_test(TestStreams, "test_stream_synchronize_cpu", test_stream_synchronize_cpu, devices=None)
 add_function_test(TestStreams, "test_synchronize_during_capture", test_synchronize_during_capture, devices=devices)
 add_function_test(TestStreams, "test_stream_is_blocking", test_stream_is_blocking, devices=devices)
+
+add_function_test(
+    TestStreams, "test_native_scratch_during_other_capture", test_native_scratch_during_other_capture, devices=devices
+)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

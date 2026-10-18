@@ -96,7 +96,7 @@ template <typename T> void array_sum_device(const T* ptr_a, T* ptr_out, int coun
         check_cuda(cub::DeviceReduce::Sum(temp_buffer, buff_size, ptr_strided, ptr_out + k, count, stream));
     }
 
-    wp_free_device(WP_CURRENT_CONTEXT, temp_buffer);
+    free_device_on_stream(WP_CURRENT_CONTEXT, temp_buffer, stream);
 }
 
 template <typename T>
@@ -236,7 +236,7 @@ void array_inner_device(
 
     check_cuda(cub::DeviceReduce::Sum(temp_buffer, buff_size, inner_iterator, ptr_out, count, stream));
 
-    wp_free_device(WP_CURRENT_CONTEXT, temp_buffer);
+    free_device_on_stream(WP_CURRENT_CONTEXT, temp_buffer, stream);
 }
 
 template <typename T>
