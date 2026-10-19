@@ -860,16 +860,13 @@ def get_builtin_type(return_type: type) -> type:
     # The return_type might just be vector_t(length=3,dtype=wp.float32), so we've got to match that
     # in the list of hard coded types so it knows it's returning one of them:
     if warp._src.types.type_is_composite(return_type):
-        return_type_match = tuple(
-            x
-            for x in generic_vtypes
-            if x._wp_generic_type_hint_ == return_type._wp_generic_type_hint_
-            and x._wp_type_params_ == return_type._wp_type_params_
+        return_type_match = generic_vtypes_by_params.get(
+            (return_type._wp_generic_type_hint_, tuple(return_type._wp_type_params_))
         )
-        if not return_type_match:
+        if return_type_match is None:
             raise RuntimeError("No match")
 
-        return return_type_match[0]
+        return return_type_match
 
     return return_type
 
@@ -967,7 +964,7 @@ def get_builtin_call_desc(
     """
     init()
 
-    if func.mangled_name is None:
+    if func.mangled_name is None or func.generic:
         return None
 
     if len(func.input_types) != len(param_types):
@@ -987,11 +984,7 @@ def get_builtin_call_desc(
         if scalar not in get_template_scalars(func):
             return None
 
-    exported_signature = resolve_exported_function_sig(func, scalar)
-    if exported_signature is None:
-        return None
-
-    func_args, value_type = exported_signature
+    func_args = get_export_args(func)
 
     arg_types = []
     param_kinds = []
@@ -1036,6 +1029,13 @@ def get_builtin_call_desc(
 
         arg_types.append(arg_type)
         param_kinds.append(param_kind)
+
+    # Validate the export only once the parameters match, since most overloads tried are rejected
+    # above. A mangled name already implies an exported overload with simple types, so only the
+    # result type remains to check.
+    value_type = get_export_value_type(func, func_args, scalar)
+    if not is_exportable_value_type(value_type):
+        return None
 
     # Retrieve the built-in function from Warp's dll only after confirming that
     # this overload is exported and compatible with the given parameters. A built-in that names
@@ -2426,6 +2426,18 @@ def get_generic_vtypes():
 
 
 generic_vtypes = get_generic_vtypes()
+
+
+def get_generic_vtypes_by_params(vtypes):
+    # Index the types by what `get_builtin_type()` matches on, keeping the first match in order, so
+    # resolving a result type does not scan every type on each cold built-in call.
+    index = {}
+    for t in vtypes:
+        index.setdefault((t._wp_generic_type_hint_, tuple(t._wp_type_params_)), t)
+    return index
+
+
+generic_vtypes_by_params = get_generic_vtypes_by_params(generic_vtypes)
 
 
 scalar_types = {}
@@ -15301,6 +15313,37 @@ def get_template_scalars(f: Function) -> tuple[type, ...]:
     return warp._src.types.scalar_types
 
 
+def get_export_args(f: Function) -> Mapping[str, type]:
+    """Return the runtime arguments passed to a built-in's native function, not its template signature."""
+    if f.export_func is not None:
+        return f.export_func(f.input_types)
+
+    return f.input_types
+
+
+def get_export_value_type(f: Function, func_args: Mapping[str, type], scalar: type | None = None) -> Any:
+    """Return the result type of a built-in's native function for the given runtime arguments."""
+    # todo: construct a default value for each of the functions args
+    # so we can generate the return type for overloaded functions
+    if scalar is None:
+        return f.value_func(func_args, None)
+
+    return f.value_func({**func_args, f.template_scalar_param: scalar}, None)
+
+
+def is_exportable_value_type(value_type: Any) -> bool:
+    """Return whether a native function can return a value of this type to Python."""
+    if value_type is None or (isinstance(value_type, tuple) and len(value_type) > 1):
+        return True
+
+    try:
+        ctype_ret_str(value_type)
+    except Exception:
+        return False
+
+    return True
+
+
 def resolve_exported_function_sig(f, scalar=None):
     if not f.export or f.generic:
         return None
@@ -15309,25 +15352,9 @@ def resolve_exported_function_sig(f, scalar=None):
     if not f.is_simple():
         return None
 
-    # Runtime arguments that are to be passed to the function, not its template signature.
-    if f.export_func is not None:
-        func_args = f.export_func(f.input_types)
-    else:
-        func_args = f.input_types
-
-    # todo: construct a default value for each of the functions args
-    # so we can generate the return type for overloaded functions
-    if scalar is None:
-        return_type = f.value_func(func_args, None)
-    else:
-        return_type = f.value_func({**func_args, f.template_scalar_param: scalar}, None)
-
-    if return_type is None or (isinstance(return_type, tuple) and len(return_type) > 1):
-        return (func_args, return_type)
-
-    try:
-        ctype_ret_str(return_type)
-    except Exception:
+    func_args = get_export_args(f)
+    return_type = get_export_value_type(f, func_args, scalar)
+    if not is_exportable_value_type(return_type):
         return None
 
     return (func_args, return_type)
