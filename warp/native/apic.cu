@@ -163,22 +163,13 @@ APICGraph::~APICGraph()
     for (uint64_t mesh_id : created_mesh_ids) {
         wp_mesh_destroy_device(mesh_id);
     }
-    if (cuda_graph_exec) {
-        cudaGraphExecDestroy((cudaGraphExec_t)cuda_graph_exec);
-    }
-    if (cuda_graph) {
-        cudaGraphDestroy((cudaGraph_t)cuda_graph);
-    }
-    for (auto& pair : regions) {
-        if (pair.second.ptr) {
-            cudaFree(pair.second.ptr);
-        }
-    }
-    for (auto& pair : modules) {
-        if (pair.second.cuda_module) {
-            cuModuleUnload_f(pair.second.cuda_module);
-        }
-    }
+    // a loaded graph can be garbage-collected during another capture
+    release_or_defer(ReleaseKind::GraphExec, cuda_context, (uint64_t)cuda_graph_exec);
+    release_or_defer(ReleaseKind::Graph, cuda_context, (uint64_t)cuda_graph);
+    for (auto& pair : regions)
+        release_or_defer(ReleaseKind::DeviceFree, cuda_context, (uint64_t)pair.second.ptr);
+    for (auto& pair : modules)
+        release_or_defer(ReleaseKind::Module, cuda_context, (uint64_t)pair.second.cuda_module);
 }
 
 static bool apic_init_memory(const uint8_t* data, size_t size, APICGraph* graph)

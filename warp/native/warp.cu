@@ -191,19 +191,6 @@ struct GraphAllocInfo {
     bool graph_destroyed = false;  // whether graph instance was destroyed
 };
 
-// Information used when deferring module unloading.
-struct ModuleInfo {
-    void* context = NULL;
-    void* module = NULL;
-};
-
-// Information used when deferring graph destruction.
-struct GraphDestroyInfo {
-    void* context = NULL;
-    void* graph = NULL;
-    void* graph_exec = NULL;
-};
-
 static std::unordered_map<CUfunction, std::string> g_kernel_names;
 
 // cached info for all devices, indexed by ordinal
@@ -227,17 +214,18 @@ static std::unordered_map<uint64_t, CaptureInfo*> g_captures;
 // See wp_alloc_device_async() and wp_free_device_async().
 static std::unordered_map<void*, GraphAllocInfo> g_graph_allocs;
 
-// Memory that cannot be freed immediately gets queued here.
-// Call free_deferred_allocs() to release.
-static std::vector<FreeInfo> g_deferred_free_list;
+// Allocations of captures Warp doesn't track, e.g. conditional bodies; their graph may never run.
+static std::unordered_set<void*> g_untracked_graph_allocs;
 
-// Modules that cannot be unloaded immediately get queued here.
-// Call unload_deferred_modules() to release.
-static std::vector<ModuleInfo> g_deferred_module_list;
-
-// Graphs that cannot be destroyed immediately get queued here.
-// Call destroy_deferred_graphs() to release.
-static std::vector<GraphDestroyInfo> g_deferred_graph_list;
+// Releases that would invalidate a graph capture, queued until all captures end.
+struct ReleaseInfo {
+    ReleaseKind kind;
+    void* context;  // NULL for releases that are not tied to a context
+    uint64_t handle;
+};
+static std::vector<ReleaseInfo> g_deferred_releases;
+// Garbage collection can release resources from any Python thread.
+static std::mutex g_deferred_releases_mutex;
 
 // Data from on_graph_destroy() callbacks that run on a different thread.
 static std::vector<GraphDestroyCallbackInfo*> g_deferred_graph_destroy_list;
@@ -543,102 +531,118 @@ static bool capturable_tmp_alloc(void* context, const void* data, size_t size, v
     return true;
 }
 
-static void deferred_free(void* ptr, void* context, bool is_async)
+// The resource's context, if any, must be current.
+static bool release_now(ReleaseKind kind, uint64_t handle)
 {
-    FreeInfo free_info;
-    free_info.ptr = ptr;
-    free_info.context = context ? context : get_current_context();
-    free_info.is_async = is_async;
-    g_deferred_free_list.push_back(free_info);
+    switch (kind) {
+    case ReleaseKind::DeviceFree:
+        return check_cuda(cudaFree((void*)handle));
+    case ReleaseKind::DeviceFreeAsync:
+        // postponed until a synchronization point, so preceding work on the pointer completes
+        return check_cuda(cudaFreeAsync((void*)handle, NULL));
+    case ReleaseKind::DeviceFreeAsyncUnmapped: {
+        cudaError_t res = cudaFreeAsync((void*)handle, NULL);
+        if (res == cudaErrorInvalidValue) {
+            // The graph was never launched, so the memory isn't mapped. Clear the error.
+            cudaGetLastError();
+            return true;
+        }
+        return check_cuda(res);
+    }
+    case ReleaseKind::PinnedFree:
+        // errors were never reported here; keep it that way
+        cudaFreeHost((void*)handle);
+        return true;
+    case ReleaseKind::Module:
+        return check_cu(cuModuleUnload_f((CUmodule)handle));
+    case ReleaseKind::Graph:
+        return check_cuda(cudaGraphDestroy((cudaGraph_t)handle));
+    case ReleaseKind::GraphExec:
+        return check_cuda(cudaGraphExecDestroy((cudaGraphExec_t)handle));
+    case ReleaseKind::TextureObject:
+        return check_cu(cuTexObjectDestroy_f((CUtexObject)handle));
+    case ReleaseKind::SurfaceObject:
+        return check_cuda(cudaDestroySurfaceObject((cudaSurfaceObject_t)handle));
+    case ReleaseKind::Array:
+        return check_cu(cuArrayDestroy_f((CUarray)handle));
+    case ReleaseKind::MipmappedArray:
+        return check_cu(cuMipmappedArrayDestroy_f((CUmipmappedArray)handle));
+    }
+    return false;
 }
 
-static int free_deferred_allocs(void* context = NULL)
+// Queue unconditionally, e.g. while tearing down a failed capture.
+static void defer_release(ReleaseKind kind, void* context, uint64_t handle)
 {
-    if (g_deferred_free_list.empty() || !g_captures.empty())
-        return 0;
+    if (kind == ReleaseKind::PinnedFree || kind == ReleaseKind::Graph)
+        context = NULL;
+    else if (!context)
+        context = get_current_context();
 
-    int num_freed_allocs = 0;
-    for (auto it = g_deferred_free_list.begin(); it != g_deferred_free_list.end(); /*noop*/) {
-        const FreeInfo& free_info = *it;
-
-        // free the pointer if it matches the given context or if the context is unspecified
-        if (free_info.context == context || !context) {
-            ContextGuard guard(free_info.context);
-
-            if (free_info.is_async) {
-                // this could be a regular stream-ordered allocation or a graph allocation
-                cudaError_t res = cudaFreeAsync(free_info.ptr, NULL);
-                if (res != cudaSuccess) {
-                    if (res == cudaErrorInvalidValue) {
-                        // This can happen if we try to release the pointer but the graph was
-                        // never launched, so the memory isn't mapped.
-                        // This is fine, so clear the error.
-                        cudaGetLastError();
-                    } else {
-                        // something else went wrong, report error
-                        check_cuda(res);
-                    }
-                }
-            } else {
-                check_cuda(cudaFree(free_info.ptr));
-            }
-
-            ++num_freed_allocs;
-
-            it = g_deferred_free_list.erase(it);
-        } else {
-            ++it;
-        }
-    }
-
-    return num_freed_allocs;
+    std::lock_guard<std::mutex> lock(g_deferred_releases_mutex);
+    g_deferred_releases.push_back({ kind, context, handle });
 }
 
-static int unload_deferred_modules(void* context = NULL)
+bool release_or_defer(ReleaseKind kind, void* context, uint64_t handle)
 {
-    if (g_deferred_module_list.empty() || !g_captures.empty())
-        return 0;
+    if (!handle)
+        return true;
 
-    int num_unloaded_modules = 0;
-    for (auto it = g_deferred_module_list.begin(); it != g_deferred_module_list.end(); /*noop*/) {
-        // free the module if it matches the given context or if the context is unspecified
-        const ModuleInfo& module_info = *it;
-        if (module_info.context == context || !context) {
-            wp_cuda_unload_module(module_info.context, module_info.module);
-            ++num_unloaded_modules;
-            it = g_deferred_module_list.erase(it);
-        } else {
-            ++it;
-        }
+    // Conservative: the release may only be unsafe for some captures, depending on device and mode.
+    if (!g_captures.empty()) {
+        defer_release(kind, context, handle);
+        return true;
     }
 
-    return num_unloaded_modules;
+    ContextGuard guard(context);
+    return release_now(kind, handle);
 }
 
-static int destroy_deferred_graphs(void* context = NULL)
+static int release_deferred(void* context = NULL)
 {
-    if (g_deferred_graph_list.empty() || !g_captures.empty())
+    if (!g_captures.empty())
         return 0;
 
-    int num_destroyed_graphs = 0;
-    for (auto it = g_deferred_graph_list.begin(); it != g_deferred_graph_list.end(); /*noop*/) {
-        // destroy the graph if it matches the given context or if the context is unspecified
-        const GraphDestroyInfo& graph_info = *it;
-        if (graph_info.context == context || !context) {
-            if (graph_info.graph) {
-                check_cuda(cudaGraphDestroy((cudaGraph_t)graph_info.graph));
-            }
-            if (graph_info.graph_exec) {
-                check_cuda(cudaGraphExecDestroy((cudaGraphExec_t)graph_info.graph_exec));
-            }
-            ++num_destroyed_graphs;
-            it = g_deferred_graph_list.erase(it);
-        } else {
-            ++it;
+    // release outside the lock, since frees can block on device synchronization
+    std::vector<ReleaseInfo> pending;
+    {
+        std::lock_guard<std::mutex> lock(g_deferred_releases_mutex);
+        std::vector<ReleaseInfo> kept;
+        for (const ReleaseInfo& info : g_deferred_releases) {
+            if (!context || !info.context || info.context == context)
+                pending.push_back(info);
+            else
+                kept.push_back(info);
         }
+        g_deferred_releases.swap(kept);
     }
 
-    return num_destroyed_graphs;
+    for (const ReleaseInfo& info : pending) {
+        // restore, since deferred work must not change the current device
+        ContextGuard guard(info.context, true);
+        release_now(info.kind, info.handle);
+    }
+
+    return int(pending.size());
+}
+
+// The driver releases a context's resources with it, except stream-ordered allocations,
+// which belong to the device's memory pool, so free those from another context of the device.
+static void discard_deferred_releases(void* context, void* device_context)
+{
+    std::lock_guard<std::mutex> lock(g_deferred_releases_mutex);
+    std::vector<ReleaseInfo> kept;
+    for (ReleaseInfo info : g_deferred_releases) {
+        if (info.context == context) {
+            bool stream_ordered
+                = info.kind == ReleaseKind::DeviceFreeAsync || info.kind == ReleaseKind::DeviceFreeAsyncUnmapped;
+            if (!stream_ordered || !device_context)
+                continue;
+            info.context = device_context;
+        }
+        kept.push_back(info);
+    }
+    g_deferred_releases.swap(kept);
 }
 
 static int process_deferred_graph_destroy_callbacks(void* context = NULL)
@@ -659,6 +663,9 @@ static int process_deferred_graph_destroy_callbacks(void* context = NULL)
                     GraphAllocInfo& alloc_info = alloc_iter->second;
                     alloc_info.graph_destroyed = true;
                     if (!alloc_info.ref_exists) {
+                        // Multi-GPU graphs own allocations of other contexts than their own.
+                        // Restore, since deferred work must not change the current device.
+                        ContextGuard guard(alloc_info.context, true);
                         wp_free_device_async(alloc_info.context, ptr);
                     }
                 }
@@ -667,7 +674,8 @@ static int process_deferred_graph_destroy_callbacks(void* context = NULL)
             // handle temporary allocations owned by the graph (no user references)
             for (const FreeInfo& tmp_info : graph_info->tmp_allocs) {
                 if (tmp_info.context) {
-                    // GPU alloc
+                    // GPU alloc; restore the context as above
+                    ContextGuard guard(tmp_info.context, true);
                     if (tmp_info.is_async) {
                         wp_free_device_async(tmp_info.context, tmp_info.ptr);
                     } else {
@@ -693,9 +701,7 @@ static int process_deferred_graph_destroy_callbacks(void* context = NULL)
 static int run_deferred_actions(void* context = NULL)
 {
     int num_actions = 0;
-    num_actions += free_deferred_allocs(context);
-    num_actions += unload_deferred_modules(context);
-    num_actions += destroy_deferred_graphs(context);
+    num_actions += release_deferred(context);
     num_actions += process_deferred_graph_destroy_callbacks(context);
     return num_actions;
 }
@@ -746,7 +752,7 @@ void wp_free_pinned(void* ptr)
 {
     if (g_alloc_tracker.enabled && ptr)
         g_alloc_tracker.record_free(ptr);
-    cudaFreeHost(ptr);
+    release_or_defer(ReleaseKind::PinnedFree, NULL, (uint64_t)ptr);
 }
 
 void* wp_alloc_device(void* context, size_t s, const char* tag)
@@ -787,15 +793,7 @@ void wp_free_device_default(void* context, void* ptr)
     if (g_alloc_tracker.enabled && ptr)
         g_alloc_tracker.record_free(ptr);
 
-    ContextGuard guard(context);
-
-    // check if a capture is in progress
-    if (g_captures.empty()) {
-        check_cuda(cudaFree(ptr));
-    } else {
-        // we must defer the operation until graph captures complete
-        deferred_free(ptr, context, false);
-    }
+    release_or_defer(ReleaseKind::DeviceFree, context, (uint64_t)ptr);
 }
 
 void* wp_alloc_device_async(void* context, size_t s, void* stream_, const char* tag)
@@ -853,6 +851,8 @@ void* wp_alloc_device_async(void* context, size_t s, void* stream_, const char* 
                 }
 
                 g_graph_allocs[ptr] = alloc_info;
+            } else {
+                g_untracked_graph_allocs.insert(ptr);
             }
         }
     }
@@ -903,17 +903,9 @@ void wp_free_device_async(void* context, void* ptr, void** dbg_node_ret)
     // check if this allocation was made during graph capture
     auto alloc_iter = g_graph_allocs.find(ptr);
     if (alloc_iter == g_graph_allocs.end()) {
-        // Not a graph allocation.
-        // Check if graph capture is ongoing.
-        if (g_captures.empty()) {
-            // cudaFreeAsync on the null stream does not block or trigger synchronization, but it postpones
-            // the deallocation until a synchronization point is reached, so preceding work on this pointer
-            // should safely complete.
-            check_cuda(cudaFreeAsync(ptr, NULL));
-        } else {
-            // We must defer the free operation until graph capture completes.
-            deferred_free(ptr, context, true);
-        }
+        ReleaseKind kind
+            = g_untracked_graph_allocs.erase(ptr) ? ReleaseKind::DeviceFreeAsyncUnmapped : ReleaseKind::DeviceFreeAsync;
+        release_or_defer(kind, context, (uint64_t)ptr);
     } else {
         // get the graph allocation details
         GraphAllocInfo& alloc_info = alloc_iter->second;
@@ -1034,22 +1026,7 @@ void wp_free_device_async(void* context, void* ptr, void** dbg_node_ret)
             // being captured. If the owning graph was already destroyed, we can free the
             // pointer now.
             if (alloc_info.graph_destroyed) {
-                if (g_captures.empty()) {
-                    // try to free the pointer now
-                    cudaError_t res = cudaFreeAsync(ptr, NULL);
-                    if (res == cudaErrorInvalidValue) {
-                        // This can happen if we try to release the pointer but the graph was
-                        // never launched, so the memory isn't mapped.
-                        // This is fine, so clear the error.
-                        cudaGetLastError();
-                    } else {
-                        // check for other errors
-                        check_cuda(res);
-                    }
-                } else {
-                    // We must defer the operation until graph capture completes.
-                    deferred_free(ptr, context, true);
-                }
+                release_or_defer(ReleaseKind::DeviceFreeAsyncUnmapped, context, (uint64_t)ptr);
 
                 // we're done with this allocation
                 g_graph_allocs.erase(alloc_iter);
@@ -2862,7 +2839,11 @@ void wp_cuda_context_destroy(void* context)
 
         // release the cached info about this context
         ContextInfo* info = get_context_info(ctx);
+        void* device_context = NULL;
         if (info) {
+            if (info->device_info)
+                device_context = wp_cuda_device_get_primary_context(info->device_info->ordinal);
+
             if (info->stream)
                 check_cu(cuStreamDestroy_f(info->stream));
 
@@ -2871,6 +2852,8 @@ void wp_cuda_context_destroy(void* context)
 
             g_contexts.erase(ctx);
         }
+
+        discard_deferred_releases(context, device_context);
 
         check_cu(cuCtxDestroy_f(ctx));
     }
@@ -3538,7 +3521,7 @@ bool wp_cuda_graph_end_capture(void* context, void* stream, void** graph_ret)
                     // The user reference was already dropped (e.g., freed during conditional
                     // body capture). No graph instance will exist to own the allocation, so
                     // free it once graph captures complete.
-                    deferred_free(it->first, alloc_info.context, true);
+                    defer_release(ReleaseKind::DeviceFreeAsyncUnmapped, alloc_info.context, (uint64_t)it->first);
                     it = g_graph_allocs.erase(it);
                     continue;
                 }
@@ -4550,32 +4533,12 @@ bool wp_cuda_graph_launch(void* graph_exec, void* stream)
 
 bool wp_cuda_graph_destroy(void* context, void* graph)
 {
-    // ensure there are no graph captures in progress
-    if (g_captures.empty()) {
-        ContextGuard guard(context);
-        return check_cuda(cudaGraphDestroy((cudaGraph_t)graph));
-    } else {
-        GraphDestroyInfo info;
-        info.context = context ? context : get_current_context();
-        info.graph = graph;
-        g_deferred_graph_list.push_back(info);
-        return true;
-    }
+    return release_or_defer(ReleaseKind::Graph, context, (uint64_t)graph);
 }
 
 bool wp_cuda_graph_exec_destroy(void* context, void* graph_exec)
 {
-    // ensure there are no graph captures in progress
-    if (g_captures.empty()) {
-        ContextGuard guard(context);
-        return check_cuda(cudaGraphExecDestroy((cudaGraphExec_t)graph_exec));
-    } else {
-        GraphDestroyInfo info;
-        info.context = context ? context : get_current_context();
-        info.graph_exec = graph_exec;
-        g_deferred_graph_list.push_back(info);
-        return true;
-    }
+    return release_or_defer(ReleaseKind::GraphExec, context, (uint64_t)graph_exec);
 }
 
 bool write_file(const char* data, size_t size, std::string filename, const char* mode)
@@ -5428,17 +5391,7 @@ void* wp_cuda_load_module(void* context, const char* path)
 
 void wp_cuda_unload_module(void* context, void* module)
 {
-    // ensure there are no graph captures in progress
-    if (g_captures.empty()) {
-        ContextGuard guard(context);
-        check_cu(cuModuleUnload_f((CUmodule)module));
-    } else {
-        // defer until graph capture completes
-        ModuleInfo module_info;
-        module_info.context = context ? context : get_current_context();
-        module_info.module = module;
-        g_deferred_module_list.push_back(module_info);
-    }
+    release_or_defer(ReleaseKind::Module, context, (uint64_t)module);
 }
 
 

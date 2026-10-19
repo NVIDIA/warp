@@ -98,6 +98,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.cuda.test_array_fill_capture import TestArrayFillCapture
     from warp.tests.cuda.test_async import TestAsync
     from warp.tests.cuda.test_capture_mode import TestCaptureMode
+    from warp.tests.cuda.test_capture_release import TestCaptureRelease
     from warp.tests.cuda.test_clang_cuda import TestClangCUDA
     from warp.tests.cuda.test_cluster_dim import TestClusterDim
     from warp.tests.cuda.test_cuda_arch_suffix import TestCudaArchSuffix
@@ -332,6 +333,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestBuiltinsResolution,
         TestBvh,
         TestCaptureMode,
+        TestCaptureRelease,
         TestClangCUDA,
         TestClosestPointEdgeEdgeMethods,
         TestClusterDim,

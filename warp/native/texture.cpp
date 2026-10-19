@@ -210,15 +210,7 @@ uint64_t wp_texture_create_device(
 
 void wp_texture_destroy_device(void* context, uint64_t array_handle, bool is_mipmapped)
 {
-    ContextGuard guard(context);
-    if (array_handle == 0) {
-        return;
-    }
-    if (is_mipmapped) {
-        check_cu(cuMipmappedArrayDestroy_f((CUmipmappedArray)array_handle));
-    } else {
-        check_cu(cuArrayDestroy_f((CUarray)array_handle));
-    }
+    release_or_defer(is_mipmapped ? ReleaseKind::MipmappedArray : ReleaseKind::Array, context, array_handle);
 }
 
 uint64_t wp_texture_get_mip_level_array_device(void* context, uint64_t mipmap_array_handle, int level)
@@ -430,11 +422,7 @@ uint64_t wp_texture_object_create_device(
 
 void wp_texture_object_destroy_device(void* context, uint64_t tex_handle)
 {
-    ContextGuard guard(context);
-
-    if (tex_handle != 0) {
-        check_cu(cuTexObjectDestroy_f((CUtexObject)tex_handle));
-    }
+    release_or_defer(ReleaseKind::TextureObject, context, tex_handle);
 }
 
 uint64_t wp_surface_object_create_device(void* context, uint64_t array_handle)
@@ -453,11 +441,7 @@ uint64_t wp_surface_object_create_device(void* context, uint64_t array_handle)
 
 void wp_surface_object_destroy_device(void* context, uint64_t surface_handle)
 {
-    if (!surface_handle)
-        return;
-
-    ContextGuard guard(context);
-    check_cuda(cudaDestroySurfaceObject(static_cast<cudaSurfaceObject_t>(surface_handle)));
+    release_or_defer(ReleaseKind::SurfaceObject, context, surface_handle);
 }
 
 #else  // WP_ENABLE_CUDA

@@ -1226,6 +1226,24 @@ def test_texture2d_cuda_surface_property_graph_capture_stability(test, device):
     test.assertEqual(tex.cuda_surface, surface_before)
 
 
+def test_texture_del_during_graph_capture(test, device):
+    """Releasing textures during graph capture must not invalidate the capture."""
+    data = np.zeros((8, 8, 4), dtype=np.float32)
+    textures = [
+        wp.Texture2D(data, device=device, surface_access=True),
+        wp.Texture2D(data, device=device, num_mip_levels=2),
+    ]
+    test.assertGreater(textures[0].cuda_surface, 0)
+
+    dst = wp.ones(4, dtype=float, device=device)
+    with wp.ScopedCapture(device, force_module_load=False) as capture:
+        textures.clear()
+        dst.zero_()
+
+    wp.capture_launch(capture.graph)
+    np.testing.assert_array_equal(dst.numpy(), np.zeros(4, dtype=np.float32))
+
+
 def test_texture2d_cuda_surface_property_api(test, device):
     """Test lazy CUDA surface object creation via Texture2D.cuda_surface."""
     data = np.zeros((4, 4, 4), dtype=np.float32)
@@ -3157,6 +3175,12 @@ add_function_test(
     TestTexture,
     "test_texture2d_cuda_array_copy_api_graph_capture",
     test_texture2d_cuda_array_copy_api_graph_capture,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestTexture,
+    "test_texture_del_during_graph_capture",
+    test_texture_del_during_graph_capture,
     devices=cuda_devices,
 )
 add_function_test(
