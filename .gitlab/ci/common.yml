@@ -163,10 +163,11 @@ default:
       - warp/config.py
     expire_in: 1 week
 
-# All MacOS jobs use this definition
+# All macOS jobs use this definition. warp-mac-01 is an M4 EC2 Mac registered
+# as a project runner on omniverse/warp; the shared Omniverse Mac pool is gone.
 .macos_warp_tags:
   tags:
-    - pkg/xcode/13 # Avoid AWS-MAC-0
+    - warp-macos-arm64
 
 # Basic rules to avoid triggering a test job unless certain files have changed to save CI resources
 .basic_test_changes_rules:

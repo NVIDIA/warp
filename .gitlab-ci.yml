@@ -139,12 +139,11 @@ mac-aarch64 build:
   stage: build
   extends:
     - .save_warp_bin_artifact
-    - .runner-build-macos-universal
     - .macos_warp_tags
   before_script:
     - df -h
     - curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL="$CI_PROJECT_DIR/_uv" sh
-    - export PATH="$CI_PROJECT_DIR/_uv/bin:$PATH"
+    - export PATH="$CI_PROJECT_DIR/_uv:$PATH"
   script:
     - uv run build_lib.py
 
