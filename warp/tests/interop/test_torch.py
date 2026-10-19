@@ -1018,6 +1018,23 @@ def test_torch_tape_autograd_torch_stream(test, device):
     torch.testing.assert_close(grad, 2.0 * expected_x)
 
 
+def test_torch_stream_native_scratch(test, device):
+    """Release scan scratch on a borrowed non-blocking stream (GH-2094)."""
+    torch = _import_torch()
+    torch_stream = torch.cuda.Stream(device=wp.device_to_torch(device))
+    stream = wp.stream_from_torch(torch_stream)
+    test.assertFalse(stream.is_blocking)
+
+    # Check scratch lifetime with Compute Sanitizer's --track-stream-ordered-races all.
+    with wp.ScopedStream(stream):
+        values = wp.array([3, 1, 4, 1], dtype=wp.int32, device=device)
+        result = wp.empty_like(values)
+        wp.utils.array_scan(values, result)
+
+    torch_stream.synchronize()
+    np.testing.assert_array_equal(result.numpy(), [3, 4, 8, 9])
+
+
 def test_torch_graph_torch_stream(test, device):
     """Capture a Torch graph on a Torch stream."""
 
@@ -1528,6 +1545,13 @@ else:
         )
 
     if torch_cuda_candidate_devices:
+        add_function_test(
+            TestTorch,
+            "test_torch_stream_native_scratch",
+            test_torch_stream_native_scratch,
+            devices=torch_cuda_candidate_devices,
+            device_check=_check_torch_device,
+        )
         add_function_test(
             TestTorch,
             "test_torch_graph_torch_stream",

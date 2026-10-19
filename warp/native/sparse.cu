@@ -1408,8 +1408,8 @@ WP_API void wp_bsr_matrix_from_triplets_device(
         );
     } else {
         // free our temporary buffers
-        wp_free_device(context, tpl_block_offsets);
-        wp_free_device(context, tpl_block_indices);
+        free_device_on_stream(context, tpl_block_offsets, stream);
+        free_device_on_stream(context, tpl_block_indices, stream);
     }
 }
 

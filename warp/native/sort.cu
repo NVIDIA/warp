@@ -181,7 +181,7 @@ static bool acquire_temp_buffer(size_t size, TempBuffer& temp_ret)
         TempBuffer& temp = g_temp_cache[get_stream_id(stream)];
         if (size > temp.size) {
             if (temp.mem) {
-                wp_free_device(WP_CURRENT_CONTEXT, temp.mem);
+                free_device_on_stream(WP_CURRENT_CONTEXT, temp.mem, stream);
             }
             temp.mem = wp_alloc_device(WP_CURRENT_CONTEXT, size, "(native:sort)");
             temp.size = temp.mem ? size : 0;

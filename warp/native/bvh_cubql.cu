@@ -614,7 +614,7 @@ void cubql_bvh_create_device(
             free_partial_bvh();
         }
     }
-    wp_free_device(WP_CURRENT_CONTEXT, boxes);
+    free_device_on_stream(WP_CURRENT_CONTEXT, boxes, current_stream);
 }
 
 void cubql_bvh_destroy_device(BVH& bvh) { bvh_destroy_device(bvh); }

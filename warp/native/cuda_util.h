@@ -409,6 +409,9 @@ StreamInfo* get_stream_info(CUstream stream);
 // streams. Returns NULL for unregistered captures.
 CaptureInfo* find_capture_info(uint64_t capture_id);
 
+// Release scratch from wp_alloc_device() used exclusively on stream.
+void free_device_on_stream(void* context, void* ptr, void* stream);
+
 #else
 
 typedef int CUdevice;
