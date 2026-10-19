@@ -26,13 +26,8 @@
       ~IsoSurfaceMarchingCubes.CUBE_CORNER_OFFSETS
       ~IsoSurfaceMarchingCubes.EDGE_TO_CORNERS
       ~IsoSurfaceMarchingCubes.TRI_LOCAL_INDICES
-      ~IsoSurfaceMarchingCubes.device
       ~IsoSurfaceMarchingCubes.domain_bounds_lower_corner
       ~IsoSurfaceMarchingCubes.domain_bounds_upper_corner
-      ~IsoSurfaceMarchingCubes.id
-      ~IsoSurfaceMarchingCubes.max_tris
-      ~IsoSurfaceMarchingCubes.max_verts
-      ~IsoSurfaceMarchingCubes.runtime
       ~IsoSurfaceMarchingCubes.verts
       ~IsoSurfaceMarchingCubes.indices
    

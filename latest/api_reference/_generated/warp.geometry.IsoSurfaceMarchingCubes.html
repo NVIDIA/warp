@@ -515,9 +515,6 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">nx</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">ny</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">nz</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">max_verts</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">_DEFAULT_ZERO</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">max_tris</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">_DEFAULT_ZERO</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">_DEFAULT_NONE</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">lower</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">upper</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>,</dd>
@@ -525,7 +522,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">domain_bounds_upper_corner</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">_DEFAULT_NONE</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L531-L961"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L514-L777"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes" title="Link to this definition">#</a></dt>
 <dd><p>A reusable context for marching cubes surface extraction.</p>
 <p>This class provides a stateful interface for isosurface extraction. You
 can initialize it with a specific grid configuration and then call the
@@ -545,15 +542,6 @@ discrete and carry no gradient.</p>
 <li><p><strong>nx</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a>) – Number of grid nodes in the x-direction.</p></li>
 <li><p><strong>ny</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a>) – Number of grid nodes in the y-direction.</p></li>
 <li><p><strong>nz</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a>) – Number of grid nodes in the z-direction.</p></li>
-<li><p><strong>max_verts</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a>) – Deprecated since Warp 1.9 and scheduled for removal in
-Warp 1.19. Output arrays are sized dynamically; remove this argument
-from calls.</p></li>
-<li><p><strong>max_tris</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a>) – Deprecated since Warp 1.9 and scheduled for removal in Warp
-1.19. Output arrays are sized dynamically; remove this argument from
-calls.</p></li>
-<li><p><strong>device</strong> (<a class="reference internal" href="warp.DeviceLike.html#warp.DeviceLike" title="warp.DeviceLike"><em>warp.DeviceLike</em></a>) – Deprecated since Warp 1.9 and scheduled for removal in Warp
-1.19. The input field determines where extraction runs; remove this
-argument from calls.</p></li>
 <li><p><strong>lower</strong> (<a class="reference internal" href="warp.vec3.html#warp.vec3" title="warp.vec3"><em>warp.vec3</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.15)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.15)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.15)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.15)"><em>float</em></a><em>] </em><em>| </em><em>None</em>) – See the documentation in <a class="reference internal" href="#warp.geometry.IsoSurfaceMarchingCubes.extract" title="warp.geometry.IsoSurfaceMarchingCubes.extract"><code class="xref py py-meth docutils literal notranslate"><span class="pre">extract()</span></code></a>.</p></li>
 <li><p><strong>upper</strong> (<a class="reference internal" href="warp.vec3.html#warp.vec3" title="warp.vec3"><em>warp.vec3</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.15)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.15)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.15)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.15)"><em>float</em></a><em>] </em><em>| </em><em>None</em>) – See the documentation in <a class="reference internal" href="#warp.geometry.IsoSurfaceMarchingCubes.extract" title="warp.geometry.IsoSurfaceMarchingCubes.extract"><code class="xref py py-meth docutils literal notranslate"><span class="pre">extract()</span></code></a>.</p></li>
 <li><p><strong>domain_bounds_lower_corner</strong> (<a class="reference internal" href="warp.vec3.html#warp.vec3" title="warp.vec3"><em>warp.vec3</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.15)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.15)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.15)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.15)"><em>float</em></a><em>] </em><em>| </em><em>None</em>) – Deprecated alias of <code class="docutils literal notranslate"><span class="pre">lower</span></code> retained for
@@ -657,7 +645,7 @@ This is populated by calling the <a class="reference internal" href="#warp.geome
 <tr class="row-even"><td><p><a class="reference internal" href="#warp.geometry.IsoSurfaceMarchingCubes.extract_surface_marching_cubes" title="warp.geometry.IsoSurfaceMarchingCubes.extract_surface_marching_cubes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">extract_surface_marching_cubes</span></code></a>(field[, ...])</p></td>
 <td><p>Extract a triangular mesh from a 3D scalar field.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.geometry.IsoSurfaceMarchingCubes.resize" title="warp.geometry.IsoSurfaceMarchingCubes.resize"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resize</span></code></a>(nx, ny, nz[, max_verts, max_tris])</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">resize</span></code>(nx, ny, nz)</p></td>
 <td><p>Update the grid dimensions for the context.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#warp.geometry.IsoSurfaceMarchingCubes.surface" title="warp.geometry.IsoSurfaceMarchingCubes.surface"><code class="xref py py-obj docutils literal notranslate"><span class="pre">surface</span></code></a>(field, threshold)</p></td>
@@ -681,31 +669,16 @@ This is populated by calling the <a class="reference internal" href="#warp.geome
 <tr class="row-even"><td><p><a class="reference internal" href="#warp.geometry.IsoSurfaceMarchingCubes.TRI_LOCAL_INDICES" title="warp.geometry.IsoSurfaceMarchingCubes.TRI_LOCAL_INDICES"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TRI_LOCAL_INDICES</span></code></a></p></td>
 <td><p>Edge indices (see <a class="reference internal" href="#warp.geometry.IsoSurfaceMarchingCubes.EDGE_TO_CORNERS" title="warp.geometry.IsoSurfaceMarchingCubes.EDGE_TO_CORNERS"><code class="xref py py-attr docutils literal notranslate"><span class="pre">EDGE_TO_CORNERS</span></code></a>) defining triangle vertices for all marching cubes cases.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.geometry.IsoSurfaceMarchingCubes.device" title="warp.geometry.IsoSurfaceMarchingCubes.device"><code class="xref py py-obj docutils literal notranslate"><span class="pre">device</span></code></a></p></td>
-<td><p>Deprecated device value that is not used for extraction.</p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.geometry.IsoSurfaceMarchingCubes.domain_bounds_lower_corner" title="warp.geometry.IsoSurfaceMarchingCubes.domain_bounds_lower_corner"><code class="xref py py-obj docutils literal notranslate"><span class="pre">domain_bounds_lower_corner</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.geometry.IsoSurfaceMarchingCubes.domain_bounds_lower_corner" title="warp.geometry.IsoSurfaceMarchingCubes.domain_bounds_lower_corner"><code class="xref py py-obj docutils literal notranslate"><span class="pre">domain_bounds_lower_corner</span></code></a></p></td>
 <td><p>Deprecated alias of <a class="reference internal" href="#warp.geometry.IsoSurfaceMarchingCubes.lower" title="warp.geometry.IsoSurfaceMarchingCubes.lower"><code class="xref py py-attr docutils literal notranslate"><span class="pre">lower</span></code></a>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.geometry.IsoSurfaceMarchingCubes.domain_bounds_upper_corner" title="warp.geometry.IsoSurfaceMarchingCubes.domain_bounds_upper_corner"><code class="xref py py-obj docutils literal notranslate"><span class="pre">domain_bounds_upper_corner</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.geometry.IsoSurfaceMarchingCubes.domain_bounds_upper_corner" title="warp.geometry.IsoSurfaceMarchingCubes.domain_bounds_upper_corner"><code class="xref py py-obj docutils literal notranslate"><span class="pre">domain_bounds_upper_corner</span></code></a></p></td>
 <td><p>Deprecated alias of <a class="reference internal" href="#warp.geometry.IsoSurfaceMarchingCubes.upper" title="warp.geometry.IsoSurfaceMarchingCubes.upper"><code class="xref py py-attr docutils literal notranslate"><span class="pre">upper</span></code></a>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.geometry.IsoSurfaceMarchingCubes.id" title="warp.geometry.IsoSurfaceMarchingCubes.id"><code class="xref py py-obj docutils literal notranslate"><span class="pre">id</span></code></a></p></td>
-<td><p>Deprecated compatibility value that does not identify a resource.</p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.geometry.IsoSurfaceMarchingCubes.max_tris" title="warp.geometry.IsoSurfaceMarchingCubes.max_tris"><code class="xref py py-obj docutils literal notranslate"><span class="pre">max_tris</span></code></a></p></td>
-<td><p>Deprecated compatibility value that is not used.</p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.geometry.IsoSurfaceMarchingCubes.max_verts" title="warp.geometry.IsoSurfaceMarchingCubes.max_verts"><code class="xref py py-obj docutils literal notranslate"><span class="pre">max_verts</span></code></a></p></td>
-<td><p>Deprecated compatibility value that is not used.</p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.geometry.IsoSurfaceMarchingCubes.runtime" title="warp.geometry.IsoSurfaceMarchingCubes.runtime"><code class="xref py py-obj docutils literal notranslate"><span class="pre">runtime</span></code></a></p></td>
-<td><p>Deprecated compatibility reference that is not used.</p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.geometry.IsoSurfaceMarchingCubes.verts" title="warp.geometry.IsoSurfaceMarchingCubes.verts"><code class="xref py py-obj docutils literal notranslate"><span class="pre">verts</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.geometry.IsoSurfaceMarchingCubes.verts" title="warp.geometry.IsoSurfaceMarchingCubes.verts"><code class="xref py py-obj docutils literal notranslate"><span class="pre">verts</span></code></a></p></td>
 <td><p>An array of vertex positions of type <a class="reference internal" href="warp.vec3f.html#warp.vec3f" title="warp.vec3f"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3f</span></code></a> for the output mesh.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.geometry.IsoSurfaceMarchingCubes.indices" title="warp.geometry.IsoSurfaceMarchingCubes.indices"><code class="xref py py-obj docutils literal notranslate"><span class="pre">indices</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.geometry.IsoSurfaceMarchingCubes.indices" title="warp.geometry.IsoSurfaceMarchingCubes.indices"><code class="xref py py-obj docutils literal notranslate"><span class="pre">indices</span></code></a></p></td>
 <td><p>An array of face vertex indices of type <a class="reference internal" href="warp.int32.html#warp.int32" title="warp.int32"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.int32</span></code></a> for the output mesh.</p></td>
 </tr>
 </tbody>
@@ -743,7 +716,7 @@ values defines a triangle by specifying edge indices (0-11) where the vertices l
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.geometry.IsoSurfaceMarchingCubes.domain_bounds_lower_corner">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">domain_bounds_lower_corner</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L697-L705"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes.domain_bounds_lower_corner" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">domain_bounds_lower_corner</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L634-L642"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes.domain_bounds_lower_corner" title="Link to this definition">#</a></dt>
 <dd><p>Deprecated alias of <a class="reference internal" href="#warp.geometry.IsoSurfaceMarchingCubes.lower" title="warp.geometry.IsoSurfaceMarchingCubes.lower"><code class="xref py py-attr docutils literal notranslate"><span class="pre">lower</span></code></a>.</p>
 <div class="deprecated">
 <p><span class="versionmodified deprecated">Deprecated since version 1.18: </span>Use <a class="reference internal" href="#warp.geometry.IsoSurfaceMarchingCubes.lower" title="warp.geometry.IsoSurfaceMarchingCubes.lower"><code class="xref py py-attr docutils literal notranslate"><span class="pre">lower</span></code></a> instead.</p>
@@ -752,102 +725,16 @@ values defines a triangle by specifying edge indices (0-11) where the vertices l
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.geometry.IsoSurfaceMarchingCubes.domain_bounds_upper_corner">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">domain_bounds_upper_corner</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L712-L720"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes.domain_bounds_upper_corner" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">domain_bounds_upper_corner</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L649-L657"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes.domain_bounds_upper_corner" title="Link to this definition">#</a></dt>
 <dd><p>Deprecated alias of <a class="reference internal" href="#warp.geometry.IsoSurfaceMarchingCubes.upper" title="warp.geometry.IsoSurfaceMarchingCubes.upper"><code class="xref py py-attr docutils literal notranslate"><span class="pre">upper</span></code></a>.</p>
 <div class="deprecated">
 <p><span class="versionmodified deprecated">Deprecated since version 1.18: </span>Use <a class="reference internal" href="#warp.geometry.IsoSurfaceMarchingCubes.upper" title="warp.geometry.IsoSurfaceMarchingCubes.upper"><code class="xref py py-attr docutils literal notranslate"><span class="pre">upper</span></code></a> instead.</p>
 </div>
 </dd></dl>
 
-<dl class="py property">
-<dt class="sig sig-object py" id="warp.geometry.IsoSurfaceMarchingCubes.max_verts">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">max_verts</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L727-L736"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes.max_verts" title="Link to this definition">#</a></dt>
-<dd><p>Deprecated compatibility value that is not used.</p>
-<div class="deprecated">
-<p><span class="versionmodified deprecated">Deprecated since version 1.9.0: </span>Output arrays are sized dynamically. This attribute will be removed
-in Warp 1.19.</p>
-</div>
-</dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="warp.geometry.IsoSurfaceMarchingCubes.max_tris">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">max_tris</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L743-L752"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes.max_tris" title="Link to this definition">#</a></dt>
-<dd><p>Deprecated compatibility value that is not used.</p>
-<div class="deprecated">
-<p><span class="versionmodified deprecated">Deprecated since version 1.9.0: </span>Output arrays are sized dynamically. This attribute will be removed
-in Warp 1.19.</p>
-</div>
-</dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="warp.geometry.IsoSurfaceMarchingCubes.device">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">device</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L759-L768"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes.device" title="Link to this definition">#</a></dt>
-<dd><p>Deprecated device value that is not used for extraction.</p>
-<div class="deprecated">
-<p><span class="versionmodified deprecated">Deprecated since version 1.9.0: </span>Use the input field’s <a class="reference internal" href="warp.array.html#warp.array.device" title="warp.array.device"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.array.device</span></code></a> instead. This
-attribute will be removed in Warp 1.19.</p>
-</div>
-</dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="warp.geometry.IsoSurfaceMarchingCubes.id">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">id</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L775-L783"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes.id" title="Link to this definition">#</a></dt>
-<dd><p>Deprecated compatibility value that does not identify a resource.</p>
-<div class="deprecated">
-<p><span class="versionmodified deprecated">Deprecated since version 1.15.0: </span>This attribute has no replacement and will be removed in Warp 1.19.</p>
-</div>
-</dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="warp.geometry.IsoSurfaceMarchingCubes.runtime">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">runtime</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L790-L799"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes.runtime" title="Link to this definition">#</a></dt>
-<dd><p>Deprecated compatibility reference that is not used.</p>
-<div class="deprecated">
-<p><span class="versionmodified deprecated">Deprecated since version 1.15.0: </span>Use public Warp APIs instead. This attribute will be removed in Warp
-1.19.</p>
-</div>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="warp.geometry.IsoSurfaceMarchingCubes.resize">
-<span class="sig-name descname"><span class="pre">resize</span></span><span class="sig-paren">(</span>
-
-<dl>
-<dd><em class="sig-param"><span class="n"><span class="pre">nx</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">ny</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">nz</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">max_verts</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">_DEFAULT_ZERO</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">max_tris</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">_DEFAULT_ZERO</span></span></em>,</dd>
-</dl>
-
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L806-L846"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes.resize" title="Link to this definition">#</a></dt>
-<dd><p>Update the grid dimensions for the context.</p>
-<p>This allows the instance to be reused for scalar fields of a different
-resolution. The new dimensions take effect on the next call to
-<a class="reference internal" href="#warp.geometry.IsoSurfaceMarchingCubes.surface" title="warp.geometry.IsoSurfaceMarchingCubes.surface"><code class="xref py py-meth docutils literal notranslate"><span class="pre">surface()</span></code></a>.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>nx</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a>) – New number of nodes in the x-direction.</p></li>
-<li><p><strong>ny</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a>) – New number of nodes in the y-direction.</p></li>
-<li><p><strong>nz</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a>) – New number of nodes in the z-direction.</p></li>
-<li><p><strong>max_verts</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a>) – Deprecated since Warp 1.9 and scheduled for removal in
-Warp 1.19. Output arrays are sized dynamically; remove this
-argument from calls.</p></li>
-<li><p><strong>max_tris</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a>) – Deprecated since Warp 1.9 and scheduled for removal in Warp
-1.19. Output arrays are sized dynamically; remove this argument
-from calls.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>None</p>
-</dd>
-</dl>
-</dd></dl>
-
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.geometry.IsoSurfaceMarchingCubes.surface">
-<span class="sig-name descname"><span class="pre">surface</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L848-L874"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes.surface" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">surface</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L664-L690"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes.surface" title="Link to this definition">#</a></dt>
 <dd><p>Compute a 2D surface mesh of a given isosurface from a 3D scalar field.</p>
 <p>This method is a convenience wrapper that calls the <a class="reference internal" href="#warp.geometry.IsoSurfaceMarchingCubes.extract" title="warp.geometry.IsoSurfaceMarchingCubes.extract"><code class="xref py py-meth docutils literal notranslate"><span class="pre">extract()</span></code></a>
 class method and stores the resulting mesh data in the <a class="reference internal" href="#warp.geometry.IsoSurfaceMarchingCubes.verts" title="warp.geometry.IsoSurfaceMarchingCubes.verts"><code class="xref py py-attr docutils literal notranslate"><span class="pre">verts</span></code></a>
@@ -882,7 +769,7 @@ and <a class="reference internal" href="#warp.geometry.IsoSurfaceMarchingCubes.i
 <dd><em class="sig-param"><span class="n"><span class="pre">upper</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L876-L936"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes.extract" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L692-L752"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes.extract" title="Link to this definition">#</a></dt>
 <dd><p>Extract a triangular mesh from a 3D scalar field.</p>
 <p>This function generates an isosurface by processing the entire input <code class="docutils literal notranslate"><span class="pre">field</span></code>.
 The resolution of the output mesh is determined by the shape of the <code class="docutils literal notranslate"><span class="pre">field</span></code>
@@ -938,7 +825,7 @@ integers forms a single triangle by referencing vertices in the
 <dd><em class="sig-param"><span class="n"><span class="pre">domain_bounds_upper_corner</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L938-L961"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes.extract_surface_marching_cubes" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/marching_cubes.py#L754-L777"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.geometry.IsoSurfaceMarchingCubes.extract_surface_marching_cubes" title="Link to this definition">#</a></dt>
 <dd><p>Extract a triangular mesh from a 3D scalar field.</p>
 <div class="deprecated">
 <p><span class="versionmodified deprecated">Deprecated since version 1.18: </span>Use <a class="reference internal" href="#warp.geometry.IsoSurfaceMarchingCubes.extract" title="warp.geometry.IsoSurfaceMarchingCubes.extract"><code class="xref py py-meth docutils literal notranslate"><span class="pre">extract()</span></code></a> instead. This alias will be removed in a future version of Warp.</p>
@@ -1025,12 +912,6 @@ integers forms a single triangle by referencing vertices in the
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.geometry.IsoSurfaceMarchingCubes.TRI_LOCAL_INDICES"><code class="docutils literal notranslate"><span class="pre">TRI_LOCAL_INDICES</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.geometry.IsoSurfaceMarchingCubes.domain_bounds_lower_corner"><code class="docutils literal notranslate"><span class="pre">domain_bounds_lower_corner</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.geometry.IsoSurfaceMarchingCubes.domain_bounds_upper_corner"><code class="docutils literal notranslate"><span class="pre">domain_bounds_upper_corner</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.geometry.IsoSurfaceMarchingCubes.max_verts"><code class="docutils literal notranslate"><span class="pre">max_verts</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.geometry.IsoSurfaceMarchingCubes.max_tris"><code class="docutils literal notranslate"><span class="pre">max_tris</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.geometry.IsoSurfaceMarchingCubes.device"><code class="docutils literal notranslate"><span class="pre">device</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.geometry.IsoSurfaceMarchingCubes.id"><code class="docutils literal notranslate"><span class="pre">id</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.geometry.IsoSurfaceMarchingCubes.runtime"><code class="docutils literal notranslate"><span class="pre">runtime</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.geometry.IsoSurfaceMarchingCubes.resize"><code class="docutils literal notranslate"><span class="pre">resize()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.geometry.IsoSurfaceMarchingCubes.surface"><code class="docutils literal notranslate"><span class="pre">surface()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.geometry.IsoSurfaceMarchingCubes.extract"><code class="docutils literal notranslate"><span class="pre">extract()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.geometry.IsoSurfaceMarchingCubes.extract_surface_marching_cubes"><code class="docutils literal notranslate"><span class="pre">extract_surface_marching_cubes()</span></code></a></li>
