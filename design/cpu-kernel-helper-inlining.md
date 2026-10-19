@@ -4,6 +4,9 @@
 
 **Issue**: [GH-1994](https://github.com/NVIDIA/warp/issues/1994)
 
+The CPU loop vectorization policy later raised the generic helper threshold
+to 9000 while retaining the 3000 cold-callsite threshold.
+
 ## Motivation
 
 Warp lowers `@wp.func` calls to C++ helpers before Clang and LLVM compile CPU

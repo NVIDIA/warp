@@ -143,7 +143,7 @@ or pass ``"cpu_compiler_flags"`` to
 :func:`wp.set_module_options() <warp.set_module_options>` for one module. A
 module string replaces the global string; include ``-march=native`` when the
 module should detect host CPU features. The global default uses host CPU
-features and sets ``-inline-threshold=3000`` and
+features and sets ``-inline-threshold=9000`` and
 ``-inline-cold-callsite-threshold=3000`` to make LLVM more eager to inline CPU
 helpers. Set the global value to ``None`` before a module is first hashed to
 keep host CPU detection with LLVM's default thresholds. For one module, use

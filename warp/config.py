@@ -302,7 +302,7 @@ This setting can be overridden at the module level by setting the
 """
 
 cpu_compiler_flags: str | None = (
-    "-march=native -mllvm=-inline-threshold=3000 -mllvm=-inline-cold-callsite-threshold=3000"
+    "-march=native -mllvm=-inline-threshold=9000 -mllvm=-inline-cold-callsite-threshold=3000"
 )
 """Flags controlling CPU kernel compilation.
 
@@ -310,7 +310,8 @@ The default detects host CPU features and makes LLVM more eager to inline
 helper calls. Set to ``None`` to retain host feature detection and use LLVM's
 default inlining thresholds. ``""`` compiles for a generic CPU target. A flag
 string can include ``-march=native``, Clang frontend flags, and LLVM arguments
-in either ``-mllvm <option>`` or ``-mllvm=<option>`` form.
+in either ``-mllvm <option>`` or ``-mllvm=<option>`` form. Use
+``-fno-vectorize`` to disable loop vectorization for a module.
 
 The ``"cpu_compiler_flags"`` module option replaces this global string for
 that module. Use ``"-march=native"`` to restore LLVM's default thresholds for
