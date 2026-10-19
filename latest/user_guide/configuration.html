@@ -724,7 +724,7 @@ or pass <code class="docutils literal notranslate"><span class="pre">&quot;cpu_c
 <a class="reference internal" href="../api_reference/_generated/warp.set_module_options.html#warp.set_module_options" title="warp.set_module_options"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.set_module_options()</span></code></a> for one module. A
 module string replaces the global string; include <code class="docutils literal notranslate"><span class="pre">-march=native</span></code> when the
 module should detect host CPU features. The global default uses host CPU
-features and sets <code class="docutils literal notranslate"><span class="pre">-inline-threshold=3000</span></code> and
+features and sets <code class="docutils literal notranslate"><span class="pre">-inline-threshold=9000</span></code> and
 <code class="docutils literal notranslate"><span class="pre">-inline-cold-callsite-threshold=3000</span></code> to make LLVM more eager to inline CPU
 helpers. Set the global value to <code class="docutils literal notranslate"><span class="pre">None</span></code> before a module is first hashed to
 keep host CPU detection with LLVM’s default thresholds. For one module, use
