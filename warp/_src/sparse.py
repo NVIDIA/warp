@@ -94,14 +94,6 @@ def _mark_apic_deferred_nnz_update(bsr: BsrMatrix, apic_capture) -> None:
     BsrMatrix.__setattr__(bsr, "_apic_deferred_nnz_capture", apic_capture)
 
 
-def _warn_masked_arg_deprecated(func_name: str):
-    log_warning(
-        f"The `masked` argument to {func_name}() is deprecated; pass topology='masked' instead.",
-        category=DeprecationWarning,
-        stacklevel=3,
-    )
-
-
 # TODO: Specialize retained storage by reduction mode. An atomic-only map needs
 # to retain only triplet_blocks; the grouped triplet offsets and indices can
 # remain setup scratch. Keep this optimization in the generic sparse map builder
@@ -1427,7 +1419,6 @@ def bsr_set_from_triplets(
     values: Array[Scalar | BlockType[Rows, Cols, Scalar]] | None = None,
     count: Array[int] | None = None,
     prune_numerical_zeros: bool = True,
-    masked: bool = False,
     topology: Literal["compact", "masked", "padded"] | None = None,
     build_mapping: BsrTripletMap | bool | None = None,
 ) -> BsrTripletMap | None:
@@ -1446,11 +1437,9 @@ def bsr_set_from_triplets(
         count: Single-element array indicating the number of triplets. If ``None``, the number of triplets is determined from the shape of
           ``rows`` and ``columns`` arrays.
         prune_numerical_zeros: If ``True``, will ignore the zero-valued blocks.
-        masked: Deprecated. Use ``topology="masked"`` instead. If ``True``,
-          ignore blocks that are not existing non-zeros of ``dest``.
         topology: Optional topology policy. ``"compact"`` keeps the existing
-          compact rebuild behavior, ``"masked"`` is equivalent to
-          the deprecated ``masked=True``, and ``"padded"`` writes the compacted triplet
+          compact rebuild behavior, ``"masked"`` updates only existing non-zero
+          blocks of ``dest``, and ``"padded"`` writes the compacted triplet
           topology into existing destination row capacity and records capacity
           overflow in ``dest.status_sync()``.
         build_mapping: If ``True``, build and return a new reusable mapping from
@@ -1463,14 +1452,9 @@ def bsr_set_from_triplets(
         The built :class:`BsrTripletMap` when ``build_mapping`` is provided; otherwise ``None``.
     """
     if topology is None:
-        topology = "masked" if masked else "compact"
+        topology = "compact"
     elif topology not in ("compact", "masked", "padded"):
         raise ValueError(f"Unsupported topology policy: {topology}")
-    elif masked and topology != "masked":
-        raise ValueError("Cannot pass masked=True with a non-masked topology policy")
-
-    if masked:
-        _warn_masked_arg_deprecated("bsr_set_from_triplets")
 
     masked = topology == "masked"
 
@@ -2569,7 +2553,6 @@ def bsr_assign(
     dest: BsrMatrix[BlockType[Rows, Cols, Scalar]],
     src: BsrMatrixOrExpression[BlockType[Any, Any, Any]],
     structure_only: bool = False,
-    masked: bool = False,
     topology: Literal["compact", "masked", "padded"] | None = None,
 ):
     """Copy the content of the ``src`` BSR matrix to ``dest``.
@@ -2581,10 +2564,8 @@ def bsr_assign(
       structure_only: If ``True``, only the non-zero indices are copied, and uninitialized value storage is allocated
         to accommodate at least ``src.nnz`` blocks. If ``structure_only`` is ``False``, values are also copied with implicit
         casting if the two matrices use distinct scalar types.
-      masked: Deprecated. Use ``topology="masked"`` instead. If ``True``, keep
-        the non-zero topology of ``dest`` unchanged.
       topology: Optional topology policy. ``"compact"`` keeps the existing
-        compact rebuild behavior, ``"masked"`` is equivalent to the deprecated ``masked=True``,
+        compact rebuild behavior, ``"masked"`` keeps the non-zero topology of ``dest`` unchanged,
         and ``"padded"`` copies each source row into existing destination row
         capacity without changing ``dest.offsets`` and records capacity
         overflow in ``dest.status_sync()``.
@@ -2596,14 +2577,9 @@ def bsr_assign(
         raise ValueError("Source and destination matrices must reside on the same device")
 
     if topology is None:
-        topology = "masked" if masked else "compact"
+        topology = "compact"
     elif topology not in ("compact", "masked", "padded"):
         raise ValueError(f"Unsupported topology policy: {topology}")
-    elif masked and topology != "masked":
-        raise ValueError("Cannot pass masked=True with a non-masked topology policy")
-
-    if masked:
-        _warn_masked_arg_deprecated("bsr_assign")
 
     masked = topology == "masked"
 
@@ -2943,7 +2919,6 @@ def _bsr_transpose_values(
 def bsr_set_transpose(
     dest: BsrMatrix[BlockType[Cols, Rows, Scalar]],
     src: BsrMatrixOrExpression[BlockType[Rows, Cols, Scalar]],
-    masked: bool = False,
     topology: Literal["compact", "masked", "padded"] | None = None,
 ):
     """Assign the transposed matrix ``src`` to matrix ``dest``.
@@ -2951,11 +2926,9 @@ def bsr_set_transpose(
     Args:
         dest: Sparse matrix to populate.
         src: Sparse matrix to transpose.
-        masked: Deprecated. Use ``topology="masked"`` instead. If ``True``,
-          keep the non-zero topology of ``dest`` unchanged.
         topology: Optional topology policy. ``"compact"`` keeps the existing
-          compact rebuild behavior, ``"masked"`` is equivalent to
-          the deprecated ``masked=True``, and ``"padded"`` writes the transposed active
+          compact rebuild behavior, ``"masked"`` keeps the non-zero topology of
+          ``dest`` unchanged, and ``"padded"`` writes the transposed active
           topology into existing destination row capacity and records capacity
           overflow in ``dest.status_sync()``.
     """
@@ -2963,14 +2936,9 @@ def bsr_set_transpose(
     src, src_scale = _extract_matrix_and_scale(src)
 
     if topology is None:
-        topology = "masked" if masked else "compact"
+        topology = "compact"
     elif topology not in ("compact", "masked", "padded"):
         raise ValueError(f"Unsupported topology policy: {topology}")
-    elif masked and topology != "masked":
-        raise ValueError("Cannot pass masked=True with a non-masked topology policy")
-
-    if masked:
-        _warn_masked_arg_deprecated("bsr_set_transpose")
 
     masked = topology == "masked"
 
@@ -3650,7 +3618,6 @@ def bsr_axpy(
     y: BsrMatrix[BlockType[Rows, Cols, Scalar]] | None = None,
     alpha: Scalar = 1.0,
     beta: Scalar = 1.0,
-    masked: bool = False,
     work_arrays: bsr_axpy_work_arrays | None = None,
     topology: Literal["compact", "masked", "padded"] | None = None,
 ) -> BsrMatrix[BlockType[Rows, Cols, Scalar]]:
@@ -3663,14 +3630,12 @@ def bsr_axpy(
         y: Mutable second operand and output matrix. If ``y`` is not provided, it will be allocated and treated as zero.
         alpha: Uniform scaling factor for ``x``.
         beta: Uniform scaling factor for ``y``.
-        masked: Deprecated. Use ``topology="masked"`` instead. If ``True``,
-          keep the non-zero topology of ``y`` unchanged.
         work_arrays: In most cases, this function will require the use of temporary storage.
           This storage can be reused across calls by passing an instance of
           :class:`bsr_axpy_work_arrays` in ``work_arrays``.
         topology: Optional topology policy. ``"compact"`` keeps the existing
-          compact rebuild behavior, ``"masked"`` is equivalent to
-          the deprecated ``masked=True``, and ``"padded"`` writes the result topology into
+          compact rebuild behavior, ``"masked"`` keeps the non-zero topology of
+          ``y`` unchanged, and ``"padded"`` writes the result topology into
           existing destination row capacity and records capacity overflow in
           ``y.status_sync()``.
     """
@@ -3679,14 +3644,9 @@ def bsr_axpy(
     alpha *= x_scale
 
     if topology is None:
-        topology = "masked" if masked else "compact"
+        topology = "compact"
     elif topology not in ("compact", "masked", "padded"):
         raise ValueError(f"Unsupported topology policy: {topology}")
-    elif masked and topology != "masked":
-        raise ValueError("Cannot pass masked=True with a non-masked topology policy")
-
-    if masked:
-        _warn_masked_arg_deprecated("bsr_axpy")
 
     masked = topology == "masked"
 
@@ -4509,7 +4469,6 @@ def bsr_mm(
     z: BsrMatrix[BlockType[Rows, Cols, Scalar]] | None = None,
     alpha: Scalar = 1.0,
     beta: Scalar = 0.0,
-    masked: bool = False,
     work_arrays: bsr_mm_work_arrays | None = None,
     reuse_topology: bool = False,
     tile_size: int = 0,
@@ -4533,8 +4492,6 @@ def bsr_mm(
         z: Mutable affine operand and result matrix. If ``z`` is not provided, it will be allocated and treated as zero.
         alpha: Uniform scaling factor for the ``x @ y`` product
         beta: Uniform scaling factor for ``z``
-        masked: Deprecated. Use ``topology="masked"`` instead. If ``True``,
-          keep the non-zero topology of ``z`` unchanged.
         work_arrays: In most cases, this function will require the use of temporary storage.
           This storage can be reused across calls by passing an instance of
           :class:`bsr_mm_work_arrays` in ``work_arrays``.
@@ -4549,8 +4506,8 @@ def bsr_mm(
           If negative, disable tile-based computation. Defaults to ``0``, which determines whether to
           use tiles using using an heuristic based on the matrix shape and number of non-zeros..
         topology: Optional topology policy. ``"compact"`` keeps the existing
-          compact rebuild behavior, ``"masked"`` is equivalent to
-          the deprecated ``masked=True``, and ``"padded"`` writes the result topology into
+          compact rebuild behavior, ``"masked"`` keeps the non-zero topology of
+          ``z`` unchanged, and ``"padded"`` writes the result topology into
           existing destination row capacity and records capacity overflow in
           ``z.status_sync()``.
     """
@@ -4561,18 +4518,13 @@ def bsr_mm(
     alpha *= y_scale
 
     if topology is None:
-        topology = "masked" if masked else "compact"
+        topology = "compact"
     elif topology not in ("compact", "masked", "padded"):
         raise ValueError(f"Unsupported topology policy: {topology}")
-    elif masked and topology != "masked":
-        raise ValueError("Cannot pass masked=True with a non-masked topology policy")
 
-    if masked:
-        _warn_masked_arg_deprecated("bsr_mm")
+    masked = topology == "masked"
 
-    if topology == "masked":
-        masked = True
-    elif topology != "compact" and reuse_topology:
+    if topology == "padded" and reuse_topology:
         raise ValueError("reuse_topology is only supported with topology='compact'")
 
     if z is None:

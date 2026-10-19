@@ -213,7 +213,6 @@ Operations that may change topology accept a ``topology`` policy where supported
 
 The ``"compact"`` policy is the default for builders and unmasked arithmetic. The ``"padded"`` policy is an allocation contract: each destination row must already have enough capacity for the result.
 For :func:`bsr_mm`, ``reuse_topology=True`` is a compact-topology optimization that reuses product topology data stored in ``work_arrays`` from a previous call; it is only supported with ``topology="compact"``.
-The older ``masked=True`` arguments are deprecated; pass ``topology="masked"`` instead.
 
 For example, a compact source can be copied into an already padded destination:
 
