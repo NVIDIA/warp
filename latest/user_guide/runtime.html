@@ -3284,6 +3284,21 @@ automatically normalized to the [0, 1] range when sampled; signed 8- and 16-bit 
 normalized to [-1, 1]; float types are returned as-is. Sampling a <code class="docutils literal notranslate"><span class="pre">wp.uint32</span></code> or <code class="docutils literal notranslate"><span class="pre">wp.int32</span></code>
 texture causes kernel execution to fail, but these dtypes remain usable for storage, copies, and
 interop.</p>
+<p>Texture sampling is differentiable with respect to sampling coordinates wherever the sample is
+locally linear, and with respect to <code class="docutils literal notranslate"><span class="pre">lod</span></code> for linear mip-level blending, so sampling positions
+can be optimized with <a class="reference internal" href="../api_reference/_generated/warp.Tape.html#warp.Tape" title="warp.Tape"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Tape</span></code></a>. At boundaries where the derivative is not
+unique, Warp differentiates the branch selected by the forward sample. At an unclamped integer
+LOD, linear mip filtering uses the right-hand derivative. The LOD gradient is zero in the clamped
+ranges. With closest spatial or mip filtering the corresponding coordinate or <code class="docutils literal notranslate"><span class="pre">lod</span></code> gradients
+are zero. Texture data gradients are not propagated. On CUDA, <code class="docutils literal notranslate"><span class="pre">WRAP</span></code> and <code class="docutils literal notranslate"><span class="pre">MIRROR</span></code> require
+normalized coordinates; with unnormalized coordinates, CUDA treats both modes as <code class="docutils literal notranslate"><span class="pre">CLAMP</span></code> for
+the forward sample and its coordinate gradient.</p>
+<p>Gradients use float32 arithmetic and are subject to rounding, overflow, underflow, and
+cancellation. Intermediate calculations can lose small contributions or overflow even when
+the mathematical final gradient is representable. CUDA filtering has limited fractional
+precision and can flush subnormal samples to zero; CUDA float32 gradient-array accumulation
+can also flush subnormal contributions and results to zero. With <code class="docutils literal notranslate"><span class="pre">fast_math</span></code> enabled,
+subnormal inputs can also be flushed before the gradient calculation.</p>
 <div class="admonition seealso">
 <p class="admonition-title">See also</p>
 <p><a class="reference internal" href="../language_reference/builtins.html#builtins-textures"><span class="std std-ref">Reference</span></a> for the texture sampling functions available in kernels.</p>

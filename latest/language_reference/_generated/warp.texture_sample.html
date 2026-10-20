@@ -565,7 +565,7 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span><a class="headerlink" href="#warp._src.lang.texture_sample" title="Link to this definition">#</a></dt>
-<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="differentiable" data-wp-value="false"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: false</span></li></ul><p>Sample the 1D texture at the given U coordinate.</p>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Sample the 1D texture at the given U coordinate.</p>
 <div class="admonition-experimental admonition">
 <p class="admonition-title">Experimental</p>
 <p>The texture API is experimental and subject to change. See <a class="reference internal" href="../../api_reference/_generated/warp.Texture.html#warp.Texture" title="warp.Texture"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Texture</span></code></a>.</p>
@@ -589,7 +589,12 @@ negative value also selects mip level 0. Nonnegative values are clamped to the
 texture’s available mip-level range. Fractional values blend between neighbouring mip
 levels when <code class="docutils literal notranslate"><span class="pre">mip_filter_mode</span></code> is
 <a class="reference internal" href="../../api_reference/_generated/warp.TextureFilterMode.html#warp.TextureFilterMode.LINEAR" title="warp.TextureFilterMode.LINEAR"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.TextureFilterMode.LINEAR</span></code></a>; the coordinate is evaluated independently at
-each level used in the blend. The <code class="docutils literal notranslate"><span class="pre">lod</span></code> argument is ignored for textures created with a single mip level.</p></li>
+each level used in the blend. Ignored for textures created with a single mip level.
+The <code class="docutils literal notranslate"><span class="pre">lod</span></code> adjoint is nonzero only for mipmapped textures with
+<code class="docutils literal notranslate"><span class="pre">mip_filter_mode=TextureFilterMode.LINEAR</span></code> and an unclamped, nonnegative LOD. At an
+unclamped integer LOD, the mip-blend derivative may differ on either side. Warp uses
+the derivative toward increasing LOD values. The LOD gradient is zero when the LOD is
+clamped.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -604,6 +609,12 @@ values without normalization.</p>
 coordinates (<a class="reference internal" href="../../api_reference/_generated/warp.TextureAddressMode.html#warp.TextureAddressMode" title="warp.TextureAddressMode"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.TextureAddressMode</span></code></a>) are those set when the texture was created; see
 <a class="reference internal" href="../../api_reference/_generated/warp.Texture.html#warp.Texture" title="warp.Texture"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Texture</span></code></a>. Currently, CUDA textures with unnormalized coordinates support only
 <code class="docutils literal notranslate"><span class="pre">CLAMP</span></code> and <code class="docutils literal notranslate"><span class="pre">BORDER</span></code> address modes. Use normalized coordinates with <code class="docutils literal notranslate"><span class="pre">WRAP</span></code> or <code class="docutils literal notranslate"><span class="pre">MIRROR</span></code>.</p>
+<p>The backward pass propagates gradients to the sampling coordinates wherever the sample
+is locally linear. At interpolation-cell and address-mode boundaries the mathematical
+derivative is not unique, so Warp follows the branch selected by the forward sampler.
+With <a class="reference internal" href="../../api_reference/_generated/warp.TextureFilterMode.html#warp.TextureFilterMode.CLOSEST" title="warp.TextureFilterMode.CLOSEST"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.TextureFilterMode.CLOSEST</span></code></a> filtering the sampled value is piecewise
+constant in the coordinates, so coordinate gradients are zero. Gradients are not
+propagated to the texture data itself.</p>
 <p class="rubric">Example</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">sample</span><span class="p">(</span><span class="n">t1</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">Texture1D</span><span class="p">,</span> <span class="n">t2</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">Texture2D</span><span class="p">,</span> <span class="n">t3</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">Texture3D</span><span class="p">,</span> <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">]):</span>
@@ -643,7 +654,7 @@ coordinates (<a class="reference internal" href="../../api_reference/_generated/
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span></dt>
-<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="differentiable" data-wp-value="false"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: false</span></li></ul><p>Sample the 2D texture at the given UV coordinates.</p>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Sample the 2D texture at the given UV coordinates.</p>
 <div class="admonition-experimental admonition">
 <p class="admonition-title">Experimental</p>
 <p>The texture API is experimental and subject to change. See <a class="reference internal" href="../../api_reference/_generated/warp.Texture.html#warp.Texture" title="warp.Texture"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Texture</span></code></a>.</p>
@@ -668,7 +679,12 @@ negative value also selects mip level 0. Nonnegative values are clamped to the
 texture’s available mip-level range. Fractional values blend between neighbouring mip
 levels when <code class="docutils literal notranslate"><span class="pre">mip_filter_mode</span></code> is
 <a class="reference internal" href="../../api_reference/_generated/warp.TextureFilterMode.html#warp.TextureFilterMode.LINEAR" title="warp.TextureFilterMode.LINEAR"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.TextureFilterMode.LINEAR</span></code></a>; the coordinates are evaluated independently at
-each level used in the blend. The <code class="docutils literal notranslate"><span class="pre">lod</span></code> argument is ignored for textures created with a single mip level.</p></li>
+each level used in the blend. Ignored for textures created with a single mip level.
+The <code class="docutils literal notranslate"><span class="pre">lod</span></code> adjoint is nonzero only for mipmapped textures with
+<code class="docutils literal notranslate"><span class="pre">mip_filter_mode=TextureFilterMode.LINEAR</span></code> and an unclamped, nonnegative LOD. At an
+unclamped integer LOD, the mip-blend derivative may differ on either side. Warp uses
+the derivative toward increasing LOD values. The LOD gradient is zero when the LOD is
+clamped.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -683,6 +699,12 @@ values without normalization.</p>
 coordinates (<a class="reference internal" href="../../api_reference/_generated/warp.TextureAddressMode.html#warp.TextureAddressMode" title="warp.TextureAddressMode"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.TextureAddressMode</span></code></a>) are those set when the texture was created; see
 <a class="reference internal" href="../../api_reference/_generated/warp.Texture.html#warp.Texture" title="warp.Texture"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Texture</span></code></a>. Currently, CUDA textures with unnormalized coordinates support only
 <code class="docutils literal notranslate"><span class="pre">CLAMP</span></code> and <code class="docutils literal notranslate"><span class="pre">BORDER</span></code> address modes. Use normalized coordinates with <code class="docutils literal notranslate"><span class="pre">WRAP</span></code> or <code class="docutils literal notranslate"><span class="pre">MIRROR</span></code>.</p>
+<p>The backward pass propagates gradients to the sampling coordinates wherever the sample
+is locally linear. At interpolation-cell and address-mode boundaries the mathematical
+derivative is not unique, so Warp follows the branch selected by the forward sampler.
+With <a class="reference internal" href="../../api_reference/_generated/warp.TextureFilterMode.html#warp.TextureFilterMode.CLOSEST" title="warp.TextureFilterMode.CLOSEST"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.TextureFilterMode.CLOSEST</span></code></a> filtering the sampled value is piecewise
+constant in the coordinates, so coordinate gradients are zero. Gradients are not
+propagated to the texture data itself.</p>
 </dd></dl>
 
 <dl class="py function">
@@ -698,7 +720,7 @@ coordinates (<a class="reference internal" href="../../api_reference/_generated/
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span></dt>
-<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="differentiable" data-wp-value="false"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: false</span></li></ul><p>Sample the 2D texture at the given UV coordinates.</p>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Sample the 2D texture at the given UV coordinates.</p>
 <div class="admonition-experimental admonition">
 <p class="admonition-title">Experimental</p>
 <p>The texture API is experimental and subject to change. See <a class="reference internal" href="../../api_reference/_generated/warp.Texture.html#warp.Texture" title="warp.Texture"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Texture</span></code></a>.</p>
@@ -725,7 +747,12 @@ negative value also selects mip level 0. Nonnegative values are clamped to the
 texture’s available mip-level range. Fractional values blend between neighbouring mip
 levels when <code class="docutils literal notranslate"><span class="pre">mip_filter_mode</span></code> is
 <a class="reference internal" href="../../api_reference/_generated/warp.TextureFilterMode.html#warp.TextureFilterMode.LINEAR" title="warp.TextureFilterMode.LINEAR"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.TextureFilterMode.LINEAR</span></code></a>; the coordinates are evaluated independently at
-each level used in the blend. The <code class="docutils literal notranslate"><span class="pre">lod</span></code> argument is ignored for textures created with a single mip level.</p></li>
+each level used in the blend. Ignored for textures created with a single mip level.
+The <code class="docutils literal notranslate"><span class="pre">lod</span></code> adjoint is nonzero only for mipmapped textures with
+<code class="docutils literal notranslate"><span class="pre">mip_filter_mode=TextureFilterMode.LINEAR</span></code> and an unclamped, nonnegative LOD. At an
+unclamped integer LOD, the mip-blend derivative may differ on either side. Warp uses
+the derivative toward increasing LOD values. The LOD gradient is zero when the LOD is
+clamped.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -740,6 +767,12 @@ values without normalization.</p>
 coordinates (<a class="reference internal" href="../../api_reference/_generated/warp.TextureAddressMode.html#warp.TextureAddressMode" title="warp.TextureAddressMode"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.TextureAddressMode</span></code></a>) are those set when the texture was created; see
 <a class="reference internal" href="../../api_reference/_generated/warp.Texture.html#warp.Texture" title="warp.Texture"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Texture</span></code></a>. Currently, CUDA textures with unnormalized coordinates support only
 <code class="docutils literal notranslate"><span class="pre">CLAMP</span></code> and <code class="docutils literal notranslate"><span class="pre">BORDER</span></code> address modes. Use normalized coordinates with <code class="docutils literal notranslate"><span class="pre">WRAP</span></code> or <code class="docutils literal notranslate"><span class="pre">MIRROR</span></code>.</p>
+<p>The backward pass propagates gradients to the sampling coordinates wherever the sample
+is locally linear. At interpolation-cell and address-mode boundaries the mathematical
+derivative is not unique, so Warp follows the branch selected by the forward sampler.
+With <a class="reference internal" href="../../api_reference/_generated/warp.TextureFilterMode.html#warp.TextureFilterMode.CLOSEST" title="warp.TextureFilterMode.CLOSEST"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.TextureFilterMode.CLOSEST</span></code></a> filtering the sampled value is piecewise
+constant in the coordinates, so coordinate gradients are zero. Gradients are not
+propagated to the texture data itself.</p>
 </dd></dl>
 
 <dl class="py function">
@@ -754,7 +787,7 @@ coordinates (<a class="reference internal" href="../../api_reference/_generated/
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span></dt>
-<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="differentiable" data-wp-value="false"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: false</span></li></ul><p>Sample the 3D texture at the given UVW coordinates.</p>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Sample the 3D texture at the given UVW coordinates.</p>
 <div class="admonition-experimental admonition">
 <p class="admonition-title">Experimental</p>
 <p>The texture API is experimental and subject to change. See <a class="reference internal" href="../../api_reference/_generated/warp.Texture.html#warp.Texture" title="warp.Texture"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Texture</span></code></a>.</p>
@@ -779,7 +812,12 @@ negative value also selects mip level 0. Nonnegative values are clamped to the
 texture’s available mip-level range. Fractional values blend between neighbouring mip
 levels when <code class="docutils literal notranslate"><span class="pre">mip_filter_mode</span></code> is
 <a class="reference internal" href="../../api_reference/_generated/warp.TextureFilterMode.html#warp.TextureFilterMode.LINEAR" title="warp.TextureFilterMode.LINEAR"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.TextureFilterMode.LINEAR</span></code></a>; the coordinates are evaluated independently at
-each level used in the blend. The <code class="docutils literal notranslate"><span class="pre">lod</span></code> argument is ignored for textures created with a single mip level.</p></li>
+each level used in the blend. Ignored for textures created with a single mip level.
+The <code class="docutils literal notranslate"><span class="pre">lod</span></code> adjoint is nonzero only for mipmapped textures with
+<code class="docutils literal notranslate"><span class="pre">mip_filter_mode=TextureFilterMode.LINEAR</span></code> and an unclamped, nonnegative LOD. At an
+unclamped integer LOD, the mip-blend derivative may differ on either side. Warp uses
+the derivative toward increasing LOD values. The LOD gradient is zero when the LOD is
+clamped.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -794,6 +832,12 @@ values without normalization.</p>
 coordinates (<a class="reference internal" href="../../api_reference/_generated/warp.TextureAddressMode.html#warp.TextureAddressMode" title="warp.TextureAddressMode"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.TextureAddressMode</span></code></a>) are those set when the texture was created; see
 <a class="reference internal" href="../../api_reference/_generated/warp.Texture.html#warp.Texture" title="warp.Texture"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Texture</span></code></a>. Currently, CUDA textures with unnormalized coordinates support only
 <code class="docutils literal notranslate"><span class="pre">CLAMP</span></code> and <code class="docutils literal notranslate"><span class="pre">BORDER</span></code> address modes. Use normalized coordinates with <code class="docutils literal notranslate"><span class="pre">WRAP</span></code> or <code class="docutils literal notranslate"><span class="pre">MIRROR</span></code>.</p>
+<p>The backward pass propagates gradients to the sampling coordinates wherever the sample
+is locally linear. At interpolation-cell and address-mode boundaries the mathematical
+derivative is not unique, so Warp follows the branch selected by the forward sampler.
+With <a class="reference internal" href="../../api_reference/_generated/warp.TextureFilterMode.html#warp.TextureFilterMode.CLOSEST" title="warp.TextureFilterMode.CLOSEST"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.TextureFilterMode.CLOSEST</span></code></a> filtering the sampled value is piecewise
+constant in the coordinates, so coordinate gradients are zero. Gradients are not
+propagated to the texture data itself.</p>
 </dd></dl>
 
 <dl class="py function">
@@ -810,7 +854,7 @@ coordinates (<a class="reference internal" href="../../api_reference/_generated/
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span></dt>
-<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="differentiable" data-wp-value="false"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: false</span></li></ul><p>Sample the 3D texture at the given UVW coordinates.</p>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Sample the 3D texture at the given UVW coordinates.</p>
 <div class="admonition-experimental admonition">
 <p class="admonition-title">Experimental</p>
 <p>The texture API is experimental and subject to change. See <a class="reference internal" href="../../api_reference/_generated/warp.Texture.html#warp.Texture" title="warp.Texture"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Texture</span></code></a>.</p>
@@ -840,7 +884,12 @@ negative value also selects mip level 0. Nonnegative values are clamped to the
 texture’s available mip-level range. Fractional values blend between neighbouring mip
 levels when <code class="docutils literal notranslate"><span class="pre">mip_filter_mode</span></code> is
 <a class="reference internal" href="../../api_reference/_generated/warp.TextureFilterMode.html#warp.TextureFilterMode.LINEAR" title="warp.TextureFilterMode.LINEAR"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.TextureFilterMode.LINEAR</span></code></a>; the coordinates are evaluated independently at
-each level used in the blend. The <code class="docutils literal notranslate"><span class="pre">lod</span></code> argument is ignored for textures created with a single mip level.</p></li>
+each level used in the blend. Ignored for textures created with a single mip level.
+The <code class="docutils literal notranslate"><span class="pre">lod</span></code> adjoint is nonzero only for mipmapped textures with
+<code class="docutils literal notranslate"><span class="pre">mip_filter_mode=TextureFilterMode.LINEAR</span></code> and an unclamped, nonnegative LOD. At an
+unclamped integer LOD, the mip-blend derivative may differ on either side. Warp uses
+the derivative toward increasing LOD values. The LOD gradient is zero when the LOD is
+clamped.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -855,6 +904,12 @@ values without normalization.</p>
 coordinates (<a class="reference internal" href="../../api_reference/_generated/warp.TextureAddressMode.html#warp.TextureAddressMode" title="warp.TextureAddressMode"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.TextureAddressMode</span></code></a>) are those set when the texture was created; see
 <a class="reference internal" href="../../api_reference/_generated/warp.Texture.html#warp.Texture" title="warp.Texture"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Texture</span></code></a>. Currently, CUDA textures with unnormalized coordinates support only
 <code class="docutils literal notranslate"><span class="pre">CLAMP</span></code> and <code class="docutils literal notranslate"><span class="pre">BORDER</span></code> address modes. Use normalized coordinates with <code class="docutils literal notranslate"><span class="pre">WRAP</span></code> or <code class="docutils literal notranslate"><span class="pre">MIRROR</span></code>.</p>
+<p>The backward pass propagates gradients to the sampling coordinates wherever the sample
+is locally linear. At interpolation-cell and address-mode boundaries the mathematical
+derivative is not unique, so Warp follows the branch selected by the forward sampler.
+With <a class="reference internal" href="../../api_reference/_generated/warp.TextureFilterMode.html#warp.TextureFilterMode.CLOSEST" title="warp.TextureFilterMode.CLOSEST"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.TextureFilterMode.CLOSEST</span></code></a> filtering the sampled value is piecewise
+constant in the coordinates, so coordinate gradients are zero. Gradients are not
+propagated to the texture data itself.</p>
 </dd></dl>
 
 </section>
