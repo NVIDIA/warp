@@ -11,10 +11,11 @@ Working with Sparse Matrices
 Mixed-Precision Matrix-Vector Products
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-:func:`bsr_mv` supports a matrix stored in ``wp.float32`` with input and output
-vectors of scalar type ``wp.float64``. Matrix entries are converted before
-multiplication, and products, accumulation, and scaling use ``wp.float64``.
-This avoids allocating a double-precision copy of the matrix:
+:func:`bsr_mv` supports different floating-point scalar types for matrix storage
+and vectors. Matrix entries are converted to the vector scalar type before
+multiplication, and products, accumulation, and scaling use that type.
+For example, a matrix stored in ``wp.float32`` can be multiplied by a
+``wp.float64`` vector without allocating a double-precision copy of the matrix:
 
 .. code-block:: python
 
@@ -27,9 +28,11 @@ This avoids allocating a double-precision copy of the matrix:
 
 The same rules apply to BSR blocks, transposed products, and matrix scaling
 expressions. An explicit output must have the same scalar type as the input.
-The matrix values retain their original storage precision; using double-precision
-arithmetic cannot recover precision already lost when constructing the matrix.
-Other mixed scalar-type combinations are not supported.
+If omitted, the output is allocated with the input scalar type. The vector
+scalar type can also be less precise than the matrix storage type. The matrix
+values retain their original storage precision; subsequent arithmetic cannot
+recover precision lost when storing the matrix or converting its entries to
+the vector scalar type.
 
 Creating Sparse Matrices
 ~~~~~~~~~~~~~~~~~~~~~~~~

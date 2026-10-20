@@ -5059,9 +5059,9 @@ def bsr_mv(
     """Perform the sparse matrix-vector product ``y := alpha * A * x + beta * y`` and return ``y``.
 
     The ``x`` and ``y`` vectors are allowed to alias.
-    Their scalar types must match. The matrix may have the same scalar type, or
-    store ``float32`` values with ``float64`` vectors. Products, accumulation,
-    and scaling use the vector scalar type, without converting the stored matrix.
+    Their scalar types must match, but may differ from the matrix scalar type.
+    Matrix coefficients are converted to the vector scalar type before multiplication.
+    Products, accumulation, and scaling use the vector scalar type, without converting the stored matrix.
 
     Args:
         A: Read-only, left matrix operand of the matrix-vector product.
@@ -5081,18 +5081,13 @@ def bsr_mv(
 
     A, A_scale = _extract_matrix_and_scale(A)
     scalar_type = type_scalar_type(x.dtype)
-    if scalar_type != A.scalar_type and not (A.scalar_type == wp.float32 and scalar_type == wp.float64):
-        raise ValueError(
-            f"Incompatible 'x' vector for bsr_mv: matrix scalar type {type_repr(A.scalar_type)} "
-            f"cannot be used with vector scalar type {type_repr(scalar_type)}"
-        )
     if y is not None and type_scalar_type(y.dtype) != scalar_type:
         raise ValueError("Incompatible 'y' vector for bsr_mv: x and y must have the same scalar type")
 
     if scalar_type == A.scalar_type:
         alpha *= A_scale
     else:
-        # Combine mixed-precision scaling factors without an intermediate float32 product.
+        # Combine mixed-precision scaling factors without rounding to the matrix scalar type.
         alpha = float(alpha) * float(A_scale)
 
     if transpose:
