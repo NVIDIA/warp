@@ -20,6 +20,7 @@ from warp._src.types import (
     Rows,
     Scalar,
     Vector,
+    float_types,
     is_array,
     scalar_types,
     type_is_matrix,
@@ -5059,7 +5060,8 @@ def bsr_mv(
     """Perform the sparse matrix-vector product ``y := alpha * A * x + beta * y`` and return ``y``.
 
     The ``x`` and ``y`` vectors are allowed to alias.
-    Their scalar types must match, but may differ from the matrix scalar type.
+    Their scalar types must match. The matrix scalar type may differ when both
+    matrix and vector scalar types are floating-point.
     Matrix coefficients are converted to the vector scalar type before multiplication.
     Products, accumulation, and scaling use the vector scalar type, without converting the stored matrix.
 
@@ -5087,6 +5089,11 @@ def bsr_mv(
     if scalar_type == A.scalar_type:
         alpha *= A_scale
     else:
+        if scalar_type not in float_types or A.scalar_type not in float_types:
+            raise ValueError(
+                "Incompatible 'x' vector for bsr_mv: mixed-precision products require floating-point "
+                f"matrix and vector scalar types, got {type_repr(A.scalar_type)} and {type_repr(scalar_type)}"
+            )
         # Combine mixed-precision scaling factors without rounding to the matrix scalar type.
         alpha = float(alpha) * float(A_scale)
 

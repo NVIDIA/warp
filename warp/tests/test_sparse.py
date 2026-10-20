@@ -1572,6 +1572,48 @@ def test_bsr_mv_mixed_precision_edges(test, device):
     np.testing.assert_array_equal(y32.numpy(), [7.0, 7.0, 7.0])
 
 
+def test_bsr_mv_mixed_precision_nonfloating(test, device):
+    for matrix_type, vector_type in (
+        (wp.float32, wp.int32),
+        (wp.int32, wp.float32),
+        (wp.int32, wp.int64),
+        (wp.int64, wp.int32),
+    ):
+        A = bsr_diag(wp.array([1.5, -2.75], dtype=matrix_type, device=device))
+        for transpose in (False, True):
+            for output in ("allocated", "provided", "alias"):
+                with test.subTest(matrix_type=matrix_type, vector_type=vector_type, transpose=transpose, output=output):
+                    x = wp.array([2, 3], dtype=vector_type, device=device)
+                    if output == "allocated":
+                        y = None
+                    elif output == "alias":
+                        y = x
+                    else:
+                        y = wp.array([7, 11], dtype=vector_type, device=device)
+                    before_x = x.numpy()
+                    before_y = None if y is None else y.numpy()
+                    # Reject before the transpose path scales y or an aliased input.
+                    with test.assertRaisesRegex(ValueError, "Incompatible 'x'"):
+                        bsr_mv(A, x, y, alpha=2, beta=3, transpose=transpose)
+                    np.testing.assert_array_equal(x.numpy(), before_x)
+                    if y is not None:
+                        np.testing.assert_array_equal(y.numpy(), before_y)
+
+    # Integer products remain supported when all operands have the same scalar type.
+    rows = wp.array([0, 0, 1], dtype=int, device=device)
+    cols = wp.array([0, 1, 1], dtype=int, device=device)
+    for scalar_type in (wp.int32, wp.int64):
+        A = bsr_from_triplets(2, 2, rows, cols, wp.array([2, 3, 4], dtype=scalar_type, device=device))
+        x = wp.array([5, 6], dtype=scalar_type, device=device)
+        for transpose in (False, True):
+            with test.subTest(scalar_type=scalar_type, transpose=transpose):
+                product = np.array([10, 39] if transpose else [28, 24])
+                y = wp.array([7, 11], dtype=scalar_type, device=device)
+                result = bsr_mv(A * 2, x, y, alpha=1, beta=3, transpose=transpose)
+                test.assertIs(result, y)
+                np.testing.assert_array_equal(y.numpy(), 2 * product + 3 * np.array([7, 11]))
+
+
 def test_bsr_mv_mixed_precision_capture(test, device):
     A = bsr_identity(3, block_type=wp.float32, device=device)
     x = wp.ones(3, dtype=wp.float64, device=device)
@@ -2219,6 +2261,9 @@ add_function_test(
     TestSparse, "test_bsr_mv_mixed_precision_arithmetic", test_bsr_mv_mixed_precision_arithmetic, devices=devices
 )
 add_function_test(TestSparse, "test_bsr_mv_mixed_precision_edges", test_bsr_mv_mixed_precision_edges, devices=devices)
+add_function_test(
+    TestSparse, "test_bsr_mv_mixed_precision_nonfloating", test_bsr_mv_mixed_precision_nonfloating, devices=devices
+)
 add_function_test(
     TestSparse,
     "test_bsr_mv_mixed_precision_capture",
