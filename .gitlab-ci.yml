@@ -476,6 +476,9 @@ linux-aarch64 cu13 test:
 linux-aarch64 cu12 test orin:
   needs: [linux-aarch64 cu12 build]
   image: $UV_TRIXIE_SLIM_ARM_IMAGE
+  # Keep the test runner's --timeout below the job timeout so the runner can
+  # still write a partial JUnit report before GitLab kills the job.
+  timeout: 1h 30m
   extends:
     - .save_test_report_artifact
   rules:
@@ -493,7 +496,7 @@ linux-aarch64 cu12 test orin:
     - uv sync --extra dev --no-install-package psutil
     - !reference [.snippets, section-end-install-deps]
   script:
-    - uv run --with rmm-cu12 -m warp.tests --maxjobs 4 --junit-report-xml rspec.xml -s autodetect --failfast
+    - uv run --with rmm-cu12 -m warp.tests --maxjobs 4 --timeout 5100 --junit-report-xml rspec.xml -s autodetect --failfast
   tags:
     - gpu/orin
 
