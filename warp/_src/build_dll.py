@@ -187,8 +187,12 @@ def find_host_compiler(host_arch: Architecture | None = None) -> str:
             if host_arch == "aarch64"
             else "Microsoft.VisualStudio.Component.VC.Tools.x86.x64"
         )
+        # -products * includes Build Tools installations, which vswhere
+        # excludes by default (it only reports Community/Professional/Enterprise).
         vs_path = (
-            run_cmd(f'"{vswhere_path}" -latest -requires {component} -property installationPath').decode().rstrip()
+            run_cmd(f'"{vswhere_path}" -latest -products * -requires {component} -property installationPath')
+            .decode()
+            .rstrip()
         )
         vsvars_path, vsvars_arguments = _msvc_environment_script(vs_path, host_arch)
 
