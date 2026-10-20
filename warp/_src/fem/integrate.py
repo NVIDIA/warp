@@ -2142,8 +2142,7 @@ def integrate(
     if values is None:
         values = {}
 
-    if device is None:
-        device = wp.get_device()
+    device = wp.get_device(device)
 
     if not isinstance(integrand, Integrand):
         raise ValueError("integrand must be tagged with @warp.fem.integrand decorator")
@@ -3515,8 +3514,7 @@ def interpolate(
     if values is None:
         values = {}
 
-    if device is None:
-        device = wp.get_device()
+    device = wp.get_device(device)
 
     if not isinstance(integrand, Integrand):
         raise ValueError("integrand must be tagged with @integrand decorator")

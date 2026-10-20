@@ -12,6 +12,7 @@ from warp._src.fem.linalg import basis_coefficient, generalized_inner, generaliz
 from warp._src.fem.quadrature import Quadrature
 from warp._src.fem.space import FunctionSpace, SpacePartition, SpaceRestriction
 from warp._src.fem.types import (
+    NULL_DOF_INDEX,
     NULL_ELEMENT_INDEX,
     NULL_NODE_INDEX,
     DofIndex,
@@ -23,6 +24,19 @@ from warp._src.fem.types import (
 from warp._src.fem.utils import type_zero_element
 
 from .field import SpaceField
+
+
+@wp.func
+def _dof_slots(dof: DofIndex):
+    """Return the node and coordinate slots of a degree of freedom, and whether it is valid.
+
+    Samples built by ``lookup()`` or by ``at_node()`` on other fields carry no test or trial
+    degree of freedom (``NULL_DOF_INDEX``). Weight functions accept its -1 slots, as negative
+    indices wrap within arrays and vectors, and the evaluators zero out the resulting weights
+    so that the functions vanish there.
+    """
+    node = get_node_index_in_element(dof)
+    return node, get_node_coord(dof), node >= 0
 
 
 class AdjointField(SpaceField):
@@ -105,18 +119,19 @@ class AdjointField(SpaceField):
     def _make_eval_inner(self):
         @cache.dynamic_func(suffix=self.name)
         def eval_test_inner(args: self.ElementEvalArg, s: self.SampleType):
-            dof = self._get_dof(s)
+            node, coord, valid = _dof_slots(self._get_dof(s))
             node_weight = self.space.basis.element_inner_weight(
                 args.elt_arg,
                 args.eval_arg.topo_arg,
                 args.eval_arg.basis_arg,
                 s.element_index,
                 s.element_coords,
-                get_node_index_in_element(dof),
+                node,
                 s.qp_index,
             )
+            node_weight = wp.where(valid, node_weight, type(node_weight)(0.0))
             local_value_map = self.space.local_value_map_inner(args.elt_arg, s.element_index, s.element_coords)
-            dof_value = self.space.node_basis_element(get_node_coord(dof))
+            dof_value = self.space.node_basis_element(coord)
             return self.space.space_value(dof_value, node_weight, local_value_map)
 
         return eval_test_inner
@@ -127,19 +142,20 @@ class AdjointField(SpaceField):
 
         @cache.dynamic_func(suffix=self.name)
         def eval_grad_inner(args: self.ElementEvalArg, s: self.SampleType):
-            dof = self._get_dof(s)
+            node, coord, valid = _dof_slots(self._get_dof(s))
             nabla_weight = self.space.basis.element_inner_weight_gradient(
                 args.elt_arg,
                 args.eval_arg.topo_arg,
                 args.eval_arg.basis_arg,
                 s.element_index,
                 s.element_coords,
-                get_node_index_in_element(dof),
+                node,
                 s.qp_index,
             )
+            nabla_weight = wp.where(valid, nabla_weight, type(nabla_weight)(0.0))
             grad_transform = self.space.element_inner_reference_gradient_transform(args.elt_arg, s)
             local_value_map = self.space.local_value_map_inner(args.elt_arg, s.element_index, s.element_coords)
-            dof_value = self.space.node_basis_element(get_node_coord(dof))
+            dof_value = self.space.node_basis_element(coord)
             return self.space.space_gradient(dof_value, nabla_weight * grad_transform, local_value_map)
 
         return eval_grad_inner
@@ -150,19 +166,20 @@ class AdjointField(SpaceField):
 
         @cache.dynamic_func(suffix=self.name)
         def eval_div_inner(args: self.ElementEvalArg, s: self.SampleType):
-            dof = self._get_dof(s)
+            node, coord, valid = _dof_slots(self._get_dof(s))
             nabla_weight = self.space.basis.element_inner_weight_gradient(
                 args.elt_arg,
                 args.eval_arg.topo_arg,
                 args.eval_arg.basis_arg,
                 s.element_index,
                 s.element_coords,
-                get_node_index_in_element(dof),
+                node,
                 s.qp_index,
             )
+            nabla_weight = wp.where(valid, nabla_weight, type(nabla_weight)(0.0))
             grad_transform = self.space.element_inner_reference_gradient_transform(args.elt_arg, s)
             local_value_map = self.space.local_value_map_inner(args.elt_arg, s.element_index, s.element_coords)
-            dof_value = self.space.node_basis_element(get_node_coord(dof))
+            dof_value = self.space.node_basis_element(coord)
             return self.space.space_divergence(dof_value, nabla_weight * grad_transform, local_value_map)
 
         return eval_div_inner
@@ -170,18 +187,19 @@ class AdjointField(SpaceField):
     def _make_eval_outer(self):
         @cache.dynamic_func(suffix=self.name)
         def eval_test_outer(args: self.ElementEvalArg, s: self.SampleType):
-            dof = self._get_dof(s)
+            node, coord, valid = _dof_slots(self._get_dof(s))
             node_weight = self.space.basis.element_outer_weight(
                 args.elt_arg,
                 args.eval_arg.topo_arg,
                 args.eval_arg.basis_arg,
                 s.element_index,
                 s.element_coords,
-                get_node_index_in_element(dof),
+                node,
                 s.qp_index,
             )
+            node_weight = wp.where(valid, node_weight, type(node_weight)(0.0))
             local_value_map = self.space.local_value_map_outer(args.elt_arg, s.element_index, s.element_coords)
-            dof_value = self.space.node_basis_element(get_node_coord(dof))
+            dof_value = self.space.node_basis_element(coord)
             return self.space.space_value(dof_value, node_weight, local_value_map)
 
         return eval_test_outer
@@ -192,19 +210,20 @@ class AdjointField(SpaceField):
 
         @cache.dynamic_func(suffix=self.name)
         def eval_grad_outer(args: self.ElementEvalArg, s: self.SampleType):
-            dof = self._get_dof(s)
+            node, coord, valid = _dof_slots(self._get_dof(s))
             nabla_weight = self.space.basis.element_outer_weight_gradient(
                 args.elt_arg,
                 args.eval_arg.topo_arg,
                 args.eval_arg.basis_arg,
                 s.element_index,
                 s.element_coords,
-                get_node_index_in_element(dof),
+                node,
                 s.qp_index,
             )
+            nabla_weight = wp.where(valid, nabla_weight, type(nabla_weight)(0.0))
             grad_transform = self.space.element_outer_reference_gradient_transform(args.elt_arg, s)
             local_value_map = self.space.local_value_map_outer(args.elt_arg, s.element_index, s.element_coords)
-            dof_value = self.space.node_basis_element(get_node_coord(dof))
+            dof_value = self.space.node_basis_element(coord)
             return self.space.space_gradient(dof_value, nabla_weight * grad_transform, local_value_map)
 
         return eval_grad_outer
@@ -215,19 +234,20 @@ class AdjointField(SpaceField):
 
         @cache.dynamic_func(suffix=self.name)
         def eval_div_outer(args: self.ElementEvalArg, s: self.SampleType):
-            dof = self._get_dof(s)
+            node, coord, valid = _dof_slots(self._get_dof(s))
             nabla_weight = self.space.basis.element_outer_weight_gradient(
                 args.elt_arg,
                 args.eval_arg.topo_arg,
                 args.eval_arg.basis_arg,
                 s.element_index,
                 s.element_coords,
-                get_node_index_in_element(dof),
+                node,
                 s.qp_index,
             )
+            nabla_weight = wp.where(valid, nabla_weight, type(nabla_weight)(0.0))
             grad_transform = self.space.element_outer_reference_gradient_transform(args.elt_arg, s)
             local_value_map = self.space.local_value_map_outer(args.elt_arg, s.element_index, s.element_coords)
-            dof_value = self.space.node_basis_element(get_node_coord(dof))
+            dof_value = self.space.node_basis_element(coord)
             return self.space.space_divergence(dof_value, nabla_weight * grad_transform, local_value_map)
 
         return eval_div_outer
@@ -527,6 +547,9 @@ class LocalAdjointField(SpaceField):
 
         @cache.dynamic_func(suffix=str(TAYLOR_DOF_COUNT))
         def split_dof(dof_index: DofIndex, dof_begin: int):
+            if dof_index == NULL_DOF_INDEX:
+                # Samples without a test or trial degree of freedom evaluate to zero
+                return 0, -1
             taylor_dof = get_node_index_in_element(dof_index) - dof_begin
             value_dof = get_node_coord(dof_index)
             return value_dof, taylor_dof

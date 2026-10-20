@@ -888,6 +888,9 @@ class SquareNedelecFirstKindShapeFunctions(SquareShapeFunction):
             coords: Any,
             node_index_in_elt: int,
         ):
+            if node_index_in_elt < 0:
+                return mat22_type(scalar(0.0))
+
             node_type, type_instance, _type_index = self.node_type_and_type_index(node_index_in_elt)
 
             axis = node_type - SquareShapeFunction.EDGE_X
@@ -996,6 +999,9 @@ class SquareRaviartThomasShapeFunctions(SquareShapeFunction):
             coords: Any,
             node_index_in_elt: int,
         ):
+            if node_index_in_elt < 0:
+                return vec2_type(scalar(0.0))
+
             node_type, type_instance, _type_index = self.node_type_and_type_index(node_index_in_elt)
 
             axis = node_type - SquareShapeFunction.EDGE_X
@@ -1018,6 +1024,9 @@ class SquareRaviartThomasShapeFunctions(SquareShapeFunction):
             coords: Any,
             node_index_in_elt: int,
         ):
+            if node_index_in_elt < 0:
+                return mat22_type(scalar(0.0))
+
             node_type, type_instance, _type_index = self.node_type_and_type_index(node_index_in_elt)
 
             axis = node_type - SquareShapeFunction.EDGE_X
