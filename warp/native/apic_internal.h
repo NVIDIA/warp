@@ -159,7 +159,13 @@ struct APICModule {
     std::string module_hash;
     std::string module_name;
     std::string cubin_filename;
+    std::string binary_digest;
+    std::string source_filename;
+    std::string source_digest;
     int target_arch = 0;
+    APICCudaBinaryKind binary_kind = APIC_CUDA_BINARY_NONE;
+    APICCudaFallbackReason fallback_reason = APIC_CUDA_FALLBACK_SOURCE_UNAVAILABLE;
+    APICCudaCompileRecipe compile_recipe = {};
 #ifdef __CUDACC__
     CUmodule cuda_module = nullptr;  // Set after loading
 #else
@@ -527,6 +533,7 @@ struct APICGraph {
     void* cuda_context = nullptr;
     int target_arch = 0;
     APICDeviceType device_type = APIC_DEVICE_CUDA;
+    std::string producer_version;
 
     std::unordered_map<std::string, APICModule> modules;
     std::unordered_map<std::string, APICKernel> kernels;
@@ -580,6 +587,7 @@ bool apic_validate_operation_stream(
 // ============================================================================
 
 bool apic_read_file(const char* path, std::vector<uint8_t>& data);
+std::string apic_sha256_hex(const uint8_t* data, size_t size);
 
 // .wrp parsers (apic.cpp). Metadata and memory populate graph fields;
 // operations are copied for validation before being attached to a graph.
@@ -646,6 +654,15 @@ bool apic_load_graph_cuda_setup(
     APICGraph* graph,
     void* context,
     const std::unordered_map<std::string, std::vector<uint8_t>>& module_images,
+    const uint8_t* memory_ptr,
+    size_t memory_size
+);
+
+bool apic_load_graph_cuda_setup(
+    APICGraph* graph,
+    void* context,
+    const std::string& modules_dir,
+    const char* warp_include_dir,
     const uint8_t* memory_ptr,
     size_t memory_size
 );
