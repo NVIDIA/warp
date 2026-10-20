@@ -16,6 +16,7 @@ API
    BiCGSTAB
    CG
    CR
+   FSAI
    GMRES
    LinearOperator
    LinearSolverState

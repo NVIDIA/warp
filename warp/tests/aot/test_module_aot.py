@@ -7,12 +7,15 @@ import importlib.util
 import io
 import os
 import shutil
+import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import numpy as np
 
 import warp as wp
+import warp._src.context as wp_context
 import warp.tests.aot.aux_test_generic_multiple_overloads
 import warp.tests.aot.aux_test_generic_no_overloads
 import warp.tests.aot.aux_test_generic_one_overload
@@ -354,10 +357,220 @@ class TestModuleAOT(unittest.TestCase):
 
             module_identifier = wp.get_module("warp.tests.aot.aux_test_hash_reload").get_module_identifier()
             expected_path = TEST_CACHE_DIR / f"{module_identifier}.sm{arch}.ptx"
+            expected_source_path = TEST_CACHE_DIR / f"{module_identifier}.cu"
             self.assertTrue(expected_path.exists(), f"Expected compiled PTX file not found: {expected_path}")
             self.assertEqual(artifact_paths, [expected_path])
             self.assertIn(b".version", artifact_paths[0].read_bytes())
+            self.assertTrue(
+                expected_source_path.exists(), f"Expected generated CUDA source not found: {expected_source_path}"
+            )
+            self.assertFalse(expected_path.with_suffix(".cu").exists())
+            self.assertFalse(any(path.name.endswith(".apic.json") for path in TEST_CACHE_DIR.iterdir()))
         finally:
+            shutil.rmtree(TEST_CACHE_DIR, ignore_errors=True)
+
+    def test_compile_aot_module_names_artifacts_after_config_change(self):
+        """Name AOT artifacts from the configuration they were compiled with."""
+
+        supported_archs = wp.get_cuda_supported_archs()
+        if not supported_archs:
+            self.skipTest("NVRTC not available")
+
+        arch = supported_archs[0]
+        module = wp.get_module("warp.tests.aot.aux_test_hash_reload")
+        original_verify_fp = wp.config.verify_fp
+        try:
+            shutil.rmtree(TEST_CACHE_DIR, ignore_errors=True)
+            TEST_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+            first_paths = wp.compile_aot_module(module, arch=arch, module_dir=TEST_CACHE_DIR / "first", use_ptx=True)
+            first_identifier = module.get_module_identifier()
+
+            # A global setting that changes code generation flags must also change the artifact name.
+            wp.config.verify_fp = not original_verify_fp
+            second_paths = wp.compile_aot_module(module, arch=arch, module_dir=TEST_CACHE_DIR / "second", use_ptx=True)
+            second_identifier = module.get_module_identifier()
+
+            self.assertNotEqual(first_identifier, second_identifier)
+            self.assertEqual(first_paths, [TEST_CACHE_DIR / "first" / f"{first_identifier}.sm{arch}.ptx"])
+            self.assertEqual(second_paths, [TEST_CACHE_DIR / "second" / f"{second_identifier}.sm{arch}.ptx"])
+            self.assertTrue(first_paths[0].exists())
+            self.assertTrue(second_paths[0].exists())
+            self.assertEqual(module.resolved_options[module.options["block_dim"]]["verify_fp"], wp.config.verify_fp)
+        finally:
+            wp.config.verify_fp = original_verify_fp
+            module.mark_modified()
+            shutil.rmtree(TEST_CACHE_DIR, ignore_errors=True)
+
+    def test_load_aot_cuda_without_apic_cache_files(self):
+        """Load CUDA binaries without reading optional APIC source artifacts."""
+        if wp.get_cuda_device_count() == 0:
+            self.skipTest("No CUDA devices found")
+
+        device = wp.get_device("cuda:0")
+        if device.arch not in wp.get_cuda_supported_archs():
+            self.skipTest(f"NVRTC does not support sm_{device.arch}")
+
+        module = wp.get_module(warp.tests.aot.aux_test_strip_hash_option.__name__)
+        original_options = dict(wp.get_module_options(module))
+        try:
+            shutil.rmtree(TEST_CACHE_DIR, ignore_errors=True)
+            TEST_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+            wp.set_module_options({"block_dim": 256}, module)
+            artifact_paths = wp.compile_aot_module(
+                module, device=device, module_dir=TEST_CACHE_DIR, use_ptx=True, strip_hash=False
+            )
+            source_path = TEST_CACHE_DIR / f"{module.get_module_identifier()}.cu"
+            self.assertTrue(source_path.exists())
+            self.assertFalse(artifact_paths[0].with_suffix(".cu").exists())
+            self.assertFalse(any(path.name.endswith(".apic.json") for path in TEST_CACHE_DIR.iterdir()))
+
+            original_open = open
+            opened_sources = []
+
+            def record_source_open(filename, *args, **kwargs):
+                if isinstance(filename, (str, bytes, os.PathLike)) and os.fsdecode(filename).endswith(
+                    (".cu", ".apic.json")
+                ):
+                    opened_sources.append(os.fsdecode(filename))
+                return original_open(filename, *args, **kwargs)
+
+            @contextlib.contextmanager
+            def no_source_reads(stage):
+                # Record opens instead of raising so a broad exception handler cannot hide them.
+                opened_sources.clear()
+                with (
+                    mock.patch("builtins.open", side_effect=record_source_open),
+                    mock.patch("io.open", side_effect=record_source_open),
+                ):
+                    yield
+                self.assertEqual(opened_sources, [], f"{stage} must not open CUDA source artifacts")
+
+            for source_available in (True, False):
+                with self.subTest(source_available=source_available):
+                    module.unload()
+                    if not source_available:
+                        source_path.unlink()
+                    original_entries = set(TEST_CACHE_DIR.iterdir())
+                    with no_source_reads("AOT loading"):
+                        wp.load_aot_module(
+                            module, device=device, module_dir=TEST_CACHE_DIR, use_ptx=True, strip_hash=False
+                        )
+                    x = wp.zeros(8, dtype=wp.int32, device=device)
+                    wp.launch(
+                        warp.tests.aot.aux_test_strip_hash_option.add_one,
+                        dim=x.shape,
+                        inputs=[x],
+                        device=device,
+                    )
+                    np.testing.assert_array_equal(x.numpy(), np.ones(8, dtype=np.int32))
+                    self.assertEqual(set(TEST_CACHE_DIR.iterdir()), original_entries)
+
+                    x.zero_()
+                    with (
+                        no_source_reads("APIC capture"),
+                        wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture,
+                    ):
+                        wp.launch(
+                            warp.tests.aot.aux_test_strip_hash_option.add_one,
+                            dim=x.shape,
+                            inputs=[x],
+                            device=device,
+                        )
+                    with tempfile.TemporaryDirectory() as tmpdir:
+                        source_capture_path = os.path.join(tmpdir, "source_enabled")
+                        if source_available:
+                            info = next(iter(capture.graph._apic_capture.collected_modules.values()))
+                            artifact = info["cuda_compile_artifact"]
+                            original_recipe = dict(artifact["recipe"])
+                            with (
+                                mock.patch.object(wp.config, "verify_fp", not original_recipe["verify_fp"]),
+                                mock.patch.dict(
+                                    module.options,
+                                    {
+                                        "fast_math": not original_recipe["fast_math"],
+                                        "fuse_fp": not original_recipe["fuse_fp"],
+                                    },
+                                ),
+                            ):
+                                recipe = wp_context._apic_prepare_cuda_source(info)[-1]
+                                self.assertEqual(
+                                    {field: getattr(recipe, field) for field in original_recipe}, original_recipe
+                                )
+                                wp.capture_save(
+                                    capture.graph, source_capture_path, outputs={"x": x}, source_fallback=True
+                                )
+                                self.assertEqual(artifact["recipe"], original_recipe)
+                                binary_path = os.path.join(source_capture_path + "_modules", info["binary_filename"])
+                                with open(binary_path, "wb") as binary_file:
+                                    binary_file.write(b"intentionally invalid CUDA module")
+                                source_loaded = wp.capture_load(source_capture_path, device=device)
+                                wp.capture_launch(source_loaded)
+                                result = wp.zeros_like(x)
+                                source_loaded.get_param("x", result)
+                                np.testing.assert_array_equal(result.numpy(), np.ones(8, dtype=np.int32))
+                        else:
+                            with self.assertRaisesRegex(RuntimeError, "was missing when the module was loaded"):
+                                wp.capture_save(
+                                    capture.graph, source_capture_path, outputs={"x": x}, source_fallback=True
+                                )
+                            self.assertFalse(os.path.exists(source_capture_path + ".wrp"))
+                            self.assertFalse(os.path.exists(source_capture_path + "_modules"))
+
+                        binary_capture_path = os.path.join(tmpdir, "binary_only")
+                        with no_source_reads("Binary-only saving"):
+                            wp.capture_save(capture.graph, binary_capture_path, outputs={"x": x})
+                        loaded = wp.capture_load(binary_capture_path, device=device)
+                        wp.capture_launch(loaded)
+                        result = wp.zeros_like(x)
+                        loaded.get_param("x", result)
+                        np.testing.assert_array_equal(result.numpy(), np.ones(8, dtype=np.int32))
+        finally:
+            module.unload()
+            wp.set_module_options(original_options, module)
+            shutil.rmtree(TEST_CACHE_DIR, ignore_errors=True)
+
+    def test_load_unhashed_aot_cuda_rejects_source_fallback(self):
+        """Reject source export when AOT names cannot verify the compile recipe."""
+        if wp.get_cuda_device_count() == 0:
+            self.skipTest("No CUDA devices found")
+
+        device = wp.get_device("cuda:0")
+        if device.arch not in wp.get_cuda_supported_archs():
+            self.skipTest(f"NVRTC does not support sm_{device.arch}")
+
+        module = wp.get_module(warp.tests.aot.aux_test_strip_hash_option.__name__)
+        original_options = dict(wp.get_module_options(module))
+        try:
+            shutil.rmtree(TEST_CACHE_DIR, ignore_errors=True)
+            TEST_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+            wp.set_module_options({"block_dim": 256}, module)
+            wp.compile_aot_module(module, device=device, module_dir=TEST_CACHE_DIR, use_ptx=True, strip_hash=True)
+            module.unload()
+            wp.load_aot_module(module, device=device, module_dir=TEST_CACHE_DIR, use_ptx=True, strip_hash=True)
+            x = wp.zeros(8, dtype=wp.int32, device=device)
+            wp.launch(warp.tests.aot.aux_test_strip_hash_option.add_one, dim=x.shape, inputs=[x], device=device)
+            np.testing.assert_array_equal(x.numpy(), np.ones(8, dtype=np.int32))
+            x.zero_()
+            with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+                wp.launch(warp.tests.aot.aux_test_strip_hash_option.add_one, dim=x.shape, inputs=[x], device=device)
+            with tempfile.TemporaryDirectory() as tmpdir:
+                path = os.path.join(tmpdir, "unhashed")
+                with self.assertRaisesRegex(
+                    RuntimeError, "compile recipe cannot be verified because the module uses strip_hash=True"
+                ):
+                    wp.capture_save(capture.graph, path, outputs={"x": x}, source_fallback=True)
+                self.assertFalse(os.path.exists(path + ".wrp"))
+                self.assertFalse(os.path.exists(path + "_modules"))
+                wp.capture_save(capture.graph, path, outputs={"x": x})
+                loaded = wp.capture_load(path, device=device)
+                wp.capture_launch(loaded)
+                result = wp.zeros_like(x)
+                loaded.get_param("x", result)
+                np.testing.assert_array_equal(result.numpy(), np.ones(8, dtype=np.int32))
+        finally:
+            module.unload()
+            wp.set_module_options(original_options, module)
             shutil.rmtree(TEST_CACHE_DIR, ignore_errors=True)
 
     def test_compile_aot_module_returns_cpu_artifact_path(self):

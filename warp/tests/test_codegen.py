@@ -389,6 +389,19 @@ def test_range_constant():
     wp.expect_eq(s, -3)
 
 
+@wp.kernel
+def test_range_constant_empty():
+    count = int(0)
+
+    for _i in range(100, 2, 1):
+        count += 1
+
+    for _i in range(2, 100, -1):
+        count += 1
+
+    wp.expect_eq(count, 0)
+
+
 N = wp.constant(3)
 
 
@@ -2841,6 +2854,7 @@ add_kernel_test(
     devices=devices,
 )
 add_kernel_test(TestCodeGen, name="test_range_constant", kernel=test_range_constant, dim=1, devices=devices)
+add_kernel_test(TestCodeGen, name="test_range_constant_empty", kernel=test_range_constant_empty, dim=1, devices=devices)
 add_kernel_test(
     TestCodeGen,
     name="test_range_constant_dynamic_nested",

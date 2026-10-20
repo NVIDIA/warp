@@ -133,6 +133,11 @@ nitpick_ignore_regex = [
     (r"py:obj", r"warp\.(Texture\w+|fixedarray|indexedarray|indexedfabricarray|fabricarray|fem\.).*"),
     # Members inherited from IsoSurfaceBase, listed in member tables but documented on the base class
     (r"py:obj", r"warp\.geometry\.IsoSurface(MarchingCubes|Nets)\.(resize|surface|extract)"),
+    # FSAI inherits these attributes; their documentation is on LinearOperator.
+    (
+        r"py:obj",
+        r"warp\.optim\.linear\.FSAI\.(batch_count|batch_offsets|device|dtype|matvec|max_batch_length|scalar_type|shape)",
+    ),
     # Everything on the deprecated `wp.MarchingCubes` alias is inherited from, and
     # documented on, `warp.geometry.IsoSurfaceMarchingCubes`
     (r"py:(obj|attr)", r"warp\.MarchingCubes\..*"),

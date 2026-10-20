@@ -34,16 +34,18 @@ def _get_test_module_options():
 @wp.kernel
 def gather_address_kernel(
     values: wp.array[wp.float32],
+    other_values: wp.array[wp.float32],
     source_indices: wp.array[wp.int32],
     output: wp.array[wp.float32],
 ):
     """Read many output lanes from the same input lanes.
 
     The forward pass is a plain gather, but the generated backward pass scatters
-    output gradients back into ``values.grad`` with atomic additions.
+    output gradients back into both input gradients, which may share storage.
     """
     tid = wp.tid()
-    output[tid] = values[source_indices[tid]]
+    index = source_indices[tid]
+    output[tid] = values[index] + other_values[index]
 
 
 @wp.kernel
@@ -337,6 +339,29 @@ def custom_adjoint_store_kernel(
 
 
 @wp.func
+def _det_first_value(values: wp.array[wp.float32]) -> wp.float32:
+    return values[0]
+
+
+@wp.func
+def _det_double(x: wp.float32, values: wp.array[wp.float32]) -> wp.float32:
+    return 2.0 * x
+
+
+@wp.func_grad(_det_double)
+def _adj_det_double(x: wp.float32, values: wp.array[wp.float32], adj_ret: wp.float32):
+    wp.adjoint[x] += adj_ret * _det_first_value(values)
+    values[1] = adj_ret
+
+
+@wp.kernel
+def custom_adjoint_backward_access_kernel(x: wp.array[wp.float32], values: wp.array[wp.float32]):
+    """Accumulate into an array that only a custom adjoint reads and writes."""
+    tid = wp.tid()
+    wp.atomic_add(values, 0, _det_double(x[tid], values))
+
+
+@wp.func
 def _not_guaranteed_lookup_value(values: wp.array[wp.float32], index: int) -> wp.float32:
     return values[index]
 
@@ -392,9 +417,9 @@ def custom_adjoint_counter_kernel(
 
 
 @wp.func
-def _det_square_via_scratch(scratch: wp.array[wp.float32], x: wp.float32):
-    scratch[0] = x
-    return scratch[0] * scratch[0]
+def _det_square_via_scratch(scratch: wp.array[wp.float32], x: wp.float32, tid: int):
+    scratch[tid] = x
+    return scratch[tid] * scratch[tid]
 
 
 @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
@@ -403,7 +428,16 @@ def scratch_overwrite_grad_kernel(
     scratch: wp.array[wp.float32],
     loss: wp.array[wp.float32],
 ):
-    loss[0] = _det_square_via_scratch(scratch, x[0])
+    tid = wp.tid()
+    loss[tid] = _det_square_via_scratch(scratch, x[tid], tid)
+
+
+@wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
+def constant_scratch_kernel(x: wp.array[wp.float32], scratch: wp.array[wp.float32], y: wp.array[wp.float32]):
+    """Store a constant in scratch storage that has no gradient."""
+    tid = wp.tid()
+    scratch[tid] = 2.0
+    y[tid] = x[tid] * scratch[tid]
 
 
 def test_deterministic_backward_scatter_add(test, device):
@@ -435,7 +469,7 @@ def test_deterministic_backward_address_scatter(test, device):
     values_np = rng.random(value_count, dtype=np.float32)
     indices_np = rng.integers(0, value_count, size=n, dtype=np.int32)
     grad_np = rng.random(n, dtype=np.float32)
-    expected = _reference_scatter_add_float32(grad_np, indices_np, value_count)
+    expected = 2.0 * _reference_scatter_add_float32(grad_np, indices_np, value_count)
 
     values = wp.array(values_np, dtype=wp.float32, device=device, requires_grad=True)
     indices = wp.array(indices_np, dtype=wp.int32, device=device)
@@ -450,7 +484,9 @@ def test_deterministic_backward_address_scatter(test, device):
             output = wp.zeros(n, dtype=wp.float32, device=device, requires_grad=True)
             tape = wp.Tape()
             with tape:
-                wp.launch(gather_address_kernel, dim=n, inputs=[values, indices], outputs=[output], device=device)
+                wp.launch(
+                    gather_address_kernel, dim=n, inputs=[values, values, indices], outputs=[output], device=device
+                )
             tape.backward(grads={output: output_grad})
             results.append(tape.gradients[values].numpy().copy())
     finally:
@@ -468,7 +504,7 @@ def test_deterministic_backward_strided_adjoint_address_scatter(test, device):
     values_np = rng.random(value_count, dtype=np.float32)
     indices_np = rng.integers(0, value_count, size=n, dtype=np.int32)
     grad_np = rng.random(n, dtype=np.float32)
-    expected = _reference_scatter_add_float32(grad_np, indices_np, value_count)
+    expected = 2.0 * _reference_scatter_add_float32(grad_np, indices_np, value_count)
 
     values = wp.array(values_np, dtype=wp.float32, device=device, requires_grad=True)
     indices = wp.array(indices_np, dtype=wp.int32, device=device)
@@ -481,13 +517,13 @@ def test_deterministic_backward_strided_adjoint_address_scatter(test, device):
     old_det = _get_test_module_options()["deterministic"]
     try:
         _set_test_module_options({"deterministic": wp.DeterministicMode.GPU_TO_GPU})
-        wp.launch(gather_address_kernel, dim=n, inputs=[values, indices], outputs=[output], device=device)
+        wp.launch(gather_address_kernel, dim=n, inputs=[values, values, indices], outputs=[output], device=device)
         wp.launch(
             gather_address_kernel,
             dim=n,
-            inputs=[values, indices],
+            inputs=[values, values, indices],
             outputs=[output],
-            adj_inputs=[grad_view, None],
+            adj_inputs=[grad_view, grad_view, None],
             adj_outputs=[output_grad],
             device=device,
             adjoint=True,
@@ -593,7 +629,7 @@ def test_deterministic_parallel_slot_store_backward_rejected(test, device):
                 wp.launch(kernel, dim=n, inputs=[values], outputs=[output], device=device)
             np.testing.assert_array_equal(output.numpy(), np.ones(n, dtype=np.float32))
 
-            with test.assertRaisesRegex(RuntimeError, "Deterministic.*parallel backward"):
+            with test.assertRaisesRegex(wp.WarpDeterminismError, "backward pass.*in parallel"):
                 tape.backward(grads={output: wp.ones_like(output)})
             np.testing.assert_array_equal(values.grad.numpy(), np.zeros((*values.shape, 3), dtype=np.float32))
 
@@ -621,7 +657,7 @@ def test_recorded_deterministic_backward_respects_updated_dim(test, device):
     np.testing.assert_array_equal(values.grad.numpy(), expected)
 
     command.set_dim(n)
-    with test.assertRaisesRegex(RuntimeError, "Deterministic.*parallel backward.*mutation"):
+    with test.assertRaisesRegex(wp.WarpDeterminismError, "backward pass.*in parallel.*mutates"):
         command.launch()
     np.testing.assert_array_equal(values.grad.numpy(), expected)
 
@@ -662,7 +698,7 @@ def test_deterministic_sliced_store_backward_is_serial_only(test, device):
                 wp.launch(overwrite_sliced_component_then_read_original, n, [values, source, output], device=device)
             np.testing.assert_array_equal(output.numpy(), np.full(n, 7.0))
             if device.is_cuda and n > 1:
-                with test.assertRaisesRegex(RuntimeError, "Deterministic.*parallel backward.*mutation"):
+                with test.assertRaisesRegex(wp.WarpDeterminismError, "backward pass.*in parallel.*mutates"):
                     tape.backward(grads={output: wp.ones_like(output)})
             else:
                 tape.backward(grads={output: wp.ones_like(output)})
@@ -695,7 +731,7 @@ def test_deterministic_overlapping_arguments_backward_rejected(test, device):
                     device=device,
                 )
             if device.is_cuda and alias_kind != "distinct arrays":
-                with test.assertRaisesRegex(RuntimeError, "Deterministic.*parallel backward.*mutation"):
+                with test.assertRaisesRegex(wp.WarpDeterminismError, "backward pass.*in parallel.*mutates"):
                     tape.backward(grads={output: wp.ones_like(output)})
                 np.testing.assert_array_equal(src.grad.numpy(), np.zeros(n, dtype=np.float32))
             else:
@@ -759,7 +795,7 @@ def test_deterministic_backward_counter_store_rejected(test, device):
     with tape:
         wp.launch(counter_kernel, dim=n, inputs=[data, counter], outputs=[output], device=device)
 
-    with test.assertRaisesRegex(RuntimeError, "generated backward replay of consumed-return counter atomics"):
+    with test.assertRaisesRegex(wp.WarpDeterminismError, "cannot differentiate kernel .* automatically"):
         tape.backward(grads={output: wp.ones_like(output)})
 
 
@@ -773,7 +809,7 @@ def test_deterministic_backward_counter_manual_launch_rejected(test, device):
 
     wp.launch(counter_kernel, dim=n, inputs=[data, counter], outputs=[output], device=device)
 
-    with test.assertRaisesRegex(RuntimeError, "generated backward replay of consumed-return counter atomics"):
+    with test.assertRaisesRegex(wp.WarpDeterminismError, "cannot differentiate kernel .* automatically"):
         wp.launch(
             counter_kernel,
             dim=n,
@@ -924,7 +960,7 @@ def test_deterministic_custom_adjoint_component_negative_stride_rejected(test, d
     try:
         _set_test_module_options({"deterministic": wp.DeterministicMode.RUN_TO_RUN})
         wp.launch(custom_adjoint_component_gather_kernel, n, inputs=[values, indices], outputs=[output], device=device)
-        with test.assertRaisesRegex(RuntimeError, "negative-stride.*composite slot"):
+        with test.assertRaisesRegex(wp.WarpDeterminismError, "negative-stride"):
             wp.launch(
                 custom_adjoint_component_gather_kernel,
                 n,
@@ -964,7 +1000,7 @@ def test_deterministic_custom_adjoint_component_overwrite_is_serial_only(test, d
                     device=device,
                 )
             if device.is_cuda and n > 1:
-                with test.assertRaisesRegex(RuntimeError, "Deterministic.*parallel backward.*mutation"):
+                with test.assertRaisesRegex(wp.WarpDeterminismError, "backward pass.*in parallel.*mutates"):
                     tape.backward(grads={output: output_grad})
             else:
                 tape.backward(grads={output: output_grad})
@@ -1035,21 +1071,41 @@ def test_deterministic_custom_adjoint_store_function(test, device):
     np.testing.assert_allclose(tape.gradients[values].numpy(), 2.0 * values_np, rtol=0, atol=0)
 
 
+def test_deterministic_custom_adjoint_backward_only_access(test, device):
+    """Allow custom-adjoint accesses to an array that receives forward deferred updates."""
+    n = 16
+    x = wp.ones(n, dtype=wp.float32, device=device)
+    values = wp.zeros(2, dtype=wp.float32, device=device)
+    wp.launch(custom_adjoint_backward_access_kernel, dim=n, inputs=[x, values], device=device)
+    np.testing.assert_array_equal(values.numpy(), [2.0 * n, 0.0])
+
+
 def test_deterministic_scratch_overwrite_replay_gradient(test, device):
-    """Verify deterministic replay preserves gradients through overwritten scratch values."""
-    x = wp.array(np.array([3.0], dtype=np.float32), dtype=wp.float32, device=device, requires_grad=True)
-    scratch = wp.zeros(1, dtype=wp.float32, device=device, requires_grad=True)
-    loss = wp.zeros(1, dtype=wp.float32, device=device, requires_grad=True)
+    """Preserve scalar scratch gradients serially and reject unsafe parallel replay."""
+    for n in (1, 2):
+        with test.subTest(n=n):
+            x = wp.full(n, 3.0, device=device, requires_grad=True)
+            scratch = wp.zeros_like(x)
+            loss = wp.zeros_like(x)
+            with wp.Tape() as tape:
+                wp.launch(scratch_overwrite_grad_kernel, dim=n, inputs=[x, scratch], outputs=[loss], device=device)
+            np.testing.assert_array_equal(loss.numpy(), np.full(n, 9.0))
+            if device.is_cuda and n > 1:
+                with test.assertRaisesRegex(wp.WarpDeterminismError, "backward pass.*in parallel"):
+                    tape.backward(grads={loss: wp.ones_like(loss)})
+                np.testing.assert_array_equal(x.grad.numpy(), np.zeros(n))
+            else:
+                tape.backward(grads={loss: wp.ones_like(loss)})
+                np.testing.assert_array_equal(x.grad.numpy(), np.full(n, 6.0))
+                np.testing.assert_array_equal(scratch.grad.numpy(), np.zeros(n))
 
-    tape = wp.Tape()
-    with tape:
-        wp.launch(scratch_overwrite_grad_kernel, dim=1, inputs=[x, scratch], outputs=[loss], device=device)
-
-    tape.backward(grads={loss: wp.ones_like(loss)})
-
-    np.testing.assert_allclose(loss.numpy(), np.array([9.0], dtype=np.float32), rtol=0, atol=0)
-    np.testing.assert_allclose(tape.gradients[x].numpy(), np.array([6.0], dtype=np.float32), rtol=0, atol=0)
-    np.testing.assert_allclose(tape.gradients[scratch].numpy(), np.zeros(1, dtype=np.float32), rtol=0, atol=0)
+    # Without gradient storage, the overwritten array has no reduction to order.
+    x = wp.ones(2, dtype=wp.float32, device=device, requires_grad=True)
+    y = wp.zeros_like(x)
+    with wp.Tape() as tape:
+        wp.launch(constant_scratch_kernel, dim=2, inputs=[x, wp.zeros(2, device=device)], outputs=[y], device=device)
+    tape.backward(grads={y: wp.ones_like(y)})
+    np.testing.assert_array_equal(x.grad.numpy(), [2.0, 2.0])
 
 
 def test_custom_adjoint_not_guaranteed_mode(test, device):
@@ -1118,7 +1174,7 @@ def test_deterministic_custom_adjoint_consumed_counter_rejected(test, device):
     slots = wp.zeros(n, dtype=wp.int32, device=device)
     output = wp.zeros(n, dtype=wp.float32, device=device, requires_grad=True)
 
-    with test.assertRaisesRegex(RuntimeError, "consumed-return counter atomics"):
+    with test.assertRaisesRegex(wp.WarpDeterminismError, "cannot differentiate this kernel automatically"):
         tape = wp.Tape()
         with tape:
             wp.launch(
@@ -1155,7 +1211,6 @@ for _name in (
     "test_deterministic_single_thread_custom_adjoint_slot_store_backward",
     "test_deterministic_custom_adjoint_struct_field_component_gradient",
     "test_deterministic_custom_adjoint_store_function",
-    "test_deterministic_scratch_overwrite_replay_gradient",
 ):
     _add(_name)
 
@@ -1163,6 +1218,8 @@ _add("test_deterministic_backward_counter_store_rejected", devices=all_devices)
 _add("test_deterministic_backward_counter_manual_launch_rejected", devices=cuda_devices)
 _add("test_deterministic_custom_adjoint_consumed_counter_rejected", devices=all_devices)
 _add("test_custom_adjoint_not_guaranteed_mode", devices=all_devices)
+_add("test_deterministic_custom_adjoint_backward_only_access", devices=all_devices)
+_add("test_deterministic_scratch_overwrite_replay_gradient", devices=all_devices)
 _add("test_deterministic_custom_adjoint_component_overwrite_is_serial_only", devices=all_devices)
 _add("test_deterministic_sliced_store_backward_is_serial_only", devices=all_devices)
 _add("test_deterministic_overlapping_arguments_backward_rejected", devices=all_devices)

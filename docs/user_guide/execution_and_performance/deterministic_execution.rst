@@ -211,6 +211,12 @@ workflow:
    for each reservation and the final total for each touched counter element.
 4. Run the kernel again.  The atomic returns the deterministic slot.
 
+Both runs must make the same ``atomic_add()`` calls with the same counter
+element and increment.  Warp checks this after the second run and raises
+:class:`wp.WarpDeterminismError <warp.WarpDeterminismError>` if they differ.
+The failed launch may already have written its outputs, so discard or reset
+them.
+
 The prefix scan is the same concept as an exclusive scan in CUDA libraries.
 On CUDA, Warp's scan utilities are implemented with CUB primitives such as
 `CUB DeviceScan`_.
@@ -274,10 +280,10 @@ written in Warp code using supported atomic patterns:
         wp.adjoint[values][index] += adj_ret
 
 
-For kernels with composite component updates, deterministic mode rejects
-parallel CUDA backward passes that both mutate an array and accumulate into
-its gradient, including through aliases. Component overwrites consume the
-gradient at that point, so reductions cannot be deferred until after the kernel.
+Deterministic mode rejects parallel CUDA backward passes that both mutate an
+array and accumulate into its gradient, including through aliases. Element and
+component overwrites consume the gradient at that point, so reductions cannot be
+deferred until after the kernel.
 The check treats the whole array as one target; independent indices or
 components may still trigger it. Split mutation and gradient reduction into
 separate kernels. CPU and single-thread CUDA backward launches remain supported.
@@ -457,8 +463,9 @@ global default:
     wp.config.deterministic_max_records = 8
 
 If the runtime count exceeds the capacity, Warp truncates records and sets an
-overflow flag.  Outside CUDA graph capture, the launch reports this as an
-error.  For debugging capacity problems, enable:
+overflow flag.  Outside CUDA graph capture, the launch raises
+:class:`wp.WarpDeterminismError <warp.WarpDeterminismError>`.  For debugging
+capacity problems, enable:
 
 .. code:: python
 
@@ -488,9 +495,11 @@ There are a few details to know:
   full fixed-capacity buffer, including unused sentinel records.  This is
   correct but can be slower than ordinary non-captured launches, which sort
   only the emitted record prefix.
-* Overflow checks are disabled during graph capture and replay to keep graph
-  launches asynchronous.  Size buffers conservatively with
-  ``deterministic_max_records``.
+* Graph replay is asynchronous, so overflows and slot-assignment mismatches
+  cannot raise an exception.  Validate kernels with direct launches before
+  capturing them, and size buffers conservatively with
+  ``deterministic_max_records``.  ``wp.config.deterministic_debug`` prints
+  device-side diagnostics during replay.
 * Counter/slot-allocation kernels use sort and prefix-scan workspaces.  CUDA
   graph replay requires all temporary CUB storage used by captured work to
   remain valid for the lifetime of the graph.  Warp keeps these buffers alive
@@ -669,7 +678,9 @@ Limitations
 
 Deterministic mode is intentionally narrow.  It supports common reproducibility
 patterns without pretending that every parallel program can be made
-deterministic automatically.
+deterministic automatically.  Kernels that Warp cannot run safely raise
+:class:`wp.WarpDeterminismError <warp.WarpDeterminismError>`, a subclass of
+``RuntimeError``, when they are compiled or launched.
 
 Unsupported atomics
     ``wp.atomic_cas()``, ``wp.atomic_exch()``, and tile atomics such as
@@ -717,12 +728,24 @@ One reduction family per target
             wp.atomic_add(sum_out, 0, values[tid])
             wp.atomic_max(max_out, 0, values[tid])
 
+No direct access to atomic targets
+    Deterministic updates are applied after the kernel, so a kernel cannot also
+    read, write, tile-load, tile-store, or apply ordinary atomics to an array
+    that receives them.  The check applies to the whole array, including other
+    arguments, struct fields, and views that share its memory.  Separate
+    deterministic outputs must not overlap in memory either.  Use separate
+    arrays or split the work into separate kernels.
+
 Side effects in the counting pass
     Pattern 2 runs the kernel once just to count.  During this pass, Warp
     suppresses side effects such as array writes, non-counter atomics, and
     ``printf``.  If the number of slots a thread needs depends on scratch-array
-    writes performed earlier in the same kernel, rewrite the code to use local
-    variables or input arrays for that decision.
+    writes performed earlier in the same kernel, the two passes disagree and
+    the launch raises :class:`wp.WarpDeterminismError <warp.WarpDeterminismError>`.
+    Rewrite the code to use local variables or input arrays for that decision.
+    For the same reason, Pattern 2 kernels cannot use the return value of
+    ``wp.atomic_cas()``, ``wp.atomic_exch()``, or bitwise atomics; other
+    kernels can.
 
     .. code:: python
 

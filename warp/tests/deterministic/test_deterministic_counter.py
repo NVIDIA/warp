@@ -232,6 +232,27 @@ def local_scratch_counter_kernel(
             output[slot] = tid * 2 + i
 
 
+@wp.kernel(
+    module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN, "deterministic_max_records": 1}
+)
+def scratch_dependent_counter_kernel(
+    new_destinations: wp.array[wp.int32],
+    new_values: wp.array[wp.int32],
+    scratch_destinations: wp.array[wp.int32],
+    scratch_values: wp.array[wp.int32],
+    counters: wp.array[wp.int32],
+    output: wp.array[wp.int32],
+):
+    """Counter reservations must not depend on global scratch writes."""
+    tid = wp.tid()
+    scratch_destinations[tid] = new_destinations[tid]
+    scratch_values[tid] = new_values[tid]
+
+    value = scratch_values[tid]
+    if value > 0:
+        output[tid] = wp.atomic_add(counters, scratch_destinations[tid], value)
+
+
 @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
 def counter_with_atomic_xor_kernel(
     counter: wp.array[wp.int32],
@@ -247,7 +268,8 @@ def counter_with_atomic_xor_kernel(
 
 @wp.func
 def _det_set_flag(flag: wp.array[wp.int32], mask: wp.int32):
-    wp.atomic_xor(flag, 0, mask)
+    operation = wp.atomic_xor
+    operation(flag, 0, mask)
 
 
 @wp.func
@@ -293,6 +315,27 @@ def counter_with_consumed_atomic_xor_kernel(
     if f != 0:
         slot = wp.atomic_add(counter, 0, 1)
         output[slot] = tid
+
+
+@wp.func
+def _det_claim(flags: wp.array[wp.int32], index: int) -> wp.int32:
+    return wp.atomic_cas(flags, index, 0, 1)
+
+
+@wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
+def claim_with_counter_kernel(flags: wp.array[wp.int32], counter: wp.array[wp.int32], output: wp.array[wp.int32]):
+    """Counter kernel that consumes a helper's atomic_cas() return."""
+    tid = wp.tid()
+    claimed = _det_claim(flags, tid)
+    slot = wp.atomic_add(counter, 0, 1)
+    output[slot] = claimed
+
+
+@wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
+def claim_without_counter_kernel(flags: wp.array[wp.int32], output: wp.array[wp.int32]):
+    """Single-pass kernel that consumes a helper's atomic_cas() return."""
+    tid = wp.tid()
+    output[tid] = _det_claim(flags, tid)
 
 
 @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
@@ -512,6 +555,38 @@ def test_counter_phase0_preserves_local_scratch_writes(test, device):
     np.testing.assert_array_equal(output.numpy(), np.arange(2 * n, dtype=np.int32))
 
 
+def test_counter_replay_divergence_rejected(test, device):
+    """Reject counter reservations that change between deterministic passes."""
+    cases = {
+        "extra record": (0, 0, 0, 1),
+        "missing record": (0, 1, 0, 0),
+        "destination mismatch": (0, 1, 1, 1),
+        "value mismatch": (0, 1, 0, 2),
+    }
+
+    new_destinations = wp.empty(1, dtype=wp.int32, device=device)
+    new_values = wp.empty(1, dtype=wp.int32, device=device)
+    scratch_destinations = wp.empty(1, dtype=wp.int32, device=device)
+    scratch_values = wp.empty(1, dtype=wp.int32, device=device)
+    counters = wp.zeros(2, dtype=wp.int32, device=device)
+    output = wp.empty(1, dtype=wp.int32, device=device)
+
+    for name, (initial_destination, initial_value, new_destination, new_value) in cases.items():
+        with test.subTest(name=name):
+            new_destinations.fill_(new_destination)
+            new_values.fill_(new_value)
+            scratch_destinations.fill_(initial_destination)
+            scratch_values.fill_(initial_value)
+            counters.zero_()
+            with test.assertRaisesRegex(wp.WarpDeterminismError, "called atomic_add\\(\\) differently"):
+                wp.launch(
+                    scratch_dependent_counter_kernel,
+                    dim=1,
+                    inputs=[new_destinations, new_values, scratch_destinations, scratch_values, counters, output],
+                    device=device,
+                )
+
+
 def test_counter_phase0_skips_unconsumed_bitwise_atomics(test, device):
     """Verify unconsumed bitwise atomics in counter kernels fire once, not twice."""
     for kernel in (counter_with_atomic_xor_kernel, counter_with_helper_atomic_xor_kernel):
@@ -524,6 +599,9 @@ def test_counter_phase0_skips_unconsumed_bitwise_atomics(test, device):
             test.assertEqual(int(flag.numpy()[0]), 1)
             test.assertEqual(int(counter.numpy()[0]), 1)
             test.assertEqual(int(output.numpy()[0]), 0)
+
+            with test.assertRaisesRegex(wp.WarpDeterminismError, "overlaps argument 'flag'"):
+                wp.launch(kernel, dim=1, inputs=[counter, counter], outputs=[output], device=device)
 
 
 def test_counter_function_parameter_unconsumed_atomic(test, device):
@@ -553,12 +631,13 @@ def test_counter_function_parameter_unconsumed_atomic(test, device):
 
 
 def test_counter_consumed_bitwise_atomic_rejected(test, device):
-    """Verify that consuming a bitwise atomic return inside a two-pass body must be rejected."""
+    """Reject consumed side-effect atomic returns only in kernels that assign slots."""
     flag = wp.full(1, value=1, dtype=wp.int32, device=device)
     counter = wp.zeros(1, dtype=wp.int32, device=device)
     output = wp.full(1, value=-1, dtype=wp.int32, device=device)
 
-    with test.assertRaisesRegex(Exception, r"wp\.atomic_xor"):
+    # The error points at the statement that uses the return value, and at the helper's call.
+    with test.assertRaisesRegex(wp.WarpDeterminismError, r"(?s)f = wp\.atomic_xor\(flag, 0, 1\).*wp\.atomic_xor"):
         wp.launch(
             counter_with_consumed_atomic_xor_kernel,
             dim=1,
@@ -566,6 +645,16 @@ def test_counter_consumed_bitwise_atomic_rejected(test, device):
             outputs=[output],
             device=device,
         )
+    with test.assertRaisesRegex(
+        wp.WarpDeterminismError, r"(?s)claimed = _det_claim\(flags, tid\).*wp\.atomic_cas\(\) in _det_claim\(\) at "
+    ):
+        wp.launch(claim_with_counter_kernel, dim=1, inputs=[flag, counter], outputs=[output], device=device)
+
+    flags = wp.zeros(2, dtype=wp.int32, device=device)
+    claimed = wp.full(2, value=-1, dtype=wp.int32, device=device)
+    wp.launch(claim_without_counter_kernel, dim=2, inputs=[flags], outputs=[claimed], device=device)
+    np.testing.assert_array_equal(flags.numpy(), [1, 1])
+    np.testing.assert_array_equal(claimed.numpy(), [0, 0])
 
 
 def test_counter_phase0_suppresses_component_stores(test, device):
@@ -601,7 +690,7 @@ def test_deterministic_float_slot_augassign_rejected(test, device):
     values = wp.zeros(1, dtype=wp.vec3, device=device)
     x = wp.ones(1, dtype=wp.float32, device=device)
 
-    with test.assertRaisesRegex(Exception, "floating-point composite slot augmented assignment atomics"):
+    with test.assertRaisesRegex(wp.WarpDeterminismError, "floating-point composite slot augmented assignment atomics"):
         wp.launch(deterministic_float_slot_augassign_kernel, dim=1, inputs=[values, x], device=device)
 
 
@@ -839,7 +928,7 @@ def test_counter_indexed_dynamic_loop(test, device):
 
 def test_counter_int64_rejected(test, device):
     """Verify unsupported non-int32 consumed-return counters fail clearly."""
-    with test.assertRaisesRegex(Exception, "int32 counter arrays"):
+    with test.assertRaisesRegex(wp.WarpDeterminismError, "counter is not an int32 array"):
 
         @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
         def counter_int64_kernel(
@@ -858,7 +947,7 @@ def test_counter_int64_rejected(test, device):
 
 def test_counter_non_add_atomic_rejected(test, device):
     """Verify consumed-return deterministic counters only accept ``atomic_add``."""
-    with test.assertRaisesRegex(Exception, "only for atomic_add"):
+    with test.assertRaisesRegex(wp.WarpDeterminismError, "supports only the return value of wp.atomic_add"):
 
         @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
         def counter_sub_kernel(
@@ -874,7 +963,7 @@ def test_counter_non_add_atomic_rejected(test, device):
         output = wp.zeros(8, dtype=wp.float32, device=device)
         wp.launch(counter_sub_kernel, dim=8, inputs=[counter], outputs=[output], device=device)
 
-    with test.assertRaisesRegex(Exception, "only for atomic_add"):
+    with test.assertRaisesRegex(wp.WarpDeterminismError, "supports only the return value of wp.atomic_add"):
 
         @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
         def counter_max_kernel(
@@ -893,9 +982,9 @@ def test_counter_non_add_atomic_rejected(test, device):
 
 def test_float_atomic_consumed_return_rejected(test, device):
     """Verify float atomics with consumed-not-assigned returns fail clearly."""
-    pattern = "consumed-return counter atomics only for int32 counter arrays"
+    pattern = "counter is not an int32 array"
 
-    with test.assertRaisesRegex(Exception, pattern):
+    with test.assertRaisesRegex(wp.WarpDeterminismError, pattern):
 
         @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
         def float_leader_if_kernel(
@@ -911,7 +1000,7 @@ def test_float_atomic_consumed_return_rejected(test, device):
         log = wp.zeros(1, dtype=wp.int32, device=device)
         wp.launch(float_leader_if_kernel, dim=8, inputs=[total], outputs=[log], device=device)
 
-    with test.assertRaisesRegex(Exception, pattern):
+    with test.assertRaisesRegex(wp.WarpDeterminismError, pattern):
 
         @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
         def float_nested_call_in_if_kernel(
@@ -927,7 +1016,7 @@ def test_float_atomic_consumed_return_rejected(test, device):
         out = wp.zeros(8, dtype=wp.float32, device=device)
         wp.launch(float_nested_call_in_if_kernel, dim=8, inputs=[total], outputs=[out], device=device)
 
-    with test.assertRaisesRegex(Exception, pattern):
+    with test.assertRaisesRegex(wp.WarpDeterminismError, pattern):
 
         @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
         def float_nested_bare_atomic_kernel(
@@ -1035,7 +1124,7 @@ def test_counter_mixed_same_target_integer_atomic_rejected(test, device):
     counter = wp.zeros(1, dtype=wp.int32, device=device)
     output = wp.full(64, value=-1, dtype=wp.int32, device=device)
 
-    with test.assertRaisesRegex(RuntimeError, "ordinary integer atomic side effects"):
+    with test.assertRaisesRegex(wp.WarpDeterminismError, "used both to assign slots"):
         wp.launch(mixed_same_counter_int_atomic_kernel, dim=64, inputs=[counter], outputs=[output], device=device)
 
 
@@ -1065,6 +1154,26 @@ def test_int_atomic_passthrough(test, device):
 class TestDeterministicCounter(DeterministicTestBase):
     """Test deterministic consumed-return counter lowering."""
 
+    def test_counter_target_access_rejected(self):
+        """Reject direct counter-target access before the atomic and through helpers."""
+
+        @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
+        def read_first_kernel(counter: wp.array[wp.int32], output: wp.array[wp.int32]):
+            value = counter[0]
+            slot = wp.atomic_add(counter, 0, 1)
+            output[slot] = value
+
+        @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
+        def helper_store_kernel(counter: wp.array[wp.int32], output: wp.array[wp.int32]):
+            slot = wp.atomic_add(counter, 0, 1)
+            _det_set_int_scratch(counter, 0, 0)
+            output[slot] = slot
+
+        for kernel, operation in ((read_first_kernel, "read directly"), (helper_store_kernel, "written directly")):
+            with self.subTest(kernel=kernel.key):
+                with self.assertRaisesRegex(wp.WarpDeterminismError, f"is also {operation}"):
+                    wp.load_module(module=kernel.module, device="cpu")
+
 
 def _add(name, devices=cuda_devices):
     add_function_test(TestDeterministicCounter, name, globals()[name], devices=devices)
@@ -1076,6 +1185,7 @@ for _name in (
     "test_counter_reproducibility",
     "test_counter_phase0_suppresses_array_writes",
     "test_counter_phase0_preserves_local_scratch_writes",
+    "test_counter_replay_divergence_rejected",
     "test_counter_phase0_skips_unconsumed_bitwise_atomics",
     "test_counter_function_parameter_unconsumed_atomic",
     "test_counter_consumed_bitwise_atomic_rejected",

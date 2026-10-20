@@ -38,9 +38,7 @@ except ImportError:
 
 # The following variables are NVIDIA Modifications
 START_DIRECTORY = os.path.join(os.path.dirname(__file__), "..")  # The directory to start test discovery
-_SUITE_TIMEOUT = (
-    3600  # Timeout in seconds: total wall-clock limit for parallel execution, per-suite limit during isolated fallback
-)
+_DEFAULT_TIMEOUT = 3600  # Default for --timeout, in seconds
 _WARP_CACHE_PATH_ENV = "WARP_CACHE_PATH"
 
 
@@ -177,6 +175,14 @@ def main(argv=None):
         "isolated single-process pools. Slow; mainly to salvage partial results. "
         "Off by default: a crash fails loudly instead.",
     )  # NVIDIA Modification
+    group_parallel.add_argument(
+        "--timeout",
+        metavar="SECONDS",
+        type=int,
+        default=_DEFAULT_TIMEOUT,
+        help="Total wall-clock limit for parallel execution, and the per-suite limit "
+        f"with --fallback-on-crash (default is {_DEFAULT_TIMEOUT})",
+    )  # NVIDIA Modification
     group_coverage = parser.add_argument_group("coverage options")
     group_coverage.add_argument("--coverage", action="store_true", help="Run tests with coverage")
     group_coverage.add_argument("--coverage-branch", action="store_true", help="Run tests with branch coverage")
@@ -201,6 +207,8 @@ def main(argv=None):
         parser.error("--isolate-test-processes requires Python 3.11 or newer")
     if args.isolate_test_processes and args.serial_fallback:
         parser.error("--isolate-test-processes cannot be used with --serial-fallback")
+    if args.timeout <= 0:
+        parser.error("--timeout must be positive")
 
     if args.coverage_branch:
         args.coverage = args.coverage_branch
@@ -295,7 +303,7 @@ def main(argv=None):
                     test_manager = ParallelTestManager(manager, args, temp_dir)
                     # Iterate results explicitly so we can report which suite timed out
                     try:
-                        for result in executor.map(test_manager.run_tests, test_suites, timeout=_SUITE_TIMEOUT):
+                        for result in executor.map(test_manager.run_tests, test_suites, timeout=args.timeout):
                             results.append(result)
                     except concurrent.futures.TimeoutError:
                         _kill_process_pool(executor)
@@ -306,7 +314,7 @@ def main(argv=None):
                 total = len(test_suites)
                 suite_name = _get_suite_name(test_suites[pending_index]) if pending_index < total else "unknown"
                 print(
-                    f"Warning: Parallel execution timed out (total timeout={_SUITE_TIMEOUT}s). "
+                    f"Warning: Parallel execution timed out (total timeout={args.timeout}s). "
                     f"Next pending result was suite "
                     f"{pending_index + 1}/{total} ({suite_name}), "
                     f"but a different suite may be the actual blocker.",
@@ -361,17 +369,17 @@ def main(argv=None):
                         ) as executor:
                             future = executor.submit(fallback_manager.run_tests, suite)
                             try:
-                                result = future.result(timeout=_SUITE_TIMEOUT)
+                                result = future.result(timeout=args.timeout)
                                 results.append(result)
                             except concurrent.futures.TimeoutError:
                                 _kill_process_pool(executor)
                                 suite_name = _get_suite_name(suite)
                                 print(
-                                    f"Warning: Isolated test suite {i + 1}/{len(test_suites)} ({suite_name}) timed out (timeout={_SUITE_TIMEOUT}s). Marking tests as crashed.",
+                                    f"Warning: Isolated test suite {i + 1}/{len(test_suites)} ({suite_name}) timed out (timeout={args.timeout}s). Marking tests as crashed.",
                                     file=sys.stderr,
                                 )
                                 crash_result = create_crash_result(
-                                    suite, reason=f"Process timed out (timeout={_SUITE_TIMEOUT}s)"
+                                    suite, reason=f"Process timed out (timeout={args.timeout}s)"
                                 )
                                 results.append(crash_result)
                             except BrokenProcessPool:

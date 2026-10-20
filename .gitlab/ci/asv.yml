@@ -98,6 +98,13 @@ linux-x86_64 cu13 asv build:
     - printf "%s\n" "$COMPARE_REF_SOURCE" > _wheels/compare_ref.source
     - printf "%s\n" "$COMPARE_REF_SHA" > _wheels/compare_ref.sha
     - printf "%s\n" "$CI_COMMIT_SHA" > _wheels/target_ref.sha
+    # Count against the pinned baseline here; benchmark checkouts can be shallow.
+    - |
+      if [ "$(git rev-parse --is-shallow-repository)" = "false" ]; then
+        git rev-list --count "$CI_COMMIT_SHA..$COMPARE_REF_SHA" > _wheels/compare_ref.behind_count
+      else
+        echo unknown > _wheels/compare_ref.behind_count
+      fi
     - ls -la _wheels/
   artifacts:
     paths:
@@ -134,6 +141,7 @@ linux-x86_64 cu13 asv build:
     - test -s _wheels/target_ref.sha || { echo "missing target ref SHA from asv build artifact"; exit 1; }
     - COMPARE_REF_SOURCE="$(cat _wheels/compare_ref.source)"
     - COMPARE_REF_SHA="$(cat _wheels/compare_ref.sha)"
+    - COMPARE_BEHIND_COUNT="$(cat _wheels/compare_ref.behind_count 2>/dev/null || echo unknown)"
     - TARGET_REF_SHA="$(cat _wheels/target_ref.sha)"
     - 'echo "COMPARE_REF_SOURCE value: ${COMPARE_REF_SOURCE}"'
     - 'echo "COMPARE_REF_SHA value: ${COMPARE_REF_SHA}"'
@@ -185,11 +193,22 @@ linux-x86_64 cu13 asv build:
         # rc=1: regressions detected. rc>1: benchmark failures (e.g. a new
         # benchmark uses an API not yet on the compare ref). In both cases,
         # print a comparison table for the benchmarks that did run successfully,
-        # then propagate the original exit status.
+        # then propagate the original exit status after the comparison context.
         uvx asv compare -v --split "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>&1 || true
-        exit "$rc"
       fi
-    - 'date -u +"asv continuous end:   %FT%TZ"'
+      date -u +"asv continuous end:   %FT%TZ"
+      printf '\nComparison context:\n'
+      printf '  Baseline: %s@%s\n' "$COMPARE_REF_SOURCE" "$COMPARE_REF_SHA"
+      printf '  Candidate: %s\n' "$CI_COMMIT_SHA"
+      printf '  Commits behind tested baseline: %s\n' "$COMPARE_BEHIND_COUNT"
+      case "$COMPARE_BEHIND_COUNT" in
+        0|unknown) ;;
+        *)
+          printf '\nPerformance differences may reflect missing upstream changes.\n'
+          echo "Rebase and rerun to determine whether flagged slowdowns persist."
+          ;;
+      esac
+      exit "$rc"
   artifacts:
     paths:
       - asv/results/

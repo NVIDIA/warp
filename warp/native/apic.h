@@ -86,6 +86,20 @@ WP_API void wp_apic_register_module(
     APICState* state, const char* module_hash, const char* module_name, const char* binary_filename, int target_arch
 );
 
+// Attach portable CUDA artifacts to a previously registered module. Digests
+// are lowercase SHA-256 hex strings. Empty source fields make the module
+// binary-only and ``fallback_reason`` explains why.
+WP_API void wp_apic_register_cuda_module_artifacts(
+    APICState* state,
+    const char* module_hash,
+    const char* binary_digest,
+    const char* source_filename,
+    const char* source_digest,
+    int binary_kind,
+    int fallback_reason,
+    const APICCudaCompileRecipe* compile_recipe
+);
+
 WP_API void wp_apic_register_kernel(
     APICState* state,
     const char* kernel_key,
@@ -182,7 +196,31 @@ WP_API uint32_t wp_apic_get_operation_count(APICState* state);
 
 // device_type: APICDeviceType value (APIC_DEVICE_CUDA=0, APIC_DEVICE_CPU=1).
 // context is ignored for APIC_DEVICE_CPU.
+// The original entry point loads packaged and previously cached CUDA binaries
+// but does not compile source.
 WP_API APICGraph* wp_apic_load_graph(void* context, const char* path, int device_type);
+
+// One compiled module passed to wp_apic_load_graph_from_bytes(). `filename` is
+// the module's filename as recorded in the .wrp, which is also its name in the
+// <stem>_modules/ directory written by capture_save().
+struct APICModuleBytes {
+    const char* filename;
+    const void* data;
+    size_t size;
+};
+
+// Load a .wrp graph from host memory, matching CUDA modules by their recorded
+// filenames. Unused module entries are ignored. Buffers must remain unchanged
+// during the call and may be released afterward.
+// For CPU graphs, load objects with wp_load_obj_from_bytes() and register
+// their kernels with wp_apic_register_loaded_cpu_kernel().
+WP_API APICGraph* wp_apic_load_graph_from_bytes(
+    void* context, const void* data, size_t size, const APICModuleBytes* modules, uint32_t num_modules, int device_type
+);
+
+// The extended entry point may compile retained CUDA source. warp_include_dir
+// must name the native-header directory for the exact linked Warp version.
+WP_API APICGraph* wp_apic_load_graph_ex(void* context, const char* path, int device_type, const char* warp_include_dir);
 WP_API void wp_apic_destroy_graph(APICGraph* graph);
 
 WP_API bool wp_apic_set_param(APICGraph* graph, const char* name, const void* data, size_t size);

@@ -397,6 +397,43 @@ Example: General Matrix Multiply (GEMM)
         print("Example matrix multiplication passed")
 
 
+Reduced-Precision Matrix Multiply (TF32)
+----------------------------------------
+
+The ``precision`` keyword of :func:`tile_matmul <warp._src.lang.tile_matmul>` defaults to
+``"default"``, which computes in the tile data type. Passing ``precision="tf32"`` uses reduced
+TF32 input precision with ``float32`` accumulation. Tile storage remains ``float32``, and the
+backward pass uses the same precision for its matrix products. Tensor Core use depends on
+the GEMM configuration.
+
+.. testcode:: tile_matmul_tf32
+    :skipif: wp.get_cuda_device_count() == 0 or wp.get_cuda_device().get_cuda_compile_arch() < 80
+
+    import numpy as np
+    import warp as wp
+
+    @wp.kernel(module="unique")
+    def tile_gemm_tf32(A: wp.array2d[float], B: wp.array2d[float], C: wp.array2d[float]):
+        a = wp.tile_load(A, shape=(32, 32))
+        b = wp.tile_load(B, shape=(32, 32))
+        c = wp.tile_matmul(a, b, precision="tf32")
+        wp.tile_store(C, c)
+
+    A = wp.full((32, 32), 1.25, dtype=wp.float32, device="cuda:0")
+    B = wp.full((32, 32), 2.0, dtype=wp.float32, device="cuda:0")
+    C = wp.empty((32, 32), dtype=wp.float32, device="cuda:0")
+    wp.launch_tiled(tile_gemm_tf32, dim=1, inputs=[A, B, C], block_dim=64, device="cuda:0")
+    np.testing.assert_allclose(C.numpy(), 80.0)
+
+Accuracy depends on the inputs and application; performance depends on the GPU and workload.
+Check results and benchmark both precision settings for your application.
+
+TF32 requires the cuBLASDx GEMM and a CUDA compile target of compute capability 8.0 or higher.
+On the CPU, Warp computes in ``float32`` and logs a warning when the module is compiled.
+See :func:`tile_matmul <warp._src.lang.tile_matmul>` for other fallback cases and datatype
+requirements.
+
+
 Tile Operations
 ---------------
 
@@ -1135,6 +1172,10 @@ only when it depends on a block having *more than one* lane. That dependence
 enters in three ways. The CPU and GPU outputs are shown as comments. Enabling CPU
 blocks with the same explicit dimension exercises the cooperative behavior, but
 portable applications should not assume that the experimental option is enabled.
+
+Separately from the lane count, ``precision="tf32"`` in
+:func:`tile_matmul <warp._src.lang.tile_matmul>` can also produce different CPU and GPU results,
+because only the CUDA cuBLASDx path honors it; see `Reduced-Precision Matrix Multiply (TF32)`_.
 
 **Problem 1: arithmetic that uses** ``block_dim`` **or the lane index.** On CPU,
 :func:`wp.block_dim() <warp._src.lang.block_dim>` returns ``1`` and the lane index (the

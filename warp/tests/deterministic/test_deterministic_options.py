@@ -347,7 +347,7 @@ def test_scatter_capacity_overflow_rejected(test, device):
     test.assertIsNotNone(meta)
     test.assertTrue(meta.has_scatter)
 
-    with test.assertRaisesRegex(RuntimeError, "int32 limit"):
+    with test.assertRaisesRegex(wp.WarpDeterminismError, "needs .* atomic-update slots"):
         wp_deterministic.allocate_scatter_buffers(
             meta.scatter_targets,
             meta,

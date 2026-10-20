@@ -502,6 +502,9 @@ class TetrahedronPolynomialShapeFunctions(TetrahedronShapeFunction):
 
         return None
 
+    def make_node_dual_weight(self):
+        return self._make_unit_node_dual_weight()
+
     def element_node_tets(self):
         if self.ORDER == 1:
             element_tets = [[0, 1, 2, 3]]
@@ -658,6 +661,9 @@ class TetrahedronNonConformingPolynomialShapeFunctions(ShapeFunction):
 
         return element_inner_weight_gradient
 
+    def make_node_dual_weight(self):
+        return self._make_unit_node_dual_weight()
+
 
 class TetrahedronNedelecFirstKindShapeFunctions(TetrahedronShapeFunction):
     """Nédélec first-kind (edge) shape functions on tetrahedral elements for H(curl) spaces."""
@@ -778,6 +784,16 @@ class TetrahedronNedelecFirstKindShapeFunctions(TetrahedronShapeFunction):
 
         return None
 
+    def make_node_dual_weight(self):
+        vec_type = cache.cached_vec_type(3, self.scalar_type)
+
+        @cache.dynamic_func(suffix=self.name)
+        def node_edge_tangent(node_index_in_elt: int):
+            c1, c2 = TetrahedronShapeFunction.edge_vidx(node_index_in_elt)
+            return vec_type(self._vertex_coords(c2)) - vec_type(self._vertex_coords(c1))
+
+        return self._make_normalized_node_dual_weight(node_edge_tangent)
+
 
 class TetrahedronRaviartThomasShapeFunctions(TetrahedronShapeFunction):
     """Raviart-Thomas (face) shape functions on tetrahedral elements for H(div) spaces."""
@@ -887,3 +903,17 @@ class TetrahedronRaviartThomasShapeFunctions(TetrahedronShapeFunction):
             return cache.get_func(element_inner_weight_gradient_linear, self.name)
 
         return None
+
+    def make_node_dual_weight(self):
+        vec_type = cache.cached_vec_type(3, self.scalar_type)
+
+        @cache.dynamic_func(suffix=self.name)
+        def node_face_normal(node_index_in_elt: int):
+            v = (node_index_in_elt + 3) % 4
+
+            p0 = vec_type(self._vertex_coords((v + 1) % 4))
+            p1 = vec_type(self._vertex_coords((v + 2) % 4))
+            p2 = vec_type(self._vertex_coords((v + 3) % 4))
+            return wp.cross(p1 - p0, p2 - p0)
+
+        return self._make_normalized_node_dual_weight(node_face_normal)
