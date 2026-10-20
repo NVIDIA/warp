@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import unittest
+from typing import Any
 
 import numpy as np
 
@@ -248,6 +249,117 @@ def test_tile_view_shared_assign_column_backward(test, device):
     # column would accumulate an extra gradient contribution, yielding 2.0.
     expected_grad = np.ones_like(src_np)
     assert_np_equal(src.grad.numpy(), expected_grad, tol=1e-6)
+
+
+@wp.kernel
+def test_tile_assign_broadcast_rows_kernel(src: wp.array2d[float], dst: wp.array2d[float]):
+    """Assign a row broadcast along axis 0 into a shared tile and store it."""
+    row = wp.tile_load(src, shape=(1, TILE_O), storage="shared")
+    dest = wp.tile_zeros(shape=(TILE_M, TILE_O), dtype=float, storage="shared")
+    wp.tile_assign(dest, wp.tile_broadcast(row, shape=(TILE_M, TILE_O)))
+    wp.tile_store(dst, dest)
+
+
+@wp.kernel
+def test_tile_assign_broadcast_cols_kernel(src: wp.array2d[float], dst: wp.array2d[float]):
+    """Assign a column broadcast along axis 1 into a shared tile and store it."""
+    col = wp.tile_load(src, shape=(TILE_M, 1), storage="shared")
+    dest = wp.tile_zeros(shape=(TILE_M, TILE_N), dtype=float, storage="shared")
+    wp.tile_assign(dest, wp.tile_broadcast(col, shape=(TILE_M, TILE_N)))
+    wp.tile_store(dst, dest)
+
+
+def test_tile_assign_broadcast_backward(test, device):
+    """Verify ``wp.tile_assign()`` backward sums gradients over all broadcast positions.
+
+    Every element of a broadcast source aliases several destination positions,
+    so its gradient must receive all of their upstream gradients. At
+    ``block_dim=32`` these shapes place aliasing positions in the same warp
+    (four lanes per column in the row case, all 32 lanes in the column case),
+    so a non-atomic accumulation loses updates on CUDA on every run.
+    CPU runs cannot expose that race but still check the summed values.
+    ``block_dim=32`` also matches the other launches in this module, so the
+    test does not add another build of the module.
+    """
+    cases = (
+        (test_tile_assign_broadcast_rows_kernel, (1, TILE_O), (TILE_M, TILE_O), 0),
+        (test_tile_assign_broadcast_cols_kernel, (TILE_M, 1), (TILE_M, TILE_N), 1),
+    )
+
+    for kernel, src_shape, dst_shape, broadcast_axis in cases:
+        src_np = np.arange(1, np.prod(src_shape) + 1, dtype=np.float32).reshape(src_shape)
+        src = wp.array(src_np, dtype=float, requires_grad=True, device=device)
+        dst = wp.zeros(dst_shape, dtype=float, requires_grad=True, device=device)
+
+        with wp.Tape() as tape:
+            wp.launch_tiled(kernel, dim=[1], inputs=[src, dst], block_dim=32, device=device)
+
+        np.testing.assert_allclose(dst.numpy(), np.broadcast_to(src_np, dst_shape), err_msg=kernel.key)
+
+        # distinct integer upstream gradients keep every partial sum exact in float32
+        dst_grad_np = np.arange(1, np.prod(dst_shape) + 1, dtype=np.float32).reshape(dst_shape)
+        dst.grad = wp.array(dst_grad_np, dtype=float, device=device)
+        tape.backward()
+
+        expected_grad = dst_grad_np.sum(axis=broadcast_axis, keepdims=True)
+        np.testing.assert_allclose(src.grad.numpy(), expected_grad, err_msg=kernel.key)
+
+
+@wp.kernel(module="unique")
+def test_tile_assign_broadcast_mixed_dtype_kernel(src: wp.array2d[Any], dst: wp.array2d[Any]):
+    row = wp.tile_load(src, shape=(1, 3), storage="shared")
+    dest = wp.tile_zeros(shape=(2, 3), dtype=dst.dtype, storage="shared")
+    wp.tile_assign(dest, wp.tile_broadcast(row, shape=(2, 3)))
+    wp.tile_store(dst, dest)
+
+
+def test_tile_assign_broadcast_mixed_dtype(test, device):
+    """Convert broadcast values and accumulate gradients across different floating-point dtypes.
+
+    Warp generates backward code by default even for forward-only launches
+    without gradient tracking. Launch each dtype pair without gradients first
+    to check that the generated backward code compiles, then run a backward
+    pass to verify conversion and accumulation into the source gradient dtype.
+    """
+    dtype_pairs = ((np.float64, np.float32), (np.float32, np.float64))
+
+    for src_dtype, dst_dtype in dtype_pairs:
+        with test.subTest(src_dtype=src_dtype, dst_dtype=dst_dtype):
+            src_np = np.array([[1.1, 2.2, -3.3]], dtype=src_dtype)
+            src = wp.array(src_np, device=device)
+            dst = wp.zeros((2, 3), dtype=wp.dtype_from_numpy(dst_dtype), device=device)
+
+            # Forward launches also generate backward code by default, even without gradients.
+            wp.launch_tiled(
+                test_tile_assign_broadcast_mixed_dtype_kernel,
+                dim=1,
+                inputs=[src, dst],
+                block_dim=32,
+                device=device,
+            )
+            expected = np.broadcast_to(src_np.astype(dst_dtype), (2, 3))
+            np.testing.assert_array_equal(dst.numpy(), expected)
+
+            # Preserve forward coverage when float64 source gradients need unsupported atomics.
+            if device.is_cuda and src_dtype is np.float64 and device.get_cuda_compile_arch() < 60:
+                test.skipTest(
+                    "Float64 gradient atomics require a CUDA compile target of compute capability 6.0 or higher"
+                )
+
+            src = wp.array(src_np, requires_grad=True, device=device)
+            dst = wp.zeros_like(dst, requires_grad=True)
+            with wp.Tape() as tape:
+                wp.launch_tiled(
+                    test_tile_assign_broadcast_mixed_dtype_kernel,
+                    dim=1,
+                    inputs=[src, dst],
+                    block_dim=32,
+                    device=device,
+                )
+
+            dst.grad = wp.array(np.array([[0.25, 0.5, 1.0], [1.25, 2.5, 4.0]], dtype=dst_dtype), device=device)
+            tape.backward()
+            np.testing.assert_array_equal(src.grad.numpy(), np.array([[1.5, 3.0, 5.0]], dtype=src_dtype))
 
 
 @wp.kernel
@@ -1081,6 +1193,20 @@ add_function_test(
 )
 add_function_test(
     TestTileView,
+    "test_tile_assign_broadcast_backward_cpu_blocks",
+    test_tile_assign_broadcast_backward,
+    devices=get_cpu_test_devices(),
+    enable_cpu_blocks=True,
+)
+add_function_test(
+    TestTileView,
+    "test_tile_assign_broadcast_mixed_dtype_cpu_blocks",
+    test_tile_assign_broadcast_mixed_dtype,
+    devices=get_cpu_test_devices(),
+    enable_cpu_blocks=True,
+)
+add_function_test(
+    TestTileView,
     "test_tile_view_row_copy_forward_and_backward",
     test_tile_view_row_copy_forward_and_backward,
     devices=devices,
@@ -1099,6 +1225,18 @@ add_function_test(
     TestTileView,
     "test_tile_view_shared_assign_column_backward",
     test_tile_view_shared_assign_column_backward,
+    devices=devices,
+)
+add_function_test(
+    TestTileView,
+    "test_tile_assign_broadcast_backward",
+    test_tile_assign_broadcast_backward,
+    devices=devices,
+)
+add_function_test(
+    TestTileView,
+    "test_tile_assign_broadcast_mixed_dtype",
+    test_tile_assign_broadcast_mixed_dtype,
     devices=devices,
 )
 add_function_test(

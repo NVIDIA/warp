@@ -53,4 +53,10 @@ void wp_deterministic_counter_writeback_device(
 {
 }
 
+void wp_deterministic_counter_validate_replay_device(
+    uint64_t expected_counts, uint64_t replay_counts, int count, uint64_t error, int debug
+)
+{
+}
+
 #endif  // !WP_ENABLE_CUDA

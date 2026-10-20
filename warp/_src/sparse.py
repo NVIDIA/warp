@@ -35,6 +35,7 @@ __all__ = [
     "BSR_STATUS_ROW_CAPACITY_EXCEEDED",
     "BSR_STATUS_SUCCESS",
     "BsrMatrix",
+    "BsrTripletMap",
     "bsr_assign",
     "bsr_axpy",
     "bsr_axpy_work_arrays",
@@ -52,6 +53,7 @@ __all__ = [
     "bsr_row_index",
     "bsr_scale",
     "bsr_set_diag",
+    "bsr_set_from_mapped_values",
     "bsr_set_from_triplets",
     "bsr_set_identity",
     "bsr_set_transpose",
@@ -93,12 +95,114 @@ def _mark_apic_deferred_nnz_update(bsr: BsrMatrix, apic_capture) -> None:
     BsrMatrix.__setattr__(bsr, "_apic_deferred_nnz_capture", apic_capture)
 
 
-def _warn_masked_arg_deprecated(func_name: str):
-    log_warning(
-        f"The `masked` argument to {func_name}() is deprecated; pass topology='masked' instead.",
-        category=DeprecationWarning,
-        stacklevel=3,
-    )
+# TODO: Specialize retained storage by reduction mode. An atomic-only map needs
+# to retain only triplet_blocks; the grouped triplet offsets and indices can
+# remain setup scratch. Keep this optimization in the generic sparse map builder
+# rather than adding another FEM-specific connectivity-map path.
+class BsrTripletMap:
+    """Reusable mapping from COO triplets to an existing BSR topology.
+
+    Build this mapping with :func:`bsr_set_from_triplets` through its
+    ``build_mapping`` argument, then update the matrix values with
+    :func:`bsr_set_from_mapped_values`. Every map caches a triplet-to-block
+    lookup for atomic accumulation and block-grouped triplet indices for
+    atomic-free gather reduction.
+
+    Constructing a map preallocates its storage. Passing it as ``build_mapping``
+    then rebuilds it in place, without allocating as long as its capacity covers
+    the triplet count. This allows, for instance, allocating the storage outside
+    of a CUDA graph capture and building the map within it, so that the map
+    does not depend on the graph's lifetime.
+
+    The map is built without host synchronization, so its arrays are sized by
+    the triplet count, which is an upper bound on the destination block count.
+    The actual block count is read on the device from the destination offsets.
+
+    The destination matrix topology must remain unchanged while the map is in
+    use. Its numerical values may be replaced freely.
+
+    Args:
+        capacity: Number of triplets to preallocate storage for. The storage
+          grows as needed when the map is built for more triplets.
+        device: Device on which to allocate the storage.
+    """
+
+    def __init__(self, capacity: int = 0, device: wp.DeviceLike = None):
+        self.triplet_count = 0
+        """Number of input triplets the map was last built for."""
+        self._storage = BsrTripletMap._allocate_storage(capacity, wp.get_device(device))
+        self._dest_nrow = None
+        self._dest_ncol = None
+        self._dest_offsets_ptr = None
+        self._dest_columns_ptr = None
+        self._dest_row_counts_ptr = None
+
+    @staticmethod
+    def _allocate_storage(capacity: int, device) -> tuple[wp.array, wp.array, wp.array]:
+        return tuple(wp.empty(shape=(capacity,), dtype=wp.int32, device=device) for _ in range(3))
+
+    @property
+    def device(self) -> wp._src.context.Device:
+        """Device on which the map storage is allocated."""
+        return self._storage[0].device
+
+    @property
+    def capacity(self) -> int:
+        """Number of triplets the map can be built for without reallocating its storage."""
+        return self._storage[0].shape[0]
+
+    @staticmethod
+    def _view(array: wp.array, count: int) -> wp.array:
+        if count == array.shape[0]:
+            return array
+        if count == 0:
+            return wp.empty(shape=(0,), dtype=array.dtype, device=array.device)
+        return array[:count]
+
+    @property
+    def _block_ends(self) -> wp.array:
+        """End offset in ``_triplet_indices`` of the triplet range of each destination block."""
+        return BsrTripletMap._view(self._storage[0], self.triplet_count)
+
+    @property
+    def _triplet_indices(self) -> wp.array:
+        """Triplet indices grouped by destination block, in the order used by :func:`bsr_set_from_triplets` to sum them."""
+        return BsrTripletMap._view(self._storage[1], self.triplet_count)
+
+    @property
+    def _triplet_blocks(self) -> wp.array:
+        """Destination block index of each triplet, or ``-1`` for discarded triplets."""
+        return BsrTripletMap._view(self._storage[2], self.triplet_count)
+
+    def _reserve(self, triplet_count: int):
+        if triplet_count > self.capacity:
+            self._storage = BsrTripletMap._allocate_storage(triplet_count, self.device)
+
+    def _bind(self, dest: BsrMatrix, triplet_count: int):
+        self.triplet_count = triplet_count
+        self._dest_nrow = dest.nrow
+        self._dest_ncol = dest.ncol
+        self._dest_offsets_ptr = dest.offsets.ptr
+        self._dest_columns_ptr = dest.columns.ptr
+        self._dest_row_counts_ptr = 0 if dest.row_counts is None else dest.row_counts.ptr
+
+    def validate(self, dest: BsrMatrix) -> None:
+        """Raise if ``dest`` dimensions or topology storage differ from those recorded by this map.
+
+        This check compares dimensions and array identities only. It cannot detect
+        topology data modified in place.
+        """
+        if self._dest_offsets_ptr is None:
+            raise ValueError("The triplet map has not been built; pass it to bsr_set_from_triplets() first")
+        row_counts_ptr = 0 if dest.row_counts is None else dest.row_counts.ptr
+        if (
+            dest.nrow != self._dest_nrow
+            or dest.ncol != self._dest_ncol
+            or dest.offsets.ptr != self._dest_offsets_ptr
+            or dest.columns.ptr != self._dest_columns_ptr
+            or row_counts_ptr != self._dest_row_counts_ptr
+        ):
+            raise ValueError("Destination BSR topology storage differs from that used to build the triplet map")
 
 
 class BsrMatrix(Generic[_BlockType]):
@@ -1217,6 +1321,38 @@ def _bsr_set_from_triplets_masked_values(
         wp.atomic_add(bsr_values, block, i, j, values[triplet, i, j])
 
 
+@wp.kernel(module="unique")
+def _bsr_set_from_mapped_values_atomic(
+    triplet_blocks: wp.array(dtype=int),
+    triplet_values: wp.array3d(dtype=Any),
+    bsr_values: wp.array3d(dtype=Any),
+):
+    triplet, i, j = wp.tid()
+    block = triplet_blocks[triplet]
+    if block >= 0:
+        wp.atomic_add(bsr_values, block, i, j, triplet_values[triplet, i, j])
+
+
+@wp.kernel(enable_backward=False)
+def _bsr_set_triplet_blocks_from_summed(
+    row_count: int,
+    bsr_offsets: wp.array(dtype=int),
+    summed_triplet_offsets: wp.array(dtype=int),
+    summed_triplet_indices: wp.array(dtype=int),
+    triplet_blocks: wp.array(dtype=int),
+):
+    block = wp.tid()
+
+    # Launched over the triplet count; the actual block count is only known on device
+    if block >= bsr_offsets[row_count]:
+        return
+
+    beg = 0 if block == 0 else summed_triplet_offsets[block - 1]
+    end = summed_triplet_offsets[block]
+    for index in range(beg, end):
+        triplet_blocks[summed_triplet_indices[index]] = block
+
+
 @wp.kernel(enable_backward=False)
 def _bsr_set_from_triplets_padded_scatter_compact_topology(
     compact_offsets: wp.array(dtype=int),
@@ -1284,9 +1420,9 @@ def bsr_set_from_triplets(
     values: Array[Scalar | BlockType[Rows, Cols, Scalar]] | None = None,
     count: Array[int] | None = None,
     prune_numerical_zeros: bool = True,
-    masked: bool = False,
     topology: Literal["compact", "masked", "padded"] | None = None,
-):
+    build_mapping: BsrTripletMap | bool | None = None,
+) -> BsrTripletMap | None:
     """Fill a BSR matrix with values defined by coordinate-oriented (COO) triplets, discarding existing blocks.
 
     The first dimension of the three input arrays must match and indicates the number of COO triplets.
@@ -1295,31 +1431,51 @@ def bsr_set_from_triplets(
         dest: Sparse matrix to populate.
         rows: Row index for each non-zero.
         columns: Columns index for each non-zero.
-        values: Block values for each non-zero. Must be either a one-dimensional array with data type identical
-          to the ``dest`` matrix's block type, or a 3d array with data type equal to the ``dest`` matrix's scalar type.
+        values: Block values for each non-zero. Must be contiguous and either a one-dimensional array with data type
+          identical to the ``dest`` matrix's block type, or a 3d array with data type equal to the ``dest`` matrix's
+          scalar type.
           If ``None``, the values array of the resulting matrix will be allocated but uninitialized.
         count: Single-element array indicating the number of triplets. If ``None``, the number of triplets is determined from the shape of
           ``rows`` and ``columns`` arrays.
         prune_numerical_zeros: If ``True``, will ignore the zero-valued blocks.
-        masked: Deprecated. Use ``topology="masked"`` instead. If ``True``,
-          ignore blocks that are not existing non-zeros of ``dest``.
         topology: Optional topology policy. ``"compact"`` keeps the existing
-          compact rebuild behavior, ``"masked"`` is equivalent to
-          the deprecated ``masked=True``, and ``"padded"`` writes the compacted triplet
+          compact rebuild behavior, ``"masked"`` updates only existing non-zero
+          blocks of ``dest``, and ``"padded"`` writes the compacted triplet
           topology into existing destination row capacity and records capacity
           overflow in ``dest.status_sync()``.
+        build_mapping: If ``True``, build and return a new reusable mapping from
+          the input entries to the compact destination blocks, see :class:`BsrTripletMap`.
+          If a :class:`BsrTripletMap`, rebuild that mapping in place, reusing its
+          storage, and return it. This is only supported for ``topology="compact"``
+          and requires ``prune_numerical_zeros=False``.
+
+    Returns:
+        The built :class:`BsrTripletMap` when ``build_mapping`` is provided; otherwise ``None``.
     """
     if topology is None:
-        topology = "masked" if masked else "compact"
+        topology = "compact"
     elif topology not in ("compact", "masked", "padded"):
         raise ValueError(f"Unsupported topology policy: {topology}")
-    elif masked and topology != "masked":
-        raise ValueError("Cannot pass masked=True with a non-masked topology policy")
-
-    if masked:
-        _warn_masked_arg_deprecated("bsr_set_from_triplets")
 
     masked = topology == "masked"
+
+    if build_mapping is None or build_mapping is False:
+        mapping = None
+    elif build_mapping is True:
+        mapping = BsrTripletMap(device=dest.device)
+    elif isinstance(build_mapping, BsrTripletMap):
+        mapping = build_mapping
+        if mapping.device != dest.device:
+            raise ValueError(
+                f"Mapping and destination must reside on the same device, got {mapping.device} and {dest.device}"
+            )
+    else:
+        raise TypeError(f"build_mapping must be None, a bool or a BsrTripletMap, got {type(build_mapping)}")
+
+    if mapping is not None and topology != "compact":
+        raise ValueError('build_mapping requires topology="compact"')
+    if mapping is not None and prune_numerical_zeros:
+        raise ValueError("build_mapping requires prune_numerical_zeros=False")
 
     if rows.device != columns.device or rows.device != dest.device:
         raise ValueError(
@@ -1344,7 +1500,7 @@ def bsr_set_from_triplets(
         if count.dtype != wp.int32:
             raise TypeError("Count array must be of type int32")
 
-    # Accept either array1d(dtype) or contiguous array3d(scalar_type) as values
+    # Accept either contiguous array1d(dtype) or contiguous array3d(scalar_type) as values
     if values is not None:
         if values.device != rows.device:
             raise ValueError(f"Values and rows must reside on the same device, got {values.device} and {rows.device}")
@@ -1372,13 +1528,15 @@ def bsr_set_from_triplets(
         else:
             raise ValueError(f"Number of dimension for values array should be 1 or 3, got {values.ndim}")
 
-        if prune_numerical_zeros and not values.is_contiguous:
-            raise ValueError("Values array should be contiguous for numerical zero pruning")
+        if not values.is_contiguous:
+            raise ValueError("Values array must be contiguous")
 
     nnz = rows.shape[0]
     if nnz == 0:
         bsr_set_zero(dest, topology=topology)
-        return
+        if mapping is not None:
+            mapping._bind(dest, 0)
+        return mapping
 
     if topology == "padded":
         _bsr_ensure_independent_row_counts(dest, preserve_row_counts=False)
@@ -1455,7 +1613,7 @@ def bsr_set_from_triplets(
                     ],
                 )
 
-        return
+        return None
 
     if masked:
         dest.values.zero_()
@@ -1489,9 +1647,20 @@ def bsr_set_from_triplets(
     from warp._src.context import _get_apic_capture_for_device  # noqa: PLC0415
 
     apic_capture = _get_apic_capture_for_device(device)
-    needs_summed_triplets = values is not None or apic_capture is not None
-    summed_triplet_offsets = wp.empty(shape=(nnz,), dtype=wp.int32, device=device) if needs_summed_triplets else None
-    summed_triplet_indices = wp.empty(shape=(nnz,), dtype=wp.int32, device=device) if needs_summed_triplets else None
+    if mapping is not None:
+        # The summed triplet arrays are retained by the mapping for gather reduction
+        mapping._reserve(nnz)
+        summed_triplet_offsets, summed_triplet_indices, triplet_blocks = (
+            BsrTripletMap._view(array, nnz) for array in mapping._storage
+        )
+    else:
+        needs_summed_triplets = values is not None or apic_capture is not None
+        summed_triplet_offsets = (
+            wp.empty(shape=(nnz,), dtype=wp.int32, device=device) if needs_summed_triplets else None
+        )
+        summed_triplet_indices = (
+            wp.empty(shape=(nnz,), dtype=wp.int32, device=device) if needs_summed_triplets else None
+        )
 
     _bsr_set_from_triplets_native(
         dest,
@@ -1527,6 +1696,93 @@ def bsr_set_from_triplets(
     if not masked:
         _bsr_set_compact_row_counts(dest)
 
+    if mapping is not None:
+        # The native sort already grouped triplets by destination block, in the order used to
+        # accumulate their values; only the triplet-to-block lookup is missing. Launch over the
+        # triplet count, which bounds the block count, so that no host synchronization is required.
+        triplet_blocks.fill_(-1)
+        wp.launch(
+            _bsr_set_triplet_blocks_from_summed,
+            dim=nnz,
+            device=device,
+            inputs=[dest.nrow, dest.offsets, summed_triplet_offsets, summed_triplet_indices, triplet_blocks],
+        )
+        mapping._bind(dest, nnz)
+
+    return mapping
+
+
+def bsr_set_from_mapped_values(
+    dest: BsrMatrix[BlockType[Rows, Cols, Scalar]],
+    mapping: BsrTripletMap,
+    values: Array[Scalar | BlockType[Rows, Cols, Scalar]],
+    reduction: Literal["gather", "atomic"] = "gather",
+) -> None:
+    """Set BSR values using a precomputed value-to-topology mapping.
+
+    Unlike :func:`bsr_set_from_triplets`, this function does no symbolic
+    topology work. ``reduction="gather"`` assigns one thread per destination
+    block coefficient and is atomic-free; it sums duplicate entries in the same
+    order as :func:`bsr_set_from_triplets`. ``reduction="atomic"`` assigns one
+    thread per input value coefficient.
+
+    The gather launch is dimensioned by the host-side ``dest.nnz`` upper bound.
+    Calling :meth:`BsrMatrix.nnz_sync` once after building the map, outside of
+    graph capture, tightens that bound for all subsequent calls.
+
+    Args:
+        dest: Matrix whose topology was used to build ``mapping``.
+        mapping: Reusable map built by :func:`bsr_set_from_triplets` through its ``build_mapping`` argument.
+        values: Contiguous array containing the current numerical value for every mapped input.
+        reduction: Numerical duplicate-reduction strategy.
+    """
+    if not isinstance(mapping, BsrTripletMap):
+        raise TypeError("Mapping must be a BsrTripletMap")
+    mapping.validate(dest)
+    if values.device != dest.device:
+        raise ValueError(
+            f"Values and destination must reside on the same device, got {values.device} and {dest.device}"
+        )
+    if values.shape[0] != mapping.triplet_count:
+        raise ValueError(f"Values must contain {mapping.triplet_count} triplets, got first dimension {values.shape[0]}")
+    if not values.is_contiguous:
+        raise ValueError("Values array must be contiguous")
+    if values.ndim == 1:
+        if not types_equal(values.dtype, dest.values.dtype):
+            raise ValueError(
+                f"Values array type must correspond to the destination block type, got "
+                f"{type_repr(values.dtype)} and {type_repr(dest.values.dtype)}"
+            )
+    elif values.ndim == 3:
+        if values.shape[1:] != dest.block_shape or type_scalar_type(values.dtype) != dest.scalar_type:
+            raise ValueError(
+                f"Values trailing shape and scalar type must match destination blocks {dest.block_shape} "
+                f"of {type_repr(dest.scalar_type)}"
+            )
+    else:
+        raise ValueError(f"Number of dimensions for values must be one or three, got {values.ndim}")
+    if reduction not in ("gather", "atomic"):
+        raise ValueError(f"Unsupported mapped reduction '{reduction}', expected 'gather' or 'atomic'")
+
+    values_3d = _as_3d_array(values, dest.block_shape)
+    if reduction == "gather":
+        wp.launch(
+            _bsr_accumulate_triplet_values,
+            dim=(min(dest.nnz, mapping.triplet_count), *dest.block_shape),
+            device=dest.device,
+            inputs=[dest.nrow, mapping._block_ends, mapping._triplet_indices, values_3d, dest.offsets],
+            outputs=[dest.scalar_values],
+        )
+    else:
+        dest.values[: dest.nnz].zero_()
+        wp.launch(
+            _bsr_set_from_mapped_values_atomic,
+            dim=(mapping.triplet_count, *dest.block_shape),
+            device=dest.device,
+            inputs=[mapping._triplet_blocks, values_3d],
+            outputs=[dest.scalar_values],
+        )
+
 
 def bsr_from_triplets(
     rows_of_blocks: int,
@@ -1555,8 +1811,8 @@ def bsr_from_triplets(
         cols_of_blocks: Number of columns of blocks.
         rows: Row index for each non-zero.
         columns: Columns index for each non-zero.
-        values: Block values for each non-zero. Must be either a one-dimensional array with data type identical
-          to the ``dest`` matrix's block type, or a 3d array with data type equal to the ``dest`` matrix's scalar type.
+        values: Block values for each non-zero. Must be contiguous and either a one-dimensional array with data type
+          identical to the matrix block type, or a 3d array with data type equal to the matrix scalar type.
         prune_numerical_zeros: If ``True``, will ignore the zero-valued blocks.
 
     Returns:
@@ -1586,6 +1842,7 @@ def bsr_compress(
     prune_numerical_zeros: bool = True,
     inplace: bool = False,
     topology: Literal["compact", "padded"] | None = None,
+    structure_only: bool = False,
 ) -> BsrMatrix[BlockType[Rows, Cols, Scalar]]:
     """Compress the active blocks of ``src`` and return ``src``.
 
@@ -1615,6 +1872,10 @@ def bsr_compress(
           ``"compact"``. ``"padded"`` preserves existing row capacity; it
           cannot report row-capacity overflow because compression never
           increases the active block count.
+        structure_only: If ``True``, sort and coalesce only the active
+          column indices, without reading or moving values. This always works
+          in place and invalidates the association between existing values and
+          columns. ``prune_numerical_zeros`` and ``inplace`` are ignored.
     """
 
     if not isinstance(src, BsrMatrix):
@@ -1624,6 +1885,27 @@ def bsr_compress(
         topology = "compact"
     elif topology not in ("compact", "padded"):
         raise ValueError(f"Unsupported topology policy: {topology}")
+
+    if structure_only:
+        compact = topology == "compact"
+        if not compact:
+            _bsr_ensure_independent_row_counts(src)
+        native_error = (
+            _bsr_try_native_compress_indices_inplace(
+                src,
+                values=None,
+                prune_numerical_zeros=False,
+                compact=compact,
+            )
+            if src.nrow > 0
+            else None
+        )
+        if native_error is not None:
+            raise RuntimeError(f"bsr_compress(..., structure_only=True) {native_error}")
+
+        if compact:
+            _bsr_set_compact_row_counts(src)
+        return src
 
     if inplace:
         compact = topology == "compact"
@@ -2272,7 +2554,6 @@ def bsr_assign(
     dest: BsrMatrix[BlockType[Rows, Cols, Scalar]],
     src: BsrMatrixOrExpression[BlockType[Any, Any, Any]],
     structure_only: bool = False,
-    masked: bool = False,
     topology: Literal["compact", "masked", "padded"] | None = None,
 ):
     """Copy the content of the ``src`` BSR matrix to ``dest``.
@@ -2284,10 +2565,8 @@ def bsr_assign(
       structure_only: If ``True``, only the non-zero indices are copied, and uninitialized value storage is allocated
         to accommodate at least ``src.nnz`` blocks. If ``structure_only`` is ``False``, values are also copied with implicit
         casting if the two matrices use distinct scalar types.
-      masked: Deprecated. Use ``topology="masked"`` instead. If ``True``, keep
-        the non-zero topology of ``dest`` unchanged.
       topology: Optional topology policy. ``"compact"`` keeps the existing
-        compact rebuild behavior, ``"masked"`` is equivalent to the deprecated ``masked=True``,
+        compact rebuild behavior, ``"masked"`` keeps the non-zero topology of ``dest`` unchanged,
         and ``"padded"`` copies each source row into existing destination row
         capacity without changing ``dest.offsets`` and records capacity
         overflow in ``dest.status_sync()``.
@@ -2299,14 +2578,9 @@ def bsr_assign(
         raise ValueError("Source and destination matrices must reside on the same device")
 
     if topology is None:
-        topology = "masked" if masked else "compact"
+        topology = "compact"
     elif topology not in ("compact", "masked", "padded"):
         raise ValueError(f"Unsupported topology policy: {topology}")
-    elif masked and topology != "masked":
-        raise ValueError("Cannot pass masked=True with a non-masked topology policy")
-
-    if masked:
-        _warn_masked_arg_deprecated("bsr_assign")
 
     masked = topology == "masked"
 
@@ -2646,7 +2920,6 @@ def _bsr_transpose_values(
 def bsr_set_transpose(
     dest: BsrMatrix[BlockType[Cols, Rows, Scalar]],
     src: BsrMatrixOrExpression[BlockType[Rows, Cols, Scalar]],
-    masked: bool = False,
     topology: Literal["compact", "masked", "padded"] | None = None,
 ):
     """Assign the transposed matrix ``src`` to matrix ``dest``.
@@ -2654,11 +2927,9 @@ def bsr_set_transpose(
     Args:
         dest: Sparse matrix to populate.
         src: Sparse matrix to transpose.
-        masked: Deprecated. Use ``topology="masked"`` instead. If ``True``,
-          keep the non-zero topology of ``dest`` unchanged.
         topology: Optional topology policy. ``"compact"`` keeps the existing
-          compact rebuild behavior, ``"masked"`` is equivalent to
-          the deprecated ``masked=True``, and ``"padded"`` writes the transposed active
+          compact rebuild behavior, ``"masked"`` keeps the non-zero topology of
+          ``dest`` unchanged, and ``"padded"`` writes the transposed active
           topology into existing destination row capacity and records capacity
           overflow in ``dest.status_sync()``.
     """
@@ -2666,14 +2937,9 @@ def bsr_set_transpose(
     src, src_scale = _extract_matrix_and_scale(src)
 
     if topology is None:
-        topology = "masked" if masked else "compact"
+        topology = "compact"
     elif topology not in ("compact", "masked", "padded"):
         raise ValueError(f"Unsupported topology policy: {topology}")
-    elif masked and topology != "masked":
-        raise ValueError("Cannot pass masked=True with a non-masked topology policy")
-
-    if masked:
-        _warn_masked_arg_deprecated("bsr_set_transpose")
 
     masked = topology == "masked"
 
@@ -3353,7 +3619,6 @@ def bsr_axpy(
     y: BsrMatrix[BlockType[Rows, Cols, Scalar]] | None = None,
     alpha: Scalar = 1.0,
     beta: Scalar = 1.0,
-    masked: bool = False,
     work_arrays: bsr_axpy_work_arrays | None = None,
     topology: Literal["compact", "masked", "padded"] | None = None,
 ) -> BsrMatrix[BlockType[Rows, Cols, Scalar]]:
@@ -3366,14 +3631,12 @@ def bsr_axpy(
         y: Mutable second operand and output matrix. If ``y`` is not provided, it will be allocated and treated as zero.
         alpha: Uniform scaling factor for ``x``.
         beta: Uniform scaling factor for ``y``.
-        masked: Deprecated. Use ``topology="masked"`` instead. If ``True``,
-          keep the non-zero topology of ``y`` unchanged.
         work_arrays: In most cases, this function will require the use of temporary storage.
           This storage can be reused across calls by passing an instance of
           :class:`bsr_axpy_work_arrays` in ``work_arrays``.
         topology: Optional topology policy. ``"compact"`` keeps the existing
-          compact rebuild behavior, ``"masked"`` is equivalent to
-          the deprecated ``masked=True``, and ``"padded"`` writes the result topology into
+          compact rebuild behavior, ``"masked"`` keeps the non-zero topology of
+          ``y`` unchanged, and ``"padded"`` writes the result topology into
           existing destination row capacity and records capacity overflow in
           ``y.status_sync()``.
     """
@@ -3382,14 +3645,9 @@ def bsr_axpy(
     alpha *= x_scale
 
     if topology is None:
-        topology = "masked" if masked else "compact"
+        topology = "compact"
     elif topology not in ("compact", "masked", "padded"):
         raise ValueError(f"Unsupported topology policy: {topology}")
-    elif masked and topology != "masked":
-        raise ValueError("Cannot pass masked=True with a non-masked topology policy")
-
-    if masked:
-        _warn_masked_arg_deprecated("bsr_axpy")
 
     masked = topology == "masked"
 
@@ -4212,7 +4470,6 @@ def bsr_mm(
     z: BsrMatrix[BlockType[Rows, Cols, Scalar]] | None = None,
     alpha: Scalar = 1.0,
     beta: Scalar = 0.0,
-    masked: bool = False,
     work_arrays: bsr_mm_work_arrays | None = None,
     reuse_topology: bool = False,
     tile_size: int = 0,
@@ -4236,8 +4493,6 @@ def bsr_mm(
         z: Mutable affine operand and result matrix. If ``z`` is not provided, it will be allocated and treated as zero.
         alpha: Uniform scaling factor for the ``x @ y`` product
         beta: Uniform scaling factor for ``z``
-        masked: Deprecated. Use ``topology="masked"`` instead. If ``True``,
-          keep the non-zero topology of ``z`` unchanged.
         work_arrays: In most cases, this function will require the use of temporary storage.
           This storage can be reused across calls by passing an instance of
           :class:`bsr_mm_work_arrays` in ``work_arrays``.
@@ -4252,8 +4507,8 @@ def bsr_mm(
           If negative, disable tile-based computation. Defaults to ``0``, which determines whether to
           use tiles using using an heuristic based on the matrix shape and number of non-zeros..
         topology: Optional topology policy. ``"compact"`` keeps the existing
-          compact rebuild behavior, ``"masked"`` is equivalent to
-          the deprecated ``masked=True``, and ``"padded"`` writes the result topology into
+          compact rebuild behavior, ``"masked"`` keeps the non-zero topology of
+          ``z`` unchanged, and ``"padded"`` writes the result topology into
           existing destination row capacity and records capacity overflow in
           ``z.status_sync()``.
     """
@@ -4264,18 +4519,13 @@ def bsr_mm(
     alpha *= y_scale
 
     if topology is None:
-        topology = "masked" if masked else "compact"
+        topology = "compact"
     elif topology not in ("compact", "masked", "padded"):
         raise ValueError(f"Unsupported topology policy: {topology}")
-    elif masked and topology != "masked":
-        raise ValueError("Cannot pass masked=True with a non-masked topology policy")
 
-    if masked:
-        _warn_masked_arg_deprecated("bsr_mm")
+    masked = topology == "masked"
 
-    if topology == "masked":
-        masked = True
-    elif topology != "compact" and reuse_topology:
+    if topology == "padded" and reuse_topology:
         raise ValueError("reuse_topology is only supported with topology='compact'")
 
     if z is None:

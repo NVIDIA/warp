@@ -14,6 +14,7 @@ Python API
    :toctree: _generated
 
    BsrMatrix
+   BsrTripletMap
    bsr_axpy_work_arrays
    bsr_mm_work_arrays
    bsr_assign
@@ -29,6 +30,7 @@ Python API
    bsr_mv
    bsr_scale
    bsr_set_diag
+   bsr_set_from_mapped_values
    bsr_set_from_triplets
    bsr_set_identity
    bsr_set_transpose

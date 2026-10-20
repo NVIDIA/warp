@@ -46,6 +46,40 @@ APIC_RELOC_HANDLE = 2  # wp.handle / mesh id: write handle_ptr_remap[region_offs
 APIC_RELOC_NULL = 3  # Explicit zero (null array data/grad, absent indexedarray dim)
 
 
+# CUDA artifact metadata (must match apic_types.h).
+APIC_CUDA_BINARY_NONE = 0
+APIC_CUDA_BINARY_PTX = 1
+APIC_CUDA_BINARY_CUBIN = 2
+
+APIC_CUDA_ARCH_SUFFIX_NONE = 0
+APIC_CUDA_ARCH_SUFFIX_A = 1
+APIC_CUDA_ARCH_SUFFIX_F = 2
+
+APIC_CUDA_FALLBACK_AVAILABLE = 0
+APIC_CUDA_FALLBACK_SOURCE_UNAVAILABLE = 1
+APIC_CUDA_FALLBACK_EXTERNAL_INCLUDES = 2
+APIC_CUDA_FALLBACK_LLVM_CUDA = 3
+APIC_CUDA_FALLBACK_LINK_INPUTS = 4
+APIC_CUDA_FALLBACK_EXPORT_FAILED = 5
+APIC_CUDA_FALLBACK_RECIPE_UNAVAILABLE = 6
+
+
+class APICCudaCompileRecipe(ctypes.Structure):
+    """Semantic NVRTC options needed for APIC guest compilation."""
+
+    _pack_ = 1
+    _fields_ = [
+        ("debug", ctypes.c_uint8),
+        ("optimization_level", ctypes.c_uint8),
+        ("verify_fp", ctypes.c_uint8),
+        ("fast_math", ctypes.c_uint8),
+        ("fuse_fp", ctypes.c_uint8),
+        ("lineinfo", ctypes.c_uint8),
+        ("arch_suffix", ctypes.c_uint8),
+        ("_reserved", ctypes.c_uint8 * 9),
+    ]
+
+
 class APICLaunchParamRecord(ctypes.Structure):
     """One entry per kernel argument (16 bytes, packed). Matches apic_types.h.
 
@@ -110,4 +144,17 @@ class APICLaunchInfo(ctypes.Structure):
         ("num_relocs", ctypes.c_uint32),
         ("_pad2", ctypes.c_uint32),
         ("relocs", ctypes.POINTER(APICLaunchPtrLocation)),
+    ]
+
+
+class APICModuleBytes(ctypes.Structure):
+    """One module binary passed to ``wp_apic_load_graph_from_bytes``.
+
+    Must match apic.h APICModuleBytes (naturally aligned, not packed).
+    """
+
+    _fields_ = [
+        ("filename", ctypes.c_char_p),
+        ("data", ctypes.c_void_p),
+        ("size", ctypes.c_size_t),
     ]

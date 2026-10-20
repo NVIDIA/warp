@@ -16,8 +16,9 @@ from warp.tests.unittest_utils import *
 # variants.
 
 
-def create_sort_kernel(KEY_TYPE, MAX_SORT_LENGTH):
-    @wp.kernel(enable_backward=False)
+def create_sort_kernel(KEY_TYPE, MAX_SORT_LENGTH, module=None):
+    # Without launch bounds, the compiler may use more registers per thread than a 1,024-thread block can hold.
+    @wp.kernel(enable_backward=False, module=module, launch_bounds=1024)
     def tile_sort_kernel(
         input_keys: wp.array[KEY_TYPE],
         input_values: wp.array[wp.int32],
@@ -109,6 +110,110 @@ def test_tile_sort_keys_and_values_across_dtypes_and_sizes(test, device):
                 output_values.numpy(),
                 np_sorted_values,
                 err_msg=f"Value sorting mismatch for {context}",
+            )
+
+
+def _make_unique_sort_keys(dtype, length, rng):
+    """Return distinct keys of both signs whose bits vary across the key width."""
+    ranks = rng.permutation(length) - length // 2
+    if dtype == wp.float32:
+        # Fractional offsets below 0.5 keep keys distinct while populating low mantissa bits.
+        return (ranks + rng.uniform(0.0, 0.5, size=length)).astype(np.float32)
+
+    # A large odd multiplier spreads the ranks across the high bits of the key.
+    return (ranks * 1_000_003).astype(wp.dtype_to_numpy(dtype))
+
+
+def _assert_tile_sort_block_dims(device, module, block_dims, cases):
+    """Sort distinct keys with an iota payload for every block dim and (key dtype, length) case."""
+    # All kernels share one module so each block dim compiles them together, once.
+    kernels = {(dtype, length): create_sort_kernel(dtype, length, module=module) for dtype, length in cases}
+
+    for block_dim in block_dims:
+        for (dtype, length), kernel in kernels.items():
+            rng = np.random.default_rng(1748 + length)
+            np_keys = _make_unique_sort_keys(dtype, length, rng)
+            np_values = np.arange(length, dtype=np.int32)
+
+            input_keys = wp.array(np_keys, dtype=dtype, device=device)
+            input_values = wp.array(np_values, dtype=wp.int32, device=device)
+            output_keys = wp.zeros_like(input_keys)
+            output_values = wp.zeros_like(input_values)
+
+            wp.launch_tiled(
+                kernel,
+                dim=1,
+                inputs=[input_keys, input_values, output_keys, output_values],
+                block_dim=block_dim,
+                device=device,
+            )
+
+            # Keys are distinct, so the expected payload permutation is unique.
+            sorted_indices = np.argsort(np_keys)
+            context = f"dtype={dtype.__name__}, length={length}, block_dim={block_dim}"
+            np.testing.assert_array_equal(
+                output_keys.numpy(), np_keys[sorted_indices], err_msg=f"Key sorting mismatch for {context}"
+            )
+            np.testing.assert_array_equal(
+                output_values.numpy(), np_values[sorted_indices], err_msg=f"Value sorting mismatch for {context}"
+            )
+
+
+def test_tile_sort_block_dim_multiple_of_32(test, device):
+    """Sort with block dims whose warp count is not a power of two.
+
+    Lengths above 2,048 with 32-bit keys take the radix path, whose histogram merge must stay within its 16
+    buckets when the warp count does not divide 16. Length 65 takes the padded bitonic path.
+    """
+    _assert_tile_sort_block_dims(
+        device,
+        module="tile_sort_block_dim_multiple_of_32",
+        block_dims=(96, 160, 192, 1024),
+        cases=((wp.float32, 2100), (wp.int32, 2100), (wp.float32, 65)),
+    )
+
+
+def test_tile_sort_block_dim_not_multiple_of_32(test, device):
+    """Sort with block dims that leave a partial warp, including a single thread.
+
+    The lengths cover every dispatch case of the warp-aligned sort: fewer than 32 elements, a power of two, a padded
+    bitonic length, a radix length, and 64-bit keys.
+    """
+    _assert_tile_sort_block_dims(
+        device,
+        module="tile_sort_block_dim_not_multiple_of_32",
+        block_dims=(16, 33, 48, 100, 1),
+        cases=((wp.float32, 8), (wp.float32, 64), (wp.float32, 65), (wp.float32, 2100), (wp.int64, 1025)),
+    )
+
+
+def test_tile_sort_same_tile_for_keys_and_values(test, device):
+    """Sort with the same tile passed as keys and values.
+
+    Block dims 33 and 48 take the shared-memory sort, whose swaps must not undo each other when keys and values alias.
+    Block dim 64 locks in that the warp-aligned bitonic and radix paths already handle aliasing.
+    """
+
+    def create_kernel(length):
+        @wp.kernel(enable_backward=False, module="tile_sort_same_tile_for_keys_and_values", launch_bounds=1024)
+        def sort_kernel(keys_array: wp.array[wp.int32]):
+            keys = wp.tile_load(keys_array, shape=length, storage="shared")
+            wp.tile_sort(keys, keys)
+            wp.tile_store(keys_array, keys)
+
+        return sort_kernel
+
+    kernels = {length: create_kernel(length) for length in (65, 2100)}
+
+    for block_dim in (33, 48, 64):
+        for length, kernel in kernels.items():
+            np_keys = _make_unique_sort_keys(wp.int32, length, np.random.default_rng(1748 + length))
+            keys = wp.array(np_keys, dtype=wp.int32, device=device)
+
+            wp.launch_tiled(kernel, dim=1, inputs=[keys], block_dim=block_dim, device=device)
+
+            np.testing.assert_array_equal(
+                keys.numpy(), np.sort(np_keys), err_msg=f"Sorting mismatch for length={length}, block_dim={block_dim}"
             )
 
 
@@ -303,6 +408,24 @@ add_function_test(
     devices=devices,
 )
 add_function_test(TestTileSort, "test_tile_sort_bfloat16_payload", test_tile_sort_bfloat16_payload, devices=devices)
+add_function_test(
+    TestTileSort,
+    "test_tile_sort_block_dim_multiple_of_32",
+    test_tile_sort_block_dim_multiple_of_32,
+    devices=get_cuda_test_devices(),
+)
+add_function_test(
+    TestTileSort,
+    "test_tile_sort_block_dim_not_multiple_of_32",
+    test_tile_sort_block_dim_not_multiple_of_32,
+    devices=get_cuda_test_devices(),
+)
+add_function_test(
+    TestTileSort,
+    "test_tile_sort_same_tile_for_keys_and_values",
+    test_tile_sort_same_tile_for_keys_and_values,
+    devices=get_cuda_test_devices(),
+)
 add_function_test(
     TestTileSort,
     "test_tile_sort_heap_backed_cpu",

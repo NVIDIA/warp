@@ -39,7 +39,7 @@ specific to Windows.
 | R1 | Ship `warp.lib` and `warp-clang.lib` alongside their DLLs in Windows wheels. | Must | Applies to every Windows architecture for which a wheel is constructed. |
 | R2 | Make Windows import-library output paths deterministic in the native build. | Must | The import libraries remain beside the DLLs under `warp/bin`. |
 | R3 | Define native API visibility for DLL producers, generated JIT modules, and consumers. | Must | Windows DLL and JIT producers export, ordinary Windows consumers import, CUDA device code has no DLL annotation, and non-Windows builds retain default visibility. |
-| R4 | Provide only the `warp-clang` CPU-module entry points needed by standalone APIC consumers. | Must | Limit the declared `warp-clang` surface to the five required functions and mark the interface experimental. |
+| R4 | Provide only the `warp-clang` CPU-module entry points needed by standalone APIC consumers. | Must | Limit the declared `warp-clang` surface to the six required functions and mark the interface experimental. |
 | R5 | Define matched-release artifacts as the only supported native-consumer configuration. | Must | Consumers supply headers, import libraries, DLLs, and APIC artifacts from the same release; no backward or forward native ABI guarantee is introduced. |
 | R6 | Fail Windows wheel construction when any required DLL or import library is absent. | Must | Prevent a partial package from silently reaching a release. |
 | R7 | Compile, link, and run a native consumer against both import libraries in Windows CI. | Must | The smoke test must not require a GPU. |
@@ -99,10 +99,11 @@ behavior of generated CPU and CUDA modules.
 
 ### `warp-clang` header
 
-`warp/native/warp_clang.h` declares the five CPU-module functions needed by a
+`warp/native/warp_clang.h` declares the six CPU-module functions needed by a
 standalone APIC consumer:
 
 - `wp_load_obj()`
+- `wp_load_obj_from_bytes()`
 - `wp_unload_obj()`
 - `wp_lookup()`
 - `wp_llvm_set_cpu_block_runtime()`
@@ -111,7 +112,7 @@ standalone APIC consumer:
 The header uses the C ABI and includes both the common visibility definition
 and the CPU block runtime declaration, plus the generated Warp version. Its
 comments identify the interface as experimental and require an exactly
-matching Warp release. The narrowness requirement applies to the five
+matching Warp release. The narrowness requirement applies to the six
 `warp-clang` functions that the header declares, not to declarations that are
 transitively required for their parameter types. Internal compiler entry points
 such as `wp_compile_cpp()` and `wp_compile_cuda()` remain out of the consumer
@@ -215,7 +216,7 @@ An application initializes and validates the libraries in this order:
    version.
 2. If it uses `warp-clang`, compares `wp_warp_clang_version()` with
    `WP_VERSION_STRING` before loading CPU modules.
-3. Before calling `wp_load_obj()`, passes
+3. Before calling `wp_load_obj()` or `wp_load_obj_from_bytes()`, passes
    `wp_cpu_block_runtime_get_api()` to `wp_llvm_set_cpu_block_runtime()` and
    requires a nonzero result.
 
@@ -226,8 +227,8 @@ They also cannot make an incompatible function signature safe. The
 documentation states those limits and tells applications to put the matching
 DLLs beside the executable or configure the DLL search path deliberately.
 The binding call separately provides `warp-clang` with the core runtime
-callbacks used by JIT-compiled cooperative CPU kernels; `wp_load_obj()` rejects
-CPU objects until that binding succeeds.
+callbacks used by JIT-compiled cooperative CPU kernels; `wp_load_obj()` and
+`wp_load_obj_from_bytes()` reject CPU objects until that binding succeeds.
 
 A normal link to `warp-clang.lib` makes `warp-clang.dll` a startup dependency,
 even when an application eventually uses only CUDA APIC graphs. Both DLLs are

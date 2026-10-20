@@ -99,6 +99,7 @@ from warp._src.codegen import WarpCodegenIndexError as WarpCodegenIndexError
 from warp._src.codegen import WarpCodegenKeyError as WarpCodegenKeyError
 from warp._src.codegen import WarpCodegenTypeError as WarpCodegenTypeError
 from warp._src.codegen import WarpCodegenValueError as WarpCodegenValueError
+from warp._src.deterministic import WarpDeterminismError as WarpDeterminismError
 from warp._src.context import func as func
 from warp._src.context import func_grad as func_grad
 from warp._src.context import func_replay as func_replay
@@ -190,6 +191,7 @@ from warp._src.context import capture_end as capture_end
 from warp._src.context import capture_launch as capture_launch
 from warp._src.context import capture_save as capture_save
 from warp._src.context import capture_load as capture_load
+from warp._src.context import capture_load_from_bytes as capture_load_from_bytes
 from warp._src.context import capture_if as capture_if
 from warp._src.context import capture_while as capture_while
 from warp._src.context import capture_debug_dot_print as capture_debug_dot_print
@@ -5892,6 +5894,9 @@ def tile_axpy(alpha: Any, src: Tile[Any, tuple[int, ...]], dest: Tile[Any, tuple
 def tile_sort(keys: Tile[Any, tuple[int]], values: Tile[Any, tuple[int]]) -> None:
     """Cooperatively sort the elements of two tiles in ascending order based on the keys, using all threads in the block.
 
+    On CUDA devices, prefer a ``block_dim`` that is a multiple of 32 for better sorting performance. Other block
+    dimensions are supported but may be slower.
+
     Args:
         keys: Keys to sort by. Supported key types: :class:`warp.float32`, :class:`warp.int32`, :class:`warp.uint32`, :class:`warp.int64`, :class:`warp.uint64`. Must be in shared memory.
         values: Values to sort along with keys. No type restrictions. Must be in shared memory.
@@ -10821,6 +10826,7 @@ def tile_matmul(
     a: Tile[Float, tuple[int, int]],
     b: Tile[Float, tuple[int, int]],
     alpha: Float | float = 1.0,
+    precision: str = "default",
 ) -> Tile[Float, tuple[int, int]]:
     """Compute the matrix product ``a*b``.
 
@@ -10830,7 +10836,7 @@ def tile_matmul(
         * fp16, bf16, fp32, fp64
 
     Both input tiles must have the same datatype. Tile data will automatically be migrated
-    to shared memory if necessary and will use TensorCore operations when available.
+    to shared memory if necessary and may use Tensor Core operations, depending on the GEMM configuration.
 
     Note that computing the adjoints of alpha is not yet supported.
 
@@ -10838,9 +10844,23 @@ def tile_matmul(
         a: A tile with ``shape=(M, K)``
         b: A tile with ``shape=(K, N)``
         alpha: Scaling factor
+        precision: Compute precision, specified as the string literal ``"default"`` or ``"tf32"``.
+            ``"default"`` uses the tile data type. ``"tf32"`` uses TF32 input precision with
+            ``float32`` accumulation, without changing tile storage. The adjoint products use
+            the same precision. Tensor Core use depends on the GEMM configuration. Honored by
+            the cuBLASDx GEMM on CUDA compile targets of compute capability 8.0 or higher. On
+            the CPU, on older CUDA compile targets, or when MathDx GEMM is unavailable or
+            disabled (see :attr:`warp.config.enable_mathdx_gemm`), Warp computes in ``float32``
+            and logs a warning when the module is compiled. The same fallback applies when
+            operand strides cannot be represented by cuBLASDx leading dimensions.
 
     Returns:
-        A tile with ``shape=(M, N)``"""
+        A tile with ``shape=(M, N)``
+
+    Raises:
+        TypeError: If ``precision="tf32"`` is used with tiles other than ``float32`` for
+            ``a`` and ``b``.
+        ValueError: If ``precision`` is not the string literal ``"default"`` or ``"tf32"``."""
     ...
 
 @over
@@ -10850,6 +10870,7 @@ def tile_matmul(
     out: Tile[Float, tuple[int, int]],
     alpha: Float | float = 1.0,
     beta: Float | float = 1.0,
+    precision: str = "default",
 ) -> None:
     """Compute the matrix product ``a*b``.
 
@@ -10859,7 +10880,7 @@ def tile_matmul(
         * fp16, bf16, fp32, fp64
 
     All input and output tiles must have the same datatype. Tile data will automatically be migrated
-    to shared memory if necessary and will use TensorCore operations when available.
+    to shared memory if necessary and may use Tensor Core operations, depending on the GEMM configuration.
 
     Note that computing the adjoints of alpha and beta are not yet supported.
 
@@ -10868,7 +10889,21 @@ def tile_matmul(
         b: A tile with ``shape=(K, N)``
         out: A tile with ``shape=(M, N)``
         alpha: Scaling factor
-        beta: Accumulator factor"""
+        beta: Accumulator factor
+        precision: Compute precision, specified as the string literal ``"default"`` or ``"tf32"``.
+            ``"default"`` uses the tile data type. ``"tf32"`` uses TF32 input precision with
+            ``float32`` accumulation, without changing tile storage. The adjoint products use
+            the same precision. Tensor Core use depends on the GEMM configuration. Honored by
+            the cuBLASDx GEMM on CUDA compile targets of compute capability 8.0 or higher. On
+            the CPU, on older CUDA compile targets, or when MathDx GEMM is unavailable or
+            disabled (see :attr:`warp.config.enable_mathdx_gemm`), Warp computes in ``float32``
+            and logs a warning when the module is compiled. The same fallback applies when
+            operand strides cannot be represented by cuBLASDx leading dimensions.
+
+    Raises:
+        TypeError: If ``precision="tf32"`` is used with tiles other than ``float32`` for
+            ``a``, ``b``, and ``out``.
+        ValueError: If ``precision`` is not the string literal ``"default"`` or ``"tf32"``."""
     ...
 
 def tile_fft(inout: Tile[Vector[Float, Literal[2]], tuple[int, ...]]) -> None:

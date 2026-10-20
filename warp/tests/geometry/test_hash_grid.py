@@ -894,6 +894,32 @@ def test_hashgrid_negative_wrapping(test, device):
     test.assertEqual(counts_np[1], 2)  # B finds self + A
 
 
+def test_hashgrid_large_coordinate_wrapping(test, device):
+    """Count each neighbor once when coordinates exceed the old negative guard."""
+    base = np.array([[0.0, 0.0, 0.0], [0.25, 0.0, 0.0], [0.0, 0.5, 0.0]], dtype=np.float32)
+    grid = wp.HashGrid(3, 5, 7, device=device)
+    counts = wp.zeros(len(base), dtype=int, device=device)
+
+    for axis in range(3):
+        for offset in (0, -(2**20), -(2**21), 2**21):
+            with test.subTest(axis=axis, offset=offset):
+                values = base.copy()
+                values[:, axis] += offset
+                # These translations preserve every coordinate exactly in float32.
+                reference = values.astype(np.float64)
+                distances = np.linalg.norm(reference[:, None] - reference[None, :], axis=-1)
+                expected = np.sum(distances <= 1.0, axis=1)
+
+                points = wp.array(values, dtype=wp.vec3, device=device)
+                grid.build(points, 1.0)
+                wp.launch(
+                    count_neighbors, dim=len(base), inputs=[wp.uint64(grid.id), 1.0, points, counts], device=device
+                )
+
+                # The existing count_neighbors kernel includes each point itself.
+                np.testing.assert_array_equal(counts.numpy(), expected)
+
+
 devices = get_test_devices()
 cuda_devices = get_cuda_test_devices()
 
@@ -1155,6 +1181,9 @@ add_function_test(TestHashGrid, "test_hashgrid_cell_count_overflow", test_hashgr
 add_function_test(TestHashGrid, "test_hashgrid_dtype_validation", test_hashgrid_dtype_validation, devices=devices)
 add_function_test(TestHashGrid, "test_hashgrid_edge_cases", test_hashgrid_edge_cases, devices=devices)
 add_function_test(TestHashGrid, "test_hashgrid_negative_wrapping", test_hashgrid_negative_wrapping, devices=devices)
+add_function_test(
+    TestHashGrid, "test_hashgrid_large_coordinate_wrapping", test_hashgrid_large_coordinate_wrapping, devices=devices
+)
 
 
 if __name__ == "__main__":

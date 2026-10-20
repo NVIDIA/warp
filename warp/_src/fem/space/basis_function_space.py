@@ -101,6 +101,8 @@ class CollocatedFunctionSpace(FunctionSpace):
         "dof_value": lambda obj: obj._make_dof_value(),
         "local_value_map_inner": lambda obj: obj._make_local_value_map_inner(),
         "local_value_map_outer": lambda obj: obj._make_local_value_map_outer(),
+        "local_inverse_value_map_inner": lambda obj: obj.local_value_map_inner,
+        "local_inverse_value_map_outer": lambda obj: obj.local_value_map_outer,
     }
 
     def _make_local_value_map_inner(self):
@@ -156,10 +158,10 @@ class CollocatedFunctionSpace(FunctionSpace):
         @cache.dynamic_func(suffix=self.name)
         def dof_value(
             space_value: self.dtype,
-            node_weight: self.weight_dtype,
-            local_value_map: self.LocalValueMap,
+            node_dual_weight: self.weight_dtype,
+            local_inverse_value_map: self.LocalValueMap,
         ):
-            return self.dof_mapper.value_to_dof(space_value) / node_weight
+            return self.dof_mapper.value_to_dof(space_value) * node_dual_weight
 
         return dof_value
 
@@ -289,11 +291,11 @@ class VectorValuedFunctionSpace(FunctionSpace):
         @cache.dynamic_func(suffix=self.name)
         def dof_value(
             space_value: self.dtype,
-            node_weight: self.weight_dtype,
-            local_value_map: self.LocalValueMap,
+            node_dual_weight: self.weight_dtype,
+            local_inverse_value_map: Any,
         ):
-            dof_axis = local_value_map * node_weight
-            return wp.dot(space_value, dof_axis) / wp.length_sq(dof_axis)
+            # Pull back to node space, then project onto the node dual weight
+            return wp.dot(local_inverse_value_map * space_value, node_dual_weight)
 
         return dof_value
 
@@ -304,6 +306,8 @@ class CovariantFunctionSpace(VectorValuedFunctionSpace):
     _dynamic_attribute_constructors: ClassVar = {
         "local_value_map_inner": lambda obj: obj._make_local_value_map(),
         "local_value_map_outer": lambda obj: obj.local_value_map_inner,
+        "local_inverse_value_map_inner": lambda obj: obj._make_local_inverse_value_map(),
+        "local_inverse_value_map_outer": lambda obj: obj.local_inverse_value_map_inner,
     }
 
     def __init__(self, basis: BasisSpace):
@@ -332,6 +336,21 @@ class CovariantFunctionSpace(VectorValuedFunctionSpace):
 
         return local_value_map
 
+    def _make_local_inverse_value_map(self):
+
+        @cache.dynamic_func(suffix=self.name)
+        def local_inverse_value_map(
+            elt_arg: self.ElementArg,
+            element_index: ElementIndex,
+            element_coords: Any,
+        ):
+            # (Pseudo-)inverse of F^-T
+            return wp.transpose(
+                self.geometry.cell_deformation_gradient(elt_arg, make_free_sample(element_index, element_coords))
+            )
+
+        return local_inverse_value_map
+
 
 class CovariantFunctionSpaceTrace(VectorValuedFunctionSpace):
     """Trace of a :class:`CovariantFunctionSpace`."""
@@ -339,6 +358,8 @@ class CovariantFunctionSpaceTrace(VectorValuedFunctionSpace):
     _dynamic_attribute_constructors: ClassVar = {
         "local_value_map_inner": lambda obj: obj._make_local_value_map_inner(),
         "local_value_map_outer": lambda obj: obj._make_local_value_map_outer(),
+        "local_inverse_value_map_inner": lambda obj: obj._make_local_inverse_value_map_inner(),
+        "local_inverse_value_map_outer": lambda obj: obj._make_local_inverse_value_map_outer(),
     }
 
     def __init__(self, space: VectorValuedFunctionSpace):
@@ -353,6 +374,44 @@ class CovariantFunctionSpaceTrace(VectorValuedFunctionSpace):
 
     def __eq__(self, other: "CovariantFunctionSpaceTrace") -> bool:
         return self._space == other._space
+
+    def _make_local_inverse_value_map_inner(self):
+
+        @cache.dynamic_func(suffix=self.name)
+        def local_inverse_value_map_inner(
+            elt_arg: self.ElementArg,
+            element_index: ElementIndex,
+            element_coords: Any,
+        ):
+            cell_index = self.geometry.side_inner_cell_index(elt_arg, element_index)
+            cell_coords = self.geometry.side_inner_cell_coords(elt_arg, element_index, element_coords)
+            cell_arg = self.geometry.side_to_cell_arg(elt_arg)
+
+            # (Pseudo-)inverse of F^-T
+            return wp.transpose(
+                self.geometry.cell_deformation_gradient(cell_arg, make_free_sample(cell_index, cell_coords))
+            )
+
+        return local_inverse_value_map_inner
+
+    def _make_local_inverse_value_map_outer(self):
+
+        @cache.dynamic_func(suffix=self.name)
+        def local_inverse_value_map_outer(
+            elt_arg: self.ElementArg,
+            element_index: ElementIndex,
+            element_coords: Any,
+        ):
+            cell_index = self.geometry.side_outer_cell_index(elt_arg, element_index)
+            cell_coords = self.geometry.side_outer_cell_coords(elt_arg, element_index, element_coords)
+            cell_arg = self.geometry.side_to_cell_arg(elt_arg)
+
+            # (Pseudo-)inverse of F^-T
+            return wp.transpose(
+                self.geometry.cell_deformation_gradient(cell_arg, make_free_sample(cell_index, cell_coords))
+            )
+
+        return local_inverse_value_map_outer
 
     def _make_local_value_map_inner(self):
 
@@ -393,6 +452,8 @@ class ContravariantFunctionSpace(VectorValuedFunctionSpace):
     _dynamic_attribute_constructors: ClassVar = {
         "local_value_map_inner": lambda obj: obj._make_local_value_map(),
         "local_value_map_outer": lambda obj: obj.local_value_map_inner,
+        "local_inverse_value_map_inner": lambda obj: obj._make_local_inverse_value_map(),
+        "local_inverse_value_map_outer": lambda obj: obj.local_inverse_value_map_inner,
     }
 
     def __init__(self, basis: BasisSpace):
@@ -417,6 +478,22 @@ class ContravariantFunctionSpace(VectorValuedFunctionSpace):
 
         return local_value_map
 
+    def _make_local_inverse_value_map(self):
+
+        @cache.dynamic_func(suffix=self.name)
+        def local_inverse_value_map(
+            elt_arg: self.ElementArg,
+            element_index: ElementIndex,
+            element_coords: Any,
+        ):
+            # (Pseudo-)inverse of F / |F|, using |F| = 1 / |F^+^T|
+            inv_F = self.geometry.cell_inverse_deformation_gradient(
+                elt_arg, make_free_sample(element_index, element_coords)
+            )
+            return inv_F / Geometry._element_measure(wp.transpose(inv_F))
+
+        return local_inverse_value_map
+
 
 class ContravariantFunctionSpaceTrace(VectorValuedFunctionSpace):
     """Trace of a :class:`ContravariantFunctionSpace`."""
@@ -424,6 +501,8 @@ class ContravariantFunctionSpaceTrace(VectorValuedFunctionSpace):
     _dynamic_attribute_constructors: ClassVar = {
         "local_value_map_inner": lambda obj: obj._make_local_value_map_inner(),
         "local_value_map_outer": lambda obj: obj._make_local_value_map_outer(),
+        "local_inverse_value_map_inner": lambda obj: obj._make_local_inverse_value_map_inner(),
+        "local_inverse_value_map_outer": lambda obj: obj._make_local_inverse_value_map_outer(),
     }
 
     def __init__(self, space: ContravariantFunctionSpace):
@@ -438,6 +517,38 @@ class ContravariantFunctionSpaceTrace(VectorValuedFunctionSpace):
 
     def __eq__(self, other: "ContravariantFunctionSpaceTrace") -> bool:
         return self._space == other._space
+
+    def _make_local_inverse_value_map_inner(self):
+
+        @cache.dynamic_func(suffix=self.name)
+        def local_inverse_value_map_inner(
+            elt_arg: self.ElementArg,
+            element_index: ElementIndex,
+            element_coords: Any,
+        ):
+            # (Pseudo-)inverse of F / |F|, using |F| = 1 / |F^+^T|
+            inv_F = self.geometry.side_inner_inverse_deformation_gradient(
+                elt_arg, make_free_sample(element_index, element_coords)
+            )
+            return inv_F / Geometry._element_measure(wp.transpose(inv_F))
+
+        return local_inverse_value_map_inner
+
+    def _make_local_inverse_value_map_outer(self):
+
+        @cache.dynamic_func(suffix=self.name)
+        def local_inverse_value_map_outer(
+            elt_arg: self.ElementArg,
+            element_index: ElementIndex,
+            element_coords: Any,
+        ):
+            # (Pseudo-)inverse of F / |F|, using |F| = 1 / |F^+^T|
+            inv_F = self.geometry.side_outer_inverse_deformation_gradient(
+                elt_arg, make_free_sample(element_index, element_coords)
+            )
+            return inv_F / Geometry._element_measure(wp.transpose(inv_F))
+
+        return local_inverse_value_map_outer
 
     def _make_local_value_map_inner(self):
 

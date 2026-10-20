@@ -2039,6 +2039,18 @@ template <int N> inline CUDA_CALLABLE int tid(size_t index, const launch_bounds_
     return static_cast<int>(coord.i);
 }
 
+// CPU code generation selects the common linear-coordinate specialization once
+// outside the task loop. CUDA and generic CPU paths continue to use tid().
+template <bool Linear, int N> inline int linear_tid(size_t index, const launch_bounds_t<N>& bounds)
+{
+    if constexpr (Linear) {
+        static_assert(N == 1, "The linear wp.tid() specialization requires one-dimensional kernel coordinates");
+        return static_cast<int>(index);
+    } else {
+        return tid(index, bounds);
+    }
+}
+
 template <int N> inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j, size_t index, const launch_bounds_t<N>& bounds)
 {
     launch_coord_t coord = launch_coord(index, bounds);

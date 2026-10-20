@@ -618,6 +618,17 @@ def test_strided_1d_view_atomic_add(test, device):
     np.testing.assert_allclose(result[0::2], sentinel + expected_view, rtol=1e-5, atol=1e-5)
     np.testing.assert_array_equal(result[1::2], np.full(view_size, sentinel, dtype=np.float32))
 
+    base = wp.zeros(base_size, dtype=wp.float32, device=device)
+    reversed_view = wp.array(
+        ptr=base.ptr + (view_size - 1) * base.strides[0],
+        shape=(view_size,),
+        strides=(-base.strides[0],),
+        dtype=base.dtype,
+        device=device,
+    )
+    with test.assertRaisesRegex(wp.WarpDeterminismError, "negative-stride"):
+        wp.launch(scatter_add_kernel, dim=n, inputs=[data, dest], outputs=[reversed_view], device=device)
+
 
 def test_zero_stride_view_atomic_add(test, device):
     """Verify that atomic add through a zero-stride view reduces to the one physical slot."""
@@ -960,7 +971,7 @@ def test_scatter_overflow_reports_error(test, device):
     counts = wp.full(n, value=2, dtype=wp.int32, device=device)
     output = wp.zeros(1, dtype=wp.float32, device=device)
 
-    with test.assertRaisesRegex(RuntimeError, "Deterministic scatter buffer overflow"):
+    with test.assertRaisesRegex(wp.WarpDeterminismError, "more transformed atomic calls"):
         wp.launch(underprovisioned_loop_scatter_kernel, dim=n, inputs=[data, counts], outputs=[output], device=device)
 
 
@@ -970,7 +981,7 @@ def test_scatter_large_launch_rejected(test, device):
     indices = wp.zeros(1, dtype=wp.int32, device=device)
     output = wp.zeros(1, dtype=wp.float32, device=device)
 
-    with test.assertRaisesRegex(RuntimeError, "up to 2\\^32 threads"):
+    with test.assertRaisesRegex(wp.WarpDeterminismError, "supports at most 2\\^32 threads"):
         wp.launch(
             scatter_add_kernel,
             dim=(65536, 65537),
@@ -986,7 +997,7 @@ def test_mixed_reduce_ops_same_array(test, device):
     data = wp.array(data_np, dtype=wp.float32, device=device)
     output = wp.zeros(1, dtype=wp.float32, device=device)
 
-    with test.assertRaisesRegex(Exception, "does not support mixing"):
+    with test.assertRaisesRegex(wp.WarpDeterminismError, "receives both 'add' and 'max' atomic operations"):
 
         @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
         def mixed_reduce_op_same_array_local_kernel(
@@ -1004,6 +1015,72 @@ def test_mixed_reduce_ops_same_array(test, device):
             outputs=[output],
             device=device,
         )
+
+
+def test_scatter_target_aliasing_rejected(test, device):
+    """Reject overlapping scatter-target arguments but accept disjoint interleaved views."""
+
+    @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
+    def two_targets_kernel(output_a: wp.array[wp.float32], output_b: wp.array[wp.float32]):
+        wp.atomic_add(output_a, 0, 1.0)
+        wp.atomic_add(output_b, 0, 2.0)
+
+    base = wp.zeros(4, dtype=wp.float32, device=device)
+    wp.launch(two_targets_kernel, dim=1, outputs=[base[0::2], base[1::2]], device=device)
+    np.testing.assert_array_equal(base.numpy(), [1.0, 2.0, 0.0, 0.0])
+
+    with test.assertRaisesRegex(wp.WarpDeterminismError, "arguments 'output_a' and 'output_b' overlap"):
+        wp.launch(two_targets_kernel, dim=1, outputs=[base, base[1:]], device=device)
+
+
+def test_scatter_target_direct_access_aliasing_rejected(test, device):
+    """Reject a scatter target aliased through a directly read argument."""
+
+    @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
+    def read_kernel(direct_input: wp.array[wp.float32], atomic_output: wp.array[wp.float32]):
+        wp.atomic_add(atomic_output, 0, direct_input[0])
+
+    @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
+    def indexed_read_kernel(direct_input: wp.indexedarray[wp.float32], atomic_output: wp.array[wp.float32]):
+        wp.atomic_add(atomic_output, 0, direct_input[0])
+
+    output = wp.zeros(1, dtype=wp.float32, device=device)
+    wp.launch(read_kernel, dim=1, inputs=[wp.full(1, 7.0, device=device)], outputs=[output], device=device)
+    np.testing.assert_array_equal(output.numpy(), [7.0])
+
+    indexed_output = wp.indexedarray(output, [wp.zeros(1, dtype=wp.int32, device=device)])
+    for kernel, alias in ((read_kernel, output), (indexed_read_kernel, indexed_output)):
+        with test.subTest(kernel=kernel.key):
+            with test.assertRaisesRegex(wp.WarpDeterminismError, "overlaps argument 'direct_input'.*read directly"):
+                wp.launch(kernel, dim=1, inputs=[alias], outputs=[output], device=device)
+
+
+def test_scatter_tile_access_rejected(test, device):
+    """Validate deferred targets against tile reads, stores, and ordinary tile atomics."""
+
+    def make_kernel(operation):
+        @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
+        def tile_access(output: wp.array[float], other: wp.array[float], observed: wp.array[float]):
+            wp.atomic_add(output, 0, 1.0)
+            if wp.static(operation == "load"):
+                wp.tile_store(observed, wp.tile_load(other, shape=32))
+            elif wp.static(operation == "store"):
+                wp.tile_store(other, wp.tile_ones(shape=32, dtype=float))
+            else:
+                wp.tile_atomic_add(other, wp.tile_ones(shape=32, dtype=float))
+
+        return tile_access
+
+    output = wp.zeros(32, device=device)
+    other = wp.zeros_like(output)
+    observed = wp.zeros_like(output)
+
+    for operation in ("load", "store", "atomic"):
+        with test.subTest(operation=operation):
+            tile_access = make_kernel(operation)
+            wp.launch_tiled(tile_access, dim=1, inputs=[output, other, observed], block_dim=32, device=device)
+            with test.assertRaisesRegex(wp.WarpDeterminismError, "overlaps argument 'other'"):
+                wp.launch_tiled(tile_access, dim=1, inputs=[output, output, observed], block_dim=32, device=device)
 
 
 def test_helper_name_collision(test, device):
@@ -1063,6 +1140,55 @@ def test_deterministic_func_kernels(test, device):
 class TestDeterministicScatter(DeterministicTestBase):
     """Test deterministic scatter/reduce atomic lowering."""
 
+    def test_overlap_check_matrix_blocks(self):
+        """Distinguish disjoint and overlapping column blocks of one matrix."""
+        from warp._src.deterministic import _deterministic_arrays_overlap  # noqa: PLC0415
+
+        base = wp.zeros((2, 4), dtype=wp.float32, device="cpu")
+        self.assertFalse(_deterministic_arrays_overlap(base[:, :2], base[:, 2:]))
+        self.assertTrue(_deterministic_arrays_overlap(base[:, :3], base[:, 2:]))
+
+    def test_scatter_target_access_rejected(self):
+        """Reject direct access to a deferred scatter target, including through views.
+
+        Compile-time checks apply to the whole array because indices are runtime values.
+        """
+
+        @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
+        def read_after_kernel(output: wp.array2d[wp.float32], observed: wp.array[wp.float32]):
+            wp.atomic_add(output, 0, 0, 1.0)
+            observed[0] = output[1, 0]
+
+        @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
+        def store_before_kernel(output: wp.array2d[wp.float32]):
+            output[1, 0] = 5.0
+            wp.atomic_add(output, 0, 0, 1.0)
+
+        @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
+        def row_read_kernel(output: wp.array2d[wp.float32], observed: wp.array[wp.float32]):
+            wp.atomic_add(output, 0, 0, 1.0)
+            row = output[1]
+            observed[0] = row[0]
+
+        @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
+        def slice_store_kernel(output: wp.array2d[wp.float32]):
+            wp.atomic_add(output, 0, 0, 1.0)
+            column = output[:, 1]
+            column[0] = 5.0
+
+        for kernel, operation in (
+            (read_after_kernel, "read directly"),
+            (store_before_kernel, "written directly"),
+            (row_read_kernel, "read directly"),
+            (slice_store_kernel, "written directly"),
+        ):
+            with self.subTest(kernel=kernel.key):
+                with self.assertRaisesRegex(
+                    wp.WarpDeterminismError,
+                    f"array 'output' receives deterministic atomic updates and is also {operation}",
+                ):
+                    wp.load_module(module=kernel.module, device="cpu")
+
 
 def _add(name, devices=cuda_devices, **kwargs):
     add_function_test(TestDeterministicScatter, name, globals()[name], devices=devices, **kwargs)
@@ -1092,6 +1218,9 @@ for _name in (
     "test_scatter_overflow_reports_error",
     "test_scatter_large_launch_rejected",
     "test_mixed_reduce_ops_same_array",
+    "test_scatter_target_aliasing_rejected",
+    "test_scatter_target_direct_access_aliasing_rejected",
+    "test_scatter_tile_access_rejected",
     "test_helper_name_collision",
     "test_deterministic_closure_kernel",
     "test_deterministic_func_kernels",

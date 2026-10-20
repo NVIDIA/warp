@@ -7,7 +7,9 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 
 ## 2026
 
+- **CQDC-Warp: GPU-Accelerated Differentiable Quasi-Dynamic Simulation for Contact-Rich Manipulation**. *Y. Ding, J. Chen, J. Xu, W. Zhao, L. Yi, H. Wang*. October 2026. [arXiv:2610.21349](https://arxiv.org/abs/2610.21349)
 - **SceneFactory-3D: Lifting 2D Traffic Scenes into 3D Physical Counterfactuals for Scalable Physically Grounded Safety Evaluation**. *Y. Zhu, L. Tian, T. Zhao, Y. Chen, F. Zuo, T. Li, Z. Bian*. October 2026. [arXiv:2610.02874](https://arxiv.org/abs/2610.02874)
+- **Asking the World: Generalist Physical Reasoning through Agentic World Modeling and Probing**. *S. Zeng, C. Yang, P. Chen, G. Zhang, J. Fan, C. Wang*. September 2026. [arXiv:2609.39135](https://arxiv.org/abs/2609.39135)
 - **CollisionSplatting: Collision-Aware Motion Planning in 3DGS Scenes with Image-Conditioned Objectives and Adjustable Conservatism**. *R. Khorrambakht, J. Ortiz-Haro, S. Weiss, L. Righetti*. September 2026. [arXiv:2609.35619](https://arxiv.org/abs/2609.35619)
 - **Bundled Contact Gradients: Stabilizing Differentiable Simulation for Deployable Dynamic Tasks**. *D. Aditya, J. Cheng, C. Schwarke, Q. Nguyen, G. Sukhatme, S. Coros, G. Fadini*. September 2026. [arXiv:2609.30951](https://arxiv.org/abs/2609.30951)
 - **Real-Time Force Regulation for Whole-Hand Dexterous Grasping**. *S. M. Kim, A. Alexiev, T. Lin, S. Kim, Y. M. Kim, Y. Lee*. September 2026. [arXiv:2609.30082](https://arxiv.org/abs/2609.30082)

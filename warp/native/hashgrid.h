@@ -76,31 +76,17 @@ CUDA_CALLABLE inline int hash_grid_lower_bound(const uint64_t* keys, int lo, int
 // convert a virtual (world) cell coordinate to a physical one
 template <typename Type> CUDA_CALLABLE inline int hash_grid_index(const HashGrid_t<Type>& grid, int x, int y, int z)
 {
-    // offset to ensure positive coordinates (means grid dim should be less than 4096^3)
-    const int origin = 1 << 20;
-
-    x += origin;
-    y += origin;
-    z += origin;
-
-    assert(0 < x);
-    assert(0 < y);
-    assert(0 < z);
-
-    // clamp in case any particles fall outside the guard region (-10^20 cell index)
-    x = max(0, x);
-    y = max(0, y);
-    z = max(0, z);
-
-    // compute physical cell (assume pow2 grid dims)
-    // int cx = x & (grid.dim_x-1);
-    // int cy = y & (grid.dim_y-1);
-    // int cz = z & (grid.dim_z-1);
-
-    // compute physical cell (arbitrary grid dims)
+    // Wrap negative coordinates with nonnegative modulo. Clamping cells beyond
+    // a fixed origin causes queries to visit the same physical bucket repeatedly.
     int cx = x % grid.dim_x;
     int cy = y % grid.dim_y;
     int cz = z % grid.dim_z;
+    if (cx < 0)
+        cx += grid.dim_x;
+    if (cy < 0)
+        cy += grid.dim_y;
+    if (cz < 0)
+        cz += grid.dim_z;
 
     return cz * (grid.dim_x * grid.dim_y) + cy * grid.dim_x + cx;
 }

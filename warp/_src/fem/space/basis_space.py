@@ -42,6 +42,7 @@ class BasisSpace:
         "element_inner_weight_gradient": lambda obj: obj.make_element_inner_weight_gradient(),
         "element_outer_weight": lambda obj: obj.make_element_outer_weight(),
         "element_outer_weight_gradient": lambda obj: obj.make_element_outer_weight_gradient(),
+        "node_dual_weight": lambda obj: obj.make_node_dual_weight(),
     }
 
     @wp.struct
@@ -162,6 +163,33 @@ class BasisSpace:
     def make_trace_node_quadrature_weight(self):
         """Create a device function returning trace node quadrature weights."""
         raise NotImplementedError()
+
+    def make_node_dual_weight(self):
+        """Create a device function returning the dual weight of each element node.
+
+        The dual weight ``d`` of a node extracts its degree of freedom from a node-space value ``v`` reproduced by the
+        basis at the node location, as ``v * d`` for scalar-valued bases or ``dot(v, d)`` for vector-valued bases.
+
+        The default implementation returns the inverse of the node weight at the node location,
+        which is only valid for scalar-valued bases whose node weights vanish at the other nodes.
+        See :meth:`ShapeFunction.make_node_dual_weight`.
+        """
+
+        @cache.dynamic_func(suffix=self.name)
+        def node_dual_weight(
+            elt_arg: self.topology.ElementArg,
+            topo_arg: self.topology.TopologyArg,
+            basis_arg: self.BasisArg,
+            element_index: ElementIndex,
+            node_index_in_elt: int,
+        ):
+            coords = self.node_coords_in_element(elt_arg, topo_arg, basis_arg, element_index, node_index_in_elt)
+            node_weight = self.element_inner_weight(
+                elt_arg, topo_arg, basis_arg, element_index, coords, node_index_in_elt, NULL_QP_INDEX
+            )
+            return self.weight_type(1.0) / node_weight
+
+        return node_dual_weight
 
     def trace(self) -> "TraceBasisSpace":
         """Return a trace basis space on lower-dimensional elements."""
@@ -295,6 +323,29 @@ class ShapeBasisSpace(BasisSpace):
                 return sign * shape_element_inner_weight_gradient(coords, node_index_in_elt)
 
         return element_inner_weight_gradient
+
+    def make_node_dual_weight(self):
+        """Create a device function returning the dual weight of each element node."""
+        shape_node_dual_weight = self._shape.make_node_dual_weight()
+
+        @cache.dynamic_func(suffix=self.name)
+        def node_dual_weight(
+            elt_arg: self.geometry.CellArg,
+            topo_arg: self.topology.TopologyArg,
+            basis_arg: self.BasisArg,
+            element_index: ElementIndex,
+            node_index_in_elt: int,
+        ):
+            if wp.static(self.value == ShapeFunction.Value.Scalar):
+                return shape_node_dual_weight(node_index_in_elt)
+            else:
+                # Same sign as element_inner_weight; since sign = +/-1, it also normalizes against the signed weight
+                sign = self.geometry.scalar_type(
+                    self.topology.element_node_sign(elt_arg, topo_arg, element_index, node_index_in_elt)
+                )
+                return sign * shape_node_dual_weight(node_index_in_elt)
+
+        return node_dual_weight
 
     def make_trace_node_quadrature_weight(self, trace_basis):
         """Create a device function returning trace node quadrature weights."""
@@ -575,6 +626,28 @@ class TraceBasisSpace(BasisSpace):
             )
 
         return trace_element_outer_weight_gradient
+
+    def make_node_dual_weight(self):
+        cell_node_dual_weight = self._basis.make_node_dual_weight()
+
+        @cache.dynamic_func(suffix=self._basis.name)
+        def trace_node_dual_weight(
+            geo_side_arg: self.geometry.SideArg,
+            topo_arg: self.topology.TopologyArg,
+            basis_arg: self.BasisArg,
+            element_index: ElementIndex,
+            node_index_in_elt: int,
+        ):
+            cell_index, index_in_cell = self.topology.inner_cell_index(
+                geo_side_arg, topo_arg, element_index, node_index_in_elt
+            )
+            if cell_index == NULL_ELEMENT_INDEX:
+                return self.weight_type(self.geometry.scalar_type(0.0))
+
+            geo_cell_arg = self.geometry.side_to_cell_arg(geo_side_arg)
+            return cell_node_dual_weight(geo_cell_arg, topo_arg, basis_arg, cell_index, index_in_cell)
+
+        return trace_node_dual_weight
 
     def __eq__(self, other: "TraceBasisSpace") -> bool:
         return self._basis == other._basis

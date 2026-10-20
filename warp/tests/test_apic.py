@@ -7,10 +7,14 @@ import ctypes
 import gc
 import os
 import struct
+import subprocess
+import sys
 import tempfile
+import textwrap
 import unittest
 import weakref
 from functools import partial
+from types import SimpleNamespace
 from unittest import mock
 
 import numpy as np
@@ -18,6 +22,15 @@ import numpy as np
 import warp as wp
 import warp._src.context as wp_context
 from warp._src.apic.capture import APICapture
+from warp._src.apic.types import (
+    APIC_CUDA_ARCH_SUFFIX_A,
+    APIC_CUDA_BINARY_CUBIN,
+    APIC_CUDA_BINARY_NONE,
+    APIC_CUDA_BINARY_PTX,
+    APIC_CUDA_FALLBACK_AVAILABLE,
+    APIC_CUDA_FALLBACK_SOURCE_UNAVAILABLE,
+    APICCudaCompileRecipe,
+)
 from warp.sparse import (
     BSR_STATUS_ROW_CAPACITY_EXCEEDED,
     bsr_assign,
@@ -80,14 +93,811 @@ def bvh_query_aabb_hits(bvh: wp.uint64, lower: wp.vec3, upper: wp.vec3, hits: wp
         hits[index] = 1
 
 
+# A separate module keeps the MathDx LTO build out of every other CUDA test.
+@wp.kernel(module="unique", enable_backward=False)
+def apic_mathdx_matmul_kernel(a: wp.array2d[float], b: wp.array2d[float], c: wp.array2d[float]):
+    tile_a = wp.tile_load(a, shape=(16, 16))
+    tile_b = wp.tile_load(b, shape=(16, 16))
+    wp.tile_store(c, wp.tile_matmul(tile_a, tile_b))
+
+
 class TestApic(unittest.TestCase):
-    pass
+    def test_capture_load_initializes_warp(self):
+        """Call wp.capture_load() in a fresh process before Warp is initialized."""
+        script = textwrap.dedent(
+            """
+            import warp as wp
+
+            try:
+                wp.capture_load("missing_graph", device="cpu")
+            except RuntimeError as e:
+                print("RuntimeError:", e)
+            """
+        )
+        result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, check=False)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("RuntimeError: Failed to load APIC graph from missing_graph.wrp", result.stdout)
+
+    def test_capture_save_does_not_publish_failed_exports(self):
+        """Keep failed writes and registrations out of the destination artifact."""
+        for failure in ("binary", "source", "mesh", "native"):
+            for source_fallback in (False, True):
+                if failure == "source" and not source_fallback:
+                    continue
+                for overwrite in (False, True):
+                    with (
+                        self.subTest(failure=failure, source_fallback=source_fallback, overwrite=overwrite),
+                        tempfile.TemporaryDirectory() as tmpdir,
+                    ):
+                        module = _mock_apic_cuda_export_module(tmpdir, "test.cuda_module", "module")
+                        with open(os.path.join(tmpdir, "module.meta"), "wb") as meta_file:
+                            meta_file.write(b"new metadata")
+                        graph = _mock_apic_cuda_export_graph({"module_hash": module})
+                        graph._apic_capture.collected_mesh_ids = {1}
+                        path = os.path.join(tmpdir, "capture")
+                        if overwrite:
+                            _mock_apic_existing_export(path, module)
+                        original = _snapshot_apic_export(path)
+                        original_entries = set(os.listdir(tmpdir))
+                        copy2 = wp_context.shutil.copy2
+
+                        def copy_module(src, dst, failure=failure, copy2=copy2):
+                            if failure == "binary" and dst.endswith(".ptx"):
+                                with open(dst, "wb") as module_file:
+                                    module_file.write(b"partial module")
+                                raise OSError("injected module copy failure")
+                            return copy2(src, dst)
+
+                        def open_export(filename, mode="r", *args, failure=failure, **kwargs):
+                            if failure == "source" and mode == "wb" and os.fsdecode(filename).endswith(".cu"):
+                                with open(filename, "wb") as source_file:
+                                    source_file.write(b"partial source")
+                                raise OSError("injected source write failure")
+                            return open(filename, mode, *args, **kwargs)
+
+                        def save_graph(state, filename, target_arch, context, failure=failure):
+                            if failure == "native":
+                                with open(filename, "wb") as wrp_file:
+                                    wrp_file.write(b"partial capture")
+                                return False
+                            return _mock_apic_state_save(state, filename, target_arch, context)
+
+                        with (
+                            mock.patch.object(wp_context, "runtime") as runtime,
+                            mock.patch.object(wp_context.shutil, "copy2", side_effect=copy_module),
+                            mock.patch.object(wp_context, "open", side_effect=open_export, create=True),
+                        ):
+                            runtime.core.wp_apic_register_mesh.return_value = failure != "mesh"
+                            runtime.core.wp_apic_state_save.side_effect = save_graph
+                            with self.assertRaises((OSError, RuntimeError)):
+                                wp.capture_save(graph, path, source_fallback=source_fallback)
+                        self.assertEqual(_snapshot_apic_export(path), original)
+                        self.assertEqual(set(os.listdir(tmpdir)), original_entries)
+                        if not overwrite:
+                            self.assertFalse(os.path.exists(path + ".wrp"))
+                            self.assertFalse(os.path.exists(path + "_modules"))
+
+    def test_capture_save_restores_existing_export_on_publication_failure(self):
+        """Roll back companion-directory replacement if publication fails."""
+        for failure in ("backup", "modules", "graph"):
+            for overwrite in (False, True):
+                if failure == "backup" and not overwrite:
+                    continue
+                with self.subTest(failure=failure, overwrite=overwrite), tempfile.TemporaryDirectory() as tmpdir:
+                    module = _mock_apic_cuda_export_module(tmpdir, "test.cuda_module", "module")
+                    graph = _mock_apic_cuda_export_graph({"module_hash": module})
+                    path = os.path.join(tmpdir, "capture")
+                    if overwrite:
+                        _mock_apic_existing_export(path, module)
+                    original = _snapshot_apic_export(path)
+                    original_entries = set(os.listdir(tmpdir))
+                    replace = os.replace
+
+                    def publish(src, dst, failure=failure, path=path, replace=replace):
+                        if (
+                            (failure == "backup" and src == path + "_modules")
+                            or (failure == "modules" and os.path.basename(src) == "capture_modules")
+                            or (failure == "graph" and dst == path + ".wrp")
+                        ):
+                            raise OSError("injected publication failure")
+                        return replace(src, dst)
+
+                    with (
+                        mock.patch.object(wp_context, "runtime") as runtime,
+                        mock.patch.object(wp_context.os, "replace", side_effect=publish),
+                    ):
+                        runtime.core.wp_apic_state_save.side_effect = _mock_apic_state_save
+                        with self.assertRaisesRegex(OSError, "injected publication failure"):
+                            wp.capture_save(graph, path, source_fallback=True)
+                    self.assertEqual(_snapshot_apic_export(path), original)
+                    self.assertEqual(set(os.listdir(tmpdir)), original_entries)
+                    if not overwrite:
+                        self.assertFalse(os.path.exists(path + ".wrp"))
+                        self.assertFalse(os.path.exists(path + "_modules"))
+
+    def test_capture_save_preserves_existing_export_on_native_failure(self):
+        """Keep both artifact components intact when native serialization fails."""
+        for source_fallback in (False, True):
+            with self.subTest(source_fallback=source_fallback), tempfile.TemporaryDirectory() as tmpdir:
+                module = _mock_apic_cuda_export_module(tmpdir, "test.cuda_module", "module")
+                graph = _mock_apic_cuda_export_graph({"module_hash": module})
+                path = os.path.join(tmpdir, "existing")
+                _mock_apic_existing_export(path, module)
+                original = _snapshot_apic_export(path)
+
+                def fail_native_save(_state, wrp_path, _target_arch, _context):
+                    with open(wrp_path, "wb") as wrp_file:
+                        wrp_file.write(b"partial capture")
+                    return False
+
+                with mock.patch.object(wp_context, "runtime") as runtime:
+                    runtime.core.wp_apic_state_save.side_effect = fail_native_save
+                    with self.assertRaisesRegex(RuntimeError, "Failed to save APIC graph"):
+                        wp.capture_save(graph, path, source_fallback=source_fallback)
+                self.assertEqual(_snapshot_apic_export(path), original)
+
+    def test_capture_save_keeps_recovery_copy_when_rollback_fails(self):
+        """Retain the old modules if a second filesystem error prevents rollback."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            module = _mock_apic_cuda_export_module(tmpdir, "test.cuda_module", "module")
+            graph = _mock_apic_cuda_export_graph({"module_hash": module})
+            path = os.path.join(tmpdir, "capture")
+            _mock_apic_existing_export(path, module)
+            original = _snapshot_apic_export(path)
+            replace = os.replace
+
+            def publish(src, dst):
+                if dst == path + ".wrp" or (src == path + "_modules" and os.path.basename(dst) == "capture_modules"):
+                    raise OSError("injected publication and rollback failure")
+                return replace(src, dst)
+
+            with (
+                mock.patch.object(wp_context, "runtime") as runtime,
+                mock.patch.object(wp_context.os, "replace", side_effect=publish),
+            ):
+                runtime.core.wp_apic_state_save.side_effect = _mock_apic_state_save
+                with self.assertRaisesRegex(RuntimeError, "Recovery files have been preserved") as raised:
+                    wp.capture_save(graph, path, source_fallback=True)
+            recovery_dirs = [entry for entry in os.listdir(tmpdir) if entry.startswith(".warp-apic-")]
+            self.assertEqual(len(recovery_dirs), 1)
+            recovery_dir = os.path.join(tmpdir, recovery_dirs[0])
+            self.assertIn(recovery_dir, str(raised.exception))
+            with open(path + ".wrp", "rb") as wrp_file:
+                self.assertEqual(wrp_file.read(), original[".wrp"])
+            self.assertEqual(
+                _snapshot_apic_export(os.path.join(recovery_dir, "previous")),
+                {name: data for name, data in original.items() if name != ".wrp"},
+            )
+
+    def test_capture_save_binary_only_skips_source_validation(self):
+        """Ignore unavailable CUDA source artifacts unless fallback is requested."""
+        for explicit in (False, True):
+            with self.subTest(explicit=explicit), tempfile.TemporaryDirectory() as tmpdir:
+                module = _mock_apic_cuda_export_module(tmpdir, "test.cuda_module", "module")
+                module["cuda_compile_artifact"] = {
+                    "fallback_reason": "external_includes",
+                    "recipe": None,
+                    "source_path": None,
+                }
+                graph = _mock_apic_cuda_export_graph({"module_hash": module})
+                path = os.path.join(tmpdir, "binary_only")
+                kwargs = {"source_fallback": False} if explicit else {}
+                with (
+                    mock.patch.object(wp_context, "runtime") as runtime,
+                    mock.patch.object(wp_context, "log_warning") as warning,
+                ):
+                    runtime.core.wp_apic_state_save.side_effect = _mock_apic_state_save
+                    wp.capture_save(graph, path, **kwargs)
+                    runtime.core.wp_apic_state_save.assert_called_once()
+                    warning.assert_not_called()
+                self.assertEqual(os.listdir(path + "_modules"), [module["binary_filename"]])
+
+    def test_capture_save_source_fallback_rejects_unavailable_artifacts(self):
+        """Reject incomplete CUDA source artifacts before publishing a capture."""
+        cases = (
+            ("missing artifact", None, "the exact source compile recipe is unavailable"),
+            ("missing recipe", {"recipe": None}, "compile recipe is invalid (missing recipe)"),
+            ("incomplete recipe", {"recipe": {"debug": False}}, "compile recipe is invalid ('verify_fp')"),
+            (
+                "malformed recipe",
+                {"recipe_updates": {"optimization_level": "invalid"}},
+                "compile recipe is invalid (invalid optimization level)",
+            ),
+            (
+                "invalid optimization level",
+                {"recipe_updates": {"optimization_level": 4}},
+                "compile recipe is invalid (invalid optimization level)",
+            ),
+            (
+                "invalid boolean",
+                {"recipe_updates": {"fast_math": "false"}},
+                "compile recipe is invalid (invalid fast_math)",
+            ),
+            ("invalid blocker metadata", {"fallback_reason": []}, "the exact source compile recipe is unavailable"),
+            ("unsafe source filename", {"source_filename": "../module.cu"}, "the source filename is invalid"),
+            (
+                "invalid architecture suffix",
+                {"arch_suffix": "a"},
+                "compile recipe is invalid (invalid architecture suffix for the module target)",
+            ),
+            ("missing source path", {"source_path": None}, "no generated source path was recorded"),
+            ("missing source file", {"source_path": "missing.cu"}, "the source file is unavailable ("),
+            ("missing source identity", {"source_stat": None}, "was missing when the module was loaded"),
+            ("mismatched source identity", {"source_stat": (0, 0, 0, 0, 0)}, "changed after the module was loaded"),
+            (
+                "unverified binary",
+                {"fallback_reason": "unverified_binary"},
+                "strip_hash=True or the binary name does not match its hashed module identifier",
+            ),
+        )
+
+        for name, changes, reason in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmpdir:
+                module = _mock_apic_cuda_export_module(tmpdir, "test.cuda_module", "module")
+                artifact = module["cuda_compile_artifact"]
+                if changes is None:
+                    module["cuda_compile_artifact"] = None
+                elif "recipe_updates" in changes:
+                    artifact["recipe"].update(changes["recipe_updates"])
+                else:
+                    artifact.update(changes)
+                graph = _mock_apic_cuda_export_graph({"module_hash": module})
+                path = os.path.join(tmpdir, "rejected")
+
+                with mock.patch.object(wp_context, "runtime") as runtime:
+                    with self.assertRaises(RuntimeError) as raised:
+                        wp.capture_save(graph, path, source_fallback=True)
+                    self.assertIn("test.cuda_module", str(raised.exception))
+                    self.assertIn(reason, str(raised.exception))
+                    runtime.core.wp_apic_state_save.assert_not_called()
+                self.assertFalse(os.path.exists(path + ".wrp"))
+                self.assertFalse(os.path.exists(path + "_modules"))
+
+    def test_capture_save_source_fallback_detects_source_changes(self):
+        """Reject changed shared source without damaging an existing export."""
+        cases = (
+            ("overwrite", "changed after the module was loaded"),
+            ("replace", "changed after the module was loaded"),
+            # Same bytes, size, and times: only the file identity reveals the replacement.
+            ("replace with preserved times", "changed after the module was loaded"),
+            ("remove", "the source file is unavailable ("),
+            ("overwrite during read", "changed while it was being read"),
+            # The open handle keeps reading the original file while the path names a new one.
+            ("replace during read", "changed while it was being read"),
+        )
+        for change, reason in cases:
+            with self.subTest(change=change), tempfile.TemporaryDirectory() as tmpdir:
+                if change == "replace during read" and sys.platform == "win32":
+                    self.skipTest("Windows cannot replace a file that is open for reading")
+                module = _mock_apic_cuda_export_module(tmpdir, "test.cuda_module", "module")
+                graph = _mock_apic_cuda_export_graph({"module_hash": module})
+                path = os.path.join(tmpdir, "capture")
+                _mock_apic_existing_export(path, module)
+                original = _snapshot_apic_export(path)
+                source_path = module["cuda_compile_artifact"]["source_path"]
+
+                def replace_source(source_path=source_path, preserve_times=False):
+                    original_stat = os.stat(source_path)
+                    replacement = source_path + ".replacement"
+                    with open(source_path, "rb") as source_file, open(replacement, "wb") as replacement_file:
+                        replacement_file.write(source_file.read())
+                    if preserve_times:
+                        os.utime(replacement, ns=(original_stat.st_atime_ns, original_stat.st_mtime_ns))
+                    os.replace(replacement, source_path)
+
+                if change == "overwrite":
+                    with open(source_path, "ab") as source_file:
+                        source_file.write(b"// overwritten\n")
+                elif change == "replace":
+                    replace_source()
+                elif change == "replace with preserved times":
+                    replace_source(preserve_times=True)
+                elif change == "remove":
+                    os.remove(source_path)
+
+                def open_source(
+                    filename,
+                    mode="r",
+                    *args,
+                    change=change,
+                    source_path=source_path,
+                    replace_source=replace_source,
+                    **kwargs,
+                ):
+                    source_file = open(filename, mode, *args, **kwargs)
+                    if not change.endswith("during read") or filename != source_path or mode != "rb":
+                        return source_file
+
+                    def read_and_change():
+                        data = source_file.read()
+                        if change == "overwrite during read":
+                            with open(source_path, "ab") as overwritten:
+                                overwritten.write(b"// overwritten during read\n")
+                        else:
+                            replace_source()
+                        return data
+
+                    wrapped = mock.MagicMock(wraps=source_file)
+                    wrapped.__enter__.return_value = wrapped
+                    wrapped.__exit__.side_effect = source_file.__exit__
+                    wrapped.read.side_effect = read_and_change
+                    return wrapped
+
+                with (
+                    mock.patch.object(wp_context, "runtime") as runtime,
+                    mock.patch.object(wp_context, "open", side_effect=open_source, create=True),
+                ):
+                    # Fail clearly if a missed rejection reaches serialization.
+                    runtime.core.wp_apic_state_save.side_effect = AssertionError("the save was not rejected")
+                    with self.assertRaises(RuntimeError) as raised:
+                        wp.capture_save(graph, path, source_fallback=True)
+                    self.assertIn(reason, str(raised.exception))
+                    runtime.core.wp_apic_state_save.assert_not_called()
+                self.assertEqual(_snapshot_apic_export(path), original)
+
+                with mock.patch.object(wp_context, "runtime") as runtime:
+                    runtime.core.wp_apic_state_save.side_effect = _mock_apic_state_save
+                    wp.capture_save(graph, path)
+                self.assertEqual(os.listdir(path + "_modules"), [module["binary_filename"]])
+
+    def test_capture_save_source_fallback_checks_preamble_dependencies(self):
+        """Accept self-contained CUDA source; reject host-only headers and MathDx link inputs."""
+        includes = "external CUDA includes are required"
+        unresolved = "cannot be resolved from bundled headers"
+        link_inputs = "external link inputs are required (generated source declares LTO-IR or fatbin inputs)"
+        marker = wp_context._APIC_LINK_INPUTS_MARKER.encode()
+        # Expected reason, or None when the source is portable.
+        cases = (
+            ("inline", b"__device__ float user_offset(float x) { return x + 1.0f; }\n", None),
+            ("bundled_header", b'#include "builtin.h"\n', None),
+            ("compiler_header", b"#include <cuda_fp16.h>\n", None),
+            ("comment", b'/*\n#include "host-only.h"\n*/\n', None),
+            ("raw_string", b'const char* text = R"tag(\n#include "host-only.h"\n)tag";\n', None),
+            ("host_header", b'#include "C:/host-only/custom.h"\n', includes),
+            ("local_header", b'#include "host-only.h"\n', includes),
+            ("spliced_header", b'#inc\\\nlude "host-only.h"\n', includes),
+            ("commented_header", b'#/**/include "host-only.h"\n', includes),
+            ("macro_header", b"#include HOST_HEADER\n", unresolved),
+            ("lto_marker", b"#define " + marker + b" 1\n", link_inputs),
+            ("commented_lto_marker", b"// #define " + marker + b" 1\n", None),
+            ("lto_gemm", b'extern "C" {\nvoid dot_16_16_16_80(float*, float*);\n}\n', link_inputs),
+            ("lto_fft", b'extern "C" {\nvoid fft_32_80(float*, char*);\n}\n', link_inputs),
+            ("lto_solver", b'extern "C" {\nvoid potrf_16_80(float*, char*);\n}\n', link_inputs),
+            # Declarations as ModuleBuilder emits them: sorted, CRLF on Windows, namespaced parameter types.
+            (
+                "lto_sorted_block",
+                b'extern "C" {\r\nvoid getrf_8_8_1_120_x(wp::float32*, char*);\r\n'
+                b"void potrf_8_8_1_120_x(wp::float32*, wp::float32*, char*);\r\n}\r\n",
+                link_inputs,
+            ),
+            (
+                "lto_later_declaration",
+                b'extern "C" {\nvoid unrelated_symbol(float*);\nvoid trsm_8_8_1_120_x(wp::float32*, char*);\n}\n',
+                link_inputs,
+            ),
+            ("inline_linkage", b'extern "C" {\nvoid inline_function() {}\n}\n', None),
+            ("lto_named_definition", b'extern "C" {\nvoid dot_helper() {}\n}\n', None),
+            ("lto_named_declaration_outside_block", b"void dot_helper(float*);\n", None),
+            ("user_declaration", b'extern "C" { void helper(); }\nvoid helper() {}\n', None),
+            ("commented_lto", b'/* extern "C" {\nvoid dot_16(float*);\n} */\n', None),
+        )
+        for name, source_data, reason in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmpdir:
+                module = _mock_apic_cuda_export_module(tmpdir, "test." + name, name, source_data=source_data)
+                graph = _mock_apic_cuda_export_graph({name: module})
+                path = os.path.join(tmpdir, "capture")
+                with (
+                    mock.patch.object(wp_context, "runtime") as runtime,
+                    mock.patch.object(wp_context, "log_warning") as warning,
+                ):
+                    runtime.core.wp_apic_state_save.side_effect = _mock_apic_state_save
+                    if reason is None:
+                        wp.capture_save(graph, path, source_fallback=True)
+                        runtime.core.wp_apic_state_save.assert_called_once()
+                        with open(os.path.join(path + "_modules", name + ".cu"), "rb") as source_file:
+                            self.assertEqual(source_file.read(), source_data)
+                    else:
+                        with self.assertRaises(RuntimeError) as raised:
+                            wp.capture_save(graph, path, source_fallback=True)
+                        self.assertIn(f"test.{name} ({name}): ", str(raised.exception))
+                        self.assertIn(reason, str(raised.exception))
+                        runtime.core.wp_apic_state_save.assert_not_called()
+                        self.assertFalse(os.path.exists(path + ".wrp"))
+                        self.assertFalse(os.path.exists(path + "_modules"))
+                    warning.assert_not_called()
+
+    def test_capture_save_source_fallback_reports_all_blocked_modules(self):
+        """Report every unavailable CUDA fallback before exporting any module."""
+        marker = wp_context._APIC_LINK_INPUTS_MARKER.encode()
+        link_inputs = "external link inputs are required (generated source declares LTO-IR or fatbin inputs)"
+        # Name, load-time fallback reason, generated source (None for a default stub), expected reason.
+        cases = (
+            ("portable", "available", None, None),
+            ("includes", "external_includes", None, "external CUDA includes are required"),
+            ("link_first", "available", b"#define " + marker + b" 1\n", link_inputs),
+            (
+                "link_second",
+                "available",
+                b'extern "C" {\nvoid fft_32_4_120_forward_5(wp::vec2f*, char*);\n}\n',
+                link_inputs,
+            ),
+            ("llvm", "llvm_cuda", None, "the module used the LLVM CUDA backend"),
+            ("unverified", "unverified_binary", None, "the binary's source compile recipe cannot be verified"),
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            modules = {}
+            for name, fallback_reason, source_data, _ in cases:
+                if source_data is None:
+                    module = _mock_apic_cuda_export_module(tmpdir, "test." + name, name)
+                else:
+                    module = _mock_apic_cuda_export_module(tmpdir, "test." + name, name, source_data=source_data)
+                module["cuda_compile_artifact"]["fallback_reason"] = fallback_reason
+                modules[name] = module
+            graph = _mock_apic_cuda_export_graph(modules)
+            path = os.path.join(tmpdir, "rejected")
+
+            with mock.patch.object(wp_context, "runtime") as runtime:
+                with self.assertRaises(RuntimeError) as raised:
+                    wp.capture_save(graph, path, source_fallback=True)
+                message = str(raised.exception)
+                for name, _, _, reason in cases:
+                    if reason is None:
+                        self.assertNotIn(f"test.{name} ", message)
+                    else:
+                        self.assertIn(f"test.{name} ({name}): {reason}", message)
+                runtime.core.wp_apic_state_save.assert_not_called()
+            self.assertFalse(os.path.exists(path + ".wrp"))
+            self.assertFalse(os.path.exists(path + "_modules"))
+
+    def test_capture_save_source_fallback_preserves_existing_export_on_rejection(self):
+        """Leave an existing graph and its modules intact when preflight fails."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            portable = _mock_apic_cuda_export_module(tmpdir, "test.portable", "portable")
+            blocked = _mock_apic_cuda_export_module(tmpdir, "test.blocked", "blocked")
+            blocked["cuda_compile_artifact"]["fallback_reason"] = "external_includes"
+            graph = _mock_apic_cuda_export_graph({"portable": portable, "blocked": blocked})
+            path = os.path.join(tmpdir, "existing")
+            modules_dir = path + "_modules"
+            os.makedirs(modules_dir)
+            existing_files = {
+                path + ".wrp": b"original capture",
+                os.path.join(modules_dir, portable["binary_filename"]): b"original binary",
+                os.path.join(modules_dir, portable["cuda_compile_artifact"]["source_filename"]): b"original source",
+            }
+            for filename, data in existing_files.items():
+                with open(filename, "wb") as artifact_file:
+                    artifact_file.write(data)
+
+            with mock.patch.object(wp_context, "runtime") as runtime:
+                with self.assertRaisesRegex(RuntimeError, r"test.blocked"):
+                    wp.capture_save(graph, path + ".wrp", source_fallback=True)
+                runtime.core.wp_apic_state_save.assert_not_called()
+            self.assertEqual(len(os.listdir(modules_dir)), 2)
+            for filename, data in existing_files.items():
+                with open(filename, "rb") as artifact_file:
+                    self.assertEqual(artifact_file.read(), data)
+
+    def test_snapshot_cuda_compile_artifact_classifies_binaries(self):
+        """Freeze CUDA source identity and classify binary names when a module loads."""
+        module = scale_kernel.module
+        frozen = module.resolve_options(wp.config)
+        module_id = module.get_module_identifier(block_dim=frozen["block_dim"])
+        # Binary name, output architecture, option overrides, expected fallback reason, expected suffix.
+        cases = (
+            (f"{module_id}.sm86.ptx", 86, {}, "available", ""),
+            (f"{module_id}.sm90a.cubin", 90, {}, "available", "a"),
+            (f"{module_id}.sm100f.cubin", 100, {}, "available", "f"),
+            (f"{module_id}.sm86.ptx", 90, {}, "unverified_binary", ""),
+            (f"{module_id}.sm86x.ptx", 86, {}, "unverified_binary", ""),
+            (f"{module_id}.sm86.o", 86, {}, "unverified_binary", ""),
+            ("wp_other_0123456.sm86.ptx", 86, {}, "unverified_binary", ""),
+            (f"{module_id}.sm86.ptx", 86, {"strip_hash": True}, "unverified_binary", ""),
+            (f"{module_id}.sm86.ptx", 86, {"extra_cuda_include_dirs": ("/opt/include",)}, "external_includes", ""),
+            (f"{module_id}.sm86.ptx", 86, {"llvm_cuda": True}, "llvm_cuda", ""),
+        )
+        original_open = open
+        opened_sources = []
+
+        def record_source_open(filename, *args, **kwargs):
+            if isinstance(filename, (str, bytes, os.PathLike)) and os.fsdecode(filename).endswith(".cu"):
+                opened_sources.append(os.fsdecode(filename))
+            return original_open(filename, *args, **kwargs)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            source_path = os.path.join(tmpdir, module_id + ".cu")
+            with open(source_path, "wb") as source_file:
+                source_file.write(b"// generated CUDA source\n")
+            source_stat = wp_context._apic_source_identity(os.stat(source_path))
+
+            for binary_name, output_arch, overrides, reason, suffix in cases:
+                with self.subTest(binary=binary_name, output_arch=output_arch, overrides=overrides):
+                    with mock.patch("builtins.open", side_effect=record_source_open):
+                        artifact = module._snapshot_cuda_compile_artifact(
+                            os.path.join(tmpdir, binary_name), output_arch, frozen | overrides
+                        )
+                    self.assertEqual(opened_sources, [])
+                    self.assertEqual(artifact["fallback_reason"], reason)
+                    self.assertEqual(artifact["arch_suffix"], suffix)
+                    self.assertEqual(artifact["source_path"], source_path)
+                    self.assertEqual(artifact["source_stat"], source_stat)
+                    self.assertEqual(artifact["source_filename"], os.path.splitext(binary_name)[0] + ".cu")
+
+            # The live option names the binary, so it must also count when the frozen copy disagrees.
+            with mock.patch.dict(module.options, {"strip_hash": True}):
+                unhashed_id = module.get_module_identifier(block_dim=frozen["block_dim"])
+                artifact = module._snapshot_cuda_compile_artifact(
+                    os.path.join(tmpdir, f"{unhashed_id}.sm86.ptx"), 86, frozen
+                )
+            self.assertEqual(unhashed_id, f"wp_{module.name}")
+            self.assertEqual(artifact["fallback_reason"], "unverified_binary")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            options = frozen | {"mode": "debug", "optimization_level": None}
+            artifact = module._snapshot_cuda_compile_artifact(
+                os.path.join(tmpdir, f"{module_id}.sm86.ptx"), 86, options
+            )
+            self.assertIsNone(artifact["source_stat"])
+            self.assertEqual(artifact["fallback_reason"], "available")
+            self.assertEqual(
+                artifact["recipe"],
+                {
+                    "debug": True,
+                    "optimization_level": 3,
+                    "verify_fp": options["verify_fp"],
+                    "fast_math": options["fast_math"],
+                    "fuse_fp": options["fuse_fp"],
+                    "lineinfo": options["lineinfo"],
+                },
+            )
+
+    def test_module_builder_marks_link_input_source(self):
+        """Mark generated CUDA source only when its binary links LTO-IR or fatbin inputs."""
+        marker = f"#define {wp_context._APIC_LINK_INPUTS_MARKER} 1"
+        module = scale_kernel.module
+        options = module.resolve_options(wp.config) | {"output_arch": None}
+        hasher = wp_context.ModuleHasher((scale_kernel,), options)
+        link_inputs = {
+            "ltoirs": b"lto-ir",
+            "fatbins": b"fatbin",
+            "ltoirs_decl": "void dot_marker_test(float*);",
+        }
+        for link_input in (None, *link_inputs):
+            with self.subTest(link_input=link_input):
+                builder = wp_context.ModuleBuilder(module, options, hasher=hasher)
+                if link_input is not None:
+                    getattr(builder, link_input)["dot_marker_test"] = link_inputs[link_input]
+                source = builder.codegen("cuda")
+                if link_input is None:
+                    self.assertNotIn(marker, source)
+                else:
+                    self.assertIn(marker, source)
+
+    def test_apic_format_and_warp_version_must_match(self):
+        """Reject format and producer versions before loading graph resources."""
+        device = wp.get_device("cpu")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            format_path = os.path.join(tmpdir, "format_version")
+            _save_apic_memory_validation_graph(format_path, device)
+            with open(format_path + ".wrp", "r+b") as wrp_file:
+                wrp_file.seek(4)
+                serialized_version = _APIC_UINT32.unpack(wrp_file.read(_APIC_UINT32.size))[0]
+                self.assertEqual(serialized_version, _APIC_FORMAT_VERSION)
+                wrp_file.seek(4)
+                wrp_file.write(_APIC_UINT32.pack(serialized_version - 1))
+            _assert_apic_load_rejected(self, format_path, device, r"Unsupported WRP version")
+
+            warp_path = os.path.join(tmpdir, "warp_version")
+            _save_apic_memory_validation_graph(warp_path, device)
+            metadata = _read_apic_section(warp_path + ".wrp", _APIC_SECTION_METADATA)
+            producer_size = _APIC_UINT32.unpack_from(metadata, _APIC_UINT32.size)[0]
+            self.assertGreater(producer_size, 0)
+            producer_offset = _APIC_UINT32.size * 2
+            metadata[producer_offset] = ord("0") if metadata[producer_offset] != ord("0") else ord("1")
+            _replace_apic_section(warp_path + ".wrp", _APIC_SECTION_METADATA, metadata)
+            _assert_apic_load_rejected(self, warp_path, device, r"produced by Warp.*loader is Warp")
+
+    def test_native_save_validates_cuda_module_metadata(self):
+        """Reject CUDA module metadata that the matching reader cannot load."""
+
+        valid_digest = b"0" * 64
+        module_hash = b"module_hash"
+
+        cases = (
+            ("invalid binary digest", {"binary_digest": b"invalid"}),
+            (
+                "incomplete source fields",
+                {"source_filename": b"module.cu", "source_digest": b""},
+            ),
+            ("binary kind mismatch", {"binary_kind": APIC_CUDA_BINARY_CUBIN}),
+            ("available fallback without source", {"fallback_reason": APIC_CUDA_FALLBACK_AVAILABLE}),
+            ("invalid recipe", {"recipe_updates": {"optimization_level": 4}}),
+            ("invalid architecture suffix", {"recipe_updates": {"arch_suffix": APIC_CUDA_ARCH_SUFFIX_A}}),
+            (
+                "empty binary digest with source",
+                {
+                    "binary_digest": b"",
+                    "source_filename": b"module.cu",
+                    "source_digest": valid_digest,
+                    "binary_kind": APIC_CUDA_BINARY_NONE,
+                },
+            ),
+            ("empty binary digest with binary kind", {"binary_digest": b"", "binary_kind": APIC_CUDA_BINARY_PTX}),
+            (
+                "empty binary digest with available fallback",
+                {
+                    "binary_digest": b"",
+                    "binary_kind": APIC_CUDA_BINARY_NONE,
+                    "fallback_reason": APIC_CUDA_FALLBACK_AVAILABLE,
+                },
+            ),
+            (
+                "empty binary digest with recipe",
+                {"binary_digest": b"", "binary_kind": APIC_CUDA_BINARY_NONE, "recipe_updates": {"debug": 1}},
+            ),
+        )
+
+        for name, changes in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmpdir:
+                state = wp_context.runtime.core.wp_apic_create_state()
+                self.assertTrue(state)
+                try:
+                    wp_context.runtime.core.wp_apic_register_module(
+                        state,
+                        module_hash,
+                        b"test.module",
+                        b"module.ptx",
+                        80,
+                    )
+
+                    recipe = APICCudaCompileRecipe()
+                    for field, value in changes.get("recipe_updates", {}).items():
+                        setattr(recipe, field, value)
+                    wp_context.runtime.core.wp_apic_register_cuda_module_artifacts(
+                        state,
+                        module_hash,
+                        changes.get("binary_digest", valid_digest),
+                        changes.get("source_filename", b""),
+                        changes.get("source_digest", b""),
+                        changes.get("binary_kind", APIC_CUDA_BINARY_PTX),
+                        changes.get("fallback_reason", APIC_CUDA_FALLBACK_SOURCE_UNAVAILABLE),
+                        ctypes.byref(recipe),
+                    )
+
+                    path = os.path.join(tmpdir, "invalid.wrp")
+                    result = wp_context.runtime.core.wp_apic_state_save(state, path.encode(), 80, None)
+                    self.assertFalse(result)
+                    self.assertIn("Cannot save invalid APIC module", wp_context.runtime.get_error_string())
+                    self.assertFalse(os.path.exists(path))
+                finally:
+                    wp_context.runtime.core.wp_apic_destroy_state(state)
+
+        for name, binary_digest, binary_kind in (
+            ("binary_metadata", valid_digest, APIC_CUDA_BINARY_PTX),
+            ("empty_artifact_metadata", b"", APIC_CUDA_BINARY_NONE),
+        ):
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmpdir:
+                state = wp_context.runtime.core.wp_apic_create_state()
+                self.assertTrue(state)
+                try:
+                    wp_context.runtime.core.wp_apic_register_module(
+                        state,
+                        module_hash,
+                        b"test.module",
+                        b"module.ptx",
+                        80,
+                    )
+                    recipe = APICCudaCompileRecipe()
+                    wp_context.runtime.core.wp_apic_register_cuda_module_artifacts(
+                        state,
+                        module_hash,
+                        binary_digest,
+                        b"",
+                        b"",
+                        binary_kind,
+                        APIC_CUDA_FALLBACK_SOURCE_UNAVAILABLE,
+                        ctypes.byref(recipe),
+                    )
+
+                    path = os.path.join(tmpdir, "binary_only.wrp")
+                    result = wp_context.runtime.core.wp_apic_state_save(state, path.encode(), 80, None)
+                    self.assertTrue(result, wp_context.runtime.get_error_string())
+                    self.assertTrue(os.path.exists(path))
+                finally:
+                    wp_context.runtime.core.wp_apic_destroy_state(state)
+
+
+def _mock_apic_cuda_export_module(directory, module_name, filename, source_data=b"// generated CUDA source\n"):
+    """Create CUDA artifact metadata for save preflight without requiring a GPU."""
+    source_filename = filename + ".cu"
+    source_path = os.path.join(directory, source_filename)
+    with open(source_path, "wb") as source_file:
+        source_file.write(source_data)
+    binary_filename = filename + ".ptx"
+    binary_path = os.path.join(directory, binary_filename)
+    with open(binary_path, "wb") as binary_file:
+        binary_file.write(b"// compiled PTX\n")
+    return {
+        "module_name": module_name,
+        "binary_filename": binary_filename,
+        "binary_path": binary_path,
+        "module_exec": SimpleNamespace(compile_arch=80),
+        "cuda_compile_artifact": {
+            "source_path": source_path,
+            "source_filename": source_filename,
+            "source_stat": wp_context._apic_source_identity(os.stat(source_path)),
+            "fallback_reason": "available",
+            "arch_suffix": "",
+            "recipe": {
+                "debug": False,
+                "optimization_level": 3,
+                "verify_fp": False,
+                "fast_math": False,
+                "fuse_fp": True,
+                "lineinfo": False,
+            },
+        },
+    }
+
+
+def _mock_apic_existing_export(path, module):
+    """Write distinguishable old artifacts to detect destructive failed saves."""
+    modules_dir = path + "_modules"
+    os.makedirs(modules_dir)
+    files = {
+        path + ".wrp": b"original capture",
+        os.path.join(modules_dir, module["binary_filename"]): b"original binary",
+        os.path.join(modules_dir, module["cuda_compile_artifact"]["source_filename"]): b"original source",
+        os.path.join(modules_dir, "module.meta"): b"original metadata",
+        os.path.join(modules_dir, "apic_guest_cached.ptx"): b"original guest cache",
+    }
+    for filename, data in files.items():
+        with open(filename, "wb") as artifact_file:
+            artifact_file.write(data)
+
+
+def _mock_apic_state_save(_state, path, _target_arch, _context):
+    """Model successful native serialization by writing the requested graph file."""
+    with open(path, "wb") as wrp_file:
+        wrp_file.write(b"complete mock capture")
+    return True
+
+
+def _snapshot_apic_export(path):
+    """Read the graph and companion files for byte-for-byte preservation checks."""
+    snapshot = {}
+    if os.path.isfile(path + ".wrp"):
+        with open(path + ".wrp", "rb") as wrp_file:
+            snapshot[".wrp"] = wrp_file.read()
+    modules_dir = path + "_modules"
+    for root, _directories, filenames in os.walk(modules_dir):
+        for filename in filenames:
+            full_path = os.path.join(root, filename)
+            with open(full_path, "rb") as module_file:
+                snapshot[os.path.relpath(full_path, modules_dir)] = module_file.read()
+    return snapshot
+
+
+def _mock_apic_cuda_export_graph(modules):
+    """Provide the Python graph metadata needed to validate a CUDA export."""
+    return SimpleNamespace(
+        apic=True,
+        apic_state=1,
+        device=SimpleNamespace(is_cuda=True, context=None, get_cuda_compile_arch=lambda: 80),
+        _apic_capture=SimpleNamespace(
+            collected_modules=modules,
+            collected_kernels={},
+            collected_mesh_ids=set(),
+            _regions={},
+        ),
+    )
 
 
 # Must match APICSectionType in warp/native/apic_types.h.
+_APIC_SECTION_METADATA = 1
 _APIC_SECTION_MEMORY = 2
 _APIC_SECTION_OPERATIONS = 3
-_APIC_FORMAT_VERSION = 16
+_APIC_FORMAT_VERSION = 17
 
 # These layouts mirror the packed structs in warp/native/apic_types.h. "<"
 # selects little-endian standard sizes without implicit alignment; "4s", "i",
@@ -300,6 +1110,33 @@ def _corrupt_apic_memtile_record(path, *, srcsize=None, count=None):
         wrp_file.write(_APIC_MEMTILE_RECORD.pack(*memtile))
 
 
+def _patch_apic_file_header(path, **fields):
+    """Overwrite selected fields of a WRP file's header prefix."""
+    names = ("magic", "version", "flags", "num_sections", "section_table_offset")
+    with open(path, "r+b") as wrp_file:
+        prefix = _APIC_FILE_HEADER_PREFIX.unpack(wrp_file.read(_APIC_FILE_HEADER_PREFIX.size))
+        header = dict(zip(names, prefix, strict=True))
+        header.update(fields)
+        wrp_file.seek(0)
+        wrp_file.write(_APIC_FILE_HEADER_PREFIX.pack(*(header[name] for name in names)))
+
+
+def _patch_apic_section_size(path, section_type, size):
+    """Overwrite the stored size of one WRP section-table entry."""
+    with open(path, "r+b") as wrp_file:
+        wrp_data = wrp_file.read()
+        _, _, _, section_count, section_table_offset = _APIC_FILE_HEADER_PREFIX.unpack_from(wrp_data)
+        for section_index in range(section_count):
+            entry_offset = section_table_offset + _APIC_SECTION_ENTRY.size * section_index
+            entry = list(_APIC_SECTION_ENTRY.unpack_from(wrp_data, entry_offset))
+            if entry[0] == section_type:
+                entry[3] = size
+                wrp_file.seek(entry_offset)
+                wrp_file.write(_APIC_SECTION_ENTRY.pack(*entry))
+                return
+    raise ValueError(f"No WRP section of type {section_type}")
+
+
 def test_save_apic_false_error(test, device):
     """Verify that capture_save() should raise when apic=False."""
     n = 64
@@ -454,6 +1291,48 @@ def test_capture_load_rejects_malformed_memory_regions(test, device):
             )
 
 
+def test_capture_load_rejects_out_of_bounds_sections(test, device):
+    """Reject section tables, sections, and metadata that extend past their data."""
+
+    def truncate_metadata(path, *, binding):
+        metadata = _read_apic_section(path, _APIC_SECTION_METADATA)
+        producer_size = _APIC_UINT32.unpack_from(metadata, _APIC_UINT32.size)[0]
+        # Version, producer string length, architecture, and five record counts.
+        header_size = 8 * _APIC_UINT32.size + producer_size
+        size = header_size + 2 if binding else header_size - 1
+        _replace_apic_section(path, _APIC_SECTION_METADATA, metadata[:size])
+
+    cases = {
+        "section table offset": (
+            lambda path: _patch_apic_file_header(path, section_table_offset=1 << 40),
+            r"section table is out of bounds",
+        ),
+        "section count": (
+            lambda path: _patch_apic_file_header(path, num_sections=0xFFFFFFFF),
+            r"section table is out of bounds",
+        ),
+        "section size": (
+            lambda path: _patch_apic_section_size(path, _APIC_SECTION_MEMORY, 1 << 40),
+            r"section \d+ is out of bounds",
+        ),
+        "metadata header": (
+            lambda path: truncate_metadata(path, binding=False),
+            r"Invalid APIC metadata header",
+        ),
+        "metadata binding": (
+            lambda path: truncate_metadata(path, binding=True),
+            r"Invalid APIC binding record",
+        ),
+    }
+    with tempfile.TemporaryDirectory() as tmpdir:
+        for case, (corrupt, message_pattern) in cases.items():
+            with test.subTest(case=case):
+                path = os.path.join(tmpdir, case.replace(" ", "_") + ".wrp")
+                _save_apic_memory_validation_graph(path, device)
+                corrupt(path)
+                _assert_apic_load_rejected(test, path, device, message_pattern)
+
+
 def test_live_hashgrid_capture_does_not_snapshot_inputs(test, device):
     """Keep live-only HashGrid input regions out of serialized snapshots."""
     base = wp.zeros(4096, dtype=wp.vec3, device=device)
@@ -510,7 +1389,7 @@ def test_save_single_kernel(test, device):
 
 
 def test_load_rejects_legacy_overflowed_launch_shape(test, device):
-    """Reject ambiguous signed launch extents on every active axis in a version 15 WRP file."""
+    """Reject a previous APIC format before interpreting its launch shapes."""
     a = wp.ones((1, 1), dtype=float, device=device)
     b = wp.zeros((1, 1), dtype=float, device=device)
 
@@ -526,17 +1405,17 @@ def test_load_rejects_legacy_overflowed_launch_shape(test, device):
             _replace_first_apic_kernel_shape(wrp_path, 2**31, axis)
 
             with test.subTest(axis=axis):
-                _set_apic_file_version(wrp_path, 15)
+                _set_apic_file_version(wrp_path, _APIC_FORMAT_VERSION - 1)
                 _assert_apic_load_rejected(
                     test,
                     wrp_path,
                     device,
-                    r"operation stream failed validation",
+                    r"Unsupported WRP version",
                 )
 
 
 def test_load_accepts_current_oversized_no_tid_launch_shape(test, device):
-    """Accept version 16 oversized extents when the kernel does not use ``wp.tid()``."""
+    """Accept current-format oversized extents when the kernel does not use ``wp.tid()``."""
     wp.load_module(device=device)
     with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
         wp.launch(no_tid_kernel, dim=2**31 + 1, device=device)
@@ -584,6 +1463,31 @@ def test_save_load_round_trip(test, device):
         np.testing.assert_allclose(result.numpy(), expected)
 
 
+def test_load_same_capture_twice(test, device):
+    """Release the first of two loads of one capture and launch the second."""
+    n = 16
+    a = wp.array(np.arange(n, dtype=np.float32), device=device)
+    b = wp.zeros(n, dtype=float, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.launch(scale_kernel, dim=n, inputs=[a, b, 2.0], device=device)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "loaded_twice")
+        wp.capture_save(capture.graph, path, inputs={"a": a}, outputs={"b": b})
+        first = wp.capture_load(path, device=device)
+        second = wp.capture_load(path, device=device)
+
+    del first
+    gc.collect()
+
+    wp.capture_launch(second)
+    result = wp.zeros(n, dtype=float, device=device)
+    second.get_param("b", result)
+    np.testing.assert_allclose(result.numpy(), np.arange(n, dtype=np.float32) * 2.0)
+
+
 def test_save_load_block_dependent_static_kernel(test, device):
     """Serialize the selected executable's symbols after switching block sizes."""
 
@@ -609,6 +1513,326 @@ def test_save_load_block_dependent_static_kernel(test, device):
         wp.capture_launch(loaded_graph)
         loaded_graph.get_param("tile_length", tile_length_out)
         np.testing.assert_array_equal(tile_length_out.numpy(), [256])
+
+
+def test_cuda_source_fallback_and_guest_cache(test, device):
+    """Compile a rejected packaged binary from source, then reuse its guest cache."""
+    n = 64
+    a = wp.array(np.arange(n, dtype=np.float32), device=device)
+    b = wp.zeros(n, dtype=float, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.launch(scale_kernel, dim=n, inputs=[a, b, 2.0], device=device)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "source_fallback")
+        wp.capture_save(capture.graph, path, inputs={"a": a}, outputs={"b": b}, source_fallback=True)
+
+        module_info = next(iter(capture.graph._apic_capture.collected_modules.values()))
+        artifact = module_info["cuda_compile_artifact"]
+        test.assertIsNotNone(artifact)
+        test.assertEqual(
+            artifact["source_filename"],
+            os.path.splitext(module_info["binary_filename"])[0] + ".cu",
+        )
+        modules_dir = path + "_modules"
+        packaged_binary = os.path.join(modules_dir, module_info["binary_filename"])
+        source_path = os.path.join(modules_dir, artifact["source_filename"])
+        test.assertTrue(os.path.isfile(source_path))
+        test.assertFalse(any(name.endswith(".apic.json") for name in os.listdir(modules_dir)))
+
+        # A corrupt packaged binary is recoverable when its validated source is
+        # present. The native resolver must remain quiet and compile in memory.
+        with open(packaged_binary, "wb") as binary_file:
+            binary_file.write(b"intentionally invalid CUDA module")
+
+        loaded = wp.capture_load(path, device=device)
+        wp.capture_launch(loaded)
+        result = wp.zeros(n, dtype=float, device=device)
+        loaded.get_param("b", result)
+        np.testing.assert_allclose(result.numpy(), np.arange(n, dtype=np.float32) * 2.0)
+
+        guest_cache = [name for name in os.listdir(modules_dir) if name.startswith("apic_guest_")]
+        test.assertEqual(len(guest_cache), 1)
+
+        # Cache lookup precedes source access. Removing the source proves the
+        # second load consumes the persistent compiled output without NVRTC.
+        os.remove(source_path)
+        del loaded
+        gc.collect()
+
+        # The binary-only C entry point shares the resolver and may reuse a
+        # previously published guest cache without receiving an include path.
+        native_graph = wp_context.runtime.core.wp_apic_load_graph(
+            device.context,
+            path.encode("utf-8"),
+            0,
+        )
+        test.assertTrue(native_graph, wp_context.runtime.get_error_string())
+        wp_context.runtime.core.wp_apic_destroy_graph(native_graph)
+
+        cached = wp.capture_load(path, device=device)
+        wp.capture_launch(cached)
+        cached.get_param("b", result)
+        np.testing.assert_allclose(result.numpy(), np.arange(n, dtype=np.float32) * 2.0)
+
+
+def test_cuda_packaged_binary_fast_path(test, device):
+    """Load a fresh packaged CUDA binary through both APIC entry points."""
+    n = 64
+    a = wp.array(np.arange(n, dtype=np.float32), device=device)
+    b = wp.zeros(n, dtype=float, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.launch(scale_kernel, dim=n, inputs=[a, b, 2.0], device=device)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "packaged_binary")
+        wp.capture_save(capture.graph, path, inputs={"a": a}, outputs={"b": b})
+        modules_dir = path + "_modules"
+        test.assertFalse(any(name.endswith(".cu") for name in os.listdir(modules_dir)))
+
+        def assert_no_guest_cache():
+            test.assertFalse(any(name.startswith("apic_guest_") for name in os.listdir(modules_dir)))
+
+        assert_no_guest_cache()
+
+        # Exercise the original standalone entry point before any extended load
+        # has had an opportunity to publish a guest-compiled cache entry.
+        native_graph = wp_context.runtime.core.wp_apic_load_graph(
+            device.context,
+            path.encode("utf-8"),
+            0,
+        )
+        test.assertTrue(native_graph, wp_context.runtime.get_error_string())
+        try:
+            native_exec = wp_context.runtime.core.wp_apic_get_cuda_graph_exec(native_graph)
+            test.assertTrue(native_exec, wp_context.runtime.get_error_string())
+        finally:
+            wp_context.runtime.core.wp_apic_destroy_graph(native_graph)
+        assert_no_guest_cache()
+
+        # Python uses the extended entry point, but a compatible packaged binary
+        # must still win without consulting or populating the guest cache.
+        loaded = wp.capture_load(path, device=device)
+        wp.capture_launch(loaded)
+        result = wp.zeros(n, dtype=float, device=device)
+        loaded.get_param("b", result)
+        np.testing.assert_allclose(result.numpy(), np.arange(n, dtype=np.float32) * 2.0)
+        assert_no_guest_cache()
+
+
+def test_cuda_source_enabled_capture_load_from_bytes(test, device):
+    """Load source-enabled captures from packaged bytes and validate their digests."""
+    a = wp.ones(8, dtype=float, device=device)
+    b = wp.zeros(8, dtype=float, device=device)
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.launch(scale_kernel, dim=8, inputs=[a, b, 2.0], device=device)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "source_enabled")
+        wp.capture_save(capture.graph, path, outputs={"b": b}, source_fallback=True)
+        with open(path + ".wrp", "rb") as wrp_file:
+            wrp_data = wrp_file.read()
+        modules = {}
+        for info in capture.graph._apic_capture.collected_modules.values():
+            filename = info["binary_filename"]
+            with open(os.path.join(path + "_modules", filename), "rb") as binary_file:
+                modules[filename] = binary_file.read()
+
+    loaded = wp.capture_load_from_bytes(wrp_data, modules, device=device)
+    wp.capture_launch(loaded)
+    result = wp.zeros(8, dtype=float, device=device)
+    loaded.get_param("b", result)
+    np.testing.assert_allclose(result.numpy(), np.full(8, 2.0, dtype=np.float32))
+
+    filename = next(iter(modules))
+    modules[filename] = b"intentionally invalid CUDA module"
+    with test.assertRaisesRegex(RuntimeError, "SHA-256 check"):
+        wp.capture_load_from_bytes(wrp_data, modules, device=device)
+
+
+def test_cuda_source_fallback_reports_missing_source(test, device):
+    """Report both packaged-binary rejection and a missing source dependency."""
+    a = wp.ones(8, dtype=float, device=device)
+    b = wp.zeros(8, dtype=float, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.launch(scale_kernel, dim=8, inputs=[a, b, 2.0], device=device)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "missing_source")
+        wp.capture_save(capture.graph, path, outputs={"b": b}, source_fallback=True)
+        module_info = next(iter(capture.graph._apic_capture.collected_modules.values()))
+        artifact = module_info["cuda_compile_artifact"]
+        test.assertIsNotNone(artifact)
+        modules_dir = path + "_modules"
+        with open(os.path.join(modules_dir, module_info["binary_filename"]), "wb") as binary_file:
+            binary_file.write(b"intentionally invalid CUDA module")
+        os.remove(os.path.join(modules_dir, artifact["source_filename"]))
+
+        with test.assertRaisesRegex(
+            RuntimeError,
+            r"packaged binary.*SHA-256 check.*generated source.*was not found",
+        ):
+            wp.capture_load(path, device=device)
+
+
+def test_cuda_source_fallback_rejects_mathdx_link_inputs(test, device):
+    """Reject source fallback for a real MathDx-linked module while binary-only saving still works."""
+    if not wp_context.runtime.core.wp_is_mathdx_enabled():
+        test.skipTest("Warp was built without MathDx")
+    if not wp.config.enable_mathdx_gemm:
+        test.skipTest("MathDx GEMM is disabled")
+
+    a = wp.array(np.eye(16, dtype=np.float32), device=device)
+    b = wp.array(np.arange(256, dtype=np.float32).reshape(16, 16), device=device)
+    c = wp.zeros((16, 16), dtype=float, device=device)
+
+    # Build and load the module outside the capture.
+    wp.launch_tiled(apic_mathdx_matmul_kernel, dim=[1], inputs=[a, b, c], block_dim=64, device=device)
+    np.testing.assert_allclose(c.numpy(), b.numpy())
+    c.zero_()
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.launch_tiled(apic_mathdx_matmul_kernel, dim=[1], inputs=[a, b, c], block_dim=64, device=device)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "mathdx")
+        with test.assertRaises(RuntimeError) as raised:
+            wp.capture_save(capture.graph, path, outputs={"c": c}, source_fallback=True)
+        test.assertIn(
+            "external link inputs are required (generated source declares LTO-IR or fatbin inputs)",
+            str(raised.exception),
+        )
+        test.assertFalse(os.path.exists(path + ".wrp"))
+        test.assertFalse(os.path.exists(path + "_modules"))
+
+        wp.capture_save(capture.graph, path, outputs={"c": c})
+        loaded = wp.capture_load(path, device=device)
+        wp.capture_launch(loaded)
+        result = wp.zeros_like(c)
+        loaded.get_param("c", result)
+        np.testing.assert_allclose(result.numpy(), b.numpy())
+
+
+def test_capture_save_binary_only_cuda_module(test, device):
+    """Save CUDA binaries silently by default and when fallback is disabled."""
+    a = wp.ones(8, dtype=float, device=device)
+    b = wp.zeros(8, dtype=float, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.launch(scale_kernel, dim=8, inputs=[a, b, 2.0], device=device)
+
+    module_info = next(iter(capture.graph._apic_capture.collected_modules.values()))
+    artifact = module_info["cuda_compile_artifact"]
+    test.assertIsNotNone(artifact)
+    for explicit in (False, True):
+        with (
+            test.subTest(explicit=explicit),
+            tempfile.TemporaryDirectory() as tmpdir,
+            mock.patch.dict(artifact, {"fallback_reason": "external_includes"}),
+            mock.patch.object(wp_context, "log_warning") as warning,
+        ):
+            path = os.path.join(tmpdir, "binary_only")
+            kwargs = {"source_fallback": False} if explicit else {}
+            wp.capture_save(capture.graph, path, outputs={"b": b}, **kwargs)
+            warning.assert_not_called()
+            test.assertTrue(os.path.isfile(path + ".wrp"))
+            test.assertFalse(any(name.endswith(".cu") for name in os.listdir(path + "_modules")))
+            loaded = wp.capture_load(path, device=device)
+            wp.capture_launch(loaded)
+            result = wp.zeros(8, dtype=float, device=device)
+            loaded.get_param("b", result)
+            np.testing.assert_allclose(result.numpy(), np.full(8, 2.0, dtype=np.float32))
+
+
+def test_capture_save_binary_only_after_source_fallback(test, device):
+    """Remove stale source exports and metadata when fallback is disabled."""
+    a = wp.ones(8, dtype=float, device=device)
+    b = wp.zeros(8, dtype=float, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.launch(scale_kernel, dim=8, inputs=[a, b, 2.0], device=device)
+
+    for explicit in (False, True):
+        with test.subTest(explicit=explicit), tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "binary_after_portable")
+            wp.capture_save(capture.graph, path, outputs={"b": b}, source_fallback=True)
+            modules_dir = path + "_modules"
+            test.assertTrue(any(name.endswith(".cu") for name in os.listdir(modules_dir)))
+            kwargs = {"source_fallback": False} if explicit else {}
+            wp.capture_save(capture.graph, path, outputs={"b": b}, **kwargs)
+            test.assertFalse(any(name.endswith(".cu") for name in os.listdir(modules_dir)))
+            loaded = wp.capture_load(path, device=device)
+            wp.capture_launch(loaded)
+            result = wp.zeros(8, dtype=float, device=device)
+            loaded.get_param("b", result)
+            np.testing.assert_allclose(result.numpy(), np.full(8, 2.0, dtype=np.float32))
+            del loaded
+            gc.collect()
+
+            module_info = next(iter(capture.graph._apic_capture.collected_modules.values()))
+            with open(os.path.join(modules_dir, module_info["binary_filename"]), "wb") as binary_file:
+                binary_file.write(b"intentionally invalid CUDA module")
+
+            _assert_apic_load_rejected(test, path, device, r"Failed to load APIC graph")
+            error = wp_context.runtime.get_error_string()
+            test.assertNotIn("generated source", error)
+            test.assertNotIn("SHA-256", error)
+            test.assertFalse(any(name.startswith("apic_guest_") for name in os.listdir(modules_dir)))
+
+
+def test_capture_save_failed_overwrite_remains_replayable(test, device):
+    """Replay an existing CPU or CUDA artifact after serialization or publication fails."""
+    a = wp.ones(8, dtype=float, device=device)
+    b = wp.zeros(8, dtype=float, device=device)
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.launch(scale_kernel, dim=8, inputs=[a, b, 2.0], device=device)
+
+    for failure in ("native", "publication"):
+        with test.subTest(failure=failure), tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "existing")
+            wp.capture_save(capture.graph, path, outputs={"b": b}, source_fallback=device.is_cuda)
+            original = _snapshot_apic_export(path)
+            original_entries = set(os.listdir(tmpdir))
+            native_save = wp_context.runtime.core.wp_apic_state_save
+            replace = os.replace
+
+            def save_graph(state, filename, target_arch, context, failure=failure, native_save=native_save):
+                if failure == "native":
+                    with open(filename, "wb") as wrp_file:
+                        wrp_file.write(b"partial capture")
+                    return False
+                return native_save(state, filename, target_arch, context)
+
+            def publish(src, dst, failure=failure, path=path, replace=replace):
+                if failure == "publication" and dst == path + ".wrp":
+                    raise OSError("injected publication failure")
+                return replace(src, dst)
+
+            with (
+                mock.patch.object(wp_context.runtime.core, "wp_apic_state_save", side_effect=save_graph),
+                mock.patch.object(wp_context.os, "replace", side_effect=publish),
+            ):
+                with test.assertRaises((RuntimeError, OSError)):
+                    wp.capture_save(capture.graph, path, outputs={"b": b}, source_fallback=False)
+            test.assertEqual(_snapshot_apic_export(path), original)
+            test.assertEqual(set(os.listdir(tmpdir)), original_entries)
+
+            loaded = wp.capture_load(path, device=device)
+            wp.capture_launch(loaded)
+            result = wp.zeros(8, dtype=float, device=device)
+            loaded.get_param("b", result)
+            np.testing.assert_allclose(result.numpy(), np.full(8, 2.0, dtype=np.float32))
+            del loaded
+            gc.collect()
 
 
 def test_save_load_capture_time_scratch_cuda(test, device):
@@ -3701,6 +4925,12 @@ add_function_test(
 )
 add_function_test(
     TestApic,
+    "test_capture_load_rejects_out_of_bounds_sections",
+    test_capture_load_rejects_out_of_bounds_sections,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
     "test_live_hashgrid_capture_does_not_snapshot_inputs",
     test_live_hashgrid_capture_does_not_snapshot_inputs,
     devices=[d for d in devices if d.is_cpu],
@@ -3727,6 +4957,60 @@ add_function_test(
     TestApic,
     "test_save_load_round_trip",
     test_save_load_round_trip,
+    devices=devices_with_cuda_graph_module_load,
+)
+add_function_test(
+    TestApic,
+    "test_load_same_capture_twice",
+    test_load_same_capture_twice,
+    devices=devices_with_cuda_graph_module_load,
+)
+add_function_test(
+    TestApic,
+    "test_cuda_source_fallback_and_guest_cache",
+    test_cuda_source_fallback_and_guest_cache,
+    devices=[d for d in devices_with_cuda_graph_module_load if d.is_cuda],
+)
+add_function_test(
+    TestApic,
+    "test_cuda_packaged_binary_fast_path",
+    test_cuda_packaged_binary_fast_path,
+    devices=[d for d in devices_with_cuda_graph_module_load if d.is_cuda],
+)
+add_function_test(
+    TestApic,
+    "test_cuda_source_enabled_capture_load_from_bytes",
+    test_cuda_source_enabled_capture_load_from_bytes,
+    devices=[d for d in devices_with_cuda_graph_module_load if d.is_cuda],
+)
+add_function_test(
+    TestApic,
+    "test_cuda_source_fallback_reports_missing_source",
+    test_cuda_source_fallback_reports_missing_source,
+    devices=[d for d in devices_with_cuda_graph_module_load if d.is_cuda],
+)
+add_function_test(
+    TestApic,
+    "test_cuda_source_fallback_rejects_mathdx_link_inputs",
+    test_cuda_source_fallback_rejects_mathdx_link_inputs,
+    devices=[d for d in devices_with_cuda_graph_module_load if d.is_cuda],
+)
+add_function_test(
+    TestApic,
+    "test_capture_save_binary_only_cuda_module",
+    test_capture_save_binary_only_cuda_module,
+    devices=[d for d in devices_with_cuda_graph_module_load if d.is_cuda],
+)
+add_function_test(
+    TestApic,
+    "test_capture_save_binary_only_after_source_fallback",
+    test_capture_save_binary_only_after_source_fallback,
+    devices=[d for d in devices_with_cuda_graph_module_load if d.is_cuda],
+)
+add_function_test(
+    TestApic,
+    "test_capture_save_failed_overwrite_remains_replayable",
+    test_capture_save_failed_overwrite_remains_replayable,
     devices=devices_with_cuda_graph_module_load,
 )
 add_function_test(
