@@ -514,6 +514,8 @@
 <p>If <code class="docutils literal notranslate"><span class="pre">f</span></code> is a <a class="reference internal" href="warp.fem.DiscreteField.html#warp.fem.DiscreteField" title="warp.fem.DiscreteField"><code class="xref py py-class docutils literal notranslate"><span class="pre">DiscreteField</span></code></a>, <code class="docutils literal notranslate"><span class="pre">node_index_in_elt</span></code> is required and indicates the element-local index of the node to consider.
 If <code class="docutils literal notranslate"><span class="pre">f</span></code> is a <a class="reference internal" href="warp.fem.field.TestField.html#warp.fem.field.TestField" title="warp.fem.field.TestField"><code class="xref py py-class docutils literal notranslate"><span class="pre">TestField</span></code></a> or <a class="reference internal" href="warp.fem.field.TrialField.html#warp.fem.field.TrialField" title="warp.fem.field.TrialField"><code class="xref py py-class docutils literal notranslate"><span class="pre">TrialField</span></code></a>, <code class="docutils literal notranslate"><span class="pre">node_index_in_elt</span></code> <strong>must not</strong> be provided, and will be automatically set
 to the test (resp. trial) node currently being evaluated.</p>
+<p>If <code class="docutils literal notranslate"><span class="pre">f</span></code> is a <a class="reference internal" href="warp.fem.DiscreteField.html#warp.fem.DiscreteField" title="warp.fem.DiscreteField"><code class="xref py py-class docutils literal notranslate"><span class="pre">DiscreteField</span></code></a>, the returned sample carries no test or trial degree of freedom:
+test and trial fields evaluate to zero there.</p>
 </dd></dl>
 
 </section>
