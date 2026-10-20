@@ -3,13 +3,137 @@
 
 """Test OpenGL renderer logic that does not require a display or OpenGL context."""
 
+import ctypes
 import unittest
 from unittest import mock
 
 import numpy as np
 
 import warp as wp
+from warp._src import context
 from warp.render import OpenGLRenderer
+
+
+class TestRegisteredGLBuffer(unittest.TestCase):
+    @staticmethod
+    def _make_gl(data):
+        gl = mock.Mock()
+        uploaded = []
+
+        def read_buffer(target, offset, nbytes, ptr):
+            ctypes.memmove(ptr, data.ctypes.data + offset, nbytes)
+
+        def write_buffer(target, nbytes, ptr, usage):
+            uploaded.append(np.frombuffer(ctypes.string_at(ptr, nbytes), dtype=data.dtype).copy())
+
+        gl.glGetBufferSubData.side_effect = read_buffer
+        gl.glBufferData.side_effect = write_buffer
+        return gl, uploaded
+
+    def test_cpu_buffer_skips_cuda_registration(self):
+        device = wp.get_device("cpu")
+        with (
+            mock.patch.object(
+                context.runtime.core, "wp_cuda_graphics_register_gl_buffer", return_value=None
+            ) as register,
+            mock.patch.object(context, "log_warning"),
+        ):
+            buffer = wp.RegisteredGLBuffer(17, device)
+            self.assertIsNone(buffer.resource)
+            register.assert_not_called()
+
+    def test_cpu_buffer_requires_copy_fallback(self):
+        device = wp.get_device("cpu")
+        with mock.patch.object(
+            context.runtime.core, "wp_cuda_graphics_register_gl_buffer", return_value=None
+        ) as register:
+            with self.assertRaisesRegex(RuntimeError, "CPU.*fallback_to_copy"):
+                wp.RegisteredGLBuffer(17, device, fallback_to_copy=False)
+            register.assert_not_called()
+
+    def test_cpu_buffer_copy_flags(self):
+        device = wp.get_device("cpu")
+        data = np.arange(4, dtype=np.float32)
+        replacement = data + 10.0
+        real_empty = wp.empty
+
+        def allocate(shape, dtype, **kwargs):
+            self.assertFalse(kwargs.get("pinned", False))
+            return real_empty(shape, dtype, **kwargs)
+
+        for flags in (wp.RegisteredGLBuffer.NONE, wp.RegisteredGLBuffer.READ_ONLY, wp.RegisteredGLBuffer.WRITE_DISCARD):
+            with self.subTest(flags=flags):
+                gl, uploaded = self._make_gl(data)
+                with (
+                    mock.patch.dict("sys.modules", {"pyglet": mock.Mock(gl=gl)}),
+                    mock.patch.object(context.runtime.core, "wp_cuda_graphics_register_gl_buffer", return_value=None),
+                    mock.patch.object(context, "log_warning"),
+                    mock.patch.object(wp, "empty", side_effect=allocate) as empty,
+                    mock.patch.object(wp, "copy", wraps=wp.copy) as copy,
+                ):
+                    buffer = wp.RegisteredGLBuffer(17, device, flags)
+                    array = buffer.map(wp.float32, (4,))
+                    if flags != wp.RegisteredGLBuffer.WRITE_DISCARD:
+                        np.testing.assert_array_equal(array.numpy(), data)
+                    self.assertIs(array, buffer.warp_buffer_cpu)
+                    self.assertIs(array, buffer.map(wp.float32, (4,)))
+                    empty.assert_called_once_with((4,), wp.float32, device=device)
+                    copy.assert_not_called()
+                    array.assign(replacement)
+                    buffer.unmap()
+
+                    self.assertEqual(gl.glGetBufferSubData.call_count, 0 if flags == buffer.WRITE_DISCARD else 2)
+                    self.assertEqual(len(uploaded), 0 if flags == buffer.READ_ONLY else 1)
+                    if uploaded:
+                        np.testing.assert_array_equal(uploaded[0], replacement)
+
+    def test_cuda_buffer_copy_fallback(self):
+        wp.get_device("cpu")
+        device = mock.Mock(is_cpu=False, is_cuda=True, context=123)
+        data = np.arange(4, dtype=np.float32)
+        replacement = data + 10.0
+        warning_flag = "_RegisteredGLBuffer__fallback_warning_shown"
+        previous_warning_shown = getattr(wp.RegisteredGLBuffer, warning_flag)
+
+        for flags in (wp.RegisteredGLBuffer.NONE, wp.RegisteredGLBuffer.READ_ONLY, wp.RegisteredGLBuffer.WRITE_DISCARD):
+            with self.subTest(flags=flags):
+                gl, uploaded = self._make_gl(data)
+                staging = wp.empty((4,), wp.float32, device="cpu")
+                array = mock.Mock(dtype=wp.float32, shape=(4,), size=4)
+                array.numpy.return_value = replacement
+                with (
+                    mock.patch.object(wp.RegisteredGLBuffer, warning_flag, False),
+                    mock.patch.dict("sys.modules", {"pyglet": mock.Mock(gl=gl)}),
+                    mock.patch.object(context, "get_device", return_value=device),
+                    mock.patch.object(
+                        context.runtime.core, "wp_cuda_graphics_register_gl_buffer", return_value=None
+                    ) as register,
+                    mock.patch.object(context, "log_warning") as warning,
+                    mock.patch.object(wp, "empty", side_effect=(array, staging)) as empty,
+                    mock.patch.object(wp, "copy") as copy,
+                ):
+                    buffer = wp.RegisteredGLBuffer(17, device, flags)
+                    warning.assert_called_once()
+                    self.assertIs(buffer.map(wp.float32, (4,)), array)
+                    register.assert_called_once_with(device.context, 17, flags)
+                    self.assertEqual(
+                        empty.call_args_list,
+                        [
+                            mock.call((4,), wp.float32, device=device),
+                            mock.call((4,), wp.float32, device="cpu", pinned=True),
+                        ],
+                    )
+                    if flags == buffer.WRITE_DISCARD:
+                        copy.assert_not_called()
+                        gl.glGetBufferSubData.assert_not_called()
+                    else:
+                        copy.assert_called_once_with(array, staging)
+                        np.testing.assert_array_equal(staging.numpy(), data)
+                    buffer.unmap()
+                    self.assertEqual(len(uploaded), 0 if flags == buffer.READ_ONLY else 1)
+                    if uploaded:
+                        np.testing.assert_array_equal(uploaded[0], replacement)
+                self.assertIs(getattr(wp.RegisteredGLBuffer, warning_flag), previous_warning_shown)
 
 
 class TestOpenGLRenderer(unittest.TestCase):

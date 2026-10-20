@@ -246,7 +246,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_rand import TestRand
     from warp.tests.test_ref import TestRef
     from warp.tests.test_reload import TestReload
-    from warp.tests.test_render_opengl import TestOpenGLRenderer
+    from warp.tests.test_render_opengl import TestOpenGLRenderer, TestRegisteredGLBuffer
     from warp.tests.test_rounding import TestRounding
     from warp.tests.test_runlength_encode import TestRunlengthEncode
     from warp.tests.test_sanitize import TestSanitize
@@ -448,6 +448,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestRef,
         TestReload,
         TestOpenGLRenderer,
+        TestRegisteredGLBuffer,
         TestRmmAllocator,
         TestRounding,
         TestRunlengthEncode,
@@ -714,7 +715,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.test_rand import TestRand
     from warp.tests.test_ref import TestRef
     from warp.tests.test_reload import TestReload
-    from warp.tests.test_render_opengl import TestOpenGLRenderer
+    from warp.tests.test_render_opengl import TestOpenGLRenderer, TestRegisteredGLBuffer
     from warp.tests.test_rounding import TestRounding
     from warp.tests.test_runlength_encode import TestRunlengthEncode
     from warp.tests.test_scalar_ops import TestScalarOps
@@ -956,6 +957,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestRand,
         TestReload,
         TestOpenGLRenderer,
+        TestRegisteredGLBuffer,
         TestRounding,
         TestRunlengthEncode,
         TestSGD,
