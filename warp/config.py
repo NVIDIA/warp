@@ -83,7 +83,7 @@ Note: Strict and checked modes impact performance.
 """
 
 
-version: str = "1.19.0.dev0"
+version: str = "1.19.0.dev1"
 """Warp version string"""
 
 verify_fp: bool = False
@@ -301,17 +301,22 @@ This setting can be overridden at the module level by setting the
 ``"enable_mathdx_fft"`` module option.
 """
 
-cpu_compiler_flags: str | None = None
+cpu_compiler_flags: str | None = (
+    "-march=native -mllvm=-inline-threshold=9000 -mllvm=-inline-cold-callsite-threshold=3000"
+)
 """Flags controlling CPU kernel compilation.
 
-``None`` detects host CPU features (as if ``-march=native`` were set) and uses
-LLVM defaults. ``""`` compiles for a generic CPU target. A flag string can
-include ``-march=native``, Clang frontend flags, and LLVM arguments in either
-``-mllvm <option>`` or ``-mllvm=<option>`` form.
+The default detects host CPU features and makes LLVM more eager to inline
+helper calls. Set to ``None`` to retain host feature detection and use LLVM's
+default inlining thresholds. ``""`` compiles for a generic CPU target. A flag
+string can include ``-march=native``, Clang frontend flags, and LLVM arguments
+in either ``-mllvm <option>`` or ``-mllvm=<option>`` form. Use
+``-fno-vectorize`` to disable loop vectorization for a module.
 
 The ``"cpu_compiler_flags"`` module option replaces this global string for
-that module. Include ``-march=native`` explicitly in a module override when
-host CPU detection is wanted.
+that module. Use ``"-march=native"`` to restore LLVM's default thresholds for
+one module while retaining host feature detection. ``None`` at the module level
+inherits the global setting.
 
 The resolved flag string is part of the module cache key.
 LLVM options are a power-user feature with process-wide caveats; see
@@ -433,7 +438,8 @@ option.
 deterministic_debug: bool = False
 """Enable debug diagnostics for deterministic execution mode.
 
-When enabled, deterministic scatter overflows may emit device-side diagnostics.
+When enabled, deterministic buffer overflows and slot-assignment mismatches may
+emit device-side diagnostics, including during CUDA graph replay.
 This setting is intended for debugging capacity issues and should remain disabled
 for normal execution, especially when CUDA graph capture is performance-critical.
 """

@@ -53,6 +53,8 @@ enum DeterminismLevel {
 };
 
 constexpr int DETERMINISTIC_BLOCK_SIZE = 256;
+// Keep synchronized with ERROR_COUNTER_REPLAY_DIVERGENCE and the Python launcher status code.
+constexpr int DETERMINISTIC_ERROR_COUNTER_REPLAY_DIVERGENCE = 2;
 
 inline int deterministic_num_blocks(int count)
 {
@@ -186,6 +188,33 @@ __global__ void writeback_counter_totals_kernel(
     int dest = dest_index_from_key(keys[tid]);
     if (dest >= 0 && dest < counter_size) {
         counters[dest] = counter_totals[dest];
+    }
+}
+
+__global__ void validate_counter_replay_kernel(
+    const int* __restrict__ expected_counts,
+    const int* __restrict__ replay_counts,
+    int count,
+    int* __restrict__ error,
+    int debug
+)
+{
+    int tid;
+    if (!deterministic_thread_index(count, tid))
+        return;
+
+    int expected = expected_counts[tid];
+    int replayed = replay_counts[tid];
+    if (expected == replayed)
+        return;
+
+    int previous = atomicCAS(error, 0, DETERMINISTIC_ERROR_COUNTER_REPLAY_DIVERGENCE);
+    if (debug && previous == 0) {
+        printf(
+            "Warp deterministic mode: a thread made a different number of atomic_add() calls while assigning "
+            "stable slots; thread=%d expected_calls=%d actual_calls=%d\n",
+            tid, expected, replayed
+        );
     }
 }
 
@@ -1240,6 +1269,23 @@ void deterministic_counter_writeback_device(
     check_kernel_launch();
 }
 
+void deterministic_counter_validate_replay_device(
+    const int* expected_counts, const int* replay_counts, int count, int* error, int debug
+)
+{
+    if (count <= 0)
+        return;
+
+    ContextGuard guard(wp_cuda_context_get_current());
+    cudaStream_t stream = static_cast<cudaStream_t>(wp_cuda_stream_get_current());
+
+    const int num_blocks = deterministic_num_blocks(count);
+    validate_counter_replay_kernel<<<num_blocks, DETERMINISTIC_BLOCK_SIZE, 0, stream>>>(
+        expected_counts, replay_counts, count, error, debug
+    );
+    check_kernel_launch();
+}
+
 }  // anonymous namespace
 
 
@@ -1386,5 +1432,15 @@ void wp_deterministic_counter_writeback_device(
     deterministic_counter_writeback_device(
         reinterpret_cast<int64_t*>(keys), count, reinterpret_cast<int*>(counter_totals),
         reinterpret_cast<int*>(counters), counter_size
+    );
+}
+
+void wp_deterministic_counter_validate_replay_device(
+    uint64_t expected_counts, uint64_t replay_counts, int count, uint64_t error, int debug
+)
+{
+    deterministic_counter_validate_replay_device(
+        reinterpret_cast<int*>(expected_counts), reinterpret_cast<int*>(replay_counts), count,
+        reinterpret_cast<int*>(error), debug
     );
 }

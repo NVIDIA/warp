@@ -3799,6 +3799,9 @@ inline CUDA_CALLABLE mat_t<Rows, Cols, Type> outer(const vec_t<Rows, Type>& a, c
 {
     // col 0 = a * b[0] etc...
     mat_t<Rows, Cols, Type> ret;
+#if defined(__clang__) && !defined(__CUDA_ARCH__)
+#pragma clang loop vectorize(disable)
+#endif
     for (unsigned row = 0; row < Rows; ++row) {
         for (unsigned col = 0; col < Cols; ++col)  // columns
         {

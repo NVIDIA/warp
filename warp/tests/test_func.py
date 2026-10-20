@@ -1,12 +1,14 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import gc
 import inspect
 import math
 import subprocess
 import sys
 import tempfile
 import unittest
+import weakref
 from pathlib import Path
 from typing import Any
 
@@ -379,6 +381,42 @@ def test_grad_in_func_grad(test, device):
 
 
 class TestFunc(unittest.TestCase):
+    def test_func_decorator_does_not_retain_caller(self):
+        """Release unrelated caller objects without relying on cyclic collection."""
+
+        class CallerState:
+            pass
+
+        def register_function(parameterized):
+            if parameterized:
+
+                @wp.func()
+                def identity(x: float) -> float:
+                    return x
+            else:
+
+                @wp.func
+                def identity(x: float) -> float:
+                    return x
+
+            return identity
+
+        def discard_caller_state(parameterized):
+            caller_state = CallerState()
+            register_function(parameterized)
+            return weakref.ref(caller_state)
+
+        gc_enabled = gc.isenabled()
+        gc.disable()
+        try:
+            for parameterized in (False, True):
+                with self.subTest(parameterized=parameterized):
+                    caller_state_ref = discard_caller_state(parameterized)
+                    self.assertIsNone(caller_state_ref())
+        finally:
+            if gc_enabled:
+                gc.enable()
+
     def test_user_func_export(self):
         """Call overloaded user-defined functions from Python."""
         i = custom(1)

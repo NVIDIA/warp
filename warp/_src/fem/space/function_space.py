@@ -160,6 +160,24 @@ class FunctionSpace:
         raise NotImplementedError
 
     @staticmethod
+    def local_inverse_value_map_inner(
+        elt_arg: SpaceTopology.ElementArg,
+        element_index: ElementIndex,
+        coords: Coords,
+    ):
+        """Build the local map transforming from world to node space, (pseudo-)inverse of ``local_value_map_inner``."""
+        raise NotImplementedError
+
+    @staticmethod
+    def local_inverse_value_map_outer(
+        elt_arg: SpaceTopology.ElementArg,
+        element_index: ElementIndex,
+        coords: Coords,
+    ):
+        """Build the local map transforming from world to node space, (pseudo-)inverse of ``local_value_map_outer``."""
+        raise NotImplementedError
+
+    @staticmethod
     def space_value(
         dof_value: FunctionSpace.dof_dtype,
         node_weight: FunctionSpace.weight_dtype,
@@ -207,14 +225,16 @@ class FunctionSpace:
     @staticmethod
     def dof_value(
         space_value: FunctionSpace.dtype,
-        node_weight: FunctionSpace.weight_dtype,
-        local_value_map: FunctionSpace.LocalValueMap,
+        node_dual_weight: FunctionSpace.weight_dtype,
+        local_inverse_value_map: Any,
     ):
-        """Compute the projection of a world-space value onto the basis of a single degree of freedom.
+        """Compute the degree-of-freedom value of a single node that reproduces a world-space value at the node location.
+
+        This is the inverse of :meth:`space_value`.
 
         Args:
             space_value: World-space value.
-            node_weight: Weight associated to the node, as given per the basis space.
-            local_value_map: Data encoding local transformation from node space to world space, as given per ``local_map_value_(inn|out)er``.
+            node_dual_weight: Dual weight associated to the node, as given per :meth:`BasisSpace.make_node_dual_weight`.
+            local_inverse_value_map: Data encoding local transformation from world space to node space, as given per ``local_inverse_value_map_(inn|out)er``.
         """
         raise NotImplementedError

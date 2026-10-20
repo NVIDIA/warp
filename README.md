@@ -157,7 +157,7 @@ python -m warp.examples.browse
             <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_fdtd_3d.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/core_fdtd_3d.png"></a></td>
         </tr>
         <tr>
-            <td align="center">3-D FDTD Luneburg lens</td>
+            <td align="center">3-D FDTD Luneburg lens<br><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_fdtd_3d.py">single GPU</a> · <a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/distributed/example_fdtd_3d_nccl.py">multi GPU</a></td>
         </tr>
     </tbody>
 </table>

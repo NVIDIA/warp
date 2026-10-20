@@ -98,6 +98,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.cuda.test_array_fill_capture import TestArrayFillCapture
     from warp.tests.cuda.test_async import TestAsync
     from warp.tests.cuda.test_capture_mode import TestCaptureMode
+    from warp.tests.cuda.test_capture_release import TestCaptureRelease
     from warp.tests.cuda.test_clang_cuda import TestClangCUDA
     from warp.tests.cuda.test_cluster_dim import TestClusterDim
     from warp.tests.cuda.test_cuda_arch_suffix import TestCudaArchSuffix
@@ -136,6 +137,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.geometry.test_mesh_query_point import TestMeshQueryPoint
     from warp.tests.geometry.test_mesh_query_ray import TestMeshQueryRay
     from warp.tests.geometry.test_sparse_marching_cubes import TestSparseMarchingCubes
+    from warp.tests.geometry.test_surface_nets import TestSurfaceNets
     from warp.tests.geometry.test_swept_volume import TestSweptVolume
     from warp.tests.geometry.test_volume import TestVolume
     from warp.tests.geometry.test_volume_validation import TestVolumeValidation
@@ -159,6 +161,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestTorchAllocator,
     )
     from warp.tests.test_apic import TestApic
+    from warp.tests.test_apic_load_from_bytes import TestApicLoadFromBytes
     from warp.tests.test_apic_mesh import TestApicMesh
     from warp.tests.test_apic_utility_algorithms import TestApicSegmentedSort, TestApicUtilityAlgorithms
     from warp.tests.test_arithmetic import TestArithmetic
@@ -168,6 +171,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_atomic_bitwise import TestAtomicBitwise
     from warp.tests.test_atomic_cas import TestAtomicCAS
     from warp.tests.test_bf16 import TestBf16, TestBf16MlDtypes
+    from warp.tests.test_bit_count import TestBitCount
     from warp.tests.test_block_dim_dispatch import TestBlockDimDispatch
     from warp.tests.test_bool import TestBool
     from warp.tests.test_builtins_resolution import TestBuiltinsResolution
@@ -185,6 +189,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_cpu_block_codegen import TestCpuBlockCodegen
     from warp.tests.test_cpu_block_dim import TestCpuBlockDim
     from warp.tests.test_cpu_precompiled_headers import TestCpuPrecompiledHeaders
+    from warp.tests.test_cpu_vectorization import TestCpuVectorization
     from warp.tests.test_ctypes import TestCTypes
     from warp.tests.test_cuda_profiler import TestCudaProfiler
     from warp.tests.test_dense import TestDense
@@ -202,6 +207,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_fast_math import TestFastMath
     from warp.tests.test_fixedarray import TestFixedArray
     from warp.tests.test_fp16 import TestFp16
+    from warp.tests.test_fsai import TestFSAI
     from warp.tests.test_func import TestFunc
     from warp.tests.test_func_inline import TestFuncInline
     from warp.tests.test_func_parameter_targets import TestFuncParameterTargets
@@ -308,6 +314,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestAllocTracker,
         TestAllocatorProtocol,
         TestApic,
+        TestApicLoadFromBytes,
         TestApicMesh,
         TestApicSegmentedSort,
         TestApicUtilityAlgorithms,
@@ -321,11 +328,13 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestAtomicCAS,
         TestBf16,
         TestBf16MlDtypes,
+        TestBitCount,
         TestBlockDimDispatch,
         TestBool,
         TestBuiltinsResolution,
         TestBvh,
         TestCaptureMode,
+        TestCaptureRelease,
         TestClangCUDA,
         TestClosestPointEdgeEdgeMethods,
         TestClusterDim,
@@ -342,6 +351,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestCpuBlockCodegen,
         TestCpuBlockDim,
         TestCpuPrecompiledHeaders,
+        TestCpuVectorization,
         TestCTypes,
         TestCudaArchSuffix,
         TestCudaProfiler,
@@ -376,6 +386,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestFemShape,
         TestFixedArray,
         TestFp16,
+        TestFSAI,
         TestFunc,
         TestFuncInline,
         TestFuncParameterTargets,
@@ -401,6 +412,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestLValue,
         TestMarchingCubes,
         TestSparseMarchingCubes,
+        TestSurfaceNets,
         TestMat,
         TestMatConstructors,
         TestMatLite,
@@ -580,6 +592,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.geometry.test_mesh import TestMesh
     from warp.tests.geometry.test_mesh_query_point import TestMeshQueryPoint
     from warp.tests.geometry.test_mesh_query_ray import TestMeshQueryRay
+    from warp.tests.geometry.test_surface_nets import TestSurfaceNets
     from warp.tests.geometry.test_volume import TestVolume
     from warp.tests.geometry.test_volume_validation import TestVolumeValidation
     from warp.tests.geometry.test_volume_write import TestVolumeWrite
@@ -600,6 +613,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestTorchAllocator,
     )
     from warp.tests.test_apic import TestApic
+    from warp.tests.test_apic_load_from_bytes import TestApicLoadFromBytes
     from warp.tests.test_apic_mesh import TestApicMesh
     from warp.tests.test_apic_utility_algorithms import TestApicSegmentedSort, TestApicUtilityAlgorithms
     from warp.tests.test_arithmetic import TestArithmetic
@@ -610,6 +624,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.test_atomic_bitwise import TestAtomicBitwise
     from warp.tests.test_atomic_cas import TestAtomicCAS
     from warp.tests.test_bf16 import TestBf16, TestBf16MlDtypes
+    from warp.tests.test_bit_count import TestBitCount
     from warp.tests.test_block_dim_dispatch import TestBlockDimDispatch
     from warp.tests.test_bool import TestBool
     from warp.tests.test_builtins_resolution import TestBuiltinsResolution
@@ -637,6 +652,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.test_fast_math import TestFastMath
     from warp.tests.test_fixedarray import TestFixedArray
     from warp.tests.test_fp16 import TestFp16
+    from warp.tests.test_fsai import TestFSAI
     from warp.tests.test_func import TestFunc
     from warp.tests.test_func_parameter_targets import TestFuncParameterTargets
     from warp.tests.test_future_annotations import TestFutureAnnotations
@@ -796,6 +812,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         # Types & operators
         TestArithmetic,
         TestAtomic,
+        TestBitCount,
         TestFp16,
         TestLValue,
         TestStruct,
@@ -852,6 +869,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestFemLinalg,
         TestHashGrid,
         TestMarchingCubes,
+        TestSurfaceNets,
         TestVolume,
         TestVolumeValidation,
         TestVolumeWrite,
@@ -862,12 +880,14 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestMatElementwiseOps,
         TestMatLite,
         TestAdam,
+        TestFSAI,
         TestAllocTracker,
         TestAllocatorProtocol,
         TestCustomAllocator,
         TestRmmAllocator,
         TestTorchAllocator,
         TestApic,
+        TestApicLoadFromBytes,
         TestApicMesh,
         TestArray,
         TestArrayReduce,

@@ -993,6 +993,110 @@ def test_nanogrid_multi_env_rebuildable(test, device):
     np.testing.assert_array_equal(rebuilt_voxels_np, np.array([[0, 0, 0], [4, 0, 0]], dtype=np.int32))
 
 
+def test_sparse_grid_multi_env_invalid_point_envs(test, device):
+    """Reject out-of-range point environment indices when constructing non-rebuildable sparse grids.
+
+    The indices address per-environment device arrays, so invalid values would otherwise read and
+    write out of bounds. Masked-out points are not used and may hold any value.
+    """
+    points = wp.array([[0, 0, 0], [1, 0, 0]], dtype=wp.vec3i, device=device)
+    levels = wp.array([0, 0], dtype=wp.uint8, device=device)
+
+    for invalid_env in (2, -1):
+        point_envs = wp.array([0, invalid_env], dtype=wp.int32, device=device)
+        with test.assertRaisesRegex(ValueError, f"Environment index {invalid_env} .* out of bounds"):
+            fem.Nanogrid.from_environment_voxels(points, point_envs, 2, device=device)
+        with test.assertRaisesRegex(ValueError, f"Environment index {invalid_env} .* out of bounds"):
+            fem.AdaptiveNanogrid.from_environment_voxels(points, levels, point_envs, 2, level_count=1, device=device)
+
+    point_envs = wp.array([0, -1], dtype=wp.int32, device=device)
+    point_mask = wp.array([1, 0], dtype=wp.int32, device=device)
+    geo = fem.Nanogrid.from_environment_voxels(points, point_envs, 2, point_mask=point_mask, device=device)
+    test.assertEqual(geo.cell_count(), 1)
+    np.testing.assert_array_equal(geo.cell_env.numpy(), np.array([0]))
+
+
+def test_nanogrid_multi_env_rebuildable_invalid_point_envs(test, device):
+    """Ignore out-of-range point environment indices when constructing a rebuildable Nanogrid.
+
+    Rebuildable construction must not wait on the device, so like ``rebuild()`` it drops points with an
+    out-of-range environment index and reports them through ``status`` instead of raising.
+    """
+    points = wp.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=wp.vec3f, device=device)
+    point_envs = wp.array([0, 1, 2], dtype=wp.int32, device=device)
+    status = wp.zeros(1, dtype=wp.uint32, device=device)
+
+    geo = fem.Nanogrid.from_environment_voxels(points, point_envs, 2, device=device, rebuildable=True, status=status)
+
+    test.assertEqual(int(status.numpy()[0]), wp.Volume.REBUILD_INVALID_INPUT)
+    test.assertEqual(geo.cell_grid.get_active_stats().voxel_count, 2)
+    np.testing.assert_array_equal(np.sort(geo.cell_env.numpy()[:2]), np.array([0, 1]))
+
+
+def test_nanogrid_multi_env_capture_invalid_point_envs(test, device):
+    """Ignore out-of-range point environment indices when building a Nanogrid under graph capture.
+
+    Validating indices on the host would synchronize, so rebuildable construction and all rebuilds drop
+    points with an out-of-range environment index and report them through the rebuild status flags.
+    """
+    capacity = {"max_active_voxels": 4, "max_leaf_nodes": 4, "max_lower_nodes": 4, "max_upper_nodes": 4}
+    points = wp.array([[0, 0, 0], [1, 0, 0], [2, 0, 0], [3, 0, 0]], dtype=wp.vec3i, device=device)
+    valid_envs = wp.array([0, 1, 0, 1], dtype=wp.int32, device=device)
+    invalid_envs = wp.array([0, 1, -1, 2], dtype=wp.int32, device=device)
+    point_envs = wp.clone(invalid_envs)
+    point_mask = wp.ones(4, dtype=wp.int32, device=device)
+    status = wp.zeros(1, dtype=wp.uint32, device=device)
+
+    geo = fem.Nanogrid.from_environment_voxels(points, valid_envs, 2, device=device, rebuildable=True, **capacity)
+
+    wp.load_module(device=device)
+    wp.load_module(module="warp.fem.geometry.nanogrid", device=device)
+
+    # Replaying a captured build that generates environment offsets fails independently of this check.
+    env_offsets = _make_env_offsets([[0, 0, 0], [8, 0, 0]], device)
+    with wp.ScopedCapture(device=device, force_module_load=False) as build_capture:
+        captured_geo = fem.Nanogrid.from_environment_voxels(
+            points,
+            point_envs,
+            2,
+            env_offsets,
+            point_mask=point_mask,
+            device=device,
+            rebuildable=True,
+            status=status,
+            **capacity,
+        )
+    with wp.ScopedCapture(device=device, force_module_load=False) as rebuild_capture:
+        geo.rebuild(points, point_envs=point_envs, status=status, point_mask=point_mask)
+
+    replay_cases = (
+        ("invalid", invalid_envs, [1, 1, 1, 1], wp.Volume.REBUILD_INVALID_INPUT, [0, 1]),
+        ("valid", valid_envs, [1, 1, 1, 1], wp.Volume.REBUILD_SUCCESS, [0, 0, 1, 1]),
+        ("masked_invalid", invalid_envs, [1, 1, 0, 0], wp.Volume.REBUILD_SUCCESS, [0, 1]),
+    )
+    for operation, graph, replay_geo in (
+        ("construction", build_capture.graph, captured_geo),
+        ("rebuild", rebuild_capture.graph, geo),
+    ):
+        for case, environments, mask, expected_status, expected_cell_env in replay_cases:
+            with test.subTest(operation=operation, case=case):
+                wp.copy(point_envs, environments)
+                point_mask.assign(np.array(mask, dtype=np.int32))
+                wp.capture_launch(graph)
+
+                test.assertEqual(int(status.numpy()[0]), expected_status)
+                voxel_count = len(expected_cell_env)
+                test.assertEqual(replay_geo.cell_grid.get_active_stats().voxel_count, voxel_count)
+                np.testing.assert_array_equal(
+                    np.sort(replay_geo.cell_env.numpy()[:voxel_count]), np.array(expected_cell_env)
+                )
+
+    # Without a status buffer or a user mask, invalid inputs must still be ignored safely.
+    test.assertIsNone(geo.rebuild(points, point_envs=invalid_envs))
+    test.assertEqual(geo.cell_grid.get_active_stats().voxel_count, 2)
+    np.testing.assert_array_equal(np.sort(geo.cell_env.numpy()[:2]), np.array([0, 1]))
+
+
 def test_adaptive_nanogrid_multi_env(test, device):
     if platform.system() == "Windows":
         test.skipTest("Skipping test due to NVRTC bug on Windows")
@@ -1155,6 +1259,24 @@ add_function_test(
 add_function_test(TestFemMultiEnv, "test_nanogrid_multi_env", test_nanogrid_multi_env, devices=cuda_devices)
 add_function_test(
     TestFemMultiEnv, "test_nanogrid_multi_env_rebuildable", test_nanogrid_multi_env_rebuildable, devices=cuda_devices
+)
+add_function_test(
+    TestFemMultiEnv,
+    "test_sparse_grid_multi_env_invalid_point_envs",
+    test_sparse_grid_multi_env_invalid_point_envs,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestFemMultiEnv,
+    "test_nanogrid_multi_env_rebuildable_invalid_point_envs",
+    test_nanogrid_multi_env_rebuildable_invalid_point_envs,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestFemMultiEnv,
+    "test_nanogrid_multi_env_capture_invalid_point_envs",
+    test_nanogrid_multi_env_capture_invalid_point_envs,
+    devices=cuda_devices_with_mempool,
 )
 add_function_test(
     TestFemMultiEnv, "test_adaptive_nanogrid_multi_env", test_adaptive_nanogrid_multi_env, devices=cuda_devices

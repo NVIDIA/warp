@@ -28,7 +28,7 @@ from typing import Any, ClassVar, Literal, NamedTuple, get_args, get_origin
 import numpy as np
 
 import warp.config
-from warp._src.deterministic import DeterministicCodegen
+from warp._src.deterministic import DeterministicCodegen, WarpDeterminismError
 from warp._src.logger import log_debug, log_warning
 from warp._src.types import *
 
@@ -1840,6 +1840,29 @@ class _ArraySlot(NamedTuple):
     type: object
 
 
+class _NonUnrolledConstantRange(NamedTuple):
+    """A constant ``range()`` lowered as a loop instead of being unrolled."""
+
+    start: int
+    stop: int
+    step: int
+
+    @property
+    def last(self):
+        """Return the last value visited by the range."""
+        return range(self.start, self.stop, self.step)[-1]
+
+    def forward_exit_condition(self, iterator):
+        """Return the C++ condition that terminates forward iteration."""
+        comparison = ">=" if self.step > 0 else "<="
+        return f"{iterator} {comparison} {self.stop}"
+
+    def reverse_exit_condition(self, iterator):
+        """Return the C++ condition that terminates reverse iteration."""
+        comparison = "<" if self.step > 0 else ">"
+        return f"{iterator} {comparison} {self.start}"
+
+
 class _SharedFunctionSource:
     """Extraction products shared by every Adjoint built from one code object.
 
@@ -2229,6 +2252,10 @@ class Adjoint:
         adj.symbols = {}  # map from symbols to adjoint variables
         adj.variables = []  # list of local variables (in order)
         adj.deferred_static_expressions = []
+        # A constant range above max_unroll can justify a linear/contiguous
+        # CPU source specialization. LLVM's loop vectorizer runs independently
+        # at O2/O3; this flag does not restrict which loops it may vectorize.
+        adj.has_non_unrolled_constant_loop = False
 
         adj.return_var = None  # return type for function or kernel
         adj.loop_symbols = []  # symbols at the start of each loop
@@ -2257,6 +2284,7 @@ class Adjoint:
 
         # Exact launch metadata derived from calls reached by this build.
         adj.uses_tid = False
+        adj.uses_scalar_tid = False
 
         # wp.ref[T] callees lacking a manual adjoint; rejected post-build, once used_by_backward_kernel is final
         adj.unvalidated_ref_calls = []
@@ -2282,6 +2310,7 @@ class Adjoint:
             # code to the CUDA/C++ file to avoid a broken function from affecting
             # the compilation of valid ones.
             adj._validate_return_type()
+            adj.deterministic.end_build()
 
         except Exception as original_exc:
             try:
@@ -2963,6 +2992,7 @@ class Adjoint:
 
         # Deterministic mode: intercept atomic builtins and emit scatter or
         # two-pass code instead of the normal atomic call.
+        adj.deterministic.track_array_access(func, bound_args)
         det_output = adj.deterministic.emit_atomic_call(
             func, bound_args, return_type, output, output_list, return_value_used=return_value_used
         )
@@ -3339,23 +3369,35 @@ class Adjoint:
         adj.add_reverse(f"if (!{cond.emit()}) {{")
 
     # define a for-loop
-    def begin_for(adj, iter):
+    def begin_for(adj, iter, constant_range=None):
+        if constant_range is not None:
+            adj.add_forward(f"{iter.emit()} = {constant_range.start};")
+
         cond_block = adj.begin_block("for")
         adj.loop_blocks.append(cond_block)
         adj.add_forward(f"start_{cond_block.label}:;")
         adj.indent()
 
         # evaluate cond
-        adj.add_forward(f"if (iter_cmp({iter.emit()}) == 0) goto end_{cond_block.label};")
+        if constant_range is None:
+            adj.add_forward(f"if (iter_cmp({iter.emit()}) == 0) goto end_{cond_block.label};")
+        else:
+            exit_condition = constant_range.forward_exit_condition(iter.emit())
+            adj.add_forward(f"if ({exit_condition}) goto end_{cond_block.label};")
 
         # evaluate iter
-        val = adj.add_builtin_call("iter_next", [iter])
+        if constant_range is None:
+            val = adj.add_builtin_call("iter_next", [iter])
+        else:
+            val = adj.add_var(int32)
+            adj.add_forward(f"{val.emit()} = {iter.emit()};")
+            adj.add_forward(f"{iter.emit()} += {constant_range.step};")
 
         adj.begin_block()
 
         return val
 
-    def end_for(adj, iter):
+    def end_for(adj, iter, constant_range=None, value=None):
         body_block = adj.end_block()
         cond_block = adj.end_block()
         adj.loop_blocks.pop()
@@ -3379,11 +3421,18 @@ class Adjoint:
 
         reverse = []
 
-        # reverse iterator
-        reverse.append(adj.indentation + f"{iter.emit()} = wp::iter_reverse({iter.emit()});")
-
-        for i in cond_block.body_forward:
-            reverse.append(i)
+        if constant_range is None:
+            # reverse iterator
+            reverse.append(adj.indentation + f"{iter.emit()} = wp::iter_reverse({iter.emit()});")
+            for i in cond_block.body_forward:
+                reverse.append(i)
+        else:
+            reverse.append(adj.indentation + f"{iter.emit()} = {constant_range.last};")
+            reverse.append(adj.indentation + f"start_{cond_block.label}:;")
+            exit_condition = constant_range.reverse_exit_condition(iter.emit())
+            reverse.append(adj.indentation + f"\tif ({exit_condition}) goto end_{cond_block.label};")
+            reverse.append(adj.indentation + f"\t{value.emit()} = {iter.emit()};")
+            reverse.append(adj.indentation + f"\t{iter.emit()} -= {constant_range.step};")
 
         # zero adjoints
         for i in body_block.vars:
@@ -4101,6 +4150,7 @@ class Adjoint:
             constant_range = range(*arg_values)
             max_iters = len(constant_range)
 
+            # test if we're above max unroll count
             max_unroll = adj.builder_options.get("max_unroll", 16)
 
             ok_to_unroll = True
@@ -4128,6 +4178,7 @@ class Adjoint:
 
             # Apply max_unroll check only for regular loops (no static expressions)
             if max_iters > max_unroll:
+                adj.has_non_unrolled_constant_loop = True
                 log_debug(
                     f"Warning: fixed-size loop count of {max_iters} is larger than the module 'max_unroll' limit of {max_unroll}, will generate dynamic loop."
                 )
@@ -4139,6 +4190,13 @@ class Adjoint:
 
             if ok_to_unroll:
                 return constant_range
+
+            if not adj.contains_break(loop.body):
+                return _NonUnrolledConstantRange(
+                    constant_range.start,
+                    constant_range.stop,
+                    constant_range.step,
+                )
 
         # Unroll is not possible, range needs to be valuated dynamically
         range_call = adj.add_builtin_call(
@@ -4176,14 +4234,18 @@ class Adjoint:
         # otherwise generate a dynamic loop
         else:
             # evaluate the Iterable -- only if not previously evaluated when trying to unroll
-            if unroll_range is not None:
+            if isinstance(unroll_range, _NonUnrolledConstantRange):
+                iter = adj.add_var(int32)
+            elif unroll_range is not None:
                 # Range has already been evaluated when trying to unroll, do not re-evaluate
                 iter = unroll_range
             else:
                 iter = adj.eval(node.iter)
 
             adj._promote_mutated_iter_constants(node.body)
-            adj.symbols[node.target.id] = adj.begin_for(iter)
+            constant_range = unroll_range if isinstance(unroll_range, _NonUnrolledConstantRange) else None
+            loop_value = adj.begin_for(iter, constant_range)
+            adj.symbols[node.target.id] = loop_value
 
             # for loops should be side-effect free, here we store a copy
             adj.loop_symbols.append(adj.symbols.copy())
@@ -4195,7 +4257,7 @@ class Adjoint:
             adj.materialize_redefinitions(adj.loop_symbols[-1])
             adj.loop_symbols.pop()
 
-            adj.end_for(iter)
+            adj.end_for(iter, constant_range, loop_value)
 
     def emit_Break(adj, node):
         adj.materialize_redefinitions(adj.loop_symbols[-1])
@@ -4579,6 +4641,8 @@ class Adjoint:
 
         if func is warp._src.context.builtin_functions["tid"]:
             adj.uses_tid = True
+            if min_outputs is None or min_outputs <= 1:
+                adj.uses_scalar_tid = True
 
         # Evaluate positional arguments.
         args = []
@@ -4767,6 +4831,7 @@ class Adjoint:
                     )
                 # handles array loads (where each dimension has an index specified)
                 out = adj.add_builtin_call("address", [target, *indices])
+                adj.deterministic.track_array_reference(out, target)
                 if origin := adj.reference_origin_for_var(target):
                     out.ref_origin = origin.extend_array(indices)
 
@@ -5804,8 +5869,6 @@ class Adjoint:
             )
 
         array_root = slot.root
-        if adj.deterministic.enabled:
-            adj.det_meta.has_component_updates = True
         array_expression = adj._array_slot_root_expr(array_root)
         index_expressions = ", ".join(index.emit() for index in slot.indices)
         slot_accessor = f"[&](auto& _e) -> auto& {{ return _e{slot.access}; }}"
@@ -5826,9 +5889,10 @@ class Adjoint:
                     return True
                 scalar_type = getattr(slot.type, "_wp_scalar_type_", slot.type)
                 if operation in ("add", "sub") and type_is_float(scalar_type):
-                    raise WarpCodegenError(
-                        "Deterministic mode does not yet support floating-point composite slot augmented assignment "
-                        "atomics."
+                    raise WarpDeterminismError(
+                        "Deterministic mode cannot compile this kernel. Cause: floating-point composite slot "
+                        "augmented assignment atomics are not supported. Fix: accumulate whole composite values "
+                        "with atomic_add(), use separate scalar arrays, or disable deterministic mode for this kernel."
                     )
                 forward_statement = adj.deterministic.wrap_side_effect_call(forward_statement)
             reverse_operation = f"atomic_{operation}"
@@ -7152,7 +7216,7 @@ cpu_module_header = """
 #include "builtin.h"
 #include "deterministic.h"
 
-#define builtin_tid1d() wp::tid(task_index, dim)
+#define builtin_tid1d() wp::linear_tid<wp_linear_tid>(task_index, dim)
 #define builtin_tid2d(x, y) wp::tid(x, y, task_index, dim)
 #define builtin_tid3d(x, y, z) wp::tid(x, y, z, task_index, dim)
 #define builtin_tid4d(x, y, z, w) wp::tid(x, y, z, w, task_index, dim)
@@ -7452,31 +7516,69 @@ def cuda_kernel_backward_name(kernel, name=None):
 
 cpu_kernel_template_forward = """
 
-void {name}_cpu_kernel_forward(
+template <bool wp_linear_contiguous>
+static void {name}_cpu_kernel_forward(
     {forward_args},
     wp_args_{name} *_wp_args)
 {{
+    static constexpr bool wp_linear_tid = wp_linear_contiguous;
+{forward_array_setup}
 {forward_body}}}
 
 """
 
 cpu_kernel_template_backward = """
 
-void {name}_cpu_kernel_backward(
+template <bool wp_linear_contiguous>
+static void {name}_cpu_kernel_backward(
     {reverse_args},
     wp_args_{name} *_wp_args,
     wp_args_{name} *_wp_adj_args)
 {{
+    static constexpr bool wp_linear_tid = wp_linear_contiguous;
+{backward_array_setup}
 {reverse_body}}}
 
 """
 
+
+def cpu_linear_tid_specialization_candidate(adj):
+    """Return whether a generated kernel can use the linear CPU entry point."""
+    if adj.has_non_unrolled_constant_loop:
+        return True
+    return any(is_tile(var.type) or is_tile_stack(var.type) for var in adj.variables)
+
+
+def cpu_linear_contiguous_specialization_candidate(adj, block_dim):
+    """Return whether a CPU kernel can specialize both coordinates and array strides."""
+    array_args = [arg for arg in adj.args if matches_array_class(arg.type, array)]
+    # Simple 1D kernels benefit even without rolled loops; mixed-dimensional
+    # kernels retain the original loop and tile profitability gate.
+    return (
+        block_dim == 1
+        and adj.kernel_dim == 1
+        and adj.uses_scalar_tid
+        and any(arg.type.ndim == 1 for arg in array_args)
+        and (cpu_linear_tid_specialization_candidate(adj) or all(arg.type.ndim == 1 for arg in array_args))
+    )
+
+
+# Inline task wrappers before LLVM's general optimization passes. Otherwise
+# the compiler spends time optimizing both the wrappers and the merged entry.
 cpu_module_template_forward = """
 
-extern "C" {{
+template <bool wp_linear_contiguous>
+static WP_FORCEINLINE void {name}_cpu_forward_tasks(
+    wp::launch_bounds_t<{launch_ndim}> *dim,
+    wp_args_{name} *_wp_args)
+{{
+    for (size_t task_index = 0; task_index < dim->size; ++task_index)
+    {{
+        {name}_cpu_kernel_forward<wp_linear_contiguous>(*dim, task_index, _wp_args);
+    }}
+}}
 
-// Python CPU entry points
-WP_API void {name}_cpu_forward(
+static WP_FORCEINLINE void {name}_cpu_forward_dispatch(
     wp::launch_bounds_t<{launch_ndim}> *dim,
     wp_args_{name} *_wp_args)
 {{
@@ -7485,13 +7587,8 @@ WP_API void {name}_cpu_forward(
     wp::shared_tile_storage = &tile_mem;
 #endif
 
-    for (size_t task_index = 0; task_index < dim->size; ++task_index)
-    {{
-        {name}_cpu_kernel_forward(*dim, task_index, _wp_args);
-    }}
+{forward_dispatch}
 }}
-
-}} // extern C
 
 """
 
@@ -7511,15 +7608,27 @@ static void {name}_cpu_block_thunk_forward(
     {name}_cpu_block_payload_forward* payload = ({name}_cpu_block_payload_forward*)payload_ptr;
     wp::tile_shared_storage_t::bind(payload->tile_mem);
     const size_t task_index = payload->block_first + (size_t)lane;
-    {name}_cpu_kernel_forward(*dim, task_index, payload->args);
+    {name}_cpu_kernel_forward<false>(*dim, task_index, payload->args);
 }}
 
+"""
+
+cpu_module_entry_template_forward = """\
 extern "C" {{
 
+// Python CPU entry points
 WP_API void {name}_cpu_forward(
     wp::launch_bounds_t<{launch_ndim}> *dim,
     wp_args_{name} *_wp_args)
 {{
+{forward_entry_body}
+}}
+
+}} // extern C
+
+"""
+
+cpu_block_entry_body_forward = """\
     constexpr size_t block_dim = (size_t)WP_TILE_BLOCK_DIM;
     const size_t total = dim->size;
     size_t block_first = 0;
@@ -7537,17 +7646,24 @@ WP_API void {name}_cpu_forward(
         block_first += (size_t)active_count;
         ++block_id;
     }}
-}}
-
-}} // extern C
-
 """
 
 cpu_module_template_backward = """
 
-extern "C" {{
+template <bool wp_linear_contiguous>
+static WP_FORCEINLINE void {name}_cpu_backward_tasks(
+    wp::launch_bounds_t<{launch_ndim}> *dim,
+    wp_args_{name} *_wp_args,
+    wp_args_{name} *_wp_adj_args)
+{{
+    for (size_t task_index = 0; task_index < dim->size; ++task_index)
+    {{
+        {name}_cpu_kernel_backward<wp_linear_contiguous>(
+            *dim, task_index, _wp_args, _wp_adj_args);
+    }}
+}}
 
-WP_API void {name}_cpu_backward(
+static WP_FORCEINLINE void {name}_cpu_backward_dispatch(
     wp::launch_bounds_t<{launch_ndim}> *dim,
     wp_args_{name} *_wp_args,
     wp_args_{name} *_wp_adj_args)
@@ -7557,13 +7673,8 @@ WP_API void {name}_cpu_backward(
     wp::shared_tile_storage = &tile_mem;
 #endif
 
-    for (size_t task_index = 0; task_index < dim->size; ++task_index)
-    {{
-        {name}_cpu_kernel_backward(*dim, task_index, _wp_args, _wp_adj_args);
-    }}
+{backward_dispatch}
 }}
-
-}} // extern C
 
 """
 
@@ -7584,9 +7695,12 @@ static void {name}_cpu_block_thunk_backward(
     {name}_cpu_block_payload_backward* payload = ({name}_cpu_block_payload_backward*)payload_ptr;
     wp::tile_shared_storage_t::bind(payload->tile_mem);
     const size_t task_index = payload->block_first + (size_t)lane;
-    {name}_cpu_kernel_backward(*dim, task_index, payload->args, payload->adj_args);
+    {name}_cpu_kernel_backward<false>(*dim, task_index, payload->args, payload->adj_args);
 }}
 
+"""
+
+cpu_module_entry_template_backward = """\
 extern "C" {{
 
 WP_API void {name}_cpu_backward(
@@ -7594,6 +7708,14 @@ WP_API void {name}_cpu_backward(
     wp_args_{name} *_wp_args,
     wp_args_{name} *_wp_adj_args)
 {{
+{backward_entry_body}
+}}
+
+}} // extern C
+
+"""
+
+cpu_block_entry_body_backward = """\
     constexpr size_t block_dim = (size_t)WP_TILE_BLOCK_DIM;
     const size_t total = dim->size;
     size_t block_first = 0;
@@ -7611,10 +7733,6 @@ WP_API void {name}_cpu_backward(
         block_first += (size_t)active_count;
         ++block_id;
     }}
-}}
-
-}} // extern C
-
 """
 
 
@@ -8385,7 +8503,9 @@ def codegen_kernel(kernel, device, options):
             "external entry-point runtimes such as OptiX do not accept Warp's shared-memory allocator."
         )
 
+    cpu_linear_contiguous = False
     if device == "cpu":
+        cpu_linear_contiguous = cpu_linear_contiguous_specialization_candidate(adj, options["block_dim"])
         template_forward = cpu_kernel_template_forward
         template_backward = cpu_kernel_template_backward
     elif is_external_constant_params_entry:
@@ -8409,6 +8529,47 @@ def codegen_kernel(kernel, device, options):
         "launch_ndim": kernel.adj.kernel_dim,
         "constant_params_alias": "",
     }
+
+    contiguous_args = [arg for arg in adj.args if matches_array_class(arg.type, array) and arg.type.ndim == 1]
+    forward_array_setup = ""
+    backward_array_setup = ""
+    if device == "cpu" and cpu_linear_contiguous:
+        args_type = f"wp_args_{kernel.get_mangled_name()}"
+        forward_lines = [
+            f"    {args_type} wp_contiguous_args;",
+            "    if constexpr (wp_linear_contiguous)",
+            "    {",
+            "        wp_contiguous_args = *_wp_args;",
+        ]
+        for arg in contiguous_args:
+            dtype = Var.dtype_to_ctype(arg.type.dtype)
+            forward_lines.append(f"        wp_contiguous_args.{arg.label}.strides[0] = sizeof({dtype});")
+        forward_lines.extend(("        _wp_args = &wp_contiguous_args;", "    }"))
+        forward_array_setup = "\n".join(forward_lines)
+
+        backward_lines = [
+            f"    {args_type} wp_contiguous_args;",
+            f"    {args_type} wp_contiguous_adj_args;",
+            "    if constexpr (wp_linear_contiguous)",
+            "    {",
+            "        wp_contiguous_args = *_wp_args;",
+            "        wp_contiguous_adj_args = *_wp_adj_args;",
+        ]
+        for arg in contiguous_args:
+            dtype = Var.dtype_to_ctype(arg.type.dtype)
+            backward_lines.append(f"        wp_contiguous_args.{arg.label}.strides[0] = sizeof({dtype});")
+            backward_lines.append(f"        wp_contiguous_adj_args.{arg.label}.strides[0] = sizeof({dtype});")
+        backward_lines.extend(
+            (
+                "        _wp_args = &wp_contiguous_args;",
+                "        _wp_adj_args = &wp_contiguous_adj_args;",
+                "    }",
+            )
+        )
+        backward_array_setup = "\n".join(backward_lines)
+
+    template_fmt_args["forward_array_setup"] = forward_array_setup
+    template_fmt_args["backward_array_setup"] = backward_array_setup
 
     # Generate launch_bounds string for CUDA kernels
     launch_bounds_str = ""
@@ -8542,19 +8703,62 @@ def codegen_module(kernel, device, options):
     options = options | kernel.options
 
     template = ""
+    name = kernel.get_mangled_name()
     template_fmt_args = {
-        "name": kernel.get_mangled_name(),
+        "name": name,
         "launch_ndim": kernel.adj.kernel_dim,
     }
 
     if options["block_dim"] == 1:
+        if cpu_linear_contiguous_specialization_candidate(kernel.adj, options["block_dim"]):
+            contiguous_args = [
+                arg for arg in kernel.adj.args if matches_array_class(arg.type, array) and arg.type.ndim == 1
+            ]
+            forward_conditions = []
+            backward_conditions = []
+            for arg in contiguous_args:
+                dtype = Var.dtype_to_ctype(arg.type.dtype)
+                forward_conditions.append(f"_wp_args->{arg.label}.strides[0] == (int)sizeof({dtype})")
+                backward_conditions.append(f"_wp_args->{arg.label}.strides[0] == (int)sizeof({dtype})")
+                backward_conditions.append(f"_wp_adj_args->{arg.label}.strides[0] == (int)sizeof({dtype})")
+
+            # Read independent packed stride checks eagerly. A short-circuit chain can
+            # make LLVM classify the contiguous task loop as cold and prevent inlining.
+            # Retain the outer coordinate short circuit.
+            forward_condition = " & ".join(f"({condition})" for condition in forward_conditions)
+            backward_condition = " & ".join(f"({condition})" for condition in backward_conditions)
+            template_fmt_args["forward_dispatch"] = (
+                f"    const bool wp_linear_contiguous = dim->coord_mult == 1 && ({forward_condition});\n"
+                "    if (wp_linear_contiguous)\n"
+                f"        {name}_cpu_forward_tasks<true>(dim, _wp_args);\n"
+                "    else\n"
+                f"        {name}_cpu_forward_tasks<false>(dim, _wp_args);"
+            )
+            template_fmt_args["backward_dispatch"] = (
+                f"    const bool wp_linear_contiguous = dim->coord_mult == 1 && ({backward_condition});\n"
+                "    if (wp_linear_contiguous)\n"
+                f"        {name}_cpu_backward_tasks<true>(dim, _wp_args, _wp_adj_args);\n"
+                "    else\n"
+                f"        {name}_cpu_backward_tasks<false>(dim, _wp_args, _wp_adj_args);"
+            )
+        else:
+            template_fmt_args["forward_dispatch"] = f"    {name}_cpu_forward_tasks<false>(dim, _wp_args);"
+            template_fmt_args["backward_dispatch"] = (
+                f"    {name}_cpu_backward_tasks<false>(dim, _wp_args, _wp_adj_args);"
+            )
+
+        template_fmt_args["forward_entry_body"] = f"    {name}_cpu_forward_dispatch(dim, _wp_args);"
+        template_fmt_args["backward_entry_body"] = f"    {name}_cpu_backward_dispatch(dim, _wp_args, _wp_adj_args);"
         template += cpu_module_template_forward
-        if options["enable_backward"]:
-            template += cpu_module_template_backward
     else:
+        template_fmt_args["forward_entry_body"] = cpu_block_entry_body_forward.format(name=name).rstrip("\n")
+        template_fmt_args["backward_entry_body"] = cpu_block_entry_body_backward.format(name=name).rstrip("\n")
         template += cpu_block_module_template_forward
-        if options["enable_backward"]:
-            template += cpu_block_module_template_backward
+
+    template += cpu_module_entry_template_forward
+    if options["enable_backward"]:
+        template += cpu_module_template_backward if options["block_dim"] == 1 else cpu_block_module_template_backward
+        template += cpu_module_entry_template_backward
 
     s = template.format(**template_fmt_args)
     return s

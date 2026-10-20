@@ -1207,25 +1207,38 @@ def test_tile_reduce_axis_lengths_33_to_256(test, device, block_dim=TILE_DIM):
 
     assert_np_equal(y.numpy(), np.prod(x_np, axis=1), tol=1e-2)
 
-    # 3D sum: axis=2, size 128 (forward and backward)
-    x = wp.ones((8, 8, 128), dtype=float, requires_grad=True, device=device)
-    y = wp.zeros((8, 8), dtype=float, requires_grad=True, device=device)
 
-    with wp.Tape() as tape:
-        wp.launch_tiled(
-            tile_reduce_axis_tier2_sum_axis2_kernel,
-            dim=[1],
-            inputs=[x],
-            outputs=[y],
-            block_dim=block_dim,
-            device=device,
-        )
+def test_tile_reduce_axis_tier2_3d(test, device):
+    """Reduce the innermost axis of a 3D tile of 128 elements, forward and backward.
 
-    y.grad = wp.ones_like(y)
-    tape.backward()
+    Split out of test_tile_reduce_axis_lengths_33_to_256 because the (8, 8, 128) float
+    tile is 32 KiB and the backward pass needs it twice, so the adjoint launch cannot be
+    configured on a device limited to 64 KiB of shared memory.
+    """
+    if device.is_cuda and device.max_shared_memory_per_block < 96 * 1024:
+        test.skipTest("Requires at least 96 KiB of shared memory per block")
 
-    assert_np_equal(y.numpy(), np.ones((8, 8), dtype=float) * 128.0)
-    assert_np_equal(x.grad.numpy(), np.ones((8, 8, 128), dtype=float))
+    for block_dim in (32, TILE_DIM):
+        with test.subTest(block_dim=block_dim):
+            # 3D sum: axis=2, size 128 (forward and backward)
+            x = wp.ones((8, 8, 128), dtype=float, requires_grad=True, device=device)
+            y = wp.zeros((8, 8), dtype=float, requires_grad=True, device=device)
+
+            with wp.Tape() as tape:
+                wp.launch_tiled(
+                    tile_reduce_axis_tier2_sum_axis2_kernel,
+                    dim=[1],
+                    inputs=[x],
+                    outputs=[y],
+                    block_dim=block_dim,
+                    device=device,
+                )
+
+            y.grad = wp.ones_like(y)
+            tape.backward()
+
+            assert_np_equal(y.numpy(), np.ones((8, 8), dtype=float) * 128.0)
+            assert_np_equal(x.grad.numpy(), np.ones((8, 8, 128), dtype=float))
 
 
 def test_tile_reduce_axis_partial_warp_block(test, device):
@@ -1673,6 +1686,12 @@ add_function_test(
     test_tile_reduce_axis_lengths_33_to_256,
     devices=devices,
     block_dim=32,
+)
+add_function_test(
+    TestTileReduce,
+    "test_tile_reduce_axis_tier2_3d",
+    test_tile_reduce_axis_tier2_3d,
+    devices=devices,
 )
 add_function_test(
     TestTileReduce,

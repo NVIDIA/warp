@@ -435,6 +435,64 @@ def test_tile_matmul_large_fp64(test, device):
     assert_np_equal(B_wp.grad.numpy(), A.T @ adj_C, tol=1e-10)
 
 
+@wp.kernel
+def tile_matmul_overwrite_kernel(A: wp.array2d[float], B: wp.array2d[float], C: wp.array2d[float], beta: float):
+    a = wp.tile_load(A, shape=(TILE_M, TILE_K))
+    b = wp.tile_load(B, shape=(TILE_K, TILE_N))
+    c = wp.tile_load(C, shape=(TILE_M, TILE_N))
+
+    wp.tile_matmul(a, b, c, beta=beta)
+
+    wp.tile_store(C, c)
+
+
+def test_tile_matmul_beta_zero_ignores_out(test, device):
+    """Verify that ``beta=0`` overwrites ``out`` without reading its non-finite values.
+
+    A reused output tile can hold NaN or infinite values from earlier work, and scaling those by zero still
+    produces NaN, so ``out`` must not be read at all.
+    """
+    out = np.full((TILE_M, TILE_N), np.nan, dtype=np.float32)
+    out[::2] = np.inf
+
+    A = wp.ones((TILE_M, TILE_K), dtype=float, device=device)
+    B = wp.ones((TILE_K, TILE_N), dtype=float, device=device)
+    C = wp.array(out, device=device)
+
+    wp.launch_tiled(tile_matmul_overwrite_kernel, dim=[1], inputs=[A, B, C, 0.0], block_dim=TILE_DIM, device=device)
+
+    assert_np_equal(C.numpy(), np.full((TILE_M, TILE_N), TILE_K, dtype=np.float32))
+
+
+@wp.kernel
+def tile_matmul_overwrite_unaligned_kernel(
+    A: wp.array2d[float], B: wp.array2d[float], C: wp.array2d[float], beta: float
+):
+    a = wp.tile_load(A, shape=(LARGE_ODD_M, LARGE_K))
+    b = wp.tile_load(B, shape=(LARGE_K, LARGE_ODD_N))
+    c = wp.tile_load(C, shape=(LARGE_ODD_M, LARGE_ODD_N))
+
+    wp.tile_matmul(a, b, c, beta=beta)
+
+    wp.tile_store(C, c)
+
+
+def test_tile_matmul_beta_zero_ignores_out_unaligned(test, device):
+    """Verify that ``beta=0`` ignores non-finite ``out`` for tiles with partial register blocks."""
+    out = np.full((LARGE_ODD_M, LARGE_ODD_N), np.nan, dtype=np.float32)
+    out[::2] = np.inf
+
+    A = wp.ones((LARGE_ODD_M, LARGE_K), dtype=float, device=device)
+    B = wp.ones((LARGE_K, LARGE_ODD_N), dtype=float, device=device)
+    C = wp.array(out, device=device)
+
+    wp.launch_tiled(
+        tile_matmul_overwrite_unaligned_kernel, dim=[1], inputs=[A, B, C, 0.0], block_dim=TILE_DIM, device=device
+    )
+
+    assert_np_equal(C.numpy(), np.full((LARGE_ODD_M, LARGE_ODD_N), LARGE_K, dtype=np.float32))
+
+
 class TestTileMatmulNoMathDx(unittest.TestCase):
     pass
 
@@ -453,6 +511,8 @@ tile_matmul_tests = [
     ("test_tile_matmul_large_unaligned", test_tile_matmul_large_unaligned),
     ("test_tile_matmul_return_form_backward", test_tile_matmul_return_form_backward),
     ("test_tile_matmul_large_fp64", test_tile_matmul_large_fp64),
+    ("test_tile_matmul_beta_zero_ignores_out", test_tile_matmul_beta_zero_ignores_out),
+    ("test_tile_matmul_beta_zero_ignores_out_unaligned", test_tile_matmul_beta_zero_ignores_out_unaligned),
 ]
 
 for name, func in tile_matmul_tests:

@@ -409,6 +409,24 @@ StreamInfo* get_stream_info(CUstream stream);
 // streams. Returns NULL for unregistered captures.
 CaptureInfo* find_capture_info(uint64_t capture_id);
 
+// Resources whose release would invalidate a graph capture in progress.
+enum class ReleaseKind {
+    DeviceFree,
+    DeviceFreeAsync,
+    DeviceFreeAsyncUnmapped,  // tolerates memory left unmapped by a graph that never ran
+    PinnedFree,  // not tied to a context
+    Module,
+    Graph,  // not tied to a context, so it outlives a destroyed one
+    GraphExec,
+    TextureObject,
+    SurfaceObject,
+    Array,
+    MipmappedArray,
+};
+
+// Returns false if an immediate release failed.
+bool release_or_defer(ReleaseKind kind, void* context, uint64_t handle);
+
 #else
 
 typedef int CUdevice;

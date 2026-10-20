@@ -4,8 +4,10 @@
 import contextlib
 import io
 import re
+import tempfile
 import unittest
 import warnings
+from pathlib import Path
 from typing import Any
 from unittest import mock
 
@@ -385,6 +387,35 @@ def test_tile_matmul_return_form(test, device):
         assert_np_equal(result, expected, tol=1e-5)
     finally:
         wp.config.verify_fp = old_verify_fp
+
+
+@wp.kernel
+def tile_matmul_overwrite_kernel(A: wp.array2d[float], B: wp.array2d[float], C: wp.array2d[float], beta: float):
+    a = wp.tile_load(A, shape=(TILE_M, TILE_K))
+    b = wp.tile_load(B, shape=(TILE_K, TILE_N))
+    c = wp.tile_load(C, shape=(TILE_M, TILE_N))
+
+    wp.tile_matmul(a, b, c, beta=beta)
+
+    wp.tile_store(C, c)
+
+
+def test_tile_matmul_beta_zero_ignores_out(test, device):
+    """Verify that ``beta=0`` overwrites ``out`` without reading its non-finite values.
+
+    A reused output tile can hold NaN or infinite values from earlier work, and scaling those by zero still
+    produces NaN, so ``out`` must not be read at all.
+    """
+    out = np.full((TILE_M, TILE_N), np.nan, dtype=np.float32)
+    out[::2] = np.inf
+
+    A = wp.ones((TILE_M, TILE_K), dtype=float, device=device)
+    B = wp.ones((TILE_K, TILE_N), dtype=float, device=device)
+    C = wp.array(out, device=device)
+
+    wp.launch_tiled(tile_matmul_overwrite_kernel, dim=[1], inputs=[A, B, C, 0.0], block_dim=TILE_DIM, device=device)
+
+    assert_np_equal(C.numpy(), np.full((TILE_M, TILE_N), TILE_K, dtype=np.float32))
 
 
 @wp.kernel(module="unique")
@@ -927,7 +958,251 @@ def test_tile_matmul_alignment_fallback(test, device):
         _gemm_lto_alignment_unsupported.update(saved)
 
 
+def _assert_tf32_product(test, C, A, B):
+    """Check that ``C`` is ``A @ B`` computed with 10-bit-mantissa inputs and fp32 accumulation.
+
+    Whether cuBLASDx truncates or rounds the discarded mantissa bits varies by GPU and
+    cuBLASDx version, so the check bounds the error instead of matching a rounded reference: each
+    input loses at most ``2**-10`` of relative precision (13 truncated mantissa bits), so every
+    product is within a relative ``2**-9`` of exact and the sum of absolute products bounds the
+    total. The result must also differ from the fp32 product by far more than fp32 accumulation
+    noise, which rules out a silent fp32 fallback.
+
+    Args:
+        test: The running test case.
+        C: The product to check.
+        A: Left operand of the exact product.
+        B: Right operand of the exact product.
+    """
+    A64, B64 = np.asarray(A, dtype=np.float64), np.asarray(B, dtype=np.float64)
+    ref = A64 @ B64
+    scale = np.max(np.abs(ref))
+    # (1 + 2**-10)**2 - 1 exceeds 2**-9 by 2**-20; the 1e-5 * scale term absorbs that and the fp32
+    # accumulation noise, which is about K * 2**-24 * scale for the K <= 48 used here
+    bound = 2.0**-9 * (np.abs(A64) @ np.abs(B64)) + 1.0e-5 * scale
+    np.testing.assert_array_less(np.abs(C - ref), bound)
+    # a TF32 result sits well above fp32 noise even if the hardware rounds rather than truncates,
+    # which halves the expected error, so 5e-5 * scale stays about 10x below the expected maximum
+    test.assertGreater(np.max(np.abs(C - ref)), 5.0e-5 * scale, "tf32 result is indistinguishable from fp32")
+
+
+def test_tile_matmul_tf32(test, device):
+    """Compute the forward and backward GEMM with TF32 input precision when ``precision="tf32"``.
+
+    Both calling forms must land within the TF32 error bound of the exact product and must differ
+    measurably from the full-fp32 product, which proves the reduced-precision path is taken rather
+    than silently falling back to fp32.
+    """
+    if not wp._src.context.runtime.core.wp_is_mathdx_enabled():
+        test.skipTest("MathDx is not enabled")
+    if wp.get_device(device).get_cuda_compile_arch() < 80:
+        test.skipTest("TF32 input precision requires a CUDA compile target of compute capability 8.0")
+
+    # Select the backend required by this test independently of the global fallback setting.
+    @wp.kernel(module="unique", module_options={"enable_mathdx_gemm": True})
+    def tile_gemm_tf32(A: wp.array2d[float], B: wp.array2d[float], C: wp.array2d[float]):
+        i, j = wp.tid()
+
+        sum = wp.tile_zeros(shape=(TILE_M, TILE_N), dtype=wp.float32)
+
+        count = int(A.shape[1] / TILE_K)
+
+        for k in range(0, count):
+            a = wp.tile_load(A, shape=(TILE_M, TILE_K), offset=(i * TILE_M, k * TILE_K))
+            b = wp.tile_load(B, shape=(TILE_K, TILE_N), offset=(k * TILE_K, j * TILE_N))
+            wp.tile_matmul(a, b, sum, precision="tf32")
+
+        wp.tile_store(C, sum, offset=(i * TILE_M, j * TILE_N))
+
+    M = TILE_M * 7
+    K = TILE_K * 6
+    N = TILE_N * 5
+
+    rng = np.random.default_rng(42)
+    A = rng.standard_normal((M, K), dtype=np.float32)
+    B = rng.standard_normal((K, N), dtype=np.float32)
+    A_wp = wp.array(A, requires_grad=True, device=device)
+    B_wp = wp.array(B, requires_grad=True, device=device)
+    C_wp = wp.zeros((M, N), dtype=wp.float32, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            tile_gemm_tf32, dim=(M // TILE_M, N // TILE_N), inputs=[A_wp, B_wp, C_wp], block_dim=TILE_DIM, device=device
+        )
+
+    _assert_tf32_product(test, C_wp.numpy(), A, B)
+
+    adj_C = rng.standard_normal((M, N), dtype=np.float32)
+    tape.backward(grads={C_wp: wp.array(adj_C, device=device)})
+    _assert_tf32_product(test, A_wp.grad.numpy(), adj_C, B.T)
+    _assert_tf32_product(test, B_wp.grad.numpy(), A.T, adj_C)
+
+    # return form: single K block, no accumulation
+    @wp.kernel(module="unique", module_options={"enable_backward": False, "enable_mathdx_gemm": True})
+    def tile_gemm_tf32_return_form(A: wp.array2d[float], B: wp.array2d[float], C: wp.array2d[float]):
+        i, j = wp.tid()
+        a = wp.tile_load(A, shape=(TILE_M, TILE_K), offset=(i * TILE_M, 0))
+        b = wp.tile_load(B, shape=(TILE_K, TILE_N), offset=(0, j * TILE_N))
+        c = wp.tile_matmul(a, b, precision="tf32")
+        wp.tile_store(C, c, offset=(i * TILE_M, j * TILE_N))
+
+    C_ret = wp.zeros((M, N), dtype=wp.float32, device=device)
+    wp.launch_tiled(
+        tile_gemm_tf32_return_form,
+        dim=(M // TILE_M, N // TILE_N),
+        inputs=[A_wp, B_wp, C_ret],
+        block_dim=TILE_DIM,
+        device=device,
+    )
+    _assert_tf32_product(test, C_ret.numpy(), A[:, :TILE_K], B[:TILE_K, :])
+
+
+def test_tile_matmul_tf32_fallback(test, device):
+    """Compute in fp32 and warn when ``precision="tf32"`` cannot reach the cuBLASDx path.
+
+    Covers the CPU device and a CUDA module with the MathDx GEMM disabled, both of which take the
+    scalar GEMM and must match the fp32 product to fp32 precision.
+    """
+
+    @wp.kernel(module="unique", module_options={"enable_mathdx_gemm": False, "enable_backward": False})
+    def kernel_tf32_scalar(A: wp.array2d[float], B: wp.array2d[float], C: wp.array2d[float]):
+        i, j = wp.tid()
+        a = wp.tile_load(A, shape=(TILE_M, TILE_K), offset=(i * TILE_M, 0))
+        b = wp.tile_load(B, shape=(TILE_K, TILE_N), offset=(0, j * TILE_N))
+        c = wp.tile_matmul(a, b, precision="tf32")
+        wp.tile_store(C, c, offset=(i * TILE_M, j * TILE_N))
+
+    rng = np.random.default_rng(3)
+    A = rng.standard_normal((TILE_M, TILE_K), dtype=np.float32)
+    B = rng.standard_normal((TILE_K, TILE_N), dtype=np.float32)
+    A_wp, B_wp = wp.array(A, device=device), wp.array(B, device=device)
+    C_wp = wp.zeros((TILE_M, TILE_N), dtype=wp.float32, device=device)
+
+    # The warning is logged during codegen, which a warm kernel cache skips, so run codegen
+    # directly; Warp's warnings go to stderr rather than warnings.catch_warnings(record=True).
+    dev = wp.get_device(device)
+    module = kernel_tf32_scalar.module
+    options = module.resolve_options(wp.config, block_dim=TILE_DIM) | {
+        "output_arch": None if dev.is_cpu else dev.get_cuda_compile_arch()
+    }
+    with warnings.catch_warnings(), contextlib.redirect_stderr(io.StringIO()) as stderr:
+        warnings.simplefilter("always")
+        module._run_codegen(options, is_cpu=dev.is_cpu)
+    test.assertIn("cannot honor precision='tf32'", stderr.getvalue())
+
+    wp.launch_tiled(kernel_tf32_scalar, dim=(1, 1), inputs=[A_wp, B_wp, C_wp], block_dim=TILE_DIM, device=device)
+    C = C_wp.numpy()
+
+    # fp32-level agreement is far tighter than any TF32 result could achieve
+    np.testing.assert_allclose(C, A.astype(np.float64) @ B.astype(np.float64), rtol=1e-5, atol=1e-5)
+
+
+def test_tile_matmul_tf32_rejected(test, device):
+    """Reject ``precision="tf32"`` on non-fp32 and complex tiles, unknown precision names, and non-literal arguments."""
+
+    @wp.kernel(module="unique")
+    def kernel_tf32_fp16(A: wp.array2d[wp.float16], B: wp.array2d[wp.float16], C: wp.array2d[wp.float16]):
+        i, j = wp.tid()
+        a = wp.tile_load(A, shape=(TILE_M, TILE_K), offset=(i * TILE_M, 0))
+        b = wp.tile_load(B, shape=(TILE_K, TILE_N), offset=(0, j * TILE_N))
+        c = wp.tile_zeros(shape=(TILE_M, TILE_N), dtype=wp.float16)
+        wp.tile_matmul(a, b, c, precision="tf32")
+        wp.tile_store(C, c, offset=(i * TILE_M, j * TILE_N))
+
+    @wp.kernel(module="unique")
+    def kernel_bad_precision(A: wp.array2d[float], B: wp.array2d[float], C: wp.array2d[float]):
+        i, j = wp.tid()
+        a = wp.tile_load(A, shape=(TILE_M, TILE_K), offset=(i * TILE_M, 0))
+        b = wp.tile_load(B, shape=(TILE_K, TILE_N), offset=(0, j * TILE_N))
+        c = wp.tile_matmul(a, b, precision="fp8")
+        wp.tile_store(C, c, offset=(i * TILE_M, j * TILE_N))
+
+    @wp.kernel(module="unique")
+    def kernel_tf32_complex(A: wp.array2d[wp.vec2f], B: wp.array2d[wp.vec2f], C: wp.array2d[wp.vec2f]):
+        a = wp.tile_load(A, shape=(TILE_M, TILE_K))
+        b = wp.tile_load(B, shape=(TILE_K, TILE_N))
+        c = wp.tile_matmul(a, b, precision="tf32")
+        wp.tile_store(C, c)
+
+    @wp.kernel(module="unique")
+    def kernel_var_precision(A: wp.array2d[float], B: wp.array2d[float], C: wp.array2d[float], mode: str):
+        i, j = wp.tid()
+        a = wp.tile_load(A, shape=(TILE_M, TILE_K), offset=(i * TILE_M, 0))
+        b = wp.tile_load(B, shape=(TILE_K, TILE_N), offset=(0, j * TILE_N))
+        c = wp.tile_matmul(a, b, precision=mode)
+        wp.tile_store(C, c, offset=(i * TILE_M, j * TILE_N))
+
+    A16 = wp.zeros((TILE_M, TILE_K), dtype=wp.float16, device=device)
+    B16 = wp.zeros((TILE_K, TILE_N), dtype=wp.float16, device=device)
+    C16 = wp.zeros((TILE_M, TILE_N), dtype=wp.float16, device=device)
+    with test.assertRaisesRegex(TypeError, r"precision='tf32' requires float32 tiles"):
+        wp.launch_tiled(kernel_tf32_fp16, dim=(1, 1), inputs=[A16, B16, C16], block_dim=TILE_DIM, device=device)
+
+    # the complex overloads accept the keyword so the complex-specific error still reaches the user
+    A2 = wp.zeros((TILE_M, TILE_K), dtype=wp.vec2f, device=device)
+    B2 = wp.zeros((TILE_K, TILE_N), dtype=wp.vec2f, device=device)
+    C2 = wp.zeros((TILE_M, TILE_N), dtype=wp.vec2f, device=device)
+    with test.assertRaisesRegex(TypeError, r"does not support complex tiles"):
+        wp.launch_tiled(kernel_tf32_complex, dim=(1, 1), inputs=[A2, B2, C2], block_dim=TILE_DIM, device=device)
+
+    A = wp.zeros((TILE_M, TILE_K), dtype=wp.float32, device=device)
+    B = wp.zeros((TILE_K, TILE_N), dtype=wp.float32, device=device)
+    C = wp.zeros((TILE_M, TILE_N), dtype=wp.float32, device=device)
+    with test.assertRaisesRegex(ValueError, r"precision must be the string literal 'default' or 'tf32'"):
+        wp.launch_tiled(kernel_bad_precision, dim=(1, 1), inputs=[A, B, C], block_dim=TILE_DIM, device=device)
+    with test.assertRaisesRegex(ValueError, r"got a non-literal argument"):
+        wp.launch_tiled(kernel_var_precision, dim=(1, 1), inputs=[A, B, C, "tf32"], block_dim=TILE_DIM, device=device)
+
+
 class TestTileMatmul(unittest.TestCase):
+    def test_tile_matmul_tf32_compilation(self):
+        """Warn only at compilation, and honor the CUDA compile target rather than the device."""
+        with warnings.catch_warnings(), contextlib.redirect_stderr(io.StringIO()) as stderr:
+            warnings.simplefilter("always")
+
+            @wp.kernel(
+                module="unique",
+                module_options={"block_dim": TILE_DIM, "enable_backward": False, "enable_mathdx_gemm": True},
+            )
+            def kernel(A: wp.array2d[float], B: wp.array2d[float], C: wp.array2d[float]):
+                a = wp.tile_load(A, shape=(TILE_M, TILE_K))
+                # Resolving this expression requires backend-neutral analysis during hashing.
+                b = wp.tile_load(B, shape=(wp.static(len(a)), TILE_N))
+                c = wp.tile_matmul(a, b, precision="tf32")
+                wp.tile_store(C, c)
+
+            kernel.module.get_module_hash()
+        self.assertNotIn("precision='tf32'", stderr.getvalue())
+
+        for arch in (None, 75, 80):
+            with self.subTest(arch=arch):
+                if arch is None:
+                    if not wp.is_cpu_available():
+                        self.skipTest("CPU compilation is not available")
+                    target = {"device": "cpu"}
+                else:
+                    if arch not in wp.get_cuda_supported_archs():
+                        self.skipTest(f"NVRTC does not support compute capability {arch}")
+                    if not wp._src.context.runtime.core.wp_is_mathdx_enabled():
+                        self.skipTest("MathDx is not enabled")
+                    target = {"arch": arch, "use_ptx": True}
+
+                # Fresh output directories force actual compilation even with a warm kernel cache.
+                with tempfile.TemporaryDirectory() as output_dir:
+                    with warnings.catch_warnings(), contextlib.redirect_stderr(io.StringIO()) as stderr:
+                        warnings.simplefilter("always")
+                        wp.compile_aot_module(kernel.module, module_dir=output_dir, **target)
+                    if arch is None or arch < 80:
+                        self.assertIn("cannot honor precision='tf32'", stderr.getvalue())
+                    else:
+                        self.assertNotIn("precision='tf32'", stderr.getvalue())
+
+                    if arch is not None:
+                        # The LTO symbol records A/B/C precision: 4 is TF32, 5 is float32.
+                        source = next(Path(output_dir).glob("*.cu")).read_text()
+                        pattern = rf"void dot_{TILE_M}_{TILE_N}_{TILE_K}_\d+_\d+_\d_\d_\d_(\d_\d_\d)_"
+                        self.assertEqual(set(re.findall(pattern, source)), {"5_5_5" if arch < 80 else "4_4_5"})
+
     def test_mathdx_arch_mapping(self):
         """Map unsupported MathDx targets to compatible architectures."""
         for arch, expected in ((75, 75), (88, 88), (103, 103), (107, 103), (120, 120), (121, 121), (122, 120)):
@@ -1047,6 +1322,15 @@ add_function_test(
 add_function_test(
     TestTileMatmul, "test_tile_matmul_alignment_fallback", test_tile_matmul_alignment_fallback, devices=cuda_devices
 )
+add_function_test(TestTileMatmul, "test_tile_matmul_tf32", test_tile_matmul_tf32, devices=cuda_devices)
+add_function_test(TestTileMatmul, "test_tile_matmul_tf32_fallback", test_tile_matmul_tf32_fallback, devices=devices)
+add_function_test(
+    TestTileMatmul,
+    "test_tile_matmul_tf32_rejected",
+    test_tile_matmul_tf32_rejected,
+    devices=devices,
+    check_output=False,
+)
 add_function_test(TestTileMatmul, "test_tile_gemm_bf16", test_tile_gemm_bf16, devices=bf16_devices, check_output=False)
 add_function_test(
     TestTileMatmul,
@@ -1114,6 +1398,9 @@ add_function_test(
 )
 add_function_test(TestTileMatmul, "test_tile_transpose_matmul", test_tile_transpose_matmul, devices=devices)
 add_function_test(TestTileMatmul, "test_tile_matmul_return_form", test_tile_matmul_return_form, devices=devices)
+add_function_test(
+    TestTileMatmul, "test_tile_matmul_beta_zero_ignores_out", test_tile_matmul_beta_zero_ignores_out, devices=devices
+)
 
 cpu_devices = get_cpu_test_devices()
 for name, func in (

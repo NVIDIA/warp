@@ -10,6 +10,7 @@ residual (CR), and generalized minimal residual (GMRES) methods.
 
 # isort: skip_file
 
+from warp._src.optim.fsai import FSAI as FSAI
 from warp._src.optim.linear import BiCGSTAB as BiCGSTAB
 from warp._src.optim.linear import CG as CG
 from warp._src.optim.linear import CR as CR

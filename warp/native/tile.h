@@ -5,11 +5,24 @@
 
 // Internal lane-participation masks for tile warp collectives, not logical
 // tile masks. Keep this block before builtin.h because its tile headers use it.
+//
+// Each macro is guarded so a build targeting a different lane width can
+// pre-define the whole set consistently, without patching this file. Nothing in
+// this tree pre-defines them, so the definitions below are what every build here
+// gets.
+#ifndef WP_TILE_WARP_SIZE
 #define WP_TILE_WARP_SIZE 32
+#endif
 
+#ifndef WP_TILE_LANE_MASK_ALL
 #define WP_TILE_LANE_MASK_ALL 0xffffffffu
+#endif
+#ifndef WP_TILE_LANE_MASK_POPC
 #define WP_TILE_LANE_MASK_POPC(mask) __popc(mask)
+#endif
+#ifndef WP_TILE_LANE_MASK_FFS
 #define WP_TILE_LANE_MASK_FFS(mask) __ffs(mask)
+#endif
 
 using wp_tile_lane_mask_bits_t = decltype(WP_TILE_LANE_MASK_ALL);
 
@@ -1182,10 +1195,12 @@ template <typename T, int... Dims> auto tile_register()
     return tile_register_t<T, tile_layout_register_t<tile_shape_t<Dims...>>>();
 }
 
+// must match tile.alignment in Python types.py
+constexpr int tile_alignment = 16;
+
 inline CUDA_CALLABLE int tile_align(int num_bytes)
 {
-    // note this much match value in Python types.py
-    const int alignment = 16;
+    const int alignment = tile_alignment;
 
     const int num_bytes_abs = num_bytes < 0 ? -num_bytes : num_bytes;
     const int sign = num_bytes < 0 ? -1 : 1;
@@ -1336,10 +1351,12 @@ public:
         // Keep this path separate from the checked CPU arithmetic below. NVRTC
         // targeting sm_89 otherwise fails to hoist repeated shared-memory
         // address calculations in tiled kernels.
-        const unsigned int offset = smem_base[WP_TILE_THREAD_IDX];
+        // The counter is kept in alignment units so the compiler can prove each
+        // offset is aligned and vectorize shared-memory accesses to the tile.
+        const unsigned int offset = smem_base[WP_TILE_THREAD_IDX] * tile_alignment;
 
         // one entry per-thread so no need for synchronization
-        smem_base[WP_TILE_THREAD_IDX] += tile_align(num_bytes);
+        smem_base[WP_TILE_THREAD_IDX] += tile_align(num_bytes) / tile_alignment;
 #else
         const int thread_idx = WP_TILE_THREAD_IDX;
         const unsigned int offset = smem_base[thread_idx];
@@ -1869,7 +1886,8 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
                 // use shared memory atomics to accumulate gradients
                 // since for broadcast tiles (e.g.: a bias vector) multiple incoming threads
                 // may map to a single location in shared memory
-                tile_adj_atomic_add_value(&grad(linear), tile.data[i]);
+                // Convert contributions to this tile's gradient dtype before accumulation.
+                tile_adj_atomic_add_value(&grad(linear), T(tile.data[i]));
         }
 
         WP_TILE_SYNC();
@@ -5982,8 +6000,8 @@ inline CUDA_CALLABLE void adj_tile_assign(
     tile_register_t<typename TileA::Type, GradLayout> staged;
 
     // linear_from_register() is monotone, so after the first invalid
-    // register slot all later slots are invalid too. The accumulation loop
-    // uses the same guard before reading staged.data[reg].
+    // register slot all later slots are invalid too. grad_add() uses the
+    // same guard before reading staged.data[reg].
     WP_PRAGMA_UNROLL
     for (int reg = 0; reg < GradLayout::NumRegs; ++reg) {
         int linear = GradLayout::linear_from_register(reg);
@@ -6007,16 +6025,9 @@ inline CUDA_CALLABLE void adj_tile_assign(
     // zeroing must complete before accumulating into (potentially aliasing) src gradients
     WP_TILE_SYNC();
 
-    WP_PRAGMA_UNROLL
-    for (int reg = 0; reg < GradLayout::NumRegs; ++reg) {
-        int linear = GradLayout::linear_from_register(reg);
-        if (!GradLayout::valid(linear)) {
-            break;
-        }
-        src.grad(GradLayout::coord_from_linear(linear)) += staged.data[reg];
-    }
-
-    WP_TILE_SYNC();
+    // src may be a broadcast view whose coordinates share one gradient element;
+    // grad_add() accumulates atomically for such non-unique layouts
+    src.grad_add(staged);
 }
 
 template <

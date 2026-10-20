@@ -167,6 +167,36 @@ add_builtin(
 )
 
 add_builtin(
+    "bit_count",
+    input_types={"x": Int},
+    value_type=int32,
+    doc="""Return the number of set bits in an integer.
+
+    Signed inputs use their two's-complement representation, including the sign
+    bit. In contrast, Python's ``int.bit_count()`` counts set bits in the
+    absolute value, so the results can differ for negative inputs.
+
+    Args:
+        x: A signed or unsigned scalar integer of 8, 16, 32, or 64 bits.
+            Python ``int`` inputs are treated as ``int32``.
+
+    Returns:
+        The number of set bits in the fixed-width binary representation of ``x``.
+
+    Example:
+        >>> wp.bit_count(45)
+        4
+        >>> wp.bit_count(wp.int8(-1))
+        8
+        >>> wp.bit_count(wp.int64(-1))
+        64
+        >>> (-1).bit_count()  # Python counts bits in the absolute value.
+        1""",
+    group="Scalar Math",
+    is_differentiable=False,
+)
+
+add_builtin(
     "sin",
     input_types={"x": Float},
     value_func=sametypes_create_value_func(Float),
@@ -7991,6 +8021,9 @@ add_builtin(
     value_func=tile_sort_value_func,
     variadic=True,
     doc="""Cooperatively sort the elements of two tiles in ascending order based on the keys, using all threads in the block.
+
+    On CUDA devices, prefer a ``block_dim`` that is a multiple of 32 for better sorting performance. Other block
+    dimensions are supported but may be slower.
 
     Args:
         keys: Keys to sort by. Supported key types: :class:`warp.float32`, :class:`warp.int32`, :class:`warp.uint32`, :class:`warp.int64`, :class:`warp.uint64`. Must be in shared memory.
@@ -17950,6 +17983,14 @@ def tile_matmul_lto_dispatch_func(
     b = arg_values["b"]
     alpha = arg_values["alpha"]
 
+    # a non-literal argument comes back as its Var rather than as a string
+    precision = get_arg_value(arg_values["precision"])
+    if isinstance(precision, Var) or precision not in ("default", "tf32"):
+        got = "a non-literal argument" if isinstance(precision, Var) else repr(precision)
+        raise ValueError(f"tile_matmul() precision must be the string literal 'default' or 'tf32', got {got}")
+    # None leaves the cuBLASDx compute precision at the operand dtype
+    lto_precision = None if precision == "default" else precision
+
     if len(return_values) > 0:
         # c = tile_matmul(a, b) case: fresh output, don't read from C
         beta = 0.0
@@ -17964,6 +18005,9 @@ def tile_matmul_lto_dispatch_func(
 
     if any(arg.type.dtype not in [float16, bfloat16, float32, float64] for arg in [a, b, out]):
         raise TypeError("tile_matmul() arguments must be tiles of float16, bfloat16, float32, or float64 entries")
+
+    if lto_precision == "tf32" and any(arg.type.dtype != float32 for arg in [a, b, out]):
+        raise TypeError("tile_matmul() precision='tf32' requires float32 tiles for a, b, and out")
 
     # Reject bfloat16 as the accumulator precision uniformly across all backends. cuBLASDx
     # disallows bf16 accumulators (a static_assert since cuBLASDx 0.6.0), and the scalar
@@ -18007,8 +18051,18 @@ def tile_matmul_lto_dispatch_func(
         or not options.get("enable_mathdx_gemm", True)
     ):
         # CPU/no-MathDx dispatch (or mathdx GEMM disabled via module option)
+        if lto_precision == "tf32" and builder is not None and builder.target is not None:
+            log_warning(
+                "tile_matmul() cannot honor precision='tf32' for this compilation; falling back to default precision."
+            )
         return ((0, 0, 0, a, b, out, alpha, beta), (), [], 0)
     else:
+        if lto_precision == "tf32" and arch < 80:
+            # cuBLASDx supports TF32 input precision from compute capability 8.0.
+            log_warning(
+                "tile_matmul() cannot honor precision='tf32' for this compilation; falling back to default precision."
+            )
+            lto_precision = None
 
         def tile_flip_layout(layout):
             if layout == "rowmajor":
@@ -18113,6 +18167,7 @@ def tile_matmul_lto_dispatch_func(
                 ldb=ld_b,
                 ldc=ld_c,
                 aligned_bases=(aligned_a, aligned_b, aligned_c),
+                precision=lto_precision,
             )
             if options["enable_backward"]:
                 # adjA += adjC * B^T - Transpose ~= flipped layout
@@ -18133,6 +18188,7 @@ def tile_matmul_lto_dispatch_func(
                     ldb=ld_b,
                     ldc=ld_a,
                     aligned_bases=(aligned_c, aligned_b, aligned_a),
+                    precision=lto_precision,
                 )
                 # adjB += A^T * adjC - Transpose ~= flipped layout
                 (fun_backward_B, lto_backward_B) = warp._src.build.build_lto_dot(
@@ -18152,6 +18208,7 @@ def tile_matmul_lto_dispatch_func(
                     ldb=ld_c,
                     ldc=ld_b,
                     aligned_bases=(aligned_a, aligned_c, aligned_b),
+                    precision=lto_precision,
                 )
             else:
                 # adjoints aren't computed, so we reuse fun_forward as a dummy arg
@@ -18192,8 +18249,9 @@ add_builtin(
         "out": tile(dtype=Float, shape=tuple[int, int]),
         "alpha": Float,
         "beta": Float,
+        "precision": str,
     },
-    defaults={"alpha": 1.0, "beta": 1.0},
+    defaults={"alpha": 1.0, "beta": 1.0, "precision": "default"},
     value_func=tile_matmul_out_value_func,
     lto_dispatch_func=tile_matmul_lto_dispatch_func,
     native_func="tile_matmul_acc",
@@ -18206,7 +18264,7 @@ add_builtin(
         * fp16, bf16, fp32, fp64
 
     All input and output tiles must have the same datatype. Tile data will automatically be migrated
-    to shared memory if necessary and will use TensorCore operations when available.
+    to shared memory if necessary and may use Tensor Core operations, depending on the GEMM configuration.
 
     Note that computing the adjoints of alpha and beta are not yet supported.
 
@@ -18216,6 +18274,20 @@ add_builtin(
         out: A tile with ``shape=(M, N)``
         alpha: Scaling factor
         beta: Accumulator factor
+        precision: Compute precision, specified as the string literal ``"default"`` or ``"tf32"``.
+            ``"default"`` uses the tile data type. ``"tf32"`` uses TF32 input precision with
+            ``float32`` accumulation, without changing tile storage. The adjoint products use
+            the same precision. Tensor Core use depends on the GEMM configuration. Honored by
+            the cuBLASDx GEMM on CUDA compile targets of compute capability 8.0 or higher. On
+            the CPU, on older CUDA compile targets, or when MathDx GEMM is unavailable or
+            disabled (see :attr:`warp.config.enable_mathdx_gemm`), Warp computes in ``float32``
+            and logs a warning when the module is compiled. The same fallback applies when
+            operand strides cannot be represented by cuBLASDx leading dimensions.
+
+    Raises:
+        TypeError: If ``precision="tf32"`` is used with tiles other than ``float32`` for
+            ``a``, ``b``, and ``out``.
+        ValueError: If ``precision`` is not the string literal ``"default"`` or ``"tf32"``.
 """,
     group="Tile Primitives",
     export=False,
@@ -18227,8 +18299,9 @@ add_builtin(
         "a": tile(dtype=Float, shape=tuple[int, int]),
         "b": tile(dtype=Float, shape=tuple[int, int]),
         "alpha": Float,
+        "precision": str,
     },
-    defaults={"alpha": 1.0},
+    defaults={"alpha": 1.0, "precision": "default"},
     value_func=tile_matmul_value_func,
     lto_dispatch_func=tile_matmul_lto_dispatch_func,
     variadic=False,
@@ -18240,7 +18313,7 @@ add_builtin(
         * fp16, bf16, fp32, fp64
 
     Both input tiles must have the same datatype. Tile data will automatically be migrated
-    to shared memory if necessary and will use TensorCore operations when available.
+    to shared memory if necessary and may use Tensor Core operations, depending on the GEMM configuration.
 
     Note that computing the adjoints of alpha is not yet supported.
 
@@ -18248,9 +18321,23 @@ add_builtin(
         a: A tile with ``shape=(M, K)``
         b: A tile with ``shape=(K, N)``
         alpha: Scaling factor
+        precision: Compute precision, specified as the string literal ``"default"`` or ``"tf32"``.
+            ``"default"`` uses the tile data type. ``"tf32"`` uses TF32 input precision with
+            ``float32`` accumulation, without changing tile storage. The adjoint products use
+            the same precision. Tensor Core use depends on the GEMM configuration. Honored by
+            the cuBLASDx GEMM on CUDA compile targets of compute capability 8.0 or higher. On
+            the CPU, on older CUDA compile targets, or when MathDx GEMM is unavailable or
+            disabled (see :attr:`warp.config.enable_mathdx_gemm`), Warp computes in ``float32``
+            and logs a warning when the module is compiled. The same fallback applies when
+            operand strides cannot be represented by cuBLASDx leading dimensions.
 
     Returns:
         A tile with ``shape=(M, N)``
+
+    Raises:
+        TypeError: If ``precision="tf32"`` is used with tiles other than ``float32`` for
+            ``a`` and ``b``.
+        ValueError: If ``precision`` is not the string literal ``"default"`` or ``"tf32"``.
 """,
     group="Tile Primitives",
     export=False,
@@ -18297,8 +18384,9 @@ add_builtin(
         "out": tile(dtype=vector(length=2, dtype=Float), shape=tuple[int, int]),
         "alpha": Float,
         "beta": Float,
+        "precision": str,
     },
-    defaults={"alpha": 1.0, "beta": 1.0},
+    defaults={"alpha": 1.0, "beta": 1.0, "precision": "default"},
     value_func=_tile_matmul_out_complex_value_func,
     variadic=False,
     group="Tile Primitives",
@@ -18312,8 +18400,9 @@ add_builtin(
         "a": tile(dtype=vector(length=2, dtype=Float), shape=tuple[int, int]),
         "b": tile(dtype=vector(length=2, dtype=Float), shape=tuple[int, int]),
         "alpha": Float,
+        "precision": str,
     },
-    defaults={"alpha": 1.0},
+    defaults={"alpha": 1.0, "precision": "default"},
     value_func=_tile_matmul_complex_value_func,
     variadic=False,
     group="Tile Primitives",

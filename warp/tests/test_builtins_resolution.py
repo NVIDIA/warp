@@ -2,12 +2,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import unittest
+from unittest import mock
 
 import numpy as np
 
 from warp._src.builtins import tile_full_value_func, tile_randf_dispatch_func, tile_randi_dispatch_func
 from warp._src.codegen import Var
-from warp._src.context import Function, get_builtin_call_desc
+from warp._src.context import Function, add_builtin, get_builtin_call_desc
 from warp.tests.unittest_utils import *
 
 
@@ -150,6 +151,47 @@ def test_identity_builtins_match_kernel_scope(test, device):
 
 
 class TestBuiltinsResolution(unittest.TestCase):
+    def test_missing_registered_builtin_symbol_is_reported(self):
+        """Report a missing native symbol for an otherwise valid registered export."""
+        overload = next(
+            overload for overload in wp.sin.overloads if tuple(overload.input_types.values()) == (wp.float32,)
+        )
+
+        get_builtin_call_desc.cache_clear()
+        self.addCleanup(get_builtin_call_desc.cache_clear)
+        with mock.patch.object(overload, "mangled_name", "wp_builtin_missing_sin_float32"):
+            with self.assertRaises(AttributeError):
+                wp.sin(0.0)
+
+    def test_existing_symbol_does_not_make_invalid_builtin_exportable(self):
+        """Reject an invalid built-in whose mangled name collides with an existing symbol."""
+        colliding_builtin = Function(
+            func=None,
+            key="sin",
+            namespace="wp::",
+            input_types={"value": wp.float32},
+            value_func=lambda arg_types, arg_values: wp._src.types.Reference(wp.float32),
+            export=True,
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "Couldn't find a function 'sin' compatible"):
+            colliding_builtin(1.0)
+
+    def test_late_registered_builtin_does_not_trust_existing_symbol(self):
+        """Reject a late overload whose native name collides with a bundled export."""
+        add_builtin(
+            "sin",
+            input_types={"value": wp.float32, "ignored": wp.int32},
+            value_func=lambda arg_types, arg_values: wp._src.types.Reference(wp.float32),
+            export_func=lambda input_types: {"value": input_types["value"]},
+        )
+        self.addCleanup(wp.sin.overloads.remove, wp.sin.overloads[-1])
+        get_builtin_call_desc.cache_clear()
+        self.addCleanup(get_builtin_call_desc.cache_clear)
+
+        with self.assertRaisesRegex(RuntimeError, "Couldn't find a function 'sin' compatible"):
+            wp.sin(0.0, 0)
+
     def test_builtin_fallback_does_not_retry_primary_shape(self):
         """Evaluate primary-shape overloads only once before falling back."""
         overload_group = make_mul_builtin({"a": wp.float32, "b": wp.float32}, wp.float32)

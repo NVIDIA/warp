@@ -46,11 +46,11 @@ For example, `-march=native -mllvm -inline-threshold=1000` and
 per-module flag string replaces the global string, so it must include
 `-march=native` if host CPU detection is wanted.
 
-The current `None` default supplies `-march=native` and leaves LLVM's defaults
-untouched. Future Warp tuning belongs in a configuration default such as
-`"-march=native -mllvm -example-option=value"`, rather than a native compiler
-override. A per-module string omitting that argument selects LLVM's original
-default. Option availability and behavior depend on the bundled LLVM version.
+An explicit global `None` supplies `-march=native` and leaves LLVM's defaults
+untouched. Warp's [CPU helper inlining policy](cpu-kernel-helper-inlining.md)
+uses a configuration default string with two `-mllvm` arguments. A per-module
+string omitting those arguments selects LLVM's original defaults. Option
+availability and behavior depend on the bundled LLVM version.
 
 The native lease coordinator keys requests by the ordered LLVM argument vector;
 ordinary Clang flags do not affect the key. The empty vector requests the

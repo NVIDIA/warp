@@ -186,14 +186,37 @@ def validate_indices_in_range(
             device=indices.device,
         )
 
-        first_invalid = int(host_read_at_index(invalid_array_index, temporary_store=temporary_store))
+        check_first_invalid_index(invalid_array_index, upper_bound, indices, index_name)
     finally:
         invalid_array_index.release()
 
-    if first_invalid < index_count:
-        invalid_value = int(host_read_at_index(indices.flatten(), first_invalid, temporary_store=temporary_store))
+
+def check_first_invalid_index(
+    first_invalid: wp.array[int],
+    upper_bound: int,
+    indices: wp.array[int],
+    index_name: str,
+) -> None:
+    """Raise if a device-side validation pass recorded an out-of-range index.
+
+    Reading ``first_invalid`` back to the host waits for all work previously queued on its device.
+
+    Args:
+        first_invalid: One-element array holding the smallest flattened position of an index outside
+            ``[0, upper_bound)``, or ``indices.size`` if there is none.
+        upper_bound: Exclusive upper bound for valid index values.
+        indices: Warp array containing the validated indices.
+        index_name: Name used to identify an index in error messages.
+
+    Raises:
+        ValueError: If ``first_invalid`` identifies an index outside ``[0, upper_bound)``.
+    """
+
+    invalid_index = int(host_read_at_index(first_invalid))
+    if invalid_index < indices.size:
+        invalid_value = int(host_read_at_index(indices.flatten(), invalid_index))
         raise ValueError(
-            f"{index_name} index {invalid_value} at flattened array index {first_invalid} "
+            f"{index_name} index {invalid_value} at flattened array index {invalid_index} "
             f"is out of bounds; expected a value in [0, {upper_bound})"
         )
 
