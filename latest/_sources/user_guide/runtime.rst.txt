@@ -1996,12 +1996,9 @@ API Capture: Saving and Loading Graphs
     API Capture (APIC) is experimental. The ``.wrp`` file format, the Python
     :func:`wp.capture_save() <warp.capture_save>` / :func:`wp.capture_load() <warp.capture_load>`
     surface, the C ``wp_apic_*`` API, and the recorded operation set are all
-    subject to change without a formal deprecation cycle. ``.wrp`` files written
-    by one version of Warp may not be loadable by another. The current writer
-    emits format version 16, and the reader accepts versions 13 through 16.
-    Version 16 stores kernel launch extents as unsigned 32-bit values. Older
-    files whose launch extents have the high bit set are rejected because those
-    values overflowed the signed representation used by their format.
+    subject to change without a formal deprecation cycle. The writer and loader
+    must use the same Warp version. The current writer and reader use format
+    version 17.
 
 The APIC operation stream lets Warp serialize a supported captured graph to
 disk and load it back later from another Python program or a standalone C++
@@ -2123,6 +2120,41 @@ This writes:
   (``.cubin`` / ``.ptx`` for CUDA, ``.o`` for CPU) referenced by the operation
   stream.
 
+By default, :func:`wp.capture_save() <warp.capture_save>` uses
+``source_fallback=False``: CUDA artifacts contain compiled binaries without
+generated ``.cu`` source, and saving does not report source portability
+limitations. To package generated CUDA source for replay on another supported
+GPU, pass ``source_fallback=True`` alongside any ``inputs`` and ``outputs``.
+
+When source fallback is requested, every captured CUDA module must have
+generated source that has not changed since the module loaded and a
+reproducible compile recipe. Warp uses the shared ``.cu`` file that code
+generation wrote beside the module binary, in the kernel cache or an
+ahead-of-time module directory, and checks its file identity before and after
+reading it at save time. Source reads, hashing, and dependency checks for APIC
+occur only when saving with source fallback enabled. Keep the generated source
+available until saving completes.
+
+Missing or changed source, binary names that cannot be verified against the
+hashed module identifier (including any module that uses ``strip_hash=True``),
+caller-provided CUDA include directories, LLVM-CUDA builds, and LTO-IR or
+fatbin link inputs cause saving to fail before publishing the artifact. The
+error lists all affected modules and their reasons. If the source was missing
+when the module loaded or changed afterwards, restore source known to match the
+binary or force a rebuild of the binary and generated source together, then
+reload the module and capture again. Reloading alone can reuse the cached
+binary and does not verify that it matches the source. Hashed AOT modules are
+supported when their generated source is present and unchanged. File identity
+checks detect changes on a best-effort basis; they do not prove which source
+produced the binary. Link-input detection is similarly
+best-effort because it inspects only the generated source. Guest hardware,
+driver, and compiler compatibility are checked when loading; successful saving
+does not guarantee that every guest can replay the graph.
+
+Saving stages the graph and its companion files before replacing the
+destination. Failed exports or serialization leave an existing artifact
+intact. If publication fails, Warp restores the previous companion directory.
+
 For a graph with recorded kernels, the ``.wrp`` file and its companion
 ``_modules`` directory are one artifact. Keep their relative names and
 distribute or move them together; the graph cannot be loaded from either part
@@ -2182,13 +2214,21 @@ graphs returned by :func:`wp.capture_end() <warp.capture_end>`.
 address of a binding (a host address for CPU graphs or a device address for CUDA
 graphs), which remains valid only until the graph is destroyed.
 
-A ``.wrp`` file captured on a CUDA device must be loaded on a CUDA device with
-a compatible companion module; a file captured on a CPU device must be loaded
-on a CPU device. The ``device`` passed to
-:func:`wp.capture_load() <warp.capture_load>` must match the captured device
-family. This is currently a caller requirement: the experimental loader does
-not reliably diagnose a mismatch when it first opens the file. Architecture and
-platform constraints are listed under the current limitations below.
+A ``.wrp`` file captured on a CUDA device must be loaded on a CUDA device; a
+file captured on a CPU device must be loaded on a CPU device. The loader first
+tries each packaged PTX or CUBIN. If the CUDA driver rejects it, Warp checks for
+a compatible compiled entry in the companion ``_modules`` directory and then,
+when reproducible source was retained, compiles that source for the guest GPU
+with NVRTC. Successfully compiled output is cached in ``_modules`` under a
+content-addressed ``apic_guest_*`` name. A read-only directory still works, but
+the source is compiled again on the next load.
+
+Source fallback requires the exact Warp version that wrote the artifact.
+It is available only when the graph was saved with ``source_fallback=True``.
+Graphs saved with the default ``source_fallback=False`` require compatible
+compiled binaries. If no usable binary is available, ``capture_load()`` reports
+the binary-load failure. For opted-in saves, it also reports why source fallback
+is unavailable or failed.
 
 Loading from bytes
 ^^^^^^^^^^^^^^^^^^
@@ -2221,6 +2261,9 @@ The returned graph behaves the same as one returned by
 prefix. Entries the graph doesn't use are ignored. Warp copies everything it
 needs while loading, so the buffers can be released once the call returns.
 
+Loading from bytes requires compatible packaged binaries. Generated-source
+recompilation and persistent guest-cache lookup use the file-based loader.
+
 Standalone C++ replay
 ^^^^^^^^^^^^^^^^^^^^^
 
@@ -2244,6 +2287,10 @@ declared in `warp/native/apic.h <https://github.com/NVIDIA/warp/blob/main/warp/n
                                              const APICModuleBytes* modules,
                                              uint32_t num_modules, int device_type);
 
+    // Also permit CUDA source fallback using headers from the linked Warp.
+    APICGraph* wp_apic_load_graph_ex(void* context, const char* path,
+                                     int device_type, const char* warp_include_dir);
+
     // Update or read named parameter regions on the loaded graph.
     bool wp_apic_set_param(APICGraph* graph, const char* name,
                            const void* data, size_t size);
@@ -2262,6 +2309,13 @@ declared in `warp/native/apic.h <https://github.com/NVIDIA/warp/blob/main/warp/n
 
 For native library headers, build-system setup, platform-specific linking,
 deployment, and version compatibility, see :ref:`native_library_linking`.
+
+``wp_apic_load_graph()`` preserves the original binary-only standalone behavior
+and is used by the CUDA example below. It can load a compatible packaged module
+or an existing guest-cache entry, but it cannot compile retained source. To opt
+in to source fallback for cross-system CUDA replay, call
+``wp_apic_load_graph_ex()`` and pass the path to the ``warp/native`` headers
+from the same Warp installation as the linked native library.
 
 Two reference C++ examples ship with Warp under ``warp/examples/cpp/``. Both
 implement the same interactive 2-D wave simulation visualized with GLFW/OpenGL,
@@ -2432,10 +2486,15 @@ Current limitations of API Capture:
   Pre-reserving is optional for CPU replay but avoids allocation on the first
   launch. If used, call ``HashGrid.reserve()`` before capture; reserve calls
   inside CPU capture are rejected.
-- A CUBIN companion is specific to its compiled CUDA architecture. PTX may be
-  JIT-compiled on architectures supported by its target and the installed
-  driver, but PTX is not an unconditional cross-architecture guarantee. One
-  APIC graph cannot span multiple GPUs.
+- A CUBIN companion is specific to its compiled CUDA architecture, and PTX is
+  not an unconditional cross-architecture guarantee. CUDA APIC loading can
+  recover by compiling generated source packaged with
+  ``capture_save(source_fallback=True)`` for the guest GPU. This save option
+  rejects modules using caller-provided CUDA include directories, LLVM-CUDA
+  builds, ``strip_hash=True``, or LTO-IR and fatbin link inputs (detected from
+  the generated source), and modules whose generated source is missing or
+  changed after the module loaded. Default binary-only saving remains
+  available for these modules. One APIC graph cannot span multiple GPUs.
 - Loading CPU ``.wrp`` graphs requires the warp-clang backend and compatible
   CPU kernel object files, either in the companion ``_modules`` directory or
   passed to :func:`wp.capture_load_from_bytes() <warp.capture_load_from_bytes>`.

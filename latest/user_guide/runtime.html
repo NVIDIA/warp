@@ -2478,12 +2478,9 @@ undefined behavior.</p></li>
 <p>API Capture (APIC) is experimental. The <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> file format, the Python
 <a class="reference internal" href="../api_reference/_generated/warp.capture_save.html#warp.capture_save" title="warp.capture_save"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_save()</span></code></a> / <a class="reference internal" href="../api_reference/_generated/warp.capture_load.html#warp.capture_load" title="warp.capture_load"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_load()</span></code></a>
 surface, the C <code class="docutils literal notranslate"><span class="pre">wp_apic_*</span></code> API, and the recorded operation set are all
-subject to change without a formal deprecation cycle. <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> files written
-by one version of Warp may not be loadable by another. The current writer
-emits format version 16, and the reader accepts versions 13 through 16.
-Version 16 stores kernel launch extents as unsigned 32-bit values. Older
-files whose launch extents have the high bit set are rejected because those
-values overflowed the signed representation used by their format.</p>
+subject to change without a formal deprecation cycle. The writer and loader
+must use the same Warp version. The current writer and reader use format
+version 17.</p>
 </div>
 <p>The APIC operation stream lets Warp serialize a supported captured graph to
 disk and load it back later from another Python program or a standalone C++
@@ -2583,6 +2580,37 @@ memory region snapshots, kernel and module metadata, and named bindings.</p></li
 (<code class="docutils literal notranslate"><span class="pre">.cubin</span></code> / <code class="docutils literal notranslate"><span class="pre">.ptx</span></code> for CUDA, <code class="docutils literal notranslate"><span class="pre">.o</span></code> for CPU) referenced by the operation
 stream.</p></li>
 </ul>
+<p>By default, <a class="reference internal" href="../api_reference/_generated/warp.capture_save.html#warp.capture_save" title="warp.capture_save"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_save()</span></code></a> uses
+<code class="docutils literal notranslate"><span class="pre">source_fallback=False</span></code>: CUDA artifacts contain compiled binaries without
+generated <code class="docutils literal notranslate"><span class="pre">.cu</span></code> source, and saving does not report source portability
+limitations. To package generated CUDA source for replay on another supported
+GPU, pass <code class="docutils literal notranslate"><span class="pre">source_fallback=True</span></code> alongside any <code class="docutils literal notranslate"><span class="pre">inputs</span></code> and <code class="docutils literal notranslate"><span class="pre">outputs</span></code>.</p>
+<p>When source fallback is requested, every captured CUDA module must have
+generated source that has not changed since the module loaded and a
+reproducible compile recipe. Warp uses the shared <code class="docutils literal notranslate"><span class="pre">.cu</span></code> file that code
+generation wrote beside the module binary, in the kernel cache or an
+ahead-of-time module directory, and checks its file identity before and after
+reading it at save time. Source reads, hashing, and dependency checks for APIC
+occur only when saving with source fallback enabled. Keep the generated source
+available until saving completes.</p>
+<p>Missing or changed source, binary names that cannot be verified against the
+hashed module identifier (including any module that uses <code class="docutils literal notranslate"><span class="pre">strip_hash=True</span></code>),
+caller-provided CUDA include directories, LLVM-CUDA builds, and LTO-IR or
+fatbin link inputs cause saving to fail before publishing the artifact. The
+error lists all affected modules and their reasons. If the source was missing
+when the module loaded or changed afterwards, restore source known to match the
+binary or force a rebuild of the binary and generated source together, then
+reload the module and capture again. Reloading alone can reuse the cached
+binary and does not verify that it matches the source. Hashed AOT modules are
+supported when their generated source is present and unchanged. File identity
+checks detect changes on a best-effort basis; they do not prove which source
+produced the binary. Link-input detection is similarly
+best-effort because it inspects only the generated source. Guest hardware,
+driver, and compiler compatibility are checked when loading; successful saving
+does not guarantee that every guest can replay the graph.</p>
+<p>Saving stages the graph and its companion files before replacing the
+destination. Failed exports or serialization leave an existing artifact
+intact. If publication fails, Warp restores the previous companion directory.</p>
 <p>For a graph with recorded kernels, the <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> file and its companion
 <code class="docutils literal notranslate"><span class="pre">_modules</span></code> directory are one artifact. Keep their relative names and
 distribute or move them together; the graph cannot be loaded from either part
@@ -2635,13 +2663,20 @@ graphs returned by <a class="reference internal" href="../api_reference/_generat
 <a class="reference internal" href="../api_reference/_generated/warp.Graph.html#warp.Graph.get_param_ptr" title="warp.Graph.get_param_ptr"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Graph.get_param_ptr()</span></code></a> returns the graph-owned
 address of a binding (a host address for CPU graphs or a device address for CUDA
 graphs), which remains valid only until the graph is destroyed.</p>
-<p>A <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> file captured on a CUDA device must be loaded on a CUDA device with
-a compatible companion module; a file captured on a CPU device must be loaded
-on a CPU device. The <code class="docutils literal notranslate"><span class="pre">device</span></code> passed to
-<a class="reference internal" href="../api_reference/_generated/warp.capture_load.html#warp.capture_load" title="warp.capture_load"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_load()</span></code></a> must match the captured device
-family. This is currently a caller requirement: the experimental loader does
-not reliably diagnose a mismatch when it first opens the file. Architecture and
-platform constraints are listed under the current limitations below.</p>
+<p>A <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> file captured on a CUDA device must be loaded on a CUDA device; a
+file captured on a CPU device must be loaded on a CPU device. The loader first
+tries each packaged PTX or CUBIN. If the CUDA driver rejects it, Warp checks for
+a compatible compiled entry in the companion <code class="docutils literal notranslate"><span class="pre">_modules</span></code> directory and then,
+when reproducible source was retained, compiles that source for the guest GPU
+with NVRTC. Successfully compiled output is cached in <code class="docutils literal notranslate"><span class="pre">_modules</span></code> under a
+content-addressed <code class="docutils literal notranslate"><span class="pre">apic_guest_*</span></code> name. A read-only directory still works, but
+the source is compiled again on the next load.</p>
+<p>Source fallback requires the exact Warp version that wrote the artifact.
+It is available only when the graph was saved with <code class="docutils literal notranslate"><span class="pre">source_fallback=True</span></code>.
+Graphs saved with the default <code class="docutils literal notranslate"><span class="pre">source_fallback=False</span></code> require compatible
+compiled binaries. If no usable binary is available, <code class="docutils literal notranslate"><span class="pre">capture_load()</span></code> reports
+the binary-load failure. For opted-in saves, it also reports why source fallback
+is unavailable or failed.</p>
 </section>
 <section id="loading-from-bytes">
 <h4>Loading from bytes<a class="headerlink" href="#loading-from-bytes" title="Link to this heading">#</a></h4>
@@ -2670,6 +2705,8 @@ directory to its contents:</p>
 <a class="reference internal" href="../api_reference/_generated/warp.capture_save.html#warp.capture_save" title="warp.capture_save"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_save()</span></code></a> wrote, without a directory
 prefix. Entries the graph doesn’t use are ignored. Warp copies everything it
 needs while loading, so the buffers can be released once the call returns.</p>
+<p>Loading from bytes requires compatible packaged binaries. Generated-source
+recompilation and persistent guest-cache lookup use the file-based loader.</p>
 </section>
 <section id="standalone-c-replay">
 <h4>Standalone C++ replay<a class="headerlink" href="#standalone-c-replay" title="Link to this heading">#</a></h4>
@@ -2690,6 +2727,10 @@ declared in <a class="reference external" href="https://github.com/NVIDIA/warp/b
 <span class="w">                                         </span><span class="k">const</span><span class="w"> </span><span class="n">APICModuleBytes</span><span class="o">*</span><span class="w"> </span><span class="n">modules</span><span class="p">,</span>
 <span class="w">                                         </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">num_modules</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">device_type</span><span class="p">);</span>
 
+<span class="c1">// Also permit CUDA source fallback using headers from the linked Warp.</span>
+<span class="n">APICGraph</span><span class="o">*</span><span class="w"> </span><span class="nf">wp_apic_load_graph_ex</span><span class="p">(</span><span class="kt">void</span><span class="o">*</span><span class="w"> </span><span class="n">context</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="n">path</span><span class="p">,</span>
+<span class="w">                                 </span><span class="kt">int</span><span class="w"> </span><span class="n">device_type</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="n">warp_include_dir</span><span class="p">);</span>
+
 <span class="c1">// Update or read named parameter regions on the loaded graph.</span>
 <span class="kt">bool</span><span class="w"> </span><span class="nf">wp_apic_set_param</span><span class="p">(</span><span class="n">APICGraph</span><span class="o">*</span><span class="w"> </span><span class="n">graph</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="n">name</span><span class="p">,</span>
 <span class="w">                       </span><span class="k">const</span><span class="w"> </span><span class="kt">void</span><span class="o">*</span><span class="w"> </span><span class="n">data</span><span class="p">,</span><span class="w"> </span><span class="kt">size_t</span><span class="w"> </span><span class="n">size</span><span class="p">);</span>
@@ -2709,6 +2750,12 @@ declared in <a class="reference external" href="https://github.com/NVIDIA/warp/b
 </div>
 <p>For native library headers, build-system setup, platform-specific linking,
 deployment, and version compatibility, see <a class="reference internal" href="programming_model/cpp_cuda_workflows.html#native-library-linking"><span class="std std-ref">Native Library Linking and Version Checks</span></a>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">wp_apic_load_graph()</span></code> preserves the original binary-only standalone behavior
+and is used by the CUDA example below. It can load a compatible packaged module
+or an existing guest-cache entry, but it cannot compile retained source. To opt
+in to source fallback for cross-system CUDA replay, call
+<code class="docutils literal notranslate"><span class="pre">wp_apic_load_graph_ex()</span></code> and pass the path to the <code class="docutils literal notranslate"><span class="pre">warp/native</span></code> headers
+from the same Warp installation as the linked native library.</p>
 <p>Two reference C++ examples ship with Warp under <code class="docutils literal notranslate"><span class="pre">warp/examples/cpp/</span></code>. Both
 implement the same interactive 2-D wave simulation visualized with GLFW/OpenGL,
 and both take their captured <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> file from a Python <code class="docutils literal notranslate"><span class="pre">capture_wave.py</span></code>
@@ -2861,10 +2908,15 @@ resources and their process-local IDs cannot yet be serialized. Calling
 Pre-reserving is optional for CPU replay but avoids allocation on the first
 launch. If used, call <code class="docutils literal notranslate"><span class="pre">HashGrid.reserve()</span></code> before capture; reserve calls
 inside CPU capture are rejected.</p></li>
-<li><p>A CUBIN companion is specific to its compiled CUDA architecture. PTX may be
-JIT-compiled on architectures supported by its target and the installed
-driver, but PTX is not an unconditional cross-architecture guarantee. One
-APIC graph cannot span multiple GPUs.</p></li>
+<li><p>A CUBIN companion is specific to its compiled CUDA architecture, and PTX is
+not an unconditional cross-architecture guarantee. CUDA APIC loading can
+recover by compiling generated source packaged with
+<code class="docutils literal notranslate"><span class="pre">capture_save(source_fallback=True)</span></code> for the guest GPU. This save option
+rejects modules using caller-provided CUDA include directories, LLVM-CUDA
+builds, <code class="docutils literal notranslate"><span class="pre">strip_hash=True</span></code>, or LTO-IR and fatbin link inputs (detected from
+the generated source), and modules whose generated source is missing or
+changed after the module loaded. Default binary-only saving remains
+available for these modules. One APIC graph cannot span multiple GPUs.</p></li>
 <li><p>Loading CPU <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> graphs requires the warp-clang backend and compatible
 CPU kernel object files, either in the companion <code class="docutils literal notranslate"><span class="pre">_modules</span></code> directory or
 passed to <a class="reference internal" href="../api_reference/_generated/warp.capture_load_from_bytes.html#warp.capture_load_from_bytes" title="warp.capture_load_from_bytes"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_load_from_bytes()</span></code></a>.

@@ -509,11 +509,23 @@
 <h1>warp.capture_save<a class="headerlink" href="#warp-capture-save" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.capture_save">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">capture_save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">graph</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inputs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outputs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L14111-L14264"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.capture_save" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">capture_save</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">graph</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">inputs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">outputs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">source_fallback</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L14364-L14631"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.capture_save" title="Link to this definition">#</a></dt>
 <dd><p>Serialize a captured graph to a <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> file for later replay.</p>
 <p>The graph must have been captured with <code class="docutils literal notranslate"><span class="pre">apic=True</span></code>. For graphs containing
 recorded kernels, the <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> file and its companion <code class="docutils literal notranslate"><span class="pre">_modules</span></code> directory
-must be kept together.</p>
+must be kept together. Set <code class="docutils literal notranslate"><span class="pre">source_fallback=True</span></code> to retain generated
+CUDA source so a loader can compile a local module when the packaged PTX
+or CUBIN is incompatible. Otherwise, only compiled binaries are exported.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -522,7 +534,21 @@ must be kept together.</p>
 <code class="docutils literal notranslate"><span class="pre">&lt;stem&gt;.wrp</span></code> and <code class="docutils literal notranslate"><span class="pre">&lt;stem&gt;_modules/</span></code>.</p></li>
 <li><p><strong>inputs</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.15)"><em>dict</em></a><em> | </em><em>None</em>) – Named input arrays (e.g., <code class="docutils literal notranslate"><span class="pre">{&quot;positions&quot;:</span> <span class="pre">pos_array}</span></code>).</p></li>
 <li><p><strong>outputs</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.15)"><em>dict</em></a><em> | </em><em>None</em>) – Named output arrays (e.g., <code class="docutils literal notranslate"><span class="pre">{&quot;results&quot;:</span> <span class="pre">result_array}</span></code>).</p></li>
+<li><p><strong>source_fallback</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether to package CUDA source and its compile recipe
+for recompilation on the replay device. Every captured CUDA module
+needs its generated <code class="docutils literal notranslate"><span class="pre">.cu</span></code> file, unchanged since the module was
+loaded, beside the module binary, and a hashed binary name
+(<code class="docutils literal notranslate"><span class="pre">strip_hash=True</span></code> modules are not supported). Known blockers are
+reported together before writing the artifact. Guest hardware,
+driver, and compiler compatibility is checked at load time.</p></li>
 </ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#RuntimeError" title="(in Python v3.15)"><strong>RuntimeError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">source_fallback=True</span></code> and any captured CUDA module
+    has missing or changed generated source, an unverified binary name
+    (for example, <code class="docutils literal notranslate"><span class="pre">strip_hash=True</span></code>), or a source-recompilation
+    dependency that cannot be packaged: caller-provided CUDA include
+    directories, LLVM-CUDA compilation, or LTO-IR/fatbin link inputs.</p>
 </dd>
 </dl>
 <p>If the same array appears in both <code class="docutils literal notranslate"><span class="pre">inputs</span></code> and <code class="docutils literal notranslate"><span class="pre">outputs</span></code> (e.g., for
