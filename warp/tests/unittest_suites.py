@@ -177,6 +177,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_builtins_resolution import TestBuiltinsResolution
     from warp.tests.test_closest_point_edge_edge import TestClosestPointEdgeEdgeMethods
     from warp.tests.test_codegen import TestCodeGen
+    from warp.tests.test_codegen_continue import TestCodeGenContinue
     from warp.tests.test_codegen_instancing import TestCodeGenInstancing
     from warp.tests.test_compilation import TestCompilation
     from warp.tests.test_compile_consts import TestConstants
@@ -339,6 +340,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestClosestPointEdgeEdgeMethods,
         TestClusterDim,
         TestCodeGen,
+        TestCodeGenContinue,
         TestCodeGenInstancing,
         TestCompilation,
         TestCompositeComponentAdjoint,
@@ -630,6 +632,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.test_builtins_resolution import TestBuiltinsResolution
     from warp.tests.test_closest_point_edge_edge import TestClosestPointEdgeEdgeMethods
     from warp.tests.test_codegen import TestCodeGen
+    from warp.tests.test_codegen_continue import TestCodeGenContinue
     from warp.tests.test_codegen_instancing import TestCodeGenInstancing
     from warp.tests.test_coloring import TestColoring
     from warp.tests.test_compilation import TestCompilation
@@ -779,6 +782,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         # Codegen & compilation
         TestBuiltinsResolution,
         TestCodeGen,
+        TestCodeGenContinue,
         TestCodeGenInstancing,
         TestCompositeComponentAdjoint,
         TestConditional,

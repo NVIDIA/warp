@@ -4102,24 +4102,52 @@ class Adjoint:
 
         return warp._src.types.is_int(obj), obj
 
-    # detects whether a loop contains a break (or continue) statement
-    def contains_break(adj, body):
-        for s in body:
-            if isinstance(s, ast.Break):
+    def contains_loop_control(adj, body, control_type):
+        """Check for a transfer targeting this loop, excluding nested loops."""
+        for statement in body:
+            if isinstance(statement, control_type):
                 return True
-            elif isinstance(s, ast.Continue):
+            if isinstance(statement, ast.If) and (
+                adj.contains_loop_control(statement.body, control_type)
+                or adj.contains_loop_control(statement.orelse, control_type)
+            ):
                 return True
-            elif isinstance(s, ast.If):
-                if adj.contains_break(s.body):
-                    return True
-                if adj.contains_break(s.orelse):
-                    return True
-            else:
-                # note that nested for or while loops containing a break statement
-                # do not affect the current loop
-                pass
-
         return False
+
+    def lower_unrolled_continues(adj, body, active_name):
+        """Guard the remainder of an unrolled iteration after each continue.
+
+        Ordinary conditionals preserve SSA versions for reverse-mode AD, including
+        writes before a continue. Each remaining statement is emitted only once.
+        Nested loops handle their own transfers. Copy modified nodes because the
+        original AST is shared by subsequent builds and specializations.
+        """
+        result = []
+        for index, statement in enumerate(body):
+            if isinstance(statement, ast.Continue):
+                assignment = ast.Assign(
+                    targets=[ast.Name(id=active_name, ctx=ast.Store())], value=ast.Constant(value=False)
+                )
+                result.append(ast.copy_location(assignment, statement))
+                return result, True
+
+            may_continue = False
+            if isinstance(statement, ast.If):
+                conditional = shallowcopy(statement)
+                conditional.body, body_continues = adj.lower_unrolled_continues(statement.body, active_name)
+                conditional.orelse, else_continues = adj.lower_unrolled_continues(statement.orelse, active_name)
+                may_continue = body_continues or else_continues
+                result.append(conditional)
+            else:
+                result.append(statement)
+
+            if may_continue:
+                tail, _ = adj.lower_unrolled_continues(body[index + 1 :], active_name)
+                if tail:
+                    guard = ast.If(test=ast.Name(id=active_name, ctx=ast.Load()), body=tail, orelse=[])
+                    result.append(ast.copy_location(guard, body[index + 1]))
+                return result, True
+        return result, False
 
     # returns a constant range() if unrollable, otherwise None
     def get_unroll_range(adj, loop):
@@ -4184,14 +4212,14 @@ class Adjoint:
                 )
                 ok_to_unroll = False
 
-            elif adj.contains_break(loop.body):
-                log_debug("Warning: 'break' or 'continue' found in loop body, will generate dynamic loop.")
+            elif adj.contains_loop_control(loop.body, ast.Break):
+                log_debug("Warning: 'break' found in loop body, will generate dynamic loop.")
                 ok_to_unroll = False
 
             if ok_to_unroll:
                 return constant_range
 
-            if not adj.contains_break(loop.body):
+            if not adj.contains_loop_control(loop.body, (ast.Break, ast.Continue)):
                 return _NonUnrolledConstantRange(
                     constant_range.start,
                     constant_range.stop,
@@ -4222,14 +4250,28 @@ class Adjoint:
             if unroll_range:
                 adj.record_constant_iter_symbol(const_iter_sym)
 
-            # unroll static for-loop
-            for i in unroll_range:
-                const_iter = adj.add_constant(i)
-                adj.symbols[const_iter_sym] = const_iter
+            body = node.body
+            active_name = None
+            if unroll_range and adj.contains_loop_control(body, ast.Continue):
+                names = {n.id for n in ast.walk(node) if isinstance(n, ast.Name)} | adj.symbols.keys()
+                active_name = f"_wp_continue_{adj.label_count}"
+                while active_name in names:
+                    adj.label_count += 1
+                    active_name = f"_wp_continue_{adj.label_count}"
+                adj.label_count += 1
+                body, _ = adj.lower_unrolled_continues(body, active_name)
 
-                # eval body
-                for s in node.body:
-                    adj.eval(s)
+            try:
+                # Unroll with a fresh continuation condition for each iteration.
+                for i in unroll_range:
+                    adj.symbols[const_iter_sym] = adj.add_constant(i)
+                    if active_name is not None:
+                        adj.symbols[active_name] = adj.add_constant(True)
+                    for statement in body:
+                        adj.eval(statement)
+            finally:
+                if active_name is not None:
+                    adj.symbols.pop(active_name, None)
 
         # otherwise generate a dynamic loop
         else:
