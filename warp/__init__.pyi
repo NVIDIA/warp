@@ -5943,11 +5943,8 @@ def tile_sort(keys: Tile[Any, tuple[int, ...]], values: Tile[Any, tuple[int, ...
     storage they were created with, so they count against the block's shared-memory
     budget (see :ref:`tile_shared_memory_budget`).
 
-    On CUDA devices ``block_dim`` must be a multiple of the warp size (32). CPU launches
-    have no such requirement.
-
-    On CUDA devices, prefer a ``block_dim`` that is a multiple of 32 for better sorting performance. Other block
-    dimensions are supported but may be slower.
+    On CUDA devices, prefer a ``block_dim`` that is a multiple of 32 for better sorting
+    performance. Other block dimensions are supported but may be slower.
 
     Args:
         keys: Tile of sort keys, permuted in place. Supported key types:
