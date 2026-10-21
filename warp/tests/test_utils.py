@@ -1096,6 +1096,52 @@ def test_array_cast(test, device):
     assert_np_equal(result.numpy(), np.array(((1, 2), (3, 4)), dtype=int))
 
 
+def test_array_cast_multidim(test, device):
+    for shape in ((3, 4), (2, 3, 2), (2, 1, 3, 2)):
+        expected = np.arange(np.prod(shape), dtype=np.float32).reshape(shape)
+        values = wp.array(expected, dtype=wp.float32, device=device)
+        result = wp.zeros(shape, dtype=wp.float64, device=device)
+        wp.utils.array_cast(values, result)
+        test.assertEqual(result.dtype, wp.float64)
+        test.assertEqual(result.shape, shape)
+        assert_np_equal(result.numpy(), expected.astype(np.float64))
+
+    # A one-dimensional cast still works after the multi-dimensional ones.
+    values = wp.array((1.5, 2.5), dtype=wp.float32, device=device)
+    result = wp.zeros(2, dtype=wp.int32, device=device)
+    wp.utils.array_cast(values, result)
+    assert_np_equal(result.numpy(), np.array((1, 2), dtype=np.int32))
+
+
+def test_array_cast_error_shape_mismatch(test, device):
+    values = wp.zeros((2, 3), dtype=wp.float32, device=device)
+    result = wp.zeros((3, 2), dtype=wp.float64, device=device)
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"Array shapes do not match \(\(2, 3\) vs \(3, 2\)\)$",
+    ):
+        wp.utils.array_cast(values, result)
+
+
+def test_array_cast_error_count_exceeds_size(test, device):
+    values = wp.array(np.arange(1, 11, dtype=np.float32), device=device)
+    result = wp.zeros(10, dtype=wp.int32, device=device)
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"Cast count \(10\) exceeds the input size \(10\) or output size \(3\)$",
+    ):
+        wp.utils.array_cast(values, result[:3])
+
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"Cast count \(5\) exceeds the input size \(3\) or output size \(10\)$",
+    ):
+        wp.utils.array_cast(values[:3], result, count=5)
+
+    # Nothing may be written past the end of the output view.
+    assert_np_equal(result.numpy(), np.zeros(10, dtype=np.int32))
+
+
 def test_array_cast_error_unsupported_partial_cast(test, device):
     values = wp.array(((1, 2), (3, 4)), dtype=int, device=device)
     result = wp.zeros((2, 2), dtype=float, device=device)
@@ -1549,6 +1595,13 @@ add_function_test(
     TestUtils, "test_array_inner_error_unsupported_dtype", test_array_inner_error_unsupported_dtype, devices=devices
 )
 add_function_test(TestUtils, "test_array_cast", test_array_cast, devices=devices)
+add_function_test(TestUtils, "test_array_cast_multidim", test_array_cast_multidim, devices=devices)
+add_function_test(
+    TestUtils, "test_array_cast_error_shape_mismatch", test_array_cast_error_shape_mismatch, devices=devices
+)
+add_function_test(
+    TestUtils, "test_array_cast_error_count_exceeds_size", test_array_cast_error_count_exceeds_size, devices=devices
+)
 add_function_test(
     TestUtils,
     "test_array_scan_error_device_failure_is_reported",
