@@ -9,8 +9,14 @@ import warp as wp
 
 from .benchmarks_utils import setup_once
 
+# Keep the arrays (384 KB) cache-resident so the timing measures vectorized
+# arithmetic rather than memory placement, which varies between processes on
+# CI runners. Repeating the row sweep restores the arithmetic per launch.
 LOOP_ROWS = 128
-LOOP_COLUMNS = 1 << 12
+LOOP_COLUMNS = 1 << 8
+LOOP_REPEATS = 16
+# Larger counts stop LLVM from fully unrolling this loop, which leaves the
+# column loop non-innermost and prevents its vectorization.
 ARITHMETIC_ITERATIONS = 16
 
 
@@ -18,13 +24,14 @@ ARITHMETIC_ITERATIONS = 16
 def linear_array_loop_kernel(a: wp.array[float], b: wp.array[float], output: wp.array[float]):
     row = wp.tid()
     begin = row * LOOP_COLUMNS
-    for column in range(LOOP_COLUMNS):
-        i = begin + column
-        value = a[i]
-        factor = b[i]
-        for _ in range(ARITHMETIC_ITERATIONS):
-            value = value * factor + a[i]
-        output[i] = value
+    for _ in range(LOOP_REPEATS):
+        for column in range(LOOP_COLUMNS):
+            i = begin + column
+            value = a[i]
+            factor = b[i]
+            for _ in range(ARITHMETIC_ITERATIONS):
+                value = value * factor + a[i]
+            output[i] = value
 
 
 class CpuVectorization:
