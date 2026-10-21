@@ -1488,6 +1488,93 @@ def test_load_same_capture_twice(test, device):
     np.testing.assert_allclose(result.numpy(), np.arange(n, dtype=np.float32) * 2.0)
 
 
+def test_save_load_large_shared_memory(test, device, conditional=False):
+    """Restore a loaded tile kernel's dynamic shared-memory opt-in."""
+    if device.max_shared_memory_per_block <= 64 * 1024:
+        test.skipTest("Requires more than 64 KiB of shared memory per block")
+    if conditional and not wp.is_conditional_graph_supported():
+        test.skipTest("CUDA conditional graph nodes require Toolkit and driver 12.4+")
+
+    @wp.kernel(module="unique", enable_backward=False)
+    def double_tile(src: wp.array2d[float], dst: wp.array2d[float]):
+        tile = wp.tile_load(src, shape=(128, 128), storage="shared")
+        wp.tile_store(dst, wp.tile_map(wp.add, tile, tile))
+
+    values = np.arange(128 * 128, dtype=np.float32).reshape(128, 128)
+    src = wp.array(values, device=device)
+    dst = wp.zeros_like(src)
+    condition = wp.ones(1, dtype=wp.int32, device=device) if conditional else None
+    wp.load_module(module=double_tile.module, device=device, block_dim=64)
+
+    def double_tile_body():
+        wp.launch_tiled(double_tile, dim=[1], inputs=[src, dst], block_dim=64, device=device)
+
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        if conditional:
+            wp.capture_if(condition, on_true=double_tile_body)
+        else:
+            double_tile_body()
+
+    wp.capture_launch(capture.graph)
+    np.testing.assert_array_equal(dst.numpy(), values * 2.0)
+    # Save a zeroed output so its initial contents cannot mask a missing launch.
+    dst.zero_()
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "large_shared_memory")
+        wp.capture_save(capture.graph, path, inputs={"src": src}, outputs={"dst": dst})
+        loaded = wp.capture_load(path, device=device)
+        wp.capture_launch(loaded)
+        result = wp.empty_like(dst)
+        loaded.get_param("dst", result)
+        np.testing.assert_array_equal(result.numpy(), values * 2.0)
+
+
+def test_save_load_large_shared_memory_backward(test, device):
+    """Restore the backward kernel's larger dynamic shared-memory limit."""
+    if device.max_shared_memory_per_block <= 64 * 1024:
+        test.skipTest("Requires more than 64 KiB of shared memory per block")
+
+    @wp.kernel(module="unique")
+    def copy_tile(src: wp.array2d[float], dst: wp.array2d[float]):
+        tile = wp.tile_load(src, shape=(64, 128), storage="shared")
+        wp.tile_store(dst, tile)
+
+    # The forward kernel uses 32 KiB, while its backward kernel uses 64 KiB.
+    values = np.arange(64 * 128, dtype=np.float32).reshape(64, 128)
+    src = wp.zeros((64, 128), dtype=float, device=device)
+    dst = wp.zeros_like(src)
+    src_grad = wp.zeros_like(src)
+    dst_grad = wp.array(values, device=device)
+    wp.load_module(module=copy_tile.module, device=device, block_dim=64)
+
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.launch_tiled(
+            copy_tile,
+            dim=[1],
+            inputs=[src, dst],
+            adj_inputs=[src_grad, dst_grad],
+            adjoint=True,
+            block_dim=64,
+            device=device,
+        )
+
+    wp.capture_launch(capture.graph)
+    np.testing.assert_array_equal(src_grad.numpy(), values)
+    src_grad.zero_()
+    # The live backward launch consumes its incoming output gradient.
+    dst_grad.assign(values)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "large_shared_memory_backward")
+        wp.capture_save(capture.graph, path, inputs={"dst_grad": dst_grad}, outputs={"src_grad": src_grad})
+        loaded = wp.capture_load(path, device=device)
+        wp.capture_launch(loaded)
+        result = wp.empty_like(src_grad)
+        loaded.get_param("src_grad", result)
+        np.testing.assert_array_equal(result.numpy(), values)
+
+
 def test_save_load_block_dependent_static_kernel(test, device):
     """Serialize the selected executable's symbols after switching block sizes."""
 
@@ -4964,6 +5051,25 @@ add_function_test(
     "test_load_same_capture_twice",
     test_load_same_capture_twice,
     devices=devices_with_cuda_graph_module_load,
+)
+add_function_test(
+    TestApic,
+    "test_save_load_large_shared_memory",
+    test_save_load_large_shared_memory,
+    devices=[d for d in devices_with_cuda_graph_module_load if d.is_cuda],
+)
+add_function_test(
+    TestApic,
+    "test_save_load_large_shared_memory_conditional",
+    test_save_load_large_shared_memory,
+    devices=[d for d in devices_with_cuda_graph_module_load if d.is_cuda],
+    conditional=True,
+)
+add_function_test(
+    TestApic,
+    "test_save_load_large_shared_memory_backward",
+    test_save_load_large_shared_memory_backward,
+    devices=[d for d in devices_with_cuda_graph_module_load if d.is_cuda],
 )
 add_function_test(
     TestApic,

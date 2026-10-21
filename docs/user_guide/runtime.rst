@@ -2898,6 +2898,23 @@ normalized to [-1, 1]; float types are returned as-is. Sampling a ``wp.uint32`` 
 texture causes kernel execution to fail, but these dtypes remain usable for storage, copies, and
 interop.
 
+Texture sampling is differentiable with respect to sampling coordinates wherever the sample is
+locally linear, and with respect to ``lod`` for linear mip-level blending, so sampling positions
+can be optimized with :class:`wp.Tape <warp.Tape>`. At boundaries where the derivative is not
+unique, Warp differentiates the branch selected by the forward sample. At an unclamped integer
+LOD, linear mip filtering uses the right-hand derivative. The LOD gradient is zero in the clamped
+ranges. With closest spatial or mip filtering the corresponding coordinate or ``lod`` gradients
+are zero. Texture data gradients are not propagated. On CUDA, ``WRAP`` and ``MIRROR`` require
+normalized coordinates; with unnormalized coordinates, CUDA treats both modes as ``CLAMP`` for
+the forward sample and its coordinate gradient.
+
+Gradients use float32 arithmetic and are subject to rounding, overflow, underflow, and
+cancellation. Intermediate calculations can lose small contributions or overflow even when
+the mathematical final gradient is representable. CUDA filtering has limited fractional
+precision and can flush subnormal samples to zero; CUDA float32 gradient-array accumulation
+can also flush subnormal contributions and results to zero. With ``fast_math`` enabled,
+subnormal inputs can also be flushed before the gradient calculation.
+
 .. seealso:: :ref:`Reference <builtins-textures>` for the texture sampling functions available in kernels.
 
 
