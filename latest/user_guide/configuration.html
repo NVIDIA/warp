@@ -726,10 +726,15 @@ module string replaces the global string; include <code class="docutils literal 
 module should detect host CPU features. The global default uses host CPU
 features and sets <code class="docutils literal notranslate"><span class="pre">-inline-threshold=9000</span></code> and
 <code class="docutils literal notranslate"><span class="pre">-inline-cold-callsite-threshold=3000</span></code> to make LLVM more eager to inline CPU
-helpers. Set the global value to <code class="docutils literal notranslate"><span class="pre">None</span></code> before a module is first hashed to
-keep host CPU detection with LLVM’s default thresholds. For one module, use
-<code class="docutils literal notranslate"><span class="pre">&quot;-march=native&quot;</span></code>; a module-level <code class="docutils literal notranslate"><span class="pre">None</span></code> inherits the global setting.
-When changing a module’s CPU compiler flags, use
+helpers, and limits SLP recursion depth to four. Set the global value to
+<code class="docutils literal notranslate"><span class="pre">None</span></code> before a module is first hashed to keep host CPU detection with
+LLVM’s default inlining thresholds and SLP recursion depth. For one module,
+use <code class="docutils literal notranslate"><span class="pre">&quot;-march=native&quot;</span></code>; a module-level <code class="docutils literal notranslate"><span class="pre">None</span></code> inherits the global setting.
+Warp enables the loop and SLP vectorizers for CPU modules at effective
+optimization levels 2 and 3. Include <code class="docutils literal notranslate"><span class="pre">-fno-vectorize</span></code> or
+<code class="docutils literal notranslate"><span class="pre">-fno-slp-vectorize</span></code> in a module flag string to disable the corresponding
+pass.</p>
+<p>When changing a module’s CPU compiler flags, use
 <a class="reference internal" href="../api_reference/_generated/warp.set_module_options.html#warp.set_module_options" title="warp.set_module_options"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.set_module_options()</span></code></a> so Warp updates its
 hash. Assigning <a class="reference internal" href="../api_reference/_generated/warp.config.cpu_compiler_flags.html#warp.config.cpu_compiler_flags" title="warp.config.cpu_compiler_flags"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.cpu_compiler_flags</span></code></a> alone does not
 invalidate hashes that have already been computed.</p>

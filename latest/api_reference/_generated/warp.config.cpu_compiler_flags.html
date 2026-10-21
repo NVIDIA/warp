@@ -509,18 +509,21 @@
 <h1>warp.config.cpu_compiler_flags<a class="headerlink" href="#warp-config-cpu-compiler-flags" title="Link to this heading">#</a></h1>
 <dl class="py data">
 <dt class="sig sig-object py" id="warp.config.cpu_compiler_flags">
-<span class="sig-prename descclassname"><span class="pre">warp.config.</span></span><span class="sig-name descname"><span class="pre">cpu_compiler_flags</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'-march=native</span> <span class="pre">-mllvm=-inline-threshold=9000</span> <span class="pre">-mllvm=-inline-cold-callsite-threshold=3000'</span></span><a class="headerlink" href="#warp.config.cpu_compiler_flags" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.config.</span></span><span class="sig-name descname"><span class="pre">cpu_compiler_flags</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'-march=native</span> <span class="pre">-mllvm=-inline-threshold=9000</span> <span class="pre">-mllvm=-inline-cold-callsite-threshold=3000</span> <span class="pre">-mllvm=-slp-recursion-max-depth=4'</span></span><a class="headerlink" href="#warp.config.cpu_compiler_flags" title="Link to this definition">#</a></dt>
 <dd><p>Flags controlling CPU kernel compilation.</p>
-<p>The default detects host CPU features and makes LLVM more eager to inline
-helper calls. Set to <code class="docutils literal notranslate"><span class="pre">None</span></code> to retain host feature detection and use LLVM’s
-default inlining thresholds. <code class="docutils literal notranslate"><span class="pre">&quot;&quot;</span></code> compiles for a generic CPU target. A flag
-string can include <code class="docutils literal notranslate"><span class="pre">-march=native</span></code>, Clang frontend flags, and LLVM arguments
-in either <code class="docutils literal notranslate"><span class="pre">-mllvm</span> <span class="pre">&lt;option&gt;</span></code> or <code class="docutils literal notranslate"><span class="pre">-mllvm=&lt;option&gt;</span></code> form. Use
-<code class="docutils literal notranslate"><span class="pre">-fno-vectorize</span></code> to disable loop vectorization for a module.</p>
+<p>The default detects host CPU features, raises LLVM’s inlining thresholds,
+and limits SLP recursion depth to four instead of LLVM’s default 12. Set this
+to <code class="docutils literal notranslate"><span class="pre">None</span></code> to retain host feature detection with LLVM’s default inlining
+thresholds and SLP recursion depth.
+<code class="docutils literal notranslate"><span class="pre">&quot;&quot;</span></code> compiles for a generic CPU target. A flag string can include
+<code class="docutils literal notranslate"><span class="pre">-march=native</span></code>, Clang frontend flags, and LLVM arguments in either
+<code class="docutils literal notranslate"><span class="pre">-mllvm</span> <span class="pre">&lt;option&gt;</span></code> or <code class="docutils literal notranslate"><span class="pre">-mllvm=&lt;option&gt;</span></code> form. Use <code class="docutils literal notranslate"><span class="pre">-fno-vectorize</span></code> to
+disable loop vectorization or <code class="docutils literal notranslate"><span class="pre">-fno-slp-vectorize</span></code> to disable SLP
+vectorization for a module.</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">&quot;cpu_compiler_flags&quot;</span></code> module option replaces this global string for
-that module. Use <code class="docutils literal notranslate"><span class="pre">&quot;-march=native&quot;</span></code> to restore LLVM’s default thresholds for
-one module while retaining host feature detection. <code class="docutils literal notranslate"><span class="pre">None</span></code> at the module level
-inherits the global setting.</p>
+that module. Use <code class="docutils literal notranslate"><span class="pre">&quot;-march=native&quot;</span></code> to keep host feature detection while
+using LLVM’s default inlining thresholds and SLP recursion depth. <code class="docutils literal notranslate"><span class="pre">None</span></code> at
+the module level inherits the global setting.</p>
 <p>The resolved flag string is part of the module cache key.
 LLVM options are a power-user feature with process-wide caveats; see
 <a class="reference internal" href="../../user_guide/configuration.html#cpu-llvm-compiler-options"><span class="std std-ref">LLVM Options for CPU Compilation</span></a>.</p>
