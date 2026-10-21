@@ -599,10 +599,11 @@ clamped.</p></li>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>The sampled value of the specified <code class="docutils literal notranslate"><span class="pre">dtype</span></code>. The backends normalize unsigned 8- and 16-bit
-integer data to <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code> and signed 8- and 16-bit integer data to <code class="docutils literal notranslate"><span class="pre">[-1,</span> <span class="pre">1]</span></code>. Sampling an
-<code class="docutils literal notranslate"><span class="pre">int32</span></code> or <code class="docutils literal notranslate"><span class="pre">uint32</span></code> texture causes kernel execution to fail; use an 8- or 16-bit integer
-or floating-point texture. Floating-point texture data is returned as <code class="docutils literal notranslate"><span class="pre">float32</span></code> channel
-values without normalization.</p>
+integer data to <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code> and signed 8- and 16-bit integer data to <code class="docutils literal notranslate"><span class="pre">[-1,</span> <span class="pre">1]</span></code>.
+Signed and unsigned 32-bit integer data is converted numerically to <code class="docutils literal notranslate"><span class="pre">float32</span></code> without
+normalization and requires closest filtering within and between mip levels. Integers
+outside <code class="docutils literal notranslate"><span class="pre">[-2**24,</span> <span class="pre">2**24]</span></code> may round during conversion. Floating-point texture data is
+returned as <code class="docutils literal notranslate"><span class="pre">float32</span></code> channel values without normalization.</p>
 </dd>
 </dl>
 <p>The filtering mode (<a class="reference internal" href="../../api_reference/_generated/warp.TextureFilterMode.html#warp.TextureFilterMode" title="warp.TextureFilterMode"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.TextureFilterMode</span></code></a>) and the addressing of out-of-range
@@ -689,10 +690,11 @@ clamped.</p></li>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>The sampled value of the specified <code class="docutils literal notranslate"><span class="pre">dtype</span></code>. The backends normalize unsigned 8- and 16-bit
-integer data to <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code> and signed 8- and 16-bit integer data to <code class="docutils literal notranslate"><span class="pre">[-1,</span> <span class="pre">1]</span></code>. Sampling an
-<code class="docutils literal notranslate"><span class="pre">int32</span></code> or <code class="docutils literal notranslate"><span class="pre">uint32</span></code> texture causes kernel execution to fail; use an 8- or 16-bit integer
-or floating-point texture. Floating-point texture data is returned as <code class="docutils literal notranslate"><span class="pre">float32</span></code> channel
-values without normalization.</p>
+integer data to <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code> and signed 8- and 16-bit integer data to <code class="docutils literal notranslate"><span class="pre">[-1,</span> <span class="pre">1]</span></code>.
+Signed and unsigned 32-bit integer data is converted numerically to <code class="docutils literal notranslate"><span class="pre">float32</span></code> without
+normalization and requires closest filtering within and between mip levels. Integers
+outside <code class="docutils literal notranslate"><span class="pre">[-2**24,</span> <span class="pre">2**24]</span></code> may round during conversion. Floating-point texture data is
+returned as <code class="docutils literal notranslate"><span class="pre">float32</span></code> channel values without normalization.</p>
 </dd>
 </dl>
 <p>The filtering mode (<a class="reference internal" href="../../api_reference/_generated/warp.TextureFilterMode.html#warp.TextureFilterMode" title="warp.TextureFilterMode"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.TextureFilterMode</span></code></a>) and the addressing of out-of-range
@@ -757,10 +759,11 @@ clamped.</p></li>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>The sampled value of the specified <code class="docutils literal notranslate"><span class="pre">dtype</span></code>. The backends normalize unsigned 8- and 16-bit
-integer data to <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code> and signed 8- and 16-bit integer data to <code class="docutils literal notranslate"><span class="pre">[-1,</span> <span class="pre">1]</span></code>. Sampling an
-<code class="docutils literal notranslate"><span class="pre">int32</span></code> or <code class="docutils literal notranslate"><span class="pre">uint32</span></code> texture causes kernel execution to fail; use an 8- or 16-bit integer
-or floating-point texture. Floating-point texture data is returned as <code class="docutils literal notranslate"><span class="pre">float32</span></code> channel
-values without normalization.</p>
+integer data to <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code> and signed 8- and 16-bit integer data to <code class="docutils literal notranslate"><span class="pre">[-1,</span> <span class="pre">1]</span></code>.
+Signed and unsigned 32-bit integer data is converted numerically to <code class="docutils literal notranslate"><span class="pre">float32</span></code> without
+normalization and requires closest filtering within and between mip levels. Integers
+outside <code class="docutils literal notranslate"><span class="pre">[-2**24,</span> <span class="pre">2**24]</span></code> may round during conversion. Floating-point texture data is
+returned as <code class="docutils literal notranslate"><span class="pre">float32</span></code> channel values without normalization.</p>
 </dd>
 </dl>
 <p>The filtering mode (<a class="reference internal" href="../../api_reference/_generated/warp.TextureFilterMode.html#warp.TextureFilterMode" title="warp.TextureFilterMode"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.TextureFilterMode</span></code></a>) and the addressing of out-of-range
@@ -822,10 +825,11 @@ clamped.</p></li>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>The sampled value of the specified <code class="docutils literal notranslate"><span class="pre">dtype</span></code>. The backends normalize unsigned 8- and 16-bit
-integer data to <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code> and signed 8- and 16-bit integer data to <code class="docutils literal notranslate"><span class="pre">[-1,</span> <span class="pre">1]</span></code>. Sampling an
-<code class="docutils literal notranslate"><span class="pre">int32</span></code> or <code class="docutils literal notranslate"><span class="pre">uint32</span></code> texture causes kernel execution to fail; use an 8- or 16-bit integer
-or floating-point texture. Floating-point texture data is returned as <code class="docutils literal notranslate"><span class="pre">float32</span></code> channel
-values without normalization.</p>
+integer data to <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code> and signed 8- and 16-bit integer data to <code class="docutils literal notranslate"><span class="pre">[-1,</span> <span class="pre">1]</span></code>.
+Signed and unsigned 32-bit integer data is converted numerically to <code class="docutils literal notranslate"><span class="pre">float32</span></code> without
+normalization and requires closest filtering within and between mip levels. Integers
+outside <code class="docutils literal notranslate"><span class="pre">[-2**24,</span> <span class="pre">2**24]</span></code> may round during conversion. Floating-point texture data is
+returned as <code class="docutils literal notranslate"><span class="pre">float32</span></code> channel values without normalization.</p>
 </dd>
 </dl>
 <p>The filtering mode (<a class="reference internal" href="../../api_reference/_generated/warp.TextureFilterMode.html#warp.TextureFilterMode" title="warp.TextureFilterMode"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.TextureFilterMode</span></code></a>) and the addressing of out-of-range
@@ -894,10 +898,11 @@ clamped.</p></li>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>The sampled value of the specified <code class="docutils literal notranslate"><span class="pre">dtype</span></code>. The backends normalize unsigned 8- and 16-bit
-integer data to <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code> and signed 8- and 16-bit integer data to <code class="docutils literal notranslate"><span class="pre">[-1,</span> <span class="pre">1]</span></code>. Sampling an
-<code class="docutils literal notranslate"><span class="pre">int32</span></code> or <code class="docutils literal notranslate"><span class="pre">uint32</span></code> texture causes kernel execution to fail; use an 8- or 16-bit integer
-or floating-point texture. Floating-point texture data is returned as <code class="docutils literal notranslate"><span class="pre">float32</span></code> channel
-values without normalization.</p>
+integer data to <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code> and signed 8- and 16-bit integer data to <code class="docutils literal notranslate"><span class="pre">[-1,</span> <span class="pre">1]</span></code>.
+Signed and unsigned 32-bit integer data is converted numerically to <code class="docutils literal notranslate"><span class="pre">float32</span></code> without
+normalization and requires closest filtering within and between mip levels. Integers
+outside <code class="docutils literal notranslate"><span class="pre">[-2**24,</span> <span class="pre">2**24]</span></code> may round during conversion. Floating-point texture data is
+returned as <code class="docutils literal notranslate"><span class="pre">float32</span></code> channel values without normalization.</p>
 </dd>
 </dl>
 <p>The filtering mode (<a class="reference internal" href="../../api_reference/_generated/warp.TextureFilterMode.html#warp.TextureFilterMode" title="warp.TextureFilterMode"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.TextureFilterMode</span></code></a>) and the addressing of out-of-range

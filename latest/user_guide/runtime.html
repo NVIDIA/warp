@@ -3295,9 +3295,9 @@ addressing modes (wrap, clamp, mirror, border), making them ideal for efficientl
 <p>Supported data types include <code class="docutils literal notranslate"><span class="pre">wp.uint8</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.uint16</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.uint32</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.int8</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.int16</span></code>,
 <code class="docutils literal notranslate"><span class="pre">wp.int32</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.float16</span></code>, and <code class="docutils literal notranslate"><span class="pre">wp.float32</span></code>. Unsigned 8- and 16-bit integer textures are
 automatically normalized to the [0, 1] range when sampled; signed 8- and 16-bit integer textures are
-normalized to [-1, 1]; float types are returned as-is. Sampling a <code class="docutils literal notranslate"><span class="pre">wp.uint32</span></code> or <code class="docutils literal notranslate"><span class="pre">wp.int32</span></code>
-texture causes kernel execution to fail, but these dtypes remain usable for storage, copies, and
-interop.</p>
+normalized to [-1, 1]; float types are returned as-is. <code class="docutils literal notranslate"><span class="pre">wp.uint32</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.int32</span></code> textures
+support only closest filtering and are converted numerically to <code class="docutils literal notranslate"><span class="pre">float32</span></code> without normalization.
+Integers outside <code class="docutils literal notranslate"><span class="pre">[-2**24,</span> <span class="pre">2**24]</span></code> may round during this conversion.</p>
 <p>Texture sampling is differentiable with respect to sampling coordinates wherever the sample is
 locally linear, and with respect to <code class="docutils literal notranslate"><span class="pre">lod</span></code> for linear mip-level blending, so sampling positions
 can be optimized with <a class="reference internal" href="../api_reference/_generated/warp.Tape.html#warp.Tape" title="warp.Tape"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Tape</span></code></a>. At boundaries where the derivative is not

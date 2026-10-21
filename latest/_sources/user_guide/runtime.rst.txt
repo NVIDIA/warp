@@ -2908,9 +2908,9 @@ Textures can be sampled inside kernels using the :func:`wp.texture_sample() <war
 Supported data types include ``wp.uint8``, ``wp.uint16``, ``wp.uint32``, ``wp.int8``, ``wp.int16``,
 ``wp.int32``, ``wp.float16``, and ``wp.float32``. Unsigned 8- and 16-bit integer textures are
 automatically normalized to the [0, 1] range when sampled; signed 8- and 16-bit integer textures are
-normalized to [-1, 1]; float types are returned as-is. Sampling a ``wp.uint32`` or ``wp.int32``
-texture causes kernel execution to fail, but these dtypes remain usable for storage, copies, and
-interop.
+normalized to [-1, 1]; float types are returned as-is. ``wp.uint32`` and ``wp.int32`` textures
+support only closest filtering and are converted numerically to ``float32`` without normalization.
+Integers outside ``[-2**24, 2**24]`` may round during this conversion.
 
 Texture sampling is differentiable with respect to sampling coordinates wherever the sample is
 locally linear, and with respect to ``lod`` for linear mip-level blending, so sampling positions
