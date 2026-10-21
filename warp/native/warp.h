@@ -770,6 +770,8 @@ WP_API float wp_cuda_event_elapsed_time(void* start_event, void* end_event);
 WP_API bool wp_cuda_graph_begin_capture(void* context, void* stream, int external, int mode);
 WP_API bool wp_cuda_graph_end_capture(void* context, void* stream, void** graph_ret);
 WP_API bool wp_cuda_graph_create_exec(void* context, void* stream, void* graph, void** graph_exec_ret);
+// Root a graph at an empty kernel if any root is not a kernel node (GH-2096).
+WP_API bool wp_cuda_graph_insert_root_kernel(void* context, void* graph);
 WP_API bool wp_cuda_graph_launch(void* graph, void* stream);
 WP_API bool wp_cuda_graph_destroy(void* context, void* graph);
 WP_API bool wp_cuda_graph_exec_destroy(void* context, void* graph_exec);

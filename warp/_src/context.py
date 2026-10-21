@@ -8222,6 +8222,9 @@ class Runtime:
             ]
             self.core.wp_cuda_graph_create_exec.restype = ctypes.c_bool
 
+            self.core.wp_cuda_graph_insert_root_kernel.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.wp_cuda_graph_insert_root_kernel.restype = ctypes.c_bool
+
             self.core.wp_capture_debug_dot_print.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_uint32]
             self.core.wp_capture_debug_dot_print.restype = ctypes.c_bool
 
@@ -13473,6 +13476,13 @@ def capture_end(device: DeviceLike = None, stream: Stream | None = None) -> Grap
     if not result:
         # A concrete error should've already been reported, so we don't need to go into details here
         raise RuntimeError(f"CUDA graph capture failed. {runtime.get_error_string()}")
+
+    # Pre-R580 drivers can run a graph's first non-kernel node (e.g., a memset) before
+    # earlier work in the launch stream has finished (GH-2096).
+    if g and runtime.driver_version < (13, 0):
+        if not runtime.core.wp_cuda_graph_insert_root_kernel(device.context, g):
+            runtime.core.wp_cuda_graph_destroy(device.context, g)
+            raise RuntimeError(f"CUDA graph capture failed. {runtime.get_error_string()}")
 
     # set the graph executable
     graph.graph = g

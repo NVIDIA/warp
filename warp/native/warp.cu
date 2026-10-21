@@ -3649,6 +3649,51 @@ bool wp_cuda_graph_create_exec(void* context, void* stream, void* graph, void** 
     return true;
 }
 
+static __global__ void graph_root_kernel() { }
+
+bool wp_cuda_graph_insert_root_kernel(void* context, void* graph)
+{
+    ContextGuard guard(context);
+
+    cudaGraph_t cuda_graph = static_cast<cudaGraph_t>(graph);
+
+    size_t num_roots = 0;
+    if (!check_cuda(cudaGraphGetRootNodes(cuda_graph, NULL, &num_roots)))
+        return false;
+    std::vector<cudaGraphNode_t> roots(num_roots);
+    if (!check_cuda(cudaGraphGetRootNodes(cuda_graph, roots.data(), &num_roots)))
+        return false;
+
+    bool all_kernels = true;
+    for (cudaGraphNode_t root : roots) {
+        CUgraphNodeType node_type;
+        if (!check_cu(cuGraphNodeGetType_f(root, &node_type)))
+            return false;
+        if (node_type != CU_GRAPH_NODE_TYPE_KERNEL) {
+            all_kernels = false;
+            break;
+        }
+    }
+    if (all_kernels)
+        return true;
+
+    cudaKernelNodeParams params = {};
+    params.func = (void*)graph_root_kernel;
+    params.gridDim = dim3(1);
+    params.blockDim = dim3(1);
+
+    cudaGraphNode_t kernel_node = NULL;
+    if (!check_cuda(cudaGraphAddKernelNode(&kernel_node, cuda_graph, NULL, 0, &params)))
+        return false;
+
+    std::vector<cudaGraphNode_t> from(num_roots, kernel_node);
+#if CUDA_VERSION >= 13000
+    return check_cuda(cudaGraphAddDependencies(cuda_graph, from.data(), roots.data(), NULL, num_roots));
+#else
+    return check_cuda(cudaGraphAddDependencies(cuda_graph, from.data(), roots.data(), num_roots));
+#endif
+}
+
 void* wp_cuda_graph_insert_memcpy(void* context, void* stream, void* dst, void* src, size_t size, int kind)
 {
     ContextGuard guard(context);

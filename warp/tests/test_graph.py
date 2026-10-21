@@ -7,11 +7,15 @@ import builtins
 import ctypes
 import enum
 import gc
+import os
+import re
 import shutil
 import subprocess
+import tempfile
 import time
 import unittest
 import weakref
+from unittest import mock
 
 import numpy as np
 
@@ -22,6 +26,7 @@ from warp.tests.unittest_utils import (
     assert_np_equal,
     get_cuda_device_pair_with_mempool_access_support,
     get_cuda_device_pair_with_peer_access_support,
+    get_selected_cuda_test_devices,
     get_selected_cuda_test_devices_with_mempool,
     get_test_devices,
     get_test_devices_with_cuda_graph_module_load,
@@ -233,6 +238,87 @@ def test_graph_memset(test, device):
     np.testing.assert_allclose(arr.numpy(), np.ones(n))
     wp.capture_launch(capture.graph)
     np.testing.assert_allclose(arr.numpy(), np.zeros(n))
+
+
+@wp.kernel
+def atomic_count_kernel(counter: wp.array[wp.float64]):
+    wp.atomic_add(counter, 0, wp.float64(1.0))
+
+
+def _graph_root_labels(graph):
+    with tempfile.TemporaryDirectory() as tmp:
+        path = os.path.join(tmp, "graph.dot")
+        wp.capture_debug_dot_print(graph, path, verbose=False)
+        with open(path) as f:
+            dot = f.read()
+    labels = dict(re.findall(r'"(\w+)"\[[^\]]*label="\d+\n([^\n"]*)', dot))
+    targets = set(re.findall(r'-> "(\w+)"', dot))
+    return [label for node, label in labels.items() if node not in targets]
+
+
+def test_cuda_graph_root_kernel(test, device):
+    """Pre-R580 drivers get an empty kernel ahead of non-kernel graph roots (GH-2096)."""
+    counter = wp.zeros(1, dtype=wp.float64, device=device)
+    other = wp.zeros(1, dtype=wp.float64, device=device)
+    side_stream = wp.Stream(device)
+
+    def capture_memset_roots():
+        # Two memset roots on forked streams.
+        with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+            side_stream.wait_stream(wp.get_stream(device))
+            counter.zero_()
+            with wp.ScopedStream(side_stream, sync_enter=False):
+                other.zero_()
+            wp.get_stream(device).wait_stream(side_stream)
+            wp.launch(atomic_count_kernel, dim=100, inputs=[counter], device=device)
+        return capture.graph
+
+    wp.load_module(device=device)
+    runtime = wp._src.context.runtime
+
+    with mock.patch.object(runtime, "driver_version", (12, 8)):
+        graph = capture_memset_roots()
+        with wp.ScopedCapture(device=device, force_module_load=False) as kernel_capture:
+            wp.launch(atomic_count_kernel, dim=100, inputs=[counter], device=device)
+
+    roots = _graph_root_labels(graph)
+    test.assertEqual(len(roots), 1)
+    test.assertIn("graph_root_kernel", roots[0])
+    test.assertNotIn("graph_root_kernel", " ".join(_graph_root_labels(kernel_capture.graph)))
+
+    other.fill_(1.0)
+    for _ in range(2):
+        wp.capture_launch(graph)
+        np.testing.assert_array_equal(counter.numpy(), [100.0])
+    np.testing.assert_array_equal(other.numpy(), [0.0])
+
+    with mock.patch.object(runtime, "driver_version", (13, 0)):
+        graph = capture_memset_roots()
+    test.assertEqual(_graph_root_labels(graph), ["MEMSET", "MEMSET"])
+
+
+def test_cuda_graph_memset_root_pending_work(test, device):
+    """The first replay of a memset-rooted graph waits for pending stream work (GH-2096)."""
+    n = 1_000_000
+    counter = wp.zeros(1, dtype=wp.float64, device=device)
+
+    def apply():
+        counter.zero_()
+        wp.launch(atomic_count_kernel, dim=n, inputs=[counter], device=device)
+
+    wp.load_module(device=device)
+    apply()
+    wp.synchronize_device(device)
+
+    # Leave work pending during capture, upload, and first launch.
+    for _ in range(8):
+        apply()
+    with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+        apply()
+
+    for _ in range(3):
+        wp.capture_launch(capture.graph)
+        np.testing.assert_array_equal(counter.numpy(), [float(n)])
 
 
 def test_graph_fill_replay(test, device):
@@ -1442,6 +1528,15 @@ add_function_test(
 add_function_test(TestGraph, "test_graph_memcpy", test_graph_memcpy, devices=devices)
 add_function_test(TestGraph, "test_graph_memset", test_graph_memset, devices=devices)
 add_function_test(TestGraph, "test_graph_fill_replay", test_graph_fill_replay, devices=devices)
+add_function_test(
+    TestGraph, "test_cuda_graph_root_kernel", test_cuda_graph_root_kernel, devices=get_selected_cuda_test_devices()
+)
+add_function_test(
+    TestGraph,
+    "test_cuda_graph_memset_root_pending_work",
+    test_cuda_graph_memset_root_pending_work,
+    devices=get_selected_cuda_test_devices(),
+)
 add_function_test(
     TestGraph,
     "test_graph_fill_noncontiguous_cpu_rejected",
