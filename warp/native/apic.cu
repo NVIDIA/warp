@@ -260,11 +260,22 @@ static CUfunction apic_get_kernel_function(
         return nullptr;
     }
 
-    const std::string& kernel_name = is_forward ? kern_it->second.forward_name : kern_it->second.backward_name;
+    const APICKernel& kernel_info = kern_it->second;
+    const std::string& kernel_name = is_forward ? kernel_info.forward_name : kernel_info.backward_name;
     CUfunction kernel;
     CUresult err = cuModuleGetFunction_f(&kernel, mod_it->second.cuda_module, kernel_name.c_str());
     if (err != CUDA_SUCCESS) {
         wp::set_error_string("Warp APIC error: Failed to get kernel function %s: %d", kernel_name.c_str(), err);
+        return nullptr;
+    }
+
+    // Reloaded modules do not retain the live kernel's dynamic shared-memory opt-in.
+    int smem_bytes = is_forward ? kernel_info.forward_smem_bytes : kernel_info.backward_smem_bytes;
+    if (!wp_cuda_configure_kernel_shared_memory(kernel, smem_bytes)) {
+        wp::set_error_string(
+            "Warp APIC error: Failed to configure %d bytes of dynamic shared memory for kernel %s", smem_bytes,
+            kernel_name.c_str()
+        );
         return nullptr;
     }
     return kernel;
