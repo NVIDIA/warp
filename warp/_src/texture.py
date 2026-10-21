@@ -283,9 +283,9 @@ class Texture:
     Supports ``wp.uint8``, ``wp.uint16``, ``wp.uint32``, ``wp.int8``, ``wp.int16``, ``wp.int32``,
     ``wp.float16``, and ``wp.float32`` data types. Unsigned 8- and 16-bit integer textures are read
     as normalized floats in [0, 1]; signed 8- and 16-bit integer textures are normalized to [-1, 1];
-    float types are returned as-is. Sampling a ``wp.uint32`` or ``wp.int32`` texture causes kernel
-    execution to fail, but these dtypes remain usable for storage, copies, and interop; see
-    :func:`~warp.texture_sample`.
+    float types are returned as-is. Signed and unsigned 32-bit integer textures support only
+    closest filtering and are converted numerically to ``float32`` without normalization. Large
+    integers may round during this conversion; see :func:`~warp.texture_sample`.
 
     This class should not be instantiated directly. A specific subclass should be used instead
     (:class:`Texture1D`, :class:`Texture2D`, or :class:`Texture3D`).
@@ -324,14 +324,14 @@ class Texture:
         depth: int = 0,
         num_channels: int = 0,
         dtype=None,
-        filter_mode: TextureFilterMode = TextureFilterMode.LINEAR,
+        filter_mode: TextureFilterMode | None = None,
         address_mode: TextureAddressMode | tuple[TextureAddressMode, ...] = TextureAddressMode.CLAMP,
         address_mode_u: TextureAddressMode | None = None,
         address_mode_v: TextureAddressMode | None = None,
         address_mode_w: TextureAddressMode | None = None,
         normalized_coords: bool = True,
         num_mip_levels: int = 1,
-        mip_filter_mode: TextureFilterMode = TextureFilterMode.LINEAR,
+        mip_filter_mode: TextureFilterMode | None = None,
         device: DeviceLike = None,
         surface_access: bool = False,
         cuda_array: int = 0,
@@ -346,7 +346,7 @@ class Texture:
                 For 3D: shape ``(depth, height, width)`` or ``(depth, height, width, num_channels)``.
                 Supported dtypes: ``wp.uint8``, ``wp.uint16``, ``wp.uint32``,
                 ``wp.int8``, ``wp.int16``, ``wp.int32``, ``wp.float16``, ``wp.float32``.
-                ``wp.uint32`` and ``wp.int32`` data can be stored and copied but not sampled.
+                ``wp.uint32`` and ``wp.int32`` data supports closest sampling without normalization.
             width: Texture width (required if ``data`` is ``None``).
             height: Texture height (required if ``data`` is ``None``).
             depth: Texture depth (required if ``data`` is ``None`` for 3D textures).
@@ -354,7 +354,10 @@ class Texture:
                 ``data`` is ``None``.
             dtype: Data type. Only used when ``data`` is ``None``; otherwise
                 inferred from the data.
-            filter_mode: Filtering mode, see :class:`TextureFilterMode`.
+            filter_mode: Filtering mode, see :class:`TextureFilterMode`. When omitted,
+                uses :attr:`TextureFilterMode.CLOSEST` for ``wp.int32`` and ``wp.uint32``,
+                and :attr:`TextureFilterMode.LINEAR` for other dtypes. Explicit
+                :attr:`TextureFilterMode.LINEAR` is rejected for 32-bit integer textures.
             address_mode: Address mode for all axes, see :class:`TextureAddressMode`.
                 Can be a single int or a tuple of per-axis values.
             address_mode_u: Per-axis address mode for U. Overrides
@@ -374,6 +377,10 @@ class Texture:
                 contents are immutable afterwards.
             mip_filter_mode: Filter mode used to blend between mip levels when
                 sampling with a non-integer LOD, see :class:`TextureFilterMode`.
+                When omitted, uses :attr:`TextureFilterMode.CLOSEST` for ``wp.int32``
+                and ``wp.uint32``, and :attr:`TextureFilterMode.LINEAR` for other dtypes.
+                Mipmapped 32-bit integer textures require :attr:`TextureFilterMode.CLOSEST`.
+                Ignored for single-level textures.
             device: Device on which to create the texture.
             surface_access: If ``True`` and ``device`` is CUDA, allocates the backing
                 CUDA array with surface load/store support so :attr:`cuda_surface`
@@ -390,14 +397,17 @@ class Texture:
         device = warp._src.context.get_device(device)
         self._runtime = warp._src.context.runtime
 
-        try:
-            filter_mode = TextureFilterMode(filter_mode)
-        except (TypeError, ValueError) as e:
-            raise ValueError(f"Invalid texture filter mode: {filter_mode}") from e
-        try:
-            mip_filter_mode = TextureFilterMode(mip_filter_mode)
-        except (TypeError, ValueError) as e:
-            raise ValueError(f"Invalid texture mip filter mode: {mip_filter_mode}") from e
+        # None selects a dtype-dependent default after the dtype is resolved.
+        if filter_mode is not None:
+            try:
+                filter_mode = TextureFilterMode(filter_mode)
+            except (TypeError, ValueError) as e:
+                raise ValueError(f"Invalid texture filter mode: {filter_mode}") from e
+        if mip_filter_mode is not None:
+            try:
+                mip_filter_mode = TextureFilterMode(mip_filter_mode)
+            except (TypeError, ValueError) as e:
+                raise ValueError(f"Invalid texture mip filter mode: {mip_filter_mode}") from e
         normalized_coords = bool(normalized_coords)
 
         # Resolve address modes
@@ -487,6 +497,17 @@ class Texture:
         mip_shapes = self._compute_mip_shapes(base_shape, ndim, num_mip_levels)
         resolved_num_mip_levels = len(mip_shapes)
         is_mipmapped = resolved_num_mip_levels > 1
+
+        is_integer32 = dtype in (int32, uint32)
+        default_filter = TextureFilterMode.CLOSEST if is_integer32 else TextureFilterMode.LINEAR
+        if filter_mode is None:
+            filter_mode = default_filter
+        if mip_filter_mode is None:
+            mip_filter_mode = default_filter
+        if is_integer32 and filter_mode != TextureFilterMode.CLOSEST:
+            raise ValueError("32-bit integer textures require filter_mode=TextureFilterMode.CLOSEST")
+        if is_integer32 and is_mipmapped and mip_filter_mode != TextureFilterMode.CLOSEST:
+            raise ValueError("32-bit integer mipmapped textures require mip_filter_mode=TextureFilterMode.CLOSEST")
 
         if is_mipmapped and cuda_array:
             raise ValueError("Mipmapped textures cannot wrap an external cuda_array")
@@ -1286,12 +1307,12 @@ class Texture1D(Texture):
         width: int = 0,
         num_channels: int = 0,
         dtype=None,
-        filter_mode: TextureFilterMode = TextureFilterMode.LINEAR,
+        filter_mode: TextureFilterMode | None = None,
         address_mode: TextureAddressMode = TextureAddressMode.CLAMP,
         address_mode_u: TextureAddressMode | None = None,
         normalized_coords: bool = True,
         num_mip_levels: int = 1,
-        mip_filter_mode: TextureFilterMode = TextureFilterMode.LINEAR,
+        mip_filter_mode: TextureFilterMode | None = None,
         device: DeviceLike = None,
         surface_access: bool = False,
         cuda_array: int = 0,
@@ -1379,13 +1400,13 @@ class Texture2D(Texture):
         height: int = 0,
         num_channels: int = 0,
         dtype=None,
-        filter_mode: TextureFilterMode = TextureFilterMode.LINEAR,
+        filter_mode: TextureFilterMode | None = None,
         address_mode: TextureAddressMode | tuple[TextureAddressMode, ...] = TextureAddressMode.CLAMP,
         address_mode_u: TextureAddressMode | None = None,
         address_mode_v: TextureAddressMode | None = None,
         normalized_coords: bool = True,
         num_mip_levels: int = 1,
-        mip_filter_mode: TextureFilterMode = TextureFilterMode.LINEAR,
+        mip_filter_mode: TextureFilterMode | None = None,
         device: DeviceLike = None,
         surface_access: bool = False,
         cuda_array: int = 0,
@@ -1475,14 +1496,14 @@ class Texture3D(Texture):
         depth: int = 0,
         num_channels: int = 0,
         dtype=None,
-        filter_mode: TextureFilterMode = TextureFilterMode.LINEAR,
+        filter_mode: TextureFilterMode | None = None,
         address_mode: TextureAddressMode | tuple[TextureAddressMode, ...] = TextureAddressMode.CLAMP,
         address_mode_u: TextureAddressMode | None = None,
         address_mode_v: TextureAddressMode | None = None,
         address_mode_w: TextureAddressMode | None = None,
         normalized_coords: bool = True,
         num_mip_levels: int = 1,
-        mip_filter_mode: TextureFilterMode = TextureFilterMode.LINEAR,
+        mip_filter_mode: TextureFilterMode | None = None,
         device: DeviceLike = None,
         surface_access: bool = False,
         cuda_array: int = 0,

@@ -4,7 +4,6 @@
 """Unit tests for 1D, 2D, and 3D texture functionality on both CPU and CUDA devices."""
 
 import ctypes
-import sys
 import unittest
 
 import numpy as np
@@ -15,7 +14,6 @@ from warp.tests.unittest_utils import (
     add_function_test,
     get_selected_cuda_test_devices,
     get_test_devices,
-    run_python_subprocess,
 )
 
 # ============================================================================
@@ -2936,117 +2934,219 @@ def test_texture_sampling_options_are_canonical(test, device):
 # ============================================================================
 
 
-@wp.kernel
-def query_texture2d_resolution(
-    tex: wp.Texture2D,
-    output: wp.array[wp.int32],
-):
-    """Read a 2D texture's resolution without sampling it."""
-    output[0] = tex.width
-    output[1] = tex.height
+TEXTURE_TYPES = ((1, wp.Texture1D), (2, wp.Texture2D), (3, wp.Texture3D))
+SAMPLE_OUTPUT_TYPES = ((1, float), (2, wp.vec2f), (4, wp.vec4f))
 
 
-def _trigger_texture_sample_32bit_int(device_alias: str, route: str, dtype_name: str):
-    """Trigger a 32-bit integer texture sample on the requested device."""
-    np_dtype = np.uint32 if dtype_name == "uint32" else np.int32
-    # These isolated fatal-error checks only sample forward. Avoid compiling
-    # the entire module's adjoints before the subprocess timeout.
-    wp.set_module_options({"enable_backward": False}, module=__name__)
+def test_texture_filter_modes(test, device):
+    """Default 32-bit integer textures to point filtering and reject linear filters."""
+    point = wp.TextureFilterMode.CLOSEST
+    linear = wp.TextureFilterMode.LINEAR
+    for ndim, texture_type in TEXTURE_TYPES:
+        shape_kwargs = dict(zip(("width", "height", "depth")[:ndim], (2,) * ndim, strict=True))
+        for np_dtype in (np.uint8, np.int8, np.uint16, np.int16, np.float16, np.float32, np.int32, np.uint32):
+            is_integer32 = np_dtype in (np.int32, np.uint32)
+            default_filter = point if is_integer32 else linear
+            data = np.zeros((2,) * ndim, dtype=np_dtype)
+            with test.subTest(ndim=ndim, dtype=np_dtype):
+                inferred = texture_type(data, device=device)
+                textures = [inferred, texture_type(num_channels=1, dtype=inferred.dtype, device=device, **shape_kwargs)]
+                if device.is_cuda:
+                    textures.append(texture_type(cuda_array=inferred.cuda_array, device=device))
+                for tex in textures:
+                    test.assertEqual(tex.filter_mode, default_filter)
+                    test.assertEqual(tex.mip_filter_mode, default_filter)
 
-    with wp.ScopedDevice(device_alias):
-        if route == "1d":
-            tex = wp.Texture1D(np.array([1000, 2000, 3000, 4000], dtype=np_dtype))
-            output = wp.empty(4, dtype=float)
-            wp.launch(sample_texture1d_f_at_centers, dim=4, inputs=[tex, output, 4])
-        elif route == "2d":
-            tex = wp.Texture2D(np.array([[1000, 2000], [3000, 4000]], dtype=np_dtype))
-            output = wp.empty(4, dtype=float)
-            wp.launch(sample_texture2d_f_at_centers, dim=4, inputs=[tex, output, 2, 2])
-        elif route == "3d":
-            tex = wp.Texture3D((np.arange(8, dtype=np_dtype) * 1000).reshape(2, 2, 2))
-            output = wp.empty(8, dtype=float)
-            wp.launch(sample_texture3d_f_at_centers, dim=8, inputs=[tex, output, 2, 2, 2])
-        elif route == "struct":
-            tex = wp.Texture2D(np.array([[1000, 2000], [3000, 4000]], dtype=np_dtype))
-            s = TextureStruct2D()
-            s.tex = tex
-            s.scale = 2.0
-            output = wp.empty(1, dtype=float)
-            wp.launch(sample_texture2d_from_struct, dim=1, inputs=[s, wp.vec2f(0.5, 0.5), output])
-        elif route == "array":
-            tex = wp.Texture2D(np.array([[1000, 2000], [3000, 4000]], dtype=np_dtype))
-            textures = wp.array([tex], dtype=wp.Texture2D)
-            output_base = wp.empty(1, dtype=float)
-            output_lod = wp.empty(1, dtype=float)
-            wp.launch(
-                sample_texture2d_array_kernels[0],
-                dim=1,
-                inputs=[textures, wp.vec2f(0.5, 0.5), output_base, output_lod],
-            )
+                explicit = texture_type(data, filter_mode=point, mip_filter_mode=point, device=device)
+                test.assertEqual(explicit.filter_mode, point)
+                test.assertEqual(explicit.mip_filter_mode, point)
+
+                if not is_integer32:
+                    continue
+
+                with test.assertRaisesRegex(ValueError, "filter_mode.*CLOSEST"):
+                    texture_type(data, filter_mode=linear, device=device)
+                with test.assertRaisesRegex(ValueError, "mip_filter_mode.*CLOSEST"):
+                    texture_type(data, num_mip_levels=2, mip_filter_mode=linear, device=device)
+                if device.is_cuda:
+                    with test.assertRaisesRegex(ValueError, "filter_mode.*CLOSEST"):
+                        texture_type(cuda_array=inferred.cuda_array, filter_mode=linear, device=device)
+
+                # Mip filtering is unused by a single-level texture.
+                texture_type(data, mip_filter_mode=linear, device=device)
+                texture_type(
+                    np.zeros((1,) * ndim, dtype=np_dtype), num_mip_levels=0, mip_filter_mode=linear, device=device
+                )
+
+
+def make_integer_texture_sample_kernel(texture_type, output_type, ndim):
+    @wp.kernel(enable_backward=False)
+    def sample(
+        tex: texture_type,
+        output_base: wp.array[output_type],
+        output_lod: wp.array[output_type],
+        output_separate: wp.array[output_type],
+        width: int,
+        lod: float,
+    ):
+        tid = wp.tid()
+        u = (float(tid % width) + 0.5) / float(width)
+        if wp.static(ndim == 1):
+            output_base[tid] = wp.texture_sample(tex, u, dtype=output_type)
+            output_lod[tid] = wp.texture_sample(tex, u, dtype=output_type, lod=lod)
+            output_separate[tid] = output_lod[tid]
+        elif wp.static(ndim == 2):
+            v = (float(tid // width) + 0.5) / float(width)
+            output_base[tid] = wp.texture_sample(tex, wp.vec2f(u, v), dtype=output_type)
+            output_lod[tid] = wp.texture_sample(tex, wp.vec2f(u, v), dtype=output_type, lod=lod)
+            output_separate[tid] = wp.texture_sample(tex, u, v, dtype=output_type, lod=lod)
         else:
-            raise ValueError(f"Unknown texture route: {route}")
+            v = (float((tid // width) % width) + 0.5) / float(width)
+            w = (float(tid // (width * width)) + 0.5) / float(width)
+            output_base[tid] = wp.texture_sample(tex, wp.vec3f(u, v, w), dtype=output_type)
+            output_lod[tid] = wp.texture_sample(tex, wp.vec3f(u, v, w), dtype=output_type, lod=lod)
+            output_separate[tid] = wp.texture_sample(tex, u, v, w, dtype=output_type, lod=lod)
 
-        wp.synchronize_device()
+    return sample
 
 
-def test_texture_sample_rejects_32bit_int(test, device):
-    """Reject 32-bit integer texture samples with a fatal diagnostic.
+INTEGER_TEXTURE_SAMPLE_KERNELS = {
+    (ndim, channels): make_integer_texture_sample_kernel(texture_type, output_type, ndim)
+    for ndim, texture_type in TEXTURE_TYPES
+    for channels, output_type in SAMPLE_OUTPUT_TYPES
+}
 
-    Run each case in a subprocess because the CPU path aborts and the CUDA path leaves its
-    context unusable after trapping.
-    """
-    if sys.platform == "win32":
-        test.skipTest("Skip intentional host aborts and CUDA traps on Windows QA hosts.")
+
+def test_texture_sample_32bit_int(test, device):
+    """Convert integer values numerically, including extrema and float-like bit patterns."""
+    cases = (
+        (
+            np.int32,
+            [-2147483648, -16777217, -1, 0, 1, 1000, 16777217, 2147483647],
+            [-2147483648.0, -16777216.0, -1.0, 0.0, 1.0, 1000.0, 16777216.0, 2147483648.0],
+        ),
+        (
+            np.uint32,
+            [0, 1, 1000, 16777217, 2147483648, 4294967295, 1065353216, 2139095040],
+            [0.0, 1.0, 1000.0, 16777216.0, 2147483648.0, 4294967296.0, 1065353216.0, 2139095040.0],
+        ),
+    )
+    for ndim, texture_type in TEXTURE_TYPES:
+        for channels, output_type in SAMPLE_OUTPUT_TYPES:
+            for np_dtype, values, expected_values in cases:
+                with test.subTest(ndim=ndim, channels=channels, dtype=np_dtype):
+                    shape = (8,) * ndim + ((channels,) if channels > 1 else ())
+                    data = np.resize(np.array(values, dtype=np_dtype), shape)
+                    expected_shape = (8**ndim,) + ((channels,) if channels > 1 else ())
+                    expected = np.resize(np.array(expected_values, dtype=np.float32), expected_shape)
+                    tex = texture_type(data, device=device)
+                    outputs = [wp.empty(8**ndim, dtype=output_type, device=device) for _ in range(3)]
+                    wp.launch(
+                        INTEGER_TEXTURE_SAMPLE_KERNELS[(ndim, channels)],
+                        dim=8**ndim,
+                        inputs=[tex, *outputs, 8, 0.0],
+                        device=device,
+                    )
+                    for output in outputs:
+                        np.testing.assert_array_equal(output.numpy(), expected)
+
+
+def test_texture_32bit_int_mipmaps(test, device):
+    """Use nearest mip selection and convert integer channels at every width."""
+    for ndim, texture_type in TEXTURE_TYPES:
+        for channels, output_type in SAMPLE_OUTPUT_TYPES:
+            for np_dtype, offset in ((np.int32, -16), (np.uint32, 16777216)):
+                with test.subTest(ndim=ndim, channels=channels, dtype=np_dtype):
+                    # Mip levels average x pairs: [0, 2, 10, 12] -> [1, 11] -> [6], plus the offset.
+                    row = np.array([0, 2, 10, 12], dtype=np_dtype) + np_dtype(offset)
+                    data = np.broadcast_to(row.reshape((1,) * (ndim - 1) + (4,)), (4,) * ndim)
+                    if channels > 1:
+                        data = np.repeat(data[..., None], channels, axis=-1)
+                    tex = texture_type(np.ascontiguousarray(data), num_mip_levels=0, device=device)
+                    outputs = [wp.empty(4**ndim, dtype=output_type, device=device) for _ in range(3)]
+                    for lod, expected_row in ((0.25, [0, 2, 10, 12]), (0.75, [1, 1, 11, 11]), (1.75, [6, 6, 6, 6])):
+                        wp.launch(
+                            INTEGER_TEXTURE_SAMPLE_KERNELS[(ndim, channels)],
+                            dim=4**ndim,
+                            inputs=[tex, *outputs, 4, lod],
+                            device=device,
+                        )
+                        values = np.array(expected_row, dtype=np.float64) + offset
+                        expected = np.tile(values, 4 ** (ndim - 1)).astype(np.float32)
+                        if channels > 1:
+                            expected = np.repeat(expected[:, None], channels, axis=-1)
+                        for output in outputs[1:]:
+                            np.testing.assert_array_equal(output.numpy(), expected)
+                    base_expected = data.reshape(4**ndim, *data.shape[ndim:]).astype(np.float32)
+                    np.testing.assert_array_equal(outputs[0].numpy(), base_expected)
+
+    # Distinct values per axis and channel, unlike the uniform cases above.
+    spatial = np.array([0, 2, 4, 6, 8, 10, 12, 14]).reshape(2, 2, 2, 1)
+    for np_dtype, channel_offsets, expected_channels in (
+        (np.int32, [-200, 100, 16777216, 2147483600], [-193.0, 107.0, 16777224.0, 2147483648.0]),
+        (np.uint32, [0, 100, 16777216, 4294967200], [7.0, 107.0, 16777224.0, 4294967296.0]),
+    ):
+        with test.subTest(nonuniform=True, dtype=np_dtype):
+            data = (spatial + np.array(channel_offsets)).astype(np_dtype)
+            tex = wp.Texture3D(data, num_mip_levels=0, device=device)
+            outputs = [wp.empty(8, dtype=wp.vec4f, device=device) for _ in range(3)]
+            wp.launch(
+                INTEGER_TEXTURE_SAMPLE_KERNELS[(3, 4)],
+                dim=8,
+                inputs=[tex, *outputs, 2, 1.0],
+                device=device,
+            )
+            np.testing.assert_array_equal(outputs[0].numpy(), data.reshape(8, 4).astype(np.float32))
+            expected = np.tile(np.array(expected_channels, dtype=np.float32), (8, 1))
+            for output in outputs[1:]:
+                np.testing.assert_array_equal(output.numpy(), expected)
+
+
+def test_texture_32bit_int_struct_and_array(test, device):
+    """Sample structs and divergent arrays containing integer or mixed-format textures."""
+    for np_dtype, value in ((np.int32, -1000), (np.uint32, 1065353216)):
+        s = TextureStruct2D()
+        s.tex = wp.Texture2D(np.full((2, 2), value, dtype=np_dtype), device=device)
+        s.scale = 2.0
+        output = wp.empty(1, dtype=float, device=device)
+        wp.launch(sample_texture2d_from_struct, dim=1, inputs=[s, wp.vec2f(0.5), output], device=device)
+        np.testing.assert_array_equal(output.numpy(), [2.0 * value])
 
     cases = (
-        ("1d", "uint32"),
-        ("2d", "uint32"),
-        ("3d", "uint32"),
-        ("2d", "int32"),
-        ("struct", "uint32"),
-        ("array", "uint32"),
+        ((np.int32, -1000, -1000.0), (np.int32, 1000, 1000.0)),
+        ((np.uint32, 1000, 1000.0), (np.uint32, 1065353216, 1065353216.0)),
+        ((np.int32, -1000, -1000.0), (np.uint32, 1000, 1000.0), (np.float32, 0.5, 0.5), (np.uint8, 255, 1.0)),
     )
-    for route, dtype_name in cases:
-        with test.subTest(route=route, dtype=dtype_name):
-            result = run_python_subprocess(
-                "import sys; "
-                "from warp.tests.cuda.test_texture import _trigger_texture_sample_32bit_int; "
-                "_trigger_texture_sample_32bit_int(*sys.argv[1:])",
-                device.alias,
-                route,
-                dtype_name,
-                timeout=120,
-                hide_gpu=device.alias == "cpu",
-            )
-            output = result.stdout + result.stderr
-            test.assertRegex(output, r"texture_sample\(\) does not support 32-bit integer textures")
-            if device.is_cuda:
-                test.assertRegex(output, r"Warp CUDA error")
-            else:
-                test.assertNotEqual(result.returncode, 0)
+    for ndim, texture_type, kernels, coords in (
+        (2, wp.Texture2D, sample_texture2d_array_kernels, wp.vec2f(0.5)),
+        (3, wp.Texture3D, sample_texture3d_array_kernels, wp.vec3f(0.5)),
+    ):
+        for case in cases:
+            textures = [
+                texture_type(np.full((2,) * ndim, value, dtype=np_dtype), device=device) for np_dtype, value, _ in case
+            ]
+            tex_array = wp.array(textures * (32 // len(case)), dtype=texture_type, device=device)
+            expected = np.tile(np.array([value for _, _, value in case], dtype=np.float32), 32 // len(case)) * 6.0
+            for optimization_level, kernel in kernels.items():
+                with test.subTest(
+                    ndim=ndim, dtypes=[np_dtype for np_dtype, _, _ in case], optimization_level=optimization_level
+                ):
+                    output_base = wp.empty(32, dtype=float, device=device)
+                    output_lod = wp.empty(32, dtype=float, device=device)
+                    wp.launch(
+                        kernel,
+                        dim=32,
+                        inputs=[tex_array, coords, output_base, output_lod],
+                        device=device,
+                    )
+                    np.testing.assert_array_equal(output_base.numpy(), expected)
+                    np.testing.assert_array_equal(output_lod.numpy(), expected)
 
 
-def test_texture_32bit_int_non_sampling_kernel(test, device):
-    """Keep non-sampling kernels usable with 32-bit integer textures.
+def test_texture_sample_normalizes_small_int_dtypes(test, device):
+    """Preserve sampling and normalization for dtypes that CUDA promotes.
 
-    Resolution queries read fields of the kernel-facing texture struct without sampling, so
-    they are unaffected by the dtype. This guards against the refusal being applied at the
-    kernel boundary instead of at the sample site, which would break this use.
-    """
-    data = np.zeros((4, 8), dtype=np.uint32)
-    tex = wp.Texture2D(data, device=device)
-
-    output = wp.zeros(2, dtype=wp.int32, device=device)
-    wp.launch(query_texture2d_resolution, dim=1, inputs=[tex, output], device=device)
-
-    np.testing.assert_array_equal(output.numpy(), np.array([8, 4], dtype=np.int32))
-
-
-def test_texture_sample_allows_small_int_dtypes(test, device):
-    """Preserve sampling for dtypes that CUDA promotes.
-
-    An over-broad rejection (for example one that also caught ``int16``) would break these. Each
-    case samples texel (1, 0) of a 2x2 texture with point filtering and checks the documented
+    Each case samples texel (1, 0) of a 2x2 texture with point filtering and checks the documented
     normalization: unsigned integers map to ``value / (2**n - 1)``, signed integers to
     ``value / (2**(n - 1) - 1)``, floats pass through.
     """
@@ -3079,10 +3179,7 @@ def test_texture_sample_allows_small_int_dtypes(test, device):
 
 
 def test_texture_uint32_storage_round_trip(test, device):
-    """Preserve 32-bit integer texture storage, copies, and interop.
-
-    Verify the capabilities that the sampling rejection deliberately preserves.
-    """
+    """Preserve 32-bit integer texture storage, copies, and interop."""
     data = np.array([[1, 2, 3, 4], [5, 6, 7, 4294967295]], dtype=np.uint32)
 
     tex = wp.Texture2D(data, device=device)
@@ -4888,22 +4985,21 @@ add_function_test(
 )
 
 # 32-bit integer texture tests - run on all devices, since the point is that CPU and CUDA agree
+add_function_test(TestTexture, "test_texture_filter_modes", test_texture_filter_modes, devices=all_devices)
 add_function_test(
     TestTexture,
-    "test_texture_sample_rejects_32bit_int",
-    test_texture_sample_rejects_32bit_int,
+    "test_texture_sample_32bit_int",
+    test_texture_sample_32bit_int,
     devices=all_devices,
+)
+add_function_test(TestTexture, "test_texture_32bit_int_mipmaps", test_texture_32bit_int_mipmaps, devices=all_devices)
+add_function_test(
+    TestTexture, "test_texture_32bit_int_struct_and_array", test_texture_32bit_int_struct_and_array, devices=all_devices
 )
 add_function_test(
     TestTexture,
-    "test_texture_32bit_int_non_sampling_kernel",
-    test_texture_32bit_int_non_sampling_kernel,
-    devices=all_devices,
-)
-add_function_test(
-    TestTexture,
-    "test_texture_sample_allows_small_int_dtypes",
-    test_texture_sample_allows_small_int_dtypes,
+    "test_texture_sample_normalizes_small_int_dtypes",
+    test_texture_sample_normalizes_small_int_dtypes,
     devices=all_devices,
 )
 add_function_test(
