@@ -25,6 +25,7 @@ import warp.tests.unittest_utils
 from warp._src.thirdparty import appdirs
 from warp.tests.unittest_utils import (  # NVIDIA modification
     ParallelJunitTestResult,
+    synchronize_after_test,
     write_junit_results,
 )
 
@@ -689,6 +690,9 @@ class ParallelTextTestResult(unittest.TextTestResult):
         super(unittest.TextTestResult, self).startTest(test)
 
     def stopTest(self, test):
+        # NVIDIA modification: addSuccess() already reported CUDA errors from passing tests.
+        # For any other outcome, keep it and only note the error so later failures can name this test.
+        synchronize_after_test(test, test_failed=True)
         super().stopTest(test)
         # Force garbage collection of CPU-side allocations to reduce peak
         # host RSS in parallel test runs.
@@ -704,6 +708,13 @@ class ParallelTextTestResult(unittest.TextTestResult):
         self.stream.flush()
 
     def addSuccess(self, test):
+        # NVIDIA modification: runs after tearDown() and cleanups, so a CUDA error from work
+        # the test left outstanding fails the test that caused it
+        try:
+            synchronize_after_test(test)
+        except Exception:
+            self.addError(test, sys.exc_info())
+            return
         super(unittest.TextTestResult, self).addSuccess(test)
         self._add_helper(test, ".", "ok")
 

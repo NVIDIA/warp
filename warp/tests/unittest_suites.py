@@ -111,6 +111,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.cuda.test_peer import TestPeer
     from warp.tests.cuda.test_pinned import TestPinned
     from warp.tests.cuda.test_streams import TestStreams
+    from warp.tests.cuda.test_sync_errors import TestSyncErrors
     from warp.tests.cuda.test_texture import TestTexture
     from warp.tests.cuda.test_texture_compiler import TestTextureCompiler
     from warp.tests.cuda.test_unified_memory import TestUnifiedMemory
@@ -468,6 +469,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestStreams,
         TestStruct,
         TestSubscriptTypes,
+        TestSyncErrors,
         TestTape,
         TestTemplateLaunchBounds,
         TestTexture,

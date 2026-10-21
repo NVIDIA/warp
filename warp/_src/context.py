@@ -8131,7 +8131,7 @@ class Runtime:
             self.core.wp_cuda_context_destroy.argtypes = [ctypes.c_void_p]
             self.core.wp_cuda_context_destroy.restype = None
             self.core.wp_cuda_context_synchronize.argtypes = [ctypes.c_void_p]
-            self.core.wp_cuda_context_synchronize.restype = None
+            self.core.wp_cuda_context_synchronize.restype = ctypes.c_bool
             self.core.wp_cuda_context_check.argtypes = [ctypes.c_void_p]
             self.core.wp_cuda_context_check.restype = ctypes.c_uint64
 
@@ -8188,7 +8188,7 @@ class Runtime:
             self.core.wp_cuda_stream_unregister.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
             self.core.wp_cuda_stream_unregister.restype = None
             self.core.wp_cuda_stream_synchronize.argtypes = [ctypes.c_void_p]
-            self.core.wp_cuda_stream_synchronize.restype = None
+            self.core.wp_cuda_stream_synchronize.restype = ctypes.c_bool
             self.core.wp_cuda_stream_wait_event.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_bool]
             self.core.wp_cuda_stream_wait_event.restype = None
             self.core.wp_cuda_stream_wait_stream.argtypes = [
@@ -8218,7 +8218,7 @@ class Runtime:
             self.core.wp_cuda_event_record.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_bool]
             self.core.wp_cuda_event_record.restype = None
             self.core.wp_cuda_event_synchronize.argtypes = [ctypes.c_void_p]
-            self.core.wp_cuda_event_synchronize.restype = None
+            self.core.wp_cuda_event_synchronize.restype = ctypes.c_bool
             self.core.wp_cuda_event_elapsed_time.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
             self.core.wp_cuda_event_elapsed_time.restype = ctypes.c_float
 
@@ -9139,7 +9139,7 @@ class Runtime:
 
             err = self.core.wp_cuda_context_check(device.context)
             if err != 0:
-                raise RuntimeError(f"CUDA error detected: {err}")
+                raise RuntimeError(f"CUDA error {err} detected on device {device}: {self.get_error_string()}")
 
 
 # global entry points
@@ -12519,23 +12519,35 @@ def synchronize():
 
     This method allows the host application code to ensure that any kernel launches
     or memory copies have completed.
+
+    Raises:
+        RuntimeError: If graph capture is active on a device, or if CUDA reports an
+            error from outstanding work. Warp synchronizes the remaining devices
+            before raising the first error.
     """
 
     if is_cuda_driver_initialized():
         # save the original context to avoid side effects
         saved_context = runtime.core.wp_cuda_context_get_current()
 
-        # TODO: only synchronize devices that have outstanding work
-        for device in runtime.cuda_devices:
-            # avoid creating primary context if the device has not been used yet
-            if device.has_context:
-                if device.is_capturing:
-                    raise RuntimeError(f"Cannot synchronize device {device} while graph capture is active")
+        error = None
+        try:
+            # TODO: only synchronize devices that have outstanding work
+            for device in runtime.cuda_devices:
+                # avoid creating primary context if the device has not been used yet
+                if device.has_context:
+                    if device.is_capturing:
+                        raise RuntimeError(f"Cannot synchronize device {device} while graph capture is active")
 
-                runtime.core.wp_cuda_context_synchronize(device.context)
+                    # read the error string before synchronizing the next device replaces it
+                    if not runtime.core.wp_cuda_context_synchronize(device.context) and error is None:
+                        error = f"Failed to synchronize device {device}: {runtime.get_error_string()}"
+        finally:
+            # restore the original context to avoid side effects
+            runtime.core.wp_cuda_context_set_current(saved_context)
 
-        # restore the original context to avoid side effects
-        runtime.core.wp_cuda_context_set_current(saved_context)
+        if error is not None:
+            raise RuntimeError(error)
 
 
 def synchronize_device(device: DeviceLike = None):
@@ -12546,6 +12558,10 @@ def synchronize_device(device: DeviceLike = None):
 
     Args:
         device: Device to synchronize.
+
+    Raises:
+        RuntimeError: If graph capture is active on the device, or if CUDA reports an
+            error from outstanding work.
     """
 
     device = runtime.get_device(device)
@@ -12553,7 +12569,8 @@ def synchronize_device(device: DeviceLike = None):
         if device.is_capturing:
             raise RuntimeError(f"Cannot synchronize device {device} while graph capture is active")
 
-        runtime.core.wp_cuda_context_synchronize(device.context)
+        if not runtime.core.wp_cuda_context_synchronize(device.context):
+            raise RuntimeError(f"Failed to synchronize device {device}: {runtime.get_error_string()}")
 
 
 def synchronize_stream(stream_or_device: Stream | DeviceLike | None = None):
@@ -12564,6 +12581,10 @@ def synchronize_stream(stream_or_device: Stream | DeviceLike | None = None):
 
     Args:
         stream_or_device: `wp.Stream` or a device.  If the argument is a device, synchronize the device's current stream.
+
+    Raises:
+        RuntimeError: If graph capture is active on the stream's device, or if CUDA
+            reports an error from outstanding work.
     """
 
     if isinstance(stream_or_device, Stream):
@@ -12575,7 +12596,8 @@ def synchronize_stream(stream_or_device: Stream | DeviceLike | None = None):
     if stream is not None:
         if stream.device.is_capturing:
             raise RuntimeError("Cannot synchronize stream while graph capture is active")
-        runtime.core.wp_cuda_stream_synchronize(stream.cuda_stream)
+        if not runtime.core.wp_cuda_stream_synchronize(stream.cuda_stream):
+            raise RuntimeError(f"Failed to synchronize stream on device {stream.device}: {runtime.get_error_string()}")
 
 
 def cuda_profiler_start(device: DeviceLike = None):
@@ -12639,12 +12661,17 @@ def synchronize_event(event: Event):
 
     Args:
         event: Event to wait for.
+
+    Raises:
+        RuntimeError: If graph capture is active on the event's device, or if CUDA
+            reports an error from outstanding work.
     """
 
     if event.device.is_capturing:
         raise RuntimeError("Cannot synchronize event while graph capture is active")
 
-    runtime.core.wp_cuda_event_synchronize(event.cuda_event)
+    if not runtime.core.wp_cuda_event_synchronize(event.cuda_event):
+        raise RuntimeError(f"Failed to synchronize event on device {event.device}: {runtime.get_error_string()}")
 
 
 def force_load(

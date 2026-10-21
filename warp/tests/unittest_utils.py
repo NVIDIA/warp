@@ -341,6 +341,36 @@ class StdOutCapture(StreamCapture):
         super().__init__("stdout")
 
 
+# ID of the first test in this process to see each end-of-test synchronization error, keyed by error text
+_first_test_ids_by_sync_error = {}
+
+
+def synchronize_after_test(test, test_failed=False):
+    """Flush device output and report CUDA errors from work a test left outstanding.
+
+    The error is raised only if ``test_failed`` is ``False``, so it never replaces the
+    test's own outcome. A CUDA fault leaves the context unusable, so every later
+    synchronization in the process fails with the same error. Those repeats name the
+    first test that saw the error, and a different error is reported as a new one.
+    """
+    # Skip while an interrupt propagates so Ctrl-C does not wait on a stuck kernel
+    propagating = sys.exc_info()[1]
+    if propagating is not None and not isinstance(propagating, Exception):
+        return
+
+    try:
+        wp.synchronize()
+    except Exception as error:
+        first_test_id = _first_test_ids_by_sync_error.get(str(error))
+        if first_test_id is None:
+            _first_test_ids_by_sync_error[str(error)] = test.id()
+            if not test_failed:
+                raise
+            print(f"CUDA synchronization after test '{test.id()}' failed: {error}", file=sys.stderr)
+        elif not test_failed:
+            raise RuntimeError(f"{error} (first failed after test '{first_test_id}')") from None
+
+
 class CheckOutput:
     def __init__(self, test):
         self.test = test
@@ -352,13 +382,14 @@ class CheckOutput:
         self.capture.begin()
 
     def __exit__(self, exc_type, exc_value, traceback):
-        # ensure any stdout output is flushed
-        wp.synchronize()
+        try:
+            synchronize_after_test(self.test, test_failed=exc_type is not None)
+        finally:
+            s = self.capture.end()
+            if s != "":
+                print(s.rstrip())
 
-        s = self.capture.end()
         if s != "":
-            print(s.rstrip())
-
             # fail if test produces unexpected output (e.g.: from wp.expect_eq() builtins)
             # we allow strings starting of the form "Module xxx load on device xxx"
             # for lazy loaded modules
@@ -366,7 +397,7 @@ class CheckOutput:
                 [line for line in s.splitlines() if not (line.startswith("Module") and "load on device" in line)]
             )
 
-            if filtered_s.strip():
+            if exc_type is None and filtered_s.strip():
                 self.test.fail(f"Unexpected output:\n'{s.rstrip()}'")
 
 
@@ -659,7 +690,7 @@ def write_junit_results(
             failure = ET.SubElement(test_case, "failure", message=str(test_data[4]))
             failure.text = str(test_data[5])  # Stacktrace
         elif test_status == "ERROR":
-            error = ET.SubElement(test_case, "error")
+            error = ET.SubElement(test_case, "error", message=str(test_data[4]))
             error.text = str(test_data[5])  # Stacktrace
         elif test_status == "SKIP":
             skip = ET.SubElement(test_case, "skipped")
@@ -688,6 +719,9 @@ class ParallelJunitTestResult(unittest.TextTestResult):
         super(unittest.TextTestResult, self).startTest(test)
 
     def stopTest(self, test):
+        # addSuccess() already reported CUDA errors from passing tests. For any other
+        # outcome, keep it and only note the error so later failures can name this test.
+        synchronize_after_test(test, test_failed=True)
         super().stopTest(test)
         # Force garbage collection of CPU-side allocations to reduce peak
         # host RSS in parallel test runs.
@@ -705,6 +739,13 @@ class ParallelJunitTestResult(unittest.TextTestResult):
         self.test_record.append((test.__class__.__name__, test._testMethodName, duration, code, message, details))
 
     def addSuccess(self, test):
+        # Runs after tearDown() and cleanups, so a CUDA error from work the test left
+        # outstanding fails the test that caused it
+        try:
+            synchronize_after_test(test)
+        except Exception:
+            self.addError(test, sys.exc_info())
+            return
         super(unittest.TextTestResult, self).addSuccess(test)
         self._add_helper(test, ".", "ok")
         self._record_test(test, "OK")

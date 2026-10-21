@@ -1730,8 +1730,6 @@ class ScopedTimer:
             ScopedTimer._thread_local.indent = -1
 
     def __enter__(self):
-        if not self.skip_tape and warp._src.context.runtime is not None and warp._src.context.runtime.tape is not None:
-            warp._src.context.runtime.tape.record_scope_begin(self.name)
         if self.active:
             if self.synchronize:
                 wp.synchronize()
@@ -1758,14 +1756,25 @@ class ScopedTimer:
 
             self.start = time.perf_counter_ns()
 
+        # Begin the tape scope last; __exit__ does not run if entry fails, so it could not end the scope
+        if not self.skip_tape and warp._src.context.runtime is not None and warp._src.context.runtime.tape is not None:
+            warp._src.context.runtime.tape.record_scope_begin(self.name)
+
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         if not self.skip_tape and warp._src.context.runtime is not None and warp._src.context.runtime.tape is not None:
             warp._src.context.runtime.tape.record_scope_end()
         if self.active:
+            # Finish the scope before reporting a CUDA error, and never replace an
+            # exception raised inside the scope.
+            sync_error = None
+
             if self.synchronize:
-                wp.synchronize()
+                try:
+                    wp.synchronize()
+                except Exception as error:
+                    sync_error = error
 
             self.elapsed = (time.perf_counter_ns() - self.start) / 1000000.0
 
@@ -1778,11 +1787,13 @@ class ScopedTimer:
                 self.cp.disable()
                 self.cp.print_stats(sort="tottime")
 
+            self.timing_results = []
             if self.cuda_filter:
                 # end CUDA activity collection, synchronizing if needed
-                self.timing_results = timing_end(synchronize=not self.synchronize)
-            else:
-                self.timing_results = []
+                try:
+                    self.timing_results = timing_end(synchronize=not self.synchronize)
+                except Exception as error:
+                    sync_error = error
 
             if self.dict is not None:
                 self.dict[self.name].append(self.elapsed)
@@ -1805,6 +1816,9 @@ class ScopedTimer:
                     logger.info(f"{indent}{self.name} took {self.elapsed:.2f} ms")
 
                 ScopedTimer._thread_local.indent -= 1
+
+            if sync_error is not None and exc_type is None:
+                raise sync_error
 
 
 class ScopedCudaProfiler:
@@ -2199,10 +2213,19 @@ def timing_end(synchronize: bool = True) -> list[TimingResult]:
 
     Returns:
         A list of :class:`TimingResult` objects for all recorded activities.
+
+    Raises:
+        RuntimeError: If ``synchronize`` is ``True`` and CUDA reports an error from
+            outstanding work. Timing ends and its results are discarded.
     """
 
     if synchronize:
-        warp.synchronize()
+        try:
+            warp.synchronize()
+        except Exception:
+            # end timing so that it does not keep recording later activities
+            warp._src.context.runtime.core.wp_cuda_timing_end(None, 0)
+            raise
 
     # get result count
     count = warp._src.context.runtime.core.wp_cuda_timing_get_result_count()

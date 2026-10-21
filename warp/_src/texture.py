@@ -1044,7 +1044,10 @@ class Texture:
                     raise RuntimeError(
                         f"Failed to copy mip level {level} to texture: {self._runtime.get_error_string()}"
                     )
-            self._runtime.core.wp_cuda_stream_synchronize(self.device.stream.cuda_stream)
+            if not self._runtime.core.wp_cuda_stream_synchronize(self.device.stream.cuda_stream):
+                raise RuntimeError(
+                    f"Failed to synchronize stream on device {self.device}: {self._runtime.get_error_string()}"
+                )
         else:
             for level, level_data in enumerate(mip_data_list):
                 level_np = np.ascontiguousarray(level_data)
