@@ -564,32 +564,39 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#warp._src.lang.tile_axpy" title="Link to this definition">#</a></dt>
-<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Scale <code class="docutils literal notranslate"><span class="pre">src</span></code> by <code class="docutils literal notranslate"><span class="pre">alpha</span></code> and accumulate into <code class="docutils literal notranslate"><span class="pre">dest</span></code>.</p>
-<p>Performs a fused multiply-add directly into the destination tile without
-creating an intermediate scaled tile.</p>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Scale <code class="docutils literal notranslate"><span class="pre">src</span></code> by <code class="docutils literal notranslate"><span class="pre">alpha</span></code> and accumulate it into <code class="docutils literal notranslate"><span class="pre">dest</span></code>, in place.</p>
+<p>This is a cooperative operation: the threads of the block divide the work between
+them, so every thread must reach the call.</p>
+<p>Updates <code class="docutils literal notranslate"><span class="pre">dest</span></code> element-wise as <code class="docutils literal notranslate"><span class="pre">dest</span> <span class="pre">+=</span> <span class="pre">alpha</span> <span class="pre">*</span> <span class="pre">src</span></code> without materializing the
+scaled tile. Either tile may be in register or shared storage.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>alpha</strong> – Scalar multiplier (must match the tile’s underlying scalar type).</p></li>
-<li><p><strong>src</strong> – Source tile (must have same shape and dtype as <code class="docutils literal notranslate"><span class="pre">dest</span></code>).</p></li>
+<li><p><strong>alpha</strong> – Scalar multiplier. Must match the tiles’ underlying scalar type, for
+example a <a class="reference internal" href="../../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.float32</span></code></a> value for a <code class="docutils literal notranslate"><span class="pre">vec3f</span></code> tile.</p></li>
+<li><p><strong>src</strong> – Source tile with the same shape and dtype as <code class="docutils literal notranslate"><span class="pre">dest</span></code>. The element type must
+be scalar, vector, or matrix.</p></li>
 <li><p><strong>dest</strong> – Destination tile, modified in place.</p></li>
 </ul>
 </dd>
 </dl>
 <p class="rubric">Example</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">compute</span><span class="p">():</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">scale_and_accumulate</span><span class="p">(</span><span class="n">src</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">dest</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">dest</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_axpy</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">dest</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
 
-    <span class="n">dest</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_ones</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span> <span class="o">*</span> <span class="mf">2.0</span>
-    <span class="n">src</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_ones</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span> <span class="o">*</span> <span class="mf">3.0</span>
-    <span class="n">wp</span><span class="o">.</span><span class="n">tile_axpy</span><span class="p">(</span><span class="mf">5.0</span><span class="p">,</span> <span class="n">src</span><span class="p">,</span> <span class="n">dest</span><span class="p">)</span>
+<span class="n">src</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">10.0</span><span class="p">,</span> <span class="mf">20.0</span><span class="p">,</span> <span class="mf">30.0</span><span class="p">,</span> <span class="mf">40.0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+<span class="n">dest</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
 
-    <span class="nb">print</span><span class="p">(</span><span class="n">dest</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch_tiled</span><span class="p">(</span><span class="n">scale_and_accumulate</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">src</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">dest</span><span class="p">],</span> <span class="n">block_dim</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
 
-<span class="n">wp</span><span class="o">.</span><span class="n">launch_tiled</span><span class="p">(</span><span class="n">compute</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[],</span> <span class="n">block_dim</span><span class="o">=</span><span class="mi">64</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">dest</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
 </pre></div>
 </div>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>[17 17 17 17] = tile(shape=(4), storage=register)
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[21. 42. 63. 84.]
 </pre></div>
 </div>
 </dd></dl>

@@ -12,40 +12,45 @@
 
    Compute the dot product of two tiles.
    
-   Computes a full contraction between corresponding elements and sums
-   the results. For scalar tiles this is the standard dot product; for
-   vector tiles each pair is contracted via ``wp.dot``; for matrix tiles
-   it is the Frobenius inner product (the sum of element-wise products
-   over all axes).
+   This is a cooperative operation: the threads of the block divide the work between
+   them, so every thread must reach the call.
    
-   Equivalent in Python to ``wp.tile_sum(a * b)`` for scalar tiles,
+   Contracts corresponding elements and sums the results over the whole tile. For scalar
+   tiles this is the standard dot product; for vector tiles each pair is contracted with
+   :func:`~warp.dot`; for matrix tiles it is the Frobenius inner product.
+   
+   Mathematically equivalent to ``wp.tile_sum(a * b)`` for scalar tiles,
    ``wp.tile_sum(wp.tile_map(wp.dot, a, b))`` for vector tiles, and
-   ``wp.tile_sum(wp.tile_map(wp.ddot, a, b))`` for matrix tiles, but
-   without the intermediate tile and shared-memory round trip the
-   explicit forms would require.
+   ``wp.tile_sum(wp.tile_map(wp.ddot, a, b))`` for matrix tiles, but without the
+   intermediate tile those forms would materialize. The summation order is not
+   guaranteed to match, so floating-point results may differ in the last bits.
    
    :param a: First tile operand.
-   :param b: Second tile operand (must have same shape and dtype as ``a``).
+   :param b: Second tile operand with the same shape and dtype as ``a``. The element type
+             must be scalar, vector, or matrix.
    
-   :returns: A single-element tile holding the dot-product result. Index the
-             tile at ``[0]`` to obtain the scalar value.
+   :returns: A shape-``(1,)`` register tile holding the result, with the scalar type of the
+             operands' elements. Read the value with ``[0]``.
    
    .. rubric:: Example
    
-   .. code-block:: python
+   .. testcode::
    
        @wp.kernel
-       def compute():
+       def dot_product(a: wp.array[float], b: wp.array[float], out: wp.array[float]):
+           ta = wp.tile_load(a, shape=4)
+           tb = wp.tile_load(b, shape=4)
+           wp.tile_store(out, wp.tile_dot(ta, tb))
    
-           a = wp.tile_ones(dtype=float, shape=64)
-           b = wp.tile_ones(dtype=float, shape=64) * 2.0
-           d = wp.tile_dot(a, b)
+       a = wp.array([1.0, 2.0, 3.0, 4.0], dtype=float)
+       b = wp.array([10.0, 20.0, 30.0, 40.0], dtype=float)
+       out = wp.zeros(1, dtype=float)
    
-           print(d)
+       wp.launch_tiled(dot_product, dim=1, inputs=[a, b], outputs=[out], block_dim=2)
    
-       wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
+       print(out.numpy())
    
-   .. code-block:: text
+   .. testoutput::
    
-       [128] = tile(shape=(1), storage=register)
+       [300.]
    

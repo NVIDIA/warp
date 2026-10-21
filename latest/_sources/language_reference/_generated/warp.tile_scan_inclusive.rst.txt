@@ -10,27 +10,38 @@
       :python: false
       :differentiable: false
 
-   Inclusive scan (prefix sum) across the tile.
+   Return a new tile containing the inclusive prefix sums of a tile.
    
-   This function cooperatively performs an inclusive scan (cumulative sum) across the tile.
+   This is a cooperative operation: the threads of the block divide the work between
+   them, so every thread must reach the call.
    
-   :param a: The input tile. Must be a tile of type float32, int32, or uint32.
+   Element ``i`` of the result is the sum of input elements ``0`` through ``i``.
+   A multi-dimensional tile is scanned over its flattened row-major sequence and the
+   result keeps the input shape. On CUDA, this operation reserves a tile's worth of shared
+   memory (see :ref:`tile_shared_memory_budget`).
    
-   :returns: A new tile containing the inclusive scan result.
+   :param a: The input tile. Must be a tile of :class:`warp.float32`, :class:`warp.int32`,
+             or :class:`warp.uint32`.
+   
+   :returns: A register tile with the same shape and dtype as ``a``.
    
    .. rubric:: Example
    
-   .. code-block:: python
+   .. testcode::
    
        @wp.kernel
-       def scan_example():
-           t = wp.tile_arange(1, 5, dtype=int)
-           s = wp.tile_scan_inclusive(t)
-           print(s)
+       def running_totals(x: wp.array[float], out: wp.array[float]):
+           t = wp.tile_load(x, shape=4)
+           wp.tile_store(out, wp.tile_scan_inclusive(t))
    
-       wp.launch_tiled(scan_example, dim=[1], inputs=[], block_dim=16)
+       x = wp.array([3.0, 1.0, 4.0, 2.0], dtype=float)
+       out = wp.zeros(4, dtype=float)
    
-   .. code-block:: text
+       wp.launch_tiled(running_totals, dim=1, inputs=[x], outputs=[out], block_dim=2)
    
-       [1, 3, 6, 10] = tile(shape=(4), storage=register)
+       print(out.numpy())
+   
+   .. testoutput::
+   
+       [ 3.  4.  8. 10.]
    

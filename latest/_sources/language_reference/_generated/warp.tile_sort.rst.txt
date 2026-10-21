@@ -3,42 +3,59 @@
 
 .. currentmodule:: warp._src.lang
 
-.. function:: tile_sort(keys: Tile[Any, tuple[int]], values: Tile[Any, tuple[int]]) -> None
+.. function:: tile_sort(keys: Tile[Any, tuple[int, ...]], values: Tile[Any, tuple[int, ...]]) -> None
 
    .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
 
-   Cooperatively sort the elements of two tiles in ascending order based on the keys, using all threads in the block.
+   Sort two tiles in place, in ascending order of ``keys``.
+   
+   This is a cooperative operation: the threads of the block divide the work between
+   them, so every thread must reach the call.
+   
+   Both tiles are permuted together, so ``values`` acts as a payload that follows its
+   key. The sort is not stable: the relative order of equal keys is
+   unspecified and differs between CPU and GPU. Multi-dimensional tiles are sorted as
+   their flattened row-major sequence. Both tiles are placed in shared memory whatever
+   storage they were created with, so they count against the block's shared-memory
+   budget (see :ref:`tile_shared_memory_budget`).
+   
+   On CUDA devices ``block_dim`` must be a multiple of the warp size (32). CPU launches
+   have no such requirement.
    
    On CUDA devices, prefer a ``block_dim`` that is a multiple of 32 for better sorting performance. Other block
    dimensions are supported but may be slower.
    
-   :param keys: Keys to sort by. Supported key types: :class:`warp.float32`, :class:`warp.int32`, :class:`warp.uint32`, :class:`warp.int64`, :class:`warp.uint64`. Must be in shared memory.
-   :param values: Values to sort along with keys. No type restrictions. Must be in shared memory.
-   
-   :returns: No return value. Sorts both tiles in-place.
+   :param keys: Tile of sort keys, permuted in place. Supported key types:
+                :class:`warp.float32`, :class:`warp.int32`, :class:`warp.uint32`,
+                :class:`warp.int64`, :class:`warp.uint64`.
+   :param values: Payload tile, permuted in place. Must have the same shape as ``keys``;
+                  any element type is accepted.
    
    .. rubric:: Example
    
-   .. code-block:: python
+   .. testcode::
    
        @wp.kernel
-       def compute():
-   
-           keys = wp.tile_arange(32, 0, -1, dtype=int, storage="shared")
-           values = wp.tile_arange(0, 32, 1, dtype=int, storage="shared")
+       def sort_pairs(k: wp.array[float], v: wp.array[int]):
+           keys = wp.tile_load(k, shape=4)
+           values = wp.tile_load(v, shape=4)
            wp.tile_sort(keys, values)
+           wp.tile_store(k, keys)
+           wp.tile_store(v, values)
    
-           print(keys)
-           print(values)
+       keys = wp.array([5.0, 3.0, 8.0, 1.0], dtype=float)
+       values = wp.array([0, 1, 2, 3], dtype=int)
    
+       wp.launch_tiled(sort_pairs, dim=1, outputs=[keys, values], block_dim=32)
    
-       wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
+       print(keys.numpy())
+       print(values.numpy())
    
-   .. code-block:: text
+   .. testoutput::
    
-       [1, 2, ..., 32] = tile(shape=(32), storage=shared)
-       [31, 30, 29, ..., 0] = tile(shape=(32), storage=shared)
+       [1. 3. 5. 8.]
+       [3 1 0 2]
    

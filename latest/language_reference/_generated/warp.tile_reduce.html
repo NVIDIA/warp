@@ -563,32 +563,43 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tile</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.15)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="m"><span class="pre">1</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#warp._src.lang.tile_reduce" title="Link to this definition">#</a></dt>
-<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="differentiable" data-wp-value="false"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: false</span></li></ul><p>Apply a custom reduction operator across a tile.</p>
-<p>Reduce across all elements using the provided operator.</p>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="differentiable" data-wp-value="false"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: false</span></li></ul><p>Apply a custom reduction operator across all elements of a tile.</p>
+<p>This is a cooperative operation: the threads of the block divide the work between
+them, so every thread must reach the call.</p>
+<p>Elements of <code class="docutils literal notranslate"><span class="pre">a</span></code> are combined in an unspecified order, so <code class="docutils literal notranslate"><span class="pre">op</span></code> must be associative
+and commutative for the result to be well defined; a non-commutative operator such as
+<a class="reference internal" href="warp.sub.html#warp._src.lang.sub" title="warp._src.lang.sub"><code class="xref py py-func docutils literal notranslate"><span class="pre">sub()</span></code></a> gives different answers for different values of <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> and on
+different devices.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>op</strong> – A callable function that accepts two arguments and returns one argument, may be a user function or builtin</p></li>
-<li><p><strong>a</strong> – The input tile, the operator (or one of its overloads) must be able to accept the tile’s data type</p></li>
+<li><p><strong>op</strong> – Callable taking two elements of the tile’s dtype and returning one value of
+the same type. May be a Warp built-in such as <a class="reference internal" href="warp.add.html#warp._src.lang.add" title="warp._src.lang.add"><code class="xref py py-func docutils literal notranslate"><span class="pre">add()</span></code></a> or a
+user-defined function decorated with <code class="docutils literal notranslate"><span class="pre">&#64;wp.func</span></code>.</p></li>
+<li><p><strong>a</strong> – The input tile. The operator, or one of its overloads, must accept the tile’s
+element type.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>A single-element tile with the same data type as the input tile.</p>
+<dd class="field-even"><p>A shape-<code class="docutils literal notranslate"><span class="pre">(1,)</span></code> register tile with the same dtype as <code class="docutils literal notranslate"><span class="pre">a</span></code>. Read the value with
+<code class="docutils literal notranslate"><span class="pre">[0]</span></code>.</p>
 </dd>
 </dl>
 <p class="rubric">Example</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">factorial</span><span class="p">():</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">multiply_elements</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">int</span><span class="p">]):</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_reduce</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">mul</span><span class="p">,</span> <span class="n">t</span><span class="p">))</span>
 
-    <span class="n">t</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
-    <span class="n">s</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_reduce</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">mul</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">9</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+<span class="n">out</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
 
-    <span class="nb">print</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch_tiled</span><span class="p">(</span><span class="n">multiply_elements</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">x</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">],</span> <span class="n">block_dim</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
 
-<span class="n">wp</span><span class="o">.</span><span class="n">launch_tiled</span><span class="p">(</span><span class="n">factorial</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[],</span> <span class="n">block_dim</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
 </pre></div>
 </div>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>[362880] = tile(shape=(1), storage=register)
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[756]
 </pre></div>
 </div>
 </dd></dl>
@@ -604,18 +615,31 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tile</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../api_reference/_generated/warp.Scalar.html#warp.Scalar" title="warp.Scalar"><span class="pre">Scalar</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.15)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span></dt>
-<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="differentiable" data-wp-value="false"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: false</span></li></ul><p>Apply a custom reduction operator across a tile.</p>
-<p>Reduce across a tile axis using the provided operator.</p>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="differentiable" data-wp-value="false"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: false</span></li></ul><p>Apply a custom reduction operator along one axis of a tile.</p>
+<p>This is a cooperative operation: the threads of the block divide the work between
+them, so every thread must reach the call.</p>
+<p>Reduces over <code class="docutils literal notranslate"><span class="pre">axis</span></code>. Each slice is folded with <code class="docutils literal notranslate"><span class="pre">op</span></code> in an unspecified order, so
+<code class="docutils literal notranslate"><span class="pre">op</span></code> must be associative and commutative for the result to be well defined. The
+input tile is placed in shared memory automatically, so it counts against the block’s
+shared-memory budget (see <a class="reference internal" href="../../user_guide/programming_model/tiles.html#tile-shared-memory-budget"><span class="std std-ref">Shared Memory Budget</span></a>) even when the input uses
+register storage.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>op</strong> – A callable function that accepts two arguments and returns one argument, may be a user function or builtin</p></li>
-<li><p><strong>a</strong> – The input tile, the operator (or one of its overloads) must be able to accept the tile’s data type. Must reside in shared memory.</p></li>
-<li><p><strong>axis</strong> – The tile axis to perform the reduction across. Must be a compile-time constant.</p></li>
+<li><p><strong>op</strong> – Callable taking two elements of the tile’s dtype and returning one value of
+the same type. May be a Warp built-in such as <a class="reference internal" href="warp.add.html#warp._src.lang.add" title="warp._src.lang.add"><code class="xref py py-func docutils literal notranslate"><span class="pre">add()</span></code></a> or a
+user-defined function decorated with <code class="docutils literal notranslate"><span class="pre">&#64;wp.func</span></code>.</p></li>
+<li><p><strong>a</strong> – The input tile. Must have a scalar element type, unlike the whole-tile form,
+which also accepts vector and matrix elements. The operator, or one of its
+overloads, must accept the tile’s element type.</p></li>
+<li><p><strong>axis</strong> – The axis to reduce over. Must be a compile-time constant in
+<code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">len(shape))</span></code>.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>A tile with the same shape as the input tile less the axis dimension and the same data type as the input tile.</p>
+<dd class="field-even"><p>A register tile with the same dtype as <code class="docutils literal notranslate"><span class="pre">a</span></code>. For an input with two or more dimensions,
+the result has the shape of <code class="docutils literal notranslate"><span class="pre">a</span></code> with <code class="docutils literal notranslate"><span class="pre">axis</span></code> removed. For a one-dimensional input,
+it has shape <code class="docutils literal notranslate"><span class="pre">(1,)</span></code>.</p>
 </dd>
 </dl>
 <p>On a partial CPU block, a slice with no active values returns the operation’s identity for
@@ -624,32 +648,20 @@ identity, so an empty slice triggers an assertion instead of returning an arbitr
 See <a class="reference internal" href="../../user_guide/programming_model/tiles.html#cpu-tile-semantics"><span class="std std-ref">CPU Tile Semantics</span></a> for definitions of partial
 CPU blocks and active lanes.</p>
 <p class="rubric">Example</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">TILE_M</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
-<span class="n">TILE_N</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">row_products</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array2d</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">p</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_reduce</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">mul</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
 
-<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">compute</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array2d</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">y</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">10.0</span><span class="p">,</span> <span class="mf">20.0</span><span class="p">,</span> <span class="mf">30.0</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+<span class="n">p</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
 
-    <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">TILE_M</span><span class="p">,</span> <span class="n">TILE_N</span><span class="p">))</span>
-    <span class="n">b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_reduce</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">add</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-    <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch_tiled</span><span class="p">(</span><span class="n">row_products</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">x</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">p</span><span class="p">],</span> <span class="n">block_dim</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
 
-<span class="n">arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">TILE_M</span> <span class="o">*</span> <span class="n">TILE_N</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">TILE_M</span><span class="p">,</span> <span class="n">TILE_N</span><span class="p">)</span>
-
-<span class="n">x</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
-<span class="n">y</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">TILE_M</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
-
-<span class="n">wp</span><span class="o">.</span><span class="n">launch_tiled</span><span class="p">(</span><span class="n">compute</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">x</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">y</span><span class="p">],</span> <span class="n">block_dim</span><span class="o">=</span><span class="mi">32</span><span class="p">)</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">y</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
 </pre></div>
 </div>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>[[0. 1.]
- [2. 3.]
- [4. 5.]
- [6. 7.]]
-[ 1.  5.  9. 13.]
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[   6. 6000.]
 </pre></div>
 </div>
 </dd></dl>

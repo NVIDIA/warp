@@ -10,27 +10,16 @@
       :python: false
       :differentiable: false
 
-   Cooperatively compute the maximum of the tile elements using all threads in the block.
+   Compute the maximum of all elements of a tile.
    
-   :param a: The tile to compute the maximum from
+   This is a cooperative operation: the threads of the block divide the work between
+   them, so every thread must reach the call.
    
-   :returns: A single-element tile holding the maximum value.
+   The reduction covers every element of ``a`` regardless of its rank. Floating-point
+   comparisons follow C ``fmax`` semantics: a NaN element is treated as missing.
    
-   .. rubric:: Example
+   :param a: The tile to reduce. Must have a scalar element type.
    
-   .. code-block:: python
+   :returns: A shape-``(1,)`` register tile holding the maximum. Read the value with ``[0]``.
    
-       @wp.kernel
-       def compute():
-   
-           t = wp.tile_arange(64, 128)
-           s = wp.tile_max(t)
-   
-           print(s)
-   
-       wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
-   
-   .. code-block:: text
-   
-       [127] = tile(shape=(1), storage=register)
-   
+   See :func:`~warp.tile_min` for an analogous usage example.
