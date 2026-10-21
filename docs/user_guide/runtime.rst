@@ -1999,7 +1999,8 @@ API Capture: Saving and Loading Graphs
     surface, the C ``wp_apic_*`` API, and the recorded operation set are all
     subject to change without a formal deprecation cycle. The writer and loader
     must use the same Warp version. The current writer and reader use format
-    version 17.
+    version 18, which stores explicit element counts for handle relocations.
+    Recapture graphs saved with earlier formats.
 
 The APIC operation stream lets Warp serialize a supported captured graph to
 disk and load it back later from another Python program or a standalone C++
@@ -2478,6 +2479,15 @@ Current limitations of API Capture:
 - Only :class:`wp.Mesh <warp.Mesh>` object handles are serialized.
   :class:`wp.Volume <warp.Volume>`, :class:`wp.Bvh <warp.Bvh>`, and
   :class:`wp.HashGrid <warp.HashGrid>` handles are not yet supported.
+- A mesh ID is remapped to the reloaded mesh only when its type is
+  :class:`wp.handle <warp.handle>`:
+  a ``wp.handle`` kernel parameter or struct field,
+  or an element of an array whose dtype is ``wp.handle`` or a struct with ``wp.handle`` fields.
+  A mesh ID passed as ``wp.uint64`` is saved as a plain integer
+  and is not valid when the graph is loaded in another process.
+- Mesh IDs written into an array by :meth:`array.fill_() <warp.array.fill_>` during a capture
+  are not remapped when the graph is loaded.
+  Write them with a kernel that takes the mesh as a ``wp.handle`` argument instead.
 - Kernel arguments of type ``wp.fabricarray`` or ``wp.indexedfabricarray``
   cannot yet be recorded by APIC. ``wp.fixedarray`` is a compiler-only stack
   array type and cannot be passed as a host kernel argument.
@@ -2539,6 +2549,8 @@ Warp provides a :class:`wp.Mesh <warp.Mesh>` class to manage triangle mesh data.
 
 Meshes can be passed to kernels using their ``id`` attribute, which is a ``uint64`` value that uniquely identifies
 the mesh.
+To save a captured graph that uses a mesh with :func:`wp.capture_save() <warp.capture_save>`,
+type the ID as :class:`wp.handle <warp.handle>` instead (see :ref:`apic_save_load`).
 Once inside a kernel, you can perform geometric queries against the mesh such as ray-casts or closest-point lookups.
 For example, the result object returned by :func:`wp.mesh_query_point() <warp._src.lang.mesh_query_point>` stores the
 hit face and barycentric coordinates, which can be passed to

@@ -404,10 +404,10 @@ class uint64(int_base):
 
 
 class handle(uint64):
-    """Type for object handles (Mesh, Volume, BVH) in kernel parameters.
+    """Type for object handles (Mesh, Volume, BVH) in kernel parameters, struct fields, and arrays.
 
     Behaves identically to ``uint64`` but allows APIC to detect which
-    parameters need pointer remapping during graph replay.
+    values need pointer remapping during graph replay.
     """
 
     _wp_native_name_ = "uint64"
@@ -2212,6 +2212,7 @@ warp_type_to_np_dtype = {
     uint16: np.uint16,
     uint32: np.uint32,
     uint64: np.uint64,
+    handle: np.uint64,
     float16: np.float16,
     bfloat16: np.uint16,  # TODO: Use ml_dtypes.bfloat16 when available (see also _np_float32_to_bfloat16_bits)
     float32: np.float32,

@@ -113,12 +113,16 @@ WP_API void wp_apic_register_kernel(
 
 WP_API void wp_apic_register_binding(APICState* state, const char* name, uint32_t region_id);
 
-WP_API void wp_apic_register_ptr_location(APICState* state, uint32_t region_id, uint64_t offset, uint64_t stride);
+WP_API void
+wp_apic_register_ptr_location(APICState* state, uint32_t region_id, uint64_t offset, uint64_t stride, uint64_t count);
+
+// Test membership in the live mesh registries without dereferencing an unknown ID.
+WP_API bool wp_apic_is_mesh(uint64_t mesh_id);
 
 // Register a mesh for serialization. Looks up the mesh by ID in the global
 // mesh descriptor table, registers its arrays as memory regions with initial
 // data, and stores an APICMeshRecord for the save path. Returns false (with an
-// error string set) if a device-to-host snapshot of a mesh array fails, so the
+// error string set) if the ID is invalid or a mesh array snapshot fails, so the
 // caller can abort the save rather than record a mesh missing its data.
 WP_API bool wp_apic_register_mesh(APICState* state, uint64_t mesh_id);
 

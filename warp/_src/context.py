@@ -7071,6 +7071,7 @@ class Runtime:
                 ctypes.c_uint32,
                 ctypes.c_uint64,
                 ctypes.c_uint64,
+                ctypes.c_uint64,
             ]
             self.core.wp_apic_register_ptr_location.restype = None
             self.core.wp_apic_register_memory_region.argtypes = [
@@ -7083,6 +7084,8 @@ class Runtime:
             self.core.wp_apic_register_memory_region.restype = None
             self.core.wp_apic_register_mesh.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
             self.core.wp_apic_register_mesh.restype = ctypes.c_bool
+            self.core.wp_apic_is_mesh.argtypes = [ctypes.c_uint64]
+            self.core.wp_apic_is_mesh.restype = ctypes.c_bool
             self.core.wp_apic_state_save.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_int, ctypes.c_void_p]
             self.core.wp_apic_state_save.restype = ctypes.c_bool
 
@@ -14547,8 +14550,19 @@ def capture_save(
             region_id = apic_capture.get_region_id(arr)
             runtime.core.wp_apic_register_binding(state, name.encode("utf-8"), region_id)
 
-    # Snapshot memory: copy device data to host and register with C++
-    for _region_key, (region_id, base_ptr, capacity, _base) in apic_capture._regions.items():
+    # Snapshot memory: copy device data to host and register with C++. Meshes
+    # referenced only through handles stored in a snapshot are collected here so
+    # they are serialized alongside the meshes passed as kernel arguments.
+    # Independent wrappers can share a native region ID with different capacities.
+    # Keep the largest extent so handle scans cover all views and a smaller alias
+    # cannot overwrite the region's saved data.
+    snapshot_regions = {}
+    for region_id, base_ptr, capacity, _base in apic_capture._regions.values():
+        if region_id not in snapshot_regions or capacity > snapshot_regions[region_id][1]:
+            snapshot_regions[region_id] = (base_ptr, capacity)
+
+    mesh_ids = set(apic_capture.collected_mesh_ids)
+    for region_id, (base_ptr, capacity) in snapshot_regions.items():
         if graph.device.is_cuda:
             if region_id in apic_capture._transient_regions:
                 # Allocated during capture (graph-scoped): its backing is gone now
@@ -14585,6 +14599,7 @@ def capture_save(
                 1,
                 ctypes.addressof(host_buf),
             )
+            mesh_ids.update(apic_capture.collect_region_mesh_ids(region_id, ctypes.addressof(host_buf), capacity))
         else:
             # CPU memory: pass pointer directly
             runtime.core.wp_apic_register_memory_region(
@@ -14594,6 +14609,7 @@ def capture_save(
                 1,
                 ctypes.c_void_p(base_ptr),
             )
+            mesh_ids.update(apic_capture.collect_region_mesh_ids(region_id, base_ptr, capacity))
 
     # Stage both artifact components on the destination filesystem. Export or
     # serialization failures must leave any previously saved graph intact.
@@ -14654,7 +14670,7 @@ def capture_save(
             )
 
         # Register meshes before serializing the staged graph.
-        for mesh_id in apic_capture.collected_mesh_ids:
+        for mesh_id in mesh_ids:
             if not runtime.core.wp_apic_register_mesh(state, ctypes.c_uint64(mesh_id)):
                 raise RuntimeError(f"APIC: failed to register mesh for capture_save. {runtime.get_error_string()}")
 

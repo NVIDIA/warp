@@ -13,15 +13,30 @@
 using namespace wp;
 
 #include <map>
+#include <mutex>
+#include <set>
 
 namespace {
 // host-side copy of mesh descriptors, maps GPU mesh address (id) to a CPU desc
 std::map<uint64_t, Mesh> g_mesh_descriptors;
+std::set<uint64_t> g_host_meshes;
+std::mutex g_host_meshes_mutex;
 
 }  // anonymous namespace
 
 
 namespace wp {
+
+bool mesh_get_descriptor_host(uint64_t id, Mesh& mesh)
+{
+    std::lock_guard<std::mutex> lock(g_host_meshes_mutex);
+    if (g_host_meshes.find(id) == g_host_meshes.end())
+        return false;
+    // Read the current descriptor: refit and set_points/set_velocities can
+    // update it after creation.
+    mesh = *reinterpret_cast<const Mesh*>(id);
+    return true;
+}
 
 bool mesh_get_descriptor(uint64_t id, Mesh& mesh)
 {
@@ -187,12 +202,20 @@ uint64_t wp_mesh_create_host(
         bvh_refit_with_solid_angle_host(m->bvh, *m);
     }
 
+    {
+        std::lock_guard<std::mutex> lock(g_host_meshes_mutex);
+        g_host_meshes.insert(reinterpret_cast<uint64_t>(m));
+    }
     return (uint64_t)m;
 }
 
 
 void wp_mesh_destroy_host(uint64_t id)
 {
+    {
+        std::lock_guard<std::mutex> lock(g_host_meshes_mutex);
+        g_host_meshes.erase(id);
+    }
     Mesh* m = (Mesh*)(id);
 
     wp_free_host(m->lowers);

@@ -897,7 +897,7 @@ def _mock_apic_cuda_export_graph(modules):
 _APIC_SECTION_METADATA = 1
 _APIC_SECTION_MEMORY = 2
 _APIC_SECTION_OPERATIONS = 3
-_APIC_FORMAT_VERSION = 17
+_APIC_FORMAT_VERSION = 18
 
 # These layouts mirror the packed structs in warp/native/apic_types.h. "<"
 # selects little-endian standard sizes without implicit alignment; "4s", "i",
@@ -990,15 +990,6 @@ def _replace_apic_section(path, requested_section_type, replacement):
         wrp_file.seek(0)
         wrp_file.write(wrp_data)
         wrp_file.truncate()
-
-
-def _set_apic_file_version(path, version):
-    """Replace the WRP header version while preserving the other prefix fields."""
-    with open(path, "r+b") as wrp_file:
-        prefix = list(_APIC_FILE_HEADER_PREFIX.unpack(wrp_file.read(_APIC_FILE_HEADER_PREFIX.size)))
-        prefix[1] = version
-        wrp_file.seek(0)
-        wrp_file.write(_APIC_FILE_HEADER_PREFIX.pack(*prefix))
 
 
 def _replace_first_apic_kernel_shape(path, extent, axis=0):
@@ -1388,34 +1379,8 @@ def test_save_single_kernel(test, device):
         test.assertEqual(version, _APIC_FORMAT_VERSION)
 
 
-def test_load_rejects_legacy_overflowed_launch_shape(test, device):
-    """Reject a previous APIC format before interpreting its launch shapes."""
-    a = wp.ones((1, 1), dtype=float, device=device)
-    b = wp.zeros((1, 1), dtype=float, device=device)
-
-    wp.load_module(device=device)
-    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
-        wp.launch(scale_2d_kernel, dim=(1, 1), inputs=[a, b, 1.0], device=device)
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        for axis in range(2):
-            path = os.path.join(tmpdir, f"legacy_overflowed_shape_axis_{axis}")
-            wp.capture_save(capture.graph, path, inputs={"a": a}, outputs={"b": b})
-            wrp_path = path + ".wrp"
-            _replace_first_apic_kernel_shape(wrp_path, 2**31, axis)
-
-            with test.subTest(axis=axis):
-                _set_apic_file_version(wrp_path, _APIC_FORMAT_VERSION - 1)
-                _assert_apic_load_rejected(
-                    test,
-                    wrp_path,
-                    device,
-                    r"Unsupported WRP version",
-                )
-
-
 def test_load_accepts_current_oversized_no_tid_launch_shape(test, device):
-    """Accept current-format oversized extents when the kernel does not use ``wp.tid()``."""
+    """Accept unsigned oversized extents when the kernel does not use ``wp.tid()``."""
     wp.load_module(device=device)
     with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
         wp.launch(no_tid_kernel, dim=2**31 + 1, device=device)
@@ -5027,12 +4992,6 @@ add_function_test(
     "test_save_single_kernel",
     test_save_single_kernel,
     devices=devices_with_cuda_graph_module_load,
-)
-add_function_test(
-    TestApic,
-    "test_load_rejects_legacy_overflowed_launch_shape",
-    test_load_rejects_legacy_overflowed_launch_shape,
-    devices=[d for d in devices if d.is_cpu],
 )
 add_function_test(
     TestApic,

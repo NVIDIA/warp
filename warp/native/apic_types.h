@@ -10,8 +10,9 @@
 // APIC Format Constants
 // =============================================================================
 
-#define APIC_FORMAT_VERSION 17
-#define APIC_MIN_SUPPORTED_FORMAT_VERSION 17
+#define APIC_FORMAT_VERSION 18
+// Intentionally require recapture rather than decode unbounded legacy relocations.
+#define APIC_MIN_SUPPORTED_FORMAT_VERSION 18
 #define APIC_UNSIGNED_LAUNCH_BOUNDS_VERSION 16
 #define APIC_MAGIC "WRP1"
 #define APIC_MAGIC_VALUE 0x31505257  // "WRP1" as little-endian uint32
