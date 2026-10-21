@@ -807,6 +807,14 @@ For example, we can add two arrays together using the <code class="docutils lite
 </div>
 <p>For further details on mapping arbitrary functions to Warp arrays, see <a class="reference internal" href="../api_reference/_generated/warp.map.html#warp.map" title="warp.map"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.map()</span></code></a>.</p>
 <p>Please see the <a class="reference internal" href="runtime.html#arrays"><span class="std std-ref">Arrays Reference</span></a> for more details.</p>
+<section id="array-subclasses">
+<h3>Array Subclasses<a class="headerlink" href="#array-subclasses" title="Link to this heading">#</a></h3>
+<p>Initialized subclasses of Warp arrays can attach Python metadata and be passed
+wherever their native parent family is accepted. Use the built-in array family
+in kernel and function annotations, such as <code class="docutils literal notranslate"><span class="pre">wp.array[float]</span></code>. See
+<a class="reference internal" href="compatibility.html#array-subclasses"><span class="std std-ref">Array subclass compatibility</span></a> for the supported
+families, input contract, and limitations.</p>
+</section>
 </section>
 <section id="user-functions">
 <h2>User Functions<a class="headerlink" href="#user-functions" title="Link to this heading">#</a></h2>
@@ -1089,7 +1097,10 @@ use vector types like <a class="reference internal" href="../api_reference/_gene
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#large-array-indexing">Large array indexing</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#arrays">Arrays</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#arrays">Arrays</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#array-subclasses">Array Subclasses</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#user-functions">User Functions</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#function-parameters">Function Parameters</a></li>
 </ul>

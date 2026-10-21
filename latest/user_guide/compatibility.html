@@ -550,9 +550,10 @@
                   
   <section id="compatibility-support">
 <h1>Compatibility &amp; Support<a class="headerlink" href="#compatibility-support" title="Link to this heading">#</a></h1>
-<p>This page is organized into two main sections:</p>
+<p>This page is organized into three main sections:</p>
 <ol class="arabic simple">
 <li><p><strong>Platform compatibility</strong>: What platforms, operating systems, and hardware Warp currently supports</p></li>
+<li><p><strong>Array subclass compatibility</strong>: How initialized array subclasses interact with Warp APIs, including requirements and limitations</p></li>
 <li><p><strong>Support policies</strong>: How Warp evolves over time, including versioning, deprecation, and lifecycle management</p></li>
 </ol>
 <section id="platform-compatibility">
@@ -727,6 +728,145 @@ the next version.</p></li>
 use <code class="docutils literal notranslate"><span class="pre">--help</span></code> to discover current options.</p>
 </section>
 </section>
+</section>
+<section id="array-subclass-compatibility">
+<span id="array-subclasses"></span><h2>Array subclass compatibility<a class="headerlink" href="#array-subclass-compatibility" title="Link to this heading">#</a></h2>
+<div class="versionadded">
+<p><span class="versionmodified added">Added in version 1.19.</span></p>
+</div>
+<p>Initialized subclasses of <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a>, <a class="reference internal" href="../api_reference/_generated/warp.indexedarray.html#warp.indexedarray" title="warp.indexedarray"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.indexedarray</span></code></a>,
+<a class="reference internal" href="../api_reference/_generated/warp.fabricarray.html#warp.fabricarray" title="warp.fabricarray"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.fabricarray</span></code></a>, and <a class="reference internal" href="../api_reference/_generated/warp.indexedfabricarray.html#warp.indexedfabricarray" title="warp.indexedfabricarray"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.indexedfabricarray</span></code></a> can be passed
+wherever their respective parent family is accepted. This includes kernel
+arguments and outputs, function overloads, <a class="reference internal" href="../api_reference/_generated/warp.map.html#warp.map" title="warp.map"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.map()</span></code></a> inputs and explicit
+outputs, Python array operators, struct fields, and allocation/copy helpers.
+Each operation retains its parent’s dtype, dimensionality, layout, device,
+and other restrictions; subclassing does not add capabilities to a family.</p>
+<div class="pst-scrollable-table-container"><table class="table" id="id3">
+<caption><span class="caption-text">Capabilities by Native Family</span><a class="headerlink" href="#id3" title="Link to this table">#</a></caption>
+<colgroup>
+<col style="width: 30.0%" />
+<col style="width: 70.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Family</p></th>
+<th class="head"><p>Capabilities and limitations</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">array</span></code></p></td>
+<td><p>Strided views, gradient storage and Tape, and NumPy/DLPack protocols.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">indexedarray</span></code></p></td>
+<td><p>Indexed views of regular arrays; no gradient storage or direct
+NumPy/DLPack sharing.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">fabricarray</span></code> / <code class="docutils literal notranslate"><span class="pre">indexedfabricarray</span></code></p></td>
+<td><p>Views of externally owned Fabric buckets, optionally indexed or jagged;
+no gradient storage or direct NumPy/DLPack sharing.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Copying, cloning, NumPy conversion, and filling remain unsupported for
+two-dimensional Fabric arrays of arrays. Interoperability conversions keep
+their existing dtype, layout, and device requirements; for example, CUDA
+<code class="docutils literal notranslate"><span class="pre">array.numpy()</span></code> copies to CPU rather than sharing storage.</p>
+<p>A subclass can attach Python metadata while using ordinary array annotations:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">TaggedArray</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">tag</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tag</span> <span class="o">=</span> <span class="n">tag</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">square</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span> <span class="n">result</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">Any</span><span class="p">]):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">result</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">values</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+<span class="n">values</span> <span class="o">=</span> <span class="n">TaggedArray</span><span class="p">([</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">],</span> <span class="n">tag</span><span class="o">=</span><span class="s2">"sensor"</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cpu"</span><span class="p">)</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty_like</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">square</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">values</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">values</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">result</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cpu"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">values</span><span class="o">.</span><span class="n">tag</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[4. 9.]
+sensor
+</pre></div>
+</div>
+<p>Warp specializes kernels using the native parent family, dtype, and ndim.
+The subclass name and metadata do not create a distinct specialization, and
+type inference does not call the subclass constructor. Use built-in family
+annotations such as <code class="docutils literal notranslate"><span class="pre">wp.array[float]</span></code> or <code class="docutils literal notranslate"><span class="pre">wp.array[Any]</span></code>. Annotation
+objects describe parameter types and cannot be used as runtime array
+arguments or array-valued struct fields. Bare subclass
+classes, <code class="docutils literal notranslate"><span class="pre">TaggedArray[float]</span></code>, and subclass instances used as kernel/function
+parameter or struct-field annotations are unsupported. <a class="reference internal" href="../api_reference/_generated/warp.fixedarray.html#warp.fixedarray" title="warp.fixedarray"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.fixedarray</span></code></a>
+describes stack arrays inside compiled functions and is outside this host-subclass
+contract. It cannot be passed as a host argument or used as a kernel overload
+descriptor. Use built-in fixedarray descriptors for supported compiler
+annotations; fixedarray subclass instances are rejected as parameter, field,
+and return annotations.</p>
+<p>The subclass must fully initialize its parent and preserve its storage,
+gradient, and descriptor behavior. Added attributes must not shadow storage
+members, such as an indexed array’s <code class="docutils literal notranslate"><span class="pre">data</span></code> or <code class="docutils literal notranslate"><span class="pre">indices</span></code>. Parent bookkeeping
+must remain writable, including descriptor caching (<code class="docutils literal notranslate"><span class="pre">ctype</span></code>) and autodiff read
+tracking (<code class="docutils literal notranslate"><span class="pre">_is_read</span></code>), array-interface caching (<code class="docutils literal notranslate"><span class="pre">_array_interface</span></code>), and CUDA
+memory-kind caching (<code class="docutils literal notranslate"><span class="pre">_memory_kind</span></code>). Attribute-access overrides must raise
+<code class="docutils literal notranslate"><span class="pre">AttributeError</span></code> for unknown names; returning a proxy for missing private
+attributes can break capture or cleanup.</p>
+<p>Equality and hashing must remain identity-based when using <a class="reference internal" href="../api_reference/_generated/warp.Tape.html#warp.Tape" title="warp.Tape"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Tape</span></code></a>.
+Defining <code class="docutils literal notranslate"><span class="pre">__eq__</span></code> without <code class="docutils literal notranslate"><span class="pre">__hash__</span></code> makes a subclass unhashable; value-based
+equality and hashing can silently merge distinct arrays in Tape bookkeeping.
+For borrowed storage, keep a strong reference to its owner, for example in a
+<code class="docutils literal notranslate"><span class="pre">deleter=</span></code> closure, and pass <code class="docutils literal notranslate"><span class="pre">grad=owner.grad</span></code> when the alias must accumulate
+gradients into the owner. Do not use Python’s <code class="docutils literal notranslate"><span class="pre">copy.copy()</span></code> to create an array
+alias: it can duplicate allocation ownership and cause a double free. Use Warp
+views or <a class="reference internal" href="../api_reference/_generated/warp.clone.html#warp.clone" title="warp.clone"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.clone()</span></code></a> as appropriate.</p>
+<p>Combining unrelated native array families through multiple inheritance is
+rejected at kernel inference/packing, struct assignment, and <a class="reference internal" href="../api_reference/_generated/warp.map.html#warp.map" title="warp.map"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.map()</span></code></a>
+boundaries because their native descriptor layouts differ. Other host methods
+do not provide a general validity check for malformed subclasses.</p>
+<p>An already initialized array can also be converted to a subclass by assigning
+<code class="docutils literal notranslate"><span class="pre">__class__</span></code> when Python permits that assignment and the native family is
+unchanged. The array’s storage and bookkeeping must still satisfy the contract
+above. Warp does not guarantee that future versions will preserve a particular
+Python object layout or <code class="docutils literal notranslate"><span class="pre">__dict__</span></code> representation for class reassignment.</p>
+<p>Launches use the subclass’s native <code class="docutils literal notranslate"><span class="pre">__ctype__()</span></code> descriptor, preserving its
+gradient pointer and flags. An overridden array interface does not replace that
+descriptor during launch. At kernel packing and struct assignment, descriptor
+overrides must preserve the parent’s descriptor class and layout size; regular
+and indexed arrays are also checked for rank. Compatible ctypes subclasses are
+accepted and packed as the built-in descriptor type. Invalid descriptors are
+rejected at these boundaries, without falling back to the array interface.
+These checks do not apply to every host operation and cannot prove pointer
+validity, storage extent, or ownership.</p>
+<p>An override must describe the array’s own storage, including its pointer,
+shape/strides, gradient state, and backing references. API Capture (APIC) records
+the Python storage fields and backing references rather than an arbitrary
+redirected descriptor, and rejects a regular-array data or gradient pointer that
+differs from the object’s <code class="docutils literal notranslate"><span class="pre">ptr</span></code> or <code class="docutils literal notranslate"><span class="pre">grad.ptr</span></code>. Changing storage attributes after <code class="docutils literal notranslate"><span class="pre">__ctype__()</span></code> has
+cached <code class="docutils literal notranslate"><span class="pre">ctype</span></code> can leave the descriptor stale; prefer Warp’s view and reshape
+operations to direct storage mutation.</p>
+<p>New allocations and views have no subclass or metadata propagation guarantee.
+Existing operations that return the input for a no-op retain that identity,
+and an explicit <code class="docutils literal notranslate"><span class="pre">out</span></code> buffer remains the caller’s object. Python metadata and
+helper methods are unavailable inside kernels; subclass compatibility adds no
+operation interception hooks. Dispatch and metadata propagation require a
+separate protocol; see <a class="reference external" href="https://github.com/NVIDIA/warp/issues/1834">GH-1834</a>
+for the independently tracked discussion.</p>
+<p>Differentiation, interoperability, and capture follow the parent’s capabilities
+and ownership rules. Python metadata is not serialized as capture state.
+Live API Capture (APIC) graphs can retain backing arrays and their metadata,
+while recorded commands created by <code class="docutils literal notranslate"><span class="pre">wp.launch(...,</span> <span class="pre">record_cmd=True)</span></code> retain
+their original arguments. Keep storage alive according to the parent’s rules
+for plain CUDA graphs. Directly constructing <code class="docutils literal notranslate"><span class="pre">wp.Launch</span></code> does not provide the
+recorded-command ownership guarantee.</p>
+<p>See <a class="reference internal" href="interoperability.html#array-subclass-migration"><span class="std std-ref">Pass Arrays Directly</span></a> for behavior changes when upgrading code
+that previously launched a subclass through its array interface.</p>
 </section>
 <section id="support-policies">
 <h2>Support policies<a class="headerlink" href="#support-policies" title="Link to this heading">#</a></h2>
@@ -1052,6 +1192,7 @@ Matrix and Runtime requirements sections above.</p></li>
 </li>
 </ul>
 </li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#array-subclass-compatibility">Array subclass compatibility</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#support-policies">Support policies</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#versioning">Versioning</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#component-states">Component states</a></li>

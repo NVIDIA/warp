@@ -2439,8 +2439,9 @@ Raw ctype array parameters passed through
 <a class="reference internal" href="../api_reference/_generated/warp.Launch.html#warp.Launch.set_param_at_index_from_ctype" title="warp.Launch.set_param_at_index_from_ctype"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Launch.set_param_at_index_from_ctype()</span></code></a>
 cannot be recorded because APIC needs the original <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a>
 object to preserve its replay-time memory reference.</p></li>
-<li><p>Kernel parameters of type <code class="docutils literal notranslate"><span class="pre">wp.fixedarray</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.fabricarray</span></code>, or
-<code class="docutils literal notranslate"><span class="pre">wp.indexedfabricarray</span></code> cannot yet be recorded by APIC.</p></li>
+<li><p>Kernel parameters of type <code class="docutils literal notranslate"><span class="pre">wp.fabricarray</span></code> or <code class="docutils literal notranslate"><span class="pre">wp.indexedfabricarray</span></code>
+cannot yet be recorded by APIC. <code class="docutils literal notranslate"><span class="pre">wp.fixedarray</span></code> is a compiler-only stack
+array type and cannot be passed as a host kernel argument.</p></li>
 <li><p><a class="reference internal" href="../api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.nnz_sync" title="warp.sparse.BsrMatrix.nnz_sync"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BsrMatrix.nnz_sync()</span></code></a> cannot read the
 result of a topology update recorded earlier in the same CPU capture. Read the
 count after replay, or avoid the readback inside the captured region.</p></li>
@@ -2899,8 +2900,9 @@ options, controls, and platform-specific notes.</p>
 <li><p>Only <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Mesh</span></code></a> object handles are serialized.
 <a class="reference internal" href="../api_reference/_generated/warp.Volume.html#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Volume</span></code></a>, <a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh" title="warp.Bvh"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Bvh</span></code></a>, and
 <a class="reference internal" href="../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.HashGrid</span></code></a> handles are not yet supported.</p></li>
-<li><p>Kernel arguments of type <code class="docutils literal notranslate"><span class="pre">wp.fixedarray</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.fabricarray</span></code>, and
-<code class="docutils literal notranslate"><span class="pre">wp.indexedfabricarray</span></code> cannot yet be recorded by APIC.</p></li>
+<li><p>Kernel arguments of type <code class="docutils literal notranslate"><span class="pre">wp.fabricarray</span></code> or <code class="docutils literal notranslate"><span class="pre">wp.indexedfabricarray</span></code>
+cannot yet be recorded by APIC. <code class="docutils literal notranslate"><span class="pre">wp.fixedarray</span></code> is a compiler-only stack
+array type and cannot be passed as a host kernel argument.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">HashGrid.build()</span></code> is supported by live CPU graphs captured with
 <code class="docutils literal notranslate"><span class="pre">apic=False</span></code>. It is not supported by saveable captures because <code class="docutils literal notranslate"><span class="pre">HashGrid</span></code>
 resources and their process-local IDs cannot yet be serialized. Calling

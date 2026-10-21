@@ -618,8 +618,67 @@ FFI, and use Warp with JAX transformations and distributed computation.</p></li>
 <p>Paddle is documented inline below. NumPy, CuPy, Numba, and DLPack interop is protocol-level and covered in the sections that follow.</p>
 </section>
 <section id="pass-arrays-directly">
-<h2>Pass Arrays Directly<a class="headerlink" href="#pass-arrays-directly" title="Link to this heading">#</a></h2>
-<p>Any object that implements <code class="docutils literal notranslate"><span class="pre">__array_interface__</span></code> (CPU) or <code class="docutils literal notranslate"><span class="pre">__cuda_array_interface__</span></code> (GPU) can be passed to <a class="reference internal" href="../api_reference/_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch</span></code></a> inputs without calling a conversion function. This is the fastest on-ramp for most use cases.</p>
+<span id="array-subclass-migration"></span><h2>Pass Arrays Directly<a class="headerlink" href="#pass-arrays-directly" title="Link to this heading">#</a></h2>
+<p>External objects that implement <code class="docutils literal notranslate"><span class="pre">__array_interface__</span></code> (CPU) or
+<code class="docutils literal notranslate"><span class="pre">__cuda_array_interface__</span></code> (GPU) can be passed to concrete regular-array
+parameters of <a class="reference internal" href="../api_reference/_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch</span></code></a> without calling a conversion
+function. This is the fastest on-ramp for most use cases.</p>
+<p>Warp arrays and their <a class="reference internal" href="compatibility.html#array-subclasses"><span class="std std-ref">subclasses</span></a> use their native Warp
+descriptor when launched. Warp checks their native family, dtype, and ndim
+instead of reinterpreting an inherited or overridden array interface. Their
+gradient pointer and <code class="docutils literal notranslate"><span class="pre">retain_grad</span></code> flag follow the parent’s behavior. Code
+that previously reached the external-interface fallback for a Warp subclass
+must account for these changes:</p>
+<ul class="simple">
+<li><p>Native gradient pointers and flags are preserved. Tape gradients for
+overwritten outputs or in-place writes can therefore change to match the
+parent array’s behavior, and <code class="docutils literal notranslate"><span class="pre">retain_grad=True</span></code> is honored.</p></li>
+<li><p>Native storage is used even when a subclass overrides its array interface.
+The kernel no longer receives storage, a dtype, or a shape supplied by that
+alternate interface. Struct and <code class="docutils literal notranslate"><span class="pre">bfloat16</span></code> arrays use their native dtype
+support without requiring an array-interface representation.</p></li>
+<li><p>Family, dtype, and dimensionality mismatches are rejected through normal
+Warp array validation. Use <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.view" title="warp.array.view"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.view()</span></code></a> for a
+supported dtype reinterpretation, or <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.reshape" title="warp.array.reshape"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.reshape()</span></code></a>
+and <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.flatten" title="warp.array.flatten"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.flatten()</span></code></a> to change shape explicitly.
+Use a typed Warp array and a conversion such as <a class="reference internal" href="../api_reference/_generated/warp.utils.array_cast.html#warp.utils.array_cast" title="warp.utils.array_cast"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.utils.array_cast()</span></code></a>
+when element values need to be converted rather than reinterpreted.
+Explicit conversion expresses the intended element layout; it does not
+reproduce accidental strided reads from a rank mismatch. For example,
+float32 data of shape <code class="docutils literal notranslate"><span class="pre">(4,</span> <span class="pre">3)</span></code> can use <code class="docutils literal notranslate"><span class="pre">a.view(wp.vec3)</span></code> for a
+<code class="docutils literal notranslate"><span class="pre">wp.array[wp.vec3]</span></code> parameter. A vec3 array can use
+<code class="docutils literal notranslate"><span class="pre">a.view(wp.float32).flatten()</span></code> for a one-dimensional scalar parameter,
+while a two-dimensional scalar array can use <code class="docutils literal notranslate"><span class="pre">a.flatten()</span></code>.</p></li>
+<li><p>Device-access validation follows
+<a class="reference internal" href="../api_reference/_generated/warp.config.launch_array_access_mode.html#warp.config.launch_array_access_mode" title="warp.config.launch_array_access_mode"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.launch_array_access_mode</span></code></a>. The default <code class="docutils literal notranslate"><span class="pre">RELAXED</span></code> mode
+performs no pre-launch access checks; <code class="docutils literal notranslate"><span class="pre">CHECKED</span></code> diagnoses known-invalid
+access and warns when access cannot be verified, while <code class="docutils literal notranslate"><span class="pre">STRICT</span></code> requires
+arrays to be allocated on the launch device. See
+<a class="reference internal" href="execution_and_performance/memory_management.html#launch-array-access-checks"><span class="std std-ref">Checked Launch Validation</span></a>.
+Wrong-device storage that the interface path previously rejected can now
+reach a kernel unchecked in <code class="docutils literal notranslate"><span class="pre">RELAXED</span></code> mode, just as for a parent array.
+Move arrays to the launch device or select an appropriate validation mode.</p></li>
+<li><p>The subclass’s <code class="docutils literal notranslate"><span class="pre">__ctype__()</span></code> method is now called by concrete launches.
+Overrides must describe the object’s own storage and preserve the native
+descriptor contract. Fully initialize the parent and allow its descriptor
+cache and bookkeeping writes; a shell that only forwards public attributes
+through an array interface is insufficient.</p></li>
+<li><p>Classification uses actual inheritance. A <code class="docutils literal notranslate"><span class="pre">weakref.proxy</span></code> or a wrapper
+whose <code class="docutils literal notranslate"><span class="pre">__class__</span></code> property advertises a Warp class is not a Warp array at
+native-family boundaries. Pass the referenced Warp array for struct fields,
+indexed/strided copies, and explicit adjoint arguments. Its separate external
+array interface can still be used for concrete regular-array launch parameters.</p></li>
+<li><p>Recorded commands from <code class="docutils literal notranslate"><span class="pre">wp.launch(...,</span> <span class="pre">record_cmd=True)</span></code> retain arguments.
+Manually constructing <code class="docutils literal notranslate"><span class="pre">wp.Launch</span></code> does not retain the incidental owner
+reference previously supplied by the interface fallback; use recorded commands
+or keep the arrays alive explicitly.</p></li>
+</ul>
+<p>A separate, non-Warp object that owns or references an array and exposes an
+array interface continues to use the external-interface path for concrete
+regular-array parameters. Keep its storage owner alive according to that
+protocol’s requirements. CPU <code class="docutils literal notranslate"><span class="pre">array.numpy()</span></code> and <code class="docutils literal notranslate"><span class="pre">np.asarray</span></code> still use the
+array interface for interface-compatible dtypes. CUDA <code class="docutils literal notranslate"><span class="pre">array.numpy()</span></code> copies
+native Warp storage instead.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
 

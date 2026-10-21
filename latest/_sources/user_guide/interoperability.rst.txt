@@ -54,10 +54,72 @@ For full framework coverage, see:
 
 Paddle is documented inline below. NumPy, CuPy, Numba, and DLPack interop is protocol-level and covered in the sections that follow.
 
+.. _array-subclass-migration:
+
 Pass Arrays Directly
 --------------------
 
-Any object that implements ``__array_interface__`` (CPU) or ``__cuda_array_interface__`` (GPU) can be passed to :func:`wp.launch <warp.launch>` inputs without calling a conversion function. This is the fastest on-ramp for most use cases.
+External objects that implement ``__array_interface__`` (CPU) or
+``__cuda_array_interface__`` (GPU) can be passed to concrete regular-array
+parameters of :func:`wp.launch <warp.launch>` without calling a conversion
+function. This is the fastest on-ramp for most use cases.
+
+Warp arrays and their :ref:`subclasses <array-subclasses>` use their native Warp
+descriptor when launched. Warp checks their native family, dtype, and ndim
+instead of reinterpreting an inherited or overridden array interface. Their
+gradient pointer and ``retain_grad`` flag follow the parent's behavior. Code
+that previously reached the external-interface fallback for a Warp subclass
+must account for these changes:
+
+* Native gradient pointers and flags are preserved. Tape gradients for
+  overwritten outputs or in-place writes can therefore change to match the
+  parent array's behavior, and ``retain_grad=True`` is honored.
+* Native storage is used even when a subclass overrides its array interface.
+  The kernel no longer receives storage, a dtype, or a shape supplied by that
+  alternate interface. Struct and ``bfloat16`` arrays use their native dtype
+  support without requiring an array-interface representation.
+* Family, dtype, and dimensionality mismatches are rejected through normal
+  Warp array validation. Use :meth:`array.view() <warp.array.view>` for a
+  supported dtype reinterpretation, or :meth:`array.reshape() <warp.array.reshape>`
+  and :meth:`array.flatten() <warp.array.flatten>` to change shape explicitly.
+  Use a typed Warp array and a conversion such as :func:`warp.utils.array_cast`
+  when element values need to be converted rather than reinterpreted.
+  Explicit conversion expresses the intended element layout; it does not
+  reproduce accidental strided reads from a rank mismatch. For example,
+  float32 data of shape ``(4, 3)`` can use ``a.view(wp.vec3)`` for a
+  ``wp.array[wp.vec3]`` parameter. A vec3 array can use
+  ``a.view(wp.float32).flatten()`` for a one-dimensional scalar parameter,
+  while a two-dimensional scalar array can use ``a.flatten()``.
+* Device-access validation follows
+  :attr:`warp.config.launch_array_access_mode`. The default ``RELAXED`` mode
+  performs no pre-launch access checks; ``CHECKED`` diagnoses known-invalid
+  access and warns when access cannot be verified, while ``STRICT`` requires
+  arrays to be allocated on the launch device. See
+  :ref:`Checked Launch Validation <launch_array_access_checks>`.
+  Wrong-device storage that the interface path previously rejected can now
+  reach a kernel unchecked in ``RELAXED`` mode, just as for a parent array.
+  Move arrays to the launch device or select an appropriate validation mode.
+* The subclass's ``__ctype__()`` method is now called by concrete launches.
+  Overrides must describe the object's own storage and preserve the native
+  descriptor contract. Fully initialize the parent and allow its descriptor
+  cache and bookkeeping writes; a shell that only forwards public attributes
+  through an array interface is insufficient.
+* Classification uses actual inheritance. A ``weakref.proxy`` or a wrapper
+  whose ``__class__`` property advertises a Warp class is not a Warp array at
+  native-family boundaries. Pass the referenced Warp array for struct fields,
+  indexed/strided copies, and explicit adjoint arguments. Its separate external
+  array interface can still be used for concrete regular-array launch parameters.
+* Recorded commands from ``wp.launch(..., record_cmd=True)`` retain arguments.
+  Manually constructing ``wp.Launch`` does not retain the incidental owner
+  reference previously supplied by the interface fallback; use recorded commands
+  or keep the arrays alive explicitly.
+
+A separate, non-Warp object that owns or references an array and exposes an
+array interface continues to use the external-interface path for concrete
+regular-array parameters. Keep its storage owner alive according to that
+protocol's requirements. CPU ``array.numpy()`` and ``np.asarray`` still use the
+array interface for interface-compatible dtypes. CUDA ``array.numpy()`` copies
+native Warp storage instead.
 
 .. code:: python
 

@@ -1954,8 +1954,9 @@ Important CPU graph behavior and current limitations:
   :meth:`Launch.set_param_at_index_from_ctype() <warp.Launch.set_param_at_index_from_ctype>`
   cannot be recorded because APIC needs the original :class:`warp.array`
   object to preserve its replay-time memory reference.
-- Kernel parameters of type ``wp.fixedarray``, ``wp.fabricarray``, or
-  ``wp.indexedfabricarray`` cannot yet be recorded by APIC.
+- Kernel parameters of type ``wp.fabricarray`` or ``wp.indexedfabricarray``
+  cannot yet be recorded by APIC. ``wp.fixedarray`` is a compiler-only stack
+  array type and cannot be passed as a host kernel argument.
 - :meth:`BsrMatrix.nnz_sync() <warp.sparse.BsrMatrix.nnz_sync>` cannot read the
   result of a topology update recorded earlier in the same CPU capture. Read the
   count after replay, or avoid the readback inside the captured region.
@@ -2477,8 +2478,9 @@ Current limitations of API Capture:
 - Only :class:`wp.Mesh <warp.Mesh>` object handles are serialized.
   :class:`wp.Volume <warp.Volume>`, :class:`wp.Bvh <warp.Bvh>`, and
   :class:`wp.HashGrid <warp.HashGrid>` handles are not yet supported.
-- Kernel arguments of type ``wp.fixedarray``, ``wp.fabricarray``, and
-  ``wp.indexedfabricarray`` cannot yet be recorded by APIC.
+- Kernel arguments of type ``wp.fabricarray`` or ``wp.indexedfabricarray``
+  cannot yet be recorded by APIC. ``wp.fixedarray`` is a compiler-only stack
+  array type and cannot be passed as a host kernel argument.
 - ``HashGrid.build()`` is supported by live CPU graphs captured with
   ``apic=False``. It is not supported by saveable captures because ``HashGrid``
   resources and their process-local IDs cannot yet be serialized. Calling
