@@ -572,10 +572,8 @@ unspecified and differs between CPU and GPU. Multi-dimensional tiles are sorted 
 their flattened row-major sequence. Both tiles are placed in shared memory whatever
 storage they were created with, so they count against the block’s shared-memory
 budget (see <a class="reference internal" href="../../user_guide/programming_model/tiles.html#tile-shared-memory-budget"><span class="std std-ref">Shared Memory Budget</span></a>).</p>
-<p>On CUDA devices <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> must be a multiple of the warp size (32). CPU launches
-have no such requirement.</p>
-<p>On CUDA devices, prefer a <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> that is a multiple of 32 for better sorting performance. Other block
-dimensions are supported but may be slower.</p>
+<p>On CUDA devices, prefer a <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> that is a multiple of 32 for better sorting
+performance. Other block dimensions are supported but may be slower.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
