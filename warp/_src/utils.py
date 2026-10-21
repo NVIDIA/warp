@@ -1173,6 +1173,7 @@ def map(
 
     from .codegen import Adjoint, Struct, StructInstance  # noqa: PLC0415
     from .types import (  # noqa: PLC0415
+        concrete_array_type,
         is_array,
         type_is_matrix,
         type_is_quaternion,
@@ -1258,9 +1259,10 @@ def map(
             arg_types[arg_name] = inputs[i].dtype
             if device is None:
                 device = inputs[i].device
-            # For cache key: capture array type, dtype, ndim, and broadcast mask
+            # Use the native family so parent arrays and metadata subclasses share generated kernels.
             broadcast_mask = tuple(d == 1 for d in inputs[i].shape)
-            input_descriptors.append((True, type(inputs[i]).__name__, inputs[i].dtype, inputs[i].ndim, broadcast_mask))
+            family = wp.array if type(inputs[i]) is wp.array else concrete_array_type(inputs[i])
+            input_descriptors.append((True, family, inputs[i].dtype, inputs[i].ndim, broadcast_mask))
         else:
             # we pass the input value directly to the function
             warp_type = get_warp_type(inputs[i])
@@ -1268,11 +1270,13 @@ def map(
             input_descriptors.append((False, warp_type))
 
     # Build output type descriptors for cache key
-    # Only differentiate when output is not a regular array (e.g., indexedarray)
+    # Only differentiate when output is not in the regular array family (e.g., indexedarray)
     # since out=None creates regular arrays and should share cache with explicit array outputs
     def get_output_type_descriptor(o):
-        type_name = type(o).__name__
-        return type_name if type_name != "array" else None
+        if type(o) is wp.array:
+            return None
+        family = concrete_array_type(o)
+        return family if family is not wp.array else None
 
     if out is None:
         output_type_descriptor = None  # Will use default 'array' type
@@ -1380,10 +1384,8 @@ def map(
         for arg_name, inp in zip(arg_names, inputs, strict=True):
             if is_array(inp):
                 arr_name = f"{arg_name}_array"
-                array_type_name = type(inp).__name__
-                kernel_args.append(
-                    f"{arr_name}: wp.{array_type_name}(dtype={type_to_code(inp.dtype)}, ndim={inp.ndim})"
-                )
+                array_type_name = concrete_array_type(inp).__name__
+                kernel_args.append(f"{arr_name}: wp.{array_type_name}[{type_to_code(inp.dtype)}, {inp.ndim}]")
                 shape = inp.shape
                 indices = []
                 for i in range(1, len(shape) + 1):
@@ -1396,7 +1398,7 @@ def map(
             else:
                 kernel_args.append(f"{arg_name}: {type_to_code(type(inp))}")
         for i, o in enumerate(outputs):
-            kernel_args.append(f"__out_{i}: wp.{type(o).__name__}(dtype={type_to_code(o.dtype)}, ndim={o.ndim})")
+            kernel_args.append(f"__out_{i}: wp.{concrete_array_type(o).__name__}[{type_to_code(o.dtype)}, {o.ndim}]")
         code = code.format(
             func_name=func_name,
             kernel_args=", ".join(kernel_args),

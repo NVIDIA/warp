@@ -52,7 +52,15 @@ from warp._src.fem.types import (
 )
 from warp._src.fem.utils import type_zero_element
 from warp._src.logger import log_warning
-from warp._src.types import is_array, type_length, type_repr, type_scalar_type, type_size, type_to_warp
+from warp._src.types import (
+    concrete_array_type,
+    is_array,
+    type_length,
+    type_repr,
+    type_scalar_type,
+    type_size,
+    type_to_warp,
+)
 from warp._src.utils import array_cast, array_scan
 from warp.sparse import (
     BsrMatrix,
@@ -2901,7 +2909,7 @@ def _generate_interpolate_kernel(
     # Check if kernel exist in cache
     field_names = tuple((k, f.name) for k, f in arguments.field_args.items())
 
-    kernel_suffix = ("itp", *field_names, domain.name, type(dest).__name__)
+    kernel_suffix = ("itp", *field_names, domain.name, concrete_array_type(dest).__name__)
 
     if space_restriction is not None:
         kernel_suffix = (kernel_suffix, space_restriction.space_partition.name, reduction)

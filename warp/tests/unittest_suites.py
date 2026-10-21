@@ -167,6 +167,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_arithmetic import TestArithmetic
     from warp.tests.test_array import TestArray
     from warp.tests.test_array_reduce import TestArrayReduce
+    from warp.tests.test_array_subclass import TestArraySubclass
     from warp.tests.test_atomic import TestAtomic
     from warp.tests.test_atomic_bitwise import TestAtomicBitwise
     from warp.tests.test_atomic_cas import TestAtomicCAS
@@ -323,6 +324,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestArray,
         TestArrayFillCapture,
         TestArrayReduce,
+        TestArraySubclass,
         TestAsync,
         TestAtomic,
         TestAtomicBitwise,

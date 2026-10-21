@@ -477,12 +477,14 @@ class Function:
 
             arguments = tuple(bound_args.arguments.values())
             arg_types = []
-            for argument in arguments:
-                arg_type = warp._src.codegen.get_arg_type(argument)
-                if type(arg_type) in warp._src.types._ARRAY_ANNOTATION_MAP:
-                    # Runtime arrays own or reference backing allocations, so cache only lightweight annotations.
-                    arg_type = type(arg_type)[arg_type.dtype, arg_type.ndim]
-                arg_types.append(arg_type)
+            for arg_name, argument in bound_args.arguments.items():
+                # Runtime arrays own or reference allocations; keep only their native types in overload caches.
+                # Normalize before get_arg_type() can interpret an array mixin as a Python sequence.
+                try:
+                    normalized = warp._src.types._normalize_array_argument_type(argument)
+                except TypeError as error:
+                    raise TypeError(f"Error calling function '{self.key}', argument '{arg_name}': {error}") from error
+                arg_types.append(warp._src.codegen.get_arg_type(normalized))
 
             overload = self.get_overload(tuple(arg_types), {})
             if overload is not None:
@@ -510,11 +512,14 @@ class Function:
                     inference_arg_names.append(arg_name)
 
                 # Attempt to unify ordinary argument types with function template types.
-                warp._src.types.infer_argument_types(
-                    inference_arguments,
-                    inference_template_types,
-                    inference_arg_names,
-                )
+                try:
+                    warp._src.types.infer_argument_types(
+                        inference_arguments,
+                        inference_template_types,
+                        inference_arg_names,
+                    )
+                except TypeError as error:
+                    raise TypeError(f"Error calling function '{self.key}': {error}") from error
                 return overload.func(*arguments)
 
             # We got here without ever calling an overload.func
@@ -1383,11 +1388,28 @@ class Kernel:
 
         arg_names = list(self.adj.arg_types.keys())
 
-        return warp._src.types.infer_argument_types(args, template_types, arg_names)
+        try:
+            return warp._src.types.infer_argument_types(args, template_types, arg_names)
+        except TypeError as error:
+            raise TypeError(f"Error launching kernel '{self.key}': {error}") from error
 
     def add_overload(self, arg_types):
         if len(arg_types) != len(self.adj.arg_types):
             raise RuntimeError(f"Invalid number of arguments for kernel {self.key}")
+
+        # Callers such as optimizers pass live arrays as descriptors. Never retain those allocations
+        # or application subclass identities in the compiler's specialization types.
+        arg_names = list(self.adj.arg_types.keys())
+        normalized_types = []
+        for arg_name, arg_type in zip(arg_names, arg_types, strict=True):
+            try:
+                normalized_types.append(warp._src.types._normalize_array_argument_type(arg_type))
+            except TypeError as error:
+                raise TypeError(f"Kernel '{self.key}', argument '{arg_name}': {error}") from error
+        return self._add_normalized_overload(normalized_types)
+
+    def _add_normalized_overload(self, arg_types):
+        """Look up or create an overload from already normalized compiler types."""
 
         # get a type signature from the given argument types
         sig = warp._src.types.get_signature(arg_types, func_name=self.key)
@@ -10811,14 +10833,21 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
             # check for array type
             # - in forward passes, array types have to match
             # - in backward passes, indexed array gradients are regular arrays
-            if adjoint:
-                array_matches = isinstance(value, warp.array)
+            expected_family = warp.array if adjoint else warp._src.types.concrete_array_type(arg_type)
+            if type(value) is expected_family:
+                # Keep ordinary built-in arrays on the existing fast path.
+                value_family = expected_family
             else:
-                array_matches = type(value) is warp._src.types.concrete_array_type(arg_type)
+                try:
+                    value_family = warp._src.types._resolve_array_family(value)
+                except TypeError as e:
+                    adj = "adjoint " if adjoint else ""
+                    raise RuntimeError(f"Error launching kernel '{kernel.key}', {adj}argument '{arg_name}': {e}") from e
+            array_matches = value_family is expected_family
 
             if not array_matches:
                 # if a regular Warp array is required, try converting from __cuda_array_interface__ or __array_interface__
-                if warp._src.types.matches_array_class(arg_type, warp.array):
+                if value_family is None and warp._src.types.matches_array_class(arg_type, warp.array):
                     if device.is_cuda:
                         # check for __cuda_array_interface__
                         try:
@@ -10873,7 +10902,15 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
             if warp.config.launch_array_access_mode != warp.config.LaunchArrayAccessMode.RELAXED:
                 _validate_launch_array_access(kernel, arg_name, value, device)
 
-            return value.__ctype__()
+            if type(value) is expected_family:
+                return value.__ctype__()
+            try:
+                return warp._src.types._validate_array_subclass_descriptor(
+                    value, value.__ctype__(), expected_family, arg_type.ndim
+                )
+            except Exception as e:
+                adj = "adjoint " if adjoint else ""
+                raise RuntimeError(f"Error launching kernel '{kernel.key}', {adj}argument '{arg_name}': {e}") from e
 
     # Handle Texture1D, Texture2D and Texture3D types (when used as type annotations)
     elif arg_type is Texture1D:
@@ -11874,7 +11911,7 @@ def launch(
         # if it's a generic kernel, infer the required overload from the arguments
         if kernel.is_generic:
             fwd_types = kernel.infer_argument_types(fwd_args)
-            kernel = kernel.add_overload(fwd_types)
+            kernel = kernel._add_normalized_overload(fwd_types)
 
         # delay load modules, including new overload if needed
         module_exec = kernel.module.load(device, block_dim)

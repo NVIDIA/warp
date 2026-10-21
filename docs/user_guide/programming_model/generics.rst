@@ -57,6 +57,14 @@ When a generic kernel is being launched, Warp infers the concrete types from the
 * Vectors and matrices should be passed as Warp types rather than tuples or lists (e.g., ``wp.vec3f(1.0, 2.0, 3.0)`` or ``wp.mat22h([[1.0, 0.0], [0.0, 1.0]])``).
 * Warp arrays and structs can be passed normally.
 
+Runtime :ref:`array subclasses <array-subclasses>` are inferred as their native
+parent family, dtype, and dimensionality. A parent array and its subclasses
+share a specialization when those properties match; Python class names,
+metadata, and constructor parameters do not participate in the signature.
+Use the built-in family in annotations, such as ``wp.array[Any]``. The same
+normalization applies when initialized arrays are supplied as type descriptors
+to :func:`warp.overload`.
+
 .. _implicit_instantiation:
 
 Implicit Instantiation

@@ -239,15 +239,23 @@ class APICapture:
                     "APIC capture cannot record raw array ctype launch parameters; "
                     "use set_param_at_index() with a Warp array object or None instead."
                 )
+            original_ptr = original_value.ptr if original_value is not None else None
+            grad = getattr(original_value, "grad", None) if original_value is not None else None
+            grad_ptr = grad.ptr if grad is not None else None
+            if packed_value is not None and (
+                (packed_value.data or 0) != (original_ptr or 0) or (packed_value.grad or 0) != (grad_ptr or 0)
+            ):
+                raise RuntimeError(
+                    "APIC capture requires array descriptors to reference the array's own storage and gradient"
+                )
             data_offset = base_offset + array_t.data.offset
             grad_offset = base_offset + array_t.grad.offset
-            if original_value is not None and original_value.ptr:
+            if original_ptr:
                 region_id, byte_offset = self.track_array(original_value)
                 out.append(self._make_reloc(data_offset, APIC_RELOC_DATA_PTR, region_id, byte_offset))
             else:
                 out.append(self._make_reloc(data_offset, APIC_RELOC_NULL, -1, 0))
-            grad = getattr(original_value, "grad", None) if original_value is not None else None
-            if grad is not None and grad.ptr:
+            if grad_ptr:
                 grad_region_id, grad_byte_offset = self.track_array(grad)
                 out.append(self._make_reloc(grad_offset, APIC_RELOC_DATA_PTR, grad_region_id, grad_byte_offset))
             else:
