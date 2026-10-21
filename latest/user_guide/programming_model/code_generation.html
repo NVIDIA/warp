@@ -891,6 +891,9 @@ This can provide improved performance by avoiding branching and can be useful fo
 <span class="n">printf</span><span class="p">(</span><span class="n">var_9</span><span class="p">,</span><span class="w"> </span><span class="n">var_8</span><span class="p">);</span>
 </pre></div>
 </div>
+<p>A <code class="docutils literal notranslate"><span class="pre">continue</span></code> statement does not prevent an otherwise eligible loop from
+being unrolled, even when its condition depends on runtime values.
+Loops containing <code class="docutils literal notranslate"><span class="pre">break</span></code> are not normally unrolled.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>When a static <code class="docutils literal notranslate"><span class="pre">range()</span></code> loop is unrolled, its index leaks into the enclosing scope as a

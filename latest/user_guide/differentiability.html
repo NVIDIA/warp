@@ -1730,6 +1730,7 @@ meant to be computed in the loop and may be necessary for adjoint calculations a
 <p>We can fix the latter case by switching to a static loop (e.g. replacing <code class="docutils literal notranslate"><span class="pre">range(iters)</span></code> with <code class="docutils literal notranslate"><span class="pre">range(3)</span></code>). Static loops are
 automatically unrolled if the number of loop iterations is less than or equal to the <code class="docutils literal notranslate"><span class="pre">max_unroll</span></code> parameter set in <a class="reference internal" href="../api_reference/warp_config.html#module-warp.config" title="warp.config"><code class="xref py py-const docutils literal notranslate"><span class="pre">wp.config</span></code></a>
 or at the module level with <code class="docutils literal notranslate"><span class="pre">wp.set_module_options({&quot;max_unroll&quot;:</span> <span class="pre">N})</span></code>, and so intermediate values in the loop are individually stored.
+This also applies to loops containing <code class="docutils literal notranslate"><span class="pre">continue</span></code>.
 But in scenarios where this is not possible, you may consider allocating additional memory to store intermediate values in the dynamic loop.
 For example, we can fix the above case like so:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
