@@ -2481,7 +2481,8 @@ undefined behavior.</p></li>
 surface, the C <code class="docutils literal notranslate"><span class="pre">wp_apic_*</span></code> API, and the recorded operation set are all
 subject to change without a formal deprecation cycle. The writer and loader
 must use the same Warp version. The current writer and reader use format
-version 17.</p>
+version 18, which stores explicit element counts for handle relocations.
+Recapture graphs saved with earlier formats.</p>
 </div>
 <p>The APIC operation stream lets Warp serialize a supported captured graph to
 disk and load it back later from another Python program or a standalone C++
@@ -2900,6 +2901,15 @@ options, controls, and platform-specific notes.</p>
 <li><p>Only <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Mesh</span></code></a> object handles are serialized.
 <a class="reference internal" href="../api_reference/_generated/warp.Volume.html#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Volume</span></code></a>, <a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh" title="warp.Bvh"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Bvh</span></code></a>, and
 <a class="reference internal" href="../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.HashGrid</span></code></a> handles are not yet supported.</p></li>
+<li><p>A mesh ID is remapped to the reloaded mesh only when its type is
+<a class="reference internal" href="../api_reference/_generated/warp.handle.html#warp.handle" title="warp.handle"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.handle</span></code></a>:
+a <code class="docutils literal notranslate"><span class="pre">wp.handle</span></code> kernel parameter or struct field,
+or an element of an array whose dtype is <code class="docutils literal notranslate"><span class="pre">wp.handle</span></code> or a struct with <code class="docutils literal notranslate"><span class="pre">wp.handle</span></code> fields.
+A mesh ID passed as <code class="docutils literal notranslate"><span class="pre">wp.uint64</span></code> is saved as a plain integer
+and is not valid when the graph is loaded in another process.</p></li>
+<li><p>Mesh IDs written into an array by <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.fill_" title="warp.array.fill_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.fill_()</span></code></a> during a capture
+are not remapped when the graph is loaded.
+Write them with a kernel that takes the mesh as a <code class="docutils literal notranslate"><span class="pre">wp.handle</span></code> argument instead.</p></li>
 <li><p>Kernel arguments of type <code class="docutils literal notranslate"><span class="pre">wp.fabricarray</span></code> or <code class="docutils literal notranslate"><span class="pre">wp.indexedfabricarray</span></code>
 cannot yet be recorded by APIC. <code class="docutils literal notranslate"><span class="pre">wp.fixedarray</span></code> is a compiler-only stack
 array type and cannot be passed as a host kernel argument.</p></li>
@@ -2962,6 +2972,8 @@ freed, causing crashes and undefined behavior.</p>
 </div>
 <p>Meshes can be passed to kernels using their <code class="docutils literal notranslate"><span class="pre">id</span></code> attribute, which is a <code class="docutils literal notranslate"><span class="pre">uint64</span></code> value that uniquely identifies
 the mesh.
+To save a captured graph that uses a mesh with <a class="reference internal" href="../api_reference/_generated/warp.capture_save.html#warp.capture_save" title="warp.capture_save"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_save()</span></code></a>,
+type the ID as <a class="reference internal" href="../api_reference/_generated/warp.handle.html#warp.handle" title="warp.handle"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.handle</span></code></a> instead (see <a class="reference internal" href="#apic-save-load"><span class="std std-ref">API Capture: Saving and Loading Graphs</span></a>).
 Once inside a kernel, you can perform geometric queries against the mesh such as ray-casts or closest-point lookups.
 For example, the result object returned by <a class="reference internal" href="../language_reference/_generated/warp.mesh_query_point.html#warp._src.lang.mesh_query_point" title="warp._src.lang.mesh_query_point"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.mesh_query_point()</span></code></a> stores the
 hit face and barycentric coordinates, which can be passed to
