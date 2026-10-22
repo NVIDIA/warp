@@ -917,6 +917,15 @@ def _array_cast_kernel(
     dest[i] = dest.dtype(src[i])
 
 
+@wp.kernel(enable_backward=False)
+def _array_fill_kernel(dest: Any, value: Any):
+    dest[wp.tid()] = value
+
+
+# Declared up front so force_module_load can load it before a capture on CUDA drivers < 12.3.
+wp.overload(_array_fill_kernel, [wp.array[wp.handle], wp.handle])
+
+
 def array_cast(in_array: warp.array, out_array: warp.array, count: int | None = None):
     """Cast elements from one array to another array with a different data type.
 
