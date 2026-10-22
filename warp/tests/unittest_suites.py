@@ -242,7 +242,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_modules_lite import TestModuleLite
     from warp.tests.test_noise import TestNoise
     from warp.tests.test_operators import TestOperators
-    from warp.tests.test_options import TestOptions
+    from warp.tests.test_options import TestCpuKernelCacheKey, TestOptions
     from warp.tests.test_overwrite import TestOverwrite
     from warp.tests.test_print import TestPrint
     from warp.tests.test_quat import TestQuat
@@ -355,6 +355,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestCoreLibraryBinary,
         TestCpuBlockCodegen,
         TestCpuBlockDim,
+        TestCpuKernelCacheKey,
         TestCpuPrecompiledHeaders,
         TestCpuVectorization,
         TestCTypes,

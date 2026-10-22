@@ -5,14 +5,17 @@ import contextlib
 import importlib
 import io
 import runpy
+import subprocess
 import sys
 import tempfile
+import textwrap
 import types
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import patch
 
 import warp as wp
+from warp._src import context
 from warp._src.context import _get_caller_module_name
 from warp.tests.unittest_utils import *
 
@@ -241,9 +244,73 @@ def _run_cpu_llvm_options_kernel(kernel, x0: float = 0.5):
 devices = get_test_devices()
 
 
+class TestCpuKernelCacheKey(unittest.TestCase):
+    def test_matches_cpu_output_filename(self):
+        """Verify that cache keys end with the CPU object filename's target hash for native and generic targets."""
+        device = wp.get_device("cpu")
+        for flags in ("", "-march=native"):
+            with self.subTest(flags=flags):
+                module = _make_cpu_llvm_options_kernel(flags).module
+                output_name = module._get_compile_output_name(device)
+                target_hash = output_name.rsplit(".cpu", 1)[1].removesuffix(".o")
+                key = wp.get_cpu_kernel_cache_key(cpu_compiler_flags=flags)
+                self.assertTrue(key.endswith(f"-{target_hash}"), (key, output_name))
+
+    def test_includes_version_and_platform(self):
+        """Verify that cache keys change with the Warp version, operating system, and CPU architecture."""
+        base_key = wp.get_cpu_kernel_cache_key()
+        changes = {
+            "version": patch.object(wp.config, "version", "0.0.0"),
+            "os": patch("platform.system", return_value="Plan9"),
+            "arch": patch("warp._src.context.machine_architecture", return_value="riscv64"),
+        }
+        for name, change in changes.items():
+            with self.subTest(change=name), change:
+                self.assertNotEqual(wp.get_cpu_kernel_cache_key(), base_key)
+
+    def test_uses_configured_compiler_flags(self):
+        """Verify that cache keys honor global compiler flags and explicit overrides."""
+        native_key = wp.get_cpu_kernel_cache_key(cpu_compiler_flags="-march=native")
+        generic_key = wp.get_cpu_kernel_cache_key(cpu_compiler_flags="")
+        self.assertNotEqual(native_key, generic_key)
+
+        cases = (
+            (None, native_key),
+            ("", generic_key),
+            ("-march=native -mllvm=-inline-threshold=3000", native_key),
+        )
+        for flags, expected in cases:
+            with self.subTest(flags=flags), patch.object(wp.config, "cpu_compiler_flags", flags):
+                self.assertEqual(wp.get_cpu_kernel_cache_key(), expected)
+
+        with patch.object(wp.config, "cpu_compiler_flags", ""):
+            self.assertEqual(wp.get_cpu_kernel_cache_key(cpu_compiler_flags="-march=native"), native_key)
+        with patch.object(wp.config, "cpu_compiler_flags", None):
+            self.assertEqual(wp.get_cpu_kernel_cache_key(cpu_compiler_flags=""), generic_key)
+
+    def test_unavailable_cpu_compiler(self):
+        """Verify that querying the CPU cache key raises RuntimeError when LLVM is unavailable."""
+        with patch.object(context.runtime, "llvm", None):
+            with self.assertRaisesRegex(RuntimeError, "LLVM"):
+                wp.get_cpu_kernel_cache_key()
+
+    def test_initializes_and_matches_across_processes(self):
+        """Verify that querying the CPU cache key initializes Warp and returns consistent keys across processes."""
+        script = textwrap.dedent("""
+            import warp as wp
+            from warp._src import context
+
+            wp.config.log_level = wp.LOG_ERROR
+            assert context.runtime is None
+            print(wp.get_cpu_kernel_cache_key(cpu_compiler_flags="-march=native"))
+        """)
+        result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, check=False)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), wp.get_cpu_kernel_cache_key(cpu_compiler_flags="-march=native"))
+
+
 class TestOptions(unittest.TestCase):
     def test_cpu_llvm_option_forms_and_reset(self):
-        wp.init()
         with patch.object(wp.config, "cache_kernels", False), patch.object(wp.config, "cpu_compiler_flags", None):
             baseline_kernel = _make_cpu_llvm_options_kernel(None)
             baseline = _run_cpu_llvm_options_kernel(baseline_kernel)
@@ -259,7 +326,6 @@ class TestOptions(unittest.TestCase):
             self.assertEqual(_run_cpu_llvm_options_kernel(reset_kernel), baseline)
 
     def test_cpu_llvm_invalid_option_recovers(self):
-        wp.init()
         with patch.object(wp.config, "cache_kernels", False), patch.object(wp.config, "cpu_compiler_flags", None):
             baseline = _run_cpu_llvm_options_kernel(_make_cpu_llvm_options_kernel(None))
             invalid = _make_cpu_llvm_options_kernel("-mllvm=-warp-unknown-llvm-option")
@@ -269,7 +335,6 @@ class TestOptions(unittest.TestCase):
             self.assertEqual(_run_cpu_llvm_options_kernel(valid), baseline)
 
     def test_cpu_llvm_concurrent_options(self):
-        wp.init()
         with patch.object(wp.config, "cache_kernels", False), patch.object(wp.config, "cpu_compiler_flags", None):
             baseline_kernel = _make_cpu_llvm_options_kernel(None)
             baseline = _run_cpu_llvm_options_kernel(baseline_kernel)
@@ -326,49 +391,42 @@ class TestOptions(unittest.TestCase):
         module = wp.get_module(__name__)
         device = wp.get_device("cpu")
 
-        old_flags = module.options["cpu_compiler_flags"]
-        try:
-            # Pin the LLVM version and target triple in every block, so each comparison
-            # below differs in exactly one input regardless of the host running the test.
+        base_names = {}
+        for flags in ("", "-march=native"):
             with (
-                patch("warp._src.context._get_cpu_feature_set", return_value=frozenset({"sse2"})),
-                patch("warp._src.context._get_cpu_toolchain_version", return_value="22.1.8"),
-                patch("warp._src.context._get_cpu_target_triple", return_value="x86_64-unknown-linux-gnu"),
+                self.subTest(flags=flags),
+                patch.dict(module.options, {"cpu_compiler_flags": flags}),
+                patch("warp._src.context._get_cpu_feature_set", return_value=frozenset({"sse2"})) as cpu_features,
+                patch("warp._src.context._get_cpu_toolchain_version", return_value="22.1.8") as llvm_version,
+                patch(
+                    "warp._src.context._get_cpu_target_triple", return_value="x86_64-unknown-linux-gnu"
+                ) as target_triple,
             ):
-                module.options["cpu_compiler_flags"] = ""
-                name_llvm_22_1_8_portable = module._get_compile_output_name(device)
+                base_name = module._get_compile_output_name(device)
+                base_names[flags] = base_name
 
-                module.options["cpu_compiler_flags"] = "-march=native"
-                name_llvm_22_1_8_native = module._get_compile_output_name(device)
+                llvm_version.return_value = "22.1.9"
+                new_llvm_name = module._get_compile_output_name(device)
+                self.assertNotEqual(base_name, new_llvm_name)
 
-            with (
-                patch("warp._src.context._get_cpu_toolchain_version", return_value="22.1.9"),
-                patch("warp._src.context._get_cpu_target_triple", return_value="x86_64-unknown-linux-gnu"),
-            ):
-                module.options["cpu_compiler_flags"] = ""
-                name_llvm_22_1_9_portable = module._get_compile_output_name(device)
+                llvm_version.return_value = "22.1.8"
+                target_triple.return_value = "aarch64-unknown-linux-gnu"
+                new_triple_name = module._get_compile_output_name(device)
+                self.assertNotEqual(base_name, new_triple_name)
 
-            with (
-                patch("warp._src.context._get_cpu_toolchain_version", return_value="22.1.8"),
-                patch("warp._src.context._get_cpu_target_triple", return_value="aarch64-unknown-linux-gnu"),
-            ):
-                module.options["cpu_compiler_flags"] = ""
-                name_aarch64_portable = module._get_compile_output_name(device)
+                target_triple.return_value = "x86_64-unknown-linux-gnu"
+                cpu_features.return_value = frozenset({"sse2", "avx"})
+                new_isa_name = module._get_compile_output_name(device)
+                if flags:
+                    self.assertNotEqual(base_name, new_isa_name)
+                else:
+                    self.assertEqual(base_name, new_isa_name)
 
-            self.assertNotEqual(name_llvm_22_1_8_portable, name_llvm_22_1_8_native)
-            self.assertNotEqual(name_llvm_22_1_8_portable, name_llvm_22_1_9_portable)
-            self.assertNotEqual(name_llvm_22_1_8_portable, name_aarch64_portable)
+                for output_name in (base_name, new_llvm_name, new_triple_name, new_isa_name):
+                    self.assertEqual(output_name.count(".cpu"), 1)
+                    self.assertRegex(output_name, r"\.cpu[0-9a-f]{8}\.o$")
 
-            for output_name in (
-                name_llvm_22_1_8_portable,
-                name_llvm_22_1_8_native,
-                name_llvm_22_1_9_portable,
-                name_aarch64_portable,
-            ):
-                self.assertEqual(output_name.count(".cpu"), 1)
-                self.assertRegex(output_name, r"\.cpu[0-9a-f]{8}\.o$")
-        finally:
-            module.options["cpu_compiler_flags"] = old_flags
+        self.assertNotEqual(base_names[""], base_names["-march=native"])
 
     def test_cpu_isa_aot_warning(self):
         """Verify that compile_aot_module for CPU with -march=native must emit a portability warning."""

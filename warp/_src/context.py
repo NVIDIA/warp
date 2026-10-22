@@ -9187,6 +9187,66 @@ def is_cpu_available() -> bool:
     return runtime.llvm is not None
 
 
+def get_cpu_kernel_cache_key(*, cpu_compiler_flags: str | None = None) -> str:
+    """Return a key identifying the CPU compilation target for naming external kernel caches.
+
+    The key combines the Warp version, operating system, and CPU architecture
+    with the target hash from Warp's CPU object filenames.
+    That hash covers the LLVM version, plus the host CPU's ISA features
+    when the resolved flags contain ``-march=native``.
+    This function does not compile kernels or require CUDA.
+
+    For immutable CI caches, also include a hash of application dependencies and source.
+    Individual modules still use their own hashes for source and compilation options.
+    Do not parse the returned string; its format and value may change
+    between Warp releases as cache compatibility rules evolve.
+
+    Args:
+        cpu_compiler_flags: CPU compiler flags for the target to identify.
+            ``None`` inherits :attr:`warp.config.cpu_compiler_flags` at call time,
+            including its fallback to ``-march=native``.
+            An empty string selects a generic CPU target.
+            This argument does not change the compiler configuration.
+            For a cache that mixes native and generic modules, pass ``"-march=native"``.
+
+    Returns:
+        A nonempty string identifying the CPU compilation target,
+        such as ``"1.19.0-Linux-x86_64-1a2b3c4d"``.
+
+    Raises:
+        RuntimeError: The LLVM backend required for CPU compilation is unavailable.
+        RuntimeError: The CPU compiler flags include ``-fsanitize=address``,
+            but the ``warp-clang`` library was not built with AddressSanitizer.
+
+    Example:
+        Save and restore CPU kernels in a target-specific archive::
+
+            import shutil
+            from pathlib import Path
+
+            import warp as wp
+
+            archive = Path("kernel-caches") / f"warp-cpu-{wp.get_cpu_kernel_cache_key()}.zip"
+
+            if archive.exists():
+                shutil.unpack_archive(archive, wp.config.kernel_cache_dir)
+
+            # Run your CPU kernels here, then save the updated cache.
+            archive.parent.mkdir(parents=True, exist_ok=True)
+            shutil.make_archive(str(archive.with_suffix("")), "zip", wp.config.kernel_cache_dir)
+
+        Persist ``kernel-caches`` across runs. This example updates one archive
+        per target; append a dependency and source hash for immutable caches.
+    """
+    init()
+    if runtime.llvm is None:
+        raise RuntimeError("Cannot identify the CPU cache target because the LLVM backend is unavailable.")
+
+    resolved_flags = _resolve_cpu_compiler_flags(cpu_compiler_flags, warp.config.cpu_compiler_flags)
+    target_hash = _get_cpu_target_hash(resolved_flags)
+    return f"{warp.config.version}-{platform.system()}-{machine_architecture()}-{target_hash}"
+
+
 def is_cuda_available() -> bool:
     """Check whether CUDA execution is available.
 
