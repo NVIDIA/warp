@@ -2617,12 +2617,12 @@ class TestCodeGen(unittest.TestCase):
             def invalid_kernel():
                 return
 
-    def test_replace_static_expressions_replaces_call_in_ast(self):
-        """Replace resolvable ``wp.static`` calls in the abstract syntax tree.
+    def test_replace_static_expressions_substitutes_calls_in_view(self):
+        """Substitute resolvable ``wp.static`` calls into a per-adjoint view of the tree.
 
-        The walker mutates ``adj.tree`` by replacing each resolvable call with an
-        ``ast.Constant`` or, for a function result, an ``ast.Name``. This pins the
-        deferred-replacement application step.
+        Each call becomes an ``ast.Constant`` or, for a function result, an
+        ``ast.Name`` in ``adj.tree``, while the shared tree keeps the calls so
+        redeclarations resolve their own values from it.
         """
         _value_a = 7
         _value_b = 13
@@ -2632,20 +2632,63 @@ class TestCodeGen(unittest.TestCase):
             out[i] = wp.static(_value_a)
             out[i] += wp.static(_value_b)
 
+        def find_static_calls(tree):
+            return [
+                node
+                for node in ast.walk(tree)
+                if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "static"
+            ]
+
         adj = codegen.Adjoint(_kernel_with_two_statics)
 
-        # No wp.static Calls should remain in the tree after replacement.
-        remaining_static_calls = [
-            node
-            for node in ast.walk(adj.tree)
-            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "static"
-        ]
-        self.assertEqual(remaining_static_calls, [])
+        # No wp.static Calls should remain in the adjoint's tree after replacement.
+        self.assertEqual(find_static_calls(adj.tree), [])
 
         # Both constants should appear as ast.Constant nodes in the tree.
         constants = {node.value for node in ast.walk(adj.tree) if isinstance(node, ast.Constant)}
         self.assertIn(_value_a, constants)
         self.assertIn(_value_b, constants)
+
+        # The shared pristine tree is untouched and still holds the calls.
+        shared = codegen._shared_source_for_code(_kernel_with_two_statics.__code__)
+        self.assertIsNot(adj.tree, shared.tree)
+        self.assertEqual(len(find_static_calls(shared.tree)), 2)
+
+        # Only the paths to replaced calls are copied; untouched statements are aliased.
+        self.assertIs(adj.tree.body[0].body[0], shared.tree.body[0].body[0])  # i = wp.tid()
+        self.assertIsNot(adj.tree.body[0].body[1], shared.tree.body[0].body[1])
+
+        # The view no longer matches the shared tree's derived caches.
+        self.assertIsNone(adj._shared_source)
+
+    def test_substitute_nodes_one_frame_per_level(self):
+        """Copy a deep path to a replacement with one stack frame per tree level."""
+        depth = 2000
+        leaf = ast.Name("x", ast.Load())
+        root = leaf
+        ancestors = set()
+        for _ in range(depth):
+            root = ast.Call(func=ast.Name("f", ast.Load()), args=[root], keywords=[])
+            ancestors.add(root)
+
+        stack_depth = 0
+        frame = sys._getframe()
+        while frame is not None:
+            stack_depth += 1
+            frame = frame.f_back
+        limit = sys.getrecursionlimit()
+        sys.setrecursionlimit(stack_depth + depth + 100)
+        try:
+            view = codegen._substitute_nodes(root, {leaf: ast.Constant(1)}, ancestors)
+        finally:
+            sys.setrecursionlimit(limit)
+
+        original = root
+        for _ in range(depth):
+            self.assertIsNot(view, original)
+            view, original = view.args[0], original.args[0]
+        self.assertEqual(view.value, 1)
+        self.assertIs(original, leaf)
 
     def test_replace_static_expressions_defers_loop_var_reference(self):
         """Defer ``wp.static`` calls that reference a loop variable.

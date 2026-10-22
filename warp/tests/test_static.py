@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import ast
 import importlib
 import tempfile
 import unittest
@@ -12,6 +13,7 @@ import warp as wp
 from warp.tests.unittest_utils import *
 
 global_variable = 3
+_reused_call_i = 10  # resolved eagerly outside the loop that reuses the name
 
 
 def load_code_as_module(code, name):
@@ -755,7 +757,308 @@ def test_static_loop_variable_not_shadowed_by_global(test, device):
 devices = get_test_devices()
 
 
+def test_nested_static_single_evaluation(test, _):
+    """A wp.static nested inside a resolved wp.static must not be evaluated twice."""
+    evals = []
+
+    def inner():
+        evals.append(1)
+        return 3.0
+
+    @wp.kernel(module="unique")
+    def k(a: wp.array[wp.float32]):
+        tid = wp.tid()
+        a[tid] = wp.static(1.0 + wp.static(inner()))
+
+    test.assertEqual(len(evals), 1)
+    test.assertIn(4.0, k.adj.resolved_static_expressions.values())
+
+
+def test_static_failure_divergence_on_shared_tree(test, _):
+    """Resolve statics independently across adjoints sharing one tree.
+
+    One instance may resolve while another raises its own evaluation error at declaration.
+    """
+
+    def make(d):
+        @wp.kernel(module="unique")
+        def k(out: wp.array[wp.float32]):
+            tid = wp.tid()
+            out[tid] = wp.static(d["v"])
+
+        return k
+
+    k_ok = make({"v": 5.0})
+    test.assertFalse(k_ok.adj.has_unresolved_static_expressions)
+    test.assertIn(5.0, k_ok.adj.resolved_static_expressions.values())
+    with test.assertRaises(RuntimeError):
+        make({})
+
+
+def test_static_value_isolation_across_shared_tree(test, device):
+    """Redeclarations sharing one code object must bake their own wp.static values."""
+
+    def make(v):
+        @wp.kernel(module="unique")
+        def k(a: wp.array[wp.float32]):
+            tid = wp.tid()
+            a[tid] = wp.static(v * 2.0)
+
+        return k
+
+    k1, k2 = make(1.0), make(2.0)
+    test.assertIsNot(k1, k2)
+    a = wp.zeros(2, dtype=float, device=device)
+    wp.launch(k1, dim=2, inputs=[a], device=device)
+    test.assertEqual(a.numpy()[0], 2.0)
+    wp.launch(k2, dim=2, inputs=[a], device=device)
+    test.assertEqual(a.numpy()[0], 4.0)
+    test.assertIs(make(1.0), k1)
+
+
+def test_static_deferred_outer_resolvable_inner(test, device):
+    """Resolve an inner static at declaration and its deferred outer static per unroll."""
+
+    @wp.kernel(module="unique")
+    def k(out: wp.array[wp.float32]):
+        tid = wp.tid()
+        s = float(0.0)
+        for i in range(2):
+            s += wp.static(float(i) + wp.static(1.0 + 1.0))
+        out[tid] = s
+
+    test.assertTrue(k.adj.has_unresolved_static_expressions)
+    out = wp.zeros(2, dtype=float, device=device)
+    wp.launch(k, dim=2, inputs=[out], device=device)
+    test.assertEqual(out.numpy()[0], 5.0)
+
+
 class TestStatic(unittest.TestCase):
+    def test_static_dead_branch_elimination(self):
+        """Eliminate a statically false branch before codegen.
+
+        The branch may contain code that cannot compile; flipping the condition must surface the error.
+        """
+
+        def make(flag):
+            @wp.kernel(module="unique")
+            def k(a: wp.array[wp.float32]):
+                tid = wp.tid()
+                if wp.static(flag):
+                    a[tid] = undefined_helper(a[tid])
+                else:
+                    a[tid] = 7.0
+
+            return k
+
+        a = wp.zeros(2, dtype=float, device="cpu")
+        wp.launch(make(False), dim=2, inputs=[a], device="cpu")
+        self.assertEqual(a.numpy()[0], 7.0)
+        with self.assertRaises(KeyError):
+            wp.launch(make(True), dim=2, inputs=[a], device="cpu")
+
+    def test_static_loop_bound_emits_no_dead_constant(self):
+        """Leave no dead constant variable for a static range bound."""
+
+        @wp.kernel(module="unique")
+        def k_static(out: wp.array[wp.float32]):
+            tid = wp.tid()
+            s = float(0.0)
+            for _i in range(wp.static(1 + 2)):
+                s += 1.0
+            out[tid] = s
+
+        @wp.kernel(module="unique")
+        def k_plain(out: wp.array[wp.float32]):
+            tid = wp.tid()
+            s = float(0.0)
+            for _i in range(3):
+                s += 1.0
+            out[tid] = s
+
+        warp._src.context.ModuleBuilder(k_static.module, k_static.module.options)
+        warp._src.context.ModuleBuilder(k_plain.module, k_plain.module.options)
+        self.assertEqual(len(k_static.adj.variables), len(k_plain.adj.variables))
+
+    def test_static_duplicate_expression_per_node_values(self):
+        """Two occurrences of identical static source text each bake their own value."""
+        counter = {"n": 0.0}
+
+        def bump():
+            counter["n"] += 1.0
+            return counter["n"]
+
+        @wp.kernel(module="unique")
+        def k(out: wp.array[wp.float32]):
+            tid = wp.tid()
+            x = wp.static(bump())
+            y = wp.static(bump())
+            out[tid] = x * 10.0 + y
+
+        out = wp.zeros(2, dtype=float, device="cpu")
+        wp.launch(k, dim=2, inputs=[out], device="cpu")
+        self.assertEqual(out.numpy()[0], 12.0)
+
+    def test_static_side_effecting_attribute_evaluated_once(self):
+        """Evaluate a side-effecting static argument only once.
+
+        Substitution removes the argument subtree, so reference scanning cannot re-trigger the getter.
+        """
+
+        class OneShotBox:
+            def __init__(self):
+                self.read_count = 0
+
+            @property
+            def value(self):
+                self.read_count += 1
+                if self.read_count > 1:
+                    raise RuntimeError("value may only be read once")
+                return 3
+
+        box = OneShotBox()
+
+        @wp.kernel(module="unique")
+        def k(out: wp.array[wp.int32]):
+            out[0] = wp.static(box.value)
+
+        self.assertEqual(box.read_count, 1)
+        out = wp.zeros(1, dtype=wp.int32, device="cpu")
+        wp.launch(k, dim=1, inputs=[out], device="cpu")
+        self.assertEqual(out.numpy()[0], 3)
+
+    def test_static_alias_rebinding_after_declaration(self):
+        """Keep a resolved static's value when the ``wp.static`` alias is rebound before codegen."""
+        global _static_alias
+        _static_alias = wp.static
+        self.addCleanup(globals().pop, "_static_alias", None)
+
+        @wp.kernel(module="unique")
+        def k(out: wp.array[wp.int32]):
+            out[0] = _static_alias(7)
+
+        def replacement(value):
+            return value
+
+        _static_alias = replacement
+        out = wp.zeros(1, dtype=wp.int32, device="cpu")
+        wp.launch(k, dim=1, inputs=[out], device="cpu")
+        self.assertEqual(out.numpy()[0], 7)
+
+    def test_static_bool_range_bound(self):
+        """A static bool keeps its literal classification as a range() bound."""
+
+        @wp.kernel(module="unique")
+        def k(out: wp.array[wp.int32]):
+            count = int(0)
+            for _ in range(wp.static(True)):
+                count += 1
+            out[0] = count
+
+        out = wp.zeros(1, dtype=wp.int32, device="cpu")
+        wp.launch(k, dim=1, inputs=[out], device="cpu")
+        self.assertEqual(out.numpy()[0], 1)
+
+    def test_nested_static_with_break(self):
+        """Keep the unroll scan from treating a substituted nested static as unresolved."""
+
+        @wp.kernel(module="unique")
+        def k(out: wp.array[wp.int32]):
+            for i in range(2):
+                out[i] = wp.static(1 + wp.static(2))
+                break
+
+        out = wp.zeros(2, dtype=wp.int32, device="cpu")
+        wp.launch(k, dim=1, inputs=[out], device="cpu")
+        np.testing.assert_array_equal(out.numpy(), [3, 0])
+
+    def test_static_unary_minus_literal_fold(self):
+        """Keep the constant fast path for a substituted static behind unary minus."""
+
+        @wp.kernel(module="unique")
+        def k_static(out: wp.array[wp.int64]):
+            out[0] = wp.int64(-wp.static(2**31))
+
+        @wp.kernel(module="unique")
+        def k_literal(out: wp.array[wp.int64]):
+            out[0] = wp.int64(-2147483648)
+
+        out = wp.zeros(1, dtype=wp.int64, device="cpu")
+        wp.launch(k_static, dim=1, inputs=[out], device="cpu")
+        self.assertEqual(out.numpy()[0], -(2**31))
+        # A cached-binary load skips codegen, so build explicitly before comparing.
+        warp._src.context.ModuleBuilder(k_static.module, k_static.module.options)
+        warp._src.context.ModuleBuilder(k_literal.module, k_literal.module.options)
+        self.assertEqual(len(k_static.adj.variables), len(k_literal.adj.variables))
+
+    def test_static_transformer_reused_call_deferred_and_eager(self):
+        """Resolve a transformer-reused static call per occurrence, deferred inside a loop and eager outside."""
+
+        def raw(out: wp.array[int]):
+            for _reused_call_i in range(2):
+                out[_reused_call_i] = wp.static(_reused_call_i + 1) + wp.static(0)
+            out[2] = 0
+
+        class ReuseCall(ast.NodeTransformer):
+            def visit_FunctionDef(self, node):
+                node.body[1].value = node.body[0].body[0].value.left
+                return node
+
+        kernel = wp.Kernel(
+            raw, module=wp.get_module(f"{__name__}_reused_call_deferred"), code_transformers=[ReuseCall()]
+        )
+        out = wp.zeros(3, dtype=int, device="cpu")
+        wp.launch(kernel, dim=1, inputs=[out], device="cpu")
+        np.testing.assert_array_equal(out.numpy(), [1, 2, 11])
+
+    def test_static_transformer_reused_call_eager(self):
+        """Bake each eager occurrence of a transformer-reused static call with its own value."""
+        counter = {"n": 0.0}
+
+        def bump():
+            counter["n"] += 1.0
+            return counter["n"]
+
+        def raw(out: wp.array[float]):
+            x = wp.static(bump())
+            y = 0.0
+            out[0] = 10.0 * x + y
+
+        class ReuseCall(ast.NodeTransformer):
+            def visit_FunctionDef(self, node):
+                node.body[1].value = node.body[0].value
+                return node
+
+        kernel = wp.Kernel(raw, module=wp.get_module(f"{__name__}_reused_call_eager"), code_transformers=[ReuseCall()])
+        out = wp.zeros(1, dtype=float, device="cpu")
+        wp.launch(kernel, dim=1, inputs=[out], device="cpu")
+        self.assertEqual(out.numpy()[0], 12.0)
+
+    def test_static_transformer_callee_attribute_kept(self):
+        """Keep a ``warp_func`` that a transformer binds to a callee enclosing a static expression."""
+
+        @wp.func
+        def double(value: float):
+            return 2.0 * value
+
+        table = [double]
+        index = 0
+
+        def raw(out: wp.array[float]):
+            out[0] = table[wp.static(index)](3.0)
+
+        class BindCallee(ast.NodeTransformer):
+            def visit_Call(self, node):
+                self.generic_visit(node)
+                if isinstance(node.func, ast.Subscript):
+                    node.func.warp_func = table[index]
+                return node
+
+        kernel = wp.Kernel(raw, module=wp.get_module(f"{__name__}_callee_attribute"), code_transformers=[BindCallee()])
+        out = wp.zeros(1, dtype=float, device="cpu")
+        wp.launch(kernel, dim=1, inputs=[out], device="cpu")
+        self.assertEqual(out.numpy()[0], 6.0)
+
     def test_static_python_call(self):
         """Call ``wp.static()`` from a Python context."""
         self.assertEqual(static_global_variable_func(), 5)
@@ -779,6 +1082,27 @@ add_function_test(
 )
 add_function_test(TestStatic, "test_static_if_else_elif", test_static_if_else_elif, devices=devices)
 
+add_function_test(
+    TestStatic,
+    "test_static_value_isolation_across_shared_tree",
+    test_static_value_isolation_across_shared_tree,
+    devices=devices,
+)
+add_function_test(
+    TestStatic,
+    "test_static_deferred_outer_resolvable_inner",
+    test_static_deferred_outer_resolvable_inner,
+    devices=devices,
+)
+add_function_test(
+    TestStatic, "test_nested_static_single_evaluation", test_nested_static_single_evaluation, devices=None
+)
+add_function_test(
+    TestStatic,
+    "test_static_failure_divergence_on_shared_tree",
+    test_static_failure_divergence_on_shared_tree,
+    devices=None,
+)
 add_function_test(TestStatic, "test_static_constant_hash", test_static_constant_hash, devices=None)
 add_function_test(TestStatic, "test_static_function_hash", test_static_function_hash, devices=None)
 add_function_test(TestStatic, "test_static_builtin_function_hash", test_static_builtin_function_hash, devices=None)

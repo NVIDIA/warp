@@ -370,6 +370,42 @@ class StructInstance:
         return tuple(npvalue)
 
 
+def _substitute_nodes(root, replacements, ancestors):
+    """Return a copy of ``root`` with ``replacements`` (node -> new node) applied.
+
+    Only ``ancestors`` (the nodes on the paths to replaced nodes) are copied;
+    every other subtree is aliased from the original, so substituting into a
+    shared tree is cheap and never mutates it. Keying by node identity requires
+    a proper tree, as produced by ``ast.parse``.
+    """
+
+    def rebuild(node):
+        new = replacements.get(node)
+        if new is not None:
+            return new
+        if node not in ancestors:
+            return node
+        fields = {}
+        for name, value in ast.iter_fields(node):
+            if isinstance(value, list):
+                # A loop, not a comprehension: comprehensions add a frame per level before Python 3.12.
+                items = []
+                for item in value:
+                    items.append(rebuild(item) if isinstance(item, ast.AST) else item)
+                fields[name] = items
+            elif isinstance(value, ast.AST):
+                fields[name] = rebuild(value)
+            else:
+                fields[name] = value
+        clone = type(node)(**fields)
+        for attr in node._attributes:
+            if hasattr(node, attr):
+                setattr(clone, attr, getattr(node, attr))
+        return clone
+
+    return rebuild(root)
+
+
 _IDENTIFIER_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\Z")
 
 
@@ -1917,8 +1953,10 @@ class _SharedFunctionSource:
 
     Source, tree, and reference nodes are pure functions of the code object;
     only reference *resolution* is rebind-sensitive and stays per-adjoint.
-    Sharing requires an unmutated tree, so transformers, explicit ``source=``,
-    and ``wp.static`` (which rewrites the tree) exclude an adjoint.
+    ``wp.static`` substitution never mutates this tree: it produces a
+    per-adjoint view (see ``replace_static_expressions``). Sharing requires
+    an unmutated tree, so transformers and explicit ``source=`` exclude an
+    adjoint.
     """
 
     __slots__ = ("assigned_name_ids", "assignment_call_metadata", "fun_lineno", "reference_nodes", "source", "tree")
@@ -1999,9 +2037,7 @@ class Adjoint:
                 adj._shared_source = shared
             else:
                 adj.source, adj.fun_lineno, adj.tree = adj.extract_function_source(func)
-                # The substring check conservatively matches the replace_static_expressions
-                # gate below; any wp.static kernel rewrites its tree and must not share it.
-                if code is not None and not transformers and "static" not in adj.source:
+                if code is not None and not transformers:
                     adj._shared_source = _SharedFunctionSource(adj.source, adj.fun_lineno, adj.tree)
                     _store_shared_source(code, adj._shared_source)
         else:
@@ -3766,7 +3802,7 @@ class Adjoint:
 
     def emit_Name(adj, node):
         # a static expression that resolved to a Warp function is rewritten to an `__warp_func__`
-        # Name node carrying the function on `warp_func` (see StaticExpressionReplacer). Return it
+        # Name node carrying the function on `warp_func` (see replace_static_expressions). Return it
         # directly so it can be bound to a local, e.g. `func = wp.static(...)`.
         if hasattr(node, "warp_func"):
             return node.warp_func
@@ -6928,14 +6964,26 @@ class Adjoint:
         # ``visit_Call`` (where ``None`` means "no replacement, recurse normally").
         # ``_walk_children`` replaces ``generic_visit``: same DFS over
         # ``node._fields``, but dispatching Calls/Fors inline by class identity
-        # (no ``'visit_' + cls.__name__`` + ``getattr``) and mutating list
-        # fields in place only when a replacement actually occurred.
-        # Replacements are collected as ``(container, key, new_node)`` and
-        # applied after the walk so the walk sees an unmutated tree.
+        # (no ``'visit_' + cls.__name__`` + ``getattr``) and never descending
+        # into a replaced call.
+        # Replacements are collected and applied after the walk. A shared tree
+        # is never mutated: it gets a per-adjoint *view* instead (see
+        # ``_substitute_nodes``).
         loop_vars = {}  # was: self.loop_vars
-        replacements = []  # (container, key, new_node); applied after the walk
+        replacements = []  # (container, key, old_node, new_node); applied after the walk
+        path = []  # nodes enclosing the one being walked
+        ancestors = set()  # nodes on the paths to replacements; only these are copied
+
+        def record(container, key, old_node, new_node):
+            replacements.append((container, key, old_node, new_node))
+            # A node already recorded implies all of its ancestors are too.
+            for parent in reversed(path):
+                if parent in ancestors:
+                    break
+                ancestors.add(parent)
 
         def _walk_children(node):
+            path.append(node)
             for field_name in node._fields:
                 value = getattr(node, field_name, None)
                 if value is None:
@@ -6948,7 +6996,7 @@ class Adjoint:
                         if cls is ast.Call:
                             result = visit_Call(child)
                             if result is not None:
-                                replacements.append((value, i, result))
+                                record(value, i, child, result)
                                 continue
                         elif cls is ast.For:
                             visit_For(child)
@@ -6959,12 +7007,13 @@ class Adjoint:
                     if cls is ast.Call:
                         result = visit_Call(value)
                         if result is not None:
-                            replacements.append((node, field_name, result))
+                            record(node, field_name, value, result)
                             continue
                     elif cls is ast.For:
                         visit_For(value)
                         continue
                     _walk_children(value)
+            path.pop()
 
         def visit_For(node):
             # Track loop variable while visiting loop body (simple names only;
@@ -7021,14 +7070,25 @@ class Adjoint:
 
             return None  # was: return self.generic_visit(node)
 
-        # Walk the tree, then apply replacements in one pass. ``adj.tree`` is
+        # Walk the tree, then substitute in one pass. ``adj.tree`` is
         # always a Module, so we go straight into ``_walk_children``.
         _walk_children(adj.tree)
-        for container, key, new_node in replacements:
-            if isinstance(container, list):
-                container[key] = new_node
-            else:
-                setattr(container, key, new_node)
+        if not replacements:
+            return
+        if adj._shared_source is None:
+            # A private tree may come from a transformer that reuses nodes or attaches
+            # custom attributes, which a view keyed by node identity can't reproduce.
+            for container, key, _old_node, new_node in replacements:
+                if isinstance(container, list):
+                    container[key] = new_node
+                else:
+                    setattr(container, key, new_node)
+        else:
+            adj.tree = _substitute_nodes(
+                adj.tree, {old_node: new_node for _, _, old_node, new_node in replacements}, ancestors
+            )
+            # The view's nodes differ from the shared tree's, so caches derived from it can't be shared.
+            adj._shared_source = None
 
     # Evaluates a static expression that does not depend on runtime values
     # if eval_types is True, try resolving the path using evaluated type information as well
@@ -7118,11 +7178,12 @@ class Adjoint:
         before the kernel is first built.
 
         This cache assumes ``adj.tree`` is structurally final before the first call; adjoints
-        whose tree is mutated (transformers, ``wp.static`` rewriting) never share it. Any new
+        whose tree is mutated (transformers) never share it, and ``wp.static`` substitution
+        swaps in a per-adjoint view and detaches the adjoint from the shared entry. Any new
         code that mutates ``adj.tree`` afterwards must reset ``adj._reference_nodes`` -- and
         ``adj._shared_source.reference_nodes``, ``assigned_name_ids``, and
         ``assignment_call_metadata`` when set, which invalidates every adjoint sharing the tree
-        -- or better, exclude the adjoint from sharing like the cases above.
+        -- or better, swap in a fresh tree like the static view does.
         """
         if adj._reference_nodes is None:
             shared = adj._shared_source
