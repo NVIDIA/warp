@@ -322,15 +322,18 @@ class TestOptions(unittest.TestCase):
         self.assertFalse(main_module.options["enable_backward"])
 
     def test_cpu_target_output_name_differentiation(self):
-        """Verify that CPU output filenames must distinguish LLVM and native ISA targets."""
+        """Verify that CPU output filenames must distinguish LLVM versions, target triples, and native ISA targets."""
         module = wp.get_module(__name__)
         device = wp.get_device("cpu")
 
         old_flags = module.options["cpu_compiler_flags"]
         try:
+            # Pin the LLVM version and target triple in every block, so each comparison
+            # below differs in exactly one input regardless of the host running the test.
             with (
                 patch("warp._src.context._get_cpu_feature_set", return_value=frozenset({"sse2"})),
                 patch("warp._src.context._get_cpu_toolchain_version", return_value="22.1.8"),
+                patch("warp._src.context._get_cpu_target_triple", return_value="x86_64-unknown-linux-gnu"),
             ):
                 module.options["cpu_compiler_flags"] = ""
                 name_llvm_22_1_8_portable = module._get_compile_output_name(device)
@@ -338,17 +341,29 @@ class TestOptions(unittest.TestCase):
                 module.options["cpu_compiler_flags"] = "-march=native"
                 name_llvm_22_1_8_native = module._get_compile_output_name(device)
 
-            with patch("warp._src.context._get_cpu_toolchain_version", return_value="22.1.9"):
+            with (
+                patch("warp._src.context._get_cpu_toolchain_version", return_value="22.1.9"),
+                patch("warp._src.context._get_cpu_target_triple", return_value="x86_64-unknown-linux-gnu"),
+            ):
                 module.options["cpu_compiler_flags"] = ""
                 name_llvm_22_1_9_portable = module._get_compile_output_name(device)
 
+            with (
+                patch("warp._src.context._get_cpu_toolchain_version", return_value="22.1.8"),
+                patch("warp._src.context._get_cpu_target_triple", return_value="aarch64-unknown-linux-gnu"),
+            ):
+                module.options["cpu_compiler_flags"] = ""
+                name_aarch64_portable = module._get_compile_output_name(device)
+
             self.assertNotEqual(name_llvm_22_1_8_portable, name_llvm_22_1_8_native)
             self.assertNotEqual(name_llvm_22_1_8_portable, name_llvm_22_1_9_portable)
+            self.assertNotEqual(name_llvm_22_1_8_portable, name_aarch64_portable)
 
             for output_name in (
                 name_llvm_22_1_8_portable,
                 name_llvm_22_1_8_native,
                 name_llvm_22_1_9_portable,
+                name_aarch64_portable,
             ):
                 self.assertEqual(output_name.count(".cpu"), 1)
                 self.assertRegex(output_name, r"\.cpu[0-9a-f]{8}\.o$")

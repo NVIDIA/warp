@@ -3076,6 +3076,27 @@ def _get_cpu_toolchain_version() -> str:
     return _cpu_toolchain_version_cache
 
 
+# Cached CPU target triple, computed once after the native library is loaded.
+_cpu_target_triple_cache: str | None = None
+
+
+def _get_cpu_target_triple() -> str:
+    """Return the LLVM target triple used for CPU code generation, or an empty string if unavailable.
+
+    The triple is cached only after the LLVM native library is available,
+    allowing a successful retry after initialization.
+    """
+    global _cpu_target_triple_cache
+    if _cpu_target_triple_cache is not None:
+        return _cpu_target_triple_cache
+
+    if runtime is None or runtime.llvm is None:
+        return ""
+
+    _cpu_target_triple_cache = runtime.llvm.wp_get_cpu_target_triple().decode("utf-8")
+    return _cpu_target_triple_cache
+
+
 def _get_cpu_target_hash(resolved_flags: str) -> str:
     """Return a short hash identifying the CPU compilation target.
 
@@ -3083,15 +3104,17 @@ def _get_cpu_target_hash(resolved_flags: str) -> str:
         resolved_flags: Resolved CPU compiler flags for the module.
 
     Returns:
-        An eight-character hash of the LLVM version and, for
-        ``-march=native``, host ISA features. Returns an empty string when
+        An eight-character hash of the LLVM version, the target triple, and,
+        for ``-march=native``, host ISA features. Returns an empty string when
         the LLVM native library is unavailable.
     """
     llvm_version = _get_cpu_toolchain_version()
     if not llvm_version:
         return ""
 
-    identity = ["warp-cpu-target-v1", f"llvm:{llvm_version}"]
+    # The triple keeps objects for different architectures and operating systems
+    # apart in a shared cache. Without -march=native, nothing else here depends on the host.
+    identity = ["warp-cpu-target-v1", f"llvm:{llvm_version}", f"triple:{_get_cpu_target_triple()}"]
     if _uses_march_native(resolved_flags):
         features = ",".join(sorted(_get_cpu_feature_set()))
         identity.append(f"isa:{features}")
@@ -4665,9 +4688,10 @@ class Module:
         ``wp___main___0340cd1.sm90a.cubin`` when an arch suffix is active.
         It should be used to form a path.
 
-        For CPU targets, a short hash of the LLVM version is included in the
-        filename. When compiling with ``-march=native``, the hash also includes
-        the host CPU's ISA features (e.g. ``wp___main___0340cd1.cpu1a2b3c4d.o``).
+        For CPU targets, a short hash of the LLVM version and target triple is
+        included in the filename. When compiling with ``-march=native``, the hash
+        also includes the host CPU's ISA features (e.g.
+        ``wp___main___0340cd1.cpu1a2b3c4d.o``).
         This distinguishes incompatible CPU objects without affecting the shared
         module directory and its CUDA caches.
         """
@@ -6798,6 +6822,9 @@ class Runtime:
 
             self.llvm.wp_llvm_version.argtypes = []
             self.llvm.wp_llvm_version.restype = ctypes.c_char_p
+
+            self.llvm.wp_get_cpu_target_triple.argtypes = []
+            self.llvm.wp_get_cpu_target_triple.restype = ctypes.c_char_p
 
             self.llvm.wp_get_host_cpu_name.argtypes = []
             self.llvm.wp_get_host_cpu_name.restype = ctypes.c_char_p

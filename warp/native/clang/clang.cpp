@@ -1383,6 +1383,8 @@ WP_API const char* wp_llvm_version()
     return version;
 }
 
+WP_API const char* wp_get_cpu_target_triple() { return target_triple; }
+
 WP_API const char* wp_get_host_cpu_name() { return get_host_cpu_info().name.c_str(); }
 
 WP_API const char* wp_get_host_cpu_features()
