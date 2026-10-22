@@ -962,19 +962,18 @@ inline CUDA_CALLABLE void adj_quat_to_axis_angle(
     if (l > Type(0)) {
         Type l_sq = l * l;
         Type l_inv = Type(1) / l;
-        Type l_inv_sq = l_inv * l_inv;
-        Type l_inv_cu = l_inv_sq * l_inv;
+        vec_t<3, Type> u = vec_t<3, Type>(q.x, q.y, q.z) * l_inv;
 
-        Type C = flip * l_inv_cu;
-        ax_qx = C * (q.y * q.y + q.z * q.z);
-        ax_qy = -C * q.x * q.y;
-        ax_qz = -C * q.x * q.z;
-        ay_qx = -C * q.y * q.x;
-        ay_qy = C * (q.x * q.x + q.z * q.z);
-        ay_qz = -C * q.y * q.z;
-        az_qx = -C * q.z * q.x;
-        az_qy = -C * q.z * q.y;
-        az_qz = C * (q.x * q.x + q.y * q.y);
+        Type C = flip * l_inv;
+        ax_qx = C * (u[1] * u[1] + u[2] * u[2]);
+        ax_qy = -C * u[0] * u[1];
+        ax_qz = -C * u[0] * u[2];
+        ay_qx = -C * u[1] * u[0];
+        ay_qy = C * (u[0] * u[0] + u[2] * u[2]);
+        ay_qz = -C * u[1] * u[2];
+        az_qx = -C * u[2] * u[0];
+        az_qy = -C * u[2] * u[1];
+        az_qz = C * (u[0] * u[0] + u[1] * u[1]);
 
         Type D = Type(2) * flip / (l_sq + q.w * q.w);
         t_qx = D * l_inv * q.x * q.w;
