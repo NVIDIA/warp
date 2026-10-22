@@ -459,6 +459,8 @@ support will be added in Warp 1.11.0).
 When a Python version reaches end-of-life, we follow the deprecation timeline described above
 before dropping support, allowing users time to migrate.
 
+Python 3.10 is deprecated as of Warp 1.19 and will be removed in Warp 1.20.
+
 Dependencies
 ~~~~~~~~~~~~
 
