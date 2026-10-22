@@ -1,0 +1,29 @@
+﻿warp.norm\_huber
+================
+
+.. currentmodule:: warp._src.lang
+
+.. function:: norm_huber(v: Any, delta: float = 1.0) -> float
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+      :source: https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/math.py#L68-L88
+
+   Compute the Huber norm of a vector v with a given delta.
+   
+   .. math::
+       H(v) = \begin{cases} \frac{1}{2} \|v\|^2 & \text{if } \|v\| \leq \delta \\ \delta(\|v\| - \frac{1}{2}\delta) & \text{otherwise} \end{cases}
+   
+   .. image:: /img/norm_huber.svg
+       :align: center
+   
+   :param v: The vector to compute the Huber norm of.
+   :type v: Vector[Float, Any]
+   :param delta: The threshold value.
+   :type delta: float
+   
+   :returns: The Huber norm of the vector.
+   :rtype: float
+   

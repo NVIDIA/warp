@@ -1,0 +1,6 @@
+﻿warp.utils.graph\_coloring\_get\_groups
+=======================================
+
+.. currentmodule:: warp.utils
+
+.. autofunction:: graph_coloring_get_groups

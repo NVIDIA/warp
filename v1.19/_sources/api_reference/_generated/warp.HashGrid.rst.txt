@@ -1,0 +1,19 @@
+﻿warp.HashGrid
+=============
+
+.. currentmodule:: warp
+
+.. autoclass:: HashGrid
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~HashGrid.build
+      ~HashGrid.reserve
+   
+   
+   
+   
+   

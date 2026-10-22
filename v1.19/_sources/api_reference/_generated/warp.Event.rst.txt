@@ -1,0 +1,24 @@
+﻿warp.Event
+==========
+
+.. currentmodule:: warp
+
+.. autoclass:: Event
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Event.ipc_handle
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Event.is_complete
+   
+   

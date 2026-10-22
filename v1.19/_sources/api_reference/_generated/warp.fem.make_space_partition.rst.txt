@@ -1,0 +1,6 @@
+﻿warp.fem.make\_space\_partition
+===============================
+
+.. currentmodule:: warp.fem
+
+.. autofunction:: make_space_partition

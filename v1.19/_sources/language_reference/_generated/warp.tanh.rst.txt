@@ -1,0 +1,13 @@
+﻿warp.tanh
+=========
+
+.. currentmodule:: warp._src.lang
+
+.. function:: tanh(x: Float) -> Float
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Compute the tanh of ``x``.

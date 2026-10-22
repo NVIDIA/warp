@@ -1,0 +1,13 @@
+﻿warp.identity
+=============
+
+.. currentmodule:: warp._src.lang
+
+.. function:: identity(n: int32, dtype: Scalar) -> Matrix[Scalar, Any, Any]
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
+
+   Create an identity matrix with shape=(n,n) with the type given by ``dtype``.

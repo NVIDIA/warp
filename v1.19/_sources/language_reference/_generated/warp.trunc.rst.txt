@@ -1,0 +1,17 @@
+﻿warp.trunc
+==========
+
+.. currentmodule:: warp._src.lang
+
+.. function:: trunc(x: Float) -> Float
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+
+   Compute the nearest integer that is closer to zero than ``x``.
+   
+   In other words, it discards the fractional part of ``x``.
+   It is similar to casting ``float(int(a))``, but preserves the negative sign when ``x`` is in the range [-0.0, -1.0).
+   Equivalent to :obj:`numpy.trunc` and :func:`numpy.fix`.

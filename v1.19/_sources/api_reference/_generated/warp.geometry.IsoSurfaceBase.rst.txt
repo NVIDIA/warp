@@ -1,0 +1,27 @@
+﻿warp.geometry.IsoSurfaceBase
+============================
+
+.. currentmodule:: warp.geometry
+
+.. autoclass:: IsoSurfaceBase
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~IsoSurfaceBase.extract
+      ~IsoSurfaceBase.resize
+      ~IsoSurfaceBase.surface
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~IsoSurfaceBase.verts
+      ~IsoSurfaceBase.indices
+   
+   

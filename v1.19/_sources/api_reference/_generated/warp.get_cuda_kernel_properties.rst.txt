@@ -1,0 +1,6 @@
+﻿warp.get\_cuda\_kernel\_properties
+==================================
+
+.. currentmodule:: warp
+
+.. autofunction:: get_cuda_kernel_properties

@@ -1,0 +1,53 @@
+﻿warp.lerp
+=========
+
+.. currentmodule:: warp._src.lang
+
+.. function:: lerp(a: Float, b: Float, t: Float) -> Float
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``.
+
+.. function:: lerp(a: Vector[Float, Any], b: Vector[Float, Any], t: Float) -> Vector[Float, Any]
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``.
+
+.. function:: lerp(a: Matrix[Float, Any, Any], b: Matrix[Float, Any, Any], t: Float) -> Matrix[Float, Any, Any]
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``.
+
+.. function:: lerp(a: Quaternion[Float], b: Quaternion[Float], t: Float) -> Quaternion[Float]
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``.
+
+.. function:: lerp(a: Transformation[Float], b: Transformation[Float], t: Float) -> Transformation[Float]
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``.

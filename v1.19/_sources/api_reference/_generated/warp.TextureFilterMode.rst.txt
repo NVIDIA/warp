@@ -1,0 +1,19 @@
+﻿warp.TextureFilterMode
+======================
+
+.. currentmodule:: warp
+
+.. autoclass:: TextureFilterMode
+   
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~TextureFilterMode.CLOSEST
+      ~TextureFilterMode.LINEAR
+   
+   

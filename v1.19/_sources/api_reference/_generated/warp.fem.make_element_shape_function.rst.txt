@@ -1,0 +1,6 @@
+﻿warp.fem.make\_element\_shape\_function
+=======================================
+
+.. currentmodule:: warp.fem
+
+.. autofunction:: make_element_shape_function

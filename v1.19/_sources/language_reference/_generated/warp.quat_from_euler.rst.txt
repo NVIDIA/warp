@@ -1,0 +1,29 @@
+﻿warp.quat\_from\_euler
+======================
+
+.. currentmodule:: warp._src.lang
+
+.. function:: quat_from_euler(e: vec3f, i: int, j: int, k: int) -> quatf
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+      :source: https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/math.py#L389-L449
+
+   Construct a quaternion from Euler angles and an axis sequence.
+   
+   :param e: Euler angles in radians.
+   :param i: Index of the first axis in ``{0, 1, 2}``.
+   :param j: Index of the second axis in ``{0, 1, 2}``.
+   :param k: Index of the third axis in ``{0, 1, 2}``.
+   
+   .. rubric:: Notes
+   
+   Angles are read by axis index (``e[0]``=X, ``e[1]``=Y, ``e[2]``=Z),
+   so use distinct axes ``(i, j, k)`` for an unambiguous inverse with
+   :func:`quat_to_euler`.
+   
+   :returns: Quaternion in ``(x, y, z, w)`` layout.
+   :rtype: warp.quat
+   

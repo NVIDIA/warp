@@ -1,0 +1,31 @@
+﻿warp.tile\_argmax
+=================
+
+.. currentmodule:: warp._src.lang
+
+.. function:: tile_argmax(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Int, tuple[Literal[1]]]
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
+
+   Compute the index of the maximum element of a tile.
+   
+   This is a cooperative operation: the threads of the block divide the work between
+   them, so every thread must reach the call.
+   
+   The index is the row-major linear index into the flattened tile, so in a shape-``(2, 4)``
+   tile the element at row 1, column 1 has index 5. If several elements are equal maxima,
+   which of their indices is returned is unspecified: it depends on ``block_dim`` and on
+   the device.
+   
+   Currently, if ``a`` contains NaN, the returned index may point to a NaN element and may
+   not match :func:`~warp.tile_max`.
+   
+   :param a: The tile to reduce. Must have a scalar element type.
+   
+   :returns: A shape-``(1,)`` register tile of :class:`warp.int32` holding the index. Read the
+             value with ``[0]``.
+   
+   See :func:`~warp.tile_argmin` for an analogous usage example.

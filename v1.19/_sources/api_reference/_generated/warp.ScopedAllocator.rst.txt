@@ -1,0 +1,12 @@
+﻿warp.ScopedAllocator
+====================
+
+.. currentmodule:: warp
+
+.. autoclass:: ScopedAllocator
+   
+   
+   
+   
+   
+   

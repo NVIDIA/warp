@@ -1,0 +1,26 @@
+﻿warp.transform\_wrench
+======================
+
+.. currentmodule:: warp._src.lang
+
+.. function:: transform_wrench(t: transformf, x: spatial_vectorf) -> spatial_vectorf
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
+      :source: https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/math.py#L481-L507
+
+   Transform a spatial wrench between coordinate frames.
+   
+   For transform ``t = (R, p)`` and wrench ``x = (tau, f)``, the mapped wrench is:
+   
+   .. math::
+      f' = R f,\quad \tau' = R \tau + p \times f'
+   
+   :param t: Rigid transform from source frame to destination frame.
+   :param x: Spatial wrench ``(torque, force)`` expressed in the source frame.
+   
+   :returns: Wrench expressed in the destination frame.
+   :rtype: warp.spatial_vector
+   

@@ -1,0 +1,6 @@
+﻿warp.sparse.bsr\_scale
+======================
+
+.. currentmodule:: warp.sparse
+
+.. autofunction:: bsr_scale

@@ -1,0 +1,29 @@
+﻿warp.sign
+=========
+
+.. currentmodule:: warp._src.lang
+
+.. function:: sign(x: Scalar) -> Scalar
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+
+   Compute the sign of ``x``.
+   
+   :returns: -1 if ``x`` < 0 and 1 otherwise.
+   
+
+.. function:: sign(x: Vector[Scalar, Any]) -> Vector[Scalar, Any]
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+
+   Compute the sign of ``x``.
+   
+   :returns: -1 for negative elements of ``x`` and 1 otherwise.
+   

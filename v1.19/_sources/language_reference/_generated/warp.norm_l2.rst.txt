@@ -1,0 +1,23 @@
+﻿warp.norm\_l2
+=============
+
+.. currentmodule:: warp._src.lang
+
+.. function:: norm_l2(v: Any) -> float
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+      :source: https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/math.py#L53-L65
+
+   Compute the L2 norm of a vector v.
+   
+   .. math:: \|v\|_2 = \sqrt{\sum_i v_i^2}
+   
+   :param v: The vector to compute the L2 norm of.
+   :type v: Vector[Float, Any]
+   
+   :returns: The L2 norm of the vector.
+   :rtype: float
+   

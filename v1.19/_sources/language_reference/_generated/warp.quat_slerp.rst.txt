@@ -1,0 +1,13 @@
+﻿warp.quat\_slerp
+================
+
+.. currentmodule:: warp._src.lang
+
+.. function:: quat_slerp(a: Quaternion[Float], b: Quaternion[Float], t: Float) -> Quaternion[Float]
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Linearly interpolate between two quaternions.

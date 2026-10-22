@@ -1,0 +1,20 @@
+﻿warp.vec3h
+==========
+
+.. currentmodule:: warp
+
+.. autoclass:: vec3h
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~vec3h.from_ptr
+      ~vec3h.scalar_export
+      ~vec3h.scalar_import
+   
+   
+   
+   
+   

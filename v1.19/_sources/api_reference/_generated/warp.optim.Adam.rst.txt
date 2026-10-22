@@ -1,0 +1,21 @@
+﻿warp.optim.Adam
+===============
+
+.. currentmodule:: warp.optim
+
+.. autoclass:: Adam
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Adam.reset_internal_state
+      ~Adam.set_params
+      ~Adam.step
+      ~Adam.step_detail
+   
+   
+   
+   
+   

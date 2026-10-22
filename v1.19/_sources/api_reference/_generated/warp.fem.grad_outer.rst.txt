@@ -1,0 +1,6 @@
+﻿warp.fem.grad\_outer
+====================
+
+.. currentmodule:: warp.fem
+
+.. autodata:: grad_outer

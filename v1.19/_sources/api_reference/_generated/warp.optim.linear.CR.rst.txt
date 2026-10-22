@@ -1,0 +1,12 @@
+﻿warp.optim.linear.CR
+====================
+
+.. currentmodule:: warp.optim.linear
+
+.. autoclass:: CR
+   
+   
+   
+   
+   
+   

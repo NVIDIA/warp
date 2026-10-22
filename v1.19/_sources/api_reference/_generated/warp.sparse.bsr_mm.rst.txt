@@ -1,0 +1,6 @@
+﻿warp.sparse.bsr\_mm
+===================
+
+.. currentmodule:: warp.sparse
+
+.. autofunction:: bsr_mm

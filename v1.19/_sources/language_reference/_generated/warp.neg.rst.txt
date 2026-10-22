@@ -1,0 +1,55 @@
+﻿warp.neg
+========
+
+.. currentmodule:: warp._src.lang
+
+.. function:: neg(x: Scalar) -> Scalar
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Negate ``x``.
+
+.. function:: neg(x: Vector[Scalar, Any]) -> Vector[Scalar, Any]
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Negate ``x``.
+
+.. function:: neg(x: Quaternion[Float]) -> Quaternion[Float]
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Negate ``x``.
+
+.. function:: neg(x: Matrix[Scalar, Any, Any]) -> Matrix[Scalar, Any, Any]
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Negate ``x``.
+
+.. function:: neg(x: Tile[Any, tuple[int, ...]]) -> Tile[Scalar, tuple[int, ...]]
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
+
+   Negate ``x``.
+   
+   Negate tiles element-wise.

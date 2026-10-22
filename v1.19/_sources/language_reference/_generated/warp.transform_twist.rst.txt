@@ -1,0 +1,26 @@
+﻿warp.transform\_twist
+=====================
+
+.. currentmodule:: warp._src.lang
+
+.. function:: transform_twist(t: transformf, x: spatial_vectorf) -> spatial_vectorf
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
+      :source: https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/math.py#L452-L478
+
+   Transform a spatial twist between coordinate frames.
+   
+   For transform ``t = (R, p)`` and twist ``x = (w, v)``, the mapped twist is:
+   
+   .. math::
+      w' = R w,\quad v' = R v + p \times w'
+   
+   :param t: Rigid transform from source frame to destination frame.
+   :param x: Spatial twist ``(angular, linear)`` expressed in the source frame.
+   
+   :returns: Twist expressed in the destination frame.
+   :rtype: warp.spatial_vector
+   

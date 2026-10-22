@@ -1,0 +1,13 @@
+﻿warp.exp
+========
+
+.. currentmodule:: warp._src.lang
+
+.. function:: exp(x: Float) -> Float
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Compute the value of the exponential function :math:`e^x`.

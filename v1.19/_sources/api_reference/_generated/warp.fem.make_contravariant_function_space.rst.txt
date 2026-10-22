@@ -1,0 +1,6 @@
+﻿warp.fem.make\_contravariant\_function\_space
+=============================================
+
+.. currentmodule:: warp.fem
+
+.. autofunction:: make_contravariant_function_space

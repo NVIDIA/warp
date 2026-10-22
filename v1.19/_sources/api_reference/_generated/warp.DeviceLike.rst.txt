@@ -1,0 +1,7 @@
+﻿warp.DeviceLike
+===============
+
+.. currentmodule:: warp
+
+.. autodata:: DeviceLike
+   :annotation: = warp.Device | str | None

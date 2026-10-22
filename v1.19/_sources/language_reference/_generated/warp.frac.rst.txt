@@ -1,0 +1,15 @@
+﻿warp.frac
+=========
+
+.. currentmodule:: warp._src.lang
+
+.. function:: frac(x: Float) -> Float
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+
+   Retrieve the fractional part of ``x``.
+   
+   In other words, it discards the integer part of ``x`` and is equivalent to ``x - trunc(x)``.

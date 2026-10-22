@@ -1,0 +1,28 @@
+﻿warp.smooth\_normalize
+======================
+
+.. currentmodule:: warp._src.lang
+
+.. function:: smooth_normalize(v: Any, delta: float = 1.0) -> Any
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+      :source: https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/math.py#L112-L128
+
+   Normalize a vector using the pseudo-Huber norm.
+   
+   See :func:`norm_pseudo_huber`.
+   
+   .. math::
+       \frac{v}{H^\prime(v)}
+   
+   :param v: The vector to normalize.
+   :type v: Vector[Float, Any]
+   :param delta: The threshold value.
+   :type delta: float
+   
+   :returns: The normalized vector.
+   :rtype: Vector[Float, Any]
+   

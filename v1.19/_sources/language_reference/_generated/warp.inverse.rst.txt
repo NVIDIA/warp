@@ -1,0 +1,75 @@
+﻿warp.inverse
+============
+
+.. currentmodule:: warp._src.lang
+
+.. function:: inverse(a: Matrix[Float, Literal[2], Literal[2]]) -> Matrix[Float, Any, Any]
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Return the inverse of a matrix.
+   
+   Nearly singular inputs can amplify rounding errors and produce large
+   gradients. Use a well-conditioned matrix for differentiation, and check
+   that the product of the input and returned matrix is close to the identity
+   when numerical accuracy is required.
+   
+   :param a: Matrix to invert. Must be nonsingular.
+   
+   :returns: The inverse matrix, whose product with the input is the identity in
+             exact arithmetic.
+   
+   .. rubric:: Example
+   
+   Invert a matrix and inspect the result:
+   
+   .. testcode::
+   
+       matrix = wp.mat22(2.0, 1.0, 1.0, 2.0)
+       inverse = wp.inverse(matrix)
+       print(np.round(np.asarray(inverse).reshape(2, 2), 3))
+   
+   .. testoutput::
+   
+       [[ 0.667 -0.333]
+        [-0.333  0.667]]
+   
+
+.. function:: inverse(a: Matrix[Float, Literal[3], Literal[3]]) -> Matrix[Float, Any, Any]
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Return the inverse of a 3x3 matrix.
+   
+   See the 2x2 overload for numerical and autodiff guidance.
+   
+   :param a: Matrix to invert. Must be nonsingular.
+   
+   :returns: The inverse matrix, whose product with the input is the identity in
+             exact arithmetic.
+   
+
+.. function:: inverse(a: Matrix[Float, Literal[4], Literal[4]]) -> Matrix[Float, Any, Any]
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Return the inverse of a 4x4 matrix.
+   
+   See the 2x2 overload for numerical and autodiff guidance.
+   
+   :param a: Matrix to invert. Must be nonsingular.
+   
+   :returns: The inverse matrix, whose product with the input is the identity in
+             exact arithmetic.
+   

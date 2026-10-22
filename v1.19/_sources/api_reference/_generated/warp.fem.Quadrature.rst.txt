@@ -1,0 +1,37 @@
+﻿warp.fem.Quadrature
+===================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: Quadrature
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Quadrature.arg_value
+      ~Quadrature.element_index_arg_value
+      ~Quadrature.evaluation_point_count
+      ~Quadrature.fill_arg
+      ~Quadrature.max_points_per_element
+      ~Quadrature.point_coords
+      ~Quadrature.point_count
+      ~Quadrature.point_evaluation_index
+      ~Quadrature.point_index
+      ~Quadrature.point_weight
+      ~Quadrature.total_point_count
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Quadrature.Arg
+      ~Quadrature.ElementIndexArg
+      ~Quadrature.domain
+      ~Quadrature.evaluation_point_element_index
+   
+   

@@ -1,0 +1,21 @@
+﻿warp.TextureAddressMode
+=======================
+
+.. currentmodule:: warp
+
+.. autoclass:: TextureAddressMode
+   
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~TextureAddressMode.WRAP
+      ~TextureAddressMode.CLAMP
+      ~TextureAddressMode.MIRROR
+      ~TextureAddressMode.BORDER
+   
+   

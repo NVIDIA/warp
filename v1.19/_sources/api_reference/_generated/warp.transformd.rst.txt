@@ -1,0 +1,20 @@
+﻿warp.transformd
+===============
+
+.. currentmodule:: warp
+
+.. autoclass:: transformd
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~transformd.from_ptr
+      ~transformd.scalar_export
+      ~transformd.scalar_import
+   
+   
+   
+   
+   

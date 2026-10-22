@@ -1,0 +1,43 @@
+﻿warp.pos
+========
+
+.. currentmodule:: warp._src.lang
+
+.. function:: pos(x: Scalar) -> Scalar
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Pass ``x`` unchanged.
+
+.. function:: pos(x: Vector[Scalar, Any]) -> Vector[Scalar, Any]
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Pass ``x`` unchanged.
+
+.. function:: pos(x: Quaternion[Float]) -> Quaternion[Float]
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Pass ``x`` unchanged.
+
+.. function:: pos(x: Matrix[Scalar, Any, Any]) -> Matrix[Scalar, Any, Any]
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Pass ``x`` unchanged.

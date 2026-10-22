@@ -1,0 +1,129 @@
+﻿warp.div
+========
+
+.. currentmodule:: warp._src.lang
+
+.. function:: div(a: Scalar, b: Scalar) -> Scalar
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Divide two values.
+
+.. function:: div(a: Vector[Scalar, Any], b: Scalar) -> Vector[Scalar, Any]
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Divide two values.
+   
+   Divide a vector by a scalar.
+
+.. function:: div(a: Scalar, b: Vector[Scalar, Any]) -> Vector[Scalar, Any]
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Divide two values.
+   
+   Divide a scalar by each element of a vector.
+
+.. function:: div(a: Matrix[Scalar, Any, Any], b: Scalar) -> Matrix[Scalar, Any, Any]
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Divide two values.
+   
+   Divide a matrix by a scalar.
+
+.. function:: div(a: Scalar, b: Matrix[Scalar, Any, Any]) -> Matrix[Scalar, Any, Any]
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Divide two values.
+   
+   Divide a scalar by each element of a matrix.
+
+.. function:: div(a: Quaternion[Float], b: Scalar) -> Quaternion[Float]
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Divide two values.
+   
+   Divide a quaternion by a scalar.
+   
+   The result is unnormalized.
+
+.. function:: div(a: Scalar, b: Quaternion[Float]) -> Quaternion[Float]
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Divide two values.
+   
+   Divide a scalar by a quaternion.
+   
+   The result is unnormalized.
+
+.. function:: div(a: Tile[Any, tuple[int, ...]], b: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[int, ...]]
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
+
+   Element-wise division of tiles.
+
+.. function:: div(a: Tile[Any, tuple[int, ...]], b: Any) -> Tile[Any, tuple[int, ...]]
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
+
+   Divide tile elements by a constant.
+   
+   Divide each element of a tile by a constant (scalar, vector, or matrix).
+   
+   At least one of the tile's element type or the constant type must be scalar.
+   Underlying scalar types must match.
+
+.. function:: div(a: Any, b: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[int, ...]]
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
+
+   Divide a constant by tile elements.
+   
+   Divide a constant (scalar, vector, or matrix) by each element of a tile.
+   
+   At least one of the tile's element type or the constant type must be scalar.
+   Underlying scalar types must match.

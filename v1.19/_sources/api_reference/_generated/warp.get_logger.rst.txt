@@ -1,0 +1,6 @@
+﻿warp.get\_logger
+================
+
+.. currentmodule:: warp
+
+.. autofunction:: get_logger

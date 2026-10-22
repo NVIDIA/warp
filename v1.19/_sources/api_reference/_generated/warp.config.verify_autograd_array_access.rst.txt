@@ -1,0 +1,6 @@
+﻿warp.config.verify\_autograd\_array\_access
+===========================================
+
+.. currentmodule:: warp.config
+
+.. autodata:: verify_autograd_array_access

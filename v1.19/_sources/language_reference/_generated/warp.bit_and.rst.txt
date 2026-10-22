@@ -1,0 +1,49 @@
+﻿warp.bit\_and
+=============
+
+.. currentmodule:: warp._src.lang
+
+.. function:: bit_and(a: Int, b: Int) -> Int
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+
+   Compute the bitwise AND of ``a`` and ``b``.
+
+.. function:: bit_and(a: Vector[Int, Any], b: Vector[Int, Any]) -> Vector[Int, Any]
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+
+   Compute the bitwise AND of ``a`` and ``b``.
+   
+   Apply the operation element-wise to vectors.
+
+.. function:: bit_and(a: Matrix[Int, Any, Any], b: Matrix[Int, Any, Any]) -> Matrix[Int, Any, Any]
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
+
+   Compute the bitwise AND of ``a`` and ``b``.
+   
+   Apply the operation element-wise to matrices.
+
+.. function:: bit_and(a: Tile[Any, tuple[int, ...]], b: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[int, ...]]
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
+
+   Compute the bitwise AND of ``a`` and ``b``.
+   
+   Apply the operation element-wise to tiles.

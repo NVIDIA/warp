@@ -1,0 +1,21 @@
+﻿warp.Logger
+===========
+
+.. currentmodule:: warp
+
+.. autoclass:: Logger
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Logger.debug
+      ~Logger.error
+      ~Logger.info
+      ~Logger.warning
+   
+   
+   
+   
+   

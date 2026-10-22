@@ -1,0 +1,7 @@
+﻿warp.Scalar
+===========
+
+.. currentmodule:: warp
+
+.. autodata:: Scalar
+   :no-value:

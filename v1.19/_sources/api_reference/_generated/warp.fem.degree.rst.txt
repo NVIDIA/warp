@@ -1,0 +1,6 @@
+﻿warp.fem.degree
+===============
+
+.. currentmodule:: warp.fem
+
+.. autodata:: degree

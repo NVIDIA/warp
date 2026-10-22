@@ -1,0 +1,22 @@
+﻿warp.JaxCallableGraphMode
+=========================
+
+.. currentmodule:: warp
+
+.. autoclass:: JaxCallableGraphMode
+   
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~JaxCallableGraphMode.NONE
+      ~JaxCallableGraphMode.JAX
+      ~JaxCallableGraphMode.WARP
+      ~JaxCallableGraphMode.WARP_STAGED
+      ~JaxCallableGraphMode.WARP_STAGED_EX
+   
+   

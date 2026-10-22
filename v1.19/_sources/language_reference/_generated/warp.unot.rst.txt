@@ -1,0 +1,133 @@
+﻿warp.unot
+=========
+
+.. currentmodule:: warp._src.lang
+
+.. function:: unot(a: bool) -> bool
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+
+   Compute logical NOT of ``a``.
+   
+   :returns: ``True`` if ``a`` is falsy (``False``, zero, or an empty/null array), ``False`` otherwise.
+   
+
+.. function:: unot(a: int8) -> bool
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+
+   Compute logical NOT of ``a``.
+   
+   :returns: ``True`` if ``a`` is falsy (``False``, zero, or an empty/null array), ``False`` otherwise.
+   
+
+.. function:: unot(a: uint8) -> bool
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+
+   Compute logical NOT of ``a``.
+   
+   :returns: ``True`` if ``a`` is falsy (``False``, zero, or an empty/null array), ``False`` otherwise.
+   
+
+.. function:: unot(a: int16) -> bool
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+
+   Compute logical NOT of ``a``.
+   
+   :returns: ``True`` if ``a`` is falsy (``False``, zero, or an empty/null array), ``False`` otherwise.
+   
+
+.. function:: unot(a: uint16) -> bool
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+
+   Compute logical NOT of ``a``.
+   
+   :returns: ``True`` if ``a`` is falsy (``False``, zero, or an empty/null array), ``False`` otherwise.
+   
+
+.. function:: unot(a: int32) -> bool
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+
+   Compute logical NOT of ``a``.
+   
+   :returns: ``True`` if ``a`` is falsy (``False``, zero, or an empty/null array), ``False`` otherwise.
+   
+
+.. function:: unot(a: uint32) -> bool
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+
+   Compute logical NOT of ``a``.
+   
+   :returns: ``True`` if ``a`` is falsy (``False``, zero, or an empty/null array), ``False`` otherwise.
+   
+
+.. function:: unot(a: int64) -> bool
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+
+   Compute logical NOT of ``a``.
+   
+   :returns: ``True`` if ``a`` is falsy (``False``, zero, or an empty/null array), ``False`` otherwise.
+   
+
+.. function:: unot(a: uint64) -> bool
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+
+   Compute logical NOT of ``a``.
+   
+   :returns: ``True`` if ``a`` is falsy (``False``, zero, or an empty/null array), ``False`` otherwise.
+   
+
+.. function:: unot(a: Array[Any]) -> bool
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
+
+   Compute logical NOT of ``a``.
+   
+   :returns: ``True`` if ``a`` is falsy (``False``, zero, or an empty/null array), ``False`` otherwise.
+   

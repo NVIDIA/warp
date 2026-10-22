@@ -1,0 +1,21 @@
+﻿warp.TimingResult
+=================
+
+.. currentmodule:: warp
+
+.. autoclass:: TimingResult
+   
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~TimingResult.device
+      ~TimingResult.name
+      ~TimingResult.filter
+      ~TimingResult.elapsed
+   
+   

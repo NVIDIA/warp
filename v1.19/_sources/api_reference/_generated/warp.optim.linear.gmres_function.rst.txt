@@ -1,0 +1,6 @@
+﻿warp.optim.linear.gmres
+=======================
+
+.. currentmodule:: warp.optim.linear
+
+.. autofunction:: gmres

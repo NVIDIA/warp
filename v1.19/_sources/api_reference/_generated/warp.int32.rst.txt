@@ -1,0 +1,12 @@
+﻿warp.int32
+==========
+
+.. currentmodule:: warp
+
+.. autoclass:: int32
+   
+   
+   
+   
+   
+   

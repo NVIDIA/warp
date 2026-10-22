@@ -1,0 +1,37 @@
+﻿warp.invert
+===========
+
+.. currentmodule:: warp._src.lang
+
+.. function:: invert(a: Int) -> Int
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+
+   Compute the bitwise complement of ``a``.
+
+.. function:: invert(a: Vector[Int, Any]) -> Vector[Int, Any]
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+
+   Compute the bitwise complement of ``a``.
+   
+   Apply the operation element-wise to vectors.
+
+.. function:: invert(a: Matrix[Int, Any, Any]) -> Matrix[Int, Any, Any]
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
+
+   Compute the bitwise complement of ``a``.
+   
+   Apply the operation element-wise to matrices.

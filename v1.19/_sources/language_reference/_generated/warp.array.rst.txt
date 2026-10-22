@@ -1,0 +1,13 @@
+﻿warp.array
+==========
+
+.. currentmodule:: warp._src.lang
+
+.. function:: array(ptr: uint64, shape: tuple[int, ...], dtype: Any) -> Array[Scalar]
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
+
+   Construct an array from a memory pointer, shape, and data type.

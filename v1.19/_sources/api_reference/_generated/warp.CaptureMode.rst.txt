@@ -1,0 +1,20 @@
+﻿warp.CaptureMode
+================
+
+.. currentmodule:: warp
+
+.. autoclass:: CaptureMode
+   
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~CaptureMode.GLOBAL
+      ~CaptureMode.THREAD_LOCAL
+      ~CaptureMode.RELAXED
+   
+   

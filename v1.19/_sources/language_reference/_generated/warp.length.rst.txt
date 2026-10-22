@@ -1,0 +1,27 @@
+﻿warp.length
+===========
+
+.. currentmodule:: warp._src.lang
+
+.. function:: length(a: Vector[Float, Any]) -> Float
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Compute the length of ``a``.
+   
+   Compute the length of a floating-point vector.
+
+.. function:: length(a: Quaternion[Float]) -> Float
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Compute the length of ``a``.
+   
+   Compute the length of a quaternion.

@@ -1,0 +1,25 @@
+﻿warp.lower\_bound
+=================
+
+.. currentmodule:: warp._src.lang
+
+.. function:: lower_bound(arr: Array[Scalar], value: Scalar) -> int
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
+
+   Search a sorted array ``arr`` for the closest element greater than or equal to ``value``.
+
+.. function:: lower_bound(arr: Array[Scalar], arr_begin: int32, arr_end: int32, value: Scalar) -> int
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
+
+   Search a sorted array ``arr`` for the closest element greater than or equal to ``value``.
+   
+   Search the range [arr_begin, arr_end).

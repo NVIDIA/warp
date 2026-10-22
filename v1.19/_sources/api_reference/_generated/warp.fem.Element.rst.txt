@@ -1,0 +1,23 @@
+﻿warp.fem.Element
+================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: Element
+   
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Element.prototype
+      ~Element.LINE_SEGMENT
+      ~Element.SQUARE
+      ~Element.CUBE
+      ~Element.TRIANGLE
+      ~Element.TETRAHEDRON
+   
+   

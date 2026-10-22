@@ -1,0 +1,12 @@
+﻿warp.BvhQueryTiled
+==================
+
+.. currentmodule:: warp
+
+.. autoclass:: BvhQueryTiled
+   
+   
+   
+   
+   
+   

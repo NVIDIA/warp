@@ -1,0 +1,14 @@
+﻿warp.smoothstep
+===============
+
+.. currentmodule:: warp._src.lang
+
+.. function:: smoothstep(a: Float, b: Float, x: Float) -> Float
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Smoothly interpolate between two values ``a`` and ``b`` using a factor ``x``,
+   and return a result between 0 and 1 using a cubic Hermite interpolation after clamping.

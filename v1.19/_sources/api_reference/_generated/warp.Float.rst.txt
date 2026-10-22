@@ -1,0 +1,7 @@
+﻿warp.Float
+==========
+
+.. currentmodule:: warp
+
+.. autodata:: Float
+   :no-value:

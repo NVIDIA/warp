@@ -1,0 +1,30 @@
+﻿warp.indexedarray
+=================
+
+.. currentmodule:: warp
+
+.. autoclass:: indexedarray
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~indexedarray.assign
+      ~indexedarray.contiguous
+      ~indexedarray.fill_
+      ~indexedarray.list
+      ~indexedarray.numpy
+      ~indexedarray.to
+      ~indexedarray.zero_
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~indexedarray.vars
+   
+   

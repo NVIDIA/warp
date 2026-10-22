@@ -1,0 +1,6 @@
+﻿warp.autograd.jacobian\_plot
+============================
+
+.. currentmodule:: warp.autograd
+
+.. autofunction:: jacobian_plot

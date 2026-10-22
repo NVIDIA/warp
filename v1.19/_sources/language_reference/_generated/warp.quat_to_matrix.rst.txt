@@ -1,0 +1,13 @@
+﻿warp.quat\_to\_matrix
+=====================
+
+.. currentmodule:: warp._src.lang
+
+.. function:: quat_to_matrix(quat: Quaternion[Float]) -> Matrix[Float, Literal[3], Literal[3]]
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Convert a quaternion to a 3x3 rotation matrix.

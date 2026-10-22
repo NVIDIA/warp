@@ -1,0 +1,164 @@
+﻿warp.tile\_map
+==============
+
+.. currentmodule:: warp._src.lang
+
+.. function:: tile_map(op: Callable, a: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[int, ...]]
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
+
+   Return a new tile by applying a function to each element of a tile.
+   
+   This is a cooperative operation: the threads of the block divide the work between
+   them, so every thread must reach the call.
+   
+   ``op`` may be a Warp built-in or a user function declared with
+   :func:`@wp.func <warp.func>`, and it does not have to preserve the element type: the
+   result's data type is ``op``'s return type, which must be a scalar, vector, matrix, or
+   Warp struct.
+   
+   :param op: A callable function that accepts one argument and returns one value. May be a user
+              function or Warp built-in.
+   :param a: The input tile. The operator, or one of its overloads, must accept the tile's element type.
+   
+   :returns: A register tile with the same dimensions as the input tile. Its datatype is specified by the return type of ``op``.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def apply_sin(out: wp.array[float]):
+           t = wp.tile_arange(1.0, 5.0, 1.0, dtype=float)
+           s = wp.tile_map(wp.sin, t)
+   
+           wp.tile_store(out, s)
+   
+       out = wp.zeros(4, dtype=float)
+   
+       wp.launch_tiled(apply_sin, dim=1, outputs=[out], block_dim=2)
+   
+       print(np.round(out.numpy(), 4))
+   
+   .. testoutput::
+   
+       [ 0.8415  0.9093  0.1411 -0.7568]
+   
+
+.. function:: tile_map(op: Callable, a: Tile[Any, tuple[int, ...]], b: Any) -> Tile[Any, tuple[int, ...]]
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
+
+   Return a new tile by applying a two-argument function to each element of a tile.
+   
+   This is a cooperative operation: the threads of the block divide the work between
+   them, so every thread must reach the call.
+   
+   The second argument can be a tile with the same dimensions as ``a``, whose elements
+   are paired with those of ``a``, or a non-tile value (scalar, vector, matrix, or Warp
+   struct, constant or runtime), which is broadcast across all elements.
+   
+   ``op`` may be a Warp built-in or a user function declared with
+   :func:`@wp.func <warp.func>`. Its two arguments do not have to have the same type,
+   as long as an overload accepting the element types of ``a`` and ``b`` exists. The result's
+   data type is ``op``'s return type, which must be a scalar, vector, matrix, or Warp struct.
+   
+   When ``b`` is a non-tile runtime value, its adjoint is the sum of its per-element
+   contributions across the mapped tile.
+   
+   :param op: A callable function that accepts two arguments and returns one value. May be a user
+              function or Warp built-in.
+   :param a: The first input tile, the operator (or one of its overloads) must be able to accept the tile's dtype.
+   :param b: Either a tile with matching dimensions, or a scalar/vector/matrix/Warp struct value.
+   
+   :returns: A register tile with the same dimensions as tile ``a``. Its datatype is specified by the return type of ``op``.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def elementwise_max(out: wp.array[float]):
+           a = wp.tile_arange(0.0, 5.0, 1.0, dtype=float)
+           b = wp.tile_arange(4.0, -1.0, -1.0, dtype=float)
+   
+           s = wp.tile_map(wp.max, a, b)
+   
+           wp.tile_store(out, s)
+   
+       out = wp.zeros(5, dtype=float)
+   
+       wp.launch_tiled(elementwise_max, dim=1, outputs=[out], block_dim=3)
+   
+       print(out.numpy())
+   
+   .. testoutput::
+   
+       [4. 3. 2. 3. 4.]
+   
+
+.. function:: tile_map(op: Callable, a: Tile[Any, tuple[int, ...]], *args: Any) -> Tile[Any, tuple[int, ...]]
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
+
+   Return a new tile by applying a function of three to eight arguments element-wise.
+   
+   This is a cooperative operation: the threads of the block divide the work between
+   them, so every thread must reach the call.
+   
+   The first argument ``a`` must be a tile and determines the output shape. Each
+   additional argument can be a tile with the same dimensions as ``a`` or a non-tile
+   value (scalar, vector, matrix, or Warp struct), which is broadcast across all elements.
+   
+   Unlike the one- and two-argument forms, ``op`` must be a user function declared with
+   :func:`@wp.func <warp.func>`; a built-in cannot be used here. The result's data type
+   is ``op``'s return type, which must be a scalar, vector, matrix, or Warp struct.
+   
+   The adjoint of each non-tile runtime argument is the sum of its per-element
+   contributions across the mapped tile.
+   
+   :param op: A callable function that accepts N arguments and returns one value, must be a user function.
+   :param a: The first input tile, determines the output shape.
+   :param args: Additional arguments: tiles with matching dimensions, or scalar/vector/matrix/Warp struct values.
+   
+   :returns: A register tile with the same dimensions as tile ``a``. Its datatype is specified by the return type of ``op``.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.func
+       def weighted_sum(a: float, b: float, c: float) -> float:
+           return 0.5 * a + 0.3 * b + 0.2 * c
+   
+       @wp.kernel
+       def blend(out: wp.array[float]):
+           a = wp.tile_arange(0.0, 5.0, 1.0, dtype=float)
+           b = wp.tile_ones(shape=5, dtype=float)
+           c = wp.tile_arange(1.0, 6.0, 1.0, dtype=float)
+   
+           s = wp.tile_map(weighted_sum, a, b, c)
+   
+           wp.tile_store(out, s)
+   
+       out = wp.zeros(5, dtype=float)
+   
+       wp.launch_tiled(blend, dim=1, outputs=[out], block_dim=3)
+   
+       print(np.round(out.numpy(), 4))
+   
+   .. testoutput::
+   
+       [0.5 1.2 1.9 2.6 3.3]
+   

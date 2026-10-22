@@ -1,0 +1,6 @@
+﻿warp.sparse.BSR\_STATUS\_SUCCESS
+================================
+
+.. currentmodule:: warp.sparse
+
+.. autodata:: BSR_STATUS_SUCCESS

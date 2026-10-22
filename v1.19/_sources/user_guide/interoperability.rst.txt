@@ -1,0 +1,309 @@
+Interoperability
+================
+
+Warp interoperates with other Python-based frameworks through standard interface protocols. Warp accepts external arrays in kernel launches as long as they implement the ``__array__``, ``__array_interface__``, or ``__cuda_array_interface__`` protocols. This works with NumPy, CuPy, PyTorch, JAX, and Paddle.
+
+Guides in this section
+----------------------
+
+* :doc:`PyTorch <interoperability/pytorch>`: Share arrays and streams,
+  integrate autograd, and call Warp kernels from custom operators.
+* :doc:`JAX <interoperability/jax>`: Convert arrays, call Warp kernels through
+  FFI, and use Warp with JAX transformations and distributed computation.
+
+Quick Reference
+---------------
+
+.. list-table::
+   :header-rows: 1
+   :widths: 18 42 15 25
+
+   * - Framework
+     - Conversion
+     - Zero-copy
+     - Gradient-aware
+   * - NumPy
+     - :func:`wp.from_numpy <warp.from_numpy>` / :meth:`array.numpy() <warp.array.numpy>`
+     - CPU only
+     - No
+   * - PyTorch
+     - :func:`wp.from_torch <warp.from_torch>` / :func:`wp.to_torch <warp.to_torch>`
+     - Yes
+     - Yes
+   * - JAX
+     - :func:`wp.from_jax <warp.from_jax>` / :func:`wp.to_jax <warp.to_jax>`
+     - Yes
+     - Via ``jax_kernel``
+   * - Paddle
+     - :func:`wp.from_paddle <warp.from_paddle>` / :func:`wp.to_paddle <warp.to_paddle>`
+     - Yes
+     - Yes
+   * - CuPy / Numba
+     - ``__cuda_array_interface__`` protocol
+     - Yes
+     - No
+   * - DLPack
+     - :func:`wp.from_dlpack <warp.from_dlpack>` / ``framework.from_dlpack``
+     - Yes
+     - No
+
+For full framework coverage, see:
+
+* :doc:`interoperability/pytorch`
+* :doc:`interoperability/jax`
+
+Paddle is documented inline below. NumPy, CuPy, Numba, and DLPack interop is protocol-level and covered in the sections that follow.
+
+.. _array-subclass-migration:
+
+Pass Arrays Directly
+--------------------
+
+External objects that implement ``__array_interface__`` (CPU) or
+``__cuda_array_interface__`` (GPU) can be passed to concrete regular-array
+parameters of :func:`wp.launch <warp.launch>` without calling a conversion
+function. This is the fastest on-ramp for most use cases.
+
+Warp arrays and their :ref:`subclasses <array-subclasses>` use their native Warp
+descriptor when launched. Warp checks their native family, dtype, and ndim
+instead of reinterpreting an inherited or overridden array interface. Their
+gradient pointer and ``retain_grad`` flag follow the parent's behavior. Code
+that previously reached the external-interface fallback for a Warp subclass
+must account for these changes:
+
+* Native gradient pointers and flags are preserved. Tape gradients for
+  overwritten outputs or in-place writes can therefore change to match the
+  parent array's behavior, and ``retain_grad=True`` is honored.
+* Native storage is used even when a subclass overrides its array interface.
+  The kernel no longer receives storage, a dtype, or a shape supplied by that
+  alternate interface. Struct and ``bfloat16`` arrays use their native dtype
+  support without requiring an array-interface representation.
+* Family, dtype, and dimensionality mismatches are rejected through normal
+  Warp array validation. Use :meth:`array.view() <warp.array.view>` for a
+  supported dtype reinterpretation, or :meth:`array.reshape() <warp.array.reshape>`
+  and :meth:`array.flatten() <warp.array.flatten>` to change shape explicitly.
+  Use a typed Warp array and a conversion such as :func:`warp.utils.array_cast`
+  when element values need to be converted rather than reinterpreted.
+  Explicit conversion expresses the intended element layout; it does not
+  reproduce accidental strided reads from a rank mismatch. For example,
+  float32 data of shape ``(4, 3)`` can use ``a.view(wp.vec3)`` for a
+  ``wp.array[wp.vec3]`` parameter. A vec3 array can use
+  ``a.view(wp.float32).flatten()`` for a one-dimensional scalar parameter,
+  while a two-dimensional scalar array can use ``a.flatten()``.
+* Device-access validation follows
+  :attr:`warp.config.launch_array_access_mode`. The default ``RELAXED`` mode
+  performs no pre-launch access checks; ``CHECKED`` diagnoses known-invalid
+  access and warns when access cannot be verified, while ``STRICT`` requires
+  arrays to be allocated on the launch device. See
+  :ref:`Checked Launch Validation <launch_array_access_checks>`.
+  Wrong-device storage that the interface path previously rejected can now
+  reach a kernel unchecked in ``RELAXED`` mode, just as for a parent array.
+  Move arrays to the launch device or select an appropriate validation mode.
+* The subclass's ``__ctype__()`` method is now called by concrete launches.
+  Overrides must describe the object's own storage and preserve the native
+  descriptor contract. Fully initialize the parent and allow its descriptor
+  cache and bookkeeping writes; a shell that only forwards public attributes
+  through an array interface is insufficient.
+* Classification uses actual inheritance. A ``weakref.proxy`` or a wrapper
+  whose ``__class__`` property advertises a Warp class is not a Warp array at
+  native-family boundaries. Pass the referenced Warp array for struct fields,
+  indexed/strided copies, and explicit adjoint arguments. Its separate external
+  array interface can still be used for concrete regular-array launch parameters.
+* Recorded commands from ``wp.launch(..., record_cmd=True)`` retain arguments.
+  Manually constructing ``wp.Launch`` does not retain the incidental owner
+  reference previously supplied by the interface fallback; use recorded commands
+  or keep the arrays alive explicitly.
+
+A separate, non-Warp object that owns or references an array and exposes an
+array interface continues to use the external-interface path for concrete
+regular-array parameters. Keep its storage owner alive according to that
+protocol's requirements. CPU ``array.numpy()`` and ``np.asarray`` still use the
+array interface for interface-compatible dtypes. CUDA ``array.numpy()`` copies
+native Warp storage instead.
+
+.. code:: python
+
+    import numpy as np
+    import warp as wp
+
+    @wp.kernel
+    def saxpy(x: wp.array[float], y: wp.array[float], a: float):
+        i = wp.tid()
+        y[i] = a * x[i] + y[i]
+
+    x = np.arange(n, dtype=np.float32)
+    y = np.ones(n, dtype=np.float32)
+
+    wp.launch(saxpy, dim=n, inputs=[x, y, 1.0], device="cpu")
+
+On CUDA, the same pattern works with CuPy, PyTorch, or any framework that exposes ``__cuda_array_interface__``:
+
+.. code:: python
+
+    import cupy as cp
+
+    with cp.cuda.Device(0):
+        x = cp.arange(n, dtype=cp.float32)
+        y = cp.ones(n, dtype=cp.float32)
+
+    wp.launch(saxpy, dim=n, inputs=[x, y, 1.0], device="cuda:0")
+
+When passing CUDA arrays, ensure the device on which the arrays reside matches the device on which the kernel is launched.
+
+NumPy
+-----
+
+Warp arrays may be converted to a NumPy array through the :meth:`array.numpy() <warp.array.numpy>` method. When the Warp array lives on the ``cpu`` device, this returns a zero-copy view onto the underlying Warp allocation. When the array lives on a ``cuda`` device, this method synchronously copies the data to a temporary CPU allocation and returns a NumPy view of that allocation.
+
+Warp CPU arrays also implement the ``__array_interface__`` protocol, so NumPy can create zero-copy views of them directly:
+
+.. testcode::
+
+    w = wp.array([1.0, 2.0, 3.0], dtype=float, device="cpu")
+    a = np.asarray(w)
+    print(a)
+
+.. testoutput::
+
+    [1. 2. 3.]
+
+Warp does not support implicit NumPy conversion of arrays on CUDA devices, such as passing them to ``np.asarray()``. Call :meth:`array.numpy() <warp.array.numpy>` explicitly to obtain a NumPy array.
+
+.. _numpy-scalar-dtypes:
+
+Scalar data types
+^^^^^^^^^^^^^^^^^
+
+Use :func:`wp.dtype_to_numpy() <warp.dtype_to_numpy>` to convert Warp scalar types to NumPy dtype specifications. Explicit conversion ensures the intended NumPy dtype is selected across both older and newer NumPy versions:
+
+.. code:: python
+
+    import numpy as np
+    import warp as wp
+
+    indices = np.zeros(100, dtype=wp.dtype_to_numpy(wp.int32))
+    values = np.full(100, 1.25, dtype=wp.dtype_to_numpy(wp.float32))
+    assert indices.dtype == np.dtype(np.int32)
+    assert values.dtype == np.dtype(np.float32)
+
+The converted dtype can also be used with ``np.dtype()``, ``astype()``, and structured dtype fields. Warp scalar values require an explicit dtype when constructing NumPy arrays.
+
+.. note::
+
+    Warp's Boolean, signed and unsigned integer, and float16/float32/float64 types expose their equivalent NumPy dtype through the ``__numpy_dtype__`` attribute. NumPy 2.4 and later recognize this attribute, avoiding object-dtype allocations and their performance overhead when a Warp scalar type is passed directly as a dtype specification. Older NumPy versions still select the object dtype in that case. Continue using ``wp.dtype_to_numpy()`` for consistent behavior across NumPy versions. This protocol does not change dtype inference from Warp scalar values.
+
+:class:`wp.bfloat16 <warp.bfloat16>` does not expose ``__numpy_dtype__`` because NumPy has no native bfloat16 dtype.
+
+The existing ``wp.dtype_to_numpy(wp.bfloat16)`` mapping returns ``np.uint16`` for raw storage. When initializing or filling arrays with this dtype, use values that are already encoded as bfloat16 bit patterns. To convert floating-point values to bfloat16, use ``wp.array([1.5], dtype=wp.bfloat16)`` or ``ml_dtypes.bfloat16`` as the NumPy dtype.
+
+To create Warp arrays from NumPy arrays, use :func:`warp.from_numpy` or pass the NumPy array as the ``data`` argument of the :class:`warp.array` constructor directly.
+
+CuPy / Numba
+------------
+
+Warp GPU arrays support the ``__cuda_array_interface__`` protocol for sharing data with other Python GPU frameworks. This allows frameworks like CuPy and Numba to use Warp GPU arrays directly.
+
+Likewise, Warp arrays can be created from any object that exposes the ``__cuda_array_interface__``. Such objects can also be passed to Warp kernels directly without creating a Warp array object.
+
+.. _paddle-interop:
+
+Paddle
+------
+
+Warp provides helper functions to convert arrays to/from Paddle::
+
+    w = wp.array([1.0, 2.0, 3.0], dtype=float, device="cpu")
+
+    # convert to Paddle tensor
+    t = wp.to_paddle(w)
+
+    # convert from Paddle tensor
+    w = wp.from_paddle(t)
+
+These helper functions convert Warp arrays to/from Paddle tensors without copying the underlying data. Gradient arrays and tensors are converted to/from Paddle autograd tensors, allowing the use of Warp arrays in Paddle autograd computations.
+
+To convert a Paddle CUDA stream to a Warp CUDA stream and vice versa, Warp provides:
+
+* :func:`warp.stream_from_paddle`
+
+Example: Optimization using :func:`warp.to_paddle`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Less code is needed when we declare the optimization variables directly in Warp and use :func:`warp.to_paddle` to convert them to Paddle tensors. The following example minimizes a loss function over an array of 2D points written in Warp, with a single ``wp.to_paddle`` call supplying Adam with the optimization variables::
+
+    import warp as wp
+    import numpy as np
+    import paddle
+
+    @wp.kernel()
+    def loss(xs: wp.array2d[float], l: wp.array[float]):
+        tid = wp.tid()
+        wp.atomic_add(l, 0, xs[tid, 0] ** 2.0 + xs[tid, 1] ** 2.0)
+
+    # initialize the optimization variables in Warp
+    xs = wp.array(np.random.randn(100, 2), dtype=wp.float32, requires_grad=True)
+    l = wp.zeros(1, dtype=wp.float32, requires_grad=True)
+    # just a single wp.to_paddle call is needed, Adam optimizes using the Warp array gradients
+    opt = paddle.optimizer.Adam(learning_rate=0.1, parameters=[wp.to_paddle(xs)])
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(loss, dim=len(xs), inputs=[xs], outputs=[l], device=xs.device)
+
+    for i in range(500):
+        tape.zero()
+        tape.backward(loss=l)
+        opt.step()
+
+        l.zero_()
+        wp.launch(loss, dim=len(xs), inputs=[xs], outputs=[l], device=xs.device)
+        print(f"{i}\tloss: {l.numpy()[0]}")
+
+.. note::
+   Paddle follows the same performance-tuning pattern as PyTorch. See the "Performance Tuning" section of :doc:`interoperability/pytorch` for ``return_ctype``, direct tensor passing, and reuse-don't-reconvert guidance.
+
+.. _DLPack:
+
+DLPack
+------
+
+Warp supports the DLPack protocol included in the Python Array API standard v2022.12. See the `Python Specification for DLPack <https://dmlc.github.io/dlpack/latest/python_spec.html>`__ for reference.
+
+The canonical way to import an external array into Warp is using the :func:`warp.from_dlpack()` function::
+
+    warp_array = wp.from_dlpack(external_array)
+
+The external array can be a PyTorch tensor, JAX array, or any other array type compatible with this version of the DLPack protocol. For CUDA arrays, this approach requires the producer to perform stream synchronization which ensures that operations on the array are ordered correctly. The :func:`warp.from_dlpack()` function asks the producer to synchronize the current Warp stream on the device where the array resides. It should therefore be safe to use the array in Warp kernels on that device without any additional synchronization.
+
+The canonical way to export a Warp array to an external framework is to use the ``from_dlpack()`` function in that framework::
+
+    jax_array = jax.dlpack.from_dlpack(warp_array)
+    torch_tensor = torch.utils.dlpack.from_dlpack(warp_array)
+    paddle_tensor = paddle.utils.dlpack.from_dlpack(warp_array)
+
+For CUDA arrays, this synchronizes the current stream of the consumer framework with the current Warp stream on the array's device. It should therefore be safe to use the wrapped array in the consumer framework, even if the array was previously used in a Warp kernel on the device.
+
+Alternatively, arrays can be shared by explicitly creating PyCapsules using a ``to_dlpack()`` function provided by the producer framework. This approach may be used for older versions of frameworks that do not support the v2022.12 standard::
+
+    warp_array1 = wp.from_dlpack(jax_array)
+    warp_array2 = wp.from_dlpack(torch.utils.dlpack.to_dlpack(torch_tensor))
+    warp_array3 = wp.from_dlpack(paddle.utils.dlpack.to_dlpack(paddle_tensor))
+
+    jax_array = jax.dlpack.from_dlpack(wp.to_dlpack(warp_array))
+    torch_tensor = torch.utils.dlpack.from_dlpack(wp.to_dlpack(warp_array))
+    paddle_tensor = paddle.utils.dlpack.from_dlpack(wp.to_dlpack(warp_array))
+
+This approach is generally faster because it skips any stream synchronization, but another solution must be used to ensure correct ordering of operations. In situations where no synchronization is required, using this approach can yield better performance. This may be a good choice in situations like these:
+
+- The external framework is using the synchronous CUDA default stream.
+- Warp and the external framework are using the same CUDA stream.
+- Another synchronization mechanism is already in place.
+
+The framework-specific converters (:func:`warp.to_torch`, :func:`warp.to_paddle`) are usually a better choice than DLPack when one exists, because DLPack does not carry gradient information. If autograd needs to flow between Warp and the other framework, use the direct converters. DLPack is most useful when no framework-specific converter exists, or when both producer and consumer are DLPack-native.
+
+.. toctree::
+   :hidden:
+   :titlesonly:
+
+   interoperability/pytorch
+   interoperability/jax

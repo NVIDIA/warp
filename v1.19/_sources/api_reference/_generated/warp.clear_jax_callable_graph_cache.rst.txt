@@ -1,0 +1,6 @@
+﻿warp.clear\_jax\_callable\_graph\_cache
+=======================================
+
+.. currentmodule:: warp
+
+.. autofunction:: clear_jax_callable_graph_cache

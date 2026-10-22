@@ -1,0 +1,6 @@
+﻿warp.config.version
+===================
+
+.. currentmodule:: warp.config
+
+.. autodata:: version
