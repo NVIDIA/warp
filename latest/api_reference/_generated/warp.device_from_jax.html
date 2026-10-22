@@ -509,14 +509,18 @@
 <h1>warp.device_from_jax<a class="headerlink" href="#warp-device-from-jax" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.device_from_jax">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">device_from_jax</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">jax_device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/jax/__init__.py#L32-L46"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.device_from_jax" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">device_from_jax</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">jax_device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/jax/__init__.py#L39-L65"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.device_from_jax" title="Link to this definition">#</a></dt>
 <dd><p>Return the Warp device corresponding to a Jax device.</p>
+<p>A Jax GPU maps to the Warp CUDA device with the same process-local ordinal
+(<code class="docutils literal notranslate"><span class="pre">jax.Device.local_hardware_id</span></code>). This differs from the global <code class="docutils literal notranslate"><span class="pre">jax.Device.id</span></code> in multi-process
+programs that use <a class="reference external" href="https://docs.jax.dev/en/latest/_autosummary/jax.distributed.initialize.html#jax.distributed.initialize" title="(in JAX)"><code class="xref py py-func docutils literal notranslate"><span class="pre">jax.distributed.initialize()</span></code></a>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>jax_device</strong> (<a class="reference external" href="https://docs.jax.dev/en/latest/_autosummary/jax.Device.html#jax.Device" title="(in JAX)"><em>jax.Device</em></a>) – A Jax device descriptor.</p>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#RuntimeError" title="(in Python v3.15)"><strong>RuntimeError</strong></a> – The Jax device is neither a CPU nor GPU device.</p>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#RuntimeError" title="(in Python v3.15)"><strong>RuntimeError</strong></a> – The Jax device is neither a CPU nor GPU device, or it is a GPU that belongs to
+    another process.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference internal" href="warp.Device.html#warp.Device" title="warp._src.context.Device"><em>Device</em></a></p>
