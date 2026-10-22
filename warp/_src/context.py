@@ -11551,7 +11551,7 @@ class Launch:
             adj_args=self.adj_args if self.adjoint else None,
         )
         func = self.hooks.backward if self.adjoint else self.hooks.forward
-        key_str = self.kernel.key if isinstance(self.kernel.key, str) else self.kernel.key.decode("utf-8")
+        key_str = self.module_exec.get_kernel_mangled_name(self.kernel)
         module_hash_str = apic_capture._hash_to_str(self.module_exec.module_hash)
         runtime.core.wp_apic_register_cpu_kernel(
             apic_capture.apic_state,
@@ -12091,7 +12091,7 @@ def launch(
                 )
                 func = hooks.backward if adjoint else hooks.forward
                 # Register kernel function pointer for byte-stream replay
-                key_str = kernel.key if isinstance(kernel.key, str) else kernel.key.decode("utf-8")
+                key_str = module_exec.get_kernel_mangled_name(kernel)
                 module_hash_str = apic_capture._hash_to_str(module_exec.module_hash)
                 runtime.core.wp_apic_register_cpu_kernel(
                     apic_capture.apic_state,
