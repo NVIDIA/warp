@@ -4278,7 +4278,9 @@ class array(Array[DType, NDim]):
                 if stop < 0:
                     stop = self.shape[idx] + stop
 
-                if start < 0 or start >= self.shape[idx]:
+                # ``start`` may equal the dimension size so that empty slices such as
+                # ``arr[n:]`` or ``empty_arr[:]`` are valid, matching NumPy.
+                if start < 0 or start > self.shape[idx]:
                     raise RuntimeError(f"Invalid indexing in slice: {start}:{stop}:{step}")
                 if stop < 0 or stop > self.shape[idx]:
                     raise RuntimeError(f"Invalid indexing in slice: {start}:{stop}:{step}")
