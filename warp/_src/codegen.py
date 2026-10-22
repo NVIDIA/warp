@@ -7046,7 +7046,7 @@ class Adjoint:
                     if code is not None:
                         adj.resolved_static_expressions[code] = obj
                         if isinstance(obj, warp._src.context.Function):
-                            name_node = ast.Name("__warp_func__")
+                            name_node = ast.Name("__warp_func__", ctx=ast.Load())
                             # we add a pointer to the Warp function here so that we can refer to it later at
                             # codegen time (note that the function key itself is not sufficient to uniquely
                             # identify the function, as the function may be redefined between the current time

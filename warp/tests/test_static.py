@@ -972,6 +972,26 @@ class TestStatic(unittest.TestCase):
         wp.launch(k, dim=1, inputs=[out], device="cpu")
         np.testing.assert_array_equal(out.numpy(), [3, 0])
 
+    def test_static_function_in_while_after_unrolled_loop(self):
+        """Generate code for a static function call in a ``while`` loop that follows an unrolled loop.
+
+        Python < 3.13 leaves an omitted ``ctx`` unset, which broke the dynamic-loop mutation scan.
+        """
+
+        @wp.func
+        def increment(x: int):
+            return x + 1
+
+        @wp.kernel(module="unique")
+        def k():
+            for _i in range(2):
+                pass
+            j = int(0)
+            while j < 3:
+                j = wp.static(increment)(j)
+
+        warp._src.context.ModuleBuilder(k.module, k.module.options)
+
     def test_static_unary_minus_literal_fold(self):
         """Keep the constant fast path for a substituted static behind unary minus."""
 
