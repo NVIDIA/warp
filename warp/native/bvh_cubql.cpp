@@ -449,6 +449,7 @@ void cubql_bvh_create_host(vec3* lowers, vec3* uppers, int num_items, int leaf_s
         cuBQL::cpu::freeBVH(native);
 
     delete[] boxes;
+    bvh_update_ray_bounds_host(bvh);
 }
 
 void cubql_bvh_destroy_host(BVH& bvh) { bvh_destroy_host(bvh); }
