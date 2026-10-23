@@ -8,6 +8,7 @@
 #include "tile_bvh.h"
 
 namespace wp {
+WP_TILE_DEFAULT_DEVICE_BEGIN
 
 #if defined(__CUDA_ARCH__)
 
@@ -397,4 +398,5 @@ inline mesh_query_aabb_thread_block_t tile_mesh_query_aabb(uint64_t id, const ve
 
 #endif  // __CUDA_ARCH__
 
+WP_TILE_DEFAULT_DEVICE_END
 }  // namespace wp

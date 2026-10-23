@@ -28,6 +28,7 @@
 // forwarders so the codegen call sites stay uniform across all three regimes.
 
 namespace wp {
+WP_TILE_DEFAULT_DEVICE_BEGIN
 
 // =============================================================================
 // FFT helpers (shared between CPU and GPU paths)
@@ -344,6 +345,7 @@ inline CUDA_CALLABLE void tile_fft_entry(Fwd fun_forward, int shared_bytes, int 
     }
 }
 
+WP_TILE_DEFAULT_DEVICE_END
 }  // namespace wp
 
 // =============================================================================
