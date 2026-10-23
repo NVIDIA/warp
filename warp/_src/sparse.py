@@ -16,9 +16,11 @@ from warp._src.logger import log_warning
 from warp._src.types import (
     Array,
     Cols,
+    DType,
     Rows,
     Scalar,
     Vector,
+    float_types,
     is_array,
     scalar_types,
     type_is_matrix,
@@ -4908,7 +4910,7 @@ def make_bsr_mv_kernel(block_cols: int):
             for block in range(beg, end):
                 xs = A_columns[block] * block_cols
                 for col in range(wp.static(block_cols)):
-                    v += A_values[block, subrow, col] * x[xs + col]
+                    v += y.dtype(A_values[block, subrow, col]) * x[xs + col]
             v *= alpha
 
         if beta != scalar_zero:
@@ -4960,7 +4962,7 @@ def make_bsr_mv_tiled_kernel(tile_size: int):
                 block += block_beg
 
                 xi = x[A_columns[block] * block_cols + block_col]
-                lane_sum += A_values[block, subrow, block_col] * xi
+                lane_sum += y.dtype(A_values[block, subrow, block_col]) * xi
 
             lane_sum *= alpha
             subrow_sum += wp.tile_sum(wp.tile(lane_sum))
@@ -4996,7 +4998,7 @@ def make_bsr_mv_transpose_kernel(block_rows: int):
 
         col_sum = type(alpha)(0)
         for subrow in range(wp.static(block_rows)):
-            col_sum += A_block[subrow, subcol] * x[row * block_rows + subrow]
+            col_sum += y.dtype(A_block[subrow, subcol]) * x[row * block_rows + subrow]
 
         wp.atomic_add(y, A_columns[block] * block_cols + subcol, alpha * col_sum)
 
@@ -5046,7 +5048,7 @@ def _vec_array_view(array: wp.array, dtype: type, expected_scalar_count: int) ->
 
 
 def bsr_mv(
-    A: BsrMatrixOrExpression[BlockType[Rows, Cols, Scalar]],
+    A: BsrMatrixOrExpression[BlockType[Rows, Cols, DType]],
     x: Array[Vector[Scalar, Cols] | Scalar],
     y: Array[Vector[Scalar, Rows] | Scalar] | None = None,
     alpha: Scalar = 1.0,
@@ -5058,11 +5060,16 @@ def bsr_mv(
     """Perform the sparse matrix-vector product ``y := alpha * A * x + beta * y`` and return ``y``.
 
     The ``x`` and ``y`` vectors are allowed to alias.
+    Their scalar types must match. The matrix scalar type may differ when both
+    matrix and vector scalar types are floating-point.
+    Matrix coefficients are converted to the vector scalar type before multiplication.
+    Products, accumulation, and scaling use the vector scalar type, without converting the stored matrix.
 
     Args:
         A: Read-only, left matrix operand of the matrix-vector product.
         x: Read-only, right vector operand of the matrix-vector product.
-        y: Mutable affine operand and result vector. If ``y`` is not provided, it will be allocated and treated as zero.
+        y: Mutable affine operand and result vector. If omitted, allocate it with the scalar type of ``x``
+          and treat it as zero.
         alpha: Uniform scaling factor for ``x``. If zero, ``x`` will not be read and may be left uninitialized.
         beta: Uniform scaling factor for ``y``. If zero, ``y`` will not be read and may be left uninitialized.
         transpose: If ``True``, use the transpose of the matrix ``A``. In this case the result is **non-deterministic**.
@@ -5075,7 +5082,20 @@ def bsr_mv(
     """
 
     A, A_scale = _extract_matrix_and_scale(A)
-    alpha *= A_scale
+    scalar_type = type_scalar_type(x.dtype)
+    if y is not None and type_scalar_type(y.dtype) != scalar_type:
+        raise ValueError("Incompatible 'y' vector for bsr_mv: x and y must have the same scalar type")
+
+    if scalar_type == A.scalar_type:
+        alpha *= A_scale
+    else:
+        if scalar_type not in float_types or A.scalar_type not in float_types:
+            raise ValueError(
+                "Incompatible 'x' vector for bsr_mv: mixed-precision products require floating-point "
+                f"matrix and vector scalar types, got {type_repr(A.scalar_type)} and {type_repr(scalar_type)}"
+            )
+        # Combine mixed-precision scaling factors without rounding to the matrix scalar type.
+        alpha = float(alpha) * float(A_scale)
 
     if transpose:
         block_shape = A.block_shape[1], A.block_shape[0]
@@ -5087,12 +5107,12 @@ def bsr_mv(
     if y is None:
         # If no output array is provided, allocate one for convenience
         y_vec_len = block_shape[0]
-        y_dtype = A.scalar_type if y_vec_len == 1 else wp.types.vector(length=y_vec_len, dtype=A.scalar_type)
+        y_dtype = scalar_type if y_vec_len == 1 else wp.types.vector(length=y_vec_len, dtype=scalar_type)
         y = wp.empty(shape=(nrow,), device=A.values.device, dtype=y_dtype, requires_grad=x.requires_grad)
         beta = 0.0
 
-    alpha = A.scalar_type(alpha)
-    beta = A.scalar_type(beta)
+    alpha = scalar_type(alpha)
+    beta = scalar_type(beta)
 
     device = A.values.device
     if A.values.device != x.device or A.values.device != y.device:
@@ -5116,11 +5136,11 @@ def bsr_mv(
         x = work_buffer
 
     try:
-        x_view = _vec_array_view(x, A.scalar_type, expected_scalar_count=ncol * block_shape[1])
+        x_view = _vec_array_view(x, scalar_type, expected_scalar_count=ncol * block_shape[1])
     except ValueError as err:
         raise ValueError("Incompatible 'x' vector for bsr_mv") from err
     try:
-        y_view = _vec_array_view(y, A.scalar_type, expected_scalar_count=nrow * block_shape[0])
+        y_view = _vec_array_view(y, scalar_type, expected_scalar_count=nrow * block_shape[0])
     except ValueError as err:
         raise ValueError("Incompatible 'y' vector for bsr_mv") from err
 
