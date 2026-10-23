@@ -917,6 +917,41 @@ def _array_cast_kernel(
     dest[i] = dest.dtype(src[i])
 
 
+@wp.kernel
+def _array_cast_kernel_2d(
+    dest: Any,
+    src: Any,
+):
+    i, j = wp.tid()
+    dest[i, j] = dest.dtype(src[i, j])
+
+
+@wp.kernel
+def _array_cast_kernel_3d(
+    dest: Any,
+    src: Any,
+):
+    i, j, k = wp.tid()
+    dest[i, j, k] = dest.dtype(src[i, j, k])
+
+
+@wp.kernel
+def _array_cast_kernel_4d(
+    dest: Any,
+    src: Any,
+):
+    i, j, k, l = wp.tid()
+    dest[i, j, k, l] = dest.dtype(src[i, j, k, l])
+
+
+_array_cast_kernels = {
+    1: _array_cast_kernel,
+    2: _array_cast_kernel_2d,
+    3: _array_cast_kernel_3d,
+    4: _array_cast_kernel_4d,
+}
+
+
 def array_cast(in_array: warp.array, out_array: warp.array, count: int | None = None):
     """Cast elements from one array to another array with a different data type.
 
@@ -931,8 +966,10 @@ def array_cast(in_array: warp.array, out_array: warp.array, count: int | None = 
           or multi-dimensional arrays, partial casting is not supported.
 
     Raises:
-        RuntimeError: If arrays have different devices or if attempting partial casting
-                     on multi-dimensional arrays.
+        RuntimeError: If arrays have different devices, if attempting partial casting
+                     on multi-dimensional arrays, if multi-dimensional arrays have different
+                     shapes, or if ``count`` exceeds the size of either array when the data
+                     types differ.
 
     Note:
         If the input and output arrays have the same data type, this function will
@@ -989,8 +1026,17 @@ def array_cast(in_array: warp.array, out_array: warp.array, count: int | None = 
     if in_array.dtype == out_array.dtype:
         # Same data type, can simply copy
         wp.copy(dest=out_array, src=in_array, count=count)
-    else:
-        wp.launch(kernel=_array_cast_kernel, dim=dim, inputs=[out_array, in_array], device=out_array.device)
+        return
+
+    if in_array.ndim > 1 and in_array.shape != out_array.shape:
+        raise RuntimeError(f"Array shapes do not match ({in_array.shape} vs {out_array.shape})")
+
+    if count > in_array.size or count > out_array.size:
+        raise RuntimeError(
+            f"Cast count ({count}) exceeds the input size ({in_array.size}) or output size ({out_array.size})"
+        )
+
+    wp.launch(kernel=_array_cast_kernels[in_array.ndim], dim=dim, inputs=[out_array, in_array], device=out_array.device)
 
 
 def create_warp_function(func: Callable) -> tuple[wp.Function, warp._src.context.Module]:
