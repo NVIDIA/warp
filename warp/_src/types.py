@@ -8,6 +8,7 @@ import ctypes
 import enum
 import functools
 import inspect
+import itertools
 import math
 import operator
 import struct
@@ -794,6 +795,78 @@ def _np_bfloat16_bits_to_float32(arr_u16: np.ndarray) -> np.ndarray:
     arr_u16 = np.asarray(arr_u16, dtype=np.uint16)
     bits = arr_u16.astype(np.uint32) << 16
     return bits.view(np.float32)
+
+
+def _is_half_composite_type(value_type) -> bool:
+    """Return whether ``value_type`` is a float16 or bfloat16 vector, matrix, quaternion or transform type."""
+    return hasattr(value_type, "_shape_") and getattr(value_type, "_wp_scalar_type_", None) in (float16, bfloat16)
+
+
+def _half_composite_kind(data):
+    """Classify a nested sequence that may hold float16 or bfloat16 vectors, matrices, quaternions or transforms.
+
+    Returns ``None`` if ``data`` holds none of them, their scalar type (``float16`` or ``bfloat16``) if all of
+    its values are composites of that type, and ``Any`` if it mixes them with other values.
+
+    Array data holds all of its numbers at the same depth (NumPy rejects anything else as ragged), and a
+    composite or a NumPy row can stand in for a sequence of numbers. So composites can only be found at the
+    levels above the numbers, and the depth of the first value tells how many levels that is. Those levels are
+    scanned with C-level iteration; a flat numeric list is not scanned at all.
+    """
+    if not isinstance(data, (list, tuple)):
+        return None
+    depth, first = 0, data
+    while isinstance(first, (list, tuple)) and len(first) > 0:
+        first, depth = first[0], depth + 1
+    if not (hasattr(type(first), "_shape_") or isinstance(first, np.ndarray)):
+        depth -= 1  # the first value is a number: its level can't hold composites
+    # types of the values found: at the levels above the last one, sequences are only containers, but at the
+    # last level a sequence stands next to the composites as a row of numbers
+    value_types = set()
+    level = data
+    for i in range(depth):
+        level_types = set(map(type, level))
+        if i + 1 == depth:
+            value_types |= level_types
+            break
+        value_types |= level_types - {list, tuple}
+        if not level_types <= {list, tuple}:
+            level = itertools.compress(level, map(isinstance, level, itertools.repeat((list, tuple))))
+        level = list(itertools.chain.from_iterable(level))
+    half_types = {t for t in value_types if _is_half_composite_type(t)}
+    if not half_types:
+        return None
+    scalar_types = {t._wp_scalar_type_ for t in half_types}
+    if half_types == value_types and len(scalar_types) == 1:
+        return scalar_types.pop()
+    return Any
+
+
+def _half_composites_to_floats(data):
+    """Replace float16 and bfloat16 composites in a nested sequence with flat lists of Python floats.
+
+    Each composite becomes its components in storage order, the same layout NumPy reads from other vectors and
+    matrices. Other values are left for NumPy to convert, so integers and NumPy arrays keep their exact values.
+    """
+    if _is_half_composite_type(type(data)):
+        bits = np.frombuffer(data, dtype=np.uint16)
+        if type(data)._wp_scalar_type_ is float16:
+            return bits.view(np.float16).tolist()
+        return _np_bfloat16_bits_to_float32(bits).tolist()
+    if isinstance(data, (list, tuple)):
+        return [_half_composites_to_floats(x) for x in data]
+    return data
+
+
+def _half_composites_to_numpy(data, scalar_type) -> np.ndarray:
+    """Return the values of a nested sequence of float16 or bfloat16 composites of type ``scalar_type``.
+
+    These types store their components as raw 16-bit encodings, which NumPy reads as ``uint16`` values:
+    ``np.asarray([wp.vec3h(3.0, 0.0, 0.0)], dtype=np.float16)`` gives ``16896.0`` instead of ``3.0``.
+    Read them as ``uint16`` and view them as float16, or keep them as the bfloat16 encodings.
+    """
+    bits = np.asarray(data, dtype=np.uint16)
+    return bits.view(np.float16) if scalar_type is float16 else bits
 
 
 def _is_bit_converted_float(dtype):
@@ -3715,11 +3788,21 @@ class array(Array[DType, NDim]):
         # convert input data to ndarray (handles lists, tuples, etc.) and determine dtype
         if dtype is Any:
             # infer dtype from data
+            half_kind = _half_composite_kind(data)
             try:
-                arr = np.asarray(data)
+                if half_kind is float16 or half_kind is bfloat16:
+                    arr = _half_composites_to_numpy(data, half_kind)
+                elif half_kind is Any:
+                    # half composites mixed with other values: let NumPy pick a type that holds all of them
+                    arr = np.asarray(_half_composites_to_floats(data))
+                else:
+                    arr = np.asarray(data)
             except Exception as e:
                 raise RuntimeError(f"Failed to convert input data to an array: {e}") from e
-            dtype = np_dtype_to_warp_type.get(arr.dtype)
+            if half_kind is float16 or half_kind is bfloat16:
+                dtype = half_kind
+            else:
+                dtype = np_dtype_to_warp_type.get(arr.dtype)
             if dtype is None:
                 # Check for ml_dtypes.bfloat16 (not in the static map)
                 ml_bf16 = _get_ml_dtypes_bfloat16()
@@ -3812,6 +3895,13 @@ class array(Array[DType, NDim]):
                     f"Failed to convert input data to an array with Warp type {warp._src.context.type_str(dtype)}"
                 )
             try:
+                half_kind = _half_composite_kind(data)
+                if half_kind is float16 or half_kind is bfloat16:
+                    data = _half_composites_to_numpy(data, half_kind)
+                    if scalar_dtype is not half_kind:
+                        data = data.astype(np.float32) if half_kind is float16 else _np_bfloat16_bits_to_float32(data)
+                elif half_kind is Any:
+                    data = _half_composites_to_floats(data)
                 if scalar_dtype is bfloat16:
                     # bfloat16 is stored as uint16 internally. When the input data is already
                     # uint16 (e.g. pre-encoded bfloat16 bits from a numpy array), use it directly.
