@@ -861,6 +861,148 @@ def test_svd(test, device, dtype, register_kernels=False):
                 assert_np_equal((plusval - minusval) / (2 * dx), m3grads[ii, jj], tol=fdtol)
 
 
+def test_svd_forward(test, device, dtype, output_arguments):
+    """Check SVD3 factors for degenerate inputs and different matrix scales."""
+    tol = {np.float16: 5.0e-3, np.float32: 1.0e-5, np.float64: 1.0e-12}[dtype]
+    wptype = wp.dtype_from_numpy(np.dtype(dtype))
+    mat33 = wp.types.matrix(shape=(3, 3), dtype=wptype)
+    vec3 = wp.types.vector(length=3, dtype=wptype)
+
+    @wp.kernel(module="unique", enable_backward=False)
+    def decompose(
+        matrices: wp.array[mat33],
+        left: wp.array[mat33],
+        values: wp.array[vec3],
+        right: wp.array[mat33],
+    ):
+        i = wp.tid()
+        U = mat33()
+        sigma = vec3()
+        V = mat33()
+        if wp.static(output_arguments):
+            wp.svd3(matrices[i], U, sigma, V)
+        else:
+            U, sigma, V = wp.svd3(matrices[i])
+        left[i] = U
+        values[i] = sigma
+        right[i] = V
+
+    c, s = np.cos(0.37), np.sin(0.37)
+    left_rotation = np.array(((c, -s, 0.0), (s, c, 0.0), (0.0, 0.0, 1.0)))
+    c, s = np.cos(0.71), np.sin(0.71)
+    right_rotation = np.array(((1.0, 0.0, 0.0), (0.0, c, -s), (0.0, s, c)))
+    cases = {
+        "distinct": np.diag([1.0, 2.0, 3.0]),
+        "repeated_01": np.diag([2.0, 2.0, 3.0]),
+        "repeated_02": np.diag([2.0, 3.0, 2.0]),
+        "repeated_12": np.diag([3.0, 2.0, 2.0]),
+        "identity": np.eye(3),
+        "rank_one": np.diag([0.0, 0.0, 3.0]),
+        "rank_two": np.diag([0.0, 2.0, 3.0]),
+        "rotated_distinct": left_rotation @ np.diag([1.0, 2.0, 3.0]) @ right_rotation.T,
+        "rotated_repeated": left_rotation @ np.diag([2.0, 2.0, 3.0]) @ right_rotation.T,
+        "negative_determinant": left_rotation @ np.diag([1.0, 2.0, -3.0]) @ right_rotation.T,
+    }
+    # The half path must also handle scales below the float32 QR threshold.
+    exponents = (-20, -10, 0, 10, 14) if dtype == np.float16 else (-10, 0, 10, 14)
+    names = [(name, exponent) for name in cases for exponent in exponents] + [("zero", 0)]
+    matrices_np = np.array(
+        [matrix * 2.0**exponent for matrix in cases.values() for exponent in exponents] + [np.zeros((3, 3))],
+        dtype=dtype,
+    )
+    matrices = wp.array(matrices_np, dtype=mat33, device=device)
+    left = wp.empty_like(matrices)
+    values = wp.empty(len(names), dtype=vec3, device=device)
+    right = wp.empty_like(matrices)
+    wp.launch(decompose, dim=len(names), inputs=[matrices], outputs=[left, values, right], device=device)
+
+    left_np, values_np, right_np = (a.numpy().astype(np.float64) for a in (left, values, right))
+    matrices_fp64 = matrices_np.astype(np.float64)
+    reference_values = np.linalg.svd(matrices_fp64, compute_uv=False)
+    rounding_atol = 2.0 * float(np.finfo(dtype).smallest_subnormal)
+    for i, (name, exponent) in enumerate(names):
+        with test.subTest(matrix=name, exponent=exponent):
+            U, sigma, V = left_np[i], values_np[i], right_np[i]
+            for label, factor in (("U", U), ("sigma", sigma), ("V", V)):
+                test.assertTrue(np.isfinite(factor).all(), f"Nonfinite {label}: {factor}")
+            reconstructed = U @ np.diag(sigma) @ V.T
+            atol = tol * np.max(np.abs(matrices_fp64[i])) + rounding_atol
+            np.testing.assert_allclose(reconstructed, matrices_fp64[i], rtol=0.0, atol=atol)
+            np.testing.assert_allclose(U.T @ U, np.eye(3), rtol=0.0, atol=tol)
+            np.testing.assert_allclose(V.T @ V, np.eye(3), rtol=0.0, atol=tol)
+            np.testing.assert_allclose(np.abs(sigma), reference_values[i], rtol=0.0, atol=atol)
+            # SVD3 returns proper rotations, with any reflection carried by sigma[2].
+            np.testing.assert_allclose(np.linalg.det(U), 1.0, rtol=0.0, atol=tol)
+            np.testing.assert_allclose(np.linalg.det(V), 1.0, rtol=0.0, atol=tol)
+            test.assertGreaterEqual(sigma[0], 0.0)
+            test.assertGreaterEqual(sigma[1], 0.0)
+            if name == "negative_determinant":
+                test.assertLess(sigma[2], 0.0)
+            if name == "zero":
+                np.testing.assert_array_equal(sigma, np.zeros(3))
+                np.testing.assert_array_equal(reconstructed, np.zeros((3, 3)))
+
+
+def test_svd_nonfinite(test, device, dtype, output_arguments):
+    """Check that nonfinite inputs cannot produce a finite SVD3 decomposition."""
+    wptype = wp.dtype_from_numpy(np.dtype(dtype))
+    mat33 = wp.types.matrix(shape=(3, 3), dtype=wptype)
+    vec3 = wp.types.vector(length=3, dtype=wptype)
+
+    @wp.kernel(module="unique", enable_backward=False)
+    def decompose(
+        matrices: wp.array[mat33],
+        left: wp.array[mat33],
+        values: wp.array[vec3],
+        right: wp.array[mat33],
+    ):
+        i = wp.tid()
+        U = mat33()
+        sigma = vec3()
+        V = mat33()
+        if wp.static(output_arguments):
+            wp.svd3(matrices[i], U, sigma, V)
+        else:
+            U, sigma, V = wp.svd3(matrices[i])
+        left[i] = U
+        values[i] = sigma
+        right[i] = V
+
+    cases = {}
+    # Exercise every entry, including off-diagonal NaNs that a scale reduction can ignore.
+    for label, value in (("nan", np.nan), ("positive_inf", np.inf), ("negative_inf", -np.inf)):
+        for i in range(3):
+            for j in range(3):
+                matrix = np.zeros((3, 3), dtype=dtype)
+                matrix[i, j] = value
+                cases[f"{label}_{i}_{j}"] = matrix
+    cases["all_nan"] = np.full((3, 3), np.nan, dtype=dtype)
+    cases["nan_with_nonzero"] = np.diag([np.nan, 1.0, 2.0]).astype(dtype)
+    cases["zero"] = np.zeros((3, 3), dtype=dtype)
+    cases["negative_zero"] = -np.zeros((3, 3), dtype=dtype)
+    matrices = wp.array(np.array(list(cases.values())), dtype=mat33, device=device)
+    left = wp.empty_like(matrices)
+    values = wp.empty(len(cases), dtype=vec3, device=device)
+    right = wp.empty_like(matrices)
+    wp.launch(decompose, dim=len(cases), inputs=[matrices], outputs=[left, values, right], device=device)
+
+    left_np, values_np, right_np = (a.numpy().astype(np.float64) for a in (left, values, right))
+    tol = {np.float16: 5.0e-3, np.float32: 1.0e-5, np.float64: 1.0e-12}[dtype]
+    for i, name in enumerate(cases):
+        with test.subTest(matrix=name):
+            U, sigma, V = left_np[i], values_np[i], right_np[i]
+            with np.errstate(invalid="ignore"):
+                reconstructed = U @ np.diag(sigma) @ V.T
+            if name in ("zero", "negative_zero"):
+                np.testing.assert_array_equal(sigma, np.zeros(3))
+                np.testing.assert_array_equal(reconstructed, np.zeros((3, 3)))
+                np.testing.assert_allclose(U.T @ U, np.eye(3), rtol=0.0, atol=tol)
+                np.testing.assert_allclose(V.T @ V, np.eye(3), rtol=0.0, atol=tol)
+            else:
+                test.assertFalse(np.isfinite(sigma).all(), f"Nonfinite input returned finite singular values: {sigma}")
+                test.assertFalse(np.isfinite(reconstructed).all(), "Nonfinite input returned a finite reconstruction")
+
+
 def test_svd_2D(test, device, dtype, register_kernels=False):
     tol = {
         np.float16: 1.0e-3,
@@ -3589,6 +3731,22 @@ for dtype in np_float_types:
     add_function_test_register_kernel(TestMat, f"test_eig_{dtype.__name__}", test_eig, devices=devices, dtype=dtype)
     for output_arguments in (False, True):
         overload = "output_arguments" if output_arguments else "return_values"
+        add_function_test(
+            TestMat,
+            f"test_svd_forward_{overload}_{dtype.__name__}",
+            test_svd_forward,
+            devices=devices,
+            dtype=dtype,
+            output_arguments=output_arguments,
+        )
+        add_function_test(
+            TestMat,
+            f"test_svd_nonfinite_{overload}_{dtype.__name__}",
+            test_svd_nonfinite,
+            devices=devices,
+            dtype=dtype,
+            output_arguments=output_arguments,
+        )
         add_function_test(
             TestMat,
             f"test_eig_value_gradients_{overload}_{dtype.__name__}",
