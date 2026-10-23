@@ -73,15 +73,21 @@ Installing from GitHub Releases
 and CUDA 12 compatibility wheels. The default Linux and Windows wheels use CUDA Toolkit 13.4
 and have no CUDA suffix. CUDA 12 wheels have a ``+cu12`` version suffix.
 
-Choose a ``warp_lang-<version>+cu12-py3-none-<platform>.whl`` asset for your operating system
-and CPU architecture. Copy its URL from the release page and replace ``<wheel-url>`` below:
+To install a CUDA 12 compatibility wheel, use the URL for your operating system and CPU architecture in
+the ``pip install`` command, e.g.
 
-.. code-block:: sh
+.. list-table::
+   :header-rows: 1
 
-    $ pip install "<wheel-url>"
+   * - Platform
+     - Install Command
+   * - Linux aarch64
+     - ``pip install https://github.com/NVIDIA/warp/releases/download/v1.19.0/warp_lang-1.19.0+cu12-py3-none-manylinux_2_34_aarch64.whl``
+   * - Linux x86-64
+     - ``pip install https://github.com/NVIDIA/warp/releases/download/v1.19.0/warp_lang-1.19.0+cu12-py3-none-manylinux_2_28_x86_64.whl``
+   * - Windows x86-64
+     - ``pip install https://github.com/NVIDIA/warp/releases/download/v1.19.0/warp_lang-1.19.0+cu12-py3-none-win_amd64.whl``
 
-The platform tags are ``manylinux_2_34_aarch64`` for Linux AArch64,
-``manylinux_2_28_x86_64`` for Linux x86-64, and ``win_amd64`` for Windows x86-64.
 See :ref:`cuda-requirements` for driver requirements and :doc:`compatibility` for GPU architecture support.
 
 The ``--force-reinstall`` option may need to be used to overwrite a previous installation.
