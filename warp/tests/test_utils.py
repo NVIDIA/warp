@@ -1121,6 +1121,49 @@ cuda_devices = get_cuda_test_devices()
 
 
 class TestUtils(unittest.TestCase):
+    def test_radix_sort_pairs_signed_zero_cpu(self):
+        for key_type, np_type, bits_type in (
+            (wp.float32, np.float32, np.uint32),
+            (wp.float64, np.float64, np.uint64),
+        ):
+            tiny = np.finfo(np_type).smallest_subnormal
+            keys_np = np.array((np.inf, 0.0, -0.0, tiny, -tiny, -np.inf, 0.0, -0.0, 1.0, -1.0), dtype=np_type)
+            count = len(keys_np)
+            order = np.argsort(keys_np, kind="stable")
+            for value_type, np_value_type in ((wp.int32, np.int32), (wp.int64, np.int64)):
+                for capture in (False, True):
+                    with self.subTest(key_type=key_type, value_type=value_type, capture=capture):
+                        keys = wp.array(np.tile(keys_np, 2), dtype=key_type, device="cpu")
+                        values_np = np.arange(2 * count, dtype=np_value_type)
+                        values = wp.array(values_np, dtype=value_type, device="cpu")
+                        if capture:
+                            with wp.ScopedCapture("cpu", force_module_load=False) as captured:
+                                wp.utils.radix_sort_pairs(keys, values, count)
+                        else:
+                            wp.utils.radix_sort_pairs(keys, values, count)
+                        for _ in range(2 if capture else 1):
+                            if capture:
+                                keys.assign(np.tile(keys_np, 2))
+                                values.assign(values_np)
+                                wp.capture_launch(captured.graph)
+                            np.testing.assert_array_equal(values.numpy()[:count], order)
+                            np.testing.assert_array_equal(
+                                keys.numpy()[:count].view(bits_type), keys_np[order].view(bits_type)
+                            )
+
+    def test_radix_sort_pairs_signed_zero_bit_range_cpu(self):
+        for key_type, np_type in ((wp.float32, np.float32), (wp.float64, np.float64)):
+            width = np.dtype(np_type).itemsize * 8
+            keys_np = np.array((0.0, -0.0, 0.0, -0.0), dtype=np_type)
+            count = len(keys_np)
+            for begin_bit, end_bit in ((0, 1), (1, width - 1), (width - 1, width)):
+                with self.subTest(key_type=key_type, begin_bit=begin_bit, end_bit=end_bit):
+                    keys = wp.array(np.tile(keys_np, 2), dtype=key_type, device="cpu")
+                    values = wp.array(np.arange(2 * count, dtype=np.int32), dtype=wp.int32, device="cpu")
+                    wp.utils.radix_sort_pairs(keys, values, count, begin_bit=begin_bit, end_bit=end_bit)
+                    np.testing.assert_array_equal(values.numpy()[:count], np.arange(count))
+                    np.testing.assert_array_equal(np.signbit(keys.numpy()[:count]), np.signbit(keys_np))
+
     def test_create_warp_function_parenthesized_multiline_lambda(self):
         original_fn = parenthesized_multiline_lambda()
         created_fn, _ = wp.utils.create_warp_function(original_fn)
