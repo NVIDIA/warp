@@ -242,6 +242,14 @@ def overwrite_mesh_handle_struct_kernel(
     distances[tid] = wp.length(wp.mesh_eval_position(handles[tid].nested.mesh_id, query.face, query.u, query.v))
 
 
+@wp.kernel
+def mesh_handle_struct_query_kernel(handles: wp.array[MeshHandleOutput], distances: wp.array[float]):
+    tid = wp.tid()
+    mesh_id = handles[tid].nested.mesh_id
+    query = wp.mesh_query_point_no_sign(mesh_id, wp.vec3(0.0), 100.0)
+    distances[tid] = wp.length(wp.mesh_eval_position(mesh_id, query.face, query.u, query.v))
+
+
 # ---------------------------------------------------------------------------
 # Test functions
 # ---------------------------------------------------------------------------
@@ -655,6 +663,48 @@ def test_apic_mesh_overlapping_handle_views(test, device):
                 np.testing.assert_allclose(replayed[:, 0], expected, atol=1.0e-6)
 
 
+def test_apic_mesh_fill_handles(test, device):
+    """Mesh IDs written by fill_() during capture must be remapped on load (GH-2115)."""
+    mesh = create_unit_cube_mesh(device)
+    value = MeshHandleOutput()
+    value.nested.mesh_id = mesh.id
+    points = wp.zeros(1, dtype=wp.vec3, device=device)
+    result = wp.zeros(4, dtype=float, device=device)
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        mesh_ids = wp.zeros(2, dtype=wp.handle, device=device)
+        mesh_ids.fill_(mesh.id)
+        handles = wp.zeros(2, dtype=MeshHandleOutput, device=device)
+        handles.fill_(value)
+        wp.launch(
+            mesh_handle_array_query_kernel,
+            dim=(2, 1),
+            inputs=[mesh_ids, points, result[:2].reshape((2, 1))],
+            device=device,
+        )
+        wp.launch(mesh_handle_struct_query_kernel, dim=2, inputs=[handles, result[2:]], device=device)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "fill_handles")
+        wp.capture_save(capture.graph, path, outputs={"result": result})
+        replayed = replay_in_new_process(test, device, path, "result", result.shape)
+        # The centre of the cube is 0.5 units from its surface.
+        np.testing.assert_allclose(replayed, [0.5] * 4, atol=1.0e-6)
+
+
+def test_apic_mesh_fill_handles_preloaded(test, device):
+    """Handle fills must not load kernels mid-capture, which CUDA drivers < 12.3 reject (GH-2115)."""
+    mesh = create_unit_cube_mesh(device)
+    utils_module = wp.get_module("warp._src.utils")
+    wp.load_module(utils_module, device=device)
+    loaded = dict(utils_module.execs)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False):
+        wp.full(2, mesh.id, dtype=wp.handle, device=device)
+        # Null handles keep the memtile path, so this struct needs no fill kernel.
+        wp.zeros(2, dtype=MeshHandleField, device=device).fill_(0)
+    test.assertEqual(utils_module.execs, loaded)
+
+
 def test_apic_mesh_save_before_first_launch(test, device):
     """Saving must tolerate invalid output handles that the first replay will overwrite."""
     mesh = create_unit_cube_mesh(device)
@@ -941,6 +991,10 @@ add_function_test(TestApicMesh, "test_apic_multiple_meshes", test_apic_multiple_
 add_function_test(TestApicMesh, "test_apic_mesh_handle_array", test_apic_mesh_handle_array, devices=devices)
 add_function_test(
     TestApicMesh, "test_apic_mesh_overlapping_handle_views", test_apic_mesh_overlapping_handle_views, devices=devices
+)
+add_function_test(TestApicMesh, "test_apic_mesh_fill_handles", test_apic_mesh_fill_handles, devices=devices)
+add_function_test(
+    TestApicMesh, "test_apic_mesh_fill_handles_preloaded", test_apic_mesh_fill_handles_preloaded, devices=devices
 )
 add_function_test(
     TestApicMesh,
