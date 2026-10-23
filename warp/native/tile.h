@@ -4786,29 +4786,30 @@ inline CUDA_CALLABLE void adj_tile_extract_impl(Tile& t, AdjTile& adj_t, AdjType
 }
 
 template <typename Tile, typename AdjTile>
-void adj_tile_extract(Tile& t, int i, AdjTile& adj_t, int adj_i, typename Tile::Type adj_ret)
+CUDA_CALLABLE void adj_tile_extract(Tile& t, int i, AdjTile& adj_t, int adj_i, typename Tile::Type adj_ret)
 {
     adj_tile_extract_impl(t, adj_t, adj_ret, i);
 }
 template <typename Tile, typename AdjTile, typename AdjType>
-void adj_tile_extract(Tile& t, int i, int j, AdjTile& adj_t, int adj_i, int adj_j, AdjType adj_ret)
+CUDA_CALLABLE void adj_tile_extract(Tile& t, int i, int j, AdjTile& adj_t, int adj_i, int adj_j, AdjType adj_ret)
 {
     adj_tile_extract_impl(t, adj_t, adj_ret, i, j);
 }
 template <typename Tile, typename AdjTile, typename AdjType>
-void adj_tile_extract(Tile& t, int i, int j, int k, AdjTile& adj_t, int adj_i, int adj_j, int adj_k, AdjType adj_ret)
+CUDA_CALLABLE void
+adj_tile_extract(Tile& t, int i, int j, int k, AdjTile& adj_t, int adj_i, int adj_j, int adj_k, AdjType adj_ret)
 {
     adj_tile_extract_impl(t, adj_t, adj_ret, i, j, k);
 }
 template <typename Tile, typename AdjTile, typename AdjType>
-void adj_tile_extract(
+CUDA_CALLABLE void adj_tile_extract(
     Tile& t, int i, int j, int k, int l, AdjTile& adj_t, int adj_i, int adj_j, int adj_k, int adj_l, AdjType adj_ret
 )
 {
     adj_tile_extract_impl(t, adj_t, adj_ret, i, j, k, l);
 }
 template <typename Tile, typename AdjTile, typename AdjType>
-void adj_tile_extract(
+CUDA_CALLABLE void adj_tile_extract(
     Tile& t,
     int i,
     int j,
@@ -4827,7 +4828,7 @@ void adj_tile_extract(
     adj_tile_extract_impl(t, adj_t, adj_ret, i, j, k, l, m);
 }
 template <typename Tile, typename AdjTile, typename AdjType>
-void adj_tile_extract(
+CUDA_CALLABLE void adj_tile_extract(
     Tile& t,
     int i,
     int j,
@@ -5338,14 +5339,14 @@ template <typename Tile> void tile_bit_xor_inplace(Tile& t, int i, int j, int k,
 }
 
 template <typename Tile, typename AdjTile>
-void adj_tile_add_inplace(
+CUDA_CALLABLE void adj_tile_add_inplace(
     Tile& t, int i, typename Tile::Type value, AdjTile& adj_t, int adj_i, typename Tile::Type& adj_value
 )
 {
     adj_t.adj_add_inplace(tile_coord(i), adj_value);
 }
 template <typename Tile, typename AdjTile>
-void adj_tile_add_inplace(
+CUDA_CALLABLE void adj_tile_add_inplace(
     Tile& t,
     int i,
     int j,
@@ -5359,7 +5360,7 @@ void adj_tile_add_inplace(
     adj_t.adj_add_inplace(tile_coord(i, j), adj_value);
 }
 template <typename Tile, typename AdjTile>
-void adj_tile_add_inplace(
+CUDA_CALLABLE void adj_tile_add_inplace(
     Tile& t,
     int i,
     int j,
@@ -5375,7 +5376,7 @@ void adj_tile_add_inplace(
     adj_t.adj_add_inplace(tile_coord(i, j, k), adj_value);
 }
 template <typename Tile, typename AdjTile>
-void adj_tile_add_inplace(
+CUDA_CALLABLE void adj_tile_add_inplace(
     Tile& t,
     int i,
     int j,
@@ -5394,14 +5395,14 @@ void adj_tile_add_inplace(
 }
 
 template <typename Tile, typename AdjTile>
-void adj_tile_sub_inplace(
+CUDA_CALLABLE void adj_tile_sub_inplace(
     Tile& t, int i, typename Tile::Type value, AdjTile& adj_t, int adj_i, typename Tile::Type& adj_value
 )
 {
     adj_t.adj_sub_inplace(tile_coord(i), adj_value);
 }
 template <typename Tile, typename AdjTile>
-void adj_tile_sub_inplace(
+CUDA_CALLABLE void adj_tile_sub_inplace(
     Tile& t,
     int i,
     int j,
@@ -5415,7 +5416,7 @@ void adj_tile_sub_inplace(
     adj_t.adj_sub_inplace(tile_coord(i, j), adj_value);
 }
 template <typename Tile, typename AdjTile>
-void adj_tile_sub_inplace(
+CUDA_CALLABLE void adj_tile_sub_inplace(
     Tile& t,
     int i,
     int j,
@@ -5431,7 +5432,7 @@ void adj_tile_sub_inplace(
     adj_t.adj_sub_inplace(tile_coord(i, j, k), adj_value);
 }
 template <typename Tile, typename AdjTile>
-void adj_tile_sub_inplace(
+CUDA_CALLABLE void adj_tile_sub_inplace(
     Tile& t,
     int i,
     int j,

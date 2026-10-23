@@ -349,14 +349,16 @@ template <typename Tile, typename Op = OpAdd<typename Tile::Type>> inline auto t
 
 template <typename Tile> auto tile_scan_inclusive(Tile& t) { return tile_scan_inclusive_impl(t); }
 
-template <typename Tile, typename AdjTile> void adj_tile_scan_inclusive(Tile& t, Tile& adj_t, AdjTile& adj_ret)
+template <typename Tile, typename AdjTile>
+CUDA_CALLABLE void adj_tile_scan_inclusive(Tile& t, Tile& adj_t, AdjTile& adj_ret)
 {
     // MISSINGADJOINT: adjoint of inclusive prefix sum is reverse-suffix sum of adj_ret
 }
 
 template <typename Tile> auto tile_scan_exclusive(Tile& t) { return tile_scan_exclusive_impl(t); }
 
-template <typename Tile, typename AdjTile> void adj_tile_scan_exclusive(Tile& t, Tile& adj_t, AdjTile& adj_ret)
+template <typename Tile, typename AdjTile>
+CUDA_CALLABLE void adj_tile_scan_exclusive(Tile& t, Tile& adj_t, AdjTile& adj_ret)
 {
     // MISSINGADJOINT: adjoint of exclusive prefix sum is reverse-suffix sum of adj_ret
     // shifted by one
@@ -368,7 +370,8 @@ template <typename Tile> auto tile_scan_max_inclusive(Tile& t)
     return tile_scan_inclusive_impl<Tile, OpMax<typename Tile::Type>>(t);
 }
 
-template <typename Tile, typename AdjTile> void adj_tile_scan_max_inclusive(Tile& t, Tile& adj_t, AdjTile& adj_ret)
+template <typename Tile, typename AdjTile>
+CUDA_CALLABLE void adj_tile_scan_max_inclusive(Tile& t, Tile& adj_t, AdjTile& adj_ret)
 {
     // MISSINGADJOINT: subgradient: route each adj_ret[i] to argmax over [0, i]
 }
@@ -379,7 +382,8 @@ template <typename Tile> auto tile_scan_min_inclusive(Tile& t)
     return tile_scan_inclusive_impl<Tile, OpMin<typename Tile::Type>>(t);
 }
 
-template <typename Tile, typename AdjTile> void adj_tile_scan_min_inclusive(Tile& t, Tile& adj_t, AdjTile& adj_ret)
+template <typename Tile, typename AdjTile>
+CUDA_CALLABLE void adj_tile_scan_min_inclusive(Tile& t, Tile& adj_t, AdjTile& adj_ret)
 {
     // MISSINGADJOINT: subgradient: route each adj_ret[i] to argmin over [0, i]
 }
