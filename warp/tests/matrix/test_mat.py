@@ -861,6 +861,136 @@ def test_svd(test, device, dtype, register_kernels=False):
                 assert_np_equal((plusval - minusval) / (2 * dx), m3grads[ii, jj], tol=fdtol)
 
 
+def test_svd_value_gradients(test, device, dtype, n, output_arguments):
+    """Check singular-value losses and unused SVD diagnostics at repeated singular values."""
+    tol = {np.float16: 1.0e-2, np.float32: 1.0e-5, np.float64: 1.0e-10}[dtype]
+    scalar = wp.dtype_from_numpy(np.dtype(dtype))
+    matrix = wp.types.matrix(shape=(n, n), dtype=scalar)
+    vector = wp.types.vector(length=n, dtype=scalar)
+
+    @wp.kernel(module="unique")
+    def svd_loss(matrices: wp.array[matrix], add_trace: bool, losses: wp.array[scalar]):
+        i = wp.tid()
+        A = matrices[i]
+        U = matrix()
+        s = vector()
+        V = matrix()
+        if wp.static(n == 2):
+            if wp.static(output_arguments):
+                wp.svd2(A, U, s, V)
+            else:
+                U, s, V = wp.svd2(A)
+        else:
+            if wp.static(output_arguments):
+                wp.svd3(A, U, s, V)
+            else:
+                U, s, V = wp.svd3(A)
+        loss = wp.dot(s, s)
+        if add_trace:
+            loss = loss + wp.trace(A)
+        losses[i] = loss
+
+    @wp.kernel(module="unique")
+    def trace_loss(matrices: wp.array[matrix], losses: wp.array[scalar]):
+        i = wp.tid()
+        losses[i] = wp.trace(matrices[i])
+
+    matrices_np = np.array([2.0 * np.eye(n)] * 3, dtype=dtype)
+    matrices = wp.array(matrices_np, dtype=matrix, device=device, requires_grad=True)
+    losses = wp.zeros(3, dtype=scalar, device=device, requires_grad=True)
+    diagnostic = wp.zeros_like(losses, requires_grad=False)
+    matrices_fp64 = matrices_np.astype(np.float64)
+    identity = np.broadcast_to(np.eye(n), matrices_np.shape)
+    norm_squared = np.sum(matrices_fp64**2, axis=(1, 2))
+    traces = np.trace(matrices_fp64, axis1=1, axis2=2)
+
+    for mode in ("norm", "norm_trace", "masked_norm", "trace", "diagnostic_trace"):
+        seeds_np = np.array([0.0, 1.0, -0.5] if mode == "masked_norm" else [1.0] * 3, dtype=dtype)
+        seeds = wp.array(seeds_np, dtype=scalar, device=device)
+        with wp.Tape() as tape:
+            if mode in ("trace", "diagnostic_trace"):
+                if mode == "diagnostic_trace":
+                    wp.launch(svd_loss, dim=3, inputs=[matrices, False], outputs=[diagnostic], device=device)
+                wp.launch(trace_loss, dim=3, inputs=[matrices], outputs=[losses], device=device)
+            else:
+                wp.launch(svd_loss, dim=3, inputs=[matrices, mode == "norm_trace"], outputs=[losses], device=device)
+        tape.backward(grads={losses: seeds})
+
+        if mode in ("trace", "diagnostic_trace"):
+            expected_losses = traces
+            expected_gradients = identity
+        else:
+            expected_losses = norm_squared + (traces if mode == "norm_trace" else 0.0)
+            expected_gradients = 2.0 * matrices_fp64 + (identity if mode == "norm_trace" else 0.0)
+        expected_gradients = expected_gradients * seeds_np.astype(np.float64)[:, None, None]
+        with test.subTest(mode=mode):
+            actual_losses = losses.numpy().astype(np.float64)
+            actual_gradients = matrices.grad.numpy().astype(np.float64)
+            test.assertTrue(np.isfinite(actual_losses).all())
+            test.assertTrue(np.isfinite(actual_gradients).all())
+            np.testing.assert_allclose(actual_losses, expected_losses, atol=tol, rtol=tol)
+            np.testing.assert_allclose(actual_gradients, expected_gradients, atol=tol, rtol=tol)
+        tape.zero()
+
+
+def test_svd_vector_gradients(test, device, dtype, n, output_arguments):
+    """Check that exact-zero branches preserve small nonzero singular-vector adjoints."""
+    tol = {np.float32: 1.0e-5, np.float64: 1.0e-10}[dtype]
+    small_seed = {np.float32: 2.0**-30, np.float64: 2.0**-50}[dtype]
+    scalar = wp.dtype_from_numpy(np.dtype(dtype))
+    matrix = wp.types.matrix(shape=(n, n), dtype=scalar)
+    vector = wp.types.vector(length=n, dtype=scalar)
+
+    @wp.kernel(module="unique")
+    def decompose(matrices: wp.array[matrix], us: wp.array[matrix], vs: wp.array[matrix]):
+        i = wp.tid()
+        U = matrix()
+        s = vector()
+        V = matrix()
+        if wp.static(n == 2):
+            if wp.static(output_arguments):
+                wp.svd2(matrices[i], U, s, V)
+            else:
+                U, s, V = wp.svd2(matrices[i])
+        else:
+            if wp.static(output_arguments):
+                wp.svd3(matrices[i], U, s, V)
+            else:
+                U, s, V = wp.svd3(matrices[i])
+        us[i] = U
+        vs[i] = V
+
+    # The repeated sample has zero seeds; its neighbor exercises the general adjoint.
+    matrices_np = np.array([2.0 * np.eye(n), np.diag(np.arange(n, 0, -1))], dtype=dtype)
+    matrices = wp.array(matrices_np, dtype=matrix, device=device, requires_grad=True)
+    us = wp.zeros(2, dtype=matrix, device=device, requires_grad=True)
+    vs = wp.zeros_like(us)
+    seed_np = np.zeros_like(matrices_np)
+    seed_np[1, 0, 1] = 1.0
+    zero_seed = wp.zeros_like(us, requires_grad=False)
+
+    with wp.Tape() as tape:
+        wp.launch(decompose, dim=2, inputs=[matrices], outputs=[us, vs], device=device)
+
+    for mode in ("U", "V", "UV"):
+        reference = None
+        for scale in (1.0, small_seed):
+            seed = wp.array(seed_np * scale, dtype=matrix, device=device)
+            tape.backward(grads={us: seed if mode != "V" else zero_seed, vs: seed if mode != "U" else zero_seed})
+            gradients = matrices.grad.numpy().astype(np.float64)
+            with test.subTest(mode=mode, scale=scale):
+                test.assertTrue(np.isfinite(gradients).all())
+                np.testing.assert_array_equal(gradients[0], np.zeros((n, n)))
+                if scale == 1.0:
+                    test.assertGreater(np.max(np.abs(gradients[1])), 0.1)
+                else:
+                    # Normalize so the absolute tolerance cannot hide a discarded seed.
+                    np.testing.assert_allclose(gradients / scale, reference, atol=tol, rtol=tol)
+            if scale == 1.0:
+                reference = gradients
+            tape.zero()
+
+
 def test_svd_2D(test, device, dtype, register_kernels=False):
     tol = {
         np.float16: 1.0e-3,
@@ -3589,6 +3719,26 @@ for dtype in np_float_types:
     add_function_test_register_kernel(TestMat, f"test_eig_{dtype.__name__}", test_eig, devices=devices, dtype=dtype)
     for output_arguments in (False, True):
         overload = "output_arguments" if output_arguments else "return_values"
+        for n in (2, 3):
+            add_function_test(
+                TestMat,
+                f"test_svd_value_gradients_{n}d_{overload}_{dtype.__name__}",
+                test_svd_value_gradients,
+                devices=devices,
+                dtype=dtype,
+                n=n,
+                output_arguments=output_arguments,
+            )
+            if dtype != np.float16:
+                add_function_test(
+                    TestMat,
+                    f"test_svd_vector_gradients_{n}d_{overload}_{dtype.__name__}",
+                    test_svd_vector_gradients,
+                    devices=devices,
+                    dtype=dtype,
+                    n=n,
+                    output_arguments=output_arguments,
+                )
         add_function_test(
             TestMat,
             f"test_eig_value_gradients_{overload}_{dtype.__name__}",
