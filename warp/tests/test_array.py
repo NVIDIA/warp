@@ -413,6 +413,30 @@ def test_slicing(test, device):
     assert_array_equal(wp_arr[:5,], wp.array(np_arr[:5], dtype=int, device=device))
 
 
+def test_slicing_empty_at_end(test, device):
+    # A slice may start at the end of a dimension, producing an empty view, as in NumPy.
+    np_arr = np.arange(12, dtype=np.float32).reshape(3, 4)
+    arr = wp.array(np_arr, dtype=float, device=device)
+
+    test.assertEqual(arr[3:].shape, np_arr[3:].shape)
+    test.assertEqual(arr[3:3].shape, np_arr[3:3].shape)
+    test.assertEqual(arr[:, 4:].shape, np_arr[:, 4:].shape)
+    test.assertEqual(arr[1, 4:].shape, np_arr[1, 4:].shape)
+    assert_np_equal(arr[3:].numpy(), np_arr[3:])
+
+    # Slicing an empty array must not raise.
+    empty = wp.zeros(0, dtype=float, device=device)
+    test.assertEqual(empty[:].shape, (0,))
+    test.assertEqual(empty[0:0].shape, (0,))
+
+    empty_2d = wp.zeros((0, 3), dtype=float, device=device)
+    test.assertEqual(empty_2d[:, 1:].shape, (0, 2))
+
+    # Starting past the end is still an error.
+    with test.assertRaisesRegex(RuntimeError, "Invalid indexing in slice"):
+        arr[4:]
+
+
 def test_view(test, device):
     with test.subTest(msg="scalars"):
         np_arr_a = np.arange(1, 10, 1, dtype=np.uint32)
@@ -4241,6 +4265,7 @@ add_function_test(TestArray, "test_flatten", test_flatten, devices=devices)
 add_function_test(TestArray, "test_reshape", test_reshape, devices=devices)
 
 add_function_test(TestArray, "test_slicing", test_slicing, devices=devices)
+add_function_test(TestArray, "test_slicing_empty_at_end", test_slicing_empty_at_end, devices=devices)
 add_function_test(TestArray, "test_transpose", test_transpose, devices=devices)
 add_function_test(TestArray, "test_view", test_view, devices=devices)
 add_function_test(TestArray, "test_clone_adjoint", test_clone_adjoint, devices=devices)
