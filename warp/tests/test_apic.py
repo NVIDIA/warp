@@ -15,6 +15,7 @@ import unittest
 import weakref
 from functools import partial
 from types import SimpleNamespace
+from typing import Any
 from unittest import mock
 
 import numpy as np
@@ -82,6 +83,17 @@ def fill_reduction_inputs_kernel(a: wp.array[wp.float32], b: wp.array[wp.float32
 @wp.kernel
 def no_tid_kernel():
     pass
+
+
+@wp.kernel
+def generic_scale_kernel(a: wp.array[Any], s: Any):
+    i = wp.tid()
+    a[i] = a[i] * s
+
+
+# Declared up front so both overloads share one module executable.
+generic_scale_f32 = wp.overload(generic_scale_kernel, [wp.array[wp.float32], wp.float32])
+generic_scale_f64 = wp.overload(generic_scale_kernel, [wp.array[wp.float64], wp.float64])
 
 
 @wp.kernel
@@ -2123,6 +2135,30 @@ def test_save_load_multiple_kernels(test, device):
         result = wp.zeros(n, dtype=float, device=device)
         loaded.get_param("d", result)
         np.testing.assert_allclose(result.numpy(), np.full(n, 50.0))
+
+
+def test_save_load_generic_kernel_overloads(test, device):
+    """Overloads of one generic kernel in the same module must each replay their own code."""
+    a = wp.ones(4, dtype=wp.float32, device=device)
+    b = wp.ones(4, dtype=wp.float64, device=device)
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.launch(generic_scale_f32, dim=4, inputs=[a, wp.float32(2.0)], device=device)
+        wp.launch(generic_scale_f64, dim=4, inputs=[b, wp.float64(3.0)], device=device)
+
+    wp.capture_launch(capture.graph)
+    np.testing.assert_array_equal(a.numpy(), np.full(4, 2.0))
+    np.testing.assert_array_equal(b.numpy(), np.full(4, 3.0))
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "generic_overloads")
+        wp.capture_save(capture.graph, path, outputs={"a": a, "b": b})
+        loaded = wp.capture_load(path, device=device)
+        wp.capture_launch(loaded)
+        loaded.get_param("a", a)
+        loaded.get_param("b", b)
+        np.testing.assert_array_equal(a.numpy(), np.full(4, 4.0))
+        np.testing.assert_array_equal(b.numpy(), np.full(4, 9.0))
 
 
 def test_save_load_memcpy(test, device):
@@ -5082,6 +5118,12 @@ add_function_test(
     TestApic,
     "test_save_load_multiple_kernels",
     test_save_load_multiple_kernels,
+    devices=devices_with_cuda_graph_module_load,
+)
+add_function_test(
+    TestApic,
+    "test_save_load_generic_kernel_overloads",
+    test_save_load_generic_kernel_overloads,
     devices=devices_with_cuda_graph_module_load,
 )
 add_function_test(TestApic, "test_save_load_memcpy", test_save_load_memcpy, devices=devices)
