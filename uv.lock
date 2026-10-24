@@ -865,11 +865,44 @@ wheels = [
 
 [[package]]
 name = "filelock"
-version = "3.32.5"
+version = "4.1.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/0a/a0/50c2c0ce5e74d7721bbb1b19a26ebd339aac5878553a6e35308c2f31f935/filelock-3.32.5.tar.gz", hash = "sha256:f6a6a28f743f9b95ce19db5abe0f376f75eb56517dff21e1a4751e2657d3e83d", size = 222838, upload-time = "2026-08-31T18:56:34.729Z" }
+resolution-markers = [
+    "python_full_version < '3.11' and extra != 'extra-9-warp-lang-torch-cu12' and extra == 'extra-9-warp-lang-torch-cu13'",
+    "(python_full_version < '3.11' and platform_machine != 'AMD64' and extra == 'extra-9-warp-lang-torch-cu12' and extra != 'extra-9-warp-lang-torch-cu13') or (python_full_version < '3.11' and sys_platform != 'win32' and extra == 'extra-9-warp-lang-torch-cu12' and extra != 'extra-9-warp-lang-torch-cu13')",
+    "python_full_version < '3.11' and platform_machine == 'AMD64' and sys_platform == 'win32' and extra == 'extra-9-warp-lang-torch-cu12' and extra != 'extra-9-warp-lang-torch-cu13'",
+    "python_full_version < '3.11' and extra != 'extra-9-warp-lang-torch-cu12' and extra != 'extra-9-warp-lang-torch-cu13'",
+]
+sdist = { url = "https://files.pythonhosted.org/packages/4c/58/6fd434bec86eff7c38a3168454cb132b762b2bea9b3ac094101a2f7bc32a/filelock-4.1.0.tar.gz", hash = "sha256:ad7f724afef953e731b1cc39bcd3a09166d72ed7fcdf29e6e88b1c3235c6715d", size = 561277, upload-time = "2026-10-09T19:57:20.34Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/36/d2/b70a31e13d04456d28493f31d2aa087e99eeb2767ef0293b2625727ccb8c/filelock-3.32.5-py3-none-any.whl", hash = "sha256:142cd9fa77a872c5e78c62329a0d15278fadc686eb89e760017968961a4fd6b2", size = 100003, upload-time = "2026-08-31T18:56:33.078Z" },
+    { url = "https://files.pythonhosted.org/packages/ee/86/032133892a5de43b5a98200b01aadcad68cc255e274a762f08b8a76d2912/filelock-4.1.0-py3-none-any.whl", hash = "sha256:2ce9818e3e2d8f284c1a964414447ef148d42a5fd5e2a477a7118e574b293ec1", size = 133003, upload-time = "2026-10-09T19:57:18.716Z" },
+]
+
+[[package]]
+name = "filelock"
+version = "4.2.4"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version >= '3.14' and extra != 'extra-9-warp-lang-torch-cu12' and extra == 'extra-9-warp-lang-torch-cu13'",
+    "(python_full_version >= '3.14' and platform_machine != 'AMD64' and extra == 'extra-9-warp-lang-torch-cu12' and extra != 'extra-9-warp-lang-torch-cu13') or (python_full_version >= '3.14' and sys_platform != 'win32' and extra == 'extra-9-warp-lang-torch-cu12' and extra != 'extra-9-warp-lang-torch-cu13')",
+    "python_full_version >= '3.14' and platform_machine == 'AMD64' and sys_platform == 'win32' and extra == 'extra-9-warp-lang-torch-cu12' and extra != 'extra-9-warp-lang-torch-cu13'",
+    "python_full_version >= '3.14' and extra != 'extra-9-warp-lang-torch-cu12' and extra != 'extra-9-warp-lang-torch-cu13'",
+    "python_full_version == '3.13.*' and extra != 'extra-9-warp-lang-torch-cu12' and extra == 'extra-9-warp-lang-torch-cu13'",
+    "(python_full_version == '3.13.*' and platform_machine != 'AMD64' and extra == 'extra-9-warp-lang-torch-cu12' and extra != 'extra-9-warp-lang-torch-cu13') or (python_full_version == '3.13.*' and sys_platform != 'win32' and extra == 'extra-9-warp-lang-torch-cu12' and extra != 'extra-9-warp-lang-torch-cu13')",
+    "python_full_version == '3.13.*' and platform_machine == 'AMD64' and sys_platform == 'win32' and extra == 'extra-9-warp-lang-torch-cu12' and extra != 'extra-9-warp-lang-torch-cu13'",
+    "python_full_version == '3.13.*' and extra != 'extra-9-warp-lang-torch-cu12' and extra != 'extra-9-warp-lang-torch-cu13'",
+    "python_full_version == '3.12.*' and extra != 'extra-9-warp-lang-torch-cu12' and extra == 'extra-9-warp-lang-torch-cu13'",
+    "(python_full_version == '3.12.*' and platform_machine != 'AMD64' and extra == 'extra-9-warp-lang-torch-cu12' and extra != 'extra-9-warp-lang-torch-cu13') or (python_full_version == '3.12.*' and sys_platform != 'win32' and extra == 'extra-9-warp-lang-torch-cu12' and extra != 'extra-9-warp-lang-torch-cu13')",
+    "python_full_version == '3.12.*' and platform_machine == 'AMD64' and sys_platform == 'win32' and extra == 'extra-9-warp-lang-torch-cu12' and extra != 'extra-9-warp-lang-torch-cu13'",
+    "python_full_version == '3.12.*' and extra != 'extra-9-warp-lang-torch-cu12' and extra != 'extra-9-warp-lang-torch-cu13'",
+    "python_full_version == '3.11.*' and extra != 'extra-9-warp-lang-torch-cu12' and extra == 'extra-9-warp-lang-torch-cu13'",
+    "(python_full_version == '3.11.*' and platform_machine != 'AMD64' and extra == 'extra-9-warp-lang-torch-cu12' and extra != 'extra-9-warp-lang-torch-cu13') or (python_full_version == '3.11.*' and sys_platform != 'win32' and extra == 'extra-9-warp-lang-torch-cu12' and extra != 'extra-9-warp-lang-torch-cu13')",
+    "python_full_version == '3.11.*' and platform_machine == 'AMD64' and sys_platform == 'win32' and extra == 'extra-9-warp-lang-torch-cu12' and extra != 'extra-9-warp-lang-torch-cu13'",
+    "python_full_version == '3.11.*' and extra != 'extra-9-warp-lang-torch-cu12' and extra != 'extra-9-warp-lang-torch-cu13'",
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d8/28/3893324bcadf8f89b1616637468d766af3f625008c0735bf704fdfa86617/filelock-4.2.4.tar.gz", hash = "sha256:c6d8663535e1650ee430507b4ffbac7b464dd64b7647ea0112a9f406499d163d", size = 652444, upload-time = "2026-10-19T01:57:51.001Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e0/1b/5e74289a1878e666bb4b65fe5805a04cafcac2aa5f519ef1ead67ef91c56/filelock-4.2.4-py3-none-any.whl", hash = "sha256:301241438c57936ef93f4243a94f2559022268bfcf9b375a9a72eb0f8db8358e", size = 162475, upload-time = "2026-10-19T01:57:49.419Z" },
 ]
 
 [[package]]
@@ -2658,7 +2691,8 @@ name = "python-discovery"
 version = "1.6.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "filelock" },
+    { name = "filelock", version = "4.1.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11' or (extra == 'extra-9-warp-lang-torch-cu12' and extra == 'extra-9-warp-lang-torch-cu13')" },
+    { name = "filelock", version = "4.2.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11' or (extra == 'extra-9-warp-lang-torch-cu12' and extra == 'extra-9-warp-lang-torch-cu13')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/f3/ee/cf608372c88ce2c136ee13c69ab6f667dbc0d0c1176af188b4ddc8853e66/python_discovery-1.6.4.tar.gz", hash = "sha256:bc70d31f0ec5de11eda13d4d64c16e24b3506a65984684f2b6c98cb83b2ea9df", size = 89883, upload-time = "2026-10-19T01:45:14.855Z" }
 wheels = [
@@ -2755,11 +2789,11 @@ wheels = [
 
 [[package]]
 name = "setuptools"
-version = "83.0.0"
+version = "84.2.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/34/26/f5d29e25ffdb535afef2d35cdb55b325298f96debd670da4c325e08d70f4/setuptools-83.0.0.tar.gz", hash = "sha256:025bccbbf0fa05b6192bc64ae1e7b16e001fd6d6d4d5de03c97b1c1ade523bef", size = 1154254, upload-time = "2026-07-04T15:31:22.699Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/70/b3/c19426f783614d625699a4b247faf628ea9ab1db228674491767b417f9e1/setuptools-84.2.1.tar.gz", hash = "sha256:3ff8b3b5492a0aa66960f4419365a86b84e013070d4313e4d4a6894f5d64d6bc", size = 1230289, upload-time = "2026-10-20T19:01:37.742Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5d/40/e1e72872c6354b306daef1703549e8e83b4d43cfea356311bf722a043752/setuptools-83.0.0-py3-none-any.whl", hash = "sha256:29b23c360f22f414dc7336bb39178cc7bcbf6021ed2733cde173f09dba19abb3", size = 1008090, upload-time = "2026-07-04T15:31:20.885Z" },
+    { url = "https://files.pythonhosted.org/packages/ef/55/6dc6d6bb953bdfc52519a0059592c52b6e3b8ad51cf8256dffceb55b0610/setuptools-84.2.1-py3-none-any.whl", hash = "sha256:ca140b45d5325a9478f880e351484f62fef15f336462e449ca0c03c873d589c2", size = 876263, upload-time = "2026-10-20T19:01:35.678Z" },
 ]
 
 [[package]]
@@ -3052,7 +3086,8 @@ resolution-markers = [
 dependencies = [
     { name = "cuda-bindings", version = "12.9.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.15' and sys_platform == 'linux'" },
     { name = "cuda-toolkit", version = "12.6.3", source = { registry = "https://pypi.org/simple" }, extra = ["cublas", "cudart", "cufft", "cufile", "cupti", "curand", "cusolver", "cusparse", "nvrtc", "nvtx"], marker = "(sys_platform == 'linux' and extra == 'extra-9-warp-lang-torch-cu12') or (extra == 'extra-9-warp-lang-torch-cu12' and extra == 'extra-9-warp-lang-torch-cu13')" },
-    { name = "filelock" },
+    { name = "filelock", version = "4.1.0", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.11' and extra == 'extra-9-warp-lang-torch-cu12') or (extra == 'extra-9-warp-lang-torch-cu12' and extra == 'extra-9-warp-lang-torch-cu13')" },
+    { name = "filelock", version = "4.2.4", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version >= '3.11' and extra == 'extra-9-warp-lang-torch-cu12') or (extra == 'extra-9-warp-lang-torch-cu12' and extra == 'extra-9-warp-lang-torch-cu13')" },
     { name = "fsspec" },
     { name = "jinja2" },
     { name = "networkx", version = "3.4.2", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.11' and extra == 'extra-9-warp-lang-torch-cu12') or (extra == 'extra-9-warp-lang-torch-cu12' and extra == 'extra-9-warp-lang-torch-cu13')" },
@@ -3108,7 +3143,8 @@ resolution-markers = [
 dependencies = [
     { name = "cuda-bindings", version = "13.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.15' and sys_platform == 'linux'" },
     { name = "cuda-toolkit", version = "13.0.3.0", source = { registry = "https://pypi.org/simple" }, extra = ["cublas", "cudart", "cufft", "cufile", "cupti", "curand", "cusolver", "cusparse", "nvjitlink", "nvrtc", "nvtx"], marker = "(sys_platform == 'linux' and extra == 'extra-9-warp-lang-torch-cu13') or (extra == 'extra-9-warp-lang-torch-cu12' and extra == 'extra-9-warp-lang-torch-cu13')" },
-    { name = "filelock" },
+    { name = "filelock", version = "4.1.0", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.11' and extra == 'extra-9-warp-lang-torch-cu13') or (extra == 'extra-9-warp-lang-torch-cu12' and extra == 'extra-9-warp-lang-torch-cu13')" },
+    { name = "filelock", version = "4.2.4", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version >= '3.11' and extra == 'extra-9-warp-lang-torch-cu13') or (extra == 'extra-9-warp-lang-torch-cu12' and extra == 'extra-9-warp-lang-torch-cu13')" },
     { name = "fsspec" },
     { name = "jinja2" },
     { name = "networkx", version = "3.4.2", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.11' and extra == 'extra-9-warp-lang-torch-cu13') or (extra == 'extra-9-warp-lang-torch-cu12' and extra == 'extra-9-warp-lang-torch-cu13')" },
@@ -3229,19 +3265,20 @@ wheels = [
 
 [[package]]
 name = "virtualenv"
-version = "21.14.12"
+version = "21.14.13"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "distlib" },
-    { name = "filelock" },
+    { name = "filelock", version = "4.1.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11' or (extra == 'extra-9-warp-lang-torch-cu12' and extra == 'extra-9-warp-lang-torch-cu13')" },
+    { name = "filelock", version = "4.2.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11' or (extra == 'extra-9-warp-lang-torch-cu12' and extra == 'extra-9-warp-lang-torch-cu13')" },
     { name = "packaging" },
     { name = "platformdirs" },
     { name = "python-discovery" },
     { name = "typing-extensions", marker = "python_full_version < '3.11' or (extra == 'extra-9-warp-lang-torch-cu12' and extra == 'extra-9-warp-lang-torch-cu13')" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c9/2c/1a69b3346931e9a7db9cc00cc0fa847c843a85fa7cf52a598f57261c68df/virtualenv-21.14.12.tar.gz", hash = "sha256:bbcfb78e36c22ad70c6917c4aecb5e63477d3c138e9f88c946f320e31859c76a", size = 5562800, upload-time = "2026-10-21T01:58:51.724Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/70/aa/bff50daee0488e16d611258a9b6c5a1d0c9e128f8ca424e9f4e1c0444ef2/virtualenv-21.14.13.tar.gz", hash = "sha256:de5307ba4b9a0001d9c8ea02832d38f63ca432880f416c1bface61c4323fd905", size = 5570301, upload-time = "2026-10-22T20:10:16.952Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a0/92/f3b8af2d36ddec4dc61dc25655dc010e419ff456cb4ca0e720c8112f1047/virtualenv-21.14.12-py3-none-any.whl", hash = "sha256:7820aeaef23f1f59a96458edfc7f9d3deac937155718de15f1c9a64471e15551", size = 5556824, upload-time = "2026-10-21T01:58:48.505Z" },
+    { url = "https://files.pythonhosted.org/packages/bb/a9/c10d8a44a29fb94a18b43fdf11f38caca53ae7c9406f11a72b1cb8f624f1/virtualenv-21.14.13-py3-none-any.whl", hash = "sha256:5fbb04138a4861580b78ba9110d529a26bc48fcc93c8ec36bc0202eeed96a788", size = 5557094, upload-time = "2026-10-22T20:10:15.096Z" },
 ]
 
 [[package]]
