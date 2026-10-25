@@ -221,12 +221,14 @@ def _sqrt_min_normal(_value: wp.float64):
 
 @wp.func
 def _householder_reflection(x: Any, pivot: int):
-    """Build a Householder reflection, scaling only to avoid underflow."""
+    """Build a Householder reflection, scaling only to avoid underflow or overflow."""
     zero = x.dtype(0.0)
     two = x.dtype(2.0)
 
     norm = wp.length(x)
-    if norm < _sqrt_min_normal(x[0]):
+    min_norm = _sqrt_min_normal(x[0])
+    # The pivot update can double the norm, so leave headroom before squaring it.
+    if norm < min_norm or norm >= x.dtype(1.0) / min_norm:
         scale = wp.max(wp.abs(x))
         if scale == zero:
             return x, zero
