@@ -961,48 +961,80 @@ clang compilation:
     - .basic_test_changes_rules
     - .trigger_common
 
-# Run the airspeed velocity (ASV) benchmark suite. Auto-triggers on MR
-# pipelines whose diff touches any path that could affect a benchmark
-# result; the child pipeline itself further gates the heavy tile suite
-# on tile-relevant paths. `needs: []` so the trigger fires at pipeline
-# start and the child's build job is not blocked behind the parent's
-# test stage.
+# Paths that could affect an airspeed velocity (ASV) benchmark result.
+.asv-benchmark-paths:
+  changes:
+    - .gitlab-ci.yml
+    - .gitlab/ci/asv*.yml
+    - asv/**/*
+    - asv.conf.json
+    - warp/*.py
+    - warp/*.pyi
+    - warp/py.typed
+    - warp/_src/**/*
+    - warp/examples/assets/**/*
+    - warp/examples/fem/utils.py
+    - warp/fem/**/*
+    - warp/jax_experimental/**/*
+    - warp/native/**/*
+    - warp/optim/**/*
+    - warp/render/**/*
+    - pyproject.toml
+    - setup.py
+    - deps/*
+    - build_lib.py
+    - build_llvm.py
+
+# Run the ASV benchmark suite. Auto-triggers on MR pipelines whose diff
+# touches any path that could affect a benchmark result; the child pipeline
+# itself further gates the heavy tile suite on tile-relevant paths.
+# `needs: []` so the trigger fires at pipeline start and the child's build
+# job is not blocked behind the parent's test stage.
 asv benchmarks:
   stage: child pipelines
   trigger:
-    include: /.gitlab/ci/asv.yml
+    include: /.gitlab/ci/asv-mr.yml
   needs: []
   extends:
     - .trigger_common
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
-      changes:
-        - .gitlab-ci.yml
-        - .gitlab/ci/asv.yml
-        - asv/**/*
-        - asv.conf.json
-        - warp/*.py
-        - warp/*.pyi
-        - warp/py.typed
-        - warp/_src/**/*
-        - warp/examples/assets/**/*
-        - warp/examples/fem/utils.py
-        - warp/fem/**/*
-        - warp/jax_experimental/**/*
-        - warp/native/**/*
-        - warp/optim/**/*
-        - warp/render/**/*
-        - pyproject.toml
-        - setup.py
-        - deps/*
-        - build_lib.py
-        - build_llvm.py
+      changes: !reference [.asv-benchmark-paths, changes]
     # Manual fallback: any MR whose diff doesn't match the path filter
     # above can still opt in to bench via a play button (e.g. tooling
     # changes that affect codegen but live outside warp/**).
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
       when: manual
       allow_failure: true
+
+# Benchmark each push to main that touches the same paths against the main
+# tip before the push, on the L40 and RTX PRO 6000 pools.
+asv main benchmarks:
+  stage: child pipelines
+  trigger:
+    include: /.gitlab/ci/asv-main.yml
+  needs: []
+  extends:
+    - .trigger_common
+  variables:
+    ASV_COMPARE_MODE: push
+    ASV_PUSH_BEFORE_SHA: $CI_COMMIT_BEFORE_SHA
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      changes: !reference [.asv-benchmark-paths, changes]
+
+# Benchmark the last day of main on the B200 pool from the daily schedule.
+asv nightly benchmarks:
+  stage: child pipelines
+  trigger:
+    include: /.gitlab/ci/asv-main.yml
+  needs: []
+  extends:
+    - .trigger_common
+  variables:
+    ASV_COMPARE_MODE: nightly
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
 # ==============================================================================
 # Packaging Jobs

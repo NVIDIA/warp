@@ -2,48 +2,24 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # ==============================================================================
-# ASV Benchmarking Child Pipeline
+# ASV Benchmarking Templates
 #
-# Runs Warp's airspeed velocity (ASV) benchmark suite on GTL performance
-# machines: the L40 pool, plus the RTX PRO 6000 and 8x B200 Blackwell pools.
-#
-# Structure:
-#   - `linux-x86_64 cu13 asv build` (stage: build): compiles wheels for the MR
-#     target ref and the current commit on a CPU runner so the GPU hosts
-#     don't burn booking time on builds. Wheels are shipped to the
-#     bench jobs via the `_wheels/` artifact.
-#   - `linux-x86_64 cu13 asv {l40,rtxpro6000} non-tile` (stage: test): always
-#     run once this pipeline is triggered.
-#   - `linux-x86_64 cu13 asv {l40,rtxpro6000} tile` (stage: test): heavier
-#     than the rest of the suite combined; auto-run only on tile-relevant
-#     changes, otherwise available as manual play buttons.
-#   - `linux-x86_64 cu13 asv b200` (stage: test): both suites in one job,
-#     behind a manual play button, because booking a B200 from GTL can take
-#     a long time.
-#   - The B200 job is allowed to fail, but the parent `asv benchmarks` job
-#     still waits for it to finish if it runs.
-#
-# This pipeline is triggered by the `asv benchmarks` job in /.gitlab-ci.yml,
-# which gates on the broad set of paths that could affect any benchmark.
-# It is not run directly.
+# Hidden job templates shared by the ASV child pipelines: asv-mr.yml (merge
+# requests) and asv-main.yml (main branch and the daily schedule). Including
+# this file adds no jobs.
 # ==============================================================================
-
-include:
-  - /.gitlab/ci/common.yml
-
-workflow:
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "parent_pipeline"
-
-stages:
-  - build
-  - test
 
 # Build Warp wheels for COMPARE_REF_SHA and CI_COMMIT_SHA on a CPU runner so
 # the GPU-bound asv bench jobs don't spend GPU booking time compiling.
 # Wheels are written to asv's native build cache; the bench jobs skip
 # build_command and go straight to install_command using the cached wheels.
-linux-x86_64 cu13 asv build:
+#
+# The baseline (COMPARE_REF_SHA) depends on ASV_COMPARE_MODE, which the
+# trigger job in /.gitlab-ci.yml sets:
+#   - unset (merge requests): the MR target branch.
+#   - `push`: the main tip before this push.
+#   - `nightly`: main as of 24 hours before this pipeline was created.
+.linux-x86_64-cu13-asv-build:
   stage: build
   needs: []
   image: $WARP_BUILDER_IMAGE_CU13_X86_64
@@ -62,12 +38,7 @@ linux-x86_64 cu13 asv build:
     - curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL="$CI_PROJECT_DIR/_uv" sh
     - export PATH="$CI_PROJECT_DIR/_uv/bin:$PATH"
     - uv python install $UV_PYTHON
-    - COMPARE_REF="${CI_MERGE_REQUEST_TARGET_BRANCH_SHA:-${CI_MERGE_REQUEST_TARGET_BRANCH_NAME:-main}}"
-    - COMPARE_REF_SOURCE="$COMPARE_REF"
-    - 'echo "COMPARE_REF_SOURCE value: ${COMPARE_REF_SOURCE}"'
     - git config --global --add safe.directory $CI_PROJECT_DIR
-    # Freeze mutable refs like `main` before building wheels. Retry jobs must
-    # compare against the same commit that populated the wheel artifact.
     - |
       fetch_compare_ref() {
         if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
@@ -77,6 +48,32 @@ linux-x86_64 cu13 asv build:
         fi
       }
 
+      case "${ASV_COMPARE_MODE:-}" in
+        push)
+          # GitLab sends all zeros when it doesn't know the previous tip, and
+          # the commit itself in merge request pipelines.
+          COMPARE_REF="$ASV_PUSH_BEFORE_SHA"
+          case "$COMPARE_REF" in
+            "" | 0000000000000000000000000000000000000000 | "$CI_COMMIT_SHA") COMPARE_REF="$(git rev-parse "$CI_COMMIT_SHA^")" ;;
+          esac
+          ;;
+        nightly)
+          # The previous daily run benchmarked main as of about this time.
+          # The checkout is shallow, so fetch the history to search first.
+          since="$(date -u -d "@$(( $(date -d "$CI_PIPELINE_CREATED_AT" +%s) - 86400 ))" +%FT%TZ)"
+          fetch_compare_ref "$CI_COMMIT_SHA"
+          COMPARE_REF="$(git rev-list -1 --first-parent --before="$since" "$CI_COMMIT_SHA")"
+          test -n "$COMPARE_REF" || { echo "no commit before $since in the history of $CI_COMMIT_SHA"; exit 1; }
+          ;;
+        *)
+          COMPARE_REF="${CI_MERGE_REQUEST_TARGET_BRANCH_SHA:-${CI_MERGE_REQUEST_TARGET_BRANCH_NAME:-main}}"
+          ;;
+      esac
+    - COMPARE_REF_SOURCE="$COMPARE_REF"
+    - 'echo "COMPARE_REF_SOURCE value: ${COMPARE_REF_SOURCE}"'
+    # Freeze mutable refs like `main` before building wheels. Retry jobs must
+    # compare against the same commit that populated the wheel artifact.
+    - |
       fetch_compare_ref "$COMPARE_REF_SOURCE"
       COMPARE_REF_SHA="$(git rev-parse "FETCH_HEAD^{commit}")"
       git rev-parse --verify "${COMPARE_REF_SHA}^{commit}" >/dev/null
@@ -85,13 +82,25 @@ linux-x86_64 cu13 asv build:
     - git checkout -f "$CI_COMMIT_SHA"
     - !reference [.snippets, section-end-install-deps]
   script:
+    - mkdir -p _wheels
+    - printf "%s\n" "$COMPARE_REF_SOURCE" > _wheels/compare_ref.source
+    - printf "%s\n" "$COMPARE_REF_SHA" > _wheels/compare_ref.sha
+    - printf "%s\n" "$CI_COMMIT_SHA" > _wheels/target_ref.sha
+    # The baseline is this commit only for a daily run with nothing new on
+    # main since the previous one. The bench jobs then still book a machine,
+    # but stop before setup.
+    - |
+      if [ "$COMPARE_REF_SHA" = "$CI_COMMIT_SHA" ]; then
+        echo "The baseline is this commit; nothing to build."
+        exit 0
+      fi
     - uvx asv machine --machine asv-build --yes
     # asv has no `build` subcommand; `continuous --quick` builds both refs
     # (populating asv/env/*/asv-build-cache/) and runs a tiny PythonBuiltins
     # sanity benchmark. rc==1 means "regression detected" (asv's normal exit
     # for continuous), so only fail on rc>1 which signals a real error.
     - 'date -u +"asv continuous --quick start: %FT%TZ"'
-    - rc=0; uvx asv continuous -v --quick -b PythonBuiltins "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" || rc=$?; if [ $rc -gt 1 ]; then exit $rc; fi
+    - rc=0; uvx asv continuous --quick -b PythonBuiltins "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" || rc=$?; if [ $rc -gt 1 ]; then exit $rc; fi
     - 'date -u +"asv continuous --quick end:   %FT%TZ"'
     # Relocate built wheels to a flat `_wheels/` path for the bench job. asv's
     # own cache lives inside the env directory, which Environment.create()
@@ -99,11 +108,7 @@ linux-x86_64 cu13 asv build:
     # job's venv binaries point at filesystem paths that don't exist on the
     # bench host). The bench job re-stages from `_wheels/` AFTER asv setup
     # creates a working env, sidestepping the rmtree.
-    - mkdir -p _wheels
     - cp -r asv/env/*/asv-build-cache/* _wheels/
-    - printf "%s\n" "$COMPARE_REF_SOURCE" > _wheels/compare_ref.source
-    - printf "%s\n" "$COMPARE_REF_SHA" > _wheels/compare_ref.sha
-    - printf "%s\n" "$CI_COMMIT_SHA" > _wheels/target_ref.sha
     # Count against the pinned baseline here; benchmark checkouts can be shallow.
     - |
       if [ "$(git rev-parse --is-shallow-repository)" = "false" ]; then
@@ -117,14 +122,12 @@ linux-x86_64 cu13 asv build:
       - _wheels/
     expire_in: 1 week
 
-# Shared config for the parallel asv bench jobs below. Each job combines a
-# machine pool template (GTL booking via MACHINE_OS / MACHINE_KIND /
-# MACHINE_DRIVER) with a suite template (`--bench` filter regex via
-# ASV_BENCH_FILTER, plus the suite's `rules:` block) and sets its own
-# `--machine` name via ASV_MACHINE_NAME. The B200 job instead runs both
-# suites in one booking. Everything else -- env setup, wheel-cache restage
-# from the `linux-x86_64 cu13 asv build` artifact, asv invocation -- is
-# identical.
+# Shared config for the asv bench jobs. Each job combines this with a machine
+# pool template below (GTL booking via MACHINE_OS / MACHINE_KIND /
+# MACHINE_DRIVER), selects benchmarks with the ASV_BENCH_FILTER `--bench`
+# regex, and sets its own `--machine` name via ASV_MACHINE_NAME. Everything
+# else -- env setup, wheel-cache restage from the `linux-x86_64 cu13 asv
+# build` artifact, asv invocation -- is identical.
 .linux-x86_64-cu13-asv-bench-base:
   stage: test
   needs: ["linux-x86_64 cu13 asv build"]
@@ -137,8 +140,18 @@ linux-x86_64 cu13 asv build:
   variables:
     PROJECT_CATEGORY: "Warp"
     GIT_DEPTH: "50"
+    # Raises the GTL agent's 4h limit on the booked machine to the job
+    # timeout, for jobs that run both suites in one booking.
+    GCN_TASK_TIMEOUT: "28800"
+    # Slowdown ratio that asv reports as a regression.
+    ASV_FACTOR: "1.10"
   before_script:
     - !reference [.snippets, section-start-install-deps]
+    - |
+      if [ "$(cat _wheels/compare_ref.sha 2>/dev/null)" = "$CI_COMMIT_SHA" ]; then
+        echo "The baseline is this commit; nothing to compare."
+        exit 0
+      fi
     - df -h
     - nvidia-smi
     # Pin the CPU frequency governor to `performance` so CPU-bound benchmarks
@@ -234,13 +247,14 @@ linux-x86_64 cu13 asv build:
     - |
       section_start() { echo -e "\e[0Ksection_start:$(date +%s):$1[collapsed=true]\r\e[0K$2"; }
       section_end() { echo -e "\e[0Ksection_end:$(date +%s):$1\r\e[0K"; }
+      asv_progress='^(·|\[ *[0-9.]+%\] (··|···) [^=])'
 
       date -u +"asv continuous start: %FT%TZ"
       {
         asv_rc=0
-        uvx asv continuous -e --interleave-rounds --append-samples --no-only-changed -f 1.10 --bench "$ASV_BENCH_FILTER" "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>&1 || asv_rc=$?
+        uvx asv continuous -e --interleave-rounds --append-samples --no-only-changed -f "$ASV_FACTOR" --bench "$ASV_BENCH_FILTER" "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>&1 || asv_rc=$?
         echo "$asv_rc" > asv-continuous.rc
-      } | tee asv-continuous.log | LC_ALL=C grep --line-buffered -E '^(·|\[ *[0-9.]+%\] (··|···) [^=])' || true
+      } | tee asv-continuous.log | LC_ALL=C grep --line-buffered -E "$asv_progress" || true
       rc="$(cat asv-continuous.rc)"
       date -u +"asv continuous end:   %FT%TZ"
 
@@ -258,8 +272,36 @@ linux-x86_64 cu13 asv build:
       # benchmark uses an API not yet on the compare ref); the table still
       # covers the benchmarks that ran. The exit status is propagated at the
       # end.
-      uvx asv compare --split -f 1.10 --machine "$ASV_MACHINE_NAME" "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>&1 || true
+      uvx asv compare --split -f "$ASV_FACTOR" --machine "$ASV_MACHINE_NAME" "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>&1 || true
       printf '\n'
+
+      if [ "$rc" -eq 1 ]; then
+        # Rerun the regressed benchmarks once to show whether they reproduce.
+        # The job fails either way: a regression that goes away on rerun
+        # points at a noisy benchmark, which needs fixing too. Rows marked
+        # `+` are regressions; the last column is the benchmark name, with
+        # parameters in the form `--bench` matches.
+        regressed="$(uvx asv compare --only-changed -f "$ASV_FACTOR" --machine "$ASV_MACHINE_NAME" "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>/dev/null |
+          awk -F'|' '$2 ~ /^ *\+ *$/ { name = $6; gsub(/^ +| +$/, "", name); print name }')" || true
+        if [ -n "$regressed" ]; then
+          rerun_filter="^($(printf '%s\n' "$regressed" | sed 's/[][\.*^$()+?{}|]/\\&/g' | paste -sd '|'))\$"
+          printf 'Rerunning regressed benchmarks:\n%s\n\n' "$regressed"
+          {
+            rerun_rc=0
+            uvx asv continuous -e --interleave-rounds -f "$ASV_FACTOR" --bench "$rerun_filter" "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>&1 || rerun_rc=$?
+            echo "$rerun_rc" > asv-rerun.rc
+          } | tee -a asv-continuous.log | LC_ALL=C grep --line-buffered -E "$asv_progress|^\|" || true
+          rerun_rc="$(cat asv-rerun.rc)"
+          case "$rerun_rc" in
+            0) echo "Rerun: no regressions reproduced; the benchmarks above are likely noisy." ;;
+            1) echo "Rerun: regressions reproduced." ;;
+            *) echo "Rerun: failed with exit status $rerun_rc." ;;
+          esac
+        else
+          echo "Rerun skipped: no regressed benchmarks found in the asv compare output."
+        fi
+        printf '\n'
+      fi
       case "$rc" in
         0) echo "Result: no regressions." ;;
         1) echo "Result: regressions detected." ;;
@@ -316,87 +358,13 @@ linux-x86_64 cu13 asv build:
     MACHINE_KIND: "EPYC_9124_1XRTXPRO6000_BW_SV"
     MACHINE_DRIVER: "NVIDIA-Linux-x86_64-595.58.03"
 
-# One booking holds a whole 8-GPU DGX B200, the pool is small, and booking
-# a machine can take a long time when GTL has to reimage it, so the B200 job
-# only runs when started by hand. The benchmarks only use cuda:0, and asv
-# starts a fresh process for every sample, so exposing only GPU 0 means each
-# process initializes one device instead of eight. GCN_TASK_TIMEOUT raises
-# the GTL agent's 4h task limit to the job timeout, since both suites run in
-# one booking. The job is optional: its failures don't fail the pipeline,
-# and a timeout (usually the pool staying busy for the whole wait) isn't
-# retried the way the default retry policy would.
+# One booking holds a whole 8-GPU DGX B200. The benchmarks only use cuda:0,
+# and asv starts a fresh process for every sample, so exposing only GPU 0
+# means each process initializes one device instead of eight.
 .linux-x86_64-cu13-asv-bench-b200:
   extends: .linux-x86_64-cu13-asv-bench-base
-  allow_failure: true
-  retry:
-    max: 1
-    when: runner_system_failure
   variables:
     MACHINE_OS: ubuntu24
     MACHINE_KIND: "XEON_PLATINUM_8570_8XB200_BW"
     MACHINE_DRIVER: "NVIDIA-Linux-x86_64-595.58.03"
     CUDA_VISIBLE_DEVICES: "0"
-    GCN_TASK_TIMEOUT: "28800"
-  rules:
-    - when: manual
-      allow_failure: true
-
-# Non-tile asv benchmarks. Runs whenever this child pipeline is triggered;
-# the parent's `asv benchmarks` job is what gates ASV on path changes.
-.linux-x86_64-cu13-asv-non-tile:
-  variables:
-    ASV_BENCH_FILTER: '^(?!tile\.)'
-
-# Tile asv benchmarks. Heavier than the rest combined, so auto-runs only on
-# tile-relevant changes; available as a manual play button otherwise for
-# contributors whose change touches tile perf in ways the path filter
-# doesn't catch (e.g. codegen tweaks, Newton-side changes).
-.linux-x86_64-cu13-asv-tile:
-  variables:
-    ASV_BENCH_FILTER: '^tile\.'
-  rules:
-    - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
-      changes:
-        compare_to: "refs/heads/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
-        paths:
-          - .gitlab/ci/asv.yml
-          - asv.conf.json
-          - asv/benchmarks/tile/**/*
-          - warp/native/cpu_block_runtime.*
-          - warp/native/cpu_fiber.*
-          - warp/native/tile*
-          - warp/native/tile/**/*
-          - warp/native/clang/**/*
-          # libmathdx (cublasdx etc.) is pulled in by tile.compile_*  and
-          # tile.gemm benchmarks at LTO time; bumping its pin in the deps
-          # config is exactly the kind of change the tile bench is here to
-          # catch regressions on.
-          - deps/libmathdx-deps.packman.xml
-    - when: manual
-      allow_failure: true
-
-linux-x86_64 cu13 asv l40 non-tile:
-  extends: [.linux-x86_64-cu13-asv-bench-l40, .linux-x86_64-cu13-asv-non-tile]
-  variables:
-    ASV_MACHINE_NAME: asv-bench-l40-non-tile
-
-linux-x86_64 cu13 asv l40 tile:
-  extends: [.linux-x86_64-cu13-asv-bench-l40, .linux-x86_64-cu13-asv-tile]
-  variables:
-    ASV_MACHINE_NAME: asv-bench-l40-tile
-
-linux-x86_64 cu13 asv rtxpro6000 non-tile:
-  extends: [.linux-x86_64-cu13-asv-bench-rtxpro6000, .linux-x86_64-cu13-asv-non-tile]
-  variables:
-    ASV_MACHINE_NAME: asv-bench-rtxpro6000-non-tile
-
-linux-x86_64 cu13 asv rtxpro6000 tile:
-  extends: [.linux-x86_64-cu13-asv-bench-rtxpro6000, .linux-x86_64-cu13-asv-tile]
-  variables:
-    ASV_MACHINE_NAME: asv-bench-rtxpro6000-tile
-
-linux-x86_64 cu13 asv b200:
-  extends: .linux-x86_64-cu13-asv-bench-b200
-  variables:
-    ASV_MACHINE_NAME: asv-bench-b200
-    ASV_BENCH_FILTER: '.*'
