@@ -4,18 +4,24 @@
 # ==============================================================================
 # ASV Benchmarking Child Pipeline
 #
-# Runs Warp's airspeed velocity (ASV) benchmark suite on an L40 GPU host.
+# Runs Warp's airspeed velocity (ASV) benchmark suite on GTL performance
+# machines: the L40 pool, plus the RTX PRO 6000 and 8x B200 Blackwell pools.
 #
 # Structure:
 #   - `linux-x86_64 cu13 asv build` (stage: build): compiles wheels for the MR
-#     target ref and the current commit on a CPU runner so the GPU host
-#     doesn't burn L40 booking time on builds. Wheels are shipped to the
+#     target ref and the current commit on a CPU runner so the GPU hosts
+#     don't burn booking time on builds. Wheels are shipped to the
 #     bench jobs via the `_wheels/` artifact.
-#   - `linux-x86_64 cu13 asv non-tile` (stage: test): always runs once this
-#     pipeline is triggered.
-#   - `linux-x86_64 cu13 asv tile` (stage: test): heavier than the rest of the
-#     suite combined; auto-runs only on tile-relevant changes, otherwise
-#     available as a manual play button.
+#   - `linux-x86_64 cu13 asv {l40,rtxpro6000} non-tile` (stage: test): always
+#     run once this pipeline is triggered.
+#   - `linux-x86_64 cu13 asv {l40,rtxpro6000} tile` (stage: test): heavier
+#     than the rest of the suite combined; auto-run only on tile-relevant
+#     changes, otherwise available as manual play buttons.
+#   - `linux-x86_64 cu13 asv b200` (stage: test): both suites in one job,
+#     behind a manual play button, because booking a B200 from GTL can take
+#     a long time.
+#   - The B200 job is allowed to fail, but the parent `asv benchmarks` job
+#     still waits for it to finish if it runs.
 #
 # This pipeline is triggered by the `asv benchmarks` job in /.gitlab-ci.yml,
 # which gates on the broad set of paths that could affect any benchmark.
@@ -34,7 +40,7 @@ stages:
   - test
 
 # Build Warp wheels for COMPARE_REF_SHA and CI_COMMIT_SHA on a CPU runner so
-# the GPU-bound asv bench jobs don't spend L40 booking time compiling.
+# the GPU-bound asv bench jobs don't spend GPU booking time compiling.
 # Wheels are written to asv's native build cache; the bench jobs skip
 # build_command and go straight to install_command using the cached wheels.
 linux-x86_64 cu13 asv build:
@@ -91,7 +97,7 @@ linux-x86_64 cu13 asv build:
     # own cache lives inside the env directory, which Environment.create()
     # rmtree()'s on the bench side because check_presence() fails (the build
     # job's venv binaries point at filesystem paths that don't exist on the
-    # L40 host). The bench job re-stages from `_wheels/` AFTER asv setup
+    # bench host). The bench job re-stages from `_wheels/` AFTER asv setup
     # creates a working env, sidestepping the rmtree.
     - mkdir -p _wheels
     - cp -r asv/env/*/asv-build-cache/* _wheels/
@@ -111,28 +117,61 @@ linux-x86_64 cu13 asv build:
       - _wheels/
     expire_in: 1 week
 
-# Shared config for the parallel asv bench jobs below. The two derivative
-# jobs differ only in their `--bench` filter regex and `--machine` name (set
-# via per-job ASV_BENCH_FILTER / ASV_MACHINE_NAME) and their `rules:` block.
-# Everything else -- L40 booking, env setup, wheel-cache restage from the
-# `linux-x86_64 cu13 asv build` artifact, asv invocation -- is identical.
+# Shared config for the parallel asv bench jobs below. Each job combines a
+# machine pool template (GTL booking via MACHINE_OS / MACHINE_KIND /
+# MACHINE_DRIVER) with a suite template (`--bench` filter regex via
+# ASV_BENCH_FILTER, plus the suite's `rules:` block) and sets its own
+# `--machine` name via ASV_MACHINE_NAME. The B200 job instead runs both
+# suites in one booking. Everything else -- env setup, wheel-cache restage
+# from the `linux-x86_64 cu13 asv build` artifact, asv invocation -- is
+# identical.
 .linux-x86_64-cu13-asv-bench-base:
   stage: test
   needs: ["linux-x86_64 cu13 asv build"]
+  # Covers waiting for a GTL machine, which happens inside the job and can
+  # take a while when the pool is busy.
   timeout: 8h
   tags:
     - omni-perf-only/linux
     - instance/gitlab-gtl-performance
   variables:
-    MACHINE_OS: ubuntu22-04-5
-    MACHINE_KIND: "EPYC_9124P_1XL40_ADA"
-    MACHINE_DRIVER: "NVIDIA-Linux-x86_64-580.126.09"
     PROJECT_CATEGORY: "Warp"
     GIT_DEPTH: "50"
   before_script:
     - !reference [.snippets, section-start-install-deps]
     - df -h
     - nvidia-smi
+    # Pin the CPU frequency governor to `performance` so CPU-bound benchmarks
+    # don't measure frequency scaling; after_script restores the previous
+    # governor. GTL images grant passwordless sudo. Best effort: without
+    # cpufreq or sudo the job still benchmarks, with a warning.
+    - |
+      governor=/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+      if [ -r "$governor" ]; then
+        cat "$governor" > /tmp/warp-asv-prev-governor
+        echo performance | sudo -n tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor > /dev/null 2>&1 || true
+        echo "CPU governor: $(cat /tmp/warp-asv-prev-governor) -> $(cat "$governor")"
+        test "$(cat "$governor")" = performance || echo "WARNING: failed to set CPU governor to performance"
+      else
+        echo "WARNING: cpufreq governor not available; leaving CPU frequency scaling as is"
+      fi
+    # asv runs every sample in a new process. Without persistence mode, the
+    # driver tears down a GPU that no process holds open and initializes it
+    # again for the next one, which adds seconds to every process on hosts
+    # with no display keeping the GPU open. after_script restores the
+    # previous setting. Best effort, like the governor.
+    - |
+      persistence=$(nvidia-smi --query-gpu=persistence_mode --format=csv,noheader -i 0 2>/dev/null || true)
+      if [ "$persistence" = Disabled ]; then
+        if sudo -n nvidia-smi -pm 1 > /dev/null 2>&1; then
+          touch /tmp/warp-asv-restore-persistence
+          echo "GPU persistence mode: Disabled -> $(nvidia-smi --query-gpu=persistence_mode --format=csv,noheader -i 0)"
+        else
+          echo "WARNING: failed to enable GPU persistence mode"
+        fi
+      else
+        echo "GPU persistence mode: ${persistence:-unknown}"
+      fi
     - curl -LsSf https://astral.sh/uv/install.sh | sh
     - export PATH="$HOME/.local/bin:$PATH"
     - uv python install $UV_PYTHON
@@ -185,18 +224,47 @@ linux-x86_64 cu13 asv build:
     - mkdir -p "asv/env/$ENV_HASH/asv-build-cache"
     - cp -r "_wheels/$COMPARE_REF_SHA" "_wheels/$COMPARE_REF_SHA.timestamp" "_wheels/$CI_COMMIT_SHA" "_wheels/$CI_COMMIT_SHA.timestamp" "asv/env/$ENV_HASH/asv-build-cache/"
     - ls -la "asv/env/$ENV_HASH/asv-build-cache/"
-    - 'date -u +"asv continuous start: %FT%TZ"'
+    # The full asv output, including everything each benchmark prints (`-e`),
+    # goes to asv-continuous.log in the job artifacts; the job log only gets
+    # asv's progress lines. GitLab's job page renders only the end of a large
+    # log, so collapsed sections don't help once the full output is in it.
+    # The duration tables go in a collapsed section, and the log ends with
+    # the full comparison table, grouped into improved, unchanged, and worse
+    # benchmarks, and the result.
     - |
-      rc=0
-      uvx asv continuous -v -e --interleave-rounds --append-samples --no-only-changed -f 1.10 --bench "$ASV_BENCH_FILTER" "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>&1 || rc=$?
-      if [ "$rc" -ne 0 ]; then
-        # rc=1: regressions detected. rc>1: benchmark failures (e.g. a new
-        # benchmark uses an API not yet on the compare ref). In both cases,
-        # print a comparison table for the benchmarks that did run successfully,
-        # then propagate the original exit status after the comparison context.
-        uvx asv compare -v --split "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>&1 || true
-      fi
+      section_start() { echo -e "\e[0Ksection_start:$(date +%s):$1[collapsed=true]\r\e[0K$2"; }
+      section_end() { echo -e "\e[0Ksection_end:$(date +%s):$1\r\e[0K"; }
+
+      date -u +"asv continuous start: %FT%TZ"
+      {
+        asv_rc=0
+        uvx asv continuous -e --interleave-rounds --append-samples --no-only-changed -f 1.10 --bench "$ASV_BENCH_FILTER" "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>&1 || asv_rc=$?
+        echo "$asv_rc" > asv-continuous.rc
+      } | tee asv-continuous.log | LC_ALL=C grep --line-buffered -E '^(·|\[ *[0-9.]+%\] (··|···) [^=])' || true
+      rc="$(cat asv-continuous.rc)"
       date -u +"asv continuous end:   %FT%TZ"
+
+      # Wall time per benchmark, including process startup and setup. With
+      # --interleave-rounds, asv keeps only the last round's time, so each
+      # value is about half of what the benchmark cost for that commit.
+      section_start asv_durations "Benchmark durations"
+      for sha in "$COMPARE_REF_SHA" "$CI_COMMIT_SHA"; do
+        printf '\n'
+        uvx asv show --durations --machine "$ASV_MACHINE_NAME" "$sha" 2>&1 || true
+      done
+      section_end asv_durations
+
+      # rc=1: regressions detected. rc>1: benchmark failures (e.g. a new
+      # benchmark uses an API not yet on the compare ref); the table still
+      # covers the benchmarks that ran. The exit status is propagated at the
+      # end.
+      uvx asv compare --split -f 1.10 --machine "$ASV_MACHINE_NAME" "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>&1 || true
+      printf '\n'
+      case "$rc" in
+        0) echo "Result: no regressions." ;;
+        1) echo "Result: regressions detected." ;;
+        *) echo "Result: asv continuous failed with exit status $rc; the output of failing benchmarks is in asv-continuous.log in the job artifacts." ;;
+      esac
       printf '\nComparison context:\n'
       printf '  Baseline: %s@%s\n' "$COMPARE_REF_SOURCE" "$COMPARE_REF_SHA"
       printf '  Candidate: %s\n' "$CI_COMMIT_SHA"
@@ -209,28 +277,82 @@ linux-x86_64 cu13 asv build:
           ;;
       esac
       exit "$rc"
+  after_script:
+    - |
+      if [ -s /tmp/warp-asv-prev-governor ]; then
+        sudo -n tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor < /tmp/warp-asv-prev-governor > /dev/null 2>&1 || true
+        echo "CPU governor restored to $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor)"
+        rm -f /tmp/warp-asv-prev-governor
+      fi
+      if [ -e /tmp/warp-asv-restore-persistence ]; then
+        sudo -n nvidia-smi -pm 0 > /dev/null 2>&1 || true
+        echo "GPU persistence mode restored to $(nvidia-smi --query-gpu=persistence_mode --format=csv,noheader -i 0)"
+        rm -f /tmp/warp-asv-restore-persistence
+      fi
   artifacts:
     paths:
       - asv/results/
+      - asv-continuous.log
     expire_in: 1 week
     when: always
 
-# Non-tile asv benchmarks. Runs whenever this child pipeline is triggered;
-# the parent's `asv benchmarks` job is what gates ASV on path changes.
-linux-x86_64 cu13 asv non-tile:
+# Machine pool templates. MACHINE_KIND is the pool's group key on the
+# omni-runtime-performance machine pool page; MACHINE_OS and MACHINE_DRIVER
+# must name an OS image and driver that GTL can install on that pool. GTL
+# reimages a machine whose previous job requested a different OS or driver,
+# which makes booking slow, so keep these in line with what other jobs on
+# these pools request.
+.linux-x86_64-cu13-asv-bench-l40:
   extends: .linux-x86_64-cu13-asv-bench-base
   variables:
-    ASV_MACHINE_NAME: asv-bench-non-tile
+    MACHINE_OS: ubuntu22-04-5
+    MACHINE_KIND: "EPYC_9124P_1XL40_ADA"
+    MACHINE_DRIVER: "NVIDIA-Linux-x86_64-595.58.03"
+
+.linux-x86_64-cu13-asv-bench-rtxpro6000:
+  extends: .linux-x86_64-cu13-asv-bench-base
+  variables:
+    MACHINE_OS: ubuntu22-04-5
+    MACHINE_KIND: "EPYC_9124_1XRTXPRO6000_BW_SV"
+    MACHINE_DRIVER: "NVIDIA-Linux-x86_64-595.58.03"
+
+# One booking holds a whole 8-GPU DGX B200, the pool is small, and booking
+# a machine can take a long time when GTL has to reimage it, so the B200 job
+# only runs when started by hand. The benchmarks only use cuda:0, and asv
+# starts a fresh process for every sample, so exposing only GPU 0 means each
+# process initializes one device instead of eight. GCN_TASK_TIMEOUT raises
+# the GTL agent's 4h task limit to the job timeout, since both suites run in
+# one booking. The job is optional: its failures don't fail the pipeline,
+# and a timeout (usually the pool staying busy for the whole wait) isn't
+# retried the way the default retry policy would.
+.linux-x86_64-cu13-asv-bench-b200:
+  extends: .linux-x86_64-cu13-asv-bench-base
+  allow_failure: true
+  retry:
+    max: 1
+    when: runner_system_failure
+  variables:
+    MACHINE_OS: ubuntu24
+    MACHINE_KIND: "XEON_PLATINUM_8570_8XB200_BW"
+    MACHINE_DRIVER: "NVIDIA-Linux-x86_64-595.58.03"
+    CUDA_VISIBLE_DEVICES: "0"
+    GCN_TASK_TIMEOUT: "28800"
+  rules:
+    - when: manual
+      allow_failure: true
+
+# Non-tile asv benchmarks. Runs whenever this child pipeline is triggered;
+# the parent's `asv benchmarks` job is what gates ASV on path changes.
+.linux-x86_64-cu13-asv-non-tile:
+  variables:
     ASV_BENCH_FILTER: '^(?!tile\.)'
 
 # Tile asv benchmarks. Heavier than the rest combined, so auto-runs only on
 # tile-relevant changes; available as a manual play button otherwise for
 # contributors whose change touches tile perf in ways the path filter
 # doesn't catch (e.g. codegen tweaks, Newton-side changes).
-linux-x86_64 cu13 asv tile:
-  extends: .linux-x86_64-cu13-asv-bench-base
+.linux-x86_64-cu13-asv-tile:
   variables:
-    ASV_MACHINE_NAME: asv-bench-tile
     ASV_BENCH_FILTER: '^tile\.'
   rules:
     - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
@@ -252,3 +374,29 @@ linux-x86_64 cu13 asv tile:
           - deps/libmathdx-deps.packman.xml
     - when: manual
       allow_failure: true
+
+linux-x86_64 cu13 asv l40 non-tile:
+  extends: [.linux-x86_64-cu13-asv-bench-l40, .linux-x86_64-cu13-asv-non-tile]
+  variables:
+    ASV_MACHINE_NAME: asv-bench-l40-non-tile
+
+linux-x86_64 cu13 asv l40 tile:
+  extends: [.linux-x86_64-cu13-asv-bench-l40, .linux-x86_64-cu13-asv-tile]
+  variables:
+    ASV_MACHINE_NAME: asv-bench-l40-tile
+
+linux-x86_64 cu13 asv rtxpro6000 non-tile:
+  extends: [.linux-x86_64-cu13-asv-bench-rtxpro6000, .linux-x86_64-cu13-asv-non-tile]
+  variables:
+    ASV_MACHINE_NAME: asv-bench-rtxpro6000-non-tile
+
+linux-x86_64 cu13 asv rtxpro6000 tile:
+  extends: [.linux-x86_64-cu13-asv-bench-rtxpro6000, .linux-x86_64-cu13-asv-tile]
+  variables:
+    ASV_MACHINE_NAME: asv-bench-rtxpro6000-tile
+
+linux-x86_64 cu13 asv b200:
+  extends: .linux-x86_64-cu13-asv-bench-b200
+  variables:
+    ASV_MACHINE_NAME: asv-bench-b200
+    ASV_BENCH_FILTER: '.*'
