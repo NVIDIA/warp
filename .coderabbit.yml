@@ -3,16 +3,27 @@ language: "en-US"
 early_access: false
 reviews:
   profile: "chill"
-  request_changes_workflow: false
+  auto_approvals:
+    enabled: false
+  pre_merge_checks:
+    docstrings:
+      mode: "off"
   high_level_summary: true
+  high_level_summary_in_walkthrough: true
   poem: false
-  review_status: true
+  in_progress_fortune: false
+  sequence_diagrams: false
+  estimate_code_review_effort: false
+  review_status: false
+  review_details: false
+  enable_prompt_for_ai_agents: true
   collapse_walkthrough: true
   auto_review:
     enabled: true
     drafts: true
   path_filters: ["!tools/ci/packman/**", "!tools/ci/repoman/**", "!warp/native/cuBQL/**", "!warp/native/nanovdb/**"]
 chat:
+  allow_non_org_members: false
   auto_reply: true
 issue_enrichment:
   auto_enrich:
