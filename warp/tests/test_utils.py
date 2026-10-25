@@ -1360,6 +1360,16 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(result.filter, wp.TIMING_MEMCPY)
         self.assertGreaterEqual(result.elapsed, 0.0)
 
+    def test_broadcast_shapes_zero_dimension(self):
+        from warp._src.utils import broadcast_shapes
+
+        self.assertEqual(broadcast_shapes([(0,), (1,)]), (0,))
+        self.assertEqual(broadcast_shapes([(1,), (0,)]), (0,))
+        self.assertEqual(broadcast_shapes([(5, 1), (1, 0)]), (5, 0))
+        self.assertEqual(broadcast_shapes([(1, 0), (0, 1)]), (0, 0))
+        self.assertEqual(broadcast_shapes([(2, 0), (2, 1)]), (2, 0))
+        self.assertEqual(broadcast_shapes([(3, 1, 4), (5, 4)]), (3, 5, 4))
+
 
 add_function_test(TestUtils, "test_array_scan", test_array_scan, devices=devices)
 add_function_test(TestUtils, "test_array_scan_vector", test_array_scan_vector, devices=devices)
