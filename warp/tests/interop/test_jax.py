@@ -1,9 +1,11 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import concurrent.futures
 import contextlib
 import io
 import os
+import socket
 import subprocess
 import sys
 import tempfile
@@ -1491,6 +1493,28 @@ def _run_ffi_jax_cpu_subprocess(test):
                     timeout=300,
                 )
                 test.assertEqual(result.returncode, 0, msg=f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}")
+
+
+def _run_jax_distributed_device_lookup(test, process_envs, require_gpu=False):
+    """Run ``aux_test_jax_distributed_devices.py`` as two ``jax.distributed`` processes and check that both pass."""
+    with socket.socket() as s:  # a free port for the JAX coordinator
+        s.bind(("127.0.0.1", 0))
+        coordinator = f"127.0.0.1:{s.getsockname()[1]}"
+    script = os.path.join(os.path.dirname(__file__), "aux_test_jax_distributed_devices.py")
+
+    def run(process_id):
+        command = [sys.executable, script, coordinator, str(process_id)]
+        if require_gpu:
+            command.append("--require-gpu")
+        return subprocess.run(
+            command, env=process_envs[process_id], capture_output=True, text=True, timeout=120, check=False
+        )
+
+    # Both processes wait for each other in jax.distributed.initialize(), so they must run at the same time.
+    with concurrent.futures.ThreadPoolExecutor(2) as pool:
+        results = list(pool.map(run, (0, 1)))
+    for process_id, result in enumerate(results):
+        test.assertEqual(result.returncode, 0, msg=f"process {process_id}:\n{result.stdout}\n{result.stderr}")
 
 
 def _get_two_device_jax_cpu_mesh(test):
@@ -3081,6 +3105,81 @@ class TestJax(unittest.TestCase):
         separate processes.
         """
         _run_ffi_jax_cpu_subprocess(self)
+
+    @unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
+    def test_device_from_jax_uses_process_local_ordinal(self):
+        """Map JAX GPUs by their process-local ordinal, not their global device ID."""
+        jax = _import_jax()
+        local_gpu = mock.Mock(platform="gpu", id=5, process_index=1, local_hardware_id=0)
+        other_process_gpu = mock.Mock(platform="gpu", id=0, process_index=0, local_hardware_id=None)
+        warp_gpu = object()
+        with (
+            mock.patch.object(jax, "process_index", return_value=1),
+            mock.patch.object(wp, "get_cuda_device", return_value=warp_gpu) as get_cuda_device,
+        ):
+            self.assertIs(wp.device_from_jax(local_gpu), warp_gpu)
+            get_cuda_device.assert_called_once_with(0)
+            with self.assertRaisesRegex(RuntimeError, "belongs to process 0"):
+                wp.device_from_jax(other_process_gpu)
+
+    @unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
+    def test_device_to_jax_returns_process_local_devices(self):
+        """Match Warp devices to JAX devices of the current process by process-local ordinal."""
+        jax = _import_jax()
+        # With local_device_ids, local JAX devices need not be ordered by their ordinal.
+        local_gpus = [mock.Mock(local_hardware_id=1), mock.Mock(local_hardware_id=0)]
+        local_cpu = mock.Mock()
+        warp_devices = {
+            "cuda:0": mock.Mock(is_cuda=True, ordinal=0),
+            "cuda:2": mock.Mock(is_cuda=True, ordinal=2),
+            "cpu": mock.Mock(is_cuda=False),
+        }
+
+        local_devices = {"cuda": local_gpus, "cpu": [local_cpu]}
+
+        with (
+            mock.patch.object(jax, "local_devices", side_effect=lambda backend: local_devices[backend]),
+            mock.patch.object(wp, "get_device", side_effect=warp_devices.__getitem__),
+        ):
+            self.assertIs(wp.device_to_jax("cuda:0"), local_gpus[1])
+            self.assertIs(wp.device_to_jax("cpu"), local_cpu)
+            with self.assertRaisesRegex(RuntimeError, "not available"):
+                wp.device_to_jax("cuda:2")
+
+    @unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
+    @unittest.skipIf(sys.platform == "win32", "JAX's multi-process CPU backend requires Linux or macOS")
+    def test_device_lookup_jax_distributed_cpu(self):
+        """Look up JAX CPU devices in a two-process ``jax.distributed`` program."""
+        env = {**os.environ, "CUDA_VISIBLE_DEVICES": "", "JAX_PLATFORMS": "cpu"}
+        _run_jax_distributed_device_lookup(self, [env, env])
+
+    @unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
+    def test_device_lookup_jax_distributed_cuda(self):
+        """Look up JAX GPUs in a two-process ``jax.distributed`` program with one GPU per process."""
+        if wp.get_cuda_device_count() < 2:
+            self.skipTest("Requires at least two CUDA devices")
+
+        # Set the JAX platforms explicitly so that a JAX_PLATFORMS setting in the environment can't hide the GPUs.
+        # Newer XLA refuses to start jax.distributed when the processes' GPUs are different models. These checks
+        # don't run anything across processes, so allow machines with mixed GPU models.
+        env = {**os.environ, "JAX_PLATFORMS": "cuda,cpu", "XLA_PJRT_GPU_VALIDATE_TOPOLOGY": "false"}
+        gpus = (os.environ.get("CUDA_VISIBLE_DEVICES") or "0,1").split(",")[:2]
+        process_envs = [{**env, "CUDA_VISIBLE_DEVICES": gpu} for gpu in gpus]
+
+        # Skip if JAX can't use CUDA, such as with a CPU-only JAX installation.
+        probe = subprocess.run(
+            [sys.executable, "-c", "import jax; jax.devices('cuda')"],
+            env=process_envs[0],
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
+        if probe.returncode != 0:
+            error = probe.stderr.strip().splitlines() or [f"exit code {probe.returncode}"]
+            self.skipTest(f"JAX can't use CUDA: {error[-1]}")
+
+        _run_jax_distributed_device_lookup(self, process_envs, require_gpu=True)
 
 
 # try adding Jax tests if Jax is installed correctly

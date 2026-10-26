@@ -214,6 +214,7 @@ struct APICMemoryPtrLocation {
     uint32_t region_id;
     uint64_t offset;
     uint64_t stride;
+    uint64_t count;
 };
 
 // CPU kernel function pointers, resolved during capture / load and consumed
@@ -615,13 +616,12 @@ bool apic_init_cpu_graph_memory(APICGraph* graph, const uint8_t* memory_ptr, siz
 // an APICMeshRecord. mesh_id here is the address of a wp::Mesh struct.
 // Used by both the non-CUDA wp_apic_register_mesh (in apic.cpp) and the
 // CUDA-build version (in apic.cu) when the descriptor lookup fails.
-void apic_register_cpu_mesh(APICState* state, uint64_t mesh_id);
+bool apic_register_cpu_mesh(APICState* state, uint64_t mesh_id);
 
 // Fix up handle pointers (mesh IDs etc.) in memory regions after meshes are
-// recreated during graph load. Defined in apic.cpp; the CPU path is fully
-// implemented there, and in CUDA builds it forwards device handles through a
-// private helper defined in apic.cu.
-void apic_fixup_ptr_locations(APICGraph* graph);
+// recreated during graph load. Read original IDs from the validated memory
+// section so overlapping locations cannot remap already-restored handles.
+bool apic_fixup_ptr_locations(APICGraph* graph, const uint8_t* memory_ptr);
 
 // ============================================================================
 // CUDA helpers (declared here so apic.cpp can call them without including
@@ -629,10 +629,9 @@ void apic_fixup_ptr_locations(APICGraph* graph);
 // ============================================================================
 
 #if WP_ENABLE_CUDA
-// Handle-pointer fixup for a single offset within a CUDA region.
-// Reads uint64_t at (base + offset), remaps via graph->handle_ptr_remap,
-// writes back. Returns false on cudaMemcpy failure.
-bool apic_fixup_handle_cuda(APICGraph* graph, uint8_t* base, uint64_t offset);
+// Copy a region patched with restored handles to its device allocation.
+// The copy completes before the host buffer is released by the caller.
+bool apic_fixup_handles_cuda(APICGraph* graph, void* dst, const void* src, size_t size);
 
 // D2H-snapshot auto-registered device regions (present in regions_by_id but
 // missing from memory_regions) into memory_regions before serialization, so a

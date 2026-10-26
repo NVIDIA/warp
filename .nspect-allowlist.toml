@@ -6,3 +6,12 @@ file = "tools/packman/config.packman.xml"
 [[pulse-trufflehog.files.secrets]]
 type = "packman_creds_url_d4i3qtqj3r0z5"
 values = [ "htt*******************************************************************************************toml" ]
+
+# Binary data in the macOS LLVM wrapper that the UTF-16 decoder reassembles
+# into a TLy-shaped string. Not a credential.
+[[pulse-trufflehog.files]]
+file = "libwarp-clang.dylib"
+
+[[pulse-trufflehog.files.secrets]]
+type = "TLy"
+values = [ "667T6TTT6T7qT666TT6qT6yyqTT41T476T777T47T7677766L6TTTTTT64x6" ]

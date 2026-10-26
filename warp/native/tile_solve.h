@@ -320,7 +320,7 @@ CUDA_CALLABLE void adj_tile_lower_solve(
 }
 
 template <typename Fwd, typename TileL, typename TileY, typename AdjFwd, typename AdjTileL, typename AdjTileY>
-void adj_tile_lower_solve_inplace(
+CUDA_CALLABLE void adj_tile_lower_solve_inplace(
     Fwd fun_forward, TileL& L, TileY& y, AdjFwd adj_fun_forward, AdjTileL& adj_L, AdjTileY& adj_y
 )
 {
@@ -384,7 +384,7 @@ template <
     typename AdjTileZ,
     typename AdjTileX,
     typename AdjRet>
-void adj_tile_upper_solve(
+CUDA_CALLABLE void adj_tile_upper_solve(
     Fwd fun_forward,
     TileU& U,
     TileZ& z,
@@ -401,7 +401,7 @@ void adj_tile_upper_solve(
 }
 
 template <typename Fwd, typename TileU, typename TileZ, typename AdjFwd, typename AdjTileU, typename AdjTileZ>
-void adj_tile_upper_solve_inplace(
+CUDA_CALLABLE void adj_tile_upper_solve_inplace(
     Fwd fun_forward, TileU& U, TileZ& z, AdjFwd adj_fun_forward, AdjTileU& adj_U, AdjTileZ& adj_z
 )
 {
@@ -459,7 +459,7 @@ template <
     typename AdjTileY,
     typename AdjTileX,
     typename AdjRet>
-void adj_tile_cholesky_solve(
+CUDA_CALLABLE void adj_tile_cholesky_solve(
     Fwd fun_forward,
     TileA& A,
     TileY& Y,
@@ -483,7 +483,7 @@ template <
     typename AdjFwd,
     typename AdjTileA,
     typename AdjTileY>
-void adj_tile_cholesky_solve_inplace(
+CUDA_CALLABLE void adj_tile_cholesky_solve_inplace(
     Fwd fun_forward, TileA& A, TileY& Y, AdjFwd adj_fun_forward, AdjTileA& adj_A, AdjTileY& adj_Y
 )
 {

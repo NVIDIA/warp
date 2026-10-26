@@ -1954,8 +1954,9 @@ Important CPU graph behavior and current limitations:
   :meth:`Launch.set_param_at_index_from_ctype() <warp.Launch.set_param_at_index_from_ctype>`
   cannot be recorded because APIC needs the original :class:`warp.array`
   object to preserve its replay-time memory reference.
-- Kernel parameters of type ``wp.fixedarray``, ``wp.fabricarray``, or
-  ``wp.indexedfabricarray`` cannot yet be recorded by APIC.
+- Kernel parameters of type ``wp.fabricarray`` or ``wp.indexedfabricarray``
+  cannot yet be recorded by APIC. ``wp.fixedarray`` is a compiler-only stack
+  array type and cannot be passed as a host kernel argument.
 - :meth:`BsrMatrix.nnz_sync() <warp.sparse.BsrMatrix.nnz_sync>` cannot read the
   result of a topology update recorded earlier in the same CPU capture. Read the
   count after replay, or avoid the readback inside the captured region.
@@ -1998,7 +1999,8 @@ API Capture: Saving and Loading Graphs
     surface, the C ``wp_apic_*`` API, and the recorded operation set are all
     subject to change without a formal deprecation cycle. The writer and loader
     must use the same Warp version. The current writer and reader use format
-    version 17.
+    version 18, which stores explicit element counts for handle relocations.
+    Recapture graphs saved with earlier formats.
 
 The APIC operation stream lets Warp serialize a supported captured graph to
 disk and load it back later from another Python program or a standalone C++
@@ -2477,8 +2479,18 @@ Current limitations of API Capture:
 - Only :class:`wp.Mesh <warp.Mesh>` object handles are serialized.
   :class:`wp.Volume <warp.Volume>`, :class:`wp.Bvh <warp.Bvh>`, and
   :class:`wp.HashGrid <warp.HashGrid>` handles are not yet supported.
-- Kernel arguments of type ``wp.fixedarray``, ``wp.fabricarray``, and
-  ``wp.indexedfabricarray`` cannot yet be recorded by APIC.
+- A mesh ID is remapped to the reloaded mesh only when its type is
+  :class:`wp.handle <warp.handle>`:
+  a ``wp.handle`` kernel parameter or struct field,
+  or an element of an array whose dtype is ``wp.handle`` or a struct with ``wp.handle`` fields.
+  A mesh ID passed as ``wp.uint64`` is saved as a plain integer
+  and is not valid when the graph is loaded in another process.
+- Mesh IDs written into an array by :meth:`array.fill_() <warp.array.fill_>` during a capture
+  are not remapped when the graph is loaded.
+  Write them with a kernel that takes the mesh as a ``wp.handle`` argument instead.
+- Kernel arguments of type ``wp.fabricarray`` or ``wp.indexedfabricarray``
+  cannot yet be recorded by APIC. ``wp.fixedarray`` is a compiler-only stack
+  array type and cannot be passed as a host kernel argument.
 - ``HashGrid.build()`` is supported by live CPU graphs captured with
   ``apic=False``. It is not supported by saveable captures because ``HashGrid``
   resources and their process-local IDs cannot yet be serialized. Calling
@@ -2537,6 +2549,8 @@ Warp provides a :class:`wp.Mesh <warp.Mesh>` class to manage triangle mesh data.
 
 Meshes can be passed to kernels using their ``id`` attribute, which is a ``uint64`` value that uniquely identifies
 the mesh.
+To save a captured graph that uses a mesh with :func:`wp.capture_save() <warp.capture_save>`,
+type the ID as :class:`wp.handle <warp.handle>` instead (see :ref:`apic_save_load`).
 Once inside a kernel, you can perform geometric queries against the mesh such as ray-casts or closest-point lookups.
 For example, the result object returned by :func:`wp.mesh_query_point() <warp._src.lang.mesh_query_point>` stores the
 hit face and barycentric coordinates, which can be passed to
@@ -2894,9 +2908,26 @@ Textures can be sampled inside kernels using the :func:`wp.texture_sample() <war
 Supported data types include ``wp.uint8``, ``wp.uint16``, ``wp.uint32``, ``wp.int8``, ``wp.int16``,
 ``wp.int32``, ``wp.float16``, and ``wp.float32``. Unsigned 8- and 16-bit integer textures are
 automatically normalized to the [0, 1] range when sampled; signed 8- and 16-bit integer textures are
-normalized to [-1, 1]; float types are returned as-is. Sampling a ``wp.uint32`` or ``wp.int32``
-texture causes kernel execution to fail, but these dtypes remain usable for storage, copies, and
-interop.
+normalized to [-1, 1]; float types are returned as-is. ``wp.uint32`` and ``wp.int32`` textures
+support only closest filtering and are converted numerically to ``float32`` without normalization.
+Integers outside ``[-2**24, 2**24]`` may round during this conversion.
+
+Texture sampling is differentiable with respect to sampling coordinates wherever the sample is
+locally linear, and with respect to ``lod`` for linear mip-level blending, so sampling positions
+can be optimized with :class:`wp.Tape <warp.Tape>`. At boundaries where the derivative is not
+unique, Warp differentiates the branch selected by the forward sample. At an unclamped integer
+LOD, linear mip filtering uses the right-hand derivative. The LOD gradient is zero in the clamped
+ranges. With closest spatial or mip filtering the corresponding coordinate or ``lod`` gradients
+are zero. Texture data gradients are not propagated. On CUDA, ``WRAP`` and ``MIRROR`` require
+normalized coordinates; with unnormalized coordinates, CUDA treats both modes as ``CLAMP`` for
+the forward sample and its coordinate gradient.
+
+Gradients use float32 arithmetic and are subject to rounding, overflow, underflow, and
+cancellation. Intermediate calculations can lose small contributions or overflow even when
+the mathematical final gradient is representable. CUDA filtering has limited fractional
+precision and can flush subnormal samples to zero; CUDA float32 gradient-array accumulation
+can also flush subnormal contributions and results to zero. With ``fast_math`` enabled,
+subnormal inputs can also be flushed before the gradient calculation.
 
 .. seealso:: :ref:`Reference <builtins-textures>` for the texture sampling functions available in kernels.
 

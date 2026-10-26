@@ -90,11 +90,16 @@ The main security boundaries in this repository are:
   PyTorch, JAX, Paddle, DLPack, `__array_interface__`, and
   `__cuda_array_interface__`. Many conversions are zero-copy, so Warp may launch
   kernels against memory allocated and owned by another framework.
-- **Serialized-data boundary:** `warp.Volume.load_from_nvdb()` parses serialized
-  NanoVDB grid data supplied through a public Warp API. USD stages and images
-  are loaded primarily by examples through optional third-party libraries.
-  NanoVDB parsing defects in Warp and defects in Warp-specific integration code
-  are distinct from vulnerabilities in those third-party parsers.
+- **Input-data boundary:** Warp APIs interpret array contents as offsets,
+  indices, counts, and sizes, for example in sparse matrix topology, mesh and
+  BVH indices, and indexed arrays. Warp trusts this data: it must come from a
+  trusted source or be validated by the application before it reaches a Warp
+  API.
+- **Serialized-data boundary:** `warp.Volume.load_from_nvdb()` parses
+  serialized NanoVDB grid data from a file or an in-memory buffer and validates
+  it before creating a volume. Examples load USD stages and images primarily
+  through optional third-party libraries. Defects in third-party parsers and
+  decompressors are distinct from defects in Warp.
 - **Executable-artifact boundary:** an APIC graph bundle consists of a `.wrp`
   file and its companion `_modules/` directory, which contains compiled CPU or
   CUDA modules. `warp.capture_load()` reconstructs recorded operations and
@@ -107,10 +112,37 @@ The main security boundaries in this repository are:
   and native libraries.
 
 Warp's primary security responsibility is to keep its public APIs, native
-runtime, compiler pipeline, cache loading, memory management, and supported file
-loaders robust when used according to these trust boundaries. Warp does not make
-untrusted Python code, untrusted native snippets, untrusted compiled artifacts,
-or untrusted local users safe to execute in the same process.
+runtime, compiler pipeline, cache loading, and memory management robust when
+used with valid input according to these trust boundaries, and to validate
+serialized NanoVDB data loaded through `warp.Volume.load_from_nvdb()`. Warp does
+not make untrusted Python code, untrusted native snippets, untrusted compiled
+artifacts, or untrusted local users safe to execute in the same process.
+
+Warp is a programming framework for building applications. Applications control
+their input sources and decide whether, when, and how to validate data based on
+their trust model and performance requirements. Validating contents on every
+operation adds computational cost. For GPU-resident data, validation that needs
+host-side results also requires device-to-host readback and synchronization,
+which can prevent CUDA graph capture. Warp therefore leaves comprehensive
+content validation to the application.
+
+Warp trusts the data passed to its APIs. Array contents and data-structure
+topology, such as sparse offsets and column indices, must come from trusted
+sources or be validated by the application before use. Warp may detect some
+invalid input and raise an error, but these checks are best-effort diagnostics,
+not a security boundary. Undefined behavior caused by invalid input, including
+out-of-bounds memory access, is a robustness issue rather than a vulnerability
+unless Warp itself produced the invalid data from valid inputs or the defect
+also occurs with valid input.
+
+`warp.Volume.load_from_nvdb()` is the exception. A NanoVDB file contains only
+data that Warp's own code interprets, and checking the grid structure outside
+Warp would require a separate NanoVDB implementation. Warp validates every grid
+on the host before creating the volume, so the check avoids the per-operation
+cost and CUDA graph capture limits described above. APIC bundles and other
+executable artifacts stay trusted. They contain compiled code, and a `.wrp` file
+also supplies kernel arguments and initial memory contents, so no file-level
+check can make loading an untrusted bundle safe.
 
 ## Threat Model
 
@@ -121,23 +153,42 @@ The following scenarios represent the primary security concerns for Warp:
    pointers, strides, shapes, and launch parameters into native C++/CUDA code.
    Incorrect device selection, stale buffers, or validation gaps can cause
    process termination, data corruption, GPU faults, or memory disclosure.
-   **Security stance:** Failures in Warp's validation or memory handling through
-   a supported API are in scope. Callers remain responsible for the validity and
-   lifetime of raw addresses and externally owned allocations that Warp cannot
-   independently verify.
+   **Security stance:** Failures in Warp's memory handling through a supported
+   API with valid input are in scope. Callers remain responsible for the
+   validity and lifetime of raw addresses and externally owned allocations that
+   Warp cannot independently verify, and for the contents of the arrays and data
+   structures they pass to Warp, as described in the next item.
 
-2. **Malformed NanoVDB data:** `warp.Volume.load_from_nvdb()` parses file
-   headers, metadata, compression records, and grid buffers before making them
-   available to native volume operations. Malformed data can target bounds and
-   size calculations, decompression, resource consumption, and native memory
-   access. **Security stance:** Warp treats serialized fields as untrusted. It
-   validates fixed-size names and file-derived offsets, counts, sizes, and
-   resolved ranges before exposing metadata or using it for native memory
-   access. Validation defects that cause native process termination, GPU faults,
-   memory corruption, information disclosure, or disproportionate resource
-   exhaustion are in scope for assessment.
+2. **Invalid array contents and data structures:** Many Warp APIs interpret
+   array contents as offsets, indices, counts, or sizes, for example sparse
+   matrix topology, mesh and BVH indices, and indexed arrays. Invalid values can
+   cause out-of-bounds memory access, GPU faults, process termination, or
+   excessive resource consumption. **Security stance:** Warp does not impose
+   content validation on every operation; applications control validation
+   according to their trust model and performance requirements. Applications
+   that obtain data from untrusted sources must validate it before passing it to
+   Warp. Checks that Warp performs, such as array bounds checking in debug mode,
+   are best-effort diagnostics and not a security boundary. Defects are in scope
+   when they occur with valid input or when Warp itself produces invalid data
+   from valid inputs. See
+   [Using Warp with Untrusted Data](#using-warp-with-untrusted-data) for the
+   example APIs and the contents they trust.
 
-3. **Kernel cache or compiled artifact tampering:** Warp loads cached object
+3. **Malformed NanoVDB data:** `warp.Volume.load_from_nvdb()` parses file
+   headers, metadata, compression records, and grid buffers before creating a
+   volume that native volume operations read. Malformed data can target bounds
+   and size calculations, decompression, and native memory access. **Security
+   stance:** Warp treats serialized NanoVDB data as untrusted. Before creating
+   the volume, it validates the header, metadata, tree layout, node ranges, and
+   child references of each grid on the host after decompression. Validation
+   defects that let malformed data cause native process termination, GPU faults,
+   memory corruption, or information disclosure are in scope for assessment.
+   Warp does not limit file or decompressed sizes. Defects in the zlib and blosc
+   decompressors are third-party defects. Volumes created from in-memory grid
+   buffers with `wp.Volume(array)` or `Volume.load_from_address()` follow the
+   trusted-input rule in the previous item.
+
+4. **Kernel cache or compiled artifact tampering:** Warp loads cached object
    files, PTX/CUBIN modules, LTO artifacts, and `.meta` files from the configured
    kernel cache. Another local user or compromised process could replace cached
    artifacts in a shared or unprotected location. **Security stance:** Warp uses
@@ -145,7 +196,7 @@ The following scenarios represent the primary security concerns for Warp:
    responsible for preventing untrusted writes; defects that compromise the
    isolation or integrity of a properly protected cache remain in scope.
 
-4. **Cross-framework memory and stream misuse:** PyTorch, JAX, Paddle, DLPack,
+5. **Cross-framework memory and stream misuse:** PyTorch, JAX, Paddle, DLPack,
    CUDA array interface, CUDA graph capture, peer access, memory pools, and
    custom allocators share memory and stream ownership across libraries. A
    producer that misreports metadata or violates lifetime and synchronization
@@ -155,7 +206,7 @@ The following scenarios represent the primary security concerns for Warp:
    metadata, ownership, lifetime, and synchronization. Callers can enable
    stricter diagnostics with `warp.config.launch_array_access_mode`.
 
-5. **Trusted native code and external build inputs:** Warp compiles
+6. **Trusted native code and external build inputs:** Warp compiles
    `@wp.kernel` definitions, `@wp.func_native` snippets, CPU/CUDA preambles and
    headers supplied through `wp.ModuleBuildOptions`, and native types and
    functions registered through `warp.build_experimental`. These inputs can
@@ -166,7 +217,7 @@ The following scenarios represent the primary security concerns for Warp:
    affect compilation must be listed in `extra_build_dependencies` so changes
    participate in module cache invalidation.
 
-6. **Loading APIC and other executable artifacts:** `warp.capture_load()` reads
+7. **Loading APIC and other executable artifacts:** `warp.capture_load()` reads
    an APIC `.wrp` file and loads compiled modules from its companion `_modules/`
    directory. AOT output and other CPU object, PTX, or CUBIN modules likewise
    contain executable code. **Security stance:** These inputs are trusted
@@ -175,7 +226,7 @@ The following scenarios represent the primary security concerns for Warp:
    cross another trust boundary, or occur with a valid artifact produced by a
    supported Warp workflow remain in scope.
 
-7. **Toolchain and dependency substitution during source builds:**
+8. **Toolchain and dependency substitution during source builds:**
    `build_lib.py` discovers CUDA through `WARP_CUDA_PATH`, `CUDA_HOME`,
    `CUDA_PATH`, and `nvcc`, can use `LIBMATHDX_HOME` or `--libmathdx-path`, and
    can consume existing or built LLVM/Clang installations. Build and CI tooling
@@ -212,21 +263,53 @@ The following scenarios represent the primary security concerns for Warp:
   executable-artifact bundle. Callers must load bundles only from trusted
   sources. `warp.capture_load()` is not a sandbox or security boundary for
   attacker-controlled artifacts.
-- Applications that accept NanoVDB data from untrusted sources must limit input
-  and decompressed sizes according to their threat model. Warp validates
-  serialized metadata and rejects data that would cause access outside the
-  volume allocation. It does not provide application-level quotas or a
+- Data passed to Warp APIs is trusted or has been validated by the
+  application. This includes array contents that encode topology, indexing,
+  counts, or sizes. Warp does not provide input sanitization or
+  application-level quotas for attacker-controlled data.
+- Applications that accept NanoVDB data from untrusted sources load it with
+  `warp.Volume.load_from_nvdb()` and bound memory and CPU use themselves, for
+  example with input size limits or process resource limits. Warp validates
+  grid structure but does not limit decompressed sizes or provide a
   general-purpose parser sandbox.
 - Examples and their optional third-party USD and image parsers are local
   developer workflows, not hardened ingestion services for attacker-controlled
   assets.
-- Services that expose Warp functionality to remote users must validate and
-  constrain inputs before invoking Warp. Network transport security, rate
-  limiting, authentication, authorization, request logging, and secrets handling
-  are outside Warp's built-in responsibilities.
+- Applications and services that accept data from remote users, files, or
+  other untrusted sources must validate and constrain it before invoking Warp.
+  Network transport security, rate limiting, authentication, authorization,
+  request logging, and secrets handling are outside Warp's built-in
+  responsibilities.
 - Source builds trust the selected package indexes, Packman configuration,
   CUDA Toolkit, LLVM/Clang installation, compilers, linkers, environment
   variables, and CI runners used to produce native libraries and wheels.
+
+## Using Warp with Untrusted Data
+
+The trusted-data rule applies to every Warp API except
+`warp.Volume.load_from_nvdb()`. Any other API may use array contents as memory
+offsets, indices, counts, or sizes, and invalid contents are undefined behavior
+that can cause out-of-bounds memory access, GPU faults, or process termination.
+The table below lists common examples. It is not exhaustive, and an API's
+absence from it does not mean Warp validates that API's input contents.
+
+| Example API                                      | Contents Warp trusts               | What Warp checks                                |
+| ------------------------------------------------ | ---------------------------------- | ----------------------------------------------- |
+| `warp.sparse` operations on a `BsrMatrix`        | `offsets`, `row_counts`, `columns` | Array shapes, dtypes, and devices               |
+| `wp.Mesh`                                        | Vertex `indices` into `points`     | Array shapes, dtypes, devices, and contiguity   |
+| `wp.indexedarray`                                | `indices`                          | Index array type, dimension, dtype, and device  |
+| `wp.Volume(array)`, `Volume.load_from_address()` | NanoVDB node and child offsets     | Buffer size, magic, and grid and blind metadata |
+| `warp.utils.graph_coloring_get_groups()`         | `node_colors`                      | Array dtype, dimension, and device              |
+
+Undefined behavior from invalid contents passed to these APIs, or to other APIs
+not listed above, is a property of Warp's trusted-input model, not a
+vulnerability in Warp.
+
+For NanoVDB data from untrusted sources, use `warp.Volume.load_from_nvdb()`,
+which accepts a file object or an in-memory buffer in `.nvdb` format and
+validates each grid before creating the volume. `wp.Volume(array)` and
+`Volume.load_from_address()` run only the metadata checks in the table above
+and trust the rest of the grid.
 
 ## Scope
 
@@ -241,21 +324,28 @@ instance is a security vulnerability or establish its severity. Classification
 depends on the affected trust boundary and the demonstrated confidentiality,
 integrity, and availability impact.
 
+Reports that depend on invalid array contents or data structures, such as
+malformed sparse matrix topology or out-of-range indices, are treated as
+robustness or defense-in-depth issues rather than vulnerabilities, regardless
+of how the input is delivered. They are security-relevant only when the defect
+also occurs with valid input or when Warp itself produced the invalid data from
+valid inputs. Applications remain responsible for validating untrusted data,
+deciding who may submit it, and enforcing authentication, authorization, and
+resource quotas.
+
 Malformed NanoVDB data is in scope for assessment when a validation defect in
-`warp.Volume.load_from_nvdb()` causes native process termination, GPU faults,
-memory corruption, information disclosure, or disproportionate resource
-exhaustion. The input's delivery path does not change Warp's responsibility for
-memory safety. Applications remain responsible for deciding who may submit data
-and for enforcing authentication, authorization, and resource quotas. Resource
-exhaustion caused only by intentionally excessive input is generally out of
-scope unless a comparatively small input causes disproportionate consumption.
+`warp.Volume.load_from_nvdb()` lets it cause native process termination, GPU
+faults, memory corruption, or information disclosure. The input's delivery path
+does not change Warp's responsibility for memory safety. Bounding memory and CPU
+use for large or highly compressed NanoVDB input remains the application's
+responsibility.
 
 USD and image parsing in examples is primarily implemented by optional
 third-party libraries. Defects that reproduce in those parsers without Warp are
 out of scope for Warp. Defects caused or amplified by Warp-specific buffer,
-lifetime, or integration behavior remain in scope. Invalid input merely causing
-a local example to fail is generally a robustness issue unless it exposes a
-Warp-owned memory-safety defect or crosses another security boundary.
+lifetime, or integration behavior with valid input remain in scope. Invalid
+input causing a local example to fail is a robustness issue unless it crosses
+another security boundary.
 
 Reports involving APIC graph loading are evaluated against the trusted
 executable-artifact boundary. Defects are security-relevant when they occur with
@@ -296,9 +386,12 @@ inside Warp itself:
   untrusted `@wp.kernel` definitions, untrusted `@wp.func_native` snippets,
   untrusted external-compilation inputs, or untrusted APIC, object, PTX, or
   CUBIN artifacts.
+- Out-of-bounds access, crashes, resource exhaustion, or other undefined
+  behavior that requires passing invalid array contents or data structures to a
+  Warp API, unless Warp produced the invalid data from valid inputs.
 - Denial of service caused only by intentionally launching extremely large
-  kernels, allocating excessive memory, or running examples with unrealistic
-  local inputs.
+  kernels, allocating excessive memory, loading very large or highly compressed
+  NanoVDB data, or running examples with unrealistic local inputs.
 - Missing authentication, authorization, rate limiting, quotas, or other
   controls in an application that embeds Warp. These controls are the
   application's responsibility. Remote reachability and attacker-visible

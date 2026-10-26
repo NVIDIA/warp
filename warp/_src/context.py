@@ -477,12 +477,14 @@ class Function:
 
             arguments = tuple(bound_args.arguments.values())
             arg_types = []
-            for argument in arguments:
-                arg_type = warp._src.codegen.get_arg_type(argument)
-                if type(arg_type) in warp._src.types._ARRAY_ANNOTATION_MAP:
-                    # Runtime arrays own or reference backing allocations, so cache only lightweight annotations.
-                    arg_type = type(arg_type)[arg_type.dtype, arg_type.ndim]
-                arg_types.append(arg_type)
+            for arg_name, argument in bound_args.arguments.items():
+                # Runtime arrays own or reference allocations; keep only their native types in overload caches.
+                # Normalize before get_arg_type() can interpret an array mixin as a Python sequence.
+                try:
+                    normalized = warp._src.types._normalize_array_argument_type(argument)
+                except TypeError as error:
+                    raise TypeError(f"Error calling function '{self.key}', argument '{arg_name}': {error}") from error
+                arg_types.append(warp._src.codegen.get_arg_type(normalized))
 
             overload = self.get_overload(tuple(arg_types), {})
             if overload is not None:
@@ -510,11 +512,14 @@ class Function:
                     inference_arg_names.append(arg_name)
 
                 # Attempt to unify ordinary argument types with function template types.
-                warp._src.types.infer_argument_types(
-                    inference_arguments,
-                    inference_template_types,
-                    inference_arg_names,
-                )
+                try:
+                    warp._src.types.infer_argument_types(
+                        inference_arguments,
+                        inference_template_types,
+                        inference_arg_names,
+                    )
+                except TypeError as error:
+                    raise TypeError(f"Error calling function '{self.key}': {error}") from error
                 return overload.func(*arguments)
 
             # We got here without ever calling an overload.func
@@ -1383,11 +1388,28 @@ class Kernel:
 
         arg_names = list(self.adj.arg_types.keys())
 
-        return warp._src.types.infer_argument_types(args, template_types, arg_names)
+        try:
+            return warp._src.types.infer_argument_types(args, template_types, arg_names)
+        except TypeError as error:
+            raise TypeError(f"Error launching kernel '{self.key}': {error}") from error
 
     def add_overload(self, arg_types):
         if len(arg_types) != len(self.adj.arg_types):
             raise RuntimeError(f"Invalid number of arguments for kernel {self.key}")
+
+        # Callers such as optimizers pass live arrays as descriptors. Never retain those allocations
+        # or application subclass identities in the compiler's specialization types.
+        arg_names = list(self.adj.arg_types.keys())
+        normalized_types = []
+        for arg_name, arg_type in zip(arg_names, arg_types, strict=True):
+            try:
+                normalized_types.append(warp._src.types._normalize_array_argument_type(arg_type))
+            except TypeError as error:
+                raise TypeError(f"Kernel '{self.key}', argument '{arg_name}': {error}") from error
+        return self._add_normalized_overload(normalized_types)
+
+    def _add_normalized_overload(self, arg_types):
+        """Look up or create an overload from already normalized compiler types."""
 
         # get a type signature from the given argument types
         sig = warp._src.types.get_signature(arg_types, func_name=self.key)
@@ -3054,6 +3076,27 @@ def _get_cpu_toolchain_version() -> str:
     return _cpu_toolchain_version_cache
 
 
+# Cached CPU target triple, computed once after the native library is loaded.
+_cpu_target_triple_cache: str | None = None
+
+
+def _get_cpu_target_triple() -> str:
+    """Return the LLVM target triple used for CPU code generation, or an empty string if unavailable.
+
+    The triple is cached only after the LLVM native library is available,
+    allowing a successful retry after initialization.
+    """
+    global _cpu_target_triple_cache
+    if _cpu_target_triple_cache is not None:
+        return _cpu_target_triple_cache
+
+    if runtime is None or runtime.llvm is None:
+        return ""
+
+    _cpu_target_triple_cache = runtime.llvm.wp_get_cpu_target_triple().decode("utf-8")
+    return _cpu_target_triple_cache
+
+
 def _get_cpu_target_hash(resolved_flags: str) -> str:
     """Return a short hash identifying the CPU compilation target.
 
@@ -3061,15 +3104,17 @@ def _get_cpu_target_hash(resolved_flags: str) -> str:
         resolved_flags: Resolved CPU compiler flags for the module.
 
     Returns:
-        An eight-character hash of the LLVM version and, for
-        ``-march=native``, host ISA features. Returns an empty string when
+        An eight-character hash of the LLVM version, the target triple, and,
+        for ``-march=native``, host ISA features. Returns an empty string when
         the LLVM native library is unavailable.
     """
     llvm_version = _get_cpu_toolchain_version()
     if not llvm_version:
         return ""
 
-    identity = ["warp-cpu-target-v1", f"llvm:{llvm_version}"]
+    # The triple keeps objects for different architectures and operating systems
+    # apart in a shared cache. Without -march=native, nothing else here depends on the host.
+    identity = ["warp-cpu-target-v1", f"llvm:{llvm_version}", f"triple:{_get_cpu_target_triple()}"]
     if _uses_march_native(resolved_flags):
         features = ",".join(sorted(_get_cpu_feature_set()))
         identity.append(f"isa:{features}")
@@ -4643,9 +4688,10 @@ class Module:
         ``wp___main___0340cd1.sm90a.cubin`` when an arch suffix is active.
         It should be used to form a path.
 
-        For CPU targets, a short hash of the LLVM version is included in the
-        filename. When compiling with ``-march=native``, the hash also includes
-        the host CPU's ISA features (e.g. ``wp___main___0340cd1.cpu1a2b3c4d.o``).
+        For CPU targets, a short hash of the LLVM version and target triple is
+        included in the filename. When compiling with ``-march=native``, the hash
+        also includes the host CPU's ISA features (e.g.
+        ``wp___main___0340cd1.cpu1a2b3c4d.o``).
         This distinguishes incompatible CPU objects without affecting the shared
         module directory and its CUDA caches.
         """
@@ -6699,6 +6745,13 @@ class Runtime:
                 "or upgrade to Apple Silicon hardware (ARM64)."
             )
 
+        if sys.version_info < (3, 11):
+            log_warning(
+                f"Support for Python {sys.version_info.major}.{sys.version_info.minor} is deprecated and "
+                "will be removed in Warp 1.20. Please upgrade to Python 3.11 or newer.",
+                category=FutureWarning,
+            )
+
         bin_path = os.path.join(warp_home, "bin")
 
         if os.name == "nt":
@@ -6776,6 +6829,9 @@ class Runtime:
 
             self.llvm.wp_llvm_version.argtypes = []
             self.llvm.wp_llvm_version.restype = ctypes.c_char_p
+
+            self.llvm.wp_get_cpu_target_triple.argtypes = []
+            self.llvm.wp_get_cpu_target_triple.restype = ctypes.c_char_p
 
             self.llvm.wp_get_host_cpu_name.argtypes = []
             self.llvm.wp_get_host_cpu_name.restype = ctypes.c_char_p
@@ -7049,6 +7105,7 @@ class Runtime:
                 ctypes.c_uint32,
                 ctypes.c_uint64,
                 ctypes.c_uint64,
+                ctypes.c_uint64,
             ]
             self.core.wp_apic_register_ptr_location.restype = None
             self.core.wp_apic_register_memory_region.argtypes = [
@@ -7061,6 +7118,8 @@ class Runtime:
             self.core.wp_apic_register_memory_region.restype = None
             self.core.wp_apic_register_mesh.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
             self.core.wp_apic_register_mesh.restype = ctypes.c_bool
+            self.core.wp_apic_is_mesh.argtypes = [ctypes.c_uint64]
+            self.core.wp_apic_is_mesh.restype = ctypes.c_bool
             self.core.wp_apic_state_save.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_int, ctypes.c_void_p]
             self.core.wp_apic_state_save.restype = ctypes.c_bool
 
@@ -8109,7 +8168,7 @@ class Runtime:
             self.core.wp_cuda_context_destroy.argtypes = [ctypes.c_void_p]
             self.core.wp_cuda_context_destroy.restype = None
             self.core.wp_cuda_context_synchronize.argtypes = [ctypes.c_void_p]
-            self.core.wp_cuda_context_synchronize.restype = None
+            self.core.wp_cuda_context_synchronize.restype = ctypes.c_bool
             self.core.wp_cuda_context_check.argtypes = [ctypes.c_void_p]
             self.core.wp_cuda_context_check.restype = ctypes.c_uint64
 
@@ -8166,7 +8225,7 @@ class Runtime:
             self.core.wp_cuda_stream_unregister.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
             self.core.wp_cuda_stream_unregister.restype = None
             self.core.wp_cuda_stream_synchronize.argtypes = [ctypes.c_void_p]
-            self.core.wp_cuda_stream_synchronize.restype = None
+            self.core.wp_cuda_stream_synchronize.restype = ctypes.c_bool
             self.core.wp_cuda_stream_wait_event.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_bool]
             self.core.wp_cuda_stream_wait_event.restype = None
             self.core.wp_cuda_stream_wait_stream.argtypes = [
@@ -8196,7 +8255,7 @@ class Runtime:
             self.core.wp_cuda_event_record.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_bool]
             self.core.wp_cuda_event_record.restype = None
             self.core.wp_cuda_event_synchronize.argtypes = [ctypes.c_void_p]
-            self.core.wp_cuda_event_synchronize.restype = None
+            self.core.wp_cuda_event_synchronize.restype = ctypes.c_bool
             self.core.wp_cuda_event_elapsed_time.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
             self.core.wp_cuda_event_elapsed_time.restype = ctypes.c_float
 
@@ -9117,7 +9176,7 @@ class Runtime:
 
             err = self.core.wp_cuda_context_check(device.context)
             if err != 0:
-                raise RuntimeError(f"CUDA error detected: {err}")
+                raise RuntimeError(f"CUDA error {err} detected on device {device}: {self.get_error_string()}")
 
 
 # global entry points
@@ -9133,6 +9192,66 @@ def is_cpu_available() -> bool:
     init()
 
     return runtime.llvm is not None
+
+
+def get_cpu_kernel_cache_key(*, cpu_compiler_flags: str | None = None) -> str:
+    """Return a key identifying the CPU compilation target for naming external kernel caches.
+
+    The key combines the Warp version, operating system, and CPU architecture
+    with the target hash from Warp's CPU object filenames.
+    That hash covers the LLVM version, plus the host CPU's ISA features
+    when the resolved flags contain ``-march=native``.
+    This function does not compile kernels or require CUDA.
+
+    For immutable CI caches, also include a hash of application dependencies and source.
+    Individual modules still use their own hashes for source and compilation options.
+    Do not parse the returned string; its format and value may change
+    between Warp releases as cache compatibility rules evolve.
+
+    Args:
+        cpu_compiler_flags: CPU compiler flags for the target to identify.
+            ``None`` inherits :attr:`warp.config.cpu_compiler_flags` at call time,
+            including its fallback to ``-march=native``.
+            An empty string selects a generic CPU target.
+            This argument does not change the compiler configuration.
+            For a cache that mixes native and generic modules, pass ``"-march=native"``.
+
+    Returns:
+        A nonempty string identifying the CPU compilation target,
+        such as ``"1.19.0-Linux-x86_64-1a2b3c4d"``.
+
+    Raises:
+        RuntimeError: The LLVM backend required for CPU compilation is unavailable.
+        RuntimeError: The CPU compiler flags include ``-fsanitize=address``,
+            but the ``warp-clang`` library was not built with AddressSanitizer.
+
+    Example:
+        Save and restore CPU kernels in a target-specific archive::
+
+            import shutil
+            from pathlib import Path
+
+            import warp as wp
+
+            archive = Path("kernel-caches") / f"warp-cpu-{wp.get_cpu_kernel_cache_key()}.zip"
+
+            if archive.exists():
+                shutil.unpack_archive(archive, wp.config.kernel_cache_dir)
+
+            # Run your CPU kernels here, then save the updated cache.
+            archive.parent.mkdir(parents=True, exist_ok=True)
+            shutil.make_archive(str(archive.with_suffix("")), "zip", wp.config.kernel_cache_dir)
+
+        Persist ``kernel-caches`` across runs. This example updates one archive
+        per target; append a dependency and source hash for immutable caches.
+    """
+    init()
+    if runtime.llvm is None:
+        raise RuntimeError("Cannot identify the CPU cache target because the LLVM backend is unavailable.")
+
+    resolved_flags = _resolve_cpu_compiler_flags(cpu_compiler_flags, warp.config.cpu_compiler_flags)
+    target_hash = _get_cpu_target_hash(resolved_flags)
+    return f"{warp.config.version}-{platform.system()}-{machine_architecture()}-{target_hash}"
 
 
 def is_cuda_available() -> bool:
@@ -10811,14 +10930,21 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
             # check for array type
             # - in forward passes, array types have to match
             # - in backward passes, indexed array gradients are regular arrays
-            if adjoint:
-                array_matches = isinstance(value, warp.array)
+            expected_family = warp.array if adjoint else warp._src.types.concrete_array_type(arg_type)
+            if type(value) is expected_family:
+                # Keep ordinary built-in arrays on the existing fast path.
+                value_family = expected_family
             else:
-                array_matches = type(value) is warp._src.types.concrete_array_type(arg_type)
+                try:
+                    value_family = warp._src.types._resolve_array_family(value)
+                except TypeError as e:
+                    adj = "adjoint " if adjoint else ""
+                    raise RuntimeError(f"Error launching kernel '{kernel.key}', {adj}argument '{arg_name}': {e}") from e
+            array_matches = value_family is expected_family
 
             if not array_matches:
                 # if a regular Warp array is required, try converting from __cuda_array_interface__ or __array_interface__
-                if warp._src.types.matches_array_class(arg_type, warp.array):
+                if value_family is None and warp._src.types.matches_array_class(arg_type, warp.array):
                     if device.is_cuda:
                         # check for __cuda_array_interface__
                         try:
@@ -10873,7 +10999,15 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
             if warp.config.launch_array_access_mode != warp.config.LaunchArrayAccessMode.RELAXED:
                 _validate_launch_array_access(kernel, arg_name, value, device)
 
-            return value.__ctype__()
+            if type(value) is expected_family:
+                return value.__ctype__()
+            try:
+                return warp._src.types._validate_array_subclass_descriptor(
+                    value, value.__ctype__(), expected_family, arg_type.ndim
+                )
+            except Exception as e:
+                adj = "adjoint " if adjoint else ""
+                raise RuntimeError(f"Error launching kernel '{kernel.key}', {adj}argument '{arg_name}': {e}") from e
 
     # Handle Texture1D, Texture2D and Texture3D types (when used as type annotations)
     elif arg_type is Texture1D:
@@ -11874,7 +12008,7 @@ def launch(
         # if it's a generic kernel, infer the required overload from the arguments
         if kernel.is_generic:
             fwd_types = kernel.infer_argument_types(fwd_args)
-            kernel = kernel.add_overload(fwd_types)
+            kernel = kernel._add_normalized_overload(fwd_types)
 
         # delay load modules, including new overload if needed
         module_exec = kernel.module.load(device, block_dim)
@@ -12482,23 +12616,35 @@ def synchronize():
 
     This method allows the host application code to ensure that any kernel launches
     or memory copies have completed.
+
+    Raises:
+        RuntimeError: If graph capture is active on a device, or if CUDA reports an
+            error from outstanding work. Warp synchronizes the remaining devices
+            before raising the first error.
     """
 
     if is_cuda_driver_initialized():
         # save the original context to avoid side effects
         saved_context = runtime.core.wp_cuda_context_get_current()
 
-        # TODO: only synchronize devices that have outstanding work
-        for device in runtime.cuda_devices:
-            # avoid creating primary context if the device has not been used yet
-            if device.has_context:
-                if device.is_capturing:
-                    raise RuntimeError(f"Cannot synchronize device {device} while graph capture is active")
+        error = None
+        try:
+            # TODO: only synchronize devices that have outstanding work
+            for device in runtime.cuda_devices:
+                # avoid creating primary context if the device has not been used yet
+                if device.has_context:
+                    if device.is_capturing:
+                        raise RuntimeError(f"Cannot synchronize device {device} while graph capture is active")
 
-                runtime.core.wp_cuda_context_synchronize(device.context)
+                    # read the error string before synchronizing the next device replaces it
+                    if not runtime.core.wp_cuda_context_synchronize(device.context) and error is None:
+                        error = f"Failed to synchronize device {device}: {runtime.get_error_string()}"
+        finally:
+            # restore the original context to avoid side effects
+            runtime.core.wp_cuda_context_set_current(saved_context)
 
-        # restore the original context to avoid side effects
-        runtime.core.wp_cuda_context_set_current(saved_context)
+        if error is not None:
+            raise RuntimeError(error)
 
 
 def synchronize_device(device: DeviceLike = None):
@@ -12509,6 +12655,10 @@ def synchronize_device(device: DeviceLike = None):
 
     Args:
         device: Device to synchronize.
+
+    Raises:
+        RuntimeError: If graph capture is active on the device, or if CUDA reports an
+            error from outstanding work.
     """
 
     device = runtime.get_device(device)
@@ -12516,7 +12666,8 @@ def synchronize_device(device: DeviceLike = None):
         if device.is_capturing:
             raise RuntimeError(f"Cannot synchronize device {device} while graph capture is active")
 
-        runtime.core.wp_cuda_context_synchronize(device.context)
+        if not runtime.core.wp_cuda_context_synchronize(device.context):
+            raise RuntimeError(f"Failed to synchronize device {device}: {runtime.get_error_string()}")
 
 
 def synchronize_stream(stream_or_device: Stream | DeviceLike | None = None):
@@ -12527,6 +12678,10 @@ def synchronize_stream(stream_or_device: Stream | DeviceLike | None = None):
 
     Args:
         stream_or_device: `wp.Stream` or a device.  If the argument is a device, synchronize the device's current stream.
+
+    Raises:
+        RuntimeError: If graph capture is active on the stream's device, or if CUDA
+            reports an error from outstanding work.
     """
 
     if isinstance(stream_or_device, Stream):
@@ -12538,7 +12693,8 @@ def synchronize_stream(stream_or_device: Stream | DeviceLike | None = None):
     if stream is not None:
         if stream.device.is_capturing:
             raise RuntimeError("Cannot synchronize stream while graph capture is active")
-        runtime.core.wp_cuda_stream_synchronize(stream.cuda_stream)
+        if not runtime.core.wp_cuda_stream_synchronize(stream.cuda_stream):
+            raise RuntimeError(f"Failed to synchronize stream on device {stream.device}: {runtime.get_error_string()}")
 
 
 def cuda_profiler_start(device: DeviceLike = None):
@@ -12602,12 +12758,17 @@ def synchronize_event(event: Event):
 
     Args:
         event: Event to wait for.
+
+    Raises:
+        RuntimeError: If graph capture is active on the event's device, or if CUDA
+            reports an error from outstanding work.
     """
 
     if event.device.is_capturing:
         raise RuntimeError("Cannot synchronize event while graph capture is active")
 
-    runtime.core.wp_cuda_event_synchronize(event.cuda_event)
+    if not runtime.core.wp_cuda_event_synchronize(event.cuda_event):
+        raise RuntimeError(f"Failed to synchronize event on device {event.device}: {runtime.get_error_string()}")
 
 
 def force_load(
@@ -14483,8 +14644,19 @@ def capture_save(
             region_id = apic_capture.get_region_id(arr)
             runtime.core.wp_apic_register_binding(state, name.encode("utf-8"), region_id)
 
-    # Snapshot memory: copy device data to host and register with C++
-    for _region_key, (region_id, base_ptr, capacity, _base) in apic_capture._regions.items():
+    # Snapshot memory: copy device data to host and register with C++. Meshes
+    # referenced only through handles stored in a snapshot are collected here so
+    # they are serialized alongside the meshes passed as kernel arguments.
+    # Independent wrappers can share a native region ID with different capacities.
+    # Keep the largest extent so handle scans cover all views and a smaller alias
+    # cannot overwrite the region's saved data.
+    snapshot_regions = {}
+    for region_id, base_ptr, capacity, _base in apic_capture._regions.values():
+        if region_id not in snapshot_regions or capacity > snapshot_regions[region_id][1]:
+            snapshot_regions[region_id] = (base_ptr, capacity)
+
+    mesh_ids = set(apic_capture.collected_mesh_ids)
+    for region_id, (base_ptr, capacity) in snapshot_regions.items():
         if graph.device.is_cuda:
             if region_id in apic_capture._transient_regions:
                 # Allocated during capture (graph-scoped): its backing is gone now
@@ -14521,6 +14693,7 @@ def capture_save(
                 1,
                 ctypes.addressof(host_buf),
             )
+            mesh_ids.update(apic_capture.collect_region_mesh_ids(region_id, ctypes.addressof(host_buf), capacity))
         else:
             # CPU memory: pass pointer directly
             runtime.core.wp_apic_register_memory_region(
@@ -14530,6 +14703,7 @@ def capture_save(
                 1,
                 ctypes.c_void_p(base_ptr),
             )
+            mesh_ids.update(apic_capture.collect_region_mesh_ids(region_id, base_ptr, capacity))
 
     # Stage both artifact components on the destination filesystem. Export or
     # serialization failures must leave any previously saved graph intact.
@@ -14590,7 +14764,7 @@ def capture_save(
             )
 
         # Register meshes before serializing the staged graph.
-        for mesh_id in apic_capture.collected_mesh_ids:
+        for mesh_id in mesh_ids:
             if not runtime.core.wp_apic_register_mesh(state, ctypes.c_uint64(mesh_id)):
                 raise RuntimeError(f"APIC: failed to register mesh for capture_save. {runtime.get_error_string()}")
 

@@ -323,7 +323,7 @@ For CPU it allocates host regions and initializes their snapshots. Python then l
 
 For CUDA, default binary-only records use the original packaged-binary loader. Source-enabled records use one native resolver that validates and tries each recorded PTX/CUBIN module. If the driver rejects a packaged object, it tries a matching guest-cache entry and can compile validated retained source for the current GPU with NVRTC. Python supplies the installed Warp header directory through ``wp_apic_load_graph_ex()``; standalone C++ callers use the same entry point and resolver. All modules are resolved before device regions are allocated. The native CUDA graph is deliberately lazy. The first request for its graph or executable opens a Warp-managed CUDA capture and reissues the operation stream. Later launches reuse the cached executable.
 
-Meshes are recreated after region allocation. The loader builds a mapping from captured mesh IDs to new process-local IDs and applies it both to launch relocations and to registered handle fields stored inside memory regions.
+Meshes are recreated after region allocation. The loader builds a mapping from captured mesh IDs to new process-local IDs and applies it both to launch relocations and to registered handle fields stored inside memory regions. Each memory relocation specifies a region, byte offset, byte stride, and element count. The loader reads original IDs from the saved snapshot and patches a host copy of each affected region, so overlapping views cannot remap an already-restored ID. Each patched region is copied to its destination once.
 
 #### Device and binary portability
 
@@ -342,7 +342,7 @@ CPU object files are tied to the platform, architecture, compiler ABI, and Warp 
 
 #### ``.wrp`` format
 
-The feature is experimental. The current constants in ``warp/native/apic_types.h`` define writer and reader version 17. The metadata also records the producer Warp version, and the loader requires both versions to match exactly before loading modules or allocating resources. These numbers describe the operation and metadata wire format, not the Python package version.
+The feature is experimental. The current constants in ``warp/native/apic_types.h`` define writer and reader version 18. Version 18 adds explicit element counts to memory handle relocations; graphs saved with earlier formats must be recaptured. The metadata also records the producer Warp version, and the loader requires both versions to match exactly before loading modules or allocating resources. These numbers describe the operation and metadata wire format, not the Python package version.
 
 Contributors must follow these rules:
 

@@ -8,6 +8,8 @@ from __future__ import annotations
 import ctypes
 from typing import TYPE_CHECKING, Literal
 
+import numpy as np
+
 import warp._src.types
 from warp._src.apic.types import (
     APIC_RELOC_DATA_PTR,
@@ -45,6 +47,11 @@ class APICapture:
         # otherwise alias unrelated allocations to the same region_id) and so that
         # capture_save still has a valid base_ptr to read from.
         self._regions: dict[_RegionKey, tuple[int, int, int, object]] = {}
+
+        # Typed handle runs within each region: (byte offset, stride, count).
+        # Keep view bounds independently of the backing allocation's dtype.
+        # Partial overlaps are safe: loading reads IDs from the original snapshot.
+        self._handle_locations: dict[int, set[tuple[int, int, int]]] = {}
 
         # Region ids whose backing was allocated *during* this capture (graph-scoped
         # on a memory-pool device). Their memory is gone once the capture ends, so
@@ -115,6 +122,7 @@ class APICapture:
         """
         import warp._src.codegen  # noqa: PLC0415
 
+        # Relocation is opt-in: uint64 payloads may be ordinary integers.
         offsets = []
         if dtype is warp._src.types.handle:
             offsets.append(base_offset)
@@ -152,6 +160,7 @@ class APICapture:
                     f"APIC external allocation at 0x{base_ptr:x} has conflicting capacities "
                     f"({registered_capacity} and {base_capacity})"
                 )
+            self._track_handle_locations(arr, region_id, byte_offset, base_capacity)
             return region_id, byte_offset
 
         # Register new region in C++
@@ -180,31 +189,73 @@ class APICapture:
         if origin is not None and origin == self.apic_state:
             self._transient_regions.add(region_id)
 
-        # Register handle pointer locations for APIC fixup
-        handle_offsets = self._find_handle_offsets(base.dtype)
-        if handle_offsets:
-            stride = warp._src.types.type_size_in_bytes(base.dtype)
-            for offset in handle_offsets:
-                self.runtime.core.wp_apic_register_ptr_location(
-                    self.apic_state,
-                    region_id,
-                    offset,
-                    stride,
-                )
+        self._track_handle_locations(arr, region_id, byte_offset, base_capacity)
 
         return region_id, byte_offset
 
+    def _track_handle_locations(self, arr, region_id: int, byte_offset: int, capacity: int) -> None:
+        """Register only handle fields addressed by this typed array view."""
+        # Live CPU graphs replay the original handles. Relocation metadata and
+        # its backing-allocation bounds checks are only needed for serialization.
+        if not self.apic_savable:
+            return
+
+        fields = self._find_handle_offsets(arr.dtype)
+        if not fields or not arr.size:
+            return
+
+        if arr.is_contiguous:
+            rows = ((),)
+            count = arr.size
+            stride = warp._src.types.type_size_in_bytes(arr.dtype)
+        else:
+            rows = np.ndindex(arr.shape[:-1])
+            count = arr.shape[-1]
+            stride = arr.strides[-1]
+        if stride == 0:
+            count = 1
+
+        handle_size = ctypes.sizeof(ctypes.c_uint64)
+        locations = self._handle_locations.setdefault(region_id, set())
+        for row in rows:
+            row_offset = byte_offset + sum(i * s for i, s in zip(row, arr.strides, strict=False))
+            for field in fields:
+                offset = row_offset + field
+                last = offset + (count - 1) * stride
+                if min(offset, last) < 0 or max(offset, last) + handle_size > capacity:
+                    raise RuntimeError("APIC handle view extends outside its backing allocation")
+                run = (min(offset, last), abs(stride) or 1, count)
+                if run not in locations:
+                    locations.add(run)
+                    self.runtime.core.wp_apic_register_ptr_location(self.apic_state, region_id, *run)
+
     def get_region_id(self, arr) -> int:
         """Get the region_id for an array (must have been tracked already)."""
-        if arr is None or not arr.ptr:
-            return -1
-        base, base_ptr, _, _ = self._find_base(arr)
-        region_key = self._region_key(base, base_ptr)
-        if region_key in self._regions:
-            return self._regions[region_key][0]
-        # Fall back to tracking
         region_id, _ = self.track_array(arr)
         return region_id
+
+    def collect_region_mesh_ids(self, region_id: int, data_ptr: int, capacity: int) -> set[int]:
+        """Find live meshes in the typed handle slots of a region snapshot.
+
+        Outputs can contain arbitrary bytes before their first write. A nonzero
+        handle is therefore only a candidate, never an address safe to dereference.
+
+        Args:
+            region_id: The region whose handle views were tracked.
+            data_ptr: Host address of the region's snapshot.
+            capacity: Size of the snapshot in bytes.
+        """
+        locations = self._handle_locations.get(region_id)
+        if not locations:
+            return set()
+
+        data = (ctypes.c_uint8 * capacity).from_address(data_ptr)
+        candidates = set()
+        for offset, stride, count in locations:
+            handles = np.ndarray((count,), dtype=np.uint64, buffer=data, offset=offset, strides=(stride,))
+            candidates.update(np.unique(handles[handles != 0]).tolist())
+        # Other resource kinds need their own serializers; only meshes are supported here.
+        return {mesh_id for mesh_id in candidates if self.runtime.core.wp_apic_is_mesh(mesh_id)}
 
     # ---- APICLaunchInfo construction ----
 
@@ -239,15 +290,23 @@ class APICapture:
                     "APIC capture cannot record raw array ctype launch parameters; "
                     "use set_param_at_index() with a Warp array object or None instead."
                 )
+            original_ptr = original_value.ptr if original_value is not None else None
+            grad = getattr(original_value, "grad", None) if original_value is not None else None
+            grad_ptr = grad.ptr if grad is not None else None
+            if packed_value is not None and (
+                (packed_value.data or 0) != (original_ptr or 0) or (packed_value.grad or 0) != (grad_ptr or 0)
+            ):
+                raise RuntimeError(
+                    "APIC capture requires array descriptors to reference the array's own storage and gradient"
+                )
             data_offset = base_offset + array_t.data.offset
             grad_offset = base_offset + array_t.grad.offset
-            if original_value is not None and original_value.ptr:
+            if original_ptr:
                 region_id, byte_offset = self.track_array(original_value)
                 out.append(self._make_reloc(data_offset, APIC_RELOC_DATA_PTR, region_id, byte_offset))
             else:
                 out.append(self._make_reloc(data_offset, APIC_RELOC_NULL, -1, 0))
-            grad = getattr(original_value, "grad", None) if original_value is not None else None
-            if grad is not None and grad.ptr:
+            if grad_ptr:
                 grad_region_id, grad_byte_offset = self.track_array(grad)
                 out.append(self._make_reloc(grad_offset, APIC_RELOC_DATA_PTR, grad_region_id, grad_byte_offset))
             else:
@@ -288,10 +347,9 @@ class APICapture:
             if original_value:
                 # TODO(apic): APIC_RELOC_HANDLE is generic but the save path only
                 # registers meshes. wp.Volume and wp.Bvh handles flow through this
-                # branch as raw uint64 ids; there is no runtime registry today to
-                # distinguish them, so capture_save would register them as meshes
-                # by mistake. Add a kind-aware registry so non-mesh handles
-                # round-trip.
+                # branch as raw uint64 ids, and capture_save rejects them during
+                # mesh registration. Add kind-aware serialization so non-mesh
+                # handles round-trip too.
                 self.collected_mesh_ids.add(handle_value)
 
         elif isinstance(arg_type, warp._src.codegen.Struct):

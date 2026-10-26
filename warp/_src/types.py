@@ -404,10 +404,10 @@ class uint64(int_base):
 
 
 class handle(uint64):
-    """Type for object handles (Mesh, Volume, BVH) in kernel parameters.
+    """Type for object handles (Mesh, Volume, BVH) in kernel parameters, struct fields, and arrays.
 
     Behaves identically to ``uint64`` but allows APIC to detect which
-    parameters need pointer remapping during graph replay.
+    values need pointer remapping during graph replay.
     """
 
     _wp_native_name_ = "uint64"
@@ -950,6 +950,10 @@ def vector(length, dtype):
     elif dtype is builtins.bool:
         dtype = bool
 
+    # A component name is one of the first `length` letters of "xyzw", the same
+    # names `Adjoint.vector_component_index` accepts inside a kernel.
+    component_indices = {} if length is Any else {c: i for i, c in enumerate("xyzw"[:length])}
+
     class vec_t(ctypes.Array):
         # ctypes.Array data for length, shape and c type:
         _length_ = 0 if length is Any else length
@@ -1096,16 +1100,22 @@ def vector(length, dtype):
                 raise KeyError(f"Invalid key {key}, expected int or slice")
 
         def __getattr__(self, name):
-            idx = "xyzw".find(name)
-            if idx != -1:
+            idx = component_indices.get(name)
+            if idx is not None:
                 return self.__getitem__(idx)
 
             return self.__getattribute__(name)
 
         def __setattr__(self, name, value):
-            idx = "xyzw".find(name)
-            if idx != -1:
+            idx = component_indices.get(name)
+            if idx is not None:
                 return self.__setitem__(idx, value)
+
+            # A name spelled entirely from component letters asks for a
+            # component, so storing it as an attribute would shadow the vector
+            # without touching it. Names outside that alphabet stay assignable.
+            if name and not name.strip("xyzw"):
+                raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
 
             return super().__setattr__(name, value)
 
@@ -2202,6 +2212,7 @@ warp_type_to_np_dtype = {
     uint16: np.uint16,
     uint32: np.uint32,
     uint64: np.uint64,
+    handle: np.uint64,
     float16: np.float16,
     bfloat16: np.uint16,  # TODO: Use ml_dtypes.bfloat16 when available (see also _np_float32_to_bfloat16_bits)
     float32: np.float32,
@@ -2783,7 +2794,8 @@ def type_repr(t) -> str:
     if t is Any:
         return "Any"
     if is_array(t):
-        cls_name = concrete_array_type(t).__name__
+        # Diagnostics describe the Python object, while compiler types use its native family.
+        cls_name = t._concrete_cls.__name__ if isinstance(t, _ArrayAnnotationBase) else type(t).__name__
         if isinstance(t, _ArrayAnnotationBase) or (hasattr(t, "device") and t.device is None):
             # array is used as a type annotation - display ndim instead of shape
             ndim_repr = "Any" if t.ndim is Any else t.ndim
@@ -2979,10 +2991,13 @@ def matches_array_class(t, cls) -> builtins.bool:
 
 
 def concrete_array_type(t) -> type:
-    """Return the concrete array class for an annotation or instance."""
-    if isinstance(t, _ArrayAnnotationBase):
+    """Return an array's native family, preserving ``type(t)`` for non-arrays."""
+    cls = type(t)
+    if issubclass(cls, _ArrayAnnotationBase):
         return t._concrete_cls
-    return type(t)
+    if id(cls) in _ARRAY_FAMILY_IDS:
+        return cls
+    return _resolve_array_family(t) or cls
 
 
 def is_tuple(x) -> builtins.bool:
@@ -5681,6 +5696,103 @@ _ARRAY_ANNOTATION_MAP = {
     indexedfabricarray: _IndexedFabricArrayAnnotation,
 }
 
+# Registered classes are retained by array_types. Compare identities without invoking
+# application metaclass hashing or equality; this is not a cache of user classes.
+_ARRAY_FAMILY_IDS = frozenset(id(cls) for cls in array_types)
+_ARRAY_CTYPE_MAP = {
+    array: array_t,
+    indexedarray: indexedarray_t,
+    fabricarray: fabricarray_t,
+    indexedfabricarray: indexedfabricarray_t,
+}
+
+
+def _resolve_array_family(value) -> type | None:
+    """Resolve a real array ancestor without consulting a spoofable ``__class__``.
+
+    Unrelated native families cannot share a descriptor layout. Mixins and diamonds
+    within one family are valid; ``fixedarray`` keeps its separate compiler type.
+    Lightweight annotations describe arrays but have no native array ancestor,
+    so they resolve to ``None``.
+    """
+    cls = type(value)
+    if id(cls) in _ARRAY_FAMILY_IDS:
+        return cls
+
+    # Most inputs are regular arrays or unrelated objects, requiring no MRO scan.
+    if not issubclass(cls, (indexedarray, fabricarray, indexedfabricarray, fixedarray, _ArrayAnnotationBase)):
+        return array if issubclass(cls, array) else None
+
+    candidates = [ancestor for ancestor in cls.__mro__ if id(ancestor) in _ARRAY_FAMILY_IDS]
+    if len(candidates) > 1:
+        candidates = [
+            candidate
+            for candidate in candidates
+            if not any(candidate is not other and candidate in other.__mro__ for other in candidates)
+        ]
+        if len(candidates) > 1:
+            names = ", ".join(f"wp.{candidate.__name__}" for candidate in candidates)
+            raise TypeError(
+                f"Array subclass '{cls.__qualname__}' derives from unrelated Warp array families ({names}); "
+                "exactly one native array family is required"
+            )
+    return candidates[0] if candidates else None
+
+
+def _normalize_array_argument_type(value):
+    """Describe host array values with storage-free native annotations."""
+    cls = type(value)
+    if cls is type or cls is int or cls is float or cls is builtins.bool or issubclass(cls, _ArrayAnnotationBase):
+        return value
+    family = _resolve_array_family(value)
+    if family is fixedarray:
+        raise TypeError(
+            "Cannot use wp.fixedarray as a host argument or kernel overload type; it is a compiler-only stack array"
+        )
+    annotation_cls = _ARRAY_ANNOTATION_MAP.get(family)
+    if annotation_cls is None:
+        return value
+    return annotation_cls(value.dtype, value.ndim)
+
+
+def _validate_array_subclass_descriptor(value, descriptor, expected_family, ndim):
+    """Validate a subclass descriptor's layout before passing it to native code.
+
+    This checks representation, not pointer validity or allocation ownership.
+    Exact built-in arrays retain their existing trusted descriptor path.
+    """
+    if type(value) is expected_family:
+        return descriptor
+    descriptor_cls = _ARRAY_CTYPE_MAP[expected_family]
+    if not issubclass(type(descriptor), descriptor_cls):
+        raise TypeError(
+            f"Array subclass '{type(value).__qualname__}' must return {descriptor_cls.__name__} from __ctype__(), "
+            f"got {type(descriptor).__name__}"
+        )
+    if ctypes.sizeof(descriptor) != ctypes.sizeof(descriptor_cls):
+        raise TypeError(
+            f"Array subclass '{type(value).__qualname__}' returned an incompatible {descriptor_cls.__name__} size"
+        )
+    if type(descriptor) is not descriptor_cls:
+        # Use native fields rather than potentially overridden Python properties,
+        # and keep CPU launch cache keys independent of application descriptor classes.
+        original_descriptor = descriptor
+        descriptor = descriptor_cls.from_buffer_copy(descriptor)
+        descriptor._ref = original_descriptor
+    if expected_family is array:
+        descriptor_ndim = descriptor.ndim
+    elif expected_family is indexedarray:
+        descriptor_ndim = descriptor.data.ndim
+    else:
+        return descriptor
+    expected_ndim = value.ndim if ndim is Any else ndim
+    if descriptor_ndim != expected_ndim:
+        raise ValueError(
+            f"Array subclass '{type(value).__qualname__}' returned a descriptor with {descriptor_ndim} dimension(s), "
+            f"expected {expected_ndim}"
+        )
+    return descriptor
+
 
 def _parse_array_subscript(cls, params):
     """Parse subscript parameters for array-like types.
@@ -5709,13 +5821,14 @@ def _parse_array_subscript(cls, params):
 
 
 def array_type_id(a):
-    if matches_array_class(a, array):
+    family = concrete_array_type(a)
+    if family is array or family is fixedarray:
         return ARRAY_TYPE_REGULAR
-    elif matches_array_class(a, indexedarray):
+    elif family is indexedarray:
         return ARRAY_TYPE_INDEXED
-    elif matches_array_class(a, fabricarray):
+    elif family is fabricarray:
         return ARRAY_TYPE_FABRIC
-    elif matches_array_class(a, indexedfabricarray):
+    elif family is indexedfabricarray:
         return ARRAY_TYPE_FABRIC_INDEXED
     else:
         raise ValueError("Invalid array type")
@@ -8361,13 +8474,26 @@ def infer_argument_types(args: list[Any], template_types, arg_names: list[str] |
         arg = args[i]
         arg_type = type(arg)
         arg_name = arg_names[i] if arg_names else str(i)
-        if arg_type in array_types:
-            arg_types.append(arg_type(dtype=arg.dtype, ndim=arg.ndim))
+        if arg_type is int or arg_type is float or arg_type is builtins.bool:
+            arg_types.append(type_to_warp(arg_type))
+            continue
+        try:
+            family = None if issubclass(arg_type, _ArrayAnnotationBase) else _resolve_array_family(arg)
+        except TypeError as error:
+            raise TypeError(f"Unable to infer the type of argument '{arg_name}': {error}") from error
+        if family is not None:
+            annotation_cls = _ARRAY_ANNOTATION_MAP.get(family)
+            if annotation_cls is not None:
+                arg_types.append(annotation_cls(arg.dtype, arg.ndim))
+            else:
+                # A fixedarray has the type code of a regular array but a different native layout.
+                # Reject host values before they can register a colliding specialization.
+                raise TypeError(
+                    f"Unable to infer the type of argument '{arg_name}', got a wp.fixedarray, "
+                    "a compiler-only type for stack arrays inside kernels"
+                )
         elif arg_type in scalar_and_bool_types:
             arg_types.append(arg_type)
-        elif arg_type in (int, float, builtins.bool):
-            # canonicalize type
-            arg_types.append(type_to_warp(arg_type))
         elif hasattr(arg_type, "_wp_scalar_type_"):
             # vector/matrix type
             arg_types.append(arg_type)
@@ -8380,7 +8506,12 @@ def infer_argument_types(args: list[Any], template_types, arg_names: list[str] |
             # allow passing None for arrays
             t = template_types[i]
             if is_array(t):
-                arg_types.append(type(t)(dtype=t.dtype, ndim=t.ndim))
+                family = concrete_array_type(t)
+                annotation_cls = _ARRAY_ANNOTATION_MAP.get(family)
+                if annotation_cls is not None:
+                    arg_types.append(annotation_cls(t.dtype, t.ndim))
+                else:
+                    arg_types.append(family(dtype=t.dtype, shape=t.shape))
             else:
                 raise TypeError(f"Unable to infer the type of argument '{arg_name}', got None")
         else:

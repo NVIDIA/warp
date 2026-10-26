@@ -3,6 +3,11 @@
 
 """Benchmarks for representative CUDA texture-sampling workloads."""
 
+import os
+import subprocess
+import sys
+from pathlib import Path
+
 import numpy as np
 
 import warp as wp
@@ -11,6 +16,7 @@ from .benchmarks_utils import setup_once
 
 NUM_QUERIES = 1 << 20
 NUM_TEXTURES = 4
+NUM_POINT_SAMPLING_TEXTURES = 32
 
 # Cycle the one-million-query benchmark over 64K texels 16 times.
 TEXTURE_1D_WIDTH = 1 << 16
@@ -81,10 +87,10 @@ def finite_difference_gradient(tex: wp.Texture3D, uvw: wp.vec3f) -> wp.vec3f:
 
 
 @wp.func
-def texture_index(tid: int, lane_varying: bool) -> int:
+def texture_index(tid: int, lane_varying: bool, num_textures: int) -> int:
     if lane_varying:
-        return tid % NUM_TEXTURES
-    return (tid // 32) % NUM_TEXTURES
+        return tid % num_textures
+    return (tid // 32) % num_textures
 
 
 @wp.kernel
@@ -150,7 +156,7 @@ def sample_texture2d_array(
     output: wp.array[wp.vec4f],
 ):
     tid = wp.tid()
-    tex = textures[texture_index(tid, lane_varying)]
+    tex = textures[texture_index(tid, lane_varying, NUM_TEXTURES)]
     uv = query_2d(tid)
     local = wp.vec3f(uv[0], uv[1], float((tid * 17) % TEXTURE_2D_WIDTH) / float(TEXTURE_2D_WIDTH))
     output[tid] = triplanar_sample(tex, local)
@@ -163,7 +169,7 @@ def sample_texture3d_array(
     output: wp.array[wp.vec3f],
 ):
     tid = wp.tid()
-    tex = textures[texture_index(tid, lane_varying)]
+    tex = textures[texture_index(tid, lane_varying, NUM_TEXTURES)]
     output[tid] = finite_difference_gradient(tex, query_3d(tid))
 
 
@@ -434,5 +440,111 @@ class Texture3DArray:
         wp.synchronize_device(self.device)
 
     def time_cuda(self, handle_pattern):
+        self.cmd.launch()
+        wp.synchronize_device(self.device)
+
+
+def _make_point_sampling_kernel(return_dtype):
+    @wp.kernel(enable_backward=False, module="unique")
+    def sample(
+        textures: wp.array[wp.Texture2D],
+        lane_varying: bool,
+        num_samples: int,
+        output: wp.array[return_dtype],
+    ):
+        tid = wp.tid()
+        tex = textures[texture_index(tid, lane_varying, NUM_POINT_SAMPLING_TEXTURES)]
+        value = return_dtype(0.0)
+        for i in range(num_samples):
+            value += wp.texture_sample(tex, query_2d(tid + i * 13), dtype=return_dtype)
+        output[tid] = value
+
+    return sample
+
+
+_POINT_SAMPLING_DTYPES = {1: float, 2: wp.vec2f, 4: wp.vec4f}
+_POINT_SAMPLING_KERNELS = {
+    num_channels: _make_point_sampling_kernel(dtype) for num_channels, dtype in _POINT_SAMPLING_DTYPES.items()
+}
+
+
+class TexturePointSampling:
+    """Track format dispatch and conversion with uniform or divergent texture handles."""
+
+    params = [["float32", "int32", "uint32", "mixed"], [1, 2, 4], ["warp_uniform", "lane_varying"]]
+    param_names = ["format", "num_channels", "handle_pattern"]
+    # Keeps 99% CI widths under 2.5% on Blackwell MIG for a 5% regression threshold.
+    number = 8
+    repeat = 15
+
+    def setup_cache(self):
+        # Older Warp builds trap when sampling integer textures. Keep that
+        # failure in a child process so it cannot poison this CUDA context.
+        probe = Path(__file__).resolve().parents[1] / "texture_sampling_probe.py"
+        try:
+            result = subprocess.run(
+                [sys.executable, str(probe)],
+                # ASV can override sys.path without changing PYTHONPATH. The
+                # child must import the same Warp build as this benchmark.
+                env={**os.environ, "PYTHONPATH": os.pathsep.join(sys.path)},
+                capture_output=True,
+                text=True,
+                timeout=60,
+                check=False,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise RuntimeError("Integer texture sampling probe timed out") from exc
+
+        if result.returncode == 0:
+            return True
+
+        output = result.stdout + result.stderr
+        unsupported = "texture_sample() does not support 32-bit integer textures"
+        if any(line.strip() == unsupported for line in output.splitlines()):
+            return False
+
+        raise RuntimeError(f"Integer texture sampling probe failed (exit code {result.returncode}):\n{output}")
+
+    @setup_once
+    def setup(self, integer_sampling_supported, format, num_channels, handle_pattern):
+        if format != "float32" and not integer_sampling_supported:
+            raise NotImplementedError("32-bit integer texture sampling is unavailable")
+
+        wp.init()
+        self.device = wp.get_device("cuda:0")
+        return_dtype = _POINT_SAMPLING_DTYPES[num_channels]
+        shape = (TEXTURE_2D_HEIGHT, TEXTURE_2D_WIDTH)
+        if num_channels > 1:
+            shape += (num_channels,)
+        data = np.random.default_rng(42).integers(0, 1024, shape, dtype=np.int32)
+        formats = {
+            "float32": (np.float32,),
+            "int32": (np.int32,),
+            "uint32": (np.uint32,),
+            "mixed": (np.float32, np.int32, np.uint32),
+        }[format]
+        converted = [data.astype(fmt) for fmt in formats]
+        self.textures = [
+            wp.Texture2D(
+                converted[i % len(converted)],
+                filter_mode=wp.TextureFilterMode.CLOSEST,
+                device=self.device,
+            )
+            for i in range(NUM_POINT_SAMPLING_TEXTURES)
+        ]
+        self.texture_array = wp.array(self.textures, dtype=wp.Texture2D, device=self.device)
+        self.output = wp.empty(NUM_QUERIES, dtype=return_dtype, device=self.device)
+        self.cmd = wp.launch(
+            _POINT_SAMPLING_KERNELS[num_channels],
+            dim=NUM_QUERIES,
+            inputs=[self.texture_array, handle_pattern == "lane_varying", 16],
+            outputs=[self.output],
+            device=self.device,
+            record_cmd=True,
+        )
+        self.cmd.launch()
+        wp.synchronize_device(self.device)
+
+    def time_cuda(self, integer_sampling_supported, format, num_channels, handle_pattern):
         self.cmd.launch()
         wp.synchronize_device(self.device)

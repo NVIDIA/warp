@@ -259,6 +259,7 @@ Runtime
 
    clear_kernel_cache
    clear_lto_cache
+   get_cpu_kernel_cache_key
    init
    is_cpu_available
    is_cubql_available

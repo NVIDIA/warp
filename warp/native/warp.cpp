@@ -1109,7 +1109,7 @@ WP_API void wp_cuda_context_push_current(void* context) { }
 WP_API void wp_cuda_context_pop_current() { }
 WP_API void* wp_cuda_context_create(int device_ordinal) { return NULL; }
 WP_API void wp_cuda_context_destroy(void* context) { }
-WP_API void wp_cuda_context_synchronize(void* context) { }
+WP_API bool wp_cuda_context_synchronize(void* context) { return true; }
 WP_API bool wp_cuda_profiler_start(void* context) { return true; }
 WP_API bool wp_cuda_profiler_stop(void* context) { return true; }
 WP_API uint64_t wp_cuda_context_check(void* context) { return 0; }
@@ -1136,7 +1136,7 @@ WP_API int wp_cuda_stream_query(void* stream) { return 0; }
 WP_API void wp_cuda_stream_register(void* context, void* stream) { }
 WP_API void wp_cuda_stream_unregister(void* context, void* stream) { }
 WP_API void* wp_cuda_stream_get_current() { return NULL; }
-WP_API void wp_cuda_stream_synchronize(void* stream) { }
+WP_API bool wp_cuda_stream_synchronize(void* stream) { return true; }
 WP_API void wp_cuda_stream_wait_event(void* stream, void* event, bool external) { }
 WP_API void wp_cuda_stream_wait_stream(void* stream, void* other_stream, void* event, bool external) { }
 WP_API int wp_cuda_stream_is_capturing(void* stream) { return 0; }
@@ -1149,7 +1149,7 @@ WP_API void* wp_cuda_event_create(void* context, unsigned flags) { return NULL; 
 WP_API void wp_cuda_event_destroy(void* event) { }
 WP_API int wp_cuda_event_query(void* event) { return 0; }
 WP_API void wp_cuda_event_record(void* event, void* stream, bool external) { }
-WP_API void wp_cuda_event_synchronize(void* event) { }
+WP_API bool wp_cuda_event_synchronize(void* event) { return true; }
 WP_API float wp_cuda_event_elapsed_time(void* start_event, void* end_event) { return 0.0f; }
 
 WP_API bool wp_cuda_graph_begin_capture(void* context, void* stream, int external, int mode) { return false; }

@@ -145,9 +145,15 @@ module string replaces the global string; include ``-march=native`` when the
 module should detect host CPU features. The global default uses host CPU
 features and sets ``-inline-threshold=9000`` and
 ``-inline-cold-callsite-threshold=3000`` to make LLVM more eager to inline CPU
-helpers. Set the global value to ``None`` before a module is first hashed to
-keep host CPU detection with LLVM's default thresholds. For one module, use
-``"-march=native"``; a module-level ``None`` inherits the global setting.
+helpers, and limits SLP recursion depth to four. Set the global value to
+``None`` before a module is first hashed to keep host CPU detection with
+LLVM's default inlining thresholds and SLP recursion depth. For one module,
+use ``"-march=native"``; a module-level ``None`` inherits the global setting.
+Warp enables the loop and SLP vectorizers for CPU modules at effective
+optimization levels 2 and 3. Include ``-fno-vectorize`` or
+``-fno-slp-vectorize`` in a module flag string to disable the corresponding
+pass.
+
 When changing a module's CPU compiler flags, use
 :func:`wp.set_module_options() <warp.set_module_options>` so Warp updates its
 hash. Assigning :attr:`warp.config.cpu_compiler_flags` alone does not

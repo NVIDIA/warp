@@ -11,7 +11,7 @@
 // CUDA-specific code lives in apic.cu and is reached via a small set of
 // helpers declared in apic_internal.h under WP_ENABLE_CUDA
 // (apic_load_graph_cuda_setup, apic_set_param_cuda, apic_get_param_cuda,
-// apic_fixup_handle_cuda). apic.cu also owns the CUDA build of the
+// apic_fixup_handles_cuda). apic.cu also owns the CUDA build of the
 // APICGraph destructor, the device-mesh registration path, and
 // CUDA graph rebuild / launch.
 
@@ -344,7 +344,9 @@ void wp_apic_register_binding(APICState* state, const char* name, uint32_t regio
     state->bindings.push_back({ std::string(name), region_id });
 }
 
-void wp_apic_register_ptr_location(APICState* state, uint32_t region_id, uint64_t offset, uint64_t stride)
+void wp_apic_register_ptr_location(
+    APICState* state, uint32_t region_id, uint64_t offset, uint64_t stride, uint64_t count
+)
 {
     if (!state)
         return;
@@ -352,6 +354,7 @@ void wp_apic_register_ptr_location(APICState* state, uint32_t region_id, uint64_
     loc.region_id = region_id;
     loc.offset = offset;
     loc.stride = stride;
+    loc.count = count;
     state->ptr_locations.push_back(loc);
 }
 
@@ -1013,22 +1016,27 @@ void wp_apic_record_conditional(
 // a wp::Mesh and copies the point / index / velocity arrays via host pointers.
 // ============================================================================
 
-void apic_register_cpu_mesh(APICState* state, uint64_t mesh_id)
+bool wp_apic_is_mesh(uint64_t mesh_id)
+{
+    wp::Mesh mesh;
+    return wp::mesh_get_descriptor_host(mesh_id, mesh) || wp::mesh_get_descriptor(mesh_id, mesh);
+}
+
+bool apic_register_cpu_mesh(APICState* state, uint64_t mesh_id)
 {
     if (!state || mesh_id == 0)
-        return;
+        return true;
 
     for (const auto& rec : state->mesh_records) {
         if (rec.original_ptr == mesh_id)
-            return;
+            return true;
     }
 
-    wp::Mesh* mesh_ptr = reinterpret_cast<wp::Mesh*>(mesh_id);
-    if (!mesh_ptr) {
-        fprintf(stderr, "Warp APIC error: null mesh pointer for mesh_id 0x%llx\n", (unsigned long long)mesh_id);
-        return;
+    wp::Mesh mesh;
+    if (!wp::mesh_get_descriptor_host(mesh_id, mesh)) {
+        wp::set_error_string("Warp APIC error: invalid or expired mesh ID 0x%llx", (unsigned long long)mesh_id);
+        return false;
     }
-    wp::Mesh mesh = *mesh_ptr;
 
     uint64_t points_size = mesh.num_points * sizeof(wp::vec3);
     uint64_t indices_size = mesh.num_tris * (3 * sizeof(int));
@@ -1064,15 +1072,12 @@ void apic_register_cpu_mesh(APICState* state, uint64_t mesh_id)
     rec.original_ptr = mesh_id;
 
     state->mesh_records.push_back(rec);
+    return true;
 }
 
 #if !WP_ENABLE_CUDA
 // Non-CUDA build: mesh_id is always a host pointer (no descriptor table).
-bool wp_apic_register_mesh(APICState* state, uint64_t mesh_id)
-{
-    apic_register_cpu_mesh(state, mesh_id);
-    return true;
-}
+bool wp_apic_register_mesh(APICState* state, uint64_t mesh_id) { return apic_register_cpu_mesh(state, mesh_id); }
 #endif  // !WP_ENABLE_CUDA
 
 // ============================================================================
@@ -1506,7 +1511,8 @@ bool apic_parse_metadata(const uint8_t* data, size_t size, APICGraph* graph)
 
     for (uint32_t i = 0; i < num_ptr_locations; i++) {
         APICMemoryPtrLocation loc;
-        if (!reader.read(loc.region_id) || !reader.read(loc.offset) || !reader.read(loc.stride)) {
+        if (!reader.read(loc.region_id) || !reader.read(loc.offset) || !reader.read(loc.stride)
+            || !reader.read(loc.count)) {
             wp::set_error_string("Warp APIC error: Invalid APIC pointer-location record %u", i);
             return false;
         }
@@ -1654,54 +1660,60 @@ bool apic_create_meshes(APICGraph* graph)
     return true;
 }
 
-// Walk the graph's ptr_locations and remap any old handle values found at
-// those offsets to their new values in graph->handle_ptr_remap. The CPU path
-// is pure memcpy; the CUDA path delegates per-offset to apic_fixup_handle_cuda.
-void apic_fixup_ptr_locations(APICGraph* graph)
+// Always read the original snapshot, even when locations overlap. Remapping
+// in place could interpret a restored ID as another saved ID if addresses are
+// reused. Patch a host copy and transfer each affected region only once.
+bool apic_fixup_ptr_locations(APICGraph* graph, const uint8_t* memory_ptr)
 {
-    if (graph->handle_ptr_remap.empty() || graph->ptr_locations.empty())
-        return;
-
-    bool is_cpu = (graph->device_type == APIC_DEVICE_CPU);
-
+    std::unordered_map<uint32_t, std::vector<uint8_t>> patched_regions;
     for (const auto& loc : graph->ptr_locations) {
+        if (loc.count == 0)
+            continue;
         auto region_it = graph->regions.find(loc.region_id);
-        if (region_it == graph->regions.end() || !region_it->second.ptr)
+        if (region_it == graph->regions.end()) {
+            wp::set_error_string("Warp APIC error: handle relocation refers to missing region %u", loc.region_id);
+            return false;
+        }
+        const APICMemory& region = region_it->second;
+        // Subtraction and division avoid overflow from offset + stride * count.
+        if (loc.offset > region.size || region.size - loc.offset < sizeof(uint64_t)
+            || (loc.stride == 0 && loc.count != 1)
+            || (loc.stride != 0 && loc.count - 1 > (region.size - loc.offset - sizeof(uint64_t)) / loc.stride)) {
+            wp::set_error_string("Warp APIC error: handle relocation is out of bounds for region %u", loc.region_id);
+            return false;
+        }
+        if (!region.has_initial_data)
             continue;
 
-        uint8_t* base = static_cast<uint8_t*>(region_it->second.ptr);
-        uint64_t region_size = region_it->second.size;
-
-        auto fixup = [&](uint64_t off) -> bool {
-            if (is_cpu) {
-                uint64_t old_val;
-                memcpy(&old_val, base + off, sizeof(uint64_t));
-                auto remap_it = graph->handle_ptr_remap.find(old_val);
-                if (remap_it != graph->handle_ptr_remap.end()) {
-                    uint64_t new_val = remap_it->second;
-                    memcpy(base + off, &new_val, sizeof(uint64_t));
-                }
-                return true;
-            }
-#if WP_ENABLE_CUDA
-            return apic_fixup_handle_cuda(graph, base, off);
-#else
-            (void)base;
-            (void)off;
-            return false;
-#endif
-        };
-
-        if (loc.stride == 0) {
-            if (loc.offset + sizeof(uint64_t) <= region_size)
-                fixup(loc.offset);
-        } else {
-            for (uint64_t off = loc.offset; off + sizeof(uint64_t) <= region_size; off += loc.stride) {
-                if (!fixup(off))
-                    break;  // Stop this region; continue with next to avoid cascade
+        const uint8_t* source = memory_ptr + region.initial_data_offset;
+        for (uint64_t i = 0, offset = loc.offset; i < loc.count; i++, offset += loc.stride) {
+            uint64_t original;
+            memcpy(&original, source + offset, sizeof(original));
+            auto remap = graph->handle_ptr_remap.find(original);
+            if (remap != graph->handle_ptr_remap.end()) {
+                auto& patched = patched_regions[loc.region_id];
+                if (patched.empty())
+                    patched.assign(source, source + region.size);
+                memcpy(patched.data() + offset, &remap->second, sizeof(uint64_t));
             }
         }
     }
+
+    for (const auto& entry : patched_regions) {
+        void* dst = graph->regions.at(entry.first).ptr;
+        const auto& data = entry.second;
+        if (graph->device_type == APIC_DEVICE_CPU) {
+            memcpy(dst, data.data(), data.size());
+        } else {
+#if WP_ENABLE_CUDA
+            if (!apic_fixup_handles_cuda(graph, dst, data.data(), data.size()))
+                return false;
+#else
+            return false;
+#endif
+        }
+    }
+    return true;
 }
 
 // ============================================================================
@@ -3287,6 +3299,7 @@ bool wp_apic_state_save(APICState* state, const char* path, int target_arch, voi
         apic_write_nc<uint32_t>(metadata_section, loc.region_id);
         apic_write_nc<uint64_t>(metadata_section, loc.offset);
         apic_write_nc<uint64_t>(metadata_section, loc.stride);
+        apic_write_nc<uint64_t>(metadata_section, loc.count);
     }
 
     // Build memory section
@@ -3776,7 +3789,10 @@ static APICGraph* apic_load_graph_from_image(
         delete graph;
         return nullptr;
     }
-    apic_fixup_ptr_locations(graph);
+    if (!apic_fixup_ptr_locations(graph, memory_ptr)) {
+        delete graph;
+        return nullptr;
+    }
 
     graph->operation_count = operation_count;
     graph->operation_stream = std::move(operation_stream);

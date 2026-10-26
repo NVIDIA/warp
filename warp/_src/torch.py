@@ -156,6 +156,7 @@ def dtype_is_compatible(torch_dtype, warp_dtype) -> bool:
             torch.float16: {warp.float16},
             torch.bfloat16: {warp.bfloat16},
             # allow aliasing integer tensors as signed or unsigned integer arrays
+            # wp.handle interop is intentionally deferred; APIC handle arrays use wp.array().
             torch.int64: {warp.int64, warp.uint64},
             torch.int32: {warp.int32, warp.uint32},
             torch.int16: {warp.int16, warp.uint16},

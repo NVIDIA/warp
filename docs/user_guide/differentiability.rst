@@ -1357,6 +1357,7 @@ This code produces incorrect gradients instead of ``[4. 4. 4.]``:
 We can fix the latter case by switching to a static loop (e.g. replacing ``range(iters)`` with ``range(3)``). Static loops are
 automatically unrolled if the number of loop iterations is less than or equal to the ``max_unroll`` parameter set in :const:`wp.config <config>`
 or at the module level with ``wp.set_module_options({"max_unroll": N})``, and so intermediate values in the loop are individually stored.
+This also applies to loops containing ``continue``.
 But in scenarios where this is not possible, you may consider allocating additional memory to store intermediate values in the dynamic loop.
 For example, we can fix the above case like so:
 

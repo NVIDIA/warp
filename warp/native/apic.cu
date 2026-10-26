@@ -107,8 +107,7 @@ bool wp_apic_register_mesh(APICState* state, uint64_t mesh_id)
     // the host-mesh helper in apic.cpp (mesh_id is a host pointer to wp::Mesh).
     wp::Mesh mesh;
     if (!wp::mesh_get_descriptor(mesh_id, mesh)) {
-        apic_register_cpu_mesh(state, mesh_id);
-        return true;
+        return apic_register_cpu_mesh(state, mesh_id);
     }
 
     // Device mesh: check-if-registered and register device arrays (cudaMemcpy D2H).
@@ -210,25 +209,13 @@ static bool apic_init_memory(const uint8_t* data, size_t size, APICGraph* graph)
     return true;
 }
 
-// Per-offset handle fixup for a CUDA region: read the uint64 handle D2H,
-// look it up in handle_ptr_remap, write the new value back H2D. The outer
-// loop (apic_fixup_ptr_locations) lives in apic.cpp.
-bool apic_fixup_handle_cuda(APICGraph* graph, uint8_t* base, uint64_t offset)
+bool apic_fixup_handles_cuda(APICGraph* graph, void* dst, const void* src, size_t size)
 {
-    uint64_t old_val;
-    cudaError_t err = cudaMemcpy(&old_val, base + offset, sizeof(uint64_t), cudaMemcpyDeviceToHost);
+    ContextGuard guard(graph->cuda_context);
+    cudaError_t err = cudaMemcpy(dst, src, size, cudaMemcpyHostToDevice);
     if (err != cudaSuccess) {
-        fprintf(stderr, "Warp APIC error: handle fixup D2H cudaMemcpy failed: %s\n", cudaGetErrorString(err));
+        wp::set_error_string("Warp APIC error: Failed to restore handles: %s", cudaGetErrorString(err));
         return false;
-    }
-    auto remap_it = graph->handle_ptr_remap.find(old_val);
-    if (remap_it != graph->handle_ptr_remap.end()) {
-        uint64_t new_val = remap_it->second;
-        err = cudaMemcpy(base + offset, &new_val, sizeof(uint64_t), cudaMemcpyHostToDevice);
-        if (err != cudaSuccess) {
-            fprintf(stderr, "Warp APIC error: handle fixup H2D cudaMemcpy failed: %s\n", cudaGetErrorString(err));
-            return false;
-        }
     }
     return true;
 }
@@ -260,11 +247,22 @@ static CUfunction apic_get_kernel_function(
         return nullptr;
     }
 
-    const std::string& kernel_name = is_forward ? kern_it->second.forward_name : kern_it->second.backward_name;
+    const APICKernel& kernel_info = kern_it->second;
+    const std::string& kernel_name = is_forward ? kernel_info.forward_name : kernel_info.backward_name;
     CUfunction kernel;
     CUresult err = cuModuleGetFunction_f(&kernel, mod_it->second.cuda_module, kernel_name.c_str());
     if (err != CUDA_SUCCESS) {
         wp::set_error_string("Warp APIC error: Failed to get kernel function %s: %d", kernel_name.c_str(), err);
+        return nullptr;
+    }
+
+    // Reloaded modules do not retain the live kernel's dynamic shared-memory opt-in.
+    int smem_bytes = is_forward ? kernel_info.forward_smem_bytes : kernel_info.backward_smem_bytes;
+    if (!wp_cuda_configure_kernel_shared_memory(kernel, smem_bytes)) {
+        wp::set_error_string(
+            "Warp APIC error: Failed to configure %d bytes of dynamic shared memory for kernel %s", smem_bytes,
+            kernel_name.c_str()
+        );
         return nullptr;
     }
     return kernel;

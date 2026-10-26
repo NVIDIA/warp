@@ -1,0 +1,118 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+# ==============================================================================
+# ASV Benchmarking Child Pipeline
+#
+# Runs Warp's airspeed velocity (ASV) benchmark suite for merge requests on
+# GTL performance machines: the L40 pool, plus the RTX PRO 6000 and 8x B200
+# Blackwell pools. Job templates live in asv-common.yml.
+#
+# Structure:
+#   - `linux-x86_64 cu13 asv build` (stage: build): compiles wheels for the MR
+#     target ref and the current commit on a CPU runner so the GPU hosts
+#     don't burn booking time on builds. Wheels are shipped to the
+#     bench jobs via the `_wheels/` artifact.
+#   - `linux-x86_64 cu13 asv {l40,rtxpro6000} non-tile` (stage: test): always
+#     run once this pipeline is triggered.
+#   - `linux-x86_64 cu13 asv {l40,rtxpro6000} tile` (stage: test): heavier
+#     than the rest of the suite combined; auto-run only on tile-relevant
+#     changes, otherwise available as manual play buttons.
+#   - `linux-x86_64 cu13 asv b200` (stage: test): both suites in one job,
+#     behind a manual play button, because booking a B200 from GTL can take
+#     a long time.
+#   - The B200 job is allowed to fail, but the parent `asv benchmarks` job
+#     still waits for it to finish if it runs.
+#
+# This pipeline is triggered by the `asv benchmarks` job in /.gitlab-ci.yml,
+# which gates on the broad set of paths that could affect any benchmark.
+# It is not run directly. Main-branch benchmarks run from asv-main.yml.
+# ==============================================================================
+
+include:
+  - /.gitlab/ci/common.yml
+  - /.gitlab/ci/asv-common.yml
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "parent_pipeline"
+
+stages:
+  - build
+  - test
+
+linux-x86_64 cu13 asv build:
+  extends: .linux-x86_64-cu13-asv-build
+
+# Non-tile asv benchmarks. Runs whenever this child pipeline is triggered;
+# the parent's `asv benchmarks` job is what gates ASV on path changes.
+.linux-x86_64-cu13-asv-non-tile:
+  variables:
+    ASV_BENCH_FILTER: '^(?!tile\.)'
+
+# Tile asv benchmarks. Heavier than the rest combined, so auto-runs only on
+# tile-relevant changes; available as a manual play button otherwise for
+# contributors whose change touches tile perf in ways the path filter
+# doesn't catch (e.g. codegen tweaks, Newton-side changes).
+.linux-x86_64-cu13-asv-tile:
+  variables:
+    ASV_BENCH_FILTER: '^tile\.'
+  rules:
+    - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+      changes:
+        compare_to: "refs/heads/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+        paths:
+          - .gitlab/ci/asv-mr.yml
+          - .gitlab/ci/asv-common.yml
+          - asv.conf.json
+          - asv/benchmarks/tile/**/*
+          - warp/native/cpu_block_runtime.*
+          - warp/native/cpu_fiber.*
+          - warp/native/tile*
+          - warp/native/tile/**/*
+          - warp/native/clang/**/*
+          # libmathdx (cublasdx etc.) is pulled in by tile.compile_*  and
+          # tile.gemm benchmarks at LTO time; bumping its pin in the deps
+          # config is exactly the kind of change the tile bench is here to
+          # catch regressions on.
+          - deps/libmathdx-deps.packman.xml
+    - when: manual
+      allow_failure: true
+
+linux-x86_64 cu13 asv l40 non-tile:
+  extends: [.linux-x86_64-cu13-asv-bench-l40, .linux-x86_64-cu13-asv-non-tile]
+  variables:
+    ASV_MACHINE_NAME: asv-bench-l40-non-tile
+
+linux-x86_64 cu13 asv l40 tile:
+  extends: [.linux-x86_64-cu13-asv-bench-l40, .linux-x86_64-cu13-asv-tile]
+  variables:
+    ASV_MACHINE_NAME: asv-bench-l40-tile
+
+linux-x86_64 cu13 asv rtxpro6000 non-tile:
+  extends: [.linux-x86_64-cu13-asv-bench-rtxpro6000, .linux-x86_64-cu13-asv-non-tile]
+  variables:
+    ASV_MACHINE_NAME: asv-bench-rtxpro6000-non-tile
+
+linux-x86_64 cu13 asv rtxpro6000 tile:
+  extends: [.linux-x86_64-cu13-asv-bench-rtxpro6000, .linux-x86_64-cu13-asv-tile]
+  variables:
+    ASV_MACHINE_NAME: asv-bench-rtxpro6000-tile
+
+# Runs both suites in one booking. The pool is small, and booking a machine
+# can take a long time when GTL has to reimage it, so the job only runs when
+# started by hand; asv-main.yml runs it daily. It is optional: its failures
+# don't fail the pipeline, and a timeout (usually the pool staying busy for
+# the whole wait) isn't retried the way the default retry policy would.
+linux-x86_64 cu13 asv b200:
+  extends: .linux-x86_64-cu13-asv-bench-b200
+  allow_failure: true
+  retry:
+    max: 1
+    when: runner_system_failure
+  variables:
+    ASV_MACHINE_NAME: asv-bench-b200
+    ASV_BENCH_FILTER: '.*'
+  rules:
+    - when: manual
+      allow_failure: true

@@ -12,7 +12,7 @@ on:
         type: boolean
         default: false
       retain-wheel-artifacts:
-        description: Retain NVIDIA/warp wheel artifacts for seven days instead of one
+        description: Retain NVIDIA/warp wheel artifacts for seven days instead of one; release branches and v* tags always keep them for 30 days
         required: false
         type: boolean
         default: false
@@ -27,7 +27,7 @@ on:
   workflow_dispatch:
     inputs:
       retain-wheel-artifacts:
-        description: Retain NVIDIA/warp wheel artifacts for seven days instead of one
+        description: Retain NVIDIA/warp wheel artifacts for seven days instead of one; release branches and v* tags always keep them for 30 days
         required: false
         type: boolean
         default: false
@@ -279,7 +279,7 @@ jobs:
           name: ${{ matrix.wheel_artifact_name }}
           path: _build/wheel/*.whl
           if-no-files-found: error
-          retention-days: ${{ github.repository == 'NVIDIA/warp' && (github.event_name == 'schedule' || inputs.retain-wheel-artifacts) && 7 || 1 }}
+          retention-days: ${{ github.repository == 'NVIDIA/warp' && (startsWith(github.ref, 'refs/heads/release-') || startsWith(github.ref, 'refs/tags/v')) && 30 || github.repository == 'NVIDIA/warp' && (github.event_name == 'schedule' || inputs.retain-wheel-artifacts) && 7 || 1 }}
 
   test-windows-import-libraries:
     if: github.event_name != 'schedule' || github.repository == 'NVIDIA/warp'

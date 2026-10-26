@@ -1,0 +1,370 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+# ==============================================================================
+# ASV Benchmarking Templates
+#
+# Hidden job templates shared by the ASV child pipelines: asv-mr.yml (merge
+# requests) and asv-main.yml (main branch and the daily schedule). Including
+# this file adds no jobs.
+# ==============================================================================
+
+# Build Warp wheels for COMPARE_REF_SHA and CI_COMMIT_SHA on a CPU runner so
+# the GPU-bound asv bench jobs don't spend GPU booking time compiling.
+# Wheels are written to asv's native build cache; the bench jobs skip
+# build_command and go straight to install_command using the cached wheels.
+#
+# The baseline (COMPARE_REF_SHA) depends on ASV_COMPARE_MODE, which the
+# trigger job in /.gitlab-ci.yml sets:
+#   - unset (merge requests): the MR target branch.
+#   - `push`: the main tip before this push.
+#   - `nightly`: main as of 24 hours before this pipeline was created.
+.linux-x86_64-cu13-asv-build:
+  stage: build
+  needs: []
+  image: $WARP_BUILDER_IMAGE_CU13_X86_64
+  extends:
+    - .ipp_lnx_x86_64_cpu_medium
+  variables:
+    IPP_RUNNER_EXECUTION_DURATION: "3600"
+    GIT_DEPTH: "50"
+    CUDA_HOME: "/opt/cuda"
+  before_script:
+    - !reference [.snippets, section-start-install-deps]
+    - df -h
+    # Remove /shared/local/bin from PATH - contains musl-linked binaries from the ephemeral
+    # runner (v1.5.1+) that are incompatible with this glibc-based container
+    - export PATH=$(echo "$PATH" | sed 's|:/shared/local/bin||g; s|/shared/local/bin:||g')
+    - curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL="$CI_PROJECT_DIR/_uv" sh
+    - export PATH="$CI_PROJECT_DIR/_uv/bin:$PATH"
+    - uv python install $UV_PYTHON
+    - git config --global --add safe.directory $CI_PROJECT_DIR
+    - |
+      fetch_compare_ref() {
+        if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
+          git fetch --unshallow origin "$1" || git fetch origin "$1"
+        else
+          git fetch origin "$1"
+        fi
+      }
+
+      case "${ASV_COMPARE_MODE:-}" in
+        push)
+          # GitLab sends all zeros when it doesn't know the previous tip, and
+          # the commit itself in merge request pipelines.
+          COMPARE_REF="$ASV_PUSH_BEFORE_SHA"
+          case "$COMPARE_REF" in
+            "" | 0000000000000000000000000000000000000000 | "$CI_COMMIT_SHA") COMPARE_REF="$(git rev-parse "$CI_COMMIT_SHA^")" ;;
+          esac
+          ;;
+        nightly)
+          # The previous daily run benchmarked main as of about this time.
+          # The checkout is shallow, so fetch the history to search first.
+          since="$(date -u -d "@$(( $(date -d "$CI_PIPELINE_CREATED_AT" +%s) - 86400 ))" +%FT%TZ)"
+          fetch_compare_ref "$CI_COMMIT_SHA"
+          COMPARE_REF="$(git rev-list -1 --first-parent --before="$since" "$CI_COMMIT_SHA")"
+          test -n "$COMPARE_REF" || { echo "no commit before $since in the history of $CI_COMMIT_SHA"; exit 1; }
+          ;;
+        *)
+          COMPARE_REF="${CI_MERGE_REQUEST_TARGET_BRANCH_SHA:-${CI_MERGE_REQUEST_TARGET_BRANCH_NAME:-main}}"
+          ;;
+      esac
+    - COMPARE_REF_SOURCE="$COMPARE_REF"
+    - 'echo "COMPARE_REF_SOURCE value: ${COMPARE_REF_SOURCE}"'
+    # Freeze mutable refs like `main` before building wheels. Retry jobs must
+    # compare against the same commit that populated the wheel artifact.
+    - |
+      fetch_compare_ref "$COMPARE_REF_SOURCE"
+      COMPARE_REF_SHA="$(git rev-parse "FETCH_HEAD^{commit}")"
+      git rev-parse --verify "${COMPARE_REF_SHA}^{commit}" >/dev/null
+    - 'echo "COMPARE_REF_SHA value: ${COMPARE_REF_SHA}"'
+    - git checkout -f "$COMPARE_REF_SHA" || { git checkout -f "$CI_COMMIT_SHA"; exit 1; }
+    - git checkout -f "$CI_COMMIT_SHA"
+    - !reference [.snippets, section-end-install-deps]
+  script:
+    - mkdir -p _wheels
+    - printf "%s\n" "$COMPARE_REF_SOURCE" > _wheels/compare_ref.source
+    - printf "%s\n" "$COMPARE_REF_SHA" > _wheels/compare_ref.sha
+    - printf "%s\n" "$CI_COMMIT_SHA" > _wheels/target_ref.sha
+    # The baseline is this commit only for a daily run with nothing new on
+    # main since the previous one. The bench jobs then still book a machine,
+    # but stop before setup.
+    - |
+      if [ "$COMPARE_REF_SHA" = "$CI_COMMIT_SHA" ]; then
+        echo "The baseline is this commit; nothing to build."
+        exit 0
+      fi
+    - uvx asv machine --machine asv-build --yes
+    # asv has no `build` subcommand; `continuous --quick` builds both refs
+    # (populating asv/env/*/asv-build-cache/) and runs a tiny PythonBuiltins
+    # sanity benchmark. rc==1 means "regression detected" (asv's normal exit
+    # for continuous), so only fail on rc>1 which signals a real error.
+    - 'date -u +"asv continuous --quick start: %FT%TZ"'
+    - rc=0; uvx asv continuous --quick -b PythonBuiltins "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" || rc=$?; if [ $rc -gt 1 ]; then exit $rc; fi
+    - 'date -u +"asv continuous --quick end:   %FT%TZ"'
+    # Relocate built wheels to a flat `_wheels/` path for the bench job. asv's
+    # own cache lives inside the env directory, which Environment.create()
+    # rmtree()'s on the bench side because check_presence() fails (the build
+    # job's venv binaries point at filesystem paths that don't exist on the
+    # bench host). The bench job re-stages from `_wheels/` AFTER asv setup
+    # creates a working env, sidestepping the rmtree.
+    - cp -r asv/env/*/asv-build-cache/* _wheels/
+    # Count against the pinned baseline here; benchmark checkouts can be shallow.
+    - |
+      if [ "$(git rev-parse --is-shallow-repository)" = "false" ]; then
+        git rev-list --count "$CI_COMMIT_SHA..$COMPARE_REF_SHA" > _wheels/compare_ref.behind_count
+      else
+        echo unknown > _wheels/compare_ref.behind_count
+      fi
+    - ls -la _wheels/
+  artifacts:
+    paths:
+      - _wheels/
+    expire_in: 1 week
+
+# Shared config for the asv bench jobs. Each job combines this with a machine
+# pool template below (GTL booking via MACHINE_OS / MACHINE_KIND /
+# MACHINE_DRIVER), selects benchmarks with the ASV_BENCH_FILTER `--bench`
+# regex, and sets its own `--machine` name via ASV_MACHINE_NAME. Everything
+# else -- env setup, wheel-cache restage from the `linux-x86_64 cu13 asv
+# build` artifact, asv invocation -- is identical.
+.linux-x86_64-cu13-asv-bench-base:
+  stage: test
+  needs: ["linux-x86_64 cu13 asv build"]
+  # Covers waiting for a GTL machine, which happens inside the job and can
+  # take a while when the pool is busy.
+  timeout: 8h
+  tags:
+    - omni-perf-only/linux
+    - instance/gitlab-gtl-performance
+  variables:
+    PROJECT_CATEGORY: "Warp"
+    GIT_DEPTH: "50"
+    # Raises the GTL agent's 4h limit on the booked machine to the job
+    # timeout, for jobs that run both suites in one booking.
+    GCN_TASK_TIMEOUT: "28800"
+    # Slowdown ratio that asv reports as a regression.
+    ASV_FACTOR: "1.10"
+  before_script:
+    - !reference [.snippets, section-start-install-deps]
+    - |
+      if [ "$(cat _wheels/compare_ref.sha 2>/dev/null)" = "$CI_COMMIT_SHA" ]; then
+        echo "The baseline is this commit; nothing to compare."
+        exit 0
+      fi
+    - df -h
+    - nvidia-smi
+    # Pin the CPU frequency governor to `performance` so CPU-bound benchmarks
+    # don't measure frequency scaling; after_script restores the previous
+    # governor. GTL images grant passwordless sudo. Best effort: without
+    # cpufreq or sudo the job still benchmarks, with a warning.
+    - |
+      governor=/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+      if [ -r "$governor" ]; then
+        cat "$governor" > /tmp/warp-asv-prev-governor
+        echo performance | sudo -n tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor > /dev/null 2>&1 || true
+        echo "CPU governor: $(cat /tmp/warp-asv-prev-governor) -> $(cat "$governor")"
+        test "$(cat "$governor")" = performance || echo "WARNING: failed to set CPU governor to performance"
+      else
+        echo "WARNING: cpufreq governor not available; leaving CPU frequency scaling as is"
+      fi
+    # asv runs every sample in a new process. Without persistence mode, the
+    # driver tears down a GPU that no process holds open and initializes it
+    # again for the next one, which adds seconds to every process on hosts
+    # with no display keeping the GPU open. after_script restores the
+    # previous setting. Best effort, like the governor.
+    - |
+      persistence=$(nvidia-smi --query-gpu=persistence_mode --format=csv,noheader -i 0 2>/dev/null || true)
+      if [ "$persistence" = Disabled ]; then
+        if sudo -n nvidia-smi -pm 1 > /dev/null 2>&1; then
+          touch /tmp/warp-asv-restore-persistence
+          echo "GPU persistence mode: Disabled -> $(nvidia-smi --query-gpu=persistence_mode --format=csv,noheader -i 0)"
+        else
+          echo "WARNING: failed to enable GPU persistence mode"
+        fi
+      else
+        echo "GPU persistence mode: ${persistence:-unknown}"
+      fi
+    - curl -LsSf https://astral.sh/uv/install.sh | sh
+    - export PATH="$HOME/.local/bin:$PATH"
+    - uv python install $UV_PYTHON
+    - test -s _wheels/compare_ref.source || { echo "missing compare ref source from asv build artifact"; exit 1; }
+    - test -s _wheels/compare_ref.sha || { echo "missing compare ref SHA from asv build artifact"; exit 1; }
+    - test -s _wheels/target_ref.sha || { echo "missing target ref SHA from asv build artifact"; exit 1; }
+    - COMPARE_REF_SOURCE="$(cat _wheels/compare_ref.source)"
+    - COMPARE_REF_SHA="$(cat _wheels/compare_ref.sha)"
+    - COMPARE_BEHIND_COUNT="$(cat _wheels/compare_ref.behind_count 2>/dev/null || echo unknown)"
+    - TARGET_REF_SHA="$(cat _wheels/target_ref.sha)"
+    - 'echo "COMPARE_REF_SOURCE value: ${COMPARE_REF_SOURCE}"'
+    - 'echo "COMPARE_REF_SHA value: ${COMPARE_REF_SHA}"'
+    - 'test "$TARGET_REF_SHA" = "$CI_COMMIT_SHA" || { echo "asv build artifact target SHA $TARGET_REF_SHA does not match job SHA $CI_COMMIT_SHA"; exit 1; }'
+    - git config --global --add safe.directory $CI_PROJECT_DIR
+    - |
+      fetch_compare_ref() {
+        if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
+          git fetch --unshallow origin "$1" || git fetch origin "$1"
+        else
+          git fetch origin "$1"
+        fi
+      }
+
+      git rev-parse --verify --quiet "${COMPARE_REF_SHA}^{commit}" >/dev/null || fetch_compare_ref "$COMPARE_REF_SOURCE"
+      git rev-parse --verify "${COMPARE_REF_SHA}^{commit}" >/dev/null
+    - git checkout -f "$COMPARE_REF_SHA" || { git checkout -f "$CI_COMMIT_SHA"; exit 1; }
+    - git checkout -f "$CI_COMMIT_SHA"
+    - !reference [.snippets, section-end-install-deps]
+  script:
+    - uvx asv machine --machine "$ASV_MACHINE_NAME" --yes
+    # Create a working asv env first (no project build), so subsequent
+    # `asv continuous` calls find a consistent env and don't rmtree it.
+    # `asv setup` always exits non-zero because asv/main.py does
+    # `sys.exit(result)` and setup's `run()` returns a list of Virtualenv
+    # objects -- sys.exit([list]) prints the list and returns 1. Ignore
+    # that exit code and verify the env directory was actually created.
+    - uvx asv setup -v || true
+    - test -d asv/env || (echo "asv setup did not create asv/env"; exit 1)
+    # Restage prebuilt wheels from the build job's `_wheels/` artifact into
+    # asv's build cache. asv's BuildCache.get_cache_dir requires
+    # `<commit>/<wheel>.whl` to exist AND a sibling `<commit>.timestamp`
+    # file; both come over from the build job's artifact intact.
+    - ENV_HASH=$(ls asv/env)
+    - 'test -n "$ENV_HASH" -a "$(echo "$ENV_HASH" | wc -l)" -eq 1 || { echo "expected exactly one env under asv/env/, got: $ENV_HASH"; exit 1; }'
+    - 'echo "asv env hash: $ENV_HASH"'
+    - 'test -f "_wheels/$COMPARE_REF_SHA.timestamp" || { echo "missing cached compare wheel timestamp for $COMPARE_REF_SHA"; exit 1; }'
+    - 'test -n "$(find "_wheels/$COMPARE_REF_SHA" -maxdepth 1 -name "*.whl" -print -quit)" || { echo "missing cached compare wheel for $COMPARE_REF_SHA"; exit 1; }'
+    - 'test -f "_wheels/$CI_COMMIT_SHA.timestamp" || { echo "missing cached target wheel timestamp for $CI_COMMIT_SHA"; exit 1; }'
+    - 'test -n "$(find "_wheels/$CI_COMMIT_SHA" -maxdepth 1 -name "*.whl" -print -quit)" || { echo "missing cached target wheel for $CI_COMMIT_SHA"; exit 1; }'
+    - mkdir -p "asv/env/$ENV_HASH/asv-build-cache"
+    - cp -r "_wheels/$COMPARE_REF_SHA" "_wheels/$COMPARE_REF_SHA.timestamp" "_wheels/$CI_COMMIT_SHA" "_wheels/$CI_COMMIT_SHA.timestamp" "asv/env/$ENV_HASH/asv-build-cache/"
+    - ls -la "asv/env/$ENV_HASH/asv-build-cache/"
+    # The full asv output, including everything each benchmark prints (`-e`),
+    # goes to asv-continuous.log in the job artifacts; the job log only gets
+    # asv's progress lines. GitLab's job page renders only the end of a large
+    # log, so collapsed sections don't help once the full output is in it.
+    # The duration tables go in a collapsed section, and the log ends with
+    # the full comparison table, grouped into improved, unchanged, and worse
+    # benchmarks, and the result.
+    - |
+      section_start() { echo -e "\e[0Ksection_start:$(date +%s):$1[collapsed=true]\r\e[0K$2"; }
+      section_end() { echo -e "\e[0Ksection_end:$(date +%s):$1\r\e[0K"; }
+      asv_progress='^(·|\[ *[0-9.]+%\] (··|···) [^=])'
+
+      date -u +"asv continuous start: %FT%TZ"
+      {
+        asv_rc=0
+        uvx asv continuous -e --interleave-rounds --append-samples --no-only-changed -f "$ASV_FACTOR" --bench "$ASV_BENCH_FILTER" "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>&1 || asv_rc=$?
+        echo "$asv_rc" > asv-continuous.rc
+      } | tee asv-continuous.log | LC_ALL=C grep --line-buffered -E "$asv_progress" || true
+      rc="$(cat asv-continuous.rc)"
+      date -u +"asv continuous end:   %FT%TZ"
+
+      # Wall time per benchmark, including process startup and setup. With
+      # --interleave-rounds, asv keeps only the last round's time, so each
+      # value is about half of what the benchmark cost for that commit.
+      section_start asv_durations "Benchmark durations"
+      for sha in "$COMPARE_REF_SHA" "$CI_COMMIT_SHA"; do
+        printf '\n'
+        uvx asv show --durations --machine "$ASV_MACHINE_NAME" "$sha" 2>&1 || true
+      done
+      section_end asv_durations
+
+      # rc=1: regressions detected. rc>1: benchmark failures (e.g. a new
+      # benchmark uses an API not yet on the compare ref); the table still
+      # covers the benchmarks that ran. The exit status is propagated at the
+      # end.
+      uvx asv compare --split -f "$ASV_FACTOR" --machine "$ASV_MACHINE_NAME" "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>&1 || true
+      printf '\n'
+
+      if [ "$rc" -eq 1 ]; then
+        # Rerun the regressed benchmarks once to show whether they reproduce.
+        # The job fails either way: a regression that goes away on rerun
+        # points at a noisy benchmark, which needs fixing too. Rows marked
+        # `+` are regressions; the last column is the benchmark name, with
+        # parameters in the form `--bench` matches.
+        regressed="$(uvx asv compare --only-changed -f "$ASV_FACTOR" --machine "$ASV_MACHINE_NAME" "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>/dev/null |
+          awk -F'|' '$2 ~ /^ *\+ *$/ { name = $6; gsub(/^ +| +$/, "", name); print name }')" || true
+        if [ -n "$regressed" ]; then
+          rerun_filter="^($(printf '%s\n' "$regressed" | sed 's/[][\.*^$()+?{}|]/\\&/g' | paste -sd '|'))\$"
+          printf 'Rerunning regressed benchmarks:\n%s\n\n' "$regressed"
+          {
+            rerun_rc=0
+            uvx asv continuous -e --interleave-rounds -f "$ASV_FACTOR" --bench "$rerun_filter" "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>&1 || rerun_rc=$?
+            echo "$rerun_rc" > asv-rerun.rc
+          } | tee -a asv-continuous.log | LC_ALL=C grep --line-buffered -E "$asv_progress|^\|" || true
+          rerun_rc="$(cat asv-rerun.rc)"
+          case "$rerun_rc" in
+            0) echo "Rerun: no regressions reproduced; the benchmarks above are likely noisy." ;;
+            1) echo "Rerun: regressions reproduced." ;;
+            *) echo "Rerun: failed with exit status $rerun_rc." ;;
+          esac
+        else
+          echo "Rerun skipped: no regressed benchmarks found in the asv compare output."
+        fi
+        printf '\n'
+      fi
+      case "$rc" in
+        0) echo "Result: no regressions." ;;
+        1) echo "Result: regressions detected." ;;
+        *) echo "Result: asv continuous failed with exit status $rc; the output of failing benchmarks is in asv-continuous.log in the job artifacts." ;;
+      esac
+      printf '\nComparison context:\n'
+      printf '  Baseline: %s@%s\n' "$COMPARE_REF_SOURCE" "$COMPARE_REF_SHA"
+      printf '  Candidate: %s\n' "$CI_COMMIT_SHA"
+      printf '  Commits behind tested baseline: %s\n' "$COMPARE_BEHIND_COUNT"
+      case "$COMPARE_BEHIND_COUNT" in
+        0|unknown) ;;
+        *)
+          printf '\nPerformance differences may reflect missing upstream changes.\n'
+          echo "Rebase and rerun to determine whether flagged slowdowns persist."
+          ;;
+      esac
+      exit "$rc"
+  after_script:
+    - |
+      if [ -s /tmp/warp-asv-prev-governor ]; then
+        sudo -n tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor < /tmp/warp-asv-prev-governor > /dev/null 2>&1 || true
+        echo "CPU governor restored to $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor)"
+        rm -f /tmp/warp-asv-prev-governor
+      fi
+      if [ -e /tmp/warp-asv-restore-persistence ]; then
+        sudo -n nvidia-smi -pm 0 > /dev/null 2>&1 || true
+        echo "GPU persistence mode restored to $(nvidia-smi --query-gpu=persistence_mode --format=csv,noheader -i 0)"
+        rm -f /tmp/warp-asv-restore-persistence
+      fi
+  artifacts:
+    paths:
+      - asv/results/
+      - asv-continuous.log
+    expire_in: 1 week
+    when: always
+
+# Machine pool templates. MACHINE_KIND is the pool's group key on the
+# omni-runtime-performance machine pool page; MACHINE_OS and MACHINE_DRIVER
+# must name an OS image and driver that GTL can install on that pool. GTL
+# reimages a machine whose previous job requested a different OS or driver,
+# which makes booking slow, so keep these in line with what other jobs on
+# these pools request.
+.linux-x86_64-cu13-asv-bench-l40:
+  extends: .linux-x86_64-cu13-asv-bench-base
+  variables:
+    MACHINE_OS: ubuntu22-04-5
+    MACHINE_KIND: "EPYC_9124P_1XL40_ADA"
+    MACHINE_DRIVER: "NVIDIA-Linux-x86_64-595.58.03"
+
+.linux-x86_64-cu13-asv-bench-rtxpro6000:
+  extends: .linux-x86_64-cu13-asv-bench-base
+  variables:
+    MACHINE_OS: ubuntu22-04-5
+    MACHINE_KIND: "EPYC_9124_1XRTXPRO6000_BW_SV"
+    MACHINE_DRIVER: "NVIDIA-Linux-x86_64-595.58.03"
+
+# One booking holds a whole 8-GPU DGX B200. The benchmarks only use cuda:0,
+# and asv starts a fresh process for every sample, so exposing only GPU 0
+# means each process initializes one device instead of eight.
+.linux-x86_64-cu13-asv-bench-b200:
+  extends: .linux-x86_64-cu13-asv-bench-base
+  variables:
+    MACHINE_OS: ubuntu24
+    MACHINE_KIND: "XEON_PLATINUM_8570_8XB200_BW"
+    MACHINE_DRIVER: "NVIDIA-Linux-x86_64-595.58.03"
+    CUDA_VISIBLE_DEVICES: "0"

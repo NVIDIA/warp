@@ -111,6 +111,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.cuda.test_peer import TestPeer
     from warp.tests.cuda.test_pinned import TestPinned
     from warp.tests.cuda.test_streams import TestStreams
+    from warp.tests.cuda.test_sync_errors import TestSyncErrors
     from warp.tests.cuda.test_texture import TestTexture
     from warp.tests.cuda.test_texture_compiler import TestTextureCompiler
     from warp.tests.cuda.test_unified_memory import TestUnifiedMemory
@@ -167,6 +168,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_arithmetic import TestArithmetic
     from warp.tests.test_array import TestArray
     from warp.tests.test_array_reduce import TestArrayReduce
+    from warp.tests.test_array_subclass import TestArraySubclass
     from warp.tests.test_atomic import TestAtomic
     from warp.tests.test_atomic_bitwise import TestAtomicBitwise
     from warp.tests.test_atomic_cas import TestAtomicCAS
@@ -177,6 +179,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_builtins_resolution import TestBuiltinsResolution
     from warp.tests.test_closest_point_edge_edge import TestClosestPointEdgeEdgeMethods
     from warp.tests.test_codegen import TestCodeGen
+    from warp.tests.test_codegen_continue import TestCodeGenContinue
     from warp.tests.test_codegen_instancing import TestCodeGenInstancing
     from warp.tests.test_compilation import TestCompilation
     from warp.tests.test_compile_consts import TestConstants
@@ -239,7 +242,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_modules_lite import TestModuleLite
     from warp.tests.test_noise import TestNoise
     from warp.tests.test_operators import TestOperators
-    from warp.tests.test_options import TestOptions
+    from warp.tests.test_options import TestCpuKernelCacheKey, TestOptions
     from warp.tests.test_overwrite import TestOverwrite
     from warp.tests.test_print import TestPrint
     from warp.tests.test_quat import TestQuat
@@ -322,6 +325,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestArray,
         TestArrayFillCapture,
         TestArrayReduce,
+        TestArraySubclass,
         TestAsync,
         TestAtomic,
         TestAtomicBitwise,
@@ -339,6 +343,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestClosestPointEdgeEdgeMethods,
         TestClusterDim,
         TestCodeGen,
+        TestCodeGenContinue,
         TestCodeGenInstancing,
         TestCompilation,
         TestCompositeComponentAdjoint,
@@ -350,6 +355,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestCoreLibraryBinary,
         TestCpuBlockCodegen,
         TestCpuBlockDim,
+        TestCpuKernelCacheKey,
         TestCpuPrecompiledHeaders,
         TestCpuVectorization,
         TestCTypes,
@@ -464,6 +470,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestStreams,
         TestStruct,
         TestSubscriptTypes,
+        TestSyncErrors,
         TestTape,
         TestTemplateLaunchBounds,
         TestTexture,
@@ -630,6 +637,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.test_builtins_resolution import TestBuiltinsResolution
     from warp.tests.test_closest_point_edge_edge import TestClosestPointEdgeEdgeMethods
     from warp.tests.test_codegen import TestCodeGen
+    from warp.tests.test_codegen_continue import TestCodeGenContinue
     from warp.tests.test_codegen_instancing import TestCodeGenInstancing
     from warp.tests.test_coloring import TestColoring
     from warp.tests.test_compilation import TestCompilation
@@ -779,6 +787,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         # Codegen & compilation
         TestBuiltinsResolution,
         TestCodeGen,
+        TestCodeGenContinue,
         TestCodeGenInstancing,
         TestCompositeComponentAdjoint,
         TestConditional,

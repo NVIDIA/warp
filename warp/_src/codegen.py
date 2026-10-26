@@ -31,6 +31,12 @@ import warp.config
 from warp._src.deterministic import DeterministicCodegen, WarpDeterminismError
 from warp._src.logger import log_debug, log_warning
 from warp._src.types import *
+from warp._src.types import (
+    _ARRAY_ANNOTATION_MAP,
+    _ArrayAnnotationBase,
+    _resolve_array_family,
+    _validate_array_subclass_descriptor,
+)
 
 # used as a globally accessible copy
 # of current compile options (block_dim) etc
@@ -364,6 +370,42 @@ class StructInstance:
         return tuple(npvalue)
 
 
+def _substitute_nodes(root, replacements, ancestors):
+    """Return a copy of ``root`` with ``replacements`` (node -> new node) applied.
+
+    Only ``ancestors`` (the nodes on the paths to replaced nodes) are copied;
+    every other subtree is aliased from the original, so substituting into a
+    shared tree is cheap and never mutates it. Keying by node identity requires
+    a proper tree, as produced by ``ast.parse``.
+    """
+
+    def rebuild(node):
+        new = replacements.get(node)
+        if new is not None:
+            return new
+        if node not in ancestors:
+            return node
+        fields = {}
+        for name, value in ast.iter_fields(node):
+            if isinstance(value, list):
+                # A loop, not a comprehension: comprehensions add a frame per level before Python 3.12.
+                items = []
+                for item in value:
+                    items.append(rebuild(item) if isinstance(item, ast.AST) else item)
+                fields[name] = items
+            elif isinstance(value, ast.AST):
+                fields[name] = rebuild(value)
+            else:
+                fields[name] = value
+        clone = type(node)(**fields)
+        for attr in node._attributes:
+            if hasattr(node, attr):
+                setattr(clone, attr, getattr(node, attr))
+        return clone
+
+    return rebuild(root)
+
+
 _IDENTIFIER_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\Z")
 
 
@@ -490,7 +532,43 @@ def _make_struct_field_constructor(field: str, var_type: type):
         return lambda ctype: var_type()
 
 
+def _validate_array_parameter_annotation(annotation, context):
+    """Keep application subclasses out of source-level array annotations."""
+    cls = type(annotation)
+    if issubclass(cls, _ArrayAnnotationBase):
+        return
+    try:
+        family = _resolve_array_family(annotation)
+    except TypeError as error:
+        raise TypeError(f"{context}: {error}") from error
+    if family is fixedarray and cls is not fixedarray:
+        raise TypeError(
+            f"{context} uses a fixedarray subclass instance as an annotation; "
+            "use a built-in wp.fixedarray type descriptor instead"
+        )
+    if family in _ARRAY_ANNOTATION_MAP and cls is not family:
+        raise TypeError(
+            f"{context} uses an array subclass instance as an annotation; "
+            f"use the native parent annotation wp.{family.__name__}[dtype] instead"
+        )
+
+
 def _make_struct_field_setter(cls, field: str, var_type: type):
+    def check_array_family(value, family, description):
+        try:
+            actual_family = _resolve_array_family(value)
+        except TypeError as error:
+            raise TypeError(f"Struct field '{field}': {error}") from error
+        if actual_family is not family:
+            raise TypeError(f"Struct field '{field}' expects {description}, got {type(value).__name__}")
+
+    def get_array_descriptor(value, family):
+        try:
+            descriptor = value.__ctype__()
+            return _validate_array_subclass_descriptor(value, descriptor, family, var_type.ndim)
+        except Exception as error:
+            raise TypeError(f"Struct field '{field}': {error}") from error
+
     def check_array_ndim(value):
         if var_type.ndim is not Any and value.ndim != var_type.ndim:
             raise TypeError(
@@ -504,14 +582,15 @@ def _make_struct_field_setter(cls, field: str, var_type: type):
             setattr(inst._ctype, field, array_t())
         else:
             # wp.array
-            if not isinstance(value, array):
-                raise TypeError(f"Struct field '{field}' expects a Warp array, got {type(value).__name__}")
+            if type(value) is not array:
+                check_array_family(value, array, "a Warp array")
             if not types_equal(value.dtype, var_type.dtype):
                 raise TypeError(
                     f"Struct field '{field}' expects dtype {type_repr(var_type.dtype)}, got {type_repr(value.dtype)}"
                 )
             check_array_ndim(value)
-            setattr(inst._ctype, field, value.__ctype__())
+            descriptor = value.__ctype__() if type(value) is array else get_array_descriptor(value, array)
+            setattr(inst._ctype, field, descriptor)
 
         # Keep gradient buffers alive while the struct's native array
         # descriptor may reference them. Clear any previous keepalive when
@@ -529,14 +608,15 @@ def _make_struct_field_setter(cls, field: str, var_type: type):
         if value is None:
             setattr(inst._ctype, field, var_type.__ctype__())
         else:
-            if not isinstance(value, indexedarray):
-                raise TypeError(f"Struct field '{field}' expects a Warp indexed array, got {type(value).__name__}")
+            if type(value) is not indexedarray:
+                check_array_family(value, indexedarray, "a Warp indexed array")
             if not types_equal(value.dtype, var_type.dtype):
                 raise TypeError(
                     f"Struct field '{field}' expects dtype {type_repr(var_type.dtype)}, got {type_repr(value.dtype)}"
                 )
             check_array_ndim(value)
-            setattr(inst._ctype, field, value.__ctype__())
+            descriptor = value.__ctype__() if type(value) is indexedarray else get_array_descriptor(value, indexedarray)
+            setattr(inst._ctype, field, descriptor)
 
         # workaround to prevent gradient buffers being garbage collected
         # (indexedarray_t embeds an array_t)
@@ -554,14 +634,15 @@ def _make_struct_field_setter(cls, field: str, var_type: type):
         if value is None:
             setattr(inst._ctype, field, var_type.__ctype__())
         else:
-            if not isinstance(value, fabricarray):
-                raise TypeError(f"Struct field '{field}' expects a Warp Fabric array, got {type(value).__name__}")
+            if type(value) is not fabricarray:
+                check_array_family(value, fabricarray, "a Warp Fabric array")
             if not types_equal(value.dtype, var_type.dtype):
                 raise TypeError(
                     f"Struct field '{field}' expects dtype {type_repr(var_type.dtype)}, got {type_repr(value.dtype)}"
                 )
             check_array_ndim(value)
-            setattr(inst._ctype, field, value.__ctype__())
+            descriptor = value.__ctype__() if type(value) is fabricarray else get_array_descriptor(value, fabricarray)
+            setattr(inst._ctype, field, descriptor)
 
         cls.__setattr__(inst, field, value)
 
@@ -570,16 +651,19 @@ def _make_struct_field_setter(cls, field: str, var_type: type):
         if value is None:
             setattr(inst._ctype, field, var_type.__ctype__())
         else:
-            if not isinstance(value, indexedfabricarray):
-                raise TypeError(
-                    f"Struct field '{field}' expects a Warp indexed Fabric array, got {type(value).__name__}"
-                )
+            if type(value) is not indexedfabricarray:
+                check_array_family(value, indexedfabricarray, "a Warp indexed Fabric array")
             if not types_equal(value.dtype, var_type.dtype):
                 raise TypeError(
                     f"Struct field '{field}' expects dtype {type_repr(var_type.dtype)}, got {type_repr(value.dtype)}"
                 )
             check_array_ndim(value)
-            setattr(inst._ctype, field, value.__ctype__())
+            descriptor = (
+                value.__ctype__()
+                if type(value) is indexedfabricarray
+                else get_array_descriptor(value, indexedfabricarray)
+            )
+            setattr(inst._ctype, field, descriptor)
 
         cls.__setattr__(inst, field, value)
 
@@ -691,6 +775,7 @@ class Struct:
 
         annotations = get_annotations(self.cls)
         for label, type_ in annotations.items():
+            _validate_array_parameter_annotation(type_, f"Struct field '{label}'")
             self.vars[label] = Var(label, type_)
 
         fields = []
@@ -1868,8 +1953,10 @@ class _SharedFunctionSource:
 
     Source, tree, and reference nodes are pure functions of the code object;
     only reference *resolution* is rebind-sensitive and stays per-adjoint.
-    Sharing requires an unmutated tree, so transformers, explicit ``source=``,
-    and ``wp.static`` (which rewrites the tree) exclude an adjoint.
+    ``wp.static`` substitution never mutates this tree: it produces a
+    per-adjoint view (see ``replace_static_expressions``). Sharing requires
+    an unmutated tree, so transformers and explicit ``source=`` exclude an
+    adjoint.
     """
 
     __slots__ = ("assigned_name_ids", "assignment_call_metadata", "fun_lineno", "reference_nodes", "source", "tree")
@@ -1950,9 +2037,7 @@ class Adjoint:
                 adj._shared_source = shared
             else:
                 adj.source, adj.fun_lineno, adj.tree = adj.extract_function_source(func)
-                # The substring check conservatively matches the replace_static_expressions
-                # gate below; any wp.static kernel rewrites its tree and must not share it.
-                if code is not None and not transformers and "static" not in adj.source:
+                if code is not None and not transformers:
                     adj._shared_source = _SharedFunctionSource(adj.source, adj.fun_lineno, adj.tree)
                     _store_shared_source(code, adj._shared_source)
         else:
@@ -2013,7 +2098,11 @@ class Adjoint:
         for name, type in adj.arg_types.items():
             # skip return hint
             if name == "return":
+                if issubclass(builtins.type(type), fixedarray):
+                    _validate_array_parameter_annotation(type, f"Return annotation of '{adj.fun_name}'")
                 continue
+
+            _validate_array_parameter_annotation(type, f"Argument '{name}' of '{adj.fun_name}'")
 
             # add variable for argument
             arg = Var(name, type, requires_grad=False)
@@ -3713,7 +3802,7 @@ class Adjoint:
 
     def emit_Name(adj, node):
         # a static expression that resolved to a Warp function is rewritten to an `__warp_func__`
-        # Name node carrying the function on `warp_func` (see StaticExpressionReplacer). Return it
+        # Name node carrying the function on `warp_func` (see replace_static_expressions). Return it
         # directly so it can be bound to a local, e.g. `func = wp.static(...)`.
         if hasattr(node, "warp_func"):
             return node.warp_func
@@ -4102,24 +4191,52 @@ class Adjoint:
 
         return warp._src.types.is_int(obj), obj
 
-    # detects whether a loop contains a break (or continue) statement
-    def contains_break(adj, body):
-        for s in body:
-            if isinstance(s, ast.Break):
+    def contains_loop_control(adj, body, control_type):
+        """Check for a transfer targeting this loop, excluding nested loops."""
+        for statement in body:
+            if isinstance(statement, control_type):
                 return True
-            elif isinstance(s, ast.Continue):
+            if isinstance(statement, ast.If) and (
+                adj.contains_loop_control(statement.body, control_type)
+                or adj.contains_loop_control(statement.orelse, control_type)
+            ):
                 return True
-            elif isinstance(s, ast.If):
-                if adj.contains_break(s.body):
-                    return True
-                if adj.contains_break(s.orelse):
-                    return True
-            else:
-                # note that nested for or while loops containing a break statement
-                # do not affect the current loop
-                pass
-
         return False
+
+    def lower_unrolled_continues(adj, body, active_name):
+        """Guard the remainder of an unrolled iteration after each continue.
+
+        Ordinary conditionals preserve SSA versions for reverse-mode AD, including
+        writes before a continue. Each remaining statement is emitted only once.
+        Nested loops handle their own transfers. Copy modified nodes because the
+        original AST is shared by subsequent builds and specializations.
+        """
+        result = []
+        for index, statement in enumerate(body):
+            if isinstance(statement, ast.Continue):
+                assignment = ast.Assign(
+                    targets=[ast.Name(id=active_name, ctx=ast.Store())], value=ast.Constant(value=False)
+                )
+                result.append(ast.copy_location(assignment, statement))
+                return result, True
+
+            may_continue = False
+            if isinstance(statement, ast.If):
+                conditional = shallowcopy(statement)
+                conditional.body, body_continues = adj.lower_unrolled_continues(statement.body, active_name)
+                conditional.orelse, else_continues = adj.lower_unrolled_continues(statement.orelse, active_name)
+                may_continue = body_continues or else_continues
+                result.append(conditional)
+            else:
+                result.append(statement)
+
+            if may_continue:
+                tail, _ = adj.lower_unrolled_continues(body[index + 1 :], active_name)
+                if tail:
+                    guard = ast.If(test=ast.Name(id=active_name, ctx=ast.Load()), body=tail, orelse=[])
+                    result.append(ast.copy_location(guard, body[index + 1]))
+                return result, True
+        return result, False
 
     # returns a constant range() if unrollable, otherwise None
     def get_unroll_range(adj, loop):
@@ -4184,14 +4301,14 @@ class Adjoint:
                 )
                 ok_to_unroll = False
 
-            elif adj.contains_break(loop.body):
-                log_debug("Warning: 'break' or 'continue' found in loop body, will generate dynamic loop.")
+            elif adj.contains_loop_control(loop.body, ast.Break):
+                log_debug("Warning: 'break' found in loop body, will generate dynamic loop.")
                 ok_to_unroll = False
 
             if ok_to_unroll:
                 return constant_range
 
-            if not adj.contains_break(loop.body):
+            if not adj.contains_loop_control(loop.body, (ast.Break, ast.Continue)):
                 return _NonUnrolledConstantRange(
                     constant_range.start,
                     constant_range.stop,
@@ -4222,14 +4339,28 @@ class Adjoint:
             if unroll_range:
                 adj.record_constant_iter_symbol(const_iter_sym)
 
-            # unroll static for-loop
-            for i in unroll_range:
-                const_iter = adj.add_constant(i)
-                adj.symbols[const_iter_sym] = const_iter
+            body = node.body
+            active_name = None
+            if unroll_range and adj.contains_loop_control(body, ast.Continue):
+                names = {n.id for n in ast.walk(node) if isinstance(n, ast.Name)} | adj.symbols.keys()
+                active_name = f"_wp_continue_{adj.label_count}"
+                while active_name in names:
+                    adj.label_count += 1
+                    active_name = f"_wp_continue_{adj.label_count}"
+                adj.label_count += 1
+                body, _ = adj.lower_unrolled_continues(body, active_name)
 
-                # eval body
-                for s in node.body:
-                    adj.eval(s)
+            try:
+                # Unroll with a fresh continuation condition for each iteration.
+                for i in unroll_range:
+                    adj.symbols[const_iter_sym] = adj.add_constant(i)
+                    if active_name is not None:
+                        adj.symbols[active_name] = adj.add_constant(True)
+                    for statement in body:
+                        adj.eval(statement)
+            finally:
+                if active_name is not None:
+                    adj.symbols.pop(active_name, None)
 
         # otherwise generate a dynamic loop
         else:
@@ -6833,14 +6964,26 @@ class Adjoint:
         # ``visit_Call`` (where ``None`` means "no replacement, recurse normally").
         # ``_walk_children`` replaces ``generic_visit``: same DFS over
         # ``node._fields``, but dispatching Calls/Fors inline by class identity
-        # (no ``'visit_' + cls.__name__`` + ``getattr``) and mutating list
-        # fields in place only when a replacement actually occurred.
-        # Replacements are collected as ``(container, key, new_node)`` and
-        # applied after the walk so the walk sees an unmutated tree.
+        # (no ``'visit_' + cls.__name__`` + ``getattr``) and never descending
+        # into a replaced call.
+        # Replacements are collected and applied after the walk. A shared tree
+        # is never mutated: it gets a per-adjoint *view* instead (see
+        # ``_substitute_nodes``).
         loop_vars = {}  # was: self.loop_vars
-        replacements = []  # (container, key, new_node); applied after the walk
+        replacements = []  # (container, key, old_node, new_node); applied after the walk
+        path = []  # nodes enclosing the one being walked
+        ancestors = set()  # nodes on the paths to replacements; only these are copied
+
+        def record(container, key, old_node, new_node):
+            replacements.append((container, key, old_node, new_node))
+            # A node already recorded implies all of its ancestors are too.
+            for parent in reversed(path):
+                if parent in ancestors:
+                    break
+                ancestors.add(parent)
 
         def _walk_children(node):
+            path.append(node)
             for field_name in node._fields:
                 value = getattr(node, field_name, None)
                 if value is None:
@@ -6853,7 +6996,7 @@ class Adjoint:
                         if cls is ast.Call:
                             result = visit_Call(child)
                             if result is not None:
-                                replacements.append((value, i, result))
+                                record(value, i, child, result)
                                 continue
                         elif cls is ast.For:
                             visit_For(child)
@@ -6864,12 +7007,13 @@ class Adjoint:
                     if cls is ast.Call:
                         result = visit_Call(value)
                         if result is not None:
-                            replacements.append((node, field_name, result))
+                            record(node, field_name, value, result)
                             continue
                     elif cls is ast.For:
                         visit_For(value)
                         continue
                     _walk_children(value)
+            path.pop()
 
         def visit_For(node):
             # Track loop variable while visiting loop body (simple names only;
@@ -6902,7 +7046,7 @@ class Adjoint:
                     if code is not None:
                         adj.resolved_static_expressions[code] = obj
                         if isinstance(obj, warp._src.context.Function):
-                            name_node = ast.Name("__warp_func__")
+                            name_node = ast.Name("__warp_func__", ctx=ast.Load())
                             # we add a pointer to the Warp function here so that we can refer to it later at
                             # codegen time (note that the function key itself is not sufficient to uniquely
                             # identify the function, as the function may be redefined between the current time
@@ -6926,14 +7070,25 @@ class Adjoint:
 
             return None  # was: return self.generic_visit(node)
 
-        # Walk the tree, then apply replacements in one pass. ``adj.tree`` is
+        # Walk the tree, then substitute in one pass. ``adj.tree`` is
         # always a Module, so we go straight into ``_walk_children``.
         _walk_children(adj.tree)
-        for container, key, new_node in replacements:
-            if isinstance(container, list):
-                container[key] = new_node
-            else:
-                setattr(container, key, new_node)
+        if not replacements:
+            return
+        if adj._shared_source is None:
+            # A private tree may come from a transformer that reuses nodes or attaches
+            # custom attributes, which a view keyed by node identity can't reproduce.
+            for container, key, _old_node, new_node in replacements:
+                if isinstance(container, list):
+                    container[key] = new_node
+                else:
+                    setattr(container, key, new_node)
+        else:
+            adj.tree = _substitute_nodes(
+                adj.tree, {old_node: new_node for _, _, old_node, new_node in replacements}, ancestors
+            )
+            # The view's nodes differ from the shared tree's, so caches derived from it can't be shared.
+            adj._shared_source = None
 
     # Evaluates a static expression that does not depend on runtime values
     # if eval_types is True, try resolving the path using evaluated type information as well
@@ -7023,11 +7178,12 @@ class Adjoint:
         before the kernel is first built.
 
         This cache assumes ``adj.tree`` is structurally final before the first call; adjoints
-        whose tree is mutated (transformers, ``wp.static`` rewriting) never share it. Any new
+        whose tree is mutated (transformers) never share it, and ``wp.static`` substitution
+        swaps in a per-adjoint view and detaches the adjoint from the shared entry. Any new
         code that mutates ``adj.tree`` afterwards must reset ``adj._reference_nodes`` -- and
         ``adj._shared_source.reference_nodes``, ``assigned_name_ids``, and
         ``assignment_call_metadata`` when set, which invalidates every adjoint sharing the tree
-        -- or better, exclude the adjoint from sharing like the cases above.
+        -- or better, swap in a fresh tree like the static view does.
         """
         if adj._reference_nodes is None:
             shared = adj._shared_source

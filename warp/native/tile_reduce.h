@@ -990,7 +990,7 @@ template <typename Tile, typename Op, typename OpTrack> auto tile_arg_reduce_imp
 #define tile_reduce(op, t) tile_reduce_impl([](auto x, auto y) { return op(x, y);}, t)
 
 template <typename Op, typename Tile, typename AdjOp, typename AdjTile, typename AdjRet>
-void adj_tile_reduce(Op op, Tile& t, AdjOp& adj_op, AdjTile& adj_t, AdjRet& adj_ret)
+CUDA_CALLABLE void adj_tile_reduce(Op op, Tile& t, AdjOp& adj_op, AdjTile& adj_t, AdjRet& adj_ret)
 {
     // MISSINGADJOINT: for differentiable ops, distribute adj_ret to all input elements via
     // op's adjoint
@@ -1003,7 +1003,8 @@ void adj_tile_reduce(Op op, Tile& t, AdjOp& adj_op, AdjTile& adj_t, AdjRet& adj_
     tile_reduce_axis_impl<axis>([](auto x, auto y) { return op(x, y);}, t, identity, has_identity)
 
 template <typename Op, typename Tile, typename AdjOp, typename AdjTile, typename AdjRet>
-void adj_tile_reduce_axis(Op op, Tile& t, int axis, AdjOp& adj_op, AdjTile& adj_t, int& adj_axis, AdjRet& adj_ret)
+CUDA_CALLABLE void
+adj_tile_reduce_axis(Op op, Tile& t, int axis, AdjOp& adj_op, AdjTile& adj_t, int& adj_axis, AdjRet& adj_ret)
 {
     // MISSINGADJOINT: for differentiable ops, distribute adj_ret along the reduction axis
     // via op's adjoint
@@ -1314,14 +1315,14 @@ CUDA_CALLABLE void adj_tile_sum_axis(Tile& t, Tile& adj_t, AdjTile& adj_ret)
 
 template <typename Tile> auto tile_max(Tile& t) { return tile_reduce(max, t); }
 
-template <typename Tile, typename AdjTile> void adj_tile_max(Tile& t, Tile& adj_t, AdjTile& adj_ret)
+template <typename Tile, typename AdjTile> CUDA_CALLABLE void adj_tile_max(Tile& t, Tile& adj_t, AdjTile& adj_ret)
 {
     // MISSINGADJOINT: subgradient: route adj_ret to the index of the maximum element
 }
 
 template <typename Tile> auto tile_min(Tile& t) { return tile_reduce(min, t); }
 
-template <typename Tile, typename AdjTile> void adj_tile_min(Tile& t, Tile& adj_t, AdjTile& adj_ret)
+template <typename Tile, typename AdjTile> CUDA_CALLABLE void adj_tile_min(Tile& t, Tile& adj_t, AdjTile& adj_ret)
 {
     // MISSINGADJOINT: subgradient: route adj_ret to the index of the minimum element
 }

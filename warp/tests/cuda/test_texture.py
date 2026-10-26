@@ -3,17 +3,17 @@
 
 """Unit tests for 1D, 2D, and 3D texture functionality on both CPU and CUDA devices."""
 
-import sys
+import ctypes
 import unittest
 
 import numpy as np
 
 import warp as wp
+from warp._src.texture import texture1d_t, texture2d_t, texture3d_t
 from warp.tests.unittest_utils import (
     add_function_test,
     get_selected_cuda_test_devices,
     get_test_devices,
-    run_python_subprocess,
 )
 
 # ============================================================================
@@ -2896,119 +2896,257 @@ def test_texture_mipmap_invalid_levels(test, device):
         wp.Texture2D(data=data, num_mip_levels=-1, device=device)
 
 
+def test_texture_sampling_options_are_canonical(test, device):
+    """Canonicalize texture sampling options before storing descriptor metadata."""
+    data = np.zeros((4, 4), dtype=np.float32)
+    with test.assertRaisesRegex(ValueError, "Invalid texture filter mode"):
+        wp.Texture2D(data=data, filter_mode=2, device=device)
+    with test.assertRaisesRegex(ValueError, "Invalid texture mip filter mode"):
+        wp.Texture2D(data=data, mip_filter_mode=2, device=device)
+
+    for texture_type, shape, axis_options in (
+        (wp.Texture1D, (2,), ("address_mode_u",)),
+        (wp.Texture2D, (2, 2), ("address_mode_u", "address_mode_v")),
+        (wp.Texture3D, (2, 2, 2), ("address_mode_u", "address_mode_v", "address_mode_w")),
+    ):
+        for invalid in (-1, 4, "wrap"):
+            options = [{"address_mode": invalid}]
+            for axis, name in enumerate(axis_options):
+                modes = [wp.TextureAddressMode.CLAMP] * len(shape)
+                modes[axis] = invalid
+                options.extend(({name: invalid}, {"address_mode": tuple(modes)}))
+            for kwargs in options:
+                with test.subTest(texture=texture_type, options=kwargs):
+                    with test.assertRaisesRegex(ValueError, "Invalid texture address mode"):
+                        texture_type(data=np.zeros(shape, dtype=np.float32), device=device, **kwargs)
+
+    tex = wp.Texture2D(data=data, normalized_coords=2, address_mode=(0, 2), address_mode_v=3, device=device)
+    test.assertIs(tex.normalized_coords, True)
+    test.assertEqual(tex.__ctype__().use_normalized_coords, 1)
+    test.assertIs(tex.address_mode_u, wp.TextureAddressMode.WRAP)
+    test.assertIs(tex.address_mode_v, wp.TextureAddressMode.BORDER)
+    test.assertEqual(tex.__ctype__().address_mode_u, wp.TextureAddressMode.WRAP)
+    test.assertEqual(tex.__ctype__().address_mode_v, wp.TextureAddressMode.BORDER)
+
+
 # ============================================================================
 # 32-bit Integer Texture Tests
 # ============================================================================
 
 
-@wp.kernel
-def query_texture2d_resolution(
-    tex: wp.Texture2D,
-    output: wp.array[wp.int32],
-):
-    """Read a 2D texture's resolution without sampling it."""
-    output[0] = tex.width
-    output[1] = tex.height
+TEXTURE_TYPES = ((1, wp.Texture1D), (2, wp.Texture2D), (3, wp.Texture3D))
+SAMPLE_OUTPUT_TYPES = ((1, float), (2, wp.vec2f), (4, wp.vec4f))
 
 
-def _trigger_texture_sample_32bit_int(device_alias: str, route: str, dtype_name: str):
-    """Trigger a 32-bit integer texture sample on the requested device."""
-    np_dtype = np.uint32 if dtype_name == "uint32" else np.int32
+def test_texture_filter_modes(test, device):
+    """Default 32-bit integer textures to point filtering and reject linear filters."""
+    point = wp.TextureFilterMode.CLOSEST
+    linear = wp.TextureFilterMode.LINEAR
+    for ndim, texture_type in TEXTURE_TYPES:
+        shape_kwargs = dict(zip(("width", "height", "depth")[:ndim], (2,) * ndim, strict=True))
+        for np_dtype in (np.uint8, np.int8, np.uint16, np.int16, np.float16, np.float32, np.int32, np.uint32):
+            is_integer32 = np_dtype in (np.int32, np.uint32)
+            default_filter = point if is_integer32 else linear
+            data = np.zeros((2,) * ndim, dtype=np_dtype)
+            with test.subTest(ndim=ndim, dtype=np_dtype):
+                inferred = texture_type(data, device=device)
+                textures = [inferred, texture_type(num_channels=1, dtype=inferred.dtype, device=device, **shape_kwargs)]
+                if device.is_cuda:
+                    textures.append(texture_type(cuda_array=inferred.cuda_array, device=device))
+                for tex in textures:
+                    test.assertEqual(tex.filter_mode, default_filter)
+                    test.assertEqual(tex.mip_filter_mode, default_filter)
 
-    with wp.ScopedDevice(device_alias):
-        if route == "1d":
-            tex = wp.Texture1D(np.array([1000, 2000, 3000, 4000], dtype=np_dtype))
-            output = wp.empty(4, dtype=float)
-            wp.launch(sample_texture1d_f_at_centers, dim=4, inputs=[tex, output, 4])
-        elif route == "2d":
-            tex = wp.Texture2D(np.array([[1000, 2000], [3000, 4000]], dtype=np_dtype))
-            output = wp.empty(4, dtype=float)
-            wp.launch(sample_texture2d_f_at_centers, dim=4, inputs=[tex, output, 2, 2])
-        elif route == "3d":
-            tex = wp.Texture3D((np.arange(8, dtype=np_dtype) * 1000).reshape(2, 2, 2))
-            output = wp.empty(8, dtype=float)
-            wp.launch(sample_texture3d_f_at_centers, dim=8, inputs=[tex, output, 2, 2, 2])
-        elif route == "struct":
-            tex = wp.Texture2D(np.array([[1000, 2000], [3000, 4000]], dtype=np_dtype))
-            s = TextureStruct2D()
-            s.tex = tex
-            s.scale = 2.0
-            output = wp.empty(1, dtype=float)
-            wp.launch(sample_texture2d_from_struct, dim=1, inputs=[s, wp.vec2f(0.5, 0.5), output])
-        elif route == "array":
-            tex = wp.Texture2D(np.array([[1000, 2000], [3000, 4000]], dtype=np_dtype))
-            textures = wp.array([tex], dtype=wp.Texture2D)
-            output_base = wp.empty(1, dtype=float)
-            output_lod = wp.empty(1, dtype=float)
-            wp.launch(
-                sample_texture2d_array_kernels[0],
-                dim=1,
-                inputs=[textures, wp.vec2f(0.5, 0.5), output_base, output_lod],
-            )
+                explicit = texture_type(data, filter_mode=point, mip_filter_mode=point, device=device)
+                test.assertEqual(explicit.filter_mode, point)
+                test.assertEqual(explicit.mip_filter_mode, point)
+
+                if not is_integer32:
+                    continue
+
+                with test.assertRaisesRegex(ValueError, "filter_mode.*CLOSEST"):
+                    texture_type(data, filter_mode=linear, device=device)
+                with test.assertRaisesRegex(ValueError, "mip_filter_mode.*CLOSEST"):
+                    texture_type(data, num_mip_levels=2, mip_filter_mode=linear, device=device)
+                if device.is_cuda:
+                    with test.assertRaisesRegex(ValueError, "filter_mode.*CLOSEST"):
+                        texture_type(cuda_array=inferred.cuda_array, filter_mode=linear, device=device)
+
+                # Mip filtering is unused by a single-level texture.
+                texture_type(data, mip_filter_mode=linear, device=device)
+                texture_type(
+                    np.zeros((1,) * ndim, dtype=np_dtype), num_mip_levels=0, mip_filter_mode=linear, device=device
+                )
+
+
+def make_integer_texture_sample_kernel(texture_type, output_type, ndim):
+    @wp.kernel(enable_backward=False)
+    def sample(
+        tex: texture_type,
+        output_base: wp.array[output_type],
+        output_lod: wp.array[output_type],
+        output_separate: wp.array[output_type],
+        width: int,
+        lod: float,
+    ):
+        tid = wp.tid()
+        u = (float(tid % width) + 0.5) / float(width)
+        if wp.static(ndim == 1):
+            output_base[tid] = wp.texture_sample(tex, u, dtype=output_type)
+            output_lod[tid] = wp.texture_sample(tex, u, dtype=output_type, lod=lod)
+            output_separate[tid] = output_lod[tid]
+        elif wp.static(ndim == 2):
+            v = (float(tid // width) + 0.5) / float(width)
+            output_base[tid] = wp.texture_sample(tex, wp.vec2f(u, v), dtype=output_type)
+            output_lod[tid] = wp.texture_sample(tex, wp.vec2f(u, v), dtype=output_type, lod=lod)
+            output_separate[tid] = wp.texture_sample(tex, u, v, dtype=output_type, lod=lod)
         else:
-            raise ValueError(f"Unknown texture route: {route}")
+            v = (float((tid // width) % width) + 0.5) / float(width)
+            w = (float(tid // (width * width)) + 0.5) / float(width)
+            output_base[tid] = wp.texture_sample(tex, wp.vec3f(u, v, w), dtype=output_type)
+            output_lod[tid] = wp.texture_sample(tex, wp.vec3f(u, v, w), dtype=output_type, lod=lod)
+            output_separate[tid] = wp.texture_sample(tex, u, v, w, dtype=output_type, lod=lod)
 
-        wp.synchronize_device()
+    return sample
 
 
-def test_texture_sample_rejects_32bit_int(test, device):
-    """Reject 32-bit integer texture samples with a fatal diagnostic.
+INTEGER_TEXTURE_SAMPLE_KERNELS = {
+    (ndim, channels): make_integer_texture_sample_kernel(texture_type, output_type, ndim)
+    for ndim, texture_type in TEXTURE_TYPES
+    for channels, output_type in SAMPLE_OUTPUT_TYPES
+}
 
-    Run each case in a subprocess because the CPU path aborts and the CUDA path leaves its
-    context unusable after trapping.
-    """
-    if sys.platform == "win32":
-        test.skipTest("Skip intentional host aborts and CUDA traps on Windows QA hosts.")
+
+def test_texture_sample_32bit_int(test, device):
+    """Convert integer values numerically, including extrema and float-like bit patterns."""
+    cases = (
+        (
+            np.int32,
+            [-2147483648, -16777217, -1, 0, 1, 1000, 16777217, 2147483647],
+            [-2147483648.0, -16777216.0, -1.0, 0.0, 1.0, 1000.0, 16777216.0, 2147483648.0],
+        ),
+        (
+            np.uint32,
+            [0, 1, 1000, 16777217, 2147483648, 4294967295, 1065353216, 2139095040],
+            [0.0, 1.0, 1000.0, 16777216.0, 2147483648.0, 4294967296.0, 1065353216.0, 2139095040.0],
+        ),
+    )
+    for ndim, texture_type in TEXTURE_TYPES:
+        for channels, output_type in SAMPLE_OUTPUT_TYPES:
+            for np_dtype, values, expected_values in cases:
+                with test.subTest(ndim=ndim, channels=channels, dtype=np_dtype):
+                    shape = (8,) * ndim + ((channels,) if channels > 1 else ())
+                    data = np.resize(np.array(values, dtype=np_dtype), shape)
+                    expected_shape = (8**ndim,) + ((channels,) if channels > 1 else ())
+                    expected = np.resize(np.array(expected_values, dtype=np.float32), expected_shape)
+                    tex = texture_type(data, device=device)
+                    outputs = [wp.empty(8**ndim, dtype=output_type, device=device) for _ in range(3)]
+                    wp.launch(
+                        INTEGER_TEXTURE_SAMPLE_KERNELS[(ndim, channels)],
+                        dim=8**ndim,
+                        inputs=[tex, *outputs, 8, 0.0],
+                        device=device,
+                    )
+                    for output in outputs:
+                        np.testing.assert_array_equal(output.numpy(), expected)
+
+
+def test_texture_32bit_int_mipmaps(test, device):
+    """Use nearest mip selection and convert integer channels at every width."""
+    for ndim, texture_type in TEXTURE_TYPES:
+        for channels, output_type in SAMPLE_OUTPUT_TYPES:
+            for np_dtype, offset in ((np.int32, -16), (np.uint32, 16777216)):
+                with test.subTest(ndim=ndim, channels=channels, dtype=np_dtype):
+                    # Mip levels average x pairs: [0, 2, 10, 12] -> [1, 11] -> [6], plus the offset.
+                    row = np.array([0, 2, 10, 12], dtype=np_dtype) + np_dtype(offset)
+                    data = np.broadcast_to(row.reshape((1,) * (ndim - 1) + (4,)), (4,) * ndim)
+                    if channels > 1:
+                        data = np.repeat(data[..., None], channels, axis=-1)
+                    tex = texture_type(np.ascontiguousarray(data), num_mip_levels=0, device=device)
+                    outputs = [wp.empty(4**ndim, dtype=output_type, device=device) for _ in range(3)]
+                    for lod, expected_row in ((0.25, [0, 2, 10, 12]), (0.75, [1, 1, 11, 11]), (1.75, [6, 6, 6, 6])):
+                        wp.launch(
+                            INTEGER_TEXTURE_SAMPLE_KERNELS[(ndim, channels)],
+                            dim=4**ndim,
+                            inputs=[tex, *outputs, 4, lod],
+                            device=device,
+                        )
+                        values = np.array(expected_row, dtype=np.float64) + offset
+                        expected = np.tile(values, 4 ** (ndim - 1)).astype(np.float32)
+                        if channels > 1:
+                            expected = np.repeat(expected[:, None], channels, axis=-1)
+                        for output in outputs[1:]:
+                            np.testing.assert_array_equal(output.numpy(), expected)
+                    base_expected = data.reshape(4**ndim, *data.shape[ndim:]).astype(np.float32)
+                    np.testing.assert_array_equal(outputs[0].numpy(), base_expected)
+
+    # Distinct values per axis and channel, unlike the uniform cases above.
+    spatial = np.array([0, 2, 4, 6, 8, 10, 12, 14]).reshape(2, 2, 2, 1)
+    for np_dtype, channel_offsets, expected_channels in (
+        (np.int32, [-200, 100, 16777216, 2147483600], [-193.0, 107.0, 16777224.0, 2147483648.0]),
+        (np.uint32, [0, 100, 16777216, 4294967200], [7.0, 107.0, 16777224.0, 4294967296.0]),
+    ):
+        with test.subTest(nonuniform=True, dtype=np_dtype):
+            data = (spatial + np.array(channel_offsets)).astype(np_dtype)
+            tex = wp.Texture3D(data, num_mip_levels=0, device=device)
+            outputs = [wp.empty(8, dtype=wp.vec4f, device=device) for _ in range(3)]
+            wp.launch(
+                INTEGER_TEXTURE_SAMPLE_KERNELS[(3, 4)],
+                dim=8,
+                inputs=[tex, *outputs, 2, 1.0],
+                device=device,
+            )
+            np.testing.assert_array_equal(outputs[0].numpy(), data.reshape(8, 4).astype(np.float32))
+            expected = np.tile(np.array(expected_channels, dtype=np.float32), (8, 1))
+            for output in outputs[1:]:
+                np.testing.assert_array_equal(output.numpy(), expected)
+
+
+def test_texture_32bit_int_struct_and_array(test, device):
+    """Sample structs and divergent arrays containing integer or mixed-format textures."""
+    for np_dtype, value in ((np.int32, -1000), (np.uint32, 1065353216)):
+        s = TextureStruct2D()
+        s.tex = wp.Texture2D(np.full((2, 2), value, dtype=np_dtype), device=device)
+        s.scale = 2.0
+        output = wp.empty(1, dtype=float, device=device)
+        wp.launch(sample_texture2d_from_struct, dim=1, inputs=[s, wp.vec2f(0.5), output], device=device)
+        np.testing.assert_array_equal(output.numpy(), [2.0 * value])
 
     cases = (
-        ("1d", "uint32"),
-        ("2d", "uint32"),
-        ("3d", "uint32"),
-        ("2d", "int32"),
-        ("struct", "uint32"),
-        ("array", "uint32"),
+        ((np.int32, -1000, -1000.0), (np.int32, 1000, 1000.0)),
+        ((np.uint32, 1000, 1000.0), (np.uint32, 1065353216, 1065353216.0)),
+        ((np.int32, -1000, -1000.0), (np.uint32, 1000, 1000.0), (np.float32, 0.5, 0.5), (np.uint8, 255, 1.0)),
     )
-    for route, dtype_name in cases:
-        with test.subTest(route=route, dtype=dtype_name):
-            result = run_python_subprocess(
-                "import sys; "
-                "from warp.tests.cuda.test_texture import _trigger_texture_sample_32bit_int; "
-                "_trigger_texture_sample_32bit_int(*sys.argv[1:])",
-                device.alias,
-                route,
-                dtype_name,
-                timeout=120,
-                hide_gpu=device.alias == "cpu",
-            )
-            output = result.stdout + result.stderr
-            test.assertRegex(output, r"texture_sample\(\) does not support 32-bit integer textures")
-            if device.is_cuda:
-                test.assertRegex(output, r"Warp CUDA error")
-            else:
-                test.assertNotEqual(result.returncode, 0)
+    for ndim, texture_type, kernels, coords in (
+        (2, wp.Texture2D, sample_texture2d_array_kernels, wp.vec2f(0.5)),
+        (3, wp.Texture3D, sample_texture3d_array_kernels, wp.vec3f(0.5)),
+    ):
+        for case in cases:
+            textures = [
+                texture_type(np.full((2,) * ndim, value, dtype=np_dtype), device=device) for np_dtype, value, _ in case
+            ]
+            tex_array = wp.array(textures * (32 // len(case)), dtype=texture_type, device=device)
+            expected = np.tile(np.array([value for _, _, value in case], dtype=np.float32), 32 // len(case)) * 6.0
+            for optimization_level, kernel in kernels.items():
+                with test.subTest(
+                    ndim=ndim, dtypes=[np_dtype for np_dtype, _, _ in case], optimization_level=optimization_level
+                ):
+                    output_base = wp.empty(32, dtype=float, device=device)
+                    output_lod = wp.empty(32, dtype=float, device=device)
+                    wp.launch(
+                        kernel,
+                        dim=32,
+                        inputs=[tex_array, coords, output_base, output_lod],
+                        device=device,
+                    )
+                    np.testing.assert_array_equal(output_base.numpy(), expected)
+                    np.testing.assert_array_equal(output_lod.numpy(), expected)
 
 
-def test_texture_32bit_int_non_sampling_kernel(test, device):
-    """Keep non-sampling kernels usable with 32-bit integer textures.
+def test_texture_sample_normalizes_small_int_dtypes(test, device):
+    """Preserve sampling and normalization for dtypes that CUDA promotes.
 
-    Resolution queries read fields of the kernel-facing texture struct without sampling, so
-    they are unaffected by the dtype. This guards against the refusal being applied at the
-    kernel boundary instead of at the sample site, which would break this use.
-    """
-    data = np.zeros((4, 8), dtype=np.uint32)
-    tex = wp.Texture2D(data, device=device)
-
-    output = wp.zeros(2, dtype=wp.int32, device=device)
-    wp.launch(query_texture2d_resolution, dim=1, inputs=[tex, output], device=device)
-
-    np.testing.assert_array_equal(output.numpy(), np.array([8, 4], dtype=np.int32))
-
-
-def test_texture_sample_allows_small_int_dtypes(test, device):
-    """Preserve sampling for dtypes that CUDA promotes.
-
-    An over-broad rejection (for example one that also caught ``int16``) would break these. Each
-    case samples texel (1, 0) of a 2x2 texture with point filtering and checks the documented
+    Each case samples texel (1, 0) of a 2x2 texture with point filtering and checks the documented
     normalization: unsigned integers map to ``value / (2**n - 1)``, signed integers to
     ``value / (2**(n - 1) - 1)``, floats pass through.
     """
@@ -3041,10 +3179,7 @@ def test_texture_sample_allows_small_int_dtypes(test, device):
 
 
 def test_texture_uint32_storage_round_trip(test, device):
-    """Preserve 32-bit integer texture storage, copies, and interop.
-
-    Verify the capabilities that the sampling rejection deliberately preserves.
-    """
+    """Preserve 32-bit integer texture storage, copies, and interop."""
     data = np.array([[1, 2, 3, 4], [5, 6, 7, 4294967295]], dtype=np.uint32)
 
     tex = wp.Texture2D(data, device=device)
@@ -3067,12 +3202,1465 @@ def test_texture_uint32_storage_round_trip(test, device):
 
 
 # ============================================================================
+# Adjoint (Gradient) Tests
+# ============================================================================
+#
+# Compare texture_sample adjoints with central finite differences. Sample points
+# keep the stencil inside one interpolation cell and exercise every address mode
+# on CPU and CUDA.
+
+_GRAD_ADDRESS_MODES = (
+    wp.TextureAddressMode.WRAP,
+    wp.TextureAddressMode.CLAMP,
+    wp.TextureAddressMode.MIRROR,
+    wp.TextureAddressMode.BORDER,
+)
+
+# CUDA quantizes interpolation fractions to 9 bits. Quarter-aligned points keep
+# the interpolation weights exact and reduce finite-difference noise.
+_GRAD_FD_TOL = 2e-2
+
+# Mipmapped sampling adds another interpolation stage.
+_GRAD_MIP_FD_TOL = 3e-2
+
+
+@wp.kernel
+def sample_grad_1d_f(tex: wp.Texture1D, pos: wp.array[float], out: wp.array[float]):
+    """Sample a scalar 1D texture for coordinate-gradient tests."""
+    tid = wp.tid()
+    out[tid] = wp.texture_sample(tex, pos[tid], dtype=float)
+
+
+@wp.kernel
+def sample_grad_1d_v2(tex: wp.Texture1D, pos: wp.array[float], out: wp.array[wp.vec2f]):
+    """Sample a two-channel 1D texture for coordinate-gradient tests."""
+    tid = wp.tid()
+    out[tid] = wp.texture_sample(tex, pos[tid], dtype=wp.vec2f)
+
+
+@wp.kernel
+def sample_grad_1d_v4(tex: wp.Texture1D, pos: wp.array[float], out: wp.array[wp.vec4f]):
+    """Sample a four-channel 1D texture for coordinate-gradient tests."""
+    tid = wp.tid()
+    out[tid] = wp.texture_sample(tex, pos[tid], dtype=wp.vec4f)
+
+
+@wp.kernel
+def sample_grad_1d_lod_f(tex: wp.Texture1D, pos: wp.array[float], lod: wp.array[float], out: wp.array[float]):
+    """Sample a scalar 1D texture with an explicit LOD."""
+    tid = wp.tid()
+    out[tid] = wp.texture_sample(tex, pos[tid], dtype=float, lod=lod[tid])
+
+
+@wp.kernel
+def sample_grad_2d_f(tex: wp.Texture2D, pos: wp.array[wp.vec2f], out: wp.array[float]):
+    """Sample a scalar 2D texture with vector coordinates."""
+    tid = wp.tid()
+    out[tid] = wp.texture_sample(tex, pos[tid], dtype=float)
+
+
+@wp.kernel
+def sample_grad_2d_v2(tex: wp.Texture2D, pos: wp.array[wp.vec2f], out: wp.array[wp.vec2f]):
+    """Sample a two-channel 2D texture for coordinate-gradient tests."""
+    tid = wp.tid()
+    out[tid] = wp.texture_sample(tex, pos[tid], dtype=wp.vec2f)
+
+
+@wp.kernel
+def sample_grad_2d_lod_f(tex: wp.Texture2D, pos: wp.array[wp.vec2f], lod: wp.array[float], out: wp.array[float]):
+    """Sample a scalar 2D texture with an explicit LOD."""
+    tid = wp.tid()
+    out[tid] = wp.texture_sample(tex, pos[tid], lod=lod[tid], dtype=float)
+
+
+@wp.kernel
+def sample_grad_2d_lod_v2(tex: wp.Texture2D, pos: wp.array[wp.vec2f], lod: wp.array[float], out: wp.array[wp.vec2f]):
+    """Sample a two-channel 2D texture with an explicit LOD."""
+    tid = wp.tid()
+    out[tid] = wp.texture_sample(tex, pos[tid], lod=lod[tid], dtype=wp.vec2f)
+
+
+@wp.kernel
+def sample_grad_3d_lod_v4(tex: wp.Texture3D, pos: wp.array[wp.vec3f], lod: wp.array[float], out: wp.array[wp.vec4f]):
+    """Sample a four-channel 3D texture with an explicit LOD."""
+    tid = wp.tid()
+    out[tid] = wp.texture_sample(tex, pos[tid], lod=lod[tid], dtype=wp.vec4f)
+
+
+@wp.kernel
+def sample_grad_2d_scalar_f(tex: wp.Texture2D, pos_u: wp.array[float], pos_v: wp.array[float], out: wp.array[float]):
+    """Sample a scalar 2D texture with scalar coordinates."""
+    tid = wp.tid()
+    out[tid] = wp.texture_sample(tex, pos_u[tid], pos_v[tid], dtype=float)
+
+
+@wp.kernel
+def sample_grad_3d_f(tex: wp.Texture3D, pos: wp.array[wp.vec3f], out: wp.array[float]):
+    """Sample a scalar 3D texture with vector coordinates."""
+    tid = wp.tid()
+    out[tid] = wp.texture_sample(tex, pos[tid], dtype=float)
+
+
+@wp.kernel
+def sample_grad_3d_v4(tex: wp.Texture3D, pos: wp.array[wp.vec3f], out: wp.array[wp.vec4f]):
+    """Sample a four-channel 3D texture for coordinate-gradient tests."""
+    tid = wp.tid()
+    out[tid] = wp.texture_sample(tex, pos[tid], dtype=wp.vec4f)
+
+
+@wp.kernel
+def sample_grad_3d_lod_f(tex: wp.Texture3D, pos: wp.array[wp.vec3f], lod: wp.array[float], out: wp.array[float]):
+    """Sample a scalar 3D texture with an explicit LOD."""
+    tid = wp.tid()
+    out[tid] = wp.texture_sample(tex, pos[tid], lod=lod[tid], dtype=float)
+
+
+@wp.kernel
+def sample_grad_3d_scalar_f(
+    tex: wp.Texture3D,
+    pos_u: wp.array[float],
+    pos_v: wp.array[float],
+    pos_w: wp.array[float],
+    out: wp.array[float],
+):
+    """Sample a scalar 3D texture with scalar coordinates."""
+    tid = wp.tid()
+    out[tid] = wp.texture_sample(tex, pos_u[tid], pos_v[tid], pos_w[tid], dtype=float)
+
+
+@wp.struct
+class TextureGradSubject:
+    tex: wp.Texture3D
+
+
+@wp.kernel
+def sample_grad_struct_3d_f(subject: TextureGradSubject, pos: wp.array[wp.vec3f], out: wp.array[float]):
+    """Sample a 3D texture stored in a Warp struct."""
+    tid = wp.tid()
+    out[tid] = wp.texture_sample(subject.tex, pos[tid], dtype=float)
+
+
+def sample_grad_texture2d_array(
+    textures: wp.array[wp.Texture2D],
+    pos: wp.array[wp.vec2f],
+    lod: wp.array[float],
+    out: wp.array[float],
+):
+    """Sample a different 2D texture handle in each kernel lane."""
+    tid = wp.tid()
+    out[tid] = wp.texture_sample(textures[tid], pos[tid], lod=lod[tid], dtype=float)
+
+
+def sample_grad_texture3d_array(
+    textures: wp.array[wp.Texture3D],
+    pos: wp.array[wp.vec3f],
+    lod: wp.array[float],
+    out: wp.array[float],
+):
+    """Sample a different 3D texture handle in each kernel lane."""
+    tid = wp.tid()
+    out[tid] = wp.texture_sample(textures[tid], pos[tid], lod=lod[tid], dtype=float)
+
+
+sample_grad_texture2d_array_kernels = {
+    optimization_level: wp.kernel(
+        sample_grad_texture2d_array,
+        module="unique",
+        module_options={"cuda_output": "cubin", "optimization_level": optimization_level},
+    )
+    for optimization_level in (0, 3)
+}
+sample_grad_texture3d_array_kernels = {
+    optimization_level: wp.kernel(
+        sample_grad_texture3d_array,
+        module="unique",
+        module_options={"cuda_output": "cubin", "optimization_level": optimization_level},
+    )
+    for optimization_level in (0, 3)
+}
+
+
+def _forward_values(kernel, tex, coord_arrays, out_dtype, device):
+    """Run a sampling kernel and return the outputs as a NumPy array."""
+    n = len(coord_arrays[0])
+    inputs = [tex] + [wp.array(np.asarray(c, dtype=np.float32), dtype=float, device=device) for c in coord_arrays]
+    out = wp.zeros(n, dtype=out_dtype, device=device)
+    wp.launch(kernel, dim=n, inputs=inputs, outputs=[out], device=device)
+    return out.numpy()
+
+
+def _tape_gradients(kernel, tex, coord_arrays, out_dtype, device, out_grad=None):
+    """Backpropagate through a sampling kernel; return per-input gradients."""
+    n = len(coord_arrays[0])
+    pos = [
+        wp.array(np.asarray(c, dtype=np.float32), dtype=float, requires_grad=True, device=device) for c in coord_arrays
+    ]
+    out = wp.zeros(n, dtype=out_dtype, requires_grad=True, device=device)
+    tape = wp.Tape()
+    with tape:
+        wp.launch(kernel, dim=n, inputs=[tex, *pos], outputs=[out], device=device)
+    if out_grad is None:
+        if out_dtype is float:
+            out_grad = np.ones(n, dtype=np.float32)
+        else:
+            out_grad = np.ones((n, out_dtype._length_), dtype=np.float32)
+    out.grad = wp.array(out_grad, dtype=out_dtype, device=device)
+    tape.backward()
+    return [p.grad.numpy() for p in pos]
+
+
+def _check_grad_1d(test, tex, u, device, h=0.25, tol=_GRAD_FD_TOL):
+    """Compare a 1D coordinate adjoint with a central finite difference."""
+    f = _forward_values(sample_grad_1d_f, tex, [[u - h, u + h]], float, device)
+    fd = (f[1] - f[0]) / (2.0 * h)
+    (g,) = _tape_gradients(sample_grad_1d_f, tex, [[u]], float, device)
+    np.testing.assert_allclose(g[0], fd, rtol=tol, atol=tol, err_msg=f"1D gradient mismatch at u={u}")
+
+
+def test_texture_sample_grad_1d_address_modes(test, device):
+    """Adjoint matches finite differences under every address mode, both coordinate conventions."""
+    width = 8
+    rng = np.random.default_rng(0)
+    data = rng.standard_normal(width).astype(np.float32)
+
+    # Texel-space points: interior, both half-texel boundary bands, and cells
+    # beyond the texture (wraparound / mirrored / clamped / border regions).
+    points_texel = (0.2, 3.25, 4.8, 7.75, 8.2, -0.25)
+
+    for address_mode in _GRAD_ADDRESS_MODES:
+        for normalized in (False, True):
+            tex = wp.Texture1D(
+                data,
+                normalized_coords=normalized,
+                filter_mode=wp.TextureFilterMode.LINEAR,
+                address_mode=address_mode,
+                device=device,
+            )
+            for u_texel in points_texel:
+                scale = 1.0 / width if normalized else 1.0
+                _check_grad_1d(test, tex, u_texel * scale, device, h=0.25 * scale)
+
+
+def test_texture_sample_grad_1d_analytic(test, device):
+    """Hand-computed boundary gradients for each address mode.
+
+    Data is ``v[i] = i + 1`` so interior cells have slope 1 (in texel units).
+    Expectations match PyTorch ``grid_sample``: ``padding_mode="zeros"`` for
+    BORDER and ``padding_mode="border"`` for CLAMP. WRAP/MIRROR run with
+    normalized coordinates because CUDA treats them as CLAMP otherwise.
+    """
+    width = 8
+    data = np.arange(1, width + 1, dtype=np.float32)
+
+    def grad_at(tex, u):
+        """Evaluate the coordinate gradient at one sampling position."""
+        (g,) = _tape_gradients(sample_grad_1d_f, tex, [[u]], float, device)
+        return g[0]
+
+    def make_tex(address_mode, normalized):
+        """Create the texture used by an analytic address-mode case."""
+        return wp.Texture1D(
+            data,
+            normalized_coords=normalized,
+            filter_mode=wp.TextureFilterMode.LINEAR,
+            address_mode=address_mode,
+            device=device,
+        )
+
+    # (address_mode, normalized, u_texel, expected gradient in texel units)
+    cases = (
+        # interior cell [2, 3]: slope v[3] - v[2] = 1
+        (wp.TextureAddressMode.BORDER, False, 3.25, 1.0),
+        (wp.TextureAddressMode.CLAMP, False, 3.25, 1.0),
+        (wp.TextureAddressMode.WRAP, True, 3.25, 1.0),
+        (wp.TextureAddressMode.MIRROR, True, 3.25, 1.0),
+        # left boundary band, cell [-1, 0]: BORDER blends with zero padding
+        (wp.TextureAddressMode.BORDER, False, 0.25, data[0]),
+        (wp.TextureAddressMode.CLAMP, False, 0.25, 0.0),
+        # right boundary band, cell [7, 8]
+        (wp.TextureAddressMode.BORDER, False, 7.75, -data[width - 1]),
+        (wp.TextureAddressMode.CLAMP, False, 7.75, 0.0),
+        (wp.TextureAddressMode.WRAP, True, 7.75, data[0] - data[width - 1]),
+        (wp.TextureAddressMode.MIRROR, True, 7.75, 0.0),  # x1 = 8 mirrors back to 7: flat cell
+        # fully outside, cell [-2, -1]: BORDER is identically zero
+        (wp.TextureAddressMode.BORDER, False, -0.75, 0.0),
+        # mirrored descending segment, cell [8, 9]: v[map(9)] - v[map(8)] = v[6] - v[7]
+        (wp.TextureAddressMode.MIRROR, True, 8.75, data[6] - data[7]),
+        # wrapped cell [8, 9] repeats cell [0, 1]
+        (wp.TextureAddressMode.WRAP, True, 8.75, data[1] - data[0]),
+    )
+
+    for address_mode, normalized, u_texel, expected_texel in cases:
+        tex = make_tex(address_mode, normalized)
+        scale = 1.0 / width if normalized else 1.0
+        g = grad_at(tex, u_texel * scale)
+        np.testing.assert_allclose(
+            g * scale,
+            expected_texel,
+            atol=1e-4,
+            err_msg=f"mode={address_mode.name} normalized={normalized} u_texel={u_texel}",
+        )
+
+
+def test_texture_sample_grad_large_offset(test, device):
+    """Preserve coordinate slopes when texels share a large representable offset."""
+    cases = (
+        (wp.Texture1D, float, float, sample_grad_1d_f, (2,)),
+        (wp.Texture2D, wp.vec2f, float, sample_grad_2d_f, (3, 5)),
+        (wp.Texture3D, wp.vec3f, float, sample_grad_3d_f, (3, 3, 5)),
+        (wp.Texture2D, wp.vec2f, wp.vec2f, sample_grad_2d_v2, (3, 5)),
+        (wp.Texture3D, wp.vec3f, wp.vec4f, sample_grad_3d_v4, (3, 3, 5)),
+    )
+    for texture_type, position_type, out_dtype, kernel, shape in cases:
+        ndim = len(shape)
+        # Mixed terms require interpolating edge differences in the other axes.
+        data = 8.0 * (np.prod(np.indices(shape, dtype=np.float32) + 1.0, axis=0) - 1.0)
+        point = np.array([0.875, 0.75, 1.25][:ndim], dtype=np.float32)
+        expected = np.array([8.0 * np.prod(np.delete(point + 0.5, axis)) for axis in range(ndim)])
+        channels = 1 if out_dtype is float else out_dtype._length_
+        seed = np.array([1.0, -0.5, 2.0, 0.25][:channels], dtype=np.float32)
+        channel_scales = np.array([1.0, -2.0, 3.0, -1.0][:channels], dtype=np.float32)
+        if channels > 1:
+            data = data[..., None] * channel_scales
+        expected *= np.dot(seed, channel_scales)
+
+        for address_mode in _GRAD_ADDRESS_MODES:
+            for normalized in (False, True):
+                scale = np.array(shape[::-1]) if normalized else np.ones(ndim)
+                positions = [point[0] / scale[0]] if ndim == 1 else [point / scale]
+                for offset in (0.0, 100_000_000.0):
+                    with test.subTest(
+                        ndim=ndim, channels=channels, mode=address_mode, normalized=normalized, offset=offset
+                    ):
+                        tex = texture_type(
+                            data + np.float32(offset),
+                            normalized_coords=normalized,
+                            filter_mode=wp.TextureFilterMode.LINEAR,
+                            address_mode=address_mode,
+                            device=device,
+                        )
+                        pos = wp.array(positions, dtype=position_type, requires_grad=True, device=device)
+                        out = wp.zeros(1, dtype=out_dtype, requires_grad=True, device=device)
+                        with wp.Tape() as tape:
+                            wp.launch(kernel, dim=1, inputs=[tex, pos], outputs=[out], device=device)
+                        out.grad = wp.array(seed if channels == 1 else seed[None, :], dtype=out_dtype, device=device)
+                        tape.backward()
+                        np.testing.assert_allclose(pos.grad.numpy().reshape(-1), expected * scale, rtol=1e-6, atol=1e-6)
+
+
+def test_texture_sample_grad_large_offset_mip(test, device):
+    """Preserve large-offset coordinate slopes at and between mip levels."""
+    cases = (
+        (wp.Texture1D, float, sample_grad_1d_lod_f),
+        (wp.Texture2D, wp.vec2f, sample_grad_2d_lod_f),
+        (wp.Texture3D, wp.vec3f, sample_grad_3d_lod_f),
+    )
+    for ndim, (texture_type, position_type, kernel) in enumerate(cases, start=1):
+        slopes = 8.0 * np.arange(1, ndim + 1, dtype=np.float32)
+        # Repeated pairs give exact mip averages even with the large offset.
+        indices = np.indices((4,) * ndim, dtype=np.float32)[::-1]
+        data = np.float32(100_000_000.0) + np.sum((indices // 2) * slopes.reshape((ndim,) + (1,) * ndim), axis=0)
+        tex = texture_type(data, num_mip_levels=2, normalized_coords=True, device=device)
+        for level in (0.0, 0.5, 1.0):
+            with test.subTest(ndim=ndim, lod=level):
+                positions = [1.75 / 4.0] if ndim == 1 else [[1.75 / 4.0] * ndim]
+                pos = wp.array(positions, dtype=position_type, requires_grad=True, device=device)
+                lod = wp.array([level], dtype=float, device=device)
+                out = wp.zeros(1, dtype=float, requires_grad=True, device=device)
+                with wp.Tape() as tape:
+                    wp.launch(kernel, dim=1, inputs=[tex, pos, lod], outputs=[out], device=device)
+                tape.backward(loss=out)
+                np.testing.assert_allclose(pos.grad.numpy().reshape(-1), (4.0 - 2.0 * level) * slopes)
+
+
+def test_texture_sample_grad_mip_finite_range(test, device):
+    """Mipmap averaging preserves finite constants and their zero gradients."""
+    cases = (
+        (wp.Texture1D, float, sample_grad_1d_lod_f),
+        (wp.Texture2D, wp.vec2f, sample_grad_2d_lod_f),
+        (wp.Texture3D, wp.vec3f, sample_grad_3d_lod_f),
+    )
+    coordinates = np.array([0.0, 0.125, 0.21875, 0.5, 0.78125, 0.875, 1.0], dtype=np.float32)
+    levels = np.array([-1.0, 0.0, 0.5, 1.0, 1.5, 2.0, 3.0], dtype=np.float32)
+    smallest_subnormal = np.nextafter(np.float32(0.0), np.float32(1.0))
+    for ndim, (texture_type, position_type, kernel) in enumerate(cases, start=1):
+        positions = coordinates if ndim == 1 else np.repeat(coordinates[:, None], ndim, axis=1)
+        for sign in (-1.0, 1.0):
+            with test.subTest(ndim=ndim, sign=sign):
+                value = np.float32(sign * 2.0e38)
+                data = np.full((4,) * ndim, value, dtype=np.float32)
+                with np.errstate(over="raise", invalid="raise"):
+                    tex = texture_type(data, num_mip_levels=3, normalized_coords=True, device=device)
+                pos = wp.array(positions, dtype=position_type, requires_grad=True, device=device)
+                lod = wp.array(levels, dtype=float, requires_grad=True, device=device)
+                out = wp.zeros(len(levels), dtype=float, requires_grad=True, device=device)
+                with wp.Tape() as tape:
+                    wp.launch(kernel, dim=len(levels), inputs=[tex, pos, lod], outputs=[out], device=device)
+                tape.backward(grads={out: wp.ones_like(out)})
+                np.testing.assert_allclose(out.numpy(), value, rtol=1e-6, atol=0.0)
+                np.testing.assert_array_equal(pos.grad.numpy(), 0.0)
+                np.testing.assert_array_equal(lod.grad.numpy(), 0.0)
+
+                # Check the host-generated levels directly: CUDA sampling can
+                # flush subnormals to zero even when their stored bits survive.
+                tiny = np.float32(sign) * smallest_subnormal
+                for mip in tex._generate_mipmap_chain(np.full_like(data, tiny)):
+                    test.assertEqual(mip.dtype, np.dtype(np.float32))
+                    np.testing.assert_array_equal(mip, tiny)
+
+
+def test_texture_closest_border_boundaries(test, device):
+    """Nearest BORDER samples preserve the sign of coordinates just below zero."""
+    cases = (
+        (wp.Texture1D, float, sample_grad_1d_lod_f),
+        (wp.Texture2D, wp.vec2f, sample_grad_2d_lod_f),
+        (wp.Texture3D, wp.vec3f, sample_grad_3d_lod_f),
+    )
+    for ndim, (texture_type, position_type, kernel) in enumerate(cases, start=1):
+        for normalized in (False, True):
+            boundaries = np.array([0.0, 1.0, 2.0, 4.0], dtype=np.float32) / (4 if normalized else 1)
+            coordinates = np.concatenate(
+                (
+                    np.nextafter(boundaries, np.float32(-np.inf)),
+                    boundaries,
+                    np.nextafter(boundaries, np.float32(np.inf)),
+                    np.array([-1e-8, -1e-20, -np.finfo(np.float32).tiny], dtype=np.float32),
+                )
+            )
+            if wp.get_device(device).is_cuda:
+                # CUDA's texture unit flushes subnormal coordinates to zero.
+                coordinates = coordinates[(coordinates == 0) | (np.abs(coordinates) >= np.finfo(np.float32).tiny)]
+            texels = coordinates.astype(np.float64) * (4 if normalized else 1)
+            expected = np.floor(np.clip(texels, 0, 3)).astype(np.float32) + 1
+            expected[(texels < 0) | (texels >= 4)] = 0
+            for axis in range(ndim):
+                with test.subTest(ndim=ndim, normalized=normalized, axis=axis):
+                    line_shape = [1] * ndim
+                    line_shape[ndim - 1 - axis] = 4
+                    data = np.broadcast_to(np.arange(1, 5, dtype=np.float32).reshape(line_shape), (4,) * ndim).copy()
+                    tex = texture_type(
+                        data,
+                        normalized_coords=normalized,
+                        filter_mode=wp.TextureFilterMode.CLOSEST,
+                        address_mode=wp.TextureAddressMode.BORDER,
+                        device=device,
+                    )
+                    points = np.full((len(coordinates), ndim), 0.375 if normalized else 1.5, dtype=np.float32)
+                    points[:, axis] = coordinates
+                    pos = wp.array(points[:, 0] if ndim == 1 else points, dtype=position_type, device=device)
+                    lod = wp.full(len(coordinates), -1.0, dtype=float, device=device)
+                    out = wp.zeros(len(coordinates), dtype=float, device=device)
+                    wp.launch(kernel, dim=len(coordinates), inputs=[tex, pos, lod], outputs=[out], device=device)
+                    np.testing.assert_array_equal(out.numpy(), expected)
+
+
+def test_texture_sample_grad_non_power_of_two_plateau(test, device):
+    """Exact corner reads preserve flat regions in large non-power-of-two textures."""
+    size = 8191
+    cases = (
+        (wp.Texture1D, float, sample_grad_1d_lod_f),
+        (wp.Texture2D, wp.vec2f, sample_grad_2d_lod_f),
+        (wp.Texture3D, wp.vec3f, sample_grad_3d_lod_f),
+    )
+    for ndim, (texture_type, position_type, kernel) in enumerate(cases, start=1):
+        for axis in range(ndim):
+            shape = [4] * ndim
+            shape[ndim - 1 - axis] = size
+            line = np.zeros(size, dtype=np.float32)
+            line[16:18] = 1.0
+            line_shape = [1] * ndim
+            line_shape[ndim - 1 - axis] = size
+            data = np.broadcast_to(line.reshape(line_shape), shape).copy()
+            for normalized, num_levels, lod_value in ((False, 1, -1.0), (True, 1, -1.0), (True, 3, 0.5)):
+                with test.subTest(ndim=ndim, axis=axis, normalized=normalized, lod=lod_value):
+                    tex = texture_type(data, normalized_coords=normalized, num_mip_levels=num_levels, device=device)
+                    points = np.full((3, ndim), 0.375 if normalized else 1.5, dtype=np.float32)
+                    points[:, axis] = np.array([16.625, 16.75, 16.875]) / (size if normalized else 1)
+                    pos = wp.array(
+                        points[:, 0] if ndim == 1 else points, dtype=position_type, requires_grad=True, device=device
+                    )
+                    lod = wp.full(3, lod_value, dtype=float, requires_grad=True, device=device)
+                    out = wp.zeros(3, dtype=float, requires_grad=True, device=device)
+                    with wp.Tape() as tape:
+                        wp.launch(kernel, dim=3, inputs=[tex, pos, lod], outputs=[out], device=device)
+                    tape.backward(grads={out: wp.ones_like(out)})
+                    expected = np.zeros((3, ndim), dtype=np.float32)
+                    if num_levels == 1:
+                        np.testing.assert_array_equal(out.numpy(), 1.0)
+                        np.testing.assert_array_equal(lod.grad.numpy(), 0.0)
+                    else:
+                        # Base-level corners are both 1; the next level spans 0 to 1.
+                        expected[:, axis] = 0.5 * (size // 2)
+                    np.testing.assert_allclose(pos.grad.numpy().reshape(3, ndim), expected, rtol=1e-6, atol=1e-6)
+
+
+def test_texture_sample_grad_lod_large_offset(test, device):
+    """LOD derivatives preserve slopes when every contributing texel shifts equally."""
+    cases = (
+        (wp.Texture1D, float, float, sample_grad_1d_lod_f),
+        (wp.Texture2D, wp.vec2f, float, sample_grad_2d_lod_f),
+        (wp.Texture3D, wp.vec3f, float, sample_grad_3d_lod_f),
+        (wp.Texture2D, wp.vec2f, wp.vec2f, sample_grad_2d_lod_v2),
+        (wp.Texture3D, wp.vec3f, wp.vec4f, sample_grad_3d_lod_v4),
+    )
+    for texture_type, position_type, out_dtype, kernel in cases:
+        ndim = 1 if position_type is float else position_type._length_
+        channels = 1 if out_dtype is float else out_dtype._length_
+        axis_scales = np.arange(1, ndim + 1, dtype=np.float32)
+        channel_scales = np.array([1.0, -2.0, 3.0, -1.0][:channels], dtype=np.float32)
+        seed = np.array([1.0, -0.5, 2.0, 0.25][:channels], dtype=np.float32)
+        pattern = np.array([0.0, 16.0, 32.0, 64.0], dtype=np.float32)
+        indices = np.indices((4,) * ndim)[::-1]
+        data = np.sum(pattern[indices] * axis_scales.reshape((ndim,) + (1,) * ndim), axis=0)
+        if channels > 1:
+            data = data[..., None] * channel_scales
+        seed_scale = np.dot(seed, channel_scales)
+        lod_values = np.repeat(np.array([-1.0, 0.0, 0.5, 1.0], dtype=np.float32), 2)
+        coordinates = np.tile(np.array([0.375, 0.4375], dtype=np.float32), 4)
+        positions = coordinates if ndim == 1 else np.repeat(coordinates[:, None], ndim, axis=1)
+        for mode in _GRAD_ADDRESS_MODES:
+            for spatial_filter in wp.TextureFilterMode:
+                for offset in (0.0, 100_000_000.0):
+                    with test.subTest(
+                        ndim=ndim, channels=channels, mode=mode, spatial_filter=spatial_filter, offset=offset
+                    ):
+                        tex = texture_type(
+                            data + np.float32(offset),
+                            address_mode=mode,
+                            filter_mode=spatial_filter,
+                            normalized_coords=True,
+                            num_mip_levels=2,
+                            device=device,
+                        )
+                        # This test's mip averages remain exact after adding the offset.
+                        for original, shifted in zip(
+                            tex._generate_mipmap_chain(data),
+                            tex._generate_mipmap_chain(data + np.float32(offset)),
+                            strict=True,
+                        ):
+                            np.testing.assert_array_equal(shifted - np.float32(offset), original)
+                        pos = wp.array(positions, dtype=position_type, requires_grad=True, device=device)
+                        lod = wp.array(lod_values, dtype=float, requires_grad=True, device=device)
+                        out = wp.zeros(len(coordinates), dtype=out_dtype, requires_grad=True, device=device)
+                        with wp.Tape() as tape:
+                            wp.launch(
+                                kernel, dim=len(coordinates), inputs=[tex, pos, lod], outputs=[out], device=device
+                            )
+                        out.grad = wp.array(
+                            np.ones(len(coordinates), dtype=np.float32)
+                            if channels == 1
+                            else np.tile(seed, (len(coordinates), 1)),
+                            dtype=out_dtype,
+                            device=device,
+                        )
+                        tape.backward()
+                        if spatial_filter == wp.TextureFilterMode.LINEAR:
+                            slopes = np.tile([2.0, 3.0], 4) * np.sum(axis_scales) * seed_scale
+                            expected_coords = (
+                                (64.0 + 16.0 * np.clip(lod_values, 0.0, 1.0))[:, None] * axis_scales * seed_scale
+                            )
+                        else:
+                            slopes = np.full(len(coordinates), -8.0 * np.sum(axis_scales) * seed_scale)
+                            expected_coords = np.zeros((len(coordinates), ndim))
+                        np.testing.assert_allclose(
+                            lod.grad.numpy(),
+                            np.where((lod_values >= 0) & (lod_values < 1), slopes, 0.0),
+                            rtol=1e-6,
+                            atol=1e-6,
+                        )
+                        np.testing.assert_allclose(
+                            pos.grad.numpy().reshape(-1, ndim), expected_coords, rtol=1e-6, atol=1e-6
+                        )
+
+
+def test_texture_sample_grad_lod_opposite_extremes(test, device):
+    """An overflowing centered difference does not corrupt finite LOD gradients."""
+    cases = (
+        (wp.Texture1D, float, float, sample_grad_1d_lod_f),
+        (wp.Texture2D, wp.vec2f, float, sample_grad_2d_lod_f),
+        (wp.Texture3D, wp.vec3f, float, sample_grad_3d_lod_f),
+        (wp.Texture2D, wp.vec2f, wp.vec2f, sample_grad_2d_lod_v2),
+        (wp.Texture3D, wp.vec3f, wp.vec4f, sample_grad_3d_lod_v4),
+    )
+    extreme = np.array([-2.0e38, 2.0e38, -2.0e38, 2.0e38], dtype=np.float32)
+    pattern = np.array([0.0, 16.0, 32.0, 48.0], dtype=np.float32)
+    coordinates = np.tile(np.array([0.1875, 0.21875, 0.25], dtype=np.float32), 2)
+    lod_values = np.repeat(np.array([0.0, 0.5], dtype=np.float32), 3)
+    for texture_type, position_type, out_dtype, kernel in cases:
+        ndim = 1 if position_type is float else position_type._length_
+        channels = 1 if out_dtype is float else out_dtype._length_
+        if channels == 1:
+            line = extreme
+        else:
+            line = np.stack(
+                (extreme, np.float32(1.0e8) + pattern, -extreme, np.float32(1.0e8) - pattern)[:channels], axis=-1
+            )
+        shape = (2,) * (ndim - 1) + line.shape
+        data = np.broadcast_to(line, shape).copy()
+        tex = texture_type(data, normalized_coords=True, num_mip_levels=2, device=device)
+        positions = np.full((len(coordinates), ndim), 0.5, dtype=np.float32)
+        positions[:, 0] = coordinates
+        expected_extreme = np.tile([1.0e38, 0.5e38, 0.0], 2)
+        expected_small = np.tile([4.0, 2.0, 0.0], 2)
+        expected = (expected_extreme, expected_small, -expected_extreme, -expected_small)
+        for channel in range(channels):
+            with test.subTest(ndim=ndim, channels=channels, channel=channel):
+                pos = wp.array(
+                    positions[:, 0] if ndim == 1 else positions,
+                    dtype=position_type,
+                    requires_grad=True,
+                    device=device,
+                )
+                lod = wp.array(lod_values, dtype=float, requires_grad=True, device=device)
+                out = wp.zeros(len(coordinates), dtype=out_dtype, requires_grad=True, device=device)
+                with wp.Tape() as tape:
+                    wp.launch(kernel, dim=len(coordinates), inputs=[tex, pos, lod], outputs=[out], device=device)
+                if channels == 1:
+                    out.grad = wp.ones_like(out)
+                else:
+                    seed = np.zeros((len(coordinates), channels), dtype=np.float32)
+                    seed[:, channel] = 1.0
+                    out.grad = wp.array(seed, dtype=out_dtype, device=device)
+                tape.backward()
+                np.testing.assert_allclose(lod.grad.numpy(), expected[channel], rtol=1e-6, atol=1e-6)
+
+    # The fallback must retain NaNs originating in texture data.
+    tex = wp.Texture1D(np.array([np.nan, 0.0, 0.0, 0.0], dtype=np.float32), num_mip_levels=2, device=device)
+    pos = wp.array([0.1875], dtype=float, device=device)
+    lod = wp.array([0.5], dtype=float, requires_grad=True, device=device)
+    out = wp.zeros(1, dtype=float, requires_grad=True, device=device)
+    with wp.Tape() as tape:
+        wp.launch(sample_grad_1d_lod_f, dim=1, inputs=[tex, pos, lod], outputs=[out], device=device)
+    tape.backward(grads={out: wp.ones_like(out)})
+    test.assertTrue(np.isnan(lod.grad.numpy()[0]))
+
+
+def test_texture_sample_grad_closest_periodic_boundaries(test, device):
+    """CLOSEST sampling selects the correct texel at WRAP seams and MIRROR ties."""
+    cases = (
+        (wp.Texture1D, float, sample_grad_1d_lod_f),
+        (wp.Texture2D, wp.vec2f, sample_grad_2d_lod_f),
+        (wp.Texture3D, wp.vec3f, sample_grad_3d_lod_f),
+    )
+    # (mode, normalized coordinate, base-level value per axis, mip value per axis)
+    samples = (
+        (wp.TextureAddressMode.WRAP, [0.0, 1.25, 1.5, 2.0], [1.0, 4.0, 9.0, 1.0], [2.5, 2.5, 12.5, 2.5]),
+        (wp.TextureAddressMode.MIRROR, [0.0, 1.25, 1.5, 2.0], [1.0, 9.0, 4.0, 1.0], [2.5, 12.5, 2.5, 2.5]),
+    )
+    for ndim, (texture_type, position_type, kernel) in enumerate(cases, start=1):
+        data = np.prod(np.indices((4,) * ndim, dtype=np.float32) + 1.0, axis=0) ** 2
+        for normalized in (False, True):
+            if not normalized and wp.get_device(device).is_cuda:
+                continue  # CUDA periodic addressing and mipmapping require normalized coordinates.
+            for mode, coordinates, base_values, mip_values in samples:
+                with test.subTest(ndim=ndim, normalized=normalized, mode=mode):
+                    tex = texture_type(
+                        data,
+                        address_mode=mode,
+                        normalized_coords=normalized,
+                        filter_mode=wp.TextureFilterMode.CLOSEST,
+                        num_mip_levels=2,
+                        device=device,
+                    )
+                    points = np.repeat(
+                        np.array(
+                            [coord + offset for offset in (-512, 0, 512) for coord in coordinates], dtype=np.float32
+                        ),
+                        4,
+                    ) * (1 if normalized else 4)
+                    lods = np.tile(np.array([-1.0, 0.0, 0.5, 1.0], dtype=np.float32), len(points) // 4)
+                    base = np.repeat(np.tile(np.array(base_values) ** ndim, 3), 4)
+                    mip = np.repeat(np.tile(np.array(mip_values) ** ndim, 3), 4)
+                    n = len(points)
+                    pos = wp.array(
+                        points if ndim == 1 else np.repeat(points[:, None], ndim, axis=1),
+                        dtype=position_type,
+                        requires_grad=True,
+                        device=device,
+                    )
+                    lod = wp.array(lods, dtype=float, requires_grad=True, device=device)
+                    out = wp.zeros(n, dtype=float, requires_grad=True, device=device)
+                    with wp.Tape() as tape:
+                        wp.launch(kernel, dim=n, inputs=[tex, pos, lod], outputs=[out], device=device)
+                    tape.backward(grads={out: wp.ones_like(out)})
+                    np.testing.assert_allclose(out.numpy(), base + np.clip(lods, 0.0, 1.0) * (mip - base))
+                    np.testing.assert_array_equal(pos.grad.numpy(), 0.0)
+                    np.testing.assert_allclose(lod.grad.numpy(), np.where((lods >= 0) & (lods < 1), mip - base, 0.0))
+
+
+def test_texture_sample_grad_clamp_int_range(test, device):
+    """A clamped axis outside int32 range must preserve other-axis slopes."""
+    tex = wp.Texture2D(np.array([[0.0, 0.0], [1.0, 10.0]], dtype=np.float32), normalized_coords=False, device=device)
+    for u, slope in ((2**31, 10.0), (-(2**31), 1.0)):
+        with test.subTest(u=u):
+            coords = [[u, u, u], [0.75, 1.0, 1.25]]
+            values = _forward_values(sample_grad_2d_scalar_f, tex, coords, float, device)
+            du, dv = _tape_gradients(sample_grad_2d_scalar_f, tex, coords, float, device)
+            np.testing.assert_allclose(values, np.array([0.25, 0.5, 0.75]) * slope)
+            np.testing.assert_array_equal(du, 0.0)
+            np.testing.assert_allclose(dv, slope)
+            np.testing.assert_allclose(dv[1], (values[2] - values[0]) / 0.5)
+
+
+def test_texture_sample_grad_large_coordinates(test, device):
+    """Large finite coordinates agree with equivalent bounded sampling positions."""
+    magnitudes = np.array(
+        [16.0, 2**23, 2**31 - 128, 2**31, 2**31 + 256, 1e20, np.finfo(np.float32).max], dtype=np.float32
+    )
+    coordinates = np.concatenate((magnitudes, -magnitudes))
+    cases = (
+        (wp.Texture1D, float, sample_grad_1d_lod_f),
+        (wp.Texture2D, wp.vec2f, sample_grad_2d_lod_f),
+        (wp.Texture3D, wp.vec3f, sample_grad_3d_lod_f),
+    )
+    for ndim, (texture_type, position_type, kernel) in enumerate(cases, start=1):
+        for size in (2, 3):
+            shape = (size,) * ndim
+            data = np.prod(np.indices(shape, dtype=np.float32) + 1.0, axis=0) ** 2
+            for mode in _GRAD_ADDRESS_MODES:
+                for normalized in (False, True):
+                    # CUDA uses CLAMP for unnormalized WRAP/MIRROR coordinates.
+                    periodic = mode in (wp.TextureAddressMode.WRAP, wp.TextureAddressMode.MIRROR) and (
+                        normalized or wp.get_device(device).is_cpu
+                    )
+                    points = []
+                    for axis in range(ndim):
+                        for coord in coordinates:
+                            point = np.full(ndim, 1.0 / size if normalized else 1.0, dtype=np.float32)
+                            point[axis] = coord
+                            bounded = point.copy()
+                            if periodic:
+                                period = (1 if normalized else size) * (
+                                    2 if mode == wp.TextureAddressMode.MIRROR else 1
+                                )
+                                bounded[axis] = float(coord) % period
+                            else:
+                                bounded[axis] = np.copysign(2.0 * (1 if normalized else size), coord)
+                            points.extend((point, bounded))
+                    points = np.array(points, dtype=np.float32)
+                    # Exercise disabled, integer, fractional, and clamped LODs.
+                    lods = np.repeat(np.array([-1.0, 0.0, 0.5, 1.0, 1e38], dtype=np.float32), len(points))
+                    points = np.tile(points, (5, 1))
+                    n = len(points)
+                    for spatial_filter in wp.TextureFilterMode:
+                        for mip_filter in wp.TextureFilterMode:
+                            with test.subTest(
+                                ndim=ndim,
+                                size=size,
+                                mode=mode,
+                                normalized=normalized,
+                                spatial_filter=spatial_filter,
+                                mip_filter=mip_filter,
+                            ):
+                                tex = texture_type(
+                                    data,
+                                    address_mode=mode,
+                                    normalized_coords=normalized,
+                                    filter_mode=spatial_filter,
+                                    mip_filter_mode=mip_filter,
+                                    num_mip_levels=2 if normalized or wp.get_device(device).is_cpu else 1,
+                                    device=device,
+                                )
+                                pos = wp.array(
+                                    points[:, 0] if ndim == 1 else points,
+                                    dtype=position_type,
+                                    requires_grad=True,
+                                    device=device,
+                                )
+                                lod = wp.array(lods, dtype=float, requires_grad=True, device=device)
+                                out = wp.zeros(n, dtype=float, requires_grad=True, device=device)
+                                with wp.Tape() as tape:
+                                    wp.launch(kernel, dim=n, inputs=[tex, pos, lod], outputs=[out], device=device)
+                                tape.backward(grads={out: wp.ones_like(out)})
+                                for actual in (out.numpy(), pos.grad.numpy(), lod.grad.numpy()):
+                                    test.assertTrue(np.all(np.isfinite(actual)))
+                                    np.testing.assert_allclose(actual[::2], actual[1::2], rtol=1e-6, atol=1e-6)
+
+
+def test_texture_sample_grad_large_coordinates_multichannel(test, device):
+    """Clamped axes preserve weighted channel gradients with mixed address modes."""
+    cases = (
+        (wp.Texture1D, float, wp.vec2f, sample_grad_1d_v2, (3,)),
+        (wp.Texture2D, wp.vec2f, wp.vec2f, sample_grad_2d_v2, (3, 5)),
+        (wp.Texture3D, wp.vec3f, wp.vec4f, sample_grad_3d_v4, (3, 3, 5)),
+    )
+    for texture_type, position_type, out_dtype, kernel, shape in cases:
+        ndim = len(shape)
+        channels = out_dtype._length_
+        seed = np.array([1.0, -0.5, 2.0, 0.25][:channels], dtype=np.float32)
+        data = np.prod(np.indices(shape, dtype=np.float32) + 1.0, axis=0)
+        data = data[..., None] * np.arange(1, channels + 1, dtype=np.float32)
+        for dtype in (np.float32, np.float16, np.uint8, np.int16):
+            for axis in range(ndim):
+                modes = [wp.TextureAddressMode.WRAP, wp.TextureAddressMode.BORDER, wp.TextureAddressMode.MIRROR][:ndim]
+                modes[axis] = wp.TextureAddressMode.CLAMP
+                for sign in (-1.0, 1.0):
+                    with test.subTest(ndim=ndim, dtype=dtype, axis=axis, sign=sign):
+                        tex = texture_type(data.astype(dtype), address_mode=tuple(modes), device=device)
+                        points = np.full((2, ndim), 0.375, dtype=np.float32)
+                        points[:, axis] = [sign * np.finfo(np.float32).max, sign * 2.0]
+                        pos = wp.array(
+                            points[:, 0] if ndim == 1 else points,
+                            dtype=position_type,
+                            requires_grad=True,
+                            device=device,
+                        )
+                        out = wp.zeros(2, dtype=out_dtype, requires_grad=True, device=device)
+                        with wp.Tape() as tape:
+                            wp.launch(kernel, dim=2, inputs=[tex, pos], outputs=[out], device=device)
+                        out.grad = wp.array(np.tile(seed, (2, 1)), dtype=out_dtype, device=device)
+                        tape.backward()
+                        np.testing.assert_allclose(out.numpy()[0], out.numpy()[1])
+                        grads = pos.grad.numpy().reshape(2, ndim)
+                        test.assertTrue(np.all(np.isfinite(grads)))
+                        np.testing.assert_allclose(grads[0], grads[1])
+                        np.testing.assert_array_equal(grads[:, axis], 0.0)
+
+
+def test_texture_sample_grad_periodic_coordinates(test, device):
+    """Preserve gradients across large positive and negative texture periods."""
+    size = 16384
+    coordinates = np.array([0.125, 512.125, -511.875, 1.875, 513.875, -510.125], dtype=np.float32)
+    cases = (
+        (wp.Texture1D, float, sample_grad_1d_lod_f),
+        (wp.Texture2D, wp.vec2f, sample_grad_2d_lod_f),
+        (wp.Texture3D, wp.vec3f, sample_grad_3d_lod_f),
+    )
+    for ndim, (texture_type, position_type, kernel) in enumerate(cases, start=1):
+        for axis in range(ndim):
+            shape = [4] * ndim
+            shape[ndim - axis - 1] = size
+            ramp_shape = [1] * ndim
+            ramp_shape[ndim - axis - 1] = size
+            data = np.broadcast_to((np.arange(size, dtype=np.float32) % 4).reshape(ramp_shape), shape).copy()
+            for mode in (wp.TextureAddressMode.WRAP, wp.TextureAddressMode.MIRROR):
+                modes = [wp.TextureAddressMode.CLAMP] * ndim
+                modes[axis] = mode
+                for num_levels, level, slope in ((1, -1.0, -3.0 * size), (3, 0.5, -2.0 * size)):
+                    with test.subTest(ndim=ndim, axis=axis, mode=mode, lod=level):
+                        tex = texture_type(
+                            data,
+                            address_mode=tuple(modes),
+                            normalized_coords=True,
+                            num_mip_levels=num_levels,
+                            device=device,
+                        )
+                        positions = np.full((len(coordinates), ndim), 0.5, dtype=np.float32)
+                        positions[:, axis] = coordinates
+                        pos = wp.array(
+                            positions.reshape(-1) if ndim == 1 else positions,
+                            dtype=position_type,
+                            requires_grad=True,
+                            device=device,
+                        )
+                        lod = wp.full(len(coordinates), level, dtype=float, requires_grad=True, device=device)
+                        out = wp.zeros(len(coordinates), dtype=float, requires_grad=True, device=device)
+                        with wp.Tape() as tape:
+                            wp.launch(
+                                kernel, dim=len(coordinates), inputs=[tex, pos, lod], outputs=[out], device=device
+                            )
+                        tape.backward(grads={out: wp.ones_like(out)})
+                        expected = np.zeros_like(positions)
+                        expected[:, axis] = slope
+                        if mode == wp.TextureAddressMode.MIRROR:
+                            expected[3:, axis] *= -1
+                        np.testing.assert_array_equal(out.numpy(), np.full(len(coordinates), 1.5))
+                        np.testing.assert_array_equal(pos.grad.numpy().reshape(positions.shape), expected)
+                        np.testing.assert_array_equal(lod.grad.numpy(), np.zeros(len(coordinates)))
+
+
+def test_texture_sample_grad_closest_zero(test, device):
+    """CLOSEST filtering is piecewise constant: coordinate gradients are zero."""
+    data = np.arange(1, 9, dtype=np.float32)
+    for address_mode in _GRAD_ADDRESS_MODES:
+        tex = wp.Texture1D(
+            data,
+            normalized_coords=False,
+            filter_mode=wp.TextureFilterMode.CLOSEST,
+            address_mode=address_mode,
+            device=device,
+        )
+        (g,) = _tape_gradients(sample_grad_1d_f, tex, [[3.3]], float, device)
+        test.assertEqual(g[0], 0.0)
+
+
+def test_texture_sample_grad_1d_multichannel(test, device):
+    """Vector sample adjoints weight each channel by the output adjoint."""
+    width = 8
+    rng = np.random.default_rng(1)
+    for num_channels, out_dtype, kernel in ((2, wp.vec2f, sample_grad_1d_v2), (4, wp.vec4f, sample_grad_1d_v4)):
+        seed = np.linspace(-1.5, 2.0, num_channels, dtype=np.float32)[None, :]
+        data = rng.standard_normal((width, num_channels)).astype(np.float32)
+        tex = wp.Texture1D(
+            data,
+            normalized_coords=False,
+            filter_mode=wp.TextureFilterMode.LINEAR,
+            address_mode=wp.TextureAddressMode.CLAMP,
+            device=device,
+        )
+        for u in (0.2, 3.25, 6.8):
+            h = 0.25
+            f = _forward_values(kernel, tex, [[u - h, u + h]], out_dtype, device)
+            fd = (f[1] - f[0]) / (2.0 * h)  # per-channel slopes
+            (g,) = _tape_gradients(kernel, tex, [[u]], out_dtype, device, out_grad=seed)
+            np.testing.assert_allclose(g[0], np.dot(seed[0], fd), rtol=_GRAD_FD_TOL, atol=_GRAD_FD_TOL)
+
+
+def test_texture_sample_grad_multichannel_dimensions(test, device):
+    """Instantiate 2D and 3D vector-return adjoints with asymmetric seeds."""
+    rng = np.random.default_rng(6)
+    cases = (
+        (
+            sample_grad_2d_v2,
+            wp.Texture2D(rng.standard_normal((6, 8, 2)).astype(np.float32), normalized_coords=False, device=device),
+            wp.vec2f,
+            wp.vec2f,
+            np.array([3.25, 2.75], dtype=np.float32),
+            np.array([[-2.0, 0.5]], dtype=np.float32),
+        ),
+        (
+            sample_grad_3d_v4,
+            wp.Texture3D(rng.standard_normal((4, 6, 8, 4)).astype(np.float32), normalized_coords=False, device=device),
+            wp.vec3f,
+            wp.vec4f,
+            np.array([3.25, 2.75, 1.25], dtype=np.float32),
+            np.array([[0.0, -1.0, 2.0, 0.5]], dtype=np.float32),
+        ),
+    )
+
+    for kernel, tex, position_type, out_dtype, point, seed in cases:
+        num_dims = len(point)
+        expected = []
+        for axis in range(num_dims):
+            lo = point.copy()
+            hi = point.copy()
+            lo[axis] -= 0.25
+            hi[axis] += 0.25
+            pos = wp.array([lo, hi], dtype=position_type, device=device)
+            out = wp.zeros(2, dtype=out_dtype, device=device)
+            wp.launch(kernel, dim=2, inputs=[tex, pos], outputs=[out], device=device)
+            channel_slopes = (out.numpy()[1] - out.numpy()[0]) / 0.5
+            expected.append(np.dot(seed[0], channel_slopes))
+
+        pos = wp.array([point], dtype=position_type, requires_grad=True, device=device)
+        out = wp.zeros(1, dtype=out_dtype, requires_grad=True, device=device)
+        tape = wp.Tape()
+        with tape:
+            wp.launch(kernel, dim=1, inputs=[tex, pos], outputs=[out], device=device)
+        out.grad = wp.array(seed, dtype=out_dtype, device=device)
+        tape.backward()
+        np.testing.assert_allclose(pos.grad.numpy()[0], expected, rtol=_GRAD_FD_TOL, atol=_GRAD_FD_TOL)
+
+
+def test_texture_sample_grad_2d(test, device):
+    """2D vec2 and scalar-coordinate overloads match finite differences per axis."""
+    height, width = 6, 8
+    rng = np.random.default_rng(2)
+    data = rng.standard_normal((height, width)).astype(np.float32)
+
+    points = ((3.25, 2.75), (0.25, 0.25), (7.75, 5.75), (-0.25, 4.25))
+
+    for address_mode in _GRAD_ADDRESS_MODES:
+        # WRAP and MIRROR run with normalized coordinates because CUDA treats
+        # them as CLAMP otherwise.
+        normalized = address_mode in (wp.TextureAddressMode.WRAP, wp.TextureAddressMode.MIRROR)
+        su = 1.0 / width if normalized else 1.0
+        sv = 1.0 / height if normalized else 1.0
+        tex = wp.Texture2D(
+            data,
+            normalized_coords=normalized,
+            filter_mode=wp.TextureFilterMode.LINEAR,
+            address_mode=address_mode,
+            device=device,
+        )
+        for u_texel, v_texel in points:
+            u, v = u_texel * su, v_texel * sv
+            hu, hv = 0.25 * su, 0.25 * sv
+            fu = _forward_values(sample_grad_2d_scalar_f, tex, [[u - hu, u + hu], [v, v]], float, device)
+            fv = _forward_values(sample_grad_2d_scalar_f, tex, [[u, u], [v - hv, v + hv]], float, device)
+            fd = ((fu[1] - fu[0]) / (2.0 * hu), (fv[1] - fv[0]) / (2.0 * hv))
+
+            # scalar-coordinate overload
+            gu, gv = _tape_gradients(sample_grad_2d_scalar_f, tex, [[u], [v]], float, device)
+            np.testing.assert_allclose(
+                (gu[0], gv[0]),
+                fd,
+                rtol=_GRAD_FD_TOL,
+                atol=_GRAD_FD_TOL,
+                err_msg=f"mode={address_mode.name} u_texel={u_texel} v_texel={v_texel}",
+            )
+
+            # vec2 overload
+            pos = wp.array([wp.vec2f(u, v)], dtype=wp.vec2f, requires_grad=True, device=device)
+            out = wp.zeros(1, dtype=float, requires_grad=True, device=device)
+            tape = wp.Tape()
+            with tape:
+                wp.launch(sample_grad_2d_f, dim=1, inputs=[tex, pos], outputs=[out], device=device)
+            out.grad = wp.ones(1, dtype=float, device=device)
+            tape.backward()
+            np.testing.assert_allclose(pos.grad.numpy()[0], fd, rtol=_GRAD_FD_TOL, atol=_GRAD_FD_TOL)
+
+
+def test_texture_sample_grad_3d(test, device):
+    """3D vec3 and scalar-coordinate overloads match finite differences per axis."""
+    depth, height, width = 4, 6, 8
+    rng = np.random.default_rng(3)
+    data = rng.standard_normal((depth, height, width)).astype(np.float32)
+
+    points = ((3.25, 2.75, 1.25), (0.25, 0.25, 3.75), (7.75, 5.75, 0.75))
+
+    for address_mode in _GRAD_ADDRESS_MODES:
+        # WRAP and MIRROR run with normalized coordinates because CUDA treats
+        # them as CLAMP otherwise.
+        normalized = address_mode in (wp.TextureAddressMode.WRAP, wp.TextureAddressMode.MIRROR)
+        scales = (1.0 / width, 1.0 / height, 1.0 / depth) if normalized else (1.0, 1.0, 1.0)
+        tex = wp.Texture3D(
+            data,
+            normalized_coords=normalized,
+            filter_mode=wp.TextureFilterMode.LINEAR,
+            address_mode=address_mode,
+            device=device,
+        )
+        for point_texel in points:
+            coords = tuple(c * s for c, s in zip(point_texel, scales, strict=True))
+            u, v, w = coords
+            fd = []
+            for axis in range(3):
+                h = 0.25 * scales[axis]
+                lo = list(coords)
+                hi = list(coords)
+                lo[axis] -= h
+                hi[axis] += h
+                f = _forward_values(
+                    sample_grad_3d_scalar_f,
+                    tex,
+                    [[lo[0], hi[0]], [lo[1], hi[1]], [lo[2], hi[2]]],
+                    float,
+                    device,
+                )
+                fd.append((f[1] - f[0]) / (2.0 * h))
+
+            gu, gv, gw = _tape_gradients(sample_grad_3d_scalar_f, tex, [[u], [v], [w]], float, device)
+            np.testing.assert_allclose(
+                (gu[0], gv[0], gw[0]),
+                fd,
+                rtol=_GRAD_FD_TOL,
+                atol=_GRAD_FD_TOL,
+                err_msg=f"mode={address_mode.name} point_texel={point_texel}",
+            )
+
+            pos = wp.array([wp.vec3f(u, v, w)], dtype=wp.vec3f, requires_grad=True, device=device)
+            out = wp.zeros(1, dtype=float, requires_grad=True, device=device)
+            tape = wp.Tape()
+            with tape:
+                wp.launch(sample_grad_3d_f, dim=1, inputs=[tex, pos], outputs=[out], device=device)
+            out.grad = wp.ones(1, dtype=float, device=device)
+            tape.backward()
+            np.testing.assert_allclose(pos.grad.numpy()[0], fd, rtol=_GRAD_FD_TOL, atol=_GRAD_FD_TOL)
+
+
+def test_texture_sample_grad_lod(test, device):
+    """Mipmapped gradients: per-level coordinate slopes and the LOD gradient.
+
+    Sample points are chosen so the finite-difference stencil (h = 0.125 base
+    texels) stays inside one interpolation cell at every mip level.
+    """
+    width = 16
+    rng = np.random.default_rng(4)
+    data = rng.standard_normal(width).astype(np.float32)
+
+    points_texel = (3.3, 5.2, 10.2)
+    lods = (-0.5, 0.0, 0.5, 1.0, 1.25, 1.75, 2.0, 2.5)
+
+    for mip_filter_mode in (wp.TextureFilterMode.LINEAR, wp.TextureFilterMode.CLOSEST):
+        tex = wp.Texture1D(
+            data,
+            normalized_coords=True,
+            filter_mode=wp.TextureFilterMode.LINEAR,
+            mip_filter_mode=mip_filter_mode,
+            address_mode=wp.TextureAddressMode.CLAMP,
+            num_mip_levels=3,  # widths 16, 8, 4
+            device=device,
+        )
+        for lod in lods:
+            for u_texel in points_texel:
+                u = u_texel / width
+                h = 0.125 / width
+
+                f = _forward_values(sample_grad_1d_lod_f, tex, [[u - h, u + h], [lod, lod]], float, device)
+                fd_u = (f[1] - f[0]) / (2.0 * h)
+                gu, glod = _tape_gradients(sample_grad_1d_lod_f, tex, [[u], [lod]], float, device)
+                np.testing.assert_allclose(
+                    gu[0],
+                    fd_u,
+                    rtol=_GRAD_MIP_FD_TOL,
+                    atol=_GRAD_MIP_FD_TOL,
+                    err_msg=f"mip={mip_filter_mode.name} lod={lod} u_texel={u_texel}",
+                )
+
+                if mip_filter_mode == wp.TextureFilterMode.LINEAR:
+                    hl = 0.125
+                    if lod < 0.0 or lod >= 2.0:
+                        test.assertEqual(glod[0], 0.0, f"clamped LOD gradient should be zero at lod={lod}")
+                    elif lod % 1.0 == 0.0:
+                        # At an interior integer LOD, the adjoint returns the
+                        # derivative of the mip interval to its right.
+                        f = _forward_values(sample_grad_1d_lod_f, tex, [[u, u], [lod, lod + hl]], float, device)
+                        fd_lod = (f[1] - f[0]) / hl
+                        np.testing.assert_allclose(
+                            glod[0],
+                            fd_lod,
+                            rtol=_GRAD_MIP_FD_TOL,
+                            atol=_GRAD_MIP_FD_TOL,
+                            err_msg=f"right-hand LOD gradient at lod={lod} u_texel={u_texel}",
+                        )
+                    else:
+                        f = _forward_values(sample_grad_1d_lod_f, tex, [[u, u], [lod - hl, lod + hl]], float, device)
+                        fd_lod = (f[1] - f[0]) / (2.0 * hl)
+                        np.testing.assert_allclose(
+                            glod[0],
+                            fd_lod,
+                            rtol=_GRAD_MIP_FD_TOL,
+                            atol=_GRAD_MIP_FD_TOL,
+                            err_msg=f"lod gradient at lod={lod} u_texel={u_texel}",
+                        )
+                else:
+                    # CLOSEST mip filter: piecewise constant in lod
+                    test.assertEqual(glod[0], 0.0, f"lod gradient should be zero at lod={lod}")
+
+
+def test_texture_sample_grad_texture_array(test, device):
+    """Different texture handles per lane produce correct coordinate and LOD gradients."""
+    rng = np.random.default_rng(7)
+    num_textures = 4
+    size = 8
+
+    cases = (
+        (
+            wp.Texture2D,
+            wp.vec2f,
+            sample_grad_2d_lod_f,
+            sample_grad_texture2d_array_kernels,
+            (num_textures, size, size),
+            np.array([[0.28, 0.28], [0.34, 0.34], [0.42, 0.42], [0.46, 0.46]], dtype=np.float32),
+        ),
+        (
+            wp.Texture3D,
+            wp.vec3f,
+            sample_grad_3d_lod_f,
+            sample_grad_texture3d_array_kernels,
+            (num_textures, size, size, size),
+            np.array(
+                [[0.28, 0.28, 0.28], [0.34, 0.34, 0.34], [0.42, 0.42, 0.42], [0.46, 0.46, 0.46]],
+                dtype=np.float32,
+            ),
+        ),
+    )
+
+    for texture_type, position_type, uniform_kernel, kernels, data_shape, positions in cases:
+        texture_data = rng.standard_normal(data_shape).astype(np.float32)
+        textures = [
+            texture_type(
+                texture_data[i],
+                normalized_coords=True,
+                num_mip_levels=3,
+                filter_mode=wp.TextureFilterMode.LINEAR,
+                mip_filter_mode=wp.TextureFilterMode.LINEAR,
+                device=device,
+            )
+            for i in range(num_textures)
+        ]
+        texture_array = wp.array(textures, dtype=texture_type, device=device)
+        lods = np.array([0.35, 0.65, 1.25, 1.65], dtype=np.float32)
+
+        for optimization_level, kernel in kernels.items():
+            with test.subTest(texture_type=texture_type.__name__, optimization_level=optimization_level):
+
+                def forward(
+                    sample_positions,
+                    sample_lods,
+                    position_type=position_type,
+                    kernel=kernel,
+                    texture_array=texture_array,
+                ):
+                    """Sample all texture handles at the supplied positions and LODs."""
+                    position_array = wp.array(sample_positions, dtype=position_type, device=device)
+                    lod_array = wp.array(sample_lods, dtype=float, device=device)
+                    out = wp.zeros(num_textures, dtype=float, device=device)
+                    wp.launch(
+                        kernel,
+                        dim=num_textures,
+                        inputs=[texture_array, position_array, lod_array],
+                        outputs=[out],
+                        device=device,
+                    )
+                    return out.numpy()
+
+                h = 0.125 / size
+                expected_position_grad = np.empty_like(positions)
+                for axis in range(positions.shape[1]):
+                    lo = positions.copy()
+                    hi = positions.copy()
+                    lo[:, axis] -= h
+                    hi[:, axis] += h
+                    expected_position_grad[:, axis] = (forward(hi, lods) - forward(lo, lods)) / (2.0 * h)
+
+                hl = 0.125
+                expected_lod_grad = (forward(positions, lods + hl) - forward(positions, lods - hl)) / (2.0 * hl)
+
+                if device.is_cuda:
+                    # CUDA texture interpolation uses fixed-point fractions, so
+                    # finite differences can include quantization steps. Compare
+                    # divergent array handles with the same adjoint run once per
+                    # uniform texture handle instead.
+                    for i, texture in enumerate(textures):
+                        reference_position = wp.array(
+                            positions[i : i + 1], dtype=position_type, requires_grad=True, device=device
+                        )
+                        reference_lod = wp.array(lods[i : i + 1], dtype=float, requires_grad=True, device=device)
+                        reference_out = wp.zeros(1, dtype=float, requires_grad=True, device=device)
+                        reference_tape = wp.Tape()
+                        with reference_tape:
+                            wp.launch(
+                                uniform_kernel,
+                                dim=1,
+                                inputs=[texture, reference_position, reference_lod],
+                                outputs=[reference_out],
+                                device=device,
+                            )
+                        reference_out.grad = wp.ones(1, dtype=float, device=device)
+                        reference_tape.backward()
+                        expected_position_grad[i] = reference_position.grad.numpy()[0]
+                        expected_lod_grad[i] = reference_lod.grad.numpy()[0]
+
+                position_array = wp.array(positions, dtype=position_type, requires_grad=True, device=device)
+                lod_array = wp.array(lods, dtype=float, requires_grad=True, device=device)
+                out = wp.zeros(num_textures, dtype=float, requires_grad=True, device=device)
+                tape = wp.Tape()
+                with tape:
+                    wp.launch(
+                        kernel,
+                        dim=num_textures,
+                        inputs=[texture_array, position_array, lod_array],
+                        outputs=[out],
+                        device=device,
+                    )
+                out.grad = wp.ones(num_textures, dtype=float, device=device)
+                tape.backward()
+
+                np.testing.assert_allclose(
+                    position_array.grad.numpy(), expected_position_grad, rtol=_GRAD_MIP_FD_TOL, atol=_GRAD_MIP_FD_TOL
+                )
+                np.testing.assert_allclose(
+                    lod_array.grad.numpy(), expected_lod_grad, rtol=_GRAD_MIP_FD_TOL, atol=_GRAD_MIP_FD_TOL
+                )
+
+
+def test_texture_sample_grad_struct_member(test, device):
+    """Gradients flow through a texture held inside a wp.struct (interop pattern)."""
+    depth, height, width = 4, 4, 4
+    rng = np.random.default_rng(5)
+    data = rng.standard_normal((depth, height, width)).astype(np.float32)
+
+    subject = TextureGradSubject()
+    subject.tex = wp.Texture3D(
+        data,
+        normalized_coords=False,
+        filter_mode=wp.TextureFilterMode.LINEAR,
+        address_mode=wp.TextureAddressMode.BORDER,
+        device=device,
+    )
+
+    u, v, w = 1.25, 2.2, 0.8
+    h = 0.25
+    fd = []
+    for axis in range(3):
+        lo = [u, v, w]
+        hi = [u, v, w]
+        lo[axis] -= h
+        hi[axis] += h
+        pos = wp.array([wp.vec3f(*lo), wp.vec3f(*hi)], dtype=wp.vec3f, device=device)
+        out = wp.zeros(2, dtype=float, device=device)
+        wp.launch(sample_grad_struct_3d_f, dim=2, inputs=[subject, pos], outputs=[out], device=device)
+        f = out.numpy()
+        fd.append((f[1] - f[0]) / (2.0 * h))
+
+    pos = wp.array([wp.vec3f(u, v, w)], dtype=wp.vec3f, requires_grad=True, device=device)
+    out = wp.zeros(1, dtype=float, requires_grad=True, device=device)
+    tape = wp.Tape()
+    with tape:
+        wp.launch(sample_grad_struct_3d_f, dim=1, inputs=[subject, pos], outputs=[out], device=device)
+    out.grad = wp.ones(1, dtype=float, device=device)
+    tape.backward()
+    np.testing.assert_allclose(pos.grad.numpy()[0], fd, rtol=_GRAD_FD_TOL, atol=_GRAD_FD_TOL)
+
+
+# ============================================================================
 # Test Class
 # ============================================================================
 
 
+def test_texture_sample_grad_zero_seeds(test, device):
+    """Inactive channels do not propagate overflowing coordinate differences."""
+    cases = (
+        (wp.Texture1D, float, float, sample_grad_1d_f),
+        (wp.Texture1D, float, wp.vec2f, sample_grad_1d_v2),
+        (wp.Texture1D, float, wp.vec4f, sample_grad_1d_v4),
+        (wp.Texture2D, wp.vec2f, float, sample_grad_2d_f),
+        (wp.Texture2D, wp.vec2f, wp.vec2f, sample_grad_2d_v2),
+        (wp.Texture3D, wp.vec3f, float, sample_grad_3d_f),
+        (wp.Texture3D, wp.vec3f, wp.vec4f, sample_grad_3d_v4),
+    )
+    large = np.float32(2.0**127)
+    for texture_type, position_type, out_dtype, kernel in cases:
+        ndim = 1 if position_type is float else position_type._length_
+        channels = 1 if out_dtype is float else out_dtype._length_
+        shape = (2,) * ndim
+        edge = np.broadcast_to(np.array([-large, large], dtype=np.float32), shape).copy()
+        data = edge if channels == 1 else np.repeat(edge[..., None], channels, axis=-1)
+        seed_cases = [("zero_seed", np.zeros(channels, dtype=np.float32), 0.0)]
+        if channels > 1:
+            # One ordinary channel remains active while the other channels have
+            # zero seeds and differences that overflow float32.
+            data[..., 1] = np.broadcast_to(np.array([0.0, 1.0], dtype=np.float32), shape)
+            seed = np.zeros(channels, dtype=np.float32)
+            seed[1] = 1.0
+            seed_cases.append(("inactive_large_channels", seed, 1.0))
+        tex = texture_type(data, normalized_coords=False, device=device)
+        for name, seed, expected_u in seed_cases:
+            with test.subTest(ndim=ndim, channels=channels, case=name):
+                positions = [1.0] if ndim == 1 else [[1.0] * ndim]
+                pos = wp.array(positions, dtype=position_type, requires_grad=True, device=device)
+                out = wp.zeros(1, dtype=out_dtype, requires_grad=True, device=device)
+                with wp.Tape() as tape:
+                    wp.launch(kernel, dim=1, inputs=[tex, pos], outputs=[out], device=device)
+                seeds = seed.reshape(1, channels)
+                out_grad = wp.array(seeds[:, 0] if channels == 1 else seeds, dtype=out_dtype, device=device)
+                tape.backward(grads={out: out_grad})
+                np.testing.assert_array_equal(pos.grad.numpy().reshape(ndim), [expected_u] + [0.0] * (ndim - 1))
+
+
+def test_texture_sample_grad_moderate_cancellation(test, device):
+    """Weight ordinary channel and mip contributions with varying lane inputs."""
+    line = np.array([-5.0, 1.0, -1.0, 5.0], dtype=np.float32)
+    scales = np.array([0.125, 1.0, 4.0, 16.0], dtype=np.float32)
+    seed_choices = np.array([0.25, 0.5, 1.0, 2.0], dtype=np.float32)
+    lod_choices = np.array([-1.0, 0.0, 0.125, 0.25, 0.5, 0.75, 0.875, 1.0], dtype=np.float32)
+    # Dyadic inputs keep the reference differences representable in float32.
+    count = 32
+    lod_values = np.resize(lod_choices, count)
+    seeds = np.resize(seed_choices, count)
+    a = np.resize(scales, count)
+    b = a * np.float32(31.0 / 32.0)
+    # At these points, the base and next-mip U/V slopes are opposite.
+    # Their LOD difference is b-a, despite much larger corner contributions.
+    factor = 16.0 * np.maximum(lod_values.astype(np.float64), 0.0) - 8.0
+    expected_coords = np.column_stack((a.astype(np.float64) * factor, b.astype(np.float64) * factor))
+    expected_coords *= seeds.astype(np.float64)[:, None]
+    expected_lod = seeds.astype(np.float64) * (b.astype(np.float64) - a.astype(np.float64))
+    expected_lod[(lod_values < 0) | (lod_values >= 1)] = 0.0
+
+    for ndim, texture_type, position_type, kernels in (
+        (2, wp.Texture2D, wp.vec2f, sample_grad_texture2d_array_kernels),
+        (3, wp.Texture3D, wp.vec3f, sample_grad_texture3d_array_kernels),
+    ):
+        with test.subTest(ndim=ndim):
+            textures = []
+            for ax, by in zip(a, b, strict=True):
+                plane = ax * line[None, :] + by * line[:, None]
+                data = plane if ndim == 2 else np.broadcast_to(plane, (4, 4, 4)).copy()
+                textures.append(texture_type(data, normalized_coords=True, num_mip_levels=2, device=device))
+            texture_array = wp.array(textures, dtype=texture_type, device=device)
+            points = np.tile([0.4375, 0.5625, 0.5][:ndim], (count, 1)).astype(np.float32)
+            pos = wp.array(points, dtype=position_type, requires_grad=True, device=device)
+            lod = wp.array(lod_values, dtype=float, requires_grad=True, device=device)
+            out = wp.zeros(count, dtype=float, requires_grad=True, device=device)
+            with wp.Tape() as tape:
+                wp.launch(kernels[3], dim=count, inputs=[texture_array, pos, lod], outputs=[out], device=device)
+            tape.backward(grads={out: wp.array(seeds, dtype=float, device=device)})
+            expected = expected_coords if ndim == 2 else np.column_stack((expected_coords, np.zeros(count)))
+            np.testing.assert_allclose(pos.grad.numpy(), expected, rtol=1e-6, atol=0.0)
+            np.testing.assert_allclose(lod.grad.numpy(), expected_lod, rtol=1e-6, atol=0.0)
+
+    # Opposing channels cancel before the remaining small channels contribute.
+    plane = np.float32(32.0) * line[None, :] + np.float32(31.0) * line[:, None]
+    channel_scales = np.array([1.0, -1.0, 0.25, -0.25], dtype=np.float32)
+    data = np.broadcast_to(plane[..., None] * channel_scales, (4, 4, 4, 4)).copy()
+    tex = wp.Texture3D(data, normalized_coords=True, num_mip_levels=2, device=device)
+    channel_seeds = np.array(
+        [
+            [1.0, 1.0, 1.0, 0.0],
+            [1.0, 0.5, 1.0, -1.0],
+            [2.0, 2.0, 0.25, 0.25],
+            [2.0, 1.0, 1.0, 1.0],
+        ],
+        dtype=np.float32,
+    )
+    weights = np.resize(channel_seeds, (count, 4))
+    contraction = weights.astype(np.float64) @ channel_scales.astype(np.float64)
+    pos = wp.array(np.tile([0.4375, 0.5625, 0.5], (count, 1)), dtype=wp.vec3f, requires_grad=True, device=device)
+    lod = wp.array(lod_values, dtype=float, requires_grad=True, device=device)
+    out = wp.zeros(count, dtype=wp.vec4f, requires_grad=True, device=device)
+    with wp.Tape() as tape:
+        wp.launch(sample_grad_3d_lod_v4, dim=count, inputs=[tex, pos, lod], outputs=[out], device=device)
+    tape.backward(grads={out: wp.array(weights, dtype=wp.vec4f, device=device)})
+    expected = contraction[:, None] * factor[:, None] * np.array([32.0, 31.0, 0.0])
+    expected_lod = -contraction
+    expected_lod[(lod_values < 0) | (lod_values >= 1)] = 0.0
+    np.testing.assert_allclose(pos.grad.numpy(), expected, rtol=1e-6, atol=0.0)
+    np.testing.assert_allclose(lod.grad.numpy(), expected_lod, rtol=1e-6, atol=0.0)
+
+
 class TestTexture(unittest.TestCase):
-    pass
+    def test_texture_cpu_large_dimensions(self):
+        """Address extreme CPU dimensions without allocating their texel storage."""
+
+        @wp.func_native("""
+            float fraction;
+            const wp::int64 cell = wp::texture_grad_cell(coord, 1, size, size, mode, fraction);
+            return wp::cpu_apply_address_mode_index(cell + neighbor, size, mode);
+        """)
+        def addressed_cell(coord: float, size: int, mode: int, neighbor: int) -> wp.int64: ...
+
+        @wp.kernel(module="unique", enable_backward=False)
+        def check_cells(out: wp.array[wp.int64]):
+            neighbor = wp.tid()
+            out[neighbor] = addressed_cell(2.0, 2147483647, int(wp.TextureAddressMode.CLAMP), neighbor)
+            out[neighbor + 2] = addressed_cell(1.5, 2147483647, int(wp.TextureAddressMode.MIRROR), neighbor)
+
+        out = wp.empty(4, dtype=wp.int64, device="cpu")
+        wp.launch(check_cells, dim=2, outputs=[out], device="cpu")
+        np.testing.assert_array_equal(out.numpy(), [2147483646, 2147483646, 1073741821, 1073741820])
+
+    def test_texture_descriptor_layout(self):
+        """Keep ctypes texture descriptors aligned with their packed native layout."""
+        descriptors = (
+            (texture1d_t(1, 2, 4, 7, 1, 0, 16, 0, 0, 2, 3), 16),
+            (texture2d_t(1, 2, 3, 4, 7, 1, 0, 16, 0, 0, 2, 3), 24),
+            (texture3d_t(1, 2, 3, 4, 4, 7, 1, 0, 16, 0, 0, 2, 3), 24),
+        )
+        for descriptor, expected_size in descriptors:
+            with self.subTest(type=type(descriptor).__name__):
+                self.assertEqual(descriptor.num_channels, 4)
+                self.assertEqual(descriptor.dtype, 7)
+                self.assertEqual(descriptor.filter_mode, 1)
+                self.assertEqual(descriptor.mip_filter_mode, 0)
+                self.assertEqual(descriptor.num_mip_levels, 16)
+                self.assertEqual(descriptor.use_normalized_coords, 0)
+                self.assertEqual(descriptor.address_mode_u, 0)
+                self.assertEqual(descriptor.address_mode_v, 2)
+                self.assertEqual(descriptor.address_mode_w, 3)
+                self.assertEqual(descriptor.metadata, 0xE107C)
+                self.assertEqual(ctypes.sizeof(descriptor), expected_size)
+
+        expected_offsets = {
+            texture1d_t: {"tex": 0, "width": 8, "metadata": 12},
+            texture2d_t: {"tex": 0, "width": 8, "height": 12, "metadata": 16},
+            texture3d_t: {"tex": 0, "width": 8, "height": 12, "depth": 16, "metadata": 20},
+        }
+        for descriptor_type, offsets in expected_offsets.items():
+            for field, expected_offset in offsets.items():
+                self.assertEqual(getattr(descriptor_type, field).offset, expected_offset)
 
 
 # Register tests - textures work on both CPU and CUDA devices
@@ -3080,6 +4668,18 @@ cuda_devices = get_selected_cuda_test_devices()
 all_devices = get_test_devices()
 
 # Core texture tests - run on all devices (CPU + CUDA)
+add_function_test(
+    TestTexture,
+    "test_texture_sample_grad_zero_seeds",
+    test_texture_sample_grad_zero_seeds,
+    devices=all_devices,
+)
+add_function_test(
+    TestTexture,
+    "test_texture_sample_grad_moderate_cancellation",
+    test_texture_sample_grad_moderate_cancellation,
+    devices=all_devices,
+)
 add_function_test(TestTexture, "test_texture1d_1channel", test_texture1d_1channel, devices=all_devices)
 add_function_test(TestTexture, "test_texture1d_2channel", test_texture1d_2channel, devices=all_devices)
 add_function_test(TestTexture, "test_texture1d_4channel", test_texture1d_4channel, devices=all_devices)
@@ -3377,30 +4977,142 @@ add_function_test(
     test_texture_mipmap_invalid_levels,
     devices=all_devices,
 )
+add_function_test(
+    TestTexture,
+    "test_texture_sampling_options_are_canonical",
+    test_texture_sampling_options_are_canonical,
+    devices=all_devices,
+)
 
 # 32-bit integer texture tests - run on all devices, since the point is that CPU and CUDA agree
+add_function_test(TestTexture, "test_texture_filter_modes", test_texture_filter_modes, devices=all_devices)
 add_function_test(
     TestTexture,
-    "test_texture_sample_rejects_32bit_int",
-    test_texture_sample_rejects_32bit_int,
+    "test_texture_sample_32bit_int",
+    test_texture_sample_32bit_int,
     devices=all_devices,
+)
+add_function_test(TestTexture, "test_texture_32bit_int_mipmaps", test_texture_32bit_int_mipmaps, devices=all_devices)
+add_function_test(
+    TestTexture, "test_texture_32bit_int_struct_and_array", test_texture_32bit_int_struct_and_array, devices=all_devices
 )
 add_function_test(
     TestTexture,
-    "test_texture_32bit_int_non_sampling_kernel",
-    test_texture_32bit_int_non_sampling_kernel,
-    devices=all_devices,
-)
-add_function_test(
-    TestTexture,
-    "test_texture_sample_allows_small_int_dtypes",
-    test_texture_sample_allows_small_int_dtypes,
+    "test_texture_sample_normalizes_small_int_dtypes",
+    test_texture_sample_normalizes_small_int_dtypes,
     devices=all_devices,
 )
 add_function_test(
     TestTexture,
     "test_texture_uint32_storage_round_trip",
     test_texture_uint32_storage_round_trip,
+    devices=all_devices,
+)
+
+# Adjoint (gradient) tests - run on all devices
+add_function_test(
+    TestTexture,
+    "test_texture_sample_grad_1d_address_modes",
+    test_texture_sample_grad_1d_address_modes,
+    devices=all_devices,
+)
+add_function_test(
+    TestTexture, "test_texture_sample_grad_1d_analytic", test_texture_sample_grad_1d_analytic, devices=all_devices
+)
+add_function_test(
+    TestTexture, "test_texture_sample_grad_large_offset", test_texture_sample_grad_large_offset, devices=all_devices
+)
+add_function_test(
+    TestTexture,
+    "test_texture_sample_grad_large_offset_mip",
+    test_texture_sample_grad_large_offset_mip,
+    devices=all_devices,
+)
+add_function_test(
+    TestTexture,
+    "test_texture_sample_grad_mip_finite_range",
+    test_texture_sample_grad_mip_finite_range,
+    devices=all_devices,
+)
+add_function_test(
+    TestTexture, "test_texture_closest_border_boundaries", test_texture_closest_border_boundaries, devices=all_devices
+)
+add_function_test(
+    TestTexture,
+    "test_texture_sample_grad_periodic_coordinates",
+    test_texture_sample_grad_periodic_coordinates,
+    devices=all_devices,
+)
+add_function_test(
+    TestTexture, "test_texture_sample_grad_closest_zero", test_texture_sample_grad_closest_zero, devices=all_devices
+)
+add_function_test(
+    TestTexture,
+    "test_texture_sample_grad_1d_multichannel",
+    test_texture_sample_grad_1d_multichannel,
+    devices=all_devices,
+)
+add_function_test(
+    TestTexture,
+    "test_texture_sample_grad_multichannel_dimensions",
+    test_texture_sample_grad_multichannel_dimensions,
+    devices=all_devices,
+)
+add_function_test(
+    TestTexture,
+    "test_texture_sample_grad_clamp_int_range",
+    test_texture_sample_grad_clamp_int_range,
+    devices=all_devices,
+)
+add_function_test(
+    TestTexture,
+    "test_texture_sample_grad_large_coordinates",
+    test_texture_sample_grad_large_coordinates,
+    devices=all_devices,
+)
+add_function_test(
+    TestTexture,
+    "test_texture_sample_grad_large_coordinates_multichannel",
+    test_texture_sample_grad_large_coordinates_multichannel,
+    devices=all_devices,
+)
+add_function_test(
+    TestTexture,
+    "test_texture_sample_grad_closest_periodic_boundaries",
+    test_texture_sample_grad_closest_periodic_boundaries,
+    devices=all_devices,
+)
+add_function_test(
+    TestTexture,
+    "test_texture_sample_grad_non_power_of_two_plateau",
+    test_texture_sample_grad_non_power_of_two_plateau,
+    devices=all_devices,
+)
+add_function_test(
+    TestTexture,
+    "test_texture_sample_grad_lod_large_offset",
+    test_texture_sample_grad_lod_large_offset,
+    devices=all_devices,
+)
+add_function_test(
+    TestTexture,
+    "test_texture_sample_grad_lod_opposite_extremes",
+    test_texture_sample_grad_lod_opposite_extremes,
+    devices=all_devices,
+)
+add_function_test(TestTexture, "test_texture_sample_grad_2d", test_texture_sample_grad_2d, devices=all_devices)
+add_function_test(TestTexture, "test_texture_sample_grad_3d", test_texture_sample_grad_3d, devices=all_devices)
+add_function_test(TestTexture, "test_texture_sample_grad_lod", test_texture_sample_grad_lod, devices=all_devices)
+add_function_test(
+    TestTexture,
+    "test_texture_sample_grad_texture_array",
+    test_texture_sample_grad_texture_array,
+    devices=all_devices,
+)
+add_function_test(
+    TestTexture,
+    "test_texture_sample_grad_struct_member",
+    test_texture_sample_grad_struct_member,
     devices=all_devices,
 )
 

@@ -92,6 +92,7 @@ from warp._src.context import is_cubql_available as is_cubql_available
 from warp._src.context import is_cuda_available as is_cuda_available
 from warp._src.build import clear_kernel_cache as clear_kernel_cache
 from warp._src.build import clear_lto_cache as clear_lto_cache
+from warp._src.context import get_cpu_kernel_cache_key as get_cpu_kernel_cache_key
 from warp._src.context import print_diagnostics as print_diagnostics
 from warp._src.codegen import WarpCodegenAttributeError as WarpCodegenAttributeError
 from warp._src.codegen import WarpCodegenError as WarpCodegenError
@@ -5756,336 +5757,421 @@ def tile_broadcast(a: Tile[Any, tuple[int, ...]], shape: tuple[int, ...]) -> Til
 
 @over
 def tile_sum(a: Tile[Any, tuple[int, ...]], axis: int32 | int) -> Tile[Any, tuple[int, ...]]:
-    """Cooperatively compute the sum of the tile elements.
+    """Compute the sum of the tile elements along one axis.
 
-    Reduce across a tile axis using all threads in the block.
+    This is a cooperative operation: the threads of the block divide the work between
+    them, so every thread must reach the call.
+
+    Reduces over ``axis``, producing a tile with that dimension removed. The input tile is
+    placed in shared memory automatically, so it counts against the block's shared-memory
+    budget (see :ref:`tile_shared_memory_budget`) even when the input uses register
+    storage. Elements are combined in an unspecified order, so a floating-point sum may
+    vary with ``block_dim`` and between CPU and GPU.
 
     Args:
-        a: The input tile. Must reside in shared memory.
-        axis: The tile axis to compute the sum across. Must be a compile-time constant.
+        a: The input tile.
+        axis: The axis to reduce over. Must be a compile-time constant in
+            ``[0, len(shape))``.
 
     Returns:
-        A tile with the same shape as the input tile less the axis dimension and the same data type as the input tile.
+        A register tile with the same dtype as ``a``. For an input with two or more dimensions,
+        the result has the shape of ``a`` with ``axis`` removed. For a one-dimensional input,
+        it has shape ``(1,)``.
 
     Example:
 
-        .. code-block:: python
+        .. testcode::
 
             @wp.kernel
-            def compute():
+            def sum_rows_and_columns(x: wp.array2d[float], row_sums: wp.array[float], col_sums: wp.array[float]):
+                t = wp.tile_load(x, shape=(2, 3))
+                # axis=1 sums along each row, axis=0 down each column
+                wp.tile_store(row_sums, wp.tile_sum(t, axis=1))
+                wp.tile_store(col_sums, wp.tile_sum(t, axis=0))
 
-                t = wp.tile_ones(dtype=float, shape=(8, 8))
-                s = wp.tile_sum(t, axis=0)
+            x = wp.array([[1.0, 2.0, 3.0], [10.0, 20.0, 30.0]], dtype=float)
+            row_sums = wp.zeros(2, dtype=float)
+            col_sums = wp.zeros(3, dtype=float)
 
-                print(s)
+            wp.launch_tiled(sum_rows_and_columns, dim=1, inputs=[x], outputs=[row_sums, col_sums], block_dim=4)
 
-            wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
+            print(row_sums.numpy())
+            print(col_sums.numpy())
 
-        .. code-block:: text
+        .. testoutput::
 
-            [8 8 8 8 8 8 8 8] = tile(shape=(8), storage=register)"""
+            [ 6. 60.]
+            [11. 22. 33.]"""
     ...
 
 @over
 def tile_sum(a: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[Literal[1]]]:
-    """Cooperatively compute the sum of the tile elements.
+    """Compute the sum of all elements of a tile.
 
-    Reduce across all elements using all threads in the block.
+    This is a cooperative operation: the threads of the block divide the work between
+    them, so every thread must reach the call.
+
+    The reduction covers every element of ``a`` regardless of its rank. Elements are
+    combined in an unspecified order, so a floating-point sum may vary with ``block_dim``
+    and between CPU and GPU.
 
     Args:
-        a: The tile to compute the sum of
+        a: The tile to sum. Any element type supporting addition is accepted, including
+            vector and matrix elements.
 
     Returns:
-        A single-element tile holding the sum.
+        A shape-``(1,)`` register tile holding the sum. Read the value with ``[0]``, or
+        write it out with :func:`~warp.tile_store`.
 
     Example:
 
-        .. code-block:: python
+        .. testcode::
 
             @wp.kernel
-            def compute():
+            def sum_elements(x: wp.array2d[float], s: wp.array[float]):
+                t = wp.tile_load(x, shape=(2, 3))
+                wp.tile_store(s, wp.tile_sum(t))
 
-                t = wp.tile_ones(dtype=float, shape=(16, 16))
-                s = wp.tile_sum(t)
+            x = wp.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], dtype=float)
+            s = wp.zeros(1, dtype=float)
 
-                print(s)
+            wp.launch_tiled(sum_elements, dim=1, inputs=[x], outputs=[s], block_dim=4)
 
-            wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
+            print(s.numpy())
 
-        .. code-block:: text
+        .. testoutput::
 
-            [256] = tile(shape=(1), storage=register)"""
+            [21.]"""
     ...
 
 def tile_dot(a: Tile[Any, tuple[int, ...]], b: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[Literal[1]]]:
     """Compute the dot product of two tiles.
 
-    Computes a full contraction between corresponding elements and sums
-    the results. For scalar tiles this is the standard dot product; for
-    vector tiles each pair is contracted via ``wp.dot``; for matrix tiles
-    it is the Frobenius inner product (the sum of element-wise products
-    over all axes).
+    This is a cooperative operation: the threads of the block divide the work between
+    them, so every thread must reach the call.
 
-    Equivalent in Python to ``wp.tile_sum(a * b)`` for scalar tiles,
+    Contracts corresponding elements and sums the results over the whole tile. For scalar
+    tiles this is the standard dot product; for vector tiles each pair is contracted with
+    :func:`~warp.dot`; for matrix tiles it is the Frobenius inner product.
+
+    Mathematically equivalent to ``wp.tile_sum(a * b)`` for scalar tiles,
     ``wp.tile_sum(wp.tile_map(wp.dot, a, b))`` for vector tiles, and
-    ``wp.tile_sum(wp.tile_map(wp.ddot, a, b))`` for matrix tiles, but
-    without the intermediate tile and shared-memory round trip the
-    explicit forms would require.
+    ``wp.tile_sum(wp.tile_map(wp.ddot, a, b))`` for matrix tiles, but without the
+    intermediate tile those forms would materialize. The summation order is not
+    guaranteed to match, so floating-point results may differ in the last bits.
 
     Args:
         a: First tile operand.
-        b: Second tile operand (must have same shape and dtype as ``a``).
+        b: Second tile operand with the same shape and dtype as ``a``. The element type
+            must be scalar, vector, or matrix.
 
     Returns:
-        A single-element tile holding the dot-product result. Index the
-        tile at ``[0]`` to obtain the scalar value.
+        A shape-``(1,)`` register tile holding the result, with the scalar type of the
+        operands' elements. Read the value with ``[0]``.
 
     Example:
 
-        .. code-block:: python
+        .. testcode::
 
             @wp.kernel
-            def compute():
+            def dot_product(a: wp.array[float], b: wp.array[float], out: wp.array[float]):
+                ta = wp.tile_load(a, shape=4)
+                tb = wp.tile_load(b, shape=4)
+                wp.tile_store(out, wp.tile_dot(ta, tb))
 
-                a = wp.tile_ones(dtype=float, shape=64)
-                b = wp.tile_ones(dtype=float, shape=64) * 2.0
-                d = wp.tile_dot(a, b)
+            a = wp.array([1.0, 2.0, 3.0, 4.0], dtype=float)
+            b = wp.array([10.0, 20.0, 30.0, 40.0], dtype=float)
+            out = wp.zeros(1, dtype=float)
 
-                print(d)
+            wp.launch_tiled(dot_product, dim=1, inputs=[a, b], outputs=[out], block_dim=2)
 
-            wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
+            print(out.numpy())
 
-        .. code-block:: text
+        .. testoutput::
 
-            [128] = tile(shape=(1), storage=register)"""
+            [300.]"""
     ...
 
 def tile_axpy(alpha: Any, src: Tile[Any, tuple[int, ...]], dest: Tile[Any, tuple[int, ...]]) -> None:
-    """Scale ``src`` by ``alpha`` and accumulate into ``dest``.
+    """Scale ``src`` by ``alpha`` and accumulate it into ``dest``, in place.
 
-    Performs a fused multiply-add directly into the destination tile without
-    creating an intermediate scaled tile.
+    This is a cooperative operation: the threads of the block divide the work between
+    them, so every thread must reach the call.
+
+    Updates ``dest`` element-wise as ``dest += alpha * src`` without materializing the
+    scaled tile. Either tile may be in register or shared storage.
 
     Args:
-        alpha: Scalar multiplier (must match the tile's underlying scalar type).
-        src: Source tile (must have same shape and dtype as ``dest``).
+        alpha: Scalar multiplier. Must match the tiles' underlying scalar type, for
+            example a :class:`warp.float32` value for a ``vec3f`` tile.
+        src: Source tile with the same shape and dtype as ``dest``. The element type must
+            be scalar, vector, or matrix.
         dest: Destination tile, modified in place.
 
     Example:
 
-        .. code-block:: python
+        .. testcode::
 
             @wp.kernel
-            def compute():
+            def scale_and_accumulate(src: wp.array[float], dest: wp.array[float]):
+                s = wp.tile_load(src, shape=4)
+                d = wp.tile_load(dest, shape=4)
+                wp.tile_axpy(2.0, s, d)
+                wp.tile_store(dest, d)
 
-                dest = wp.tile_ones(dtype=float, shape=4) * 2.0
-                src = wp.tile_ones(dtype=float, shape=4) * 3.0
-                wp.tile_axpy(5.0, src, dest)
+            src = wp.array([10.0, 20.0, 30.0, 40.0], dtype=float)
+            dest = wp.array([1.0, 2.0, 3.0, 4.0], dtype=float)
 
-                print(dest)
+            wp.launch_tiled(scale_and_accumulate, dim=1, inputs=[src], outputs=[dest], block_dim=2)
 
-            wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
+            print(dest.numpy())
 
-        .. code-block:: text
+        .. testoutput::
 
-            [17 17 17 17] = tile(shape=(4), storage=register)"""
+            [21. 42. 63. 84.]"""
     ...
 
-def tile_sort(keys: Tile[Any, tuple[int]], values: Tile[Any, tuple[int]]) -> None:
-    """Cooperatively sort the elements of two tiles in ascending order based on the keys, using all threads in the block.
+def tile_sort(keys: Tile[Any, tuple[int, ...]], values: Tile[Any, tuple[int, ...]]) -> None:
+    """Sort two tiles in place, in ascending order of ``keys``.
 
-    On CUDA devices, prefer a ``block_dim`` that is a multiple of 32 for better sorting performance. Other block
-    dimensions are supported but may be slower.
+    This is a cooperative operation: the threads of the block divide the work between
+    them, so every thread must reach the call.
+
+    Both tiles are permuted together, so ``values`` acts as a payload that follows its
+    key. The sort is not stable: the relative order of equal keys is
+    unspecified and differs between CPU and GPU. Multi-dimensional tiles are sorted as
+    their flattened row-major sequence. Both tiles are placed in shared memory whatever
+    storage they were created with, so they count against the block's shared-memory
+    budget (see :ref:`tile_shared_memory_budget`).
+
+    On CUDA devices, prefer a ``block_dim`` that is a multiple of 32 for better sorting
+    performance. Other block dimensions are supported but may be slower.
 
     Args:
-        keys: Keys to sort by. Supported key types: :class:`warp.float32`, :class:`warp.int32`, :class:`warp.uint32`, :class:`warp.int64`, :class:`warp.uint64`. Must be in shared memory.
-        values: Values to sort along with keys. No type restrictions. Must be in shared memory.
-
-    Returns:
-        No return value. Sorts both tiles in-place.
+        keys: Tile of sort keys, permuted in place. Supported key types:
+            :class:`warp.float32`, :class:`warp.int32`, :class:`warp.uint32`,
+            :class:`warp.int64`, :class:`warp.uint64`.
+        values: Payload tile, permuted in place. Must have the same shape as ``keys``;
+            any element type is accepted.
 
     Example:
 
-        .. code-block:: python
+        .. testcode::
 
             @wp.kernel
-            def compute():
-
-                keys = wp.tile_arange(32, 0, -1, dtype=int, storage="shared")
-                values = wp.tile_arange(0, 32, 1, dtype=int, storage="shared")
+            def sort_pairs(k: wp.array[float], v: wp.array[int]):
+                keys = wp.tile_load(k, shape=4)
+                values = wp.tile_load(v, shape=4)
                 wp.tile_sort(keys, values)
+                wp.tile_store(k, keys)
+                wp.tile_store(v, values)
 
-                print(keys)
-                print(values)
+            keys = wp.array([5.0, 3.0, 8.0, 1.0], dtype=float)
+            values = wp.array([0, 1, 2, 3], dtype=int)
 
+            wp.launch_tiled(sort_pairs, dim=1, outputs=[keys, values], block_dim=32)
 
-            wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
+            print(keys.numpy())
+            print(values.numpy())
 
-        .. code-block:: text
+        .. testoutput::
 
-            [1, 2, ..., 32] = tile(shape=(32), storage=shared)
-            [31, 30, 29, ..., 0] = tile(shape=(32), storage=shared)"""
+            [1. 3. 5. 8.]
+            [3 1 0 2]"""
     ...
 
 def tile_min(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Scalar, tuple[Literal[1]]]:
-    """Cooperatively compute the minimum of the tile elements using all threads in the block.
+    """Compute the minimum of all elements of a tile.
+
+    This is a cooperative operation: the threads of the block divide the work between
+    them, so every thread must reach the call.
+
+    The reduction covers every element of ``a`` regardless of its rank. Floating-point
+    comparisons follow C ``fmin`` semantics: a NaN element is treated as missing.
 
     Args:
-        a: The tile to compute the minimum of
+        a: The tile to reduce. Must have a scalar element type.
 
     Returns:
-        A single-element tile holding the minimum value.
+        A shape-``(1,)`` register tile holding the minimum. Read the value with ``[0]``.
 
     Example:
 
-        .. code-block:: python
+        .. testcode::
 
             @wp.kernel
-            def compute():
+            def find_min(x: wp.array2d[float], lo: wp.array[float]):
+                t = wp.tile_load(x, shape=(2, 4))
+                wp.tile_store(lo, wp.tile_min(t))
 
-                t = wp.tile_arange(64, 128)
-                s = wp.tile_min(t)
+            x = wp.array([[3.0, 7.0, 4.0, 9.0], [5.0, 1.0, 2.0, 6.0]], dtype=float)
+            lo = wp.zeros(1, dtype=float)
 
-                print(s)
+            wp.launch_tiled(find_min, dim=1, inputs=[x], outputs=[lo], block_dim=4)
 
+            print(lo.numpy())
 
-            wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
+        .. testoutput::
 
-        .. code-block:: text
-
-            [64] = tile(shape=(1), storage=register)"""
+            [1.]"""
     ...
 
 def tile_argmin(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Int, tuple[Literal[1]]]:
-    """Cooperatively compute the index of the minimum element in the tile using all threads in the block.
+    """Compute the index of the minimum element of a tile.
+
+    This is a cooperative operation: the threads of the block divide the work between
+    them, so every thread must reach the call.
+
+    The index is the row-major linear index into the flattened tile, so in a shape-``(2, 4)``
+    tile the element at row 1, column 1 has index 5. If several elements are equal minima,
+    which of their indices is returned is unspecified: it depends on ``block_dim`` and on
+    the device.
+
+    Currently, if ``a`` contains NaN, the returned index may point to a NaN element and may
+    not match :func:`~warp.tile_min`.
 
     Args:
-        a: The tile to compute the argmin from
+        a: The tile to reduce. Must have a scalar element type.
 
     Returns:
-        A single-element tile holding the index of the minimum value.
+        A shape-``(1,)`` register tile of :class:`warp.int32` holding the index. Read the
+        value with ``[0]``.
 
     Example:
 
-        .. code-block:: python
+        .. testcode::
 
             @wp.kernel
-            def compute():
+            def locate_min(x: wp.array2d[float], i: wp.array[int]):
+                t = wp.tile_load(x, shape=(2, 4))
+                wp.tile_store(i, wp.tile_argmin(t))
 
-                t = wp.tile_arange(64, 128)
-                s = wp.tile_argmin(t)
+            x = wp.array([[3.0, 7.0, 4.0, 9.0], [5.0, 0.0, 2.0, 6.0]], dtype=float)
+            i = wp.zeros(1, dtype=int)
 
-                print(s)
+            wp.launch_tiled(locate_min, dim=1, inputs=[x], outputs=[i], block_dim=4)
 
+            # the minimum 0.0 sits at row 1, column 1, i.e. linear index 5
+            print(i.numpy())
 
-            wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
+        .. testoutput::
 
-        .. code-block:: text
-
-            [0] = tile(shape=(1), storage=register)"""
+            [5]"""
     ...
 
 def tile_max(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Scalar, tuple[Literal[1]]]:
-    """Cooperatively compute the maximum of the tile elements using all threads in the block.
+    """Compute the maximum of all elements of a tile.
+
+    This is a cooperative operation: the threads of the block divide the work between
+    them, so every thread must reach the call.
+
+    The reduction covers every element of ``a`` regardless of its rank. Floating-point
+    comparisons follow C ``fmax`` semantics: a NaN element is treated as missing.
 
     Args:
-        a: The tile to compute the maximum from
+        a: The tile to reduce. Must have a scalar element type.
 
     Returns:
-        A single-element tile holding the maximum value.
+        A shape-``(1,)`` register tile holding the maximum. Read the value with ``[0]``.
 
-    Example:
-
-        .. code-block:: python
-
-            @wp.kernel
-            def compute():
-
-                t = wp.tile_arange(64, 128)
-                s = wp.tile_max(t)
-
-                print(s)
-
-            wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
-
-        .. code-block:: text
-
-            [127] = tile(shape=(1), storage=register)"""
+    See :func:`~warp.tile_min` for an analogous usage example."""
     ...
 
 def tile_argmax(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Int, tuple[Literal[1]]]:
-    """Cooperatively compute the index of the maximum element in the tile using all threads in the block.
+    """Compute the index of the maximum element of a tile.
+
+    This is a cooperative operation: the threads of the block divide the work between
+    them, so every thread must reach the call.
+
+    The index is the row-major linear index into the flattened tile, so in a shape-``(2, 4)``
+    tile the element at row 1, column 1 has index 5. If several elements are equal maxima,
+    which of their indices is returned is unspecified: it depends on ``block_dim`` and on
+    the device.
+
+    Currently, if ``a`` contains NaN, the returned index may point to a NaN element and may
+    not match :func:`~warp.tile_max`.
 
     Args:
-        a: The tile to compute the argmax from
+        a: The tile to reduce. Must have a scalar element type.
 
     Returns:
-        A single-element tile holding the index of the maximum value.
+        A shape-``(1,)`` register tile of :class:`warp.int32` holding the index. Read the
+        value with ``[0]``.
 
-    Example:
-
-        .. code-block:: python
-
-            @wp.kernel
-            def compute():
-
-                t = wp.tile_arange(64, 128)
-                s = wp.tile_argmax(t)
-
-                print(s)
-
-            wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
-
-        .. code-block:: text
-
-            [63] = tile(shape=(1), storage=register)"""
+    See :func:`~warp.tile_argmin` for an analogous usage example."""
     ...
 
 @over
 def tile_reduce(op: Callable, a: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[Literal[1]]]:
-    """Apply a custom reduction operator across a tile.
+    """Apply a custom reduction operator across all elements of a tile.
 
-    Reduce across all elements using the provided operator.
+    This is a cooperative operation: the threads of the block divide the work between
+    them, so every thread must reach the call.
+
+    Elements of ``a`` are combined in an unspecified order, so ``op`` must be associative
+    and commutative for the result to be well defined; a non-commutative operator such as
+    :func:`~warp.sub` gives different answers for different values of ``block_dim`` and on
+    different devices.
 
     Args:
-        op: A callable function that accepts two arguments and returns one argument, may be a user function or builtin
-        a: The input tile, the operator (or one of its overloads) must be able to accept the tile's data type
+        op: Callable taking two elements of the tile's dtype and returning one value of
+            the same type. May be a Warp built-in such as :func:`~warp.add` or a
+            user-defined function decorated with ``@wp.func``.
+        a: The input tile. The operator, or one of its overloads, must accept the tile's
+            element type.
 
     Returns:
-        A single-element tile with the same data type as the input tile.
+        A shape-``(1,)`` register tile with the same dtype as ``a``. Read the value with
+        ``[0]``.
 
     Example:
 
-        .. code-block:: python
+        .. testcode::
 
             @wp.kernel
-            def factorial():
+            def multiply_elements(x: wp.array[int], out: wp.array[int]):
+                t = wp.tile_load(x, shape=4)
+                wp.tile_store(out, wp.tile_reduce(wp.mul, t))
 
-                t = wp.tile_arange(1, 10, dtype=int)
-                s = wp.tile_reduce(wp.mul, t)
+            x = wp.array([3, 7, 4, 9], dtype=int)
+            out = wp.zeros(1, dtype=int)
 
-                print(s)
+            wp.launch_tiled(multiply_elements, dim=1, inputs=[x], outputs=[out], block_dim=2)
 
-            wp.launch_tiled(factorial, dim=[1], inputs=[], block_dim=16)
+            print(out.numpy())
 
-        .. code-block:: text
+        .. testoutput::
 
-            [362880] = tile(shape=(1), storage=register)"""
+            [756]"""
     ...
 
 @over
 def tile_reduce(op: Callable, a: Tile[Scalar, tuple[int, ...]], axis: int32 | int) -> Tile[Scalar, tuple[int, ...]]:
-    """Apply a custom reduction operator across a tile.
+    """Apply a custom reduction operator along one axis of a tile.
 
-    Reduce across a tile axis using the provided operator.
+    This is a cooperative operation: the threads of the block divide the work between
+    them, so every thread must reach the call.
+
+    Reduces over ``axis``. Each slice is folded with ``op`` in an unspecified order, so
+    ``op`` must be associative and commutative for the result to be well defined. The
+    input tile is placed in shared memory automatically, so it counts against the block's
+    shared-memory budget (see :ref:`tile_shared_memory_budget`) even when the input uses
+    register storage.
 
     Args:
-        op: A callable function that accepts two arguments and returns one argument, may be a user function or builtin
-        a: The input tile, the operator (or one of its overloads) must be able to accept the tile's data type. Must reside in shared memory.
-        axis: The tile axis to perform the reduction across. Must be a compile-time constant.
+        op: Callable taking two elements of the tile's dtype and returning one value of
+            the same type. May be a Warp built-in such as :func:`~warp.add` or a
+            user-defined function decorated with ``@wp.func``.
+        a: The input tile. Must have a scalar element type, unlike the whole-tile form,
+            which also accepts vector and matrix elements. The operator, or one of its
+            overloads, must accept the tile's element type.
+        axis: The axis to reduce over. Must be a compile-time constant in
+            ``[0, len(shape))``.
 
     Returns:
-        A tile with the same shape as the input tile less the axis dimension and the same data type as the input tile.
+        A register tile with the same dtype as ``a``. For an input with two or more dimensions,
+        the result has the shape of ``a`` with ``axis`` removed. For a one-dimensional input,
+        it has shape ``(1,)``.
 
     On a partial CPU block, a slice with no active values returns the operation's identity for
     ``wp.add``, ``wp.mul``, ``wp.min``, and ``wp.max``. Other operators have no declared
@@ -6095,260 +6181,276 @@ def tile_reduce(op: Callable, a: Tile[Scalar, tuple[int, ...]], axis: int32 | in
 
     Example:
 
-        .. code-block:: python
-
-            TILE_M = wp.constant(4)
-            TILE_N = wp.constant(2)
+        .. testcode::
 
             @wp.kernel
-            def compute(x: wp.array2d[float], y: wp.array[float]):
+            def row_products(x: wp.array2d[float], p: wp.array[float]):
+                t = wp.tile_load(x, shape=(2, 3))
+                wp.tile_store(p, wp.tile_reduce(wp.mul, t, axis=1))
 
-                a = wp.tile_load(x, shape=(TILE_M, TILE_N))
-                b = wp.tile_reduce(wp.add, a, axis=1)
-                wp.tile_store(y, b)
+            x = wp.array([[1.0, 2.0, 3.0], [10.0, 20.0, 30.0]], dtype=float)
+            p = wp.zeros(2, dtype=float)
 
-            arr = np.arange(TILE_M * TILE_N).reshape(TILE_M, TILE_N)
+            wp.launch_tiled(row_products, dim=1, inputs=[x], outputs=[p], block_dim=4)
 
-            x = wp.array(arr, dtype=float)
-            y = wp.zeros(TILE_M, dtype=float)
+            print(p.numpy())
 
-            wp.launch_tiled(compute, dim=[1], inputs=[x], outputs=[y], block_dim=32)
+        .. testoutput::
 
-            print(x.numpy())
-            print(y.numpy())
-
-        .. code-block:: text
-
-            [[0. 1.]
-             [2. 3.]
-             [4. 5.]
-             [6. 7.]]
-            [ 1.  5.  9. 13.]"""
+            [   6. 6000.]"""
     ...
 
 def tile_scan_inclusive(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Scalar, tuple[int, ...]]:
-    """Inclusive scan (prefix sum) across the tile.
+    """Return a new tile containing the inclusive prefix sums of a tile.
 
-    This function cooperatively performs an inclusive scan (cumulative sum) across the tile.
+    This is a cooperative operation: the threads of the block divide the work between
+    them, so every thread must reach the call.
+
+    Element ``i`` of the result is the sum of input elements ``0`` through ``i``.
+    A multi-dimensional tile is scanned over its flattened row-major sequence and the
+    result keeps the input shape. On CUDA, this operation reserves a tile's worth of shared
+    memory (see :ref:`tile_shared_memory_budget`).
 
     Args:
-        a: The input tile. Must be a tile of type float32, int32, or uint32.
+        a: The input tile. Must be a tile of :class:`warp.float32`, :class:`warp.int32`,
+            or :class:`warp.uint32`.
 
     Returns:
-        A new tile containing the inclusive scan result.
+        A register tile with the same shape and dtype as ``a``.
 
     Example:
 
-        .. code-block:: python
+        .. testcode::
 
             @wp.kernel
-            def scan_example():
-                t = wp.tile_arange(1, 5, dtype=int)
-                s = wp.tile_scan_inclusive(t)
-                print(s)
+            def running_totals(x: wp.array[float], out: wp.array[float]):
+                t = wp.tile_load(x, shape=4)
+                wp.tile_store(out, wp.tile_scan_inclusive(t))
 
-            wp.launch_tiled(scan_example, dim=[1], inputs=[], block_dim=16)
+            x = wp.array([3.0, 1.0, 4.0, 2.0], dtype=float)
+            out = wp.zeros(4, dtype=float)
 
-        .. code-block:: text
+            wp.launch_tiled(running_totals, dim=1, inputs=[x], outputs=[out], block_dim=2)
 
-            [1, 3, 6, 10] = tile(shape=(4), storage=register)"""
+            print(out.numpy())
+
+        .. testoutput::
+
+            [ 3.  4.  8. 10.]"""
     ...
 
 def tile_scan_exclusive(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Scalar, tuple[int, ...]]:
-    """Exclusive scan (prefix sum) across the tile.
+    """Return a new tile containing the exclusive prefix sums of a tile.
 
-    This function cooperatively performs an exclusive scan (cumulative sum) across the tile.
+    This is a cooperative operation: the threads of the block divide the work between
+    them, so every thread must reach the call.
+
+    Element ``i`` of the result is the sum of input elements ``0`` through ``i - 1``, so
+    element ``0`` is zero. A multi-dimensional tile is scanned over its flattened
+    row-major sequence and the result keeps the input shape. On CUDA, this operation reserves
+    a tile's worth of shared memory (see :ref:`tile_shared_memory_budget`).
 
     Args:
-        a: The input tile. Must be a tile of type float32, int32, or uint32.
+        a: The input tile. Must be a tile of :class:`warp.float32`, :class:`warp.int32`,
+            or :class:`warp.uint32`.
 
     Returns:
-        A new tile containing the exclusive scan result.
+        A register tile with the same shape and dtype as ``a``.
 
-    Example:
-
-        .. code-block:: python
-
-            @wp.kernel
-            def scan_example():
-                t = wp.tile_arange(1, 5, dtype=int)
-                s = wp.tile_scan_exclusive(t)
-                print(s)
-
-            wp.launch_tiled(scan_example, dim=[1], inputs=[], block_dim=16)
-
-        .. code-block:: text
-
-            [0, 1, 3, 6] = tile(shape=(4), storage=register)"""
+    See :func:`~warp.tile_scan_inclusive` for a usage example."""
     ...
 
 def tile_scan_max_inclusive(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Scalar, tuple[int, ...]]:
-    """Inclusive max scan across the tile.
+    """Return a new tile containing the inclusive prefix maxima of a tile.
 
-    This function cooperatively performs an inclusive max scan (cumulative maximum) across the tile.
+    This is a cooperative operation: the threads of the block divide the work between
+    them, so every thread must reach the call.
+
+    Element ``i`` of the result is the maximum of input elements ``0`` through ``i``.
+    Comparisons follow C ``fmax`` semantics.
+    A multi-dimensional tile is scanned over its flattened row-major sequence and the
+    result keeps the input shape. On CUDA, this operation reserves a tile's worth of shared
+    memory (see :ref:`tile_shared_memory_budget`).
 
     Args:
-        a: The input tile. Must be a tile of type float32, int32, or uint32.
+        a: The input tile, with dtype :class:`warp.float32`, :class:`warp.int32`, or
+            :class:`warp.uint32`.
 
     Returns:
-        A new tile containing the inclusive max scan result.
+        A register tile with the same shape and dtype as ``a``.
 
-    Example:
-
-        .. code-block:: python
-
-            @wp.kernel
-            def scan_example(input: wp.array[int]):
-                t = wp.tile_load(input, shape=(4,))
-                s = wp.tile_scan_max_inclusive(t)
-                print(s)
-
-            input = wp.array([3, 1, 4, 2], dtype=int)
-            wp.launch_tiled(scan_example, dim=[1], inputs=[input], block_dim=16)
-
-        .. code-block:: text
-
-            [3, 3, 4, 4] = tile(shape=(4), storage=register)"""
+    See :func:`~warp.tile_scan_inclusive` for a usage example."""
     ...
 
 def tile_scan_min_inclusive(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Scalar, tuple[int, ...]]:
-    """Inclusive min scan across the tile.
+    """Return a new tile containing the inclusive prefix minima of a tile.
 
-    This function cooperatively performs an inclusive min scan (cumulative minimum) across the tile.
+    This is a cooperative operation: the threads of the block divide the work between
+    them, so every thread must reach the call.
+
+    Element ``i`` of the result is the minimum of input elements ``0`` through ``i``.
+    Comparisons follow C ``fmin`` semantics.
+    A multi-dimensional tile is scanned over its flattened row-major sequence and the
+    result keeps the input shape. On CUDA, this operation reserves a tile's worth of shared
+    memory (see :ref:`tile_shared_memory_budget`).
 
     Args:
-        a: The input tile. Must be a tile of type float32, int32, or uint32.
+        a: The input tile, with dtype :class:`warp.float32`, :class:`warp.int32`, or
+            :class:`warp.uint32`.
 
     Returns:
-        A new tile containing the inclusive min scan result.
+        A register tile with the same shape and dtype as ``a``.
 
-    Example:
-
-        .. code-block:: python
-
-            @wp.kernel
-            def scan_example(input: wp.array[int]):
-                t = wp.tile_load(input, shape=(4,))
-                s = wp.tile_scan_min_inclusive(t)
-                print(s)
-
-            input = wp.array([3, 1, 4, 2], dtype=int)
-            wp.launch_tiled(scan_example, dim=[1], inputs=[input], block_dim=16)
-
-        .. code-block:: text
-
-            [3, 1, 1, 1] = tile(shape=(4), storage=register)"""
+    See :func:`~warp.tile_scan_inclusive` for a usage example."""
     ...
 
 @over
 def tile_map(op: Callable, a: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[int, ...]]:
-    """Apply a function to tile elements.
+    """Return a new tile by applying a function to each element of a tile.
 
-    Apply a unary function to each element using all threads in the block.
+    This is a cooperative operation: the threads of the block divide the work between
+    them, so every thread must reach the call.
+
+    ``op`` may be a Warp built-in or a user function declared with
+    :func:`@wp.func <warp.func>`, and it does not have to preserve the element type: the
+    result's data type is ``op``'s return type, which must be a scalar, vector, matrix, or
+    Warp struct.
 
     Args:
-        op: A callable function that accepts one argument and returns one argument, may be a user function or builtin
-        a: The input tile, the operator (or one of its overloads) must be able to accept the tile's data type
+        op: A callable function that accepts one argument and returns one value. May be a user
+            function or Warp built-in.
+        a: The input tile. The operator, or one of its overloads, must accept the tile's element type.
 
     Returns:
-        A tile with the same dimensions as the input tile. Its datatype is specified by the return type of ``op``.
+        A register tile with the same dimensions as the input tile. Its datatype is specified by the return type of ``op``.
 
     Example:
 
-        .. code-block:: python
+        .. testcode::
 
             @wp.kernel
-            def compute():
-
-                t = wp.tile_arange(0.0, 1.0, 0.1, dtype=float)
+            def apply_sin(out: wp.array[float]):
+                t = wp.tile_arange(1.0, 5.0, 1.0, dtype=float)
                 s = wp.tile_map(wp.sin, t)
 
-                print(s)
+                wp.tile_store(out, s)
 
-            wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=16)
+            out = wp.zeros(4, dtype=float)
 
-        .. code-block:: text
+            wp.launch_tiled(apply_sin, dim=1, outputs=[out], block_dim=2)
 
-            [0 0.0998334 0.198669 0.29552 0.389418 0.479426 0.564642 0.644218 0.717356 0.783327] = tile(shape=(10), storage=register)"""
+            print(np.round(out.numpy(), 4))
+
+        .. testoutput::
+
+            [ 0.8415  0.9093  0.1411 -0.7568]"""
     ...
 
 @over
 def tile_map(op: Callable, a: Tile[Any, tuple[int, ...]], b: Any) -> Tile[Any, tuple[int, ...]]:
-    """Apply a function to tile elements.
+    """Return a new tile by applying a two-argument function to each element of a tile.
 
-    This function cooperatively applies a binary function to each element of the tile using all threads in the block.
-    The second argument can be a tile (must have same dimensions as ``a``), or a non-tile constant (scalar, vector,
-    matrix, or Warp struct) which will be broadcast across all elements.
+    This is a cooperative operation: the threads of the block divide the work between
+    them, so every thread must reach the call.
+
+    The second argument can be a tile with the same dimensions as ``a``, whose elements
+    are paired with those of ``a``, or a non-tile value (scalar, vector, matrix, or Warp
+    struct, constant or runtime), which is broadcast across all elements.
+
+    ``op`` may be a Warp built-in or a user function declared with
+    :func:`@wp.func <warp.func>`. Its two arguments do not have to have the same type,
+    as long as an overload accepting the element types of ``a`` and ``b`` exists. The result's
+    data type is ``op``'s return type, which must be a scalar, vector, matrix, or Warp struct.
+
+    When ``b`` is a non-tile runtime value, its adjoint is the sum of its per-element
+    contributions across the mapped tile.
 
     Args:
-        op: A callable function that accepts two arguments and returns one argument, all of the same type, may be a user function or builtin.
+        op: A callable function that accepts two arguments and returns one value. May be a user
+            function or Warp built-in.
         a: The first input tile, the operator (or one of its overloads) must be able to accept the tile's dtype.
-        b: Either a tile with matching dimensions, or a scalar/vector/matrix/Warp struct constant.
+        b: Either a tile with matching dimensions, or a scalar/vector/matrix/Warp struct value.
 
     Returns:
-        A tile with the same dimensions as tile ``a``. Its datatype is specified by the return type of ``op``.
+        A register tile with the same dimensions as tile ``a``. Its datatype is specified by the return type of ``op``.
 
     Example:
 
-        .. code-block:: python
+        .. testcode::
 
             @wp.kernel
-            def compute():
+            def elementwise_max(out: wp.array[float]):
+                a = wp.tile_arange(0.0, 5.0, 1.0, dtype=float)
+                b = wp.tile_arange(4.0, -1.0, -1.0, dtype=float)
 
-                a = wp.tile_arange(0.0, 1.0, 0.1, dtype=float)
-                b = wp.tile_ones(shape=10, dtype=float)
+                s = wp.tile_map(wp.max, a, b)
 
-                s = wp.tile_map(wp.add, a, b)
+                wp.tile_store(out, s)
 
-                print(s)
+            out = wp.zeros(5, dtype=float)
 
-            wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=16)
+            wp.launch_tiled(elementwise_max, dim=1, outputs=[out], block_dim=3)
 
-        .. code-block:: text
+            print(out.numpy())
 
-            [1 1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9] = tile(shape=(10), storage=register)"""
+        .. testoutput::
+
+            [4. 3. 2. 3. 4.]"""
     ...
 
 @over
 def tile_map(op: Callable, a: Tile[Any, tuple[int, ...]], *args: Any) -> Tile[Any, tuple[int, ...]]:
-    """Apply a function to tile elements.
+    """Return a new tile by applying a function of three to eight arguments element-wise.
 
-    This function cooperatively applies a user-defined function to corresponding elements using all threads in the block.
-    The first argument 'a' must be a tile (determines output shape). Additional arguments can be tiles (must have same
-    dimensions) or non-tile constants (scalar, vector, matrix, or Warp struct) which will be broadcast across all elements.
+    This is a cooperative operation: the threads of the block divide the work between
+    them, so every thread must reach the call.
+
+    The first argument ``a`` must be a tile and determines the output shape. Each
+    additional argument can be a tile with the same dimensions as ``a`` or a non-tile
+    value (scalar, vector, matrix, or Warp struct), which is broadcast across all elements.
+
+    Unlike the one- and two-argument forms, ``op`` must be a user function declared with
+    :func:`@wp.func <warp.func>`; a built-in cannot be used here. The result's data type
+    is ``op``'s return type, which must be a scalar, vector, matrix, or Warp struct.
+
+    The adjoint of each non-tile runtime argument is the sum of its per-element
+    contributions across the mapped tile.
 
     Args:
         op: A callable function that accepts N arguments and returns one value, must be a user function.
         a: The first input tile, determines the output shape.
-        args: Additional arguments: tiles with matching dimensions, or scalar/vector/matrix/Warp struct constants.
+        args: Additional arguments: tiles with matching dimensions, or scalar/vector/matrix/Warp struct values.
 
     Returns:
-        A tile with the same dimensions as tile ``a``. Its datatype is specified by the return type of ``op``.
+        A register tile with the same dimensions as tile ``a``. Its datatype is specified by the return type of ``op``.
 
     Example:
 
-        .. code-block:: python
+        .. testcode::
 
             @wp.func
-            def weighted_sum(a: float, b: float, c: float):
+            def weighted_sum(a: float, b: float, c: float) -> float:
                 return 0.5 * a + 0.3 * b + 0.2 * c
 
             @wp.kernel
-            def compute():
-
-                a = wp.tile_arange(0.0, 1.0, 0.1, dtype=float)
-                b = wp.tile_ones(shape=10, dtype=float)
-                c = wp.tile_arange(1.0, 2.0, 0.1, dtype=float)
+            def blend(out: wp.array[float]):
+                a = wp.tile_arange(0.0, 5.0, 1.0, dtype=float)
+                b = wp.tile_ones(shape=5, dtype=float)
+                c = wp.tile_arange(1.0, 6.0, 1.0, dtype=float)
 
                 s = wp.tile_map(weighted_sum, a, b, c)
 
-                print(s)
+                wp.tile_store(out, s)
 
-            wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=16)
+            out = wp.zeros(5, dtype=float)
 
-        .. code-block:: text
+            wp.launch_tiled(blend, dim=1, outputs=[out], block_dim=3)
 
-            [0.5 0.57 0.64 0.71 0.78 0.85 0.92 0.99 1.06 1.13] = tile(shape=(10), storage=register)"""
+            print(np.round(out.numpy(), 4))
+
+        .. testoutput::
+
+            [0.5 1.2 1.9 2.6 3.3]"""
     ...
 
 def bvh_query_aabb(id: uint64, low: vec3f, high: vec3f, root: int32 | int = -1) -> BvhQuery:
@@ -9012,19 +9114,32 @@ def texture_sample(tex: Texture1D, u: float32 | float, dtype: Any, lod: float32 
             texture's available mip-level range. Fractional values blend between neighbouring mip
             levels when ``mip_filter_mode`` is
             :attr:`warp.TextureFilterMode.LINEAR`; the coordinate is evaluated independently at
-            each level used in the blend. The ``lod`` argument is ignored for textures created with a single mip level.
+            each level used in the blend. Ignored for textures created with a single mip level.
+            The ``lod`` adjoint is nonzero only for mipmapped textures with
+            ``mip_filter_mode=TextureFilterMode.LINEAR`` and an unclamped, nonnegative LOD. At an
+            unclamped integer LOD, the mip-blend derivative may differ on either side. Warp uses
+            the derivative toward increasing LOD values. The LOD gradient is zero when the LOD is
+            clamped.
 
     Returns:
         The sampled value of the specified ``dtype``. The backends normalize unsigned 8- and 16-bit
-        integer data to ``[0, 1]`` and signed 8- and 16-bit integer data to ``[-1, 1]``. Sampling an
-        ``int32`` or ``uint32`` texture causes kernel execution to fail; use an 8- or 16-bit integer
-        or floating-point texture. Floating-point texture data is returned as ``float32`` channel
-        values without normalization.
+        integer data to ``[0, 1]`` and signed 8- and 16-bit integer data to ``[-1, 1]``.
+        Signed and unsigned 32-bit integer data is converted numerically to ``float32`` without
+        normalization and requires closest filtering within and between mip levels. Integers
+        outside ``[-2**24, 2**24]`` may round during conversion. Floating-point texture data is
+        returned as ``float32`` channel values without normalization.
 
     The filtering mode (:class:`warp.TextureFilterMode`) and the addressing of out-of-range
     coordinates (:class:`warp.TextureAddressMode`) are those set when the texture was created; see
     :class:`warp.Texture`. Currently, CUDA textures with unnormalized coordinates support only
     ``CLAMP`` and ``BORDER`` address modes. Use normalized coordinates with ``WRAP`` or ``MIRROR``.
+
+    The backward pass propagates gradients to the sampling coordinates wherever the sample
+    is locally linear. At interpolation-cell and address-mode boundaries the mathematical
+    derivative is not unique, so Warp follows the branch selected by the forward sampler.
+    With :attr:`warp.TextureFilterMode.CLOSEST` filtering the sampled value is piecewise
+    constant in the coordinates, so coordinate gradients are zero. Gradients are not
+    propagated to the texture data itself.
 
     Example:
 
@@ -9081,19 +9196,32 @@ def texture_sample(tex: Texture2D, uv: vec2f, dtype: Any, lod: float32 | float =
             texture's available mip-level range. Fractional values blend between neighbouring mip
             levels when ``mip_filter_mode`` is
             :attr:`warp.TextureFilterMode.LINEAR`; the coordinates are evaluated independently at
-            each level used in the blend. The ``lod`` argument is ignored for textures created with a single mip level.
+            each level used in the blend. Ignored for textures created with a single mip level.
+            The ``lod`` adjoint is nonzero only for mipmapped textures with
+            ``mip_filter_mode=TextureFilterMode.LINEAR`` and an unclamped, nonnegative LOD. At an
+            unclamped integer LOD, the mip-blend derivative may differ on either side. Warp uses
+            the derivative toward increasing LOD values. The LOD gradient is zero when the LOD is
+            clamped.
 
     Returns:
         The sampled value of the specified ``dtype``. The backends normalize unsigned 8- and 16-bit
-        integer data to ``[0, 1]`` and signed 8- and 16-bit integer data to ``[-1, 1]``. Sampling an
-        ``int32`` or ``uint32`` texture causes kernel execution to fail; use an 8- or 16-bit integer
-        or floating-point texture. Floating-point texture data is returned as ``float32`` channel
-        values without normalization.
+        integer data to ``[0, 1]`` and signed 8- and 16-bit integer data to ``[-1, 1]``.
+        Signed and unsigned 32-bit integer data is converted numerically to ``float32`` without
+        normalization and requires closest filtering within and between mip levels. Integers
+        outside ``[-2**24, 2**24]`` may round during conversion. Floating-point texture data is
+        returned as ``float32`` channel values without normalization.
 
     The filtering mode (:class:`warp.TextureFilterMode`) and the addressing of out-of-range
     coordinates (:class:`warp.TextureAddressMode`) are those set when the texture was created; see
     :class:`warp.Texture`. Currently, CUDA textures with unnormalized coordinates support only
-    ``CLAMP`` and ``BORDER`` address modes. Use normalized coordinates with ``WRAP`` or ``MIRROR``."""
+    ``CLAMP`` and ``BORDER`` address modes. Use normalized coordinates with ``WRAP`` or ``MIRROR``.
+
+    The backward pass propagates gradients to the sampling coordinates wherever the sample
+    is locally linear. At interpolation-cell and address-mode boundaries the mathematical
+    derivative is not unique, so Warp follows the branch selected by the forward sampler.
+    With :attr:`warp.TextureFilterMode.CLOSEST` filtering the sampled value is piecewise
+    constant in the coordinates, so coordinate gradients are zero. Gradients are not
+    propagated to the texture data itself."""
     ...
 
 @over
@@ -9130,19 +9258,32 @@ def texture_sample(
             texture's available mip-level range. Fractional values blend between neighbouring mip
             levels when ``mip_filter_mode`` is
             :attr:`warp.TextureFilterMode.LINEAR`; the coordinates are evaluated independently at
-            each level used in the blend. The ``lod`` argument is ignored for textures created with a single mip level.
+            each level used in the blend. Ignored for textures created with a single mip level.
+            The ``lod`` adjoint is nonzero only for mipmapped textures with
+            ``mip_filter_mode=TextureFilterMode.LINEAR`` and an unclamped, nonnegative LOD. At an
+            unclamped integer LOD, the mip-blend derivative may differ on either side. Warp uses
+            the derivative toward increasing LOD values. The LOD gradient is zero when the LOD is
+            clamped.
 
     Returns:
         The sampled value of the specified ``dtype``. The backends normalize unsigned 8- and 16-bit
-        integer data to ``[0, 1]`` and signed 8- and 16-bit integer data to ``[-1, 1]``. Sampling an
-        ``int32`` or ``uint32`` texture causes kernel execution to fail; use an 8- or 16-bit integer
-        or floating-point texture. Floating-point texture data is returned as ``float32`` channel
-        values without normalization.
+        integer data to ``[0, 1]`` and signed 8- and 16-bit integer data to ``[-1, 1]``.
+        Signed and unsigned 32-bit integer data is converted numerically to ``float32`` without
+        normalization and requires closest filtering within and between mip levels. Integers
+        outside ``[-2**24, 2**24]`` may round during conversion. Floating-point texture data is
+        returned as ``float32`` channel values without normalization.
 
     The filtering mode (:class:`warp.TextureFilterMode`) and the addressing of out-of-range
     coordinates (:class:`warp.TextureAddressMode`) are those set when the texture was created; see
     :class:`warp.Texture`. Currently, CUDA textures with unnormalized coordinates support only
-    ``CLAMP`` and ``BORDER`` address modes. Use normalized coordinates with ``WRAP`` or ``MIRROR``."""
+    ``CLAMP`` and ``BORDER`` address modes. Use normalized coordinates with ``WRAP`` or ``MIRROR``.
+
+    The backward pass propagates gradients to the sampling coordinates wherever the sample
+    is locally linear. At interpolation-cell and address-mode boundaries the mathematical
+    derivative is not unique, so Warp follows the branch selected by the forward sampler.
+    With :attr:`warp.TextureFilterMode.CLOSEST` filtering the sampled value is piecewise
+    constant in the coordinates, so coordinate gradients are zero. Gradients are not
+    propagated to the texture data itself."""
     ...
 
 @over
@@ -9171,19 +9312,32 @@ def texture_sample(tex: Texture3D, uvw: vec3f, dtype: Any, lod: float32 | float 
             texture's available mip-level range. Fractional values blend between neighbouring mip
             levels when ``mip_filter_mode`` is
             :attr:`warp.TextureFilterMode.LINEAR`; the coordinates are evaluated independently at
-            each level used in the blend. The ``lod`` argument is ignored for textures created with a single mip level.
+            each level used in the blend. Ignored for textures created with a single mip level.
+            The ``lod`` adjoint is nonzero only for mipmapped textures with
+            ``mip_filter_mode=TextureFilterMode.LINEAR`` and an unclamped, nonnegative LOD. At an
+            unclamped integer LOD, the mip-blend derivative may differ on either side. Warp uses
+            the derivative toward increasing LOD values. The LOD gradient is zero when the LOD is
+            clamped.
 
     Returns:
         The sampled value of the specified ``dtype``. The backends normalize unsigned 8- and 16-bit
-        integer data to ``[0, 1]`` and signed 8- and 16-bit integer data to ``[-1, 1]``. Sampling an
-        ``int32`` or ``uint32`` texture causes kernel execution to fail; use an 8- or 16-bit integer
-        or floating-point texture. Floating-point texture data is returned as ``float32`` channel
-        values without normalization.
+        integer data to ``[0, 1]`` and signed 8- and 16-bit integer data to ``[-1, 1]``.
+        Signed and unsigned 32-bit integer data is converted numerically to ``float32`` without
+        normalization and requires closest filtering within and between mip levels. Integers
+        outside ``[-2**24, 2**24]`` may round during conversion. Floating-point texture data is
+        returned as ``float32`` channel values without normalization.
 
     The filtering mode (:class:`warp.TextureFilterMode`) and the addressing of out-of-range
     coordinates (:class:`warp.TextureAddressMode`) are those set when the texture was created; see
     :class:`warp.Texture`. Currently, CUDA textures with unnormalized coordinates support only
-    ``CLAMP`` and ``BORDER`` address modes. Use normalized coordinates with ``WRAP`` or ``MIRROR``."""
+    ``CLAMP`` and ``BORDER`` address modes. Use normalized coordinates with ``WRAP`` or ``MIRROR``.
+
+    The backward pass propagates gradients to the sampling coordinates wherever the sample
+    is locally linear. At interpolation-cell and address-mode boundaries the mathematical
+    derivative is not unique, so Warp follows the branch selected by the forward sampler.
+    With :attr:`warp.TextureFilterMode.CLOSEST` filtering the sampled value is piecewise
+    constant in the coordinates, so coordinate gradients are zero. Gradients are not
+    propagated to the texture data itself."""
     ...
 
 @over
@@ -9224,19 +9378,32 @@ def texture_sample(
             texture's available mip-level range. Fractional values blend between neighbouring mip
             levels when ``mip_filter_mode`` is
             :attr:`warp.TextureFilterMode.LINEAR`; the coordinates are evaluated independently at
-            each level used in the blend. The ``lod`` argument is ignored for textures created with a single mip level.
+            each level used in the blend. Ignored for textures created with a single mip level.
+            The ``lod`` adjoint is nonzero only for mipmapped textures with
+            ``mip_filter_mode=TextureFilterMode.LINEAR`` and an unclamped, nonnegative LOD. At an
+            unclamped integer LOD, the mip-blend derivative may differ on either side. Warp uses
+            the derivative toward increasing LOD values. The LOD gradient is zero when the LOD is
+            clamped.
 
     Returns:
         The sampled value of the specified ``dtype``. The backends normalize unsigned 8- and 16-bit
-        integer data to ``[0, 1]`` and signed 8- and 16-bit integer data to ``[-1, 1]``. Sampling an
-        ``int32`` or ``uint32`` texture causes kernel execution to fail; use an 8- or 16-bit integer
-        or floating-point texture. Floating-point texture data is returned as ``float32`` channel
-        values without normalization.
+        integer data to ``[0, 1]`` and signed 8- and 16-bit integer data to ``[-1, 1]``.
+        Signed and unsigned 32-bit integer data is converted numerically to ``float32`` without
+        normalization and requires closest filtering within and between mip levels. Integers
+        outside ``[-2**24, 2**24]`` may round during conversion. Floating-point texture data is
+        returned as ``float32`` channel values without normalization.
 
     The filtering mode (:class:`warp.TextureFilterMode`) and the addressing of out-of-range
     coordinates (:class:`warp.TextureAddressMode`) are those set when the texture was created; see
     :class:`warp.Texture`. Currently, CUDA textures with unnormalized coordinates support only
-    ``CLAMP`` and ``BORDER`` address modes. Use normalized coordinates with ``WRAP`` or ``MIRROR``."""
+    ``CLAMP`` and ``BORDER`` address modes. Use normalized coordinates with ``WRAP`` or ``MIRROR``.
+
+    The backward pass propagates gradients to the sampling coordinates wherever the sample
+    is locally linear. At interpolation-cell and address-mode boundaries the mathematical
+    derivative is not unique, so Warp follows the branch selected by the forward sampler.
+    With :attr:`warp.TextureFilterMode.CLOSEST` filtering the sampled value is piecewise
+    constant in the coordinates, so coordinate gradients are zero. Gradients are not
+    propagated to the texture data itself."""
     ...
 
 @over
