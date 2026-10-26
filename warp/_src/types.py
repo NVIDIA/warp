@@ -4584,8 +4584,32 @@ class array(Array[DType, NDim]):
         cvalue_ptr = ctypes.pointer(cvalue)
         cvalue_size = ctypes.sizeof(cvalue)
 
+        apic_capture = warp._src.context._get_apic_capture_for_device(self.device)
+        if (
+            self.is_contiguous
+            and apic_capture is not None
+            and apic_capture.apic_savable
+            and any(any(bytes(cvalue)[offset : offset + 8]) for offset in apic_capture._find_handle_offsets(self.dtype))
+        ):
+            # A memtile record would save process-local handles (e.g. mesh IDs) as raw
+            # bytes. A kernel launch relocates them like any other handle argument (GH-2115).
+            # Null handles need no relocation and keep the memtile path, which avoids
+            # loading a kernel mid-capture (unsupported on CUDA drivers < 12.3).
+            from warp._src.utils import _array_fill_kernel  # noqa: PLC0415
+
+            if isinstance(self.dtype, warp._src.codegen.Struct):
+                value = value if isinstance(value, self.dtype.cls) else self.dtype()
+            else:
+                value = cvalue.value
+            warp._src.context.launch(
+                warp._src.context.overload(_array_fill_kernel, [array[self.dtype], self.dtype]),
+                dim=self.size,
+                inputs=[self.flatten(), value],
+                device=self.device,
+                record_tape=False,
+            )
         # prefer using memtile for contiguous arrays, because it should be faster than generic fill
-        if self.is_contiguous:
+        elif self.is_contiguous:
             # Large multi-byte fills (> WP_FILL_VALUE_INLINE_BYTES_2 = 3968 bytes,
             # defined in warp/native/warp.cu -- keep the literal below in sync)
             # take a capturable_tmp_alloc fallback in wp_memtile_device (pause/resume
@@ -4593,7 +4617,6 @@ class array(Array[DType, NDim]):
             # so a saved CUDA graph could not replay them. Surface the limitation
             # instead of recording an unreplayable op. Small fills embed the value
             # inline in the byte stream and replay fine.
-            apic_capture = warp._src.context._get_apic_capture_for_device(self.device)
             if (
                 cvalue_size > 3968  # WP_FILL_VALUE_INLINE_BYTES_2 (warp/native/warp.cu)
                 and self.device.is_cuda
@@ -4610,7 +4633,6 @@ class array(Array[DType, NDim]):
             # once at capture time and never replay. Surface the limitation now
             # instead of producing wrong output at replay. Applies to both CPU
             # (record-only) and CUDA (record-and-execute) captures.
-            apic_capture = warp._src.context._get_apic_capture_for_device(self.device)
             if apic_capture is not None:
                 raise NotImplementedError(
                     "APIC capture does not yet support fill_() on non-contiguous arrays; "
