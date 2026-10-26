@@ -816,6 +816,11 @@ def flatten(value: Sequence) -> tuple[list, tuple[int, ...]]:
     depth = 0
     stack = [(depth, value)]
 
+    # Depth at which scalar leaves are found. All leaves must live at the same
+    # depth, and no sequence may appear at or below that depth, otherwise the
+    # input is ragged (scalars and sequences mixed at the same level).
+    leaf_depth = None
+
     while stack:
         depth, elem = stack.pop(0)
 
@@ -832,8 +837,15 @@ def flatten(value: Sequence) -> tuple[list, tuple[int, ...]]:
             if depth != len(shape):
                 raise ValueError("Ragged array: scalar found before deepest level.") from None
 
+            leaf_depth = depth
             arr.append(elem)
         else:
+            if leaf_depth is not None and depth >= leaf_depth:
+                # A sequence sitting at the same depth as (or deeper than) a
+                # scalar leaf means scalars and sequences are mixed at the same
+                # level, so the input is not rectangular.
+                raise ValueError("Ragged array: sequence found at the same level as a scalar.") from None
+
             dim = len(elem)
             if depth == len(shape):
                 # First sequence seen at this depth, record its length.
