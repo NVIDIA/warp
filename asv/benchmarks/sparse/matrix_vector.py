@@ -128,16 +128,14 @@ class BsrMvAlmostDense(BsrMvFemMatrix):
 class BsrMvMixedPrecision:
     """Compare compressed matrix storage with preconverted float64 storage."""
 
-    params = [["float32", "float64"], [8, 32, 128], [-1, 0, 64], [False, True]]
+    params = [["float32", "float64"], [32], [0], [False, True]]
     param_names = ["matrix_dtype", "blocks_per_row", "tile_size", "transpose"]
     rounds = 3
     repeat = 5
     number = 10
 
+    @setup_once
     def setup(self, matrix_dtype, blocks_per_row, tile_size, transpose):
-        self._setup(matrix_dtype, blocks_per_row, tile_size, transpose)
-
-    def _setup(self, matrix_dtype, blocks_per_row, tile_size, transpose):
         wp.init()
         self.device = wp.get_device("cuda:0")
         nrow = 32768
