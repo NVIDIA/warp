@@ -7,7 +7,11 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 
 ## 2026
 
+- **RLMuscle: Muscle-Driven Character Animation via Reinforcement Learning**. *C. Li, S. Yu, Y. Gao, S. Li, P. Yu, A. Hao, H. Wang*. October 2026. [arXiv:2610.30033](https://arxiv.org/abs/2610.30033)
+- **DefFlow: Goal-Conditioned Deformable Object Manipulation using 3D Point Flows**. *G. Singh, S. Orozco, R. Duong, M. T. Akbulut, G. Konidaris, S. Sridhar*. October 2026. [arXiv:2610.22827](https://arxiv.org/abs/2610.22827)
 - **CQDC-Warp: GPU-Accelerated Differentiable Quasi-Dynamic Simulation for Contact-Rich Manipulation**. *Y. Ding, J. Chen, J. Xu, W. Zhao, L. Yi, H. Wang*. October 2026. [arXiv:2610.21349](https://arxiv.org/abs/2610.21349)
+- **E2DRL: End-to-End Differentiable Reinforcement Learning for 3D Obstacle Avoidance in Quadruped Robots**. *C. Fan, B. Zhou, G. Yang, Z. Zhuang, A. Zhang, P. Yang, X. Liu, C. Wang, Y. R. Tan, F. Shi*. October 2026. [arXiv:2610.19627](https://arxiv.org/abs/2610.19627)
+- **Refine Where It Matters: Contact-Adaptive Meshing for Deformable Object Manipulation**. *G. Johnson, T. Olesch, F. Liu*. October 2026. [arXiv:2610.14142](https://arxiv.org/abs/2610.14142)
 - **SceneFactory-3D: Lifting 2D Traffic Scenes into 3D Physical Counterfactuals for Scalable Physically Grounded Safety Evaluation**. *Y. Zhu, L. Tian, T. Zhao, Y. Chen, F. Zuo, T. Li, Z. Bian*. October 2026. [arXiv:2610.02874](https://arxiv.org/abs/2610.02874)
 - **Asking the World: Generalist Physical Reasoning through Agentic World Modeling and Probing**. *S. Zeng, C. Yang, P. Chen, G. Zhang, J. Fan, C. Wang*. September 2026. [arXiv:2609.39135](https://arxiv.org/abs/2609.39135)
 - **CollisionSplatting: Collision-Aware Motion Planning in 3DGS Scenes with Image-Conditioned Objectives and Adjustable Conservatism**. *R. Khorrambakht, J. Ortiz-Haro, S. Weiss, L. Righetti*. September 2026. [arXiv:2609.35619](https://arxiv.org/abs/2609.35619)
