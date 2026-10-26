@@ -10,34 +10,78 @@
       :python: false
       :differentiable: true
 
-   Compute the forward FFT along the last dimension of an N-D tile of data.
+   Compute the forward FFT along the last dimension of an N-D tile, in place.
    
-   This function cooperatively computes the forward FFT on a tile of data inplace.
-   All leading dimensions are treated as independent batch dimensions.
-   The tile must have at least two dimensions.
+   All leading dimensions are treated as independent batches and the last dimension is
+   the transform size ``N``. The tile must have at least two dimensions and ``register``
+   storage. ``inout`` is overwritten with its transform.
    
-   The transform is unnormalized, meaning that applying :func:`tile_fft` followed by :func:`tile_ifft`
-   will scale the data by N, where N is the FFT size (the last dimension of the tile).
-   Normalization is left to the user to perform as needed.
+   Each element is a ``vec2`` interpreted as a complex number, with component ``0`` the
+   real part and component ``1`` the imaginary part. The transform is the standard
+   unnormalized DFT, ``X[k] = sum_n x[n] * exp(-2*pi*i*k*n/N)``, with output bins in the
+   usual order ``k = 0 ... N-1``, matching :func:`numpy.fft.fft`. Because no scaling is
+   applied, a forward transform followed by an inverse transform multiplies the data by
+   ``N``; normalization is left to the caller.
    
-   Supported datatypes are:
-       * vec2f, vec2d
+   Supported dtypes are ``vec2f`` and ``vec2d``.
    
-   :param inout: The input/output tile.
+   This is a cooperative operation, so every thread in the block must call it.
    
-   .. rubric:: Notes
+   Backward propagation applies an inverse FFT along the last dimension to the incoming
+   gradient, without dividing by ``N``.
    
-   Supported FFT sizes by backend:
+   A MathDx-enabled build is not required, but the supported transform sizes depend on
+   the backend:
    
-   * **CPU**: Any size. Non-power-of-two sizes are capped at 4096;
-     larger non-power-of-two sizes raise ``ValueError``.
-   * **GPU with libmathdx**: Any size. This is the default when Warp
-     is built with libmathdx.
-   * **GPU without libmathdx** (or ``enable_mathdx_fft=False``):
-     Power-of-two sizes only, and the FFT size must be divisible by
-     ``block_dim``. Other sizes raise ``ValueError``. Slower than the
-     libmathdx path.
+   * **CPU**: any power-of-two size; non-power-of-two sizes go through an ``O(N^2)`` DFT
+     and support at most 4096 elements per transform.
+   * **GPU with libmathdx** (cuFFTDx), unless disabled by
+     :attr:`warp.config.enable_mathdx_fft` or the ``enable_mathdx_fft`` module option:
+     supported ``N`` and ``block_dim`` combinations depend on the build. ``block_dim``
+     must be at most ``N/2``.
+   * **GPU without libmathdx**, or with cuFFTDx disabled: power-of-two sizes only, and
+     ``N`` must be divisible by ``block_dim``. Compiles faster but runs slower than the
+     cuFFTDx path.
    
-   See :attr:`warp.config.enable_mathdx_fft` to control GPU backend
-   selection.
+   Unsupported transform sizes or block dimensions raise an exception during kernel
+   compilation, usually on the first launch.
+   
+   :param inout: The tile to transform in place.
+   
+   .. rubric:: Example
+   
+   .. testsetup::
+   
+       __name__ = "warp_docs_tile_fft"
+   
+   .. testcode::
+   
+       @wp.kernel
+       def spectrum(x: wp.array2d[wp.vec2f]):
+           x_tile = wp.tile_load(x, shape=(2, 4))
+           wp.tile_fft(x_tile)
+           wp.tile_store(x, x_tile)
+   
+       # two batches of four real samples; the FFT runs along the last dimension
+       signal = np.zeros((2, 4, 2), dtype=np.float32)
+       signal[0, :, 0] = [1.0, 2.0, 3.0, 4.0]
+       signal[1, :, 0] = [4.0, 3.0, 2.0, 1.0]
+       x = wp.array(signal, dtype=wp.vec2f)
+   
+       # each thread owns two samples from every batch
+       wp.launch_tiled(spectrum, dim=1, inputs=[x], block_dim=2)
+   
+       print(np.round(x.numpy(), 3))
+   
+   .. testoutput::
+   
+       [[[10.  0.]
+         [-2.  2.]
+         [-2.  0.]
+         [-2. -2.]]
+   
+        [[10.  0.]
+         [ 2. -2.]
+         [ 2.  0.]
+         [ 2.  2.]]]
    

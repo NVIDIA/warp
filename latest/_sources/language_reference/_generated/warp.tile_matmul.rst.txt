@@ -10,23 +10,43 @@
       :python: false
       :differentiable: true
 
-   Compute the matrix product ``a*b``.
+   Accumulate the matrix product ``a @ b`` into an existing tile.
    
-   Compute ``out = alpha * a*b + beta * out``.
+   Computes ``out = alpha * a @ b + beta * out``, updating ``out`` in place. ``out`` is
+   read only when ``beta`` is nonzero, so it must be initialized before the call unless
+   ``beta`` is zero. Use the two-argument overload to obtain a freshly computed tile
+   instead.
    
-   Supported datatypes are:
-       * fp16, bf16, fp32, fp64
+   ``out`` must not alias ``a`` or ``b``: the operands are read while ``out`` is being
+   written, so overlapping tiles give undefined results. Passing the same tile as both
+   ``a`` and ``b`` is fine.
    
-   All input and output tiles must have the same datatype. Tile data will automatically be migrated
-   to shared memory if necessary and may use Tensor Core operations, depending on the GEMM configuration.
+   This is a cooperative operation, so every thread in the block must call it.
    
-   Note that computing the adjoints of alpha and beta are not yet supported.
+   ``a``, ``b``, and ``out`` may independently use ``float16``, ``float32``, or
+   ``float64``. Accumulation uses the dtype of ``out``. Currently, ``a`` and ``b`` may
+   also use ``bfloat16`` when backward compilation is disabled with the module option
+   ``enable_backward=False``. Apart from the ``M``, ``N``, and ``K`` extents having to
+   agree, the shapes are unconstrained, but large tiles may exhaust shared memory or
+   fail to compile the cuBLASDx kernel.
    
-   :param a: A tile with ``shape=(M, K)``
-   :param b: A tile with ``shape=(K, N)``
-   :param out: A tile with ``shape=(M, N)``
-   :param alpha: Scaling factor
-   :param beta: Accumulator factor
+   Tile data is migrated to shared memory when necessary.
+   
+   On CUDA devices, Warp uses cuBLASDx when it is built with libmathdx and
+   :attr:`warp.config.enable_mathdx_gemm` (or the ``enable_mathdx_gemm`` module option)
+   is ``True``, unless an operand's strides cannot be expressed as a cuBLASDx leading
+   dimension. Otherwise, and on the CPU, it uses a scalar GEMM, which is slower than
+   cuBLASDx on CUDA devices.
+   
+   Passing ``beta=0`` cuts gradient flow to the previous contents of ``out``. The scalar
+   ``alpha`` and ``beta`` arguments do not receive gradients.
+   
+   :param a: A tile with ``shape=(M, K)``.
+   :param b: A tile with ``shape=(K, N)``.
+   :param out: A tile with ``shape=(M, N)`` that the product is accumulated into. Must be
+               initialized unless ``beta`` is zero.
+   :param alpha: Scaling factor applied to the product ``a @ b``.
+   :param beta: Scaling factor applied to the incoming contents of ``out``.
    :param precision: Compute precision, specified as the string literal ``"default"`` or ``"tf32"``.
                      ``"default"`` uses the tile data type. ``"tf32"`` uses TF32 input precision with
                      ``float32`` accumulation, without changing tile storage. The adjoint products use
@@ -41,6 +61,41 @@
        ``a``, ``b``, and ``out``.
    :raises ValueError: If ``precision`` is not the string literal ``"default"`` or ``"tf32"``.
    
+   .. rubric:: Example
+   
+   .. testsetup::
+   
+       __name__ = "warp_docs_tile_matmul"
+   
+   .. testcode::
+   
+       @wp.kernel
+       def gemm(a: wp.array2d[float], b: wp.array2d[float], out: wp.array2d[float]):
+           # beta defaults to 1, so initialize the accumulator before adding the products
+           out_tile = wp.tile_zeros(shape=(4, 8), dtype=float)
+           # accumulate the partial products over two slices of the shared dimension
+           for k in range(2):
+               a_tile = wp.tile_load(a, shape=(4, 3), offset=(0, k * 3))
+               b_tile = wp.tile_load(b, shape=(3, 8), offset=(k * 3, 0))
+               wp.tile_matmul(a_tile, b_tile, out_tile)
+           wp.tile_store(out, out_tile)
+   
+       a = wp.array(np.arange(24, dtype=np.float32).reshape(4, 6))
+       b = wp.array(np.arange(48, dtype=np.float32).reshape(6, 8))
+       out = wp.zeros((4, 8), dtype=float)
+   
+       # one full warp cooperates on the 32 output entries
+       wp.launch_tiled(gemm, dim=1, inputs=[a, b], outputs=[out], block_dim=32)
+   
+       print(out.numpy())
+   
+   .. testoutput::
+   
+       [[ 440.  455.  470.  485.  500.  515.  530.  545.]
+        [1160. 1211. 1262. 1313. 1364. 1415. 1466. 1517.]
+        [1880. 1967. 2054. 2141. 2228. 2315. 2402. 2489.]
+        [2600. 2723. 2846. 2969. 3092. 3215. 3338. 3461.]]
+   
 
 .. function:: tile_matmul(a: Tile[Float, tuple[int, int]], b: Tile[Float, tuple[int, int]], alpha: Float = 1.0, precision: str = "default") -> Tile[Float, tuple[int, int]]
    :noindex:
@@ -50,21 +105,22 @@
       :python: false
       :differentiable: true
 
-   Compute the matrix product ``a*b``.
+   Compute the matrix product ``a @ b``.
    
-   Compute ``out = alpha * a*b``.
+   Unlike the accumulating form ``wp.tile_matmul(a, b, out)``, no tile is read for the
+   result, so nothing has to be initialized.
    
-   Supported datatypes are:
-       * fp16, bf16, fp32, fp64
+   The product is accumulated in ``a``'s dtype, so ``a`` may not be ``bfloat16``.
+   Unlike ``wp.tile_matmul(a, b, out)``, where ``out``'s dtype sets the accumulation
+   dtype, the result dtype cannot be chosen independently of ``a``. Backend selection
+   matches ``wp.tile_matmul(a, b, out)``; see that overload for details and a usage
+   example.
    
-   Both input tiles must have the same datatype. Tile data will automatically be migrated
-   to shared memory if necessary and may use Tensor Core operations, depending on the GEMM configuration.
+   This is a cooperative operation, so every thread in the block must call it.
    
-   Note that computing the adjoints of alpha is not yet supported.
-   
-   :param a: A tile with ``shape=(M, K)``
-   :param b: A tile with ``shape=(K, N)``
-   :param alpha: Scaling factor
+   :param a: A tile with ``shape=(M, K)``.
+   :param b: A tile with ``shape=(K, N)``.
+   :param alpha: Scaling factor applied to the product ``a @ b``. It does not receive a gradient.
    :param precision: Compute precision, specified as the string literal ``"default"`` or ``"tf32"``.
                      ``"default"`` uses the tile data type. ``"tf32"`` uses TF32 input precision with
                      ``float32`` accumulation, without changing tile storage. The adjoint products use
@@ -75,7 +131,8 @@
                      and logs a warning when the module is compiled. The same fallback applies when
                      operand strides cannot be represented by cuBLASDx leading dimensions.
    
-   :returns: A tile with ``shape=(M, N)``
+   :returns: A new tile in shared memory with ``shape=(M, N)`` and the same dtype as ``a``,
+             holding ``alpha * a @ b``.
    
    :raises TypeError: If ``precision="tf32"`` is used with tiles other than ``float32`` for
        ``a`` and ``b``.

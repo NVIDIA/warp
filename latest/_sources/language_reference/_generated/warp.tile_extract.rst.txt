@@ -68,8 +68,8 @@
    
    Two-index overload: both indices select an element of a 2D tile, or ``i`` indexes a
    1D tile of vectors and ``j`` selects a component of that vector, or ``i`` indexes a
-   1D tile of matrices and ``j`` selects a row of that
-   matrix. See the one-index overload for the shared contract and a usage example.
+   1D tile of matrices and ``j`` selects a row of that matrix. See the one-index
+   overload for usage details and an example.
    
    :param a: Tile to extract the element from. All index arguments may be runtime values.
    :param i: Index along the first dimension
@@ -93,8 +93,7 @@
    
    Three-index overload: the indices select an element of a 3D tile, a component from a
    2D tile of vectors, a row from a 2D tile of matrices, or an entry from a 1D tile of
-   matrices. See the one-index overload for the
-   shared contract and a usage example.
+   matrices. See the one-index overload for usage details and an example.
    
    :param a: Tile to extract the element from. All index arguments may be runtime values.
    :param i: Index along the first dimension
@@ -119,8 +118,7 @@
    
    Four-index overload: the indices select an element of a 4D tile, a component from a
    3D tile of vectors, a row from a 3D tile of matrices, or an entry from a 2D tile of
-   matrices. See the one-index overload for the shared
-   contract and a usage example.
+   matrices. See the one-index overload for usage details and an example.
    
    :param a: Tile to extract the element from. All index arguments may be runtime values.
    :param i: Index along the first dimension
@@ -146,8 +144,7 @@
    
    Five-index overload: the indices select an element of a 5D tile, a component from a
    4D tile of vectors, a row from a 4D tile of matrices, or an entry from a 3D tile of
-   matrices. See the one-index overload for the
-   shared contract and a usage example.
+   matrices. See the one-index overload for usage details and an example.
    
    :param a: Tile to extract the element from. All index arguments may be runtime values.
    :param i: Index along the first dimension
@@ -172,8 +169,8 @@
    Extract a single element from a tile.
    
    Six-index overload: the indices select an element of a 4D tile of matrices,
-   followed by a row and a column index. See the one-index overload for the shared
-   contract and a usage example.
+   followed by a row and a column index. See the one-index overload for usage details
+   and an example.
    
    :param a: Tile to extract the element from
    :param i: Index along the first dimension

@@ -567,25 +567,38 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#warp._src.lang.tile_matmul" title="Link to this definition">#</a></dt>
-<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Compute the matrix product <code class="docutils literal notranslate"><span class="pre">a*b</span></code>.</p>
-<p>Compute <code class="docutils literal notranslate"><span class="pre">out</span> <span class="pre">=</span> <span class="pre">alpha</span> <span class="pre">*</span> <span class="pre">a*b</span> <span class="pre">+</span> <span class="pre">beta</span> <span class="pre">*</span> <span class="pre">out</span></code>.</p>
-<dl class="simple">
-<dt>Supported datatypes are:</dt><dd><ul class="simple">
-<li><p>fp16, bf16, fp32, fp64</p></li>
-</ul>
-</dd>
-</dl>
-<p>All input and output tiles must have the same datatype. Tile data will automatically be migrated
-to shared memory if necessary and may use Tensor Core operations, depending on the GEMM configuration.</p>
-<p>Note that computing the adjoints of alpha and beta are not yet supported.</p>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Accumulate the matrix product <code class="docutils literal notranslate"><span class="pre">a</span> <span class="pre">&#64;</span> <span class="pre">b</span></code> into an existing tile.</p>
+<p>Computes <code class="docutils literal notranslate"><span class="pre">out</span> <span class="pre">=</span> <span class="pre">alpha</span> <span class="pre">*</span> <span class="pre">a</span> <span class="pre">&#64;</span> <span class="pre">b</span> <span class="pre">+</span> <span class="pre">beta</span> <span class="pre">*</span> <span class="pre">out</span></code>, updating <code class="docutils literal notranslate"><span class="pre">out</span></code> in place. <code class="docutils literal notranslate"><span class="pre">out</span></code> is
+read only when <code class="docutils literal notranslate"><span class="pre">beta</span></code> is nonzero, so it must be initialized before the call unless
+<code class="docutils literal notranslate"><span class="pre">beta</span></code> is zero. Use the two-argument overload to obtain a freshly computed tile
+instead.</p>
+<p><code class="docutils literal notranslate"><span class="pre">out</span></code> must not alias <code class="docutils literal notranslate"><span class="pre">a</span></code> or <code class="docutils literal notranslate"><span class="pre">b</span></code>: the operands are read while <code class="docutils literal notranslate"><span class="pre">out</span></code> is being
+written, so overlapping tiles give undefined results. Passing the same tile as both
+<code class="docutils literal notranslate"><span class="pre">a</span></code> and <code class="docutils literal notranslate"><span class="pre">b</span></code> is fine.</p>
+<p>This is a cooperative operation, so every thread in the block must call it.</p>
+<p><code class="docutils literal notranslate"><span class="pre">a</span></code>, <code class="docutils literal notranslate"><span class="pre">b</span></code>, and <code class="docutils literal notranslate"><span class="pre">out</span></code> may independently use <code class="docutils literal notranslate"><span class="pre">float16</span></code>, <code class="docutils literal notranslate"><span class="pre">float32</span></code>, or
+<code class="docutils literal notranslate"><span class="pre">float64</span></code>. Accumulation uses the dtype of <code class="docutils literal notranslate"><span class="pre">out</span></code>. Currently, <code class="docutils literal notranslate"><span class="pre">a</span></code> and <code class="docutils literal notranslate"><span class="pre">b</span></code> may
+also use <code class="docutils literal notranslate"><span class="pre">bfloat16</span></code> when backward compilation is disabled with the module option
+<code class="docutils literal notranslate"><span class="pre">enable_backward=False</span></code>. Apart from the <code class="docutils literal notranslate"><span class="pre">M</span></code>, <code class="docutils literal notranslate"><span class="pre">N</span></code>, and <code class="docutils literal notranslate"><span class="pre">K</span></code> extents having to
+agree, the shapes are unconstrained, but large tiles may exhaust shared memory or
+fail to compile the cuBLASDx kernel.</p>
+<p>Tile data is migrated to shared memory when necessary.</p>
+<p>On CUDA devices, Warp uses cuBLASDx when it is built with libmathdx and
+<a class="reference internal" href="../../api_reference/_generated/warp.config.enable_mathdx_gemm.html#warp.config.enable_mathdx_gemm" title="warp.config.enable_mathdx_gemm"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.enable_mathdx_gemm</span></code></a> (or the <code class="docutils literal notranslate"><span class="pre">enable_mathdx_gemm</span></code> module option)
+is <code class="docutils literal notranslate"><span class="pre">True</span></code>, unless an operand’s strides cannot be expressed as a cuBLASDx leading
+dimension. Otherwise, and on the CPU, it uses a scalar GEMM, which is slower than
+cuBLASDx on CUDA devices.</p>
+<p>Passing <code class="docutils literal notranslate"><span class="pre">beta=0</span></code> cuts gradient flow to the previous contents of <code class="docutils literal notranslate"><span class="pre">out</span></code>. The scalar
+<code class="docutils literal notranslate"><span class="pre">alpha</span></code> and <code class="docutils literal notranslate"><span class="pre">beta</span></code> arguments do not receive gradients.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>a</strong> – A tile with <code class="docutils literal notranslate"><span class="pre">shape=(M,</span> <span class="pre">K)</span></code></p></li>
-<li><p><strong>b</strong> – A tile with <code class="docutils literal notranslate"><span class="pre">shape=(K,</span> <span class="pre">N)</span></code></p></li>
-<li><p><strong>out</strong> – A tile with <code class="docutils literal notranslate"><span class="pre">shape=(M,</span> <span class="pre">N)</span></code></p></li>
-<li><p><strong>alpha</strong> – Scaling factor</p></li>
-<li><p><strong>beta</strong> – Accumulator factor</p></li>
+<li><p><strong>a</strong> – A tile with <code class="docutils literal notranslate"><span class="pre">shape=(M,</span> <span class="pre">K)</span></code>.</p></li>
+<li><p><strong>b</strong> – A tile with <code class="docutils literal notranslate"><span class="pre">shape=(K,</span> <span class="pre">N)</span></code>.</p></li>
+<li><p><strong>out</strong> – A tile with <code class="docutils literal notranslate"><span class="pre">shape=(M,</span> <span class="pre">N)</span></code> that the product is accumulated into. Must be
+initialized unless <code class="docutils literal notranslate"><span class="pre">beta</span></code> is zero.</p></li>
+<li><p><strong>alpha</strong> – Scaling factor applied to the product <code class="docutils literal notranslate"><span class="pre">a</span> <span class="pre">&#64;</span> <span class="pre">b</span></code>.</p></li>
+<li><p><strong>beta</strong> – Scaling factor applied to the incoming contents of <code class="docutils literal notranslate"><span class="pre">out</span></code>.</p></li>
 <li><p><strong>precision</strong> – Compute precision, specified as the string literal <code class="docutils literal notranslate"><span class="pre">&quot;default&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;tf32&quot;</span></code>.
 <code class="docutils literal notranslate"><span class="pre">&quot;default&quot;</span></code> uses the tile data type. <code class="docutils literal notranslate"><span class="pre">&quot;tf32&quot;</span></code> uses TF32 input precision with
 <code class="docutils literal notranslate"><span class="pre">float32</span></code> accumulation, without changing tile storage. The adjoint products use
@@ -605,6 +618,34 @@ operand strides cannot be represented by cuBLASDx leading dimensions.</p></li>
 </ul>
 </dd>
 </dl>
+<p class="rubric">Example</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">gemm</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array2d</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">b</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array2d</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array2d</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+    <span class="c1"># beta defaults to 1, so initialize the accumulator before adding the products</span>
+    <span class="n">out_tile</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">8</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="c1"># accumulate the partial products over two slices of the shared dimension</span>
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">):</span>
+        <span class="n">a_tile</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">offset</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">k</span> <span class="o">*</span> <span class="mi">3</span><span class="p">))</span>
+        <span class="n">b_tile</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">8</span><span class="p">),</span> <span class="n">offset</span><span class="o">=</span><span class="p">(</span><span class="n">k</span> <span class="o">*</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+        <span class="n">wp</span><span class="o">.</span><span class="n">tile_matmul</span><span class="p">(</span><span class="n">a_tile</span><span class="p">,</span> <span class="n">b_tile</span><span class="p">,</span> <span class="n">out_tile</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">out_tile</span><span class="p">)</span>
+
+<span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">24</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+<span class="n">b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">48</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">8</span><span class="p">))</span>
+<span class="n">out</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">4</span><span class="p">,</span> <span class="mi">8</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+
+<span class="c1"># one full warp cooperates on the 32 output entries</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch_tiled</span><span class="p">(</span><span class="n">gemm</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">],</span> <span class="n">block_dim</span><span class="o">=</span><span class="mi">32</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[[ 440.  455.  470.  485.  500.  515.  530.  545.]
+ [1160. 1211. 1262. 1313. 1364. 1415. 1466. 1517.]
+ [1880. 1967. 2054. 2141. 2228. 2315. 2402. 2489.]
+ [2600. 2723. 2846. 2969. 3092. 3215. 3338. 3461.]]
+</pre></div>
+</div>
 </dd></dl>
 
 <dl class="py function">
@@ -619,23 +660,21 @@ operand strides cannot be represented by cuBLASDx leading dimensions.</p></li>
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tile</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../api_reference/_generated/warp.Float.html#warp.Float" title="warp.Float"><span class="pre">Float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.15)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span></dt>
-<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Compute the matrix product <code class="docutils literal notranslate"><span class="pre">a*b</span></code>.</p>
-<p>Compute <code class="docutils literal notranslate"><span class="pre">out</span> <span class="pre">=</span> <span class="pre">alpha</span> <span class="pre">*</span> <span class="pre">a*b</span></code>.</p>
-<dl class="simple">
-<dt>Supported datatypes are:</dt><dd><ul class="simple">
-<li><p>fp16, bf16, fp32, fp64</p></li>
-</ul>
-</dd>
-</dl>
-<p>Both input tiles must have the same datatype. Tile data will automatically be migrated
-to shared memory if necessary and may use Tensor Core operations, depending on the GEMM configuration.</p>
-<p>Note that computing the adjoints of alpha is not yet supported.</p>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Compute the matrix product <code class="docutils literal notranslate"><span class="pre">a</span> <span class="pre">&#64;</span> <span class="pre">b</span></code>.</p>
+<p>Unlike the accumulating form <code class="docutils literal notranslate"><span class="pre">wp.tile_matmul(a,</span> <span class="pre">b,</span> <span class="pre">out)</span></code>, no tile is read for the
+result, so nothing has to be initialized.</p>
+<p>The product is accumulated in <code class="docutils literal notranslate"><span class="pre">a</span></code>’s dtype, so <code class="docutils literal notranslate"><span class="pre">a</span></code> may not be <code class="docutils literal notranslate"><span class="pre">bfloat16</span></code>.
+Unlike <code class="docutils literal notranslate"><span class="pre">wp.tile_matmul(a,</span> <span class="pre">b,</span> <span class="pre">out)</span></code>, where <code class="docutils literal notranslate"><span class="pre">out</span></code>’s dtype sets the accumulation
+dtype, the result dtype cannot be chosen independently of <code class="docutils literal notranslate"><span class="pre">a</span></code>. Backend selection
+matches <code class="docutils literal notranslate"><span class="pre">wp.tile_matmul(a,</span> <span class="pre">b,</span> <span class="pre">out)</span></code>; see that overload for details and a usage
+example.</p>
+<p>This is a cooperative operation, so every thread in the block must call it.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>a</strong> – A tile with <code class="docutils literal notranslate"><span class="pre">shape=(M,</span> <span class="pre">K)</span></code></p></li>
-<li><p><strong>b</strong> – A tile with <code class="docutils literal notranslate"><span class="pre">shape=(K,</span> <span class="pre">N)</span></code></p></li>
-<li><p><strong>alpha</strong> – Scaling factor</p></li>
+<li><p><strong>a</strong> – A tile with <code class="docutils literal notranslate"><span class="pre">shape=(M,</span> <span class="pre">K)</span></code>.</p></li>
+<li><p><strong>b</strong> – A tile with <code class="docutils literal notranslate"><span class="pre">shape=(K,</span> <span class="pre">N)</span></code>.</p></li>
+<li><p><strong>alpha</strong> – Scaling factor applied to the product <code class="docutils literal notranslate"><span class="pre">a</span> <span class="pre">&#64;</span> <span class="pre">b</span></code>. It does not receive a gradient.</p></li>
 <li><p><strong>precision</strong> – Compute precision, specified as the string literal <code class="docutils literal notranslate"><span class="pre">&quot;default&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;tf32&quot;</span></code>.
 <code class="docutils literal notranslate"><span class="pre">&quot;default&quot;</span></code> uses the tile data type. <code class="docutils literal notranslate"><span class="pre">&quot;tf32&quot;</span></code> uses TF32 input precision with
 <code class="docutils literal notranslate"><span class="pre">float32</span></code> accumulation, without changing tile storage. The adjoint products use
@@ -648,7 +687,8 @@ operand strides cannot be represented by cuBLASDx leading dimensions.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>A tile with <code class="docutils literal notranslate"><span class="pre">shape=(M,</span> <span class="pre">N)</span></code></p>
+<dd class="field-even"><p>A new tile in shared memory with <code class="docutils literal notranslate"><span class="pre">shape=(M,</span> <span class="pre">N)</span></code> and the same dtype as <code class="docutils literal notranslate"><span class="pre">a</span></code>,
+holding <code class="docutils literal notranslate"><span class="pre">alpha</span> <span class="pre">*</span> <span class="pre">a</span> <span class="pre">&#64;</span> <span class="pre">b</span></code>.</p>
 </dd>
 <dt class="field-odd">Raises<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">

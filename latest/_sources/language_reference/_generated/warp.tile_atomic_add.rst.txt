@@ -83,5 +83,5 @@
    Atomically add a 1D tile onto the 1D array ``a`` and return the values it replaced.
    
    Overload for a scalar ``offset``, equivalent to passing a one-element tuple. For
-   the full contract and a usage example, see the overload that takes a tuple-valued
-   ``offset`` argument.
+   usage details and an example, see the overload that takes a tuple-valued ``offset``
+   argument.

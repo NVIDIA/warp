@@ -72,5 +72,5 @@
    Store a 1D tile to a 1D global memory array.
    
    Overload for a scalar ``offset``, equivalent to passing a one-element tuple. For
-   the full contract and a usage example, see the overload that takes a tuple-valued
-   ``offset`` argument.
+   usage details and an example, see the overload that takes a tuple-valued ``offset``
+   argument.

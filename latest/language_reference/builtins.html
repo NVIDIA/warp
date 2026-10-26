@@ -995,19 +995,19 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <td><p>Construct a ray query against a <a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh" title="warp.Bvh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Bvh</span></code></a> for thread-block parallel traversal.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_cholesky.html#warp._src.lang.tile_cholesky" title="warp._src.lang.tile_cholesky"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_cholesky</span></code></a></p></td>
-<td><p>Compute the Cholesky factorization of a symmetric positive-definite matrix <code class="docutils literal notranslate"><span class="pre">A</span></code>.</p></td>
+<td><p>Compute the Cholesky factor of a symmetric positive-definite matrix <code class="docutils literal notranslate"><span class="pre">A</span></code> and return it in a new tile.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_cholesky_inplace.html#warp._src.lang.tile_cholesky_inplace" title="warp._src.lang.tile_cholesky_inplace"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_cholesky_inplace</span></code></a></p></td>
-<td><p>Compute the Cholesky factorization of a symmetric positive-definite matrix <code class="docutils literal notranslate"><span class="pre">A</span></code> inplace.</p></td>
+<td><p>Compute the Cholesky factorization of a symmetric positive-definite matrix <code class="docutils literal notranslate"><span class="pre">A</span></code> in place.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_cholesky_solve.html#warp._src.lang.tile_cholesky_solve" title="warp._src.lang.tile_cholesky_solve"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_cholesky_solve</span></code></a></p></td>
-<td><p>Solve for <code class="docutils literal notranslate"><span class="pre">x</span></code> in <code class="docutils literal notranslate"><span class="pre">Ax</span> <span class="pre">=</span> <span class="pre">y</span></code> given the Cholesky factor of <code class="docutils literal notranslate"><span class="pre">A</span></code>.</p></td>
+<td><p>Solve <code class="docutils literal notranslate"><span class="pre">A</span> <span class="pre">x</span> <span class="pre">=</span> <span class="pre">y</span></code> given the Cholesky factor of <code class="docutils literal notranslate"><span class="pre">A</span></code> and return <code class="docutils literal notranslate"><span class="pre">x</span></code> in a new tile.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_cholesky_solve_inplace.html#warp._src.lang.tile_cholesky_solve_inplace" title="warp._src.lang.tile_cholesky_solve_inplace"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_cholesky_solve_inplace</span></code></a></p></td>
-<td><p>Solve for <code class="docutils literal notranslate"><span class="pre">x</span></code> in <code class="docutils literal notranslate"><span class="pre">Ax</span> <span class="pre">=</span> <span class="pre">y</span></code> by overwriting <code class="docutils literal notranslate"><span class="pre">y</span></code> with <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p></td>
+<td><p>Solve <code class="docutils literal notranslate"><span class="pre">A</span> <span class="pre">x</span> <span class="pre">=</span> <span class="pre">y</span></code> in place, overwriting <code class="docutils literal notranslate"><span class="pre">y</span></code> with <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_diag_add.html#warp._src.lang.tile_diag_add" title="warp._src.lang.tile_diag_add"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_diag_add</span></code></a></p></td>
-<td><p>Add a square matrix and a diagonal matrix <code class="docutils literal notranslate"><span class="pre">d</span></code> represented as a 1D tile.</p></td>
+<td><p>Return a square tile with the entries of a 1D tile added to its diagonal.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_dot.html#warp._src.lang.tile_dot" title="warp._src.lang.tile_dot"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_dot</span></code></a></p></td>
 <td><p>Compute the dot product of two tiles.</p></td>
@@ -1019,7 +1019,7 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <td><p>Extract a single element from a tile.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_fft.html#warp._src.lang.tile_fft" title="warp._src.lang.tile_fft"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_fft</span></code></a></p></td>
-<td><p>Compute the forward FFT along the last dimension of an N-D tile of data.</p></td>
+<td><p>Compute the forward FFT along the last dimension of an N-D tile, in place.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_from_thread.html#warp._src.lang.tile_from_thread" title="warp._src.lang.tile_from_thread"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_from_thread</span></code></a></p></td>
 <td><p>Allocate a tile filled with a value from a specific thread.</p></td>
@@ -1028,7 +1028,7 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <td><p>Allocate a tile filled with the specified value.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_ifft.html#warp._src.lang.tile_ifft" title="warp._src.lang.tile_ifft"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_ifft</span></code></a></p></td>
-<td><p>Compute the inverse FFT along the last dimension of an N-D tile of data.</p></td>
+<td><p>Compute the inverse FFT along the last dimension of an N-D tile, in place.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_load.html#warp._src.lang.tile_load" title="warp._src.lang.tile_load"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_load</span></code></a></p></td>
 <td><p>Load a tile from a global memory array.</p></td>
@@ -1037,16 +1037,16 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <td><p>Load a tile from a global memory array, gathering along one axis through a 1D tile of indices.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_lower_solve.html#warp._src.lang.tile_lower_solve" title="warp._src.lang.tile_lower_solve"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_lower_solve</span></code></a></p></td>
-<td><p>Solve for <code class="docutils literal notranslate"><span class="pre">z</span></code> in <code class="docutils literal notranslate"><span class="pre">Lz</span> <span class="pre">=</span> <span class="pre">y</span></code>, where <code class="docutils literal notranslate"><span class="pre">L</span></code> is a lower triangular matrix.</p></td>
+<td><p>Solve <code class="docutils literal notranslate"><span class="pre">L</span> <span class="pre">z</span> <span class="pre">=</span> <span class="pre">y</span></code> for a lower-triangular <code class="docutils literal notranslate"><span class="pre">L</span></code> and return <code class="docutils literal notranslate"><span class="pre">z</span></code> in a new tile.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_lower_solve_inplace.html#warp._src.lang.tile_lower_solve_inplace" title="warp._src.lang.tile_lower_solve_inplace"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_lower_solve_inplace</span></code></a></p></td>
-<td><p>Solve for <code class="docutils literal notranslate"><span class="pre">z</span></code> in <code class="docutils literal notranslate"><span class="pre">Lz</span> <span class="pre">=</span> <span class="pre">y</span></code>, where <code class="docutils literal notranslate"><span class="pre">L</span></code> is a lower triangular matrix by overwriting <code class="docutils literal notranslate"><span class="pre">y</span></code> with <code class="docutils literal notranslate"><span class="pre">z</span></code>.</p></td>
+<td><p>Solve <code class="docutils literal notranslate"><span class="pre">L</span> <span class="pre">z</span> <span class="pre">=</span> <span class="pre">y</span></code> in place for a lower-triangular <code class="docutils literal notranslate"><span class="pre">L</span></code>, overwriting <code class="docutils literal notranslate"><span class="pre">y</span></code> with <code class="docutils literal notranslate"><span class="pre">z</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_map.html#warp._src.lang.tile_map" title="warp._src.lang.tile_map"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_map</span></code></a></p></td>
 <td><p>Return a new tile by applying a function to each element of a tile.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_matmul.html#warp._src.lang.tile_matmul" title="warp._src.lang.tile_matmul"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_matmul</span></code></a></p></td>
-<td><p>Compute the matrix product <code class="docutils literal notranslate"><span class="pre">a*b</span></code>.</p></td>
+<td><p>Accumulate the matrix product <code class="docutils literal notranslate"><span class="pre">a</span> <span class="pre">&#64;</span> <span class="pre">b</span></code> into an existing tile.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_max.html#warp._src.lang.tile_max" title="warp._src.lang.tile_max"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_max</span></code></a></p></td>
 <td><p>Compute the maximum of all elements of a tile.</p></td>
@@ -1133,10 +1133,10 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <td><p>Transpose a 2D tile.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_upper_solve.html#warp._src.lang.tile_upper_solve" title="warp._src.lang.tile_upper_solve"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_upper_solve</span></code></a></p></td>
-<td><p>Solve for <code class="docutils literal notranslate"><span class="pre">x</span></code> in <code class="docutils literal notranslate"><span class="pre">Ux</span> <span class="pre">=</span> <span class="pre">z</span></code>, where <code class="docutils literal notranslate"><span class="pre">U</span></code> is an upper triangular matrix.</p></td>
+<td><p>Solve <code class="docutils literal notranslate"><span class="pre">U</span> <span class="pre">x</span> <span class="pre">=</span> <span class="pre">z</span></code> for an upper-triangular <code class="docutils literal notranslate"><span class="pre">U</span></code> and return <code class="docutils literal notranslate"><span class="pre">x</span></code> in a new tile.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_upper_solve_inplace.html#warp._src.lang.tile_upper_solve_inplace" title="warp._src.lang.tile_upper_solve_inplace"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_upper_solve_inplace</span></code></a></p></td>
-<td><p>Solve for <code class="docutils literal notranslate"><span class="pre">x</span></code> in <code class="docutils literal notranslate"><span class="pre">Ux</span> <span class="pre">=</span> <span class="pre">z</span></code>, where <code class="docutils literal notranslate"><span class="pre">U</span></code> is an upper triangular matrix by overwriting <code class="docutils literal notranslate"><span class="pre">z</span></code> with <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p></td>
+<td><p>Solve <code class="docutils literal notranslate"><span class="pre">U</span> <span class="pre">x</span> <span class="pre">=</span> <span class="pre">z</span></code> in place for an upper-triangular <code class="docutils literal notranslate"><span class="pre">U</span></code>, overwriting <code class="docutils literal notranslate"><span class="pre">z</span></code> with <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_view.html#warp._src.lang.tile_view" title="warp._src.lang.tile_view"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_view</span></code></a></p></td>
 <td><p>Return a view of a tile.</p></td>
