@@ -73,6 +73,51 @@ CUDA_CALLABLE inline int hash_grid_lower_bound(const uint64_t* keys, int lo, int
     return lo;
 }
 
+// Convert a scaled coordinate to a virtual cell coordinate. Use floor() to round toward negative
+// infinity, not int() which truncates toward zero (int(-0.3)=0 instead of floor(-0.3)=-1).
+// Values beyond [INT_MIN, INT_MAX - 1], including infinities, clamp to it and NaN maps to 0, so
+// the conversion is always defined. Excluding INT_MAX lets traversal step one cell past any end
+// coordinate without overflowing; merging the top two cells only adds candidates.
+CUDA_CALLABLE inline int hash_grid_cell_coord(float v)
+{
+#if defined(__CUDA_ARCH__)
+    // rounds down, saturates out-of-range values, and maps NaN to 0 in one instruction
+    return min(__float2int_rd(v), INT_MAX - 1);
+#else
+    const float c = floor(v);
+    // float(INT_MAX) rounds up to 2^31, so compare against the exact bounds -2^31 and 2^31
+    if (c >= 2147483648.0f)
+        return INT_MAX - 1;
+    if (c >= -2147483648.0f)
+        return int(c);
+    if (c < -2147483648.0f)
+        return INT_MIN;
+    return 0;
+#endif
+}
+
+CUDA_CALLABLE inline int hash_grid_cell_coord(double v)
+{
+#if defined(__CUDA_ARCH__)
+    // Unlike the float conversion, the double conversion maps NaN to INT_MIN. Detect NaN from its
+    // bits: isnan() compiles to FP64 compares, which are slow on GPUs with little FP64 throughput.
+    // With the sign bit shifted out, NaNs are exactly the patterns above infinity's.
+    const unsigned long long bits = static_cast<unsigned long long>(__double_as_longlong(v)) << 1;
+    return bits > 0xffe0000000000000ULL ? 0 : min(__double2int_rd(v), INT_MAX - 1);
+#else
+    const double c = floor(v);
+    if (c >= 2147483646.0)
+        return INT_MAX - 1;
+    if (c >= -2147483648.0)
+        return int(c);
+    if (c < -2147483648.0)
+        return INT_MIN;
+    return 0;
+#endif
+}
+
+CUDA_CALLABLE inline int hash_grid_cell_coord(half v) { return hash_grid_cell_coord(float(v)); }
+
 // convert a virtual (world) cell coordinate to a physical one
 template <typename Type> CUDA_CALLABLE inline int hash_grid_index(const HashGrid_t<Type>& grid, int x, int y, int z)
 {
@@ -93,12 +138,9 @@ template <typename Type> CUDA_CALLABLE inline int hash_grid_index(const HashGrid
 
 template <typename Type> CUDA_CALLABLE inline int hash_grid_index(const HashGrid_t<Type>& grid, const vec_t<3, Type>& p)
 {
-    // Use floor() to round toward negative infinity, not int() which truncates toward zero.
-    // Without floor(), negative fractional coordinates map to the wrong cell
-    // (e.g., -0.3 with cell_width=1.0: int(-0.3)=0 instead of floor(-0.3)=-1).
     return hash_grid_index(
-        grid, int(floor(p[0] * grid.cell_width_inv)), int(floor(p[1] * grid.cell_width_inv)),
-        int(floor(p[2] * grid.cell_width_inv))
+        grid, hash_grid_cell_coord(p[0] * grid.cell_width_inv), hash_grid_cell_coord(p[1] * grid.cell_width_inv),
+        hash_grid_cell_coord(p[2] * grid.cell_width_inv)
     );
 }
 
@@ -175,6 +217,13 @@ template <typename Type> CUDA_CALLABLE inline void hash_grid_query_set_cell(hash
     query.cell_end = end;
 }
 
+// Do not want to visit any cells more than once, so limit a large radius to one pass over each
+// dimension. Compare in 64 bits: start + dim - 1 overflows when start is within dim of INT_MAX.
+CUDA_CALLABLE inline int hash_grid_query_end(int start, int end, int dim)
+{
+    return int64(end) - int64(start) >= int64(dim) ? start + (dim - 1) : end;
+}
+
 template <typename Type>
 CUDA_CALLABLE inline hash_grid_query_t<Type>
 hash_grid_query_impl(uint64_t id, vec_t<3, Type> pos, Type radius, int group, bool filter_by_group)
@@ -185,17 +234,22 @@ hash_grid_query_impl(uint64_t id, vec_t<3, Type> pos, Type radius, int group, bo
     query.group = group;
     query.filter_by_group = filter_by_group;
 
-    // Convert coordinate to grid cell indices using floor() (see hash_grid_index above)
+    // Convert coordinate to grid cell indices (see hash_grid_cell_coord above)
     Type cell_width_inv = query.grid.cell_width_inv;
 
-    query.x_start = int(floor((pos[0] - radius) * cell_width_inv));
-    query.y_start = int(floor((pos[1] - radius) * cell_width_inv));
-    query.z_start = int(floor((pos[2] - radius) * cell_width_inv));
+    query.x_start = hash_grid_cell_coord((pos[0] - radius) * cell_width_inv);
+    query.y_start = hash_grid_cell_coord((pos[1] - radius) * cell_width_inv);
+    query.z_start = hash_grid_cell_coord((pos[2] - radius) * cell_width_inv);
 
-    // do not want to visit any cells more than once, so limit large radius offset to one pass over each dimension
-    query.x_end = min(int(floor((pos[0] + radius) * cell_width_inv)), query.x_start + query.grid.dim_x - 1);
-    query.y_end = min(int(floor((pos[1] + radius) * cell_width_inv)), query.y_start + query.grid.dim_y - 1);
-    query.z_end = min(int(floor((pos[2] + radius) * cell_width_inv)), query.z_start + query.grid.dim_z - 1);
+    query.x_end = hash_grid_query_end(
+        query.x_start, hash_grid_cell_coord((pos[0] + radius) * cell_width_inv), query.grid.dim_x
+    );
+    query.y_end = hash_grid_query_end(
+        query.y_start, hash_grid_cell_coord((pos[1] + radius) * cell_width_inv), query.grid.dim_y
+    );
+    query.z_end = hash_grid_query_end(
+        query.z_start, hash_grid_cell_coord((pos[2] + radius) * cell_width_inv), query.grid.dim_z
+    );
 
     query.x = query.x_start;
     query.y = query.y_start;
