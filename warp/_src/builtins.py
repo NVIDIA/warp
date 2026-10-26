@@ -4772,8 +4772,8 @@ add_builtin(
     doc="""Load a 1D tile from a 1D global memory array.
 
     Overload for a scalar ``shape`` and ``offset``, equivalent to passing one-element
-    tuples. For the full contract and a usage example, see the overload that takes
-    tuple-valued ``shape`` and ``offset`` arguments.""",
+    tuples. For usage details and an example, see the overload that takes tuple-valued
+    ``shape`` and ``offset`` arguments.""",
     group="Tile Primitives",
     export=False,
 )
@@ -5075,8 +5075,8 @@ add_builtin(
     doc="""Store a 1D tile to a 1D global memory array.
 
     Overload for a scalar ``offset``, equivalent to passing a one-element tuple. For
-    the full contract and a usage example, see the overload that takes a tuple-valued
-    ``offset`` argument.""",
+    usage details and an example, see the overload that takes a tuple-valued ``offset``
+    argument.""",
     group="Tile Primitives",
     export=False,
 )
@@ -5391,8 +5391,8 @@ add_builtin(
     doc="""Atomically add a 1D tile onto the 1D array ``a`` and return the values it replaced.
 
     Overload for a scalar ``offset``, equivalent to passing a one-element tuple. For
-    the full contract and a usage example, see the overload that takes a tuple-valued
-    ``offset`` argument.""",
+    usage details and an example, see the overload that takes a tuple-valued ``offset``
+    argument.""",
     group="Tile Primitives",
     export=False,
 )
@@ -6817,8 +6817,8 @@ add_builtin(
 
     Two-index overload: both indices select an element of a 2D tile, or ``i`` indexes a
     1D tile of vectors and ``j`` selects a component of that vector, or ``i`` indexes a
-    1D tile of matrices and ``j`` selects a row of that
-    matrix. See the one-index overload for the shared contract and a usage example.
+    1D tile of matrices and ``j`` selects a row of that matrix. See the one-index
+    overload for usage details and an example.
 
     Args:
         a: Tile to extract the element from. All index arguments may be runtime values.
@@ -6843,8 +6843,7 @@ add_builtin(
 
     Three-index overload: the indices select an element of a 3D tile, a component from a
     2D tile of vectors, a row from a 2D tile of matrices, or an entry from a 1D tile of
-    matrices. See the one-index overload for the
-    shared contract and a usage example.
+    matrices. See the one-index overload for usage details and an example.
 
     Args:
         a: Tile to extract the element from. All index arguments may be runtime values.
@@ -6870,8 +6869,7 @@ add_builtin(
 
     Four-index overload: the indices select an element of a 4D tile, a component from a
     3D tile of vectors, a row from a 3D tile of matrices, or an entry from a 2D tile of
-    matrices. See the one-index overload for the shared
-    contract and a usage example.
+    matrices. See the one-index overload for usage details and an example.
 
     Args:
         a: Tile to extract the element from. All index arguments may be runtime values.
@@ -6905,8 +6903,7 @@ add_builtin(
 
     Five-index overload: the indices select an element of a 5D tile, a component from a
     4D tile of vectors, a row from a 4D tile of matrices, or an entry from a 3D tile of
-    matrices. See the one-index overload for the
-    shared contract and a usage example.
+    matrices. See the one-index overload for usage details and an example.
 
     Args:
         a: Tile to extract the element from. All index arguments may be runtime values.
@@ -6940,8 +6937,8 @@ add_builtin(
     doc="""Extract a single element from a tile.
 
     Six-index overload: the indices select an element of a 4D tile of matrices,
-    followed by a row and a column index. See the one-index overload for the shared
-    contract and a usage example.
+    followed by a row and a column index. See the one-index overload for usage details
+    and an example.
 
     Args:
         a: Tile to extract the element from
@@ -7084,8 +7081,8 @@ add_builtin(
     export=False,
     doc="""Scatter-add a per-thread value into a 2D shared-memory tile.
 
-    Overload taking one index per tile dimension. For the full contract and a usage
-    example, see the 1D overload that takes only ``i`` as its index.""",
+    Overload taking one index per tile dimension. For usage details and an example,
+    see the 1D overload that takes only ``i`` as its index.""",
 )
 add_builtin(
     "tile_scatter_add",
@@ -7105,8 +7102,8 @@ add_builtin(
     export=False,
     doc="""Scatter-add a per-thread value into a 3D shared-memory tile.
 
-    Overload taking one index per tile dimension. For the full contract and a usage
-    example, see the 1D overload that takes only ``i`` as its index.""",
+    Overload taking one index per tile dimension. For usage details and an example,
+    see the 1D overload that takes only ``i`` as its index.""",
 )
 add_builtin(
     "tile_scatter_add",
@@ -7127,8 +7124,8 @@ add_builtin(
     export=False,
     doc="""Scatter-add a per-thread value into a 4D shared-memory tile.
 
-    Overload taking one index per tile dimension. For the full contract and a usage
-    example, see the 1D overload that takes only ``i`` as its index.""",
+    Overload taking one index per tile dimension. For usage details and an example,
+    see the 1D overload that takes only ``i`` as its index.""",
 )
 
 
@@ -7222,8 +7219,8 @@ add_builtin(
     export=False,
     doc="""Write a per-thread value into a 2D shared-memory tile.
 
-    Overload taking one index per tile dimension. For the full contract and a usage
-    example, see the 1D overload that takes only ``i`` as its index.""",
+    Overload taking one index per tile dimension. For usage details and an example,
+    see the 1D overload that takes only ``i`` as its index.""",
 )
 add_builtin(
     "tile_scatter_masked",
@@ -7240,8 +7237,8 @@ add_builtin(
     export=False,
     doc="""Write a per-thread value into a 3D shared-memory tile.
 
-    Overload taking one index per tile dimension. For the full contract and a usage
-    example, see the 1D overload that takes only ``i`` as its index.""",
+    Overload taking one index per tile dimension. For usage details and an example,
+    see the 1D overload that takes only ``i`` as its index.""",
 )
 add_builtin(
     "tile_scatter_masked",
@@ -7259,8 +7256,8 @@ add_builtin(
     export=False,
     doc="""Write a per-thread value into a 4D shared-memory tile.
 
-    Overload taking one index per tile dimension. For the full contract and a usage
-    example, see the 1D overload that takes only ``i`` as its index.""",
+    Overload taking one index per tile dimension. For usage details and an example,
+    see the 1D overload that takes only ``i`` as its index.""",
 )
 
 
@@ -18070,7 +18067,51 @@ add_builtin(
     value_func=tile_diag_add_value_func,
     lto_dispatch_func=tile_diag_add_lto_dispatch_func,
     native_func="tile_diag_add",
-    doc="Add a square matrix and a diagonal matrix ``d`` represented as a 1D tile.",
+    doc="""Return a square tile with the entries of a 1D tile added to its diagonal.
+
+    Neither input is modified. Any tile dtype that supports addition is accepted, as long
+    as ``a`` and ``d`` match. For Warp struct elements, only fields whose underlying
+    scalar type supports addition are updated; Boolean, narrow-integer, array, and other
+    non-accumulating fields retain their value from ``a``.
+
+    This is a cooperative operation, so every thread in the block must call it.
+
+    Args:
+        a: A square tile with ``shape=(N, N)``.
+        d: A 1D tile with ``shape=(N,)`` holding the diagonal entries to add. Must have
+            the same dtype as ``a``.
+
+    Returns:
+        A new tile in shared memory with the same shape and dtype as ``a``, holding ``a``
+        with ``d[i]`` added to each diagonal entry ``a[i, i]``.
+
+    Example:
+
+        .. testsetup::
+
+            __name__ = "warp_docs_tile_diag_add"
+
+        .. testcode::
+
+            @wp.kernel
+            def add_diagonal(a: wp.array2d[float], d: wp.array[float], out: wp.array2d[float]):
+                a_tile = wp.tile_load(a, shape=(3, 3))
+                d_tile = wp.tile_load(d, shape=3)
+                wp.tile_store(out, wp.tile_diag_add(a_tile, d_tile))
+
+            a = wp.array(np.arange(9, dtype=np.float32).reshape(3, 3), dtype=float)
+            d = wp.array([10.0, 20.0, 30.0], dtype=float)
+            out = wp.zeros((3, 3), dtype=float)
+
+            wp.launch_tiled(add_diagonal, dim=1, inputs=[a, d], outputs=[out], block_dim=8)
+
+            print(out.numpy())
+
+        .. testoutput::
+
+            [[10.  1.  2.]
+             [ 3. 24.  5.]
+             [ 6.  7. 38.]]""",
     group="Tile Primitives",
     export=False,
     is_differentiable=False,
@@ -18409,24 +18450,44 @@ add_builtin(
     lto_dispatch_func=tile_matmul_lto_dispatch_func,
     native_func="tile_matmul_acc",
     variadic=False,
-    doc="""Compute the matrix product ``a*b``.
+    doc="""Accumulate the matrix product ``a @ b`` into an existing tile.
 
-    Compute ``out = alpha * a*b + beta * out``.
+    Computes ``out = alpha * a @ b + beta * out``, updating ``out`` in place. ``out`` is
+    read only when ``beta`` is nonzero, so it must be initialized before the call unless
+    ``beta`` is zero. Use the two-argument overload to obtain a freshly computed tile
+    instead.
 
-    Supported datatypes are:
-        * fp16, bf16, fp32, fp64
+    ``out`` must not alias ``a`` or ``b``: the operands are read while ``out`` is being
+    written, so overlapping tiles give undefined results. Passing the same tile as both
+    ``a`` and ``b`` is fine.
 
-    All input and output tiles must have the same datatype. Tile data will automatically be migrated
-    to shared memory if necessary and may use Tensor Core operations, depending on the GEMM configuration.
+    This is a cooperative operation, so every thread in the block must call it.
 
-    Note that computing the adjoints of alpha and beta are not yet supported.
+    ``a``, ``b``, and ``out`` may independently use ``float16``, ``float32``, or
+    ``float64``. Accumulation uses the dtype of ``out``. Currently, ``a`` and ``b`` may
+    also use ``bfloat16`` when backward compilation is disabled with the module option
+    ``enable_backward=False``. Apart from the ``M``, ``N``, and ``K`` extents having to
+    agree, the shapes are unconstrained, but large tiles may exhaust shared memory or
+    fail to compile the cuBLASDx kernel.
+
+    Tile data is migrated to shared memory when necessary.
+
+    On CUDA devices, Warp uses cuBLASDx when it is built with libmathdx and
+    :attr:`warp.config.enable_mathdx_gemm` (or the ``enable_mathdx_gemm`` module option)
+    is ``True``, unless an operand's strides cannot be expressed as a cuBLASDx leading
+    dimension. Otherwise, and on the CPU, it uses a scalar GEMM, which is slower than
+    cuBLASDx on CUDA devices.
+
+    Passing ``beta=0`` cuts gradient flow to the previous contents of ``out``. The scalar
+    ``alpha`` and ``beta`` arguments do not receive gradients.
 
     Args:
-        a: A tile with ``shape=(M, K)``
-        b: A tile with ``shape=(K, N)``
-        out: A tile with ``shape=(M, N)``
-        alpha: Scaling factor
-        beta: Accumulator factor
+        a: A tile with ``shape=(M, K)``.
+        b: A tile with ``shape=(K, N)``.
+        out: A tile with ``shape=(M, N)`` that the product is accumulated into. Must be
+            initialized unless ``beta`` is zero.
+        alpha: Scaling factor applied to the product ``a @ b``.
+        beta: Scaling factor applied to the incoming contents of ``out``.
         precision: Compute precision, specified as the string literal ``"default"`` or ``"tf32"``.
             ``"default"`` uses the tile data type. ``"tf32"`` uses TF32 input precision with
             ``float32`` accumulation, without changing tile storage. The adjoint products use
@@ -18441,7 +18502,41 @@ add_builtin(
         TypeError: If ``precision="tf32"`` is used with tiles other than ``float32`` for
             ``a``, ``b``, and ``out``.
         ValueError: If ``precision`` is not the string literal ``"default"`` or ``"tf32"``.
-""",
+
+    Example:
+
+        .. testsetup::
+
+            __name__ = "warp_docs_tile_matmul"
+
+        .. testcode::
+
+            @wp.kernel
+            def gemm(a: wp.array2d[float], b: wp.array2d[float], out: wp.array2d[float]):
+                # beta defaults to 1, so initialize the accumulator before adding the products
+                out_tile = wp.tile_zeros(shape=(4, 8), dtype=float)
+                # accumulate the partial products over two slices of the shared dimension
+                for k in range(2):
+                    a_tile = wp.tile_load(a, shape=(4, 3), offset=(0, k * 3))
+                    b_tile = wp.tile_load(b, shape=(3, 8), offset=(k * 3, 0))
+                    wp.tile_matmul(a_tile, b_tile, out_tile)
+                wp.tile_store(out, out_tile)
+
+            a = wp.array(np.arange(24, dtype=np.float32).reshape(4, 6))
+            b = wp.array(np.arange(48, dtype=np.float32).reshape(6, 8))
+            out = wp.zeros((4, 8), dtype=float)
+
+            # one full warp cooperates on the 32 output entries
+            wp.launch_tiled(gemm, dim=1, inputs=[a, b], outputs=[out], block_dim=32)
+
+            print(out.numpy())
+
+        .. testoutput::
+
+            [[ 440.  455.  470.  485.  500.  515.  530.  545.]
+             [1160. 1211. 1262. 1313. 1364. 1415. 1466. 1517.]
+             [1880. 1967. 2054. 2141. 2228. 2315. 2402. 2489.]
+             [2600. 2723. 2846. 2969. 3092. 3215. 3338. 3461.]]""",
     group="Tile Primitives",
     export=False,
 )
@@ -18458,22 +18553,23 @@ add_builtin(
     value_func=tile_matmul_value_func,
     lto_dispatch_func=tile_matmul_lto_dispatch_func,
     variadic=False,
-    doc="""Compute the matrix product ``a*b``.
+    doc="""Compute the matrix product ``a @ b``.
 
-    Compute ``out = alpha * a*b``.
+    Unlike the accumulating form ``wp.tile_matmul(a, b, out)``, no tile is read for the
+    result, so nothing has to be initialized.
 
-    Supported datatypes are:
-        * fp16, bf16, fp32, fp64
+    The product is accumulated in ``a``'s dtype, so ``a`` may not be ``bfloat16``.
+    Unlike ``wp.tile_matmul(a, b, out)``, where ``out``'s dtype sets the accumulation
+    dtype, the result dtype cannot be chosen independently of ``a``. Backend selection
+    matches ``wp.tile_matmul(a, b, out)``; see that overload for details and a usage
+    example.
 
-    Both input tiles must have the same datatype. Tile data will automatically be migrated
-    to shared memory if necessary and may use Tensor Core operations, depending on the GEMM configuration.
-
-    Note that computing the adjoints of alpha is not yet supported.
+    This is a cooperative operation, so every thread in the block must call it.
 
     Args:
-        a: A tile with ``shape=(M, K)``
-        b: A tile with ``shape=(K, N)``
-        alpha: Scaling factor
+        a: A tile with ``shape=(M, K)``.
+        b: A tile with ``shape=(K, N)``.
+        alpha: Scaling factor applied to the product ``a @ b``. It does not receive a gradient.
         precision: Compute precision, specified as the string literal ``"default"`` or ``"tf32"``.
             ``"default"`` uses the tile data type. ``"tf32"`` uses TF32 input precision with
             ``float32`` accumulation, without changing tile storage. The adjoint products use
@@ -18485,13 +18581,13 @@ add_builtin(
             operand strides cannot be represented by cuBLASDx leading dimensions.
 
     Returns:
-        A tile with ``shape=(M, N)``
+        A new tile in shared memory with ``shape=(M, N)`` and the same dtype as ``a``,
+        holding ``alpha * a @ b``.
 
     Raises:
         TypeError: If ``precision="tf32"`` is used with tiles other than ``float32`` for
             ``a`` and ``b``.
-        ValueError: If ``precision`` is not the string literal ``"default"`` or ``"tf32"``.
-""",
+        ValueError: If ``precision`` is not the string literal ``"default"`` or ``"tf32"``.""",
     group="Tile Primitives",
     export=False,
 )
@@ -18756,36 +18852,81 @@ add_builtin(
     value_func=functools.partial(tile_fft_generic_value_func, func_name="tile_fft"),
     lto_dispatch_func=functools.partial(tile_fft_generic_lto_dispatch_func, direction="forward"),
     variadic=True,
-    doc="""Compute the forward FFT along the last dimension of an N-D tile of data.
+    doc="""Compute the forward FFT along the last dimension of an N-D tile, in place.
 
-    This function cooperatively computes the forward FFT on a tile of data inplace.
-    All leading dimensions are treated as independent batch dimensions.
-    The tile must have at least two dimensions.
+    All leading dimensions are treated as independent batches and the last dimension is
+    the transform size ``N``. The tile must have at least two dimensions and ``register``
+    storage. ``inout`` is overwritten with its transform.
 
-    The transform is unnormalized, meaning that applying :func:`tile_fft` followed by :func:`tile_ifft`
-    will scale the data by N, where N is the FFT size (the last dimension of the tile).
-    Normalization is left to the user to perform as needed.
+    Each element is a ``vec2`` interpreted as a complex number, with component ``0`` the
+    real part and component ``1`` the imaginary part. The transform is the standard
+    unnormalized DFT, ``X[k] = sum_n x[n] * exp(-2*pi*i*k*n/N)``, with output bins in the
+    usual order ``k = 0 ... N-1``, matching :func:`numpy.fft.fft`. Because no scaling is
+    applied, a forward transform followed by an inverse transform multiplies the data by
+    ``N``; normalization is left to the caller.
 
-    Supported datatypes are:
-        * vec2f, vec2d
+    Supported dtypes are ``vec2f`` and ``vec2d``.
+
+    This is a cooperative operation, so every thread in the block must call it.
+
+    Backward propagation applies an inverse FFT along the last dimension to the incoming
+    gradient, without dividing by ``N``.
+
+    A MathDx-enabled build is not required, but the supported transform sizes depend on
+    the backend:
+
+    * **CPU**: any power-of-two size; non-power-of-two sizes go through an ``O(N^2)`` DFT
+      and support at most 4096 elements per transform.
+    * **GPU with libmathdx** (cuFFTDx), unless disabled by
+      :attr:`warp.config.enable_mathdx_fft` or the ``enable_mathdx_fft`` module option:
+      supported ``N`` and ``block_dim`` combinations depend on the build. ``block_dim``
+      must be at most ``N/2``.
+    * **GPU without libmathdx**, or with cuFFTDx disabled: power-of-two sizes only, and
+      ``N`` must be divisible by ``block_dim``. Compiles faster but runs slower than the
+      cuFFTDx path.
+
+    Unsupported transform sizes or block dimensions raise an exception during kernel
+    compilation, usually on the first launch.
 
     Args:
-        inout: The input/output tile.
+        inout: The tile to transform in place.
 
-    Notes:
-        Supported FFT sizes by backend:
+    Example:
 
-        * **CPU**: Any size. Non-power-of-two sizes are capped at 4096;
-          larger non-power-of-two sizes raise ``ValueError``.
-        * **GPU with libmathdx**: Any size. This is the default when Warp
-          is built with libmathdx.
-        * **GPU without libmathdx** (or ``enable_mathdx_fft=False``):
-          Power-of-two sizes only, and the FFT size must be divisible by
-          ``block_dim``. Other sizes raise ``ValueError``. Slower than the
-          libmathdx path.
+        .. testsetup::
 
-        See :attr:`warp.config.enable_mathdx_fft` to control GPU backend
-        selection.""",
+            __name__ = "warp_docs_tile_fft"
+
+        .. testcode::
+
+            @wp.kernel
+            def spectrum(x: wp.array2d[wp.vec2f]):
+                x_tile = wp.tile_load(x, shape=(2, 4))
+                wp.tile_fft(x_tile)
+                wp.tile_store(x, x_tile)
+
+            # two batches of four real samples; the FFT runs along the last dimension
+            signal = np.zeros((2, 4, 2), dtype=np.float32)
+            signal[0, :, 0] = [1.0, 2.0, 3.0, 4.0]
+            signal[1, :, 0] = [4.0, 3.0, 2.0, 1.0]
+            x = wp.array(signal, dtype=wp.vec2f)
+
+            # each thread owns two samples from every batch
+            wp.launch_tiled(spectrum, dim=1, inputs=[x], block_dim=2)
+
+            print(np.round(x.numpy(), 3))
+
+        .. testoutput::
+
+            [[[10.  0.]
+              [-2.  2.]
+              [-2.  0.]
+              [-2. -2.]]
+
+             [[10.  0.]
+              [ 2. -2.]
+              [ 2.  0.]
+              [ 2.  2.]]]""",
     group="Tile Primitives",
     export=False,
     namespace="",
@@ -18797,25 +18938,21 @@ add_builtin(
     value_func=functools.partial(tile_fft_generic_value_func, func_name="tile_ifft"),
     lto_dispatch_func=functools.partial(tile_fft_generic_lto_dispatch_func, direction="inverse"),
     variadic=True,
-    doc="""Compute the inverse FFT along the last dimension of an N-D tile of data.
+    doc="""Compute the inverse FFT along the last dimension of an N-D tile, in place.
 
-    This function cooperatively computes the inverse FFT on a tile of data inplace.
-    All leading dimensions are treated as independent batch dimensions.
-    The tile must have at least two dimensions.
+    Identical to :func:`~warp.tile_fft` apart from the sign of the exponent:
+    ``x[n] = sum_k X[k] * exp(+2*pi*i*k*n/N)``. The transform is unnormalized -- it does
+    not divide by ``N`` -- so a forward transform followed by an inverse transform
+    multiplies the data by ``N``. ``inout`` is overwritten with its inverse transform.
 
-    The transform is unnormalized, meaning that applying :func:`tile_fft` followed by :func:`tile_ifft`
-    will scale the data by N, where N is the FFT size (the last dimension of the tile).
-    Normalization is left to the user to perform as needed.
+    Supported dtypes, tile requirements, backend selection, and the supported transform
+    sizes are the same as for :func:`~warp.tile_fft`; see it for details and a usage
+    example.
 
-    Supported datatypes are:
-        * vec2f, vec2d
+    This is a cooperative operation, so every thread in the block must call it.
 
     Args:
-        inout: The input/output tile.
-
-    Notes:
-        See :func:`tile_fft` for backend selection and supported sizes — the
-        same constraints apply to :func:`tile_ifft`.""",
+        inout: The tile to transform in place.""",
     group="Tile Primitives",
     export=False,
     namespace="",
@@ -19047,27 +19184,74 @@ add_builtin(
     value_func=tile_cholesky_generic_value_func,
     lto_dispatch_func=tile_cholesky_generic_lto_dispatch_func,
     variadic=True,
-    doc="""Compute the Cholesky factorization of a symmetric positive-definite matrix ``A``.
+    doc="""Compute the Cholesky factor of a symmetric positive-definite matrix ``A`` and return it in a new tile.
 
-    When ``fill_mode="lower"``, returns lower-triangular ``L`` such that ``LL^T = A``.
-    When ``fill_mode="upper"``, returns upper-triangular ``U`` such that ``U^T U = A``.
+    With ``fill_mode="lower"``, returns the lower-triangular ``L`` such that
+    ``L @ L^T = A``; with ``fill_mode="upper"``, returns the upper-triangular ``U`` such
+    that ``U^T @ U = A``. ``fill_mode`` must be a compile-time constant.
 
-    The ``fill_mode`` parameter must be a compile-time constant.
+    Only the triangle of ``A`` selected by ``fill_mode`` is read, so the opposite triangle
+    may hold anything. ``A`` itself is not modified; use
+    :func:`~warp.tile_cholesky_inplace` to factor ``A`` in place instead.
 
-    Backward propagation computes gradients with respect to the corresponding
-    triangular parameterization of ``A`` (lower triangle when ``fill_mode="lower"``,
-    upper triangle when ``fill_mode="upper"``).
+    ``A`` must be symmetric positive definite.
 
-    Supported datatypes are:
-        * float32
-        * float64
+    This is a cooperative operation, so every thread in the block must call it.
+
+    Supported dtypes are ``float32`` and ``float64``.
+
+    On CUDA devices, Warp uses cuSolverDx when it is built with libmathdx and
+    :attr:`warp.config.enable_mathdx_solver` (or the ``enable_mathdx_solver`` module
+    option) is ``True``. Otherwise, and on the CPU, it uses a cooperative fallback
+    implementation, which is slower than cuSolverDx on CUDA devices.
+
+    Backward propagation computes gradients with respect to the corresponding triangular
+    parameterization of ``A`` (lower triangle when ``fill_mode="lower"``, upper triangle
+    when ``fill_mode="upper"``).
 
     Args:
-        A: A square, symmetric positive-definite matrix.
+        A: A square, symmetric positive-definite tile with ``shape=(N, N)``.
         fill_mode: ``"lower"`` or ``"upper"``. Must be a compile-time constant.
 
     Returns:
-        A triangular matrix ``L`` or ``U``.""",
+        A new tile in shared memory with the same shape and dtype as ``A``, holding the
+        factor ``L`` or ``U``. The opposite triangle is zero, so the tile can be used
+        directly in a matrix product.
+
+    Example:
+
+        .. testsetup::
+
+            __name__ = "warp_docs_tile_cholesky"
+
+        .. testcode::
+
+            @wp.kernel
+            def solve_spd(a: wp.array2d[float], b: wp.array[float], ell: wp.array2d[float], x: wp.array[float]):
+                a_tile = wp.tile_load(a, shape=(3, 3))
+                b_tile = wp.tile_load(b, shape=3)
+                l_tile = wp.tile_cholesky(a_tile)
+                x_tile = wp.tile_cholesky_solve(l_tile, b_tile)
+                wp.tile_store(ell, l_tile)
+                wp.tile_store(x, x_tile)
+
+            a = wp.array(np.array([[4.0, 2.0, 0.0], [2.0, 5.0, 1.0], [0.0, 1.0, 3.0]], dtype=np.float32))
+            b = wp.array(np.array([8.0, 15.0, 11.0], dtype=np.float32))
+            ell = wp.zeros((3, 3), dtype=float)
+            x = wp.zeros(3, dtype=float)
+
+            # one full warp cooperates on the factorization and solve
+            wp.launch_tiled(solve_spd, dim=1, inputs=[a, b], outputs=[ell, x], block_dim=32)
+
+            print(np.round(ell.numpy(), 3))
+            print(np.round(x.numpy(), 3))
+
+        .. testoutput::
+
+            [[2.    0.    0.   ]
+             [1.    2.    0.   ]
+             [0.    0.5   1.658]]
+            [1. 2. 3.]""",
     group="Tile Primitives",
     export=False,
     is_differentiable=True,
@@ -19081,24 +19265,25 @@ add_builtin(
     value_func=tile_cholesky_inplace_generic_value_func,
     lto_dispatch_func=tile_cholesky_inplace_generic_lto_dispatch_func,
     variadic=True,
-    doc="""Compute the Cholesky factorization of a symmetric positive-definite matrix ``A`` inplace.
+    doc="""Compute the Cholesky factorization of a symmetric positive-definite matrix ``A`` in place.
 
-    When ``fill_mode="lower"``, the lower triangle of ``A`` is replaced by ``L``
-    such that ``LL^T = A``; the upper triangle is set to zero.
-    When ``fill_mode="upper"``, the upper triangle of ``A`` is replaced by ``U``
-    such that ``U^T U = A``; the lower triangle is set to zero.
+    With ``fill_mode="lower"`` the lower triangle of ``A`` is replaced by
+    the factor ``L`` such that ``L @ L^T = A`` and the upper triangle is set to zero;
+    with ``fill_mode="upper"`` the upper triangle is replaced by ``U`` such that
+    ``U^T @ U = A`` and the lower triangle is set to zero. Only the triangle selected by
+    ``fill_mode`` is read. ``fill_mode`` must be a compile-time constant.
 
-    The ``fill_mode`` parameter must be a compile-time constant.
+    Supported dtypes, the positive-definiteness requirement, and backend selection match
+    :func:`~warp.tile_cholesky`; see it for details and a usage example.
 
-    Note: This inplace variant does not support automatic differentiation (adjoint computation),
-    but offers improved performance and uses half the shared memory compared to the standard version.
+    This is a cooperative operation, so every thread in the block must call it.
 
-    Supported datatypes are:
-        * float32
-        * float64
+    This in-place variant avoids the input copy and uses half the shared memory of
+    :func:`~warp.tile_cholesky`, but is not differentiable.
 
     Args:
-        A: A square, symmetric positive-definite matrix.
+        A: A square, symmetric positive-definite tile with ``shape=(N, N)``, overwritten
+            by the factor.
         fill_mode: ``"lower"`` or ``"upper"``. Must be a compile-time constant.""",
     group="Tile Primitives",
     export=False,
@@ -19110,7 +19295,7 @@ def _tile_cholesky_solve_generic_value_func(inplace: bool, arg_types, arg_values
     if arg_types is None:
         if inplace:
             return None
-        return tile(dtype=Float, shape=tuple[int])
+        return tile(dtype=Float, shape=tuple[int, ...])
 
     if len(arg_types) > 3:
         raise TypeError(
@@ -19256,33 +19441,42 @@ add_builtin(
     "tile_cholesky_solve",
     input_types={
         "L": tile(dtype=Float, shape=tuple[int, int]),
-        "y": tile(dtype=Float, shape=tuple[int]),
+        "y": tile(dtype=Float, shape=tuple[int, ...]),
         "fill_mode": str,
     },
     defaults={"fill_mode": "lower"},
     value_func=tile_cholesky_solve_generic_value_func,
     lto_dispatch_func=tile_cholesky_solve_generic_lto_dispatch_func,
     variadic=True,
-    doc="""Solve for ``x`` in ``Ax = y`` given the Cholesky factor of ``A``.
+    doc="""Solve ``A x = y`` given the Cholesky factor of ``A`` and return ``x`` in a new tile.
 
-    When ``fill_mode="lower"``, ``L`` is lower-triangular such that ``LL^T = A``.
-    When ``fill_mode="upper"``, ``L`` is upper-triangular ``U`` such that ``U^T U = A``.
+    With ``fill_mode="lower"`` ``L`` is the lower-triangular factor such
+    that ``L @ L^T = A``; with ``fill_mode="upper"`` ``L`` instead holds the
+    upper-triangular factor ``U`` such that ``U^T @ U = A``, despite the parameter name.
+    Only the triangle selected by ``fill_mode`` is read; the opposite triangle is
+    ignored. ``fill_mode`` must be a compile-time constant.
 
-    The ``fill_mode`` parameter must be a compile-time constant.
+    This is a cooperative operation, so every thread in the block must call it.
 
-    Note that computing the adjoint is not yet supported.
+    The right-hand side may be a 1D tile with ``shape=(M,)`` or a 2D tile with
+    ``shape=(M, NRHS)``, which solves for all ``NRHS`` columns at once. ``L`` and ``y``
+    must have the same dtype, either ``float32`` or ``float64``.
 
-    Supported datatypes are:
-        * float32
-        * float64
+    On CUDA devices, Warp uses cuSolverDx when it is built with libmathdx and
+    :attr:`warp.config.enable_mathdx_solver` (or the ``enable_mathdx_solver`` module
+    option) is ``True``. Otherwise, and on the CPU, it uses a cooperative fallback
+    implementation, which is slower than cuSolverDx on CUDA devices.
 
     Args:
-        L: A square triangular Cholesky factor of ``A``.
-        y: A 1D or 2D tile of length ``M``.
+        L: A square triangular Cholesky factor of ``A``, with ``shape=(M, M)``.
+        y: The right-hand side, a tile with ``shape=(M,)`` or ``shape=(M, NRHS)``.
         fill_mode: ``"lower"`` or ``"upper"``. Must be a compile-time constant.
 
     Returns:
-        A tile of the same shape as ``y`` such that ``Ax = y``.""",
+        A new tile in shared memory with the same shape and dtype as ``y``, holding the
+        solution ``x`` of ``A x = y``.
+
+    See :func:`~warp.tile_cholesky` for a usage example.""",
     group="Tile Primitives",
     export=False,
     is_differentiable=False,
@@ -19293,31 +19487,31 @@ add_builtin(
     "tile_cholesky_solve_inplace",
     input_types={
         "L": tile(dtype=Float, shape=tuple[int, int]),
-        "y": tile(dtype=Float, shape=tuple[int]),
+        "y": tile(dtype=Float, shape=tuple[int, ...]),
         "fill_mode": str,
     },
     defaults={"fill_mode": "lower"},
     value_func=tile_cholesky_solve_inplace_generic_value_func,
     lto_dispatch_func=tile_cholesky_solve_inplace_generic_lto_dispatch_func,
     variadic=True,
-    doc="""Solve for ``x`` in ``Ax = y`` by overwriting ``y`` with ``x``.
+    doc="""Solve ``A x = y`` in place, overwriting ``y`` with ``x``.
 
-    When ``fill_mode="lower"``, ``L`` is lower-triangular such that ``LL^T = A``.
-    When ``fill_mode="upper"``, ``L`` is upper-triangular ``U`` such that ``U^T U = A``.
+    Behaves like :func:`~warp.tile_cholesky_solve`, including the meaning of ``L`` under
+    each ``fill_mode``, the dtype rules, the support for a 1D or 2D right-hand side, and
+    the backend selection, except that the solution overwrites ``y`` instead of being
+    returned.
 
-    The ``fill_mode`` parameter must be a compile-time constant.
+    This is a cooperative operation, so every thread in the block must call it.
 
-    Note: This inplace variant does not support automatic differentiation (adjoint computation),
-    but avoids allocating shared memory for the output ``x`` by reusing ``y``'s memory.
-
-    Supported datatypes are:
-        * float32
-        * float64
+    This in-place variant avoids allocating shared memory for a separate output.
 
     Args:
-        L: A square triangular Cholesky factor of ``A``.
-        y: A 1D or 2D tile of length ``M`` that gets overwritten by ``x`` where ``Ax = y``.
-        fill_mode: ``"lower"`` or ``"upper"``. Must be a compile-time constant.""",
+        L: A square triangular Cholesky factor of ``A``, with ``shape=(M, M)``.
+        y: The right-hand side, a tile with ``shape=(M,)`` or ``shape=(M, NRHS)``,
+            overwritten by the solution ``x``.
+        fill_mode: ``"lower"`` or ``"upper"``. Must be a compile-time constant.
+
+    See :func:`~warp.tile_cholesky` for a usage example.""",
     group="Tile Primitives",
     export=False,
     is_differentiable=False,
@@ -19328,7 +19522,7 @@ def _tile_lower_solve_generic_value_func(inplace: bool, arg_types, arg_values):
     if arg_types is None:
         if inplace:
             return None
-        return tile(dtype=Float, shape=tuple[int])
+        return tile(dtype=Float, shape=tuple[int, ...])
 
     if len(arg_types) != 2:
         raise TypeError("tile_lower_solve() requires exactly 2 positional args")
@@ -19516,28 +19710,64 @@ def tile_lower_solve_inplace_generic_lto_dispatch_func(*args, **kwargs):
 
 add_builtin(
     "tile_lower_solve",
-    input_types={"L": tile(dtype=Float, shape=tuple[int, int]), "y": tile(dtype=Float, shape=tuple[int])},
+    input_types={"L": tile(dtype=Float, shape=tuple[int, int]), "y": tile(dtype=Float, shape=tuple[int, ...])},
     value_func=tile_lower_solve_generic_value_func,
     lto_dispatch_func=tile_lower_solve_generic_lto_dispatch_func,
     variadic=True,
-    doc="""Solve for ``z`` in ``Lz = y``, where ``L`` is a lower triangular matrix.
+    doc="""Solve ``L z = y`` for a lower-triangular ``L`` and return ``z`` in a new tile.
 
-    This performs general forward substitution for a lower triangular system.
+    Only the lower triangle of ``L``, including its diagonal, is read; the strictly upper
+    triangle is ignored. ``L`` must be non-singular with nonzero diagonal entries.
+
+    This is a cooperative operation, so every thread in the block must call it.
+
+    The right-hand side may be a 1D tile with ``shape=(M,)`` or a 2D tile with
+    ``shape=(M, NRHS)``, which solves for all ``NRHS`` columns at once. ``L`` and ``y``
+    must have the same dtype, either ``float32`` or ``float64``.
+
+    On CUDA devices, Warp uses cuSolverDx when it is built with libmathdx and
+    :attr:`warp.config.enable_mathdx_solver` (or the ``enable_mathdx_solver`` module
+    option) is ``True``. Otherwise, and on the CPU, it uses a cooperative fallback
+    implementation, which is slower than cuSolverDx on CUDA devices.
 
     Backward propagation computes gradients with respect to ``y`` and the
-    lower-triangular parameterization of ``L``. The strictly upper triangle of
-    ``L`` does not affect the solve and receives zero gradient.
-
-    Supported datatypes are:
-        * float32
-        * float64
+    lower-triangular parameterization of ``L``; the strictly upper triangle of ``L``
+    receives zero gradient.
 
     Args:
-        L: A square, non-singular, lower triangular matrix
-        y: A 1D or 2D tile with compatible shape
+        L: A square, non-singular, lower-triangular tile with ``shape=(M, M)``.
+        y: The right-hand side, a tile with ``shape=(M,)`` or ``shape=(M, NRHS)``.
 
     Returns:
-        A tile of the same shape as ``y`` such that ``Lz = y``.""",
+        A new tile in shared memory with the same shape and dtype as ``y``, holding the
+        solution ``z`` of ``L z = y``.
+
+    Example:
+
+        .. testsetup::
+
+            __name__ = "warp_docs_tile_lower_solve"
+
+        .. testcode::
+
+            @wp.kernel
+            def forward_substitution(ell: wp.array2d[float], y: wp.array[float], z: wp.array[float]):
+                l_tile = wp.tile_load(ell, shape=(3, 3))
+                y_tile = wp.tile_load(y, shape=3)
+                wp.tile_store(z, wp.tile_lower_solve(l_tile, y_tile))
+
+            ell = wp.array(np.array([[2.0, 0.0, 0.0], [1.0, 3.0, 0.0], [4.0, 5.0, 6.0]], dtype=np.float32))
+            y = wp.array(np.array([2.0, 7.0, 32.0], dtype=np.float32))
+            z = wp.zeros(3, dtype=float)
+
+            # one full warp cooperates on the triangular solve
+            wp.launch_tiled(forward_substitution, dim=1, inputs=[ell, y], outputs=[z], block_dim=32)
+
+            print(z.numpy())
+
+        .. testoutput::
+
+            [1. 2. 3.]""",
     group="Tile Primitives",
     export=False,
     namespace="",
@@ -19547,24 +19777,27 @@ add_builtin(
 
 add_builtin(
     "tile_lower_solve_inplace",
-    input_types={"L": tile(dtype=Float, shape=tuple[int, int]), "y": tile(dtype=Float, shape=tuple[int])},
+    input_types={"L": tile(dtype=Float, shape=tuple[int, int]), "y": tile(dtype=Float, shape=tuple[int, ...])},
     value_func=tile_lower_solve_inplace_generic_value_func,
     lto_dispatch_func=tile_lower_solve_inplace_generic_lto_dispatch_func,
     variadic=True,
-    doc="""Solve for ``z`` in ``Lz = y``, where ``L`` is a lower triangular matrix by overwriting ``y`` with ``z``.
+    doc="""Solve ``L z = y`` in place for a lower-triangular ``L``, overwriting ``y`` with ``z``.
 
-    This performs general forward substitution for a lower triangular system inplace.
+    Behaves like :func:`~warp.tile_lower_solve` -- only the lower triangle of ``L`` is
+    read, the right-hand side may be 1D or 2D, and the same dtype and backend rules
+    apply -- except that the solution overwrites ``y`` instead of being returned.
 
-    Note: This inplace variant does not support automatic differentiation (adjoint computation),
-    but avoids allocating shared memory for the output ``z`` by reusing ``y``'s memory.
+    This is a cooperative operation, so every thread in the block must call it.
 
-    Supported datatypes are:
-        * float32
-        * float64
+    This in-place variant avoids allocating shared memory for a separate output, but is
+    not differentiable.
 
     Args:
-        L: A square, non-singular, lower triangular matrix
-        y: A 1D or 2D tile with compatible shape that gets overwritten by ``z`` where ``Lz = y``.""",
+        L: A square, non-singular, lower-triangular tile with ``shape=(M, M)``.
+        y: The right-hand side, a tile with ``shape=(M,)`` or ``shape=(M, NRHS)``,
+            overwritten by the solution ``z``.
+
+    See :func:`~warp.tile_lower_solve` for a usage example.""",
     group="Tile Primitives",
     export=False,
     namespace="",
@@ -19576,7 +19809,7 @@ def _tile_upper_solve_generic_value_func(inplace: bool, arg_types, arg_values):
     if arg_types is None:
         if inplace:
             return None
-        return tile(dtype=Float, shape=tuple[int])
+        return tile(dtype=Float, shape=tuple[int, ...])
 
     if len(arg_types) != 2:
         raise TypeError("tile_upper_solve() requires exactly 2 positional args")
@@ -19719,26 +19952,35 @@ def tile_upper_solve_inplace_generic_lto_dispatch_func(*args, **kwargs):
 
 add_builtin(
     "tile_upper_solve",
-    input_types={"U": tile(dtype=Float, shape=tuple[int, int]), "z": tile(dtype=Float, shape=tuple[int])},
+    input_types={"U": tile(dtype=Float, shape=tuple[int, int]), "z": tile(dtype=Float, shape=tuple[int, ...])},
     value_func=tile_upper_solve_generic_value_func,
     lto_dispatch_func=tile_upper_solve_generic_lto_dispatch_func,
     variadic=True,
-    doc="""Solve for ``x`` in ``Ux = z``, where ``U`` is an upper triangular matrix.
+    doc="""Solve ``U x = z`` for an upper-triangular ``U`` and return ``x`` in a new tile.
 
-    This performs general back substitution for upper triangular systems.
+    Only the upper triangle of ``U``, including its diagonal, is read; the strictly lower
+    triangle is ignored. ``U`` must be non-singular with nonzero diagonal entries.
 
-    Note that computing the adjoint is not yet supported.
+    This is a cooperative operation, so every thread in the block must call it.
 
-    Supported datatypes are:
-        * float32
-        * float64
+    The right-hand side may be a 1D tile with ``shape=(M,)`` or a 2D tile with
+    ``shape=(M, NRHS)``, which solves for all ``NRHS`` columns at once. ``U`` and ``z``
+    must have the same dtype, either ``float32`` or ``float64``.
+
+    On CUDA devices, Warp uses cuSolverDx when it is built with libmathdx and
+    :attr:`warp.config.enable_mathdx_solver` (or the ``enable_mathdx_solver`` module
+    option) is ``True``. Otherwise, and on the CPU, it uses a cooperative fallback
+    implementation, which is slower than cuSolverDx on CUDA devices.
 
     Args:
-        U: A square, non-singular, upper triangular matrix
-        z: A 1D or 2D tile with compatible shape
+        U: A square, non-singular, upper-triangular tile with ``shape=(M, M)``.
+        z: The right-hand side, a tile with ``shape=(M,)`` or ``shape=(M, NRHS)``.
 
     Returns:
-        A tile of the same shape as ``z`` such that ``Ux = z``.""",
+        A new tile in shared memory with the same shape and dtype as ``z``, holding the
+        solution ``x`` of ``U x = z``.
+
+    See :func:`~warp.tile_lower_solve` for a usage example.""",
     group="Tile Primitives",
     export=False,
     namespace="",
@@ -19748,24 +19990,27 @@ add_builtin(
 
 add_builtin(
     "tile_upper_solve_inplace",
-    input_types={"U": tile(dtype=Float, shape=tuple[int, int]), "z": tile(dtype=Float, shape=tuple[int])},
+    input_types={"U": tile(dtype=Float, shape=tuple[int, int]), "z": tile(dtype=Float, shape=tuple[int, ...])},
     value_func=tile_upper_solve_inplace_generic_value_func,
     lto_dispatch_func=tile_upper_solve_inplace_generic_lto_dispatch_func,
     variadic=True,
-    doc="""Solve for ``x`` in ``Ux = z``, where ``U`` is an upper triangular matrix by overwriting ``z`` with ``x``.
+    doc="""Solve ``U x = z`` in place for an upper-triangular ``U``, overwriting ``z`` with ``x``.
 
-    This performs general back substitution for upper triangular systems inplace.
+    Behaves like :func:`~warp.tile_upper_solve` -- only the upper triangle of ``U`` is
+    read, the right-hand side may be 1D or 2D, and the same dtype and backend rules
+    apply -- except that the solution overwrites ``z`` instead of being returned.
 
-    Note: This inplace variant does not support automatic differentiation (adjoint computation),
-    but avoids allocating shared memory for the output ``x`` by reusing ``z``'s memory.
+    This is a cooperative operation, so every thread in the block must call it.
 
-    Supported datatypes are:
-        * float32
-        * float64
+    This in-place variant avoids allocating shared memory for a separate output.
 
     Args:
-        U: A square, non-singular, upper triangular matrix
-        z: A 1D or 2D tile with compatible shape that gets overwritten by ``x`` where ``Ux = z``.""",
+        U: A square, non-singular, upper-triangular tile with ``shape=(M, M)``.
+        z: The right-hand side, a tile with ``shape=(M,)`` or ``shape=(M, NRHS)``,
+            overwritten by the solution ``x``.
+
+    See :func:`~warp.tile_upper_solve` for usage details, and
+    :func:`~warp.tile_lower_solve` for an example.""",
     group="Tile Primitives",
     export=False,
     namespace="",
