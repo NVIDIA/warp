@@ -37,6 +37,7 @@ extern "C" WP_API int _wp_isinf(double);
 
 #include <assert.h>
 #include <float.h>
+#include <limits.h>
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>
