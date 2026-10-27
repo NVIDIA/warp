@@ -1,1 +1,1 @@
-Reduce SPH example acceleration work by advancing neighbor queries before force calculation and avoiding unnecessary neighbor data loads.
+Improve the SPH example force kernel with ordered neighbor prefetching and deferred particle-state loads.
