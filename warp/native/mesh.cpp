@@ -305,7 +305,8 @@ WP_API uint64_t wp_mesh_create_device(
     int support_winding_number,
     int constructor_type,
     int* groups,
-    int bvh_leaf_size
+    int bvh_leaf_size,
+    int adaptive_world_id_width
 )
 {
     return 0;

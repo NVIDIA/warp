@@ -178,6 +178,8 @@ private:
     vec3* total_lower;
     vec3* total_upper;
     vec3* total_inv_edges;
+    // largest group id as uint32_t (0 without groups), selects the sort key layout on the device
+    uint32_t* max_group;
 };
 
 ////////////////////////////////////////////////////////
@@ -191,7 +193,8 @@ __global__ void compute_morton_codes(
     const vec3* grid_inv_edges,
     int* __restrict__ indices,
     uint64_t* __restrict__ keys,
-    const int* __restrict__ item_groups
+    const int* __restrict__ item_groups,
+    const uint32_t* max_group
 )
 {
     const int index = blockDim.x * blockIdx.x + threadIdx.x;
@@ -204,26 +207,48 @@ __global__ void compute_morton_codes(
 
         vec3 local = cw_mul((center - grid_lower[0]), grid_inv_edges[0]);
 
-        // 10-bit Morton codes stored in lower 30bits (1024^3 effective resolution)
-        // Group stored in upper 32 bits
-        uint64_t morton_code = static_cast<uint64_t>(morton3<1024>(local[0], local[1], local[2]));
+        // Morton code in the low bits, group id above it; see lbvh_key_layout for how the 64 bits are split.
+        // Without groups the code gets 21 bits per axis (2097152^3 effective resolution).
+        const LBVHKeyLayout layout = lbvh_key_layout(*max_group);
+        const uint64_t morton_code = morton3_64(local[0], local[1], local[2], layout.morton_bits);
         const uint64_t group = item_groups ? static_cast<uint32_t>(item_groups[index]) : 0u;
-        const uint64_t key = (group << 32) | morton_code;
+        const uint64_t key = (group << layout.group_shift) | morton_code;
 
         indices[index] = index;
         keys[index] = key;
     }
 }
 
-// compute a distance metric between adjacent keys; larger across groups
-// Using raw XOR magnitude preserves the original builder's assumptions
+// largest group id as uint32_t, reduced on the device so that the key layout needs no CPU<->GPU sync
+__global__ void compute_max_group(const int* __restrict__ item_groups, uint32_t* max_group, int n)
+{
+    typedef cub::BlockReduce<uint32_t, 256> BlockReduce;
+
+    __shared__ typename BlockReduce::TempStorage temp_storage;
+
+    const int blockStart = blockDim.x * blockIdx.x;
+    const int numValid = ::min(n - blockStart, blockDim.x);
+
+    const int tid = blockStart + threadIdx.x;
+    const uint32_t group = tid < n ? static_cast<uint32_t>(item_groups[tid]) : 0u;
+
+    const uint32_t block_max = BlockReduce(temp_storage).Reduce(group, cub::Max(), numValid);
+
+    if (threadIdx.x == 0)
+        atomicMax(max_group, block_max);
+}
+
+// Common prefix length of adjacent sort keys, in bits (larger means more similar; smaller across groups).
+// Equal keys, i.e. primitives whose centroids fall into the same Morton cell, are told apart by their position in
+// the sorted order, as in Karras 2012, section 4: a run of equal keys then forms a balanced subtree instead of a
+// chain that is one primitive deep per primitive.
 __global__ void compute_key_deltas(const uint64_t* __restrict__ keys, int* __restrict__ deltas, int n)
 {
     const int index = blockDim.x * blockIdx.x + threadIdx.x;
 
     if (index < n) {
         const uint64_t diff = keys[index] ^ keys[index + 1];
-        deltas[index] = (diff == 0) ? 64 : __clzll(diff);
+        deltas[index] = (diff == 0) ? 64 + __clz(index ^ (index + 1)) : __clzll(diff);
     }
 }
 
@@ -265,8 +290,8 @@ __global__ void build_hierarchy(
     int* root,
     const int* __restrict__ deltas,
     const uint64_t* __restrict__ keys,
+    const uint32_t* max_group,
     int* __restrict__ num_children,
-    const int* __restrict__ primitive_indices,
     volatile int* __restrict__ range_lefts,
     volatile int* __restrict__ range_rights,
     volatile int* __restrict__ parents,
@@ -278,6 +303,7 @@ __global__ void build_hierarchy(
 
     if (index < n) {
         const int internal_offset = n;
+        const int group_shift = lbvh_key_layout(*max_group).group_shift;
 
         for (;;) {
             int left = range_lefts[index];
@@ -297,21 +323,22 @@ __global__ void build_hierarchy(
 
             // group away selection of parent. We need to make sure that:
             // 1) If node spans a single group and exactly one neighbor keeps us in-group, choose that side
-            // 2) Otherwise, use the original delta rule with parity tie-break to avoid ladders
+            // 2) Otherwise, use the delta rule: merge towards the neighbor with the longer common prefix
             // This is important to make sure that our tree does not mix groups until a single group root is formed.
             bool parent_right = false;
             if (left == 0) {
                 parent_right = true;
             } else {
                 bool decided = false;
-                const uint32_t group_left = (uint32_t)(keys[left] >> 32);
-                const uint32_t group_right = (uint32_t)(keys[right] >> 32);
+                const uint32_t group_left = (uint32_t)(keys[left] >> group_shift);
+                const uint32_t group_right = (uint32_t)(keys[right] >> group_shift);
 
                 // Check if either of the neighbors keep us in the same group
                 if (group_left == group_right) {
                     const uint32_t group = group_left;
-                    const bool can_go_right_same = (right < n - 1) && ((uint32_t)(keys[right + 1] >> 32) == group);
-                    const bool can_go_left_same = ((uint32_t)(keys[left - 1] >> 32) == group);
+                    const bool can_go_right_same
+                        = (right < n - 1) && ((uint32_t)(keys[right + 1] >> group_shift) == group);
+                    const bool can_go_left_same = ((uint32_t)(keys[left - 1] >> group_shift) == group);
 
                     // If exactly one neighbor keeps us in the same group, choose that side
                     if (can_go_right_same ^ can_go_left_same) {
@@ -323,15 +350,11 @@ __global__ void build_hierarchy(
                 }
 
                 if (!decided) {
-                    // prefer side with greater common prefix
-                    if (right != n - 1 && deltas[right] >= deltas[left - 1]) {
-                        if (deltas[right] == deltas[left - 1])
-                            parent_right = (primitive_indices[left - 1] % 2) ^ (primitive_indices[right] % 2);
-                        else
-                            parent_right = true;
-                    } else {
-                        parent_right = false;
-                    }
+                    // prefer the side with the longer common prefix. The two deltas are never equal: the sort keys
+                    // are unique once equal Morton codes are told apart by position (see compute_key_deltas), and in
+                    // a sorted sequence of unique keys the neighbors on both sides of a node cannot share the same
+                    // prefix length with it.
+                    parent_right = (right != n - 1) && (deltas[right] > deltas[left - 1]);
                 }
             }
 
@@ -407,6 +430,7 @@ __global__ void mark_packed_leaf_nodes(
     const int* __restrict__ range_rights,
     const int* __restrict__ parents,
     const uint64_t* __restrict__ keys,
+    const uint32_t* max_group,
     BVHPackedNodeHalf* __restrict__ lowers,
     BVHPackedNodeHalf* __restrict__ uppers,
     const int leaf_size
@@ -414,6 +438,7 @@ __global__ void mark_packed_leaf_nodes(
 {
     int node_index = blockDim.x * blockIdx.x + threadIdx.x;
     if (node_index < n) {
+        const int group_shift = lbvh_key_layout(*max_group).group_shift;
         // mark the node as leaf if its range is less than leaf_size or it is deeper than BVH_QUERY_STACK_SIZE
         // this will forever mute its child nodes so that they will never be accessed
 
@@ -432,8 +457,8 @@ __global__ void mark_packed_leaf_nodes(
 
         // avoid creating packed leaves that straddle group boundaries
         bool single_group = true;
-        const uint64_t group_left = keys[left] >> 32;
-        const uint64_t group_right = keys[right - 1] >> 32;
+        const uint64_t group_left = keys[left] >> group_shift;
+        const uint64_t group_right = keys[right - 1] >> group_shift;
         single_group = (group_left == group_right);
 
         if (single_group && (right - left <= leaf_size || depth >= BVH_QUERY_STACK_SIZE)) {
@@ -501,10 +526,12 @@ LinearBVHBuilderGPU::LinearBVHBuilderGPU()
     , total_lower(NULL)
     , total_upper(NULL)
     , total_inv_edges(NULL)
+    , max_group(NULL)
 {
     total_lower = (vec3*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(vec3), "(native:bvh)");
     total_upper = (vec3*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(vec3), "(native:bvh)");
     total_inv_edges = (vec3*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(vec3), "(native:bvh)");
+    max_group = (uint32_t*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(uint32_t), "(native:bvh)");
 }
 
 LinearBVHBuilderGPU::~LinearBVHBuilderGPU()
@@ -512,6 +539,7 @@ LinearBVHBuilderGPU::~LinearBVHBuilderGPU()
     free_device_on_stream(WP_CURRENT_CONTEXT, total_lower, stream);
     free_device_on_stream(WP_CURRENT_CONTEXT, total_upper, stream);
     free_device_on_stream(WP_CURRENT_CONTEXT, total_inv_edges, stream);
+    free_device_on_stream(WP_CURRENT_CONTEXT, max_group, stream);
 }
 
 
@@ -569,14 +597,22 @@ void LinearBVHBuilderGPU::build(
         wp_launch_device(WP_CURRENT_CONTEXT, compute_total_inv_edges, 1, (total_lower, total_upper, total_inv_edges));
     }
 
-    // assign 30-bit Morton code based on the centroid of each triangle and bounds for each leaf
+    // pick the sort key layout: the Morton code gets every bit the group ids do not need (see lbvh_key_layout)
+    if (item_groups && bvh.adaptive_world_id_width) {
+        wp_launch_device(WP_CURRENT_CONTEXT, memset_kernel, 1, ((int*)max_group, 0, 1));
+        wp_launch_device(WP_CURRENT_CONTEXT, compute_max_group, num_items, (item_groups, max_group, num_items));
+    } else {
+        // no groups: the group id is always 0; fixed width: keep the full 32-bit group id field
+        wp_launch_device(WP_CURRENT_CONTEXT, memset_kernel, 1, ((int*)max_group, item_groups ? -1 : 0, 1));
+    }
+
+    // assign Morton code based on the centroid of each item, combined with its group id into the 64-bit sort key
     wp_launch_device(
         WP_CURRENT_CONTEXT, compute_morton_codes, num_items,
-        (item_lowers, item_uppers, num_items, total_lower, total_inv_edges, indices, keys, item_groups)
+        (item_lowers, item_uppers, num_items, total_lower, total_inv_edges, indices, keys, item_groups, max_group)
     );
 
-    // sort items based on Morton key (note the 64-bit sort key includes group in upper 32 bits and morton code in lower
-    // 32 bits)
+    // sort items based on the 64-bit key (group id in the high bits, Morton code in the low bits)
     radix_sort_pairs_device(WP_CURRENT_CONTEXT, keys, indices, num_items);
     wp_memcpy_d2d(WP_CURRENT_CONTEXT, bvh.primitive_indices, indices, sizeof(int) * num_items);
 
@@ -596,12 +632,12 @@ void LinearBVHBuilderGPU::build(
     // build the tree and internal node bounds
     wp_launch_device(
         WP_CURRENT_CONTEXT, build_hierarchy, num_items,
-        (num_items, bvh.root, deltas, keys, num_children, bvh.primitive_indices, range_lefts, range_rights,
-         bvh.node_parents, bvh.node_lowers, bvh.node_uppers)
+        (num_items, bvh.root, deltas, keys, max_group, num_children, range_lefts, range_rights, bvh.node_parents,
+         bvh.node_lowers, bvh.node_uppers)
     );
     wp_launch_device(
         WP_CURRENT_CONTEXT, mark_packed_leaf_nodes, bvh.max_nodes,
-        (bvh.max_nodes, range_lefts, range_rights, bvh.node_parents, keys, bvh.node_lowers, bvh.node_uppers,
+        (bvh.max_nodes, range_lefts, range_rights, bvh.node_parents, keys, max_group, bvh.node_lowers, bvh.node_uppers,
          bvh.leaf_size)
     );
 
@@ -663,6 +699,7 @@ void bvh_create_device(
     int constructor_type,
     int* groups,
     int leaf_size,
+    int adaptive_world_id_width,
     BVH& bvh_device_on_host
 )
 {
@@ -708,6 +745,7 @@ void bvh_create_device(
         bvh_device_on_host.item_uppers = uppers;
         bvh_device_on_host.item_groups = groups;
         bvh_device_on_host.constructor_type = constructor_type;
+        bvh_device_on_host.adaptive_world_id_width = adaptive_world_id_width;
         // node_counts is not allocated for host tree
         bvh_device_on_host.node_counts
             = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * bvh_device_on_host.max_nodes, "(native:bvh)");
@@ -743,6 +781,7 @@ void bvh_create_device(
         bvh_device_on_host.item_groups = groups;
         bvh_device_on_host.context = context ? context : wp_cuda_context_get_current();
         bvh_device_on_host.constructor_type = constructor_type;
+        bvh_device_on_host.adaptive_world_id_width = adaptive_world_id_width;
 
         LinearBVHBuilderGPU builder;
         builder.build(bvh_device_on_host, lowers, uppers, num_items, NULL, groups);
@@ -853,7 +892,14 @@ void wp_bvh_rebuild_device(uint64_t id)
  * can still work. We will only compute the bounding box of a leaf node if its parent is not a leaf node.
  */
 uint64_t wp_bvh_create_device(
-    void* context, wp::vec3* lowers, wp::vec3* uppers, int num_items, int constructor_type, int* groups, int leaf_size
+    void* context,
+    wp::vec3* lowers,
+    wp::vec3* uppers,
+    int num_items,
+    int constructor_type,
+    int* groups,
+    int leaf_size,
+    int adaptive_world_id_width
 )
 {
     ContextGuard guard(context);
@@ -861,7 +907,8 @@ uint64_t wp_bvh_create_device(
     wp::BVH* bvh_device_ptr = nullptr;
 
     wp::bvh_create_device(
-        WP_CURRENT_CONTEXT, lowers, uppers, num_items, constructor_type, groups, leaf_size, bvh_device_on_host
+        WP_CURRENT_CONTEXT, lowers, uppers, num_items, constructor_type, groups, leaf_size, adaptive_world_id_width,
+        bvh_device_on_host
     );
 
     if (!bvh_device_on_host.node_lowers && num_items > 0) {

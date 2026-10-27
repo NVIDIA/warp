@@ -907,7 +907,14 @@ void wp_bvh_destroy_host(uint64_t id)
 #if !WP_ENABLE_CUDA
 
 uint64_t wp_bvh_create_device(
-    void* context, wp::vec3* lowers, wp::vec3* uppers, int num_items, int constructor_type, int* groups, int leaf_size
+    void* context,
+    wp::vec3* lowers,
+    wp::vec3* uppers,
+    int num_items,
+    int constructor_type,
+    int* groups,
+    int leaf_size,
+    int adaptive_world_id_width
 )
 {
     return 0;

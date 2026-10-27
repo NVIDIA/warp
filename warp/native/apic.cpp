@@ -1642,9 +1642,10 @@ bool apic_create_meshes(APICGraph* graph)
                 rec.bvh_constructor, nullptr, rec.bvh_leaf_size
             );
         } else {
+            // the record has no group ids, so the LBVH key layout flag (last argument) has no effect; pass the default
             new_mesh_id = wp_mesh_create_device(
                 graph->cuda_context, points, velocities, indices, rec.num_points, rec.num_tris,
-                rec.support_winding_number, rec.bvh_constructor, nullptr, rec.bvh_leaf_size
+                rec.support_winding_number, rec.bvh_constructor, nullptr, rec.bvh_leaf_size, 1
             );
         }
 

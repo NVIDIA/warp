@@ -201,6 +201,9 @@ struct BVH {
     int num_items;
     int leaf_size;
     int constructor_type;
+    // LBVH only: when non-zero, the group id field of the sort key is sized from the largest group id and the
+    // remaining bits go to the Morton code (see lbvh_key_layout); when zero, the group id keeps 32 bits
+    int adaptive_world_id_width;
 
     // cuda context
     void* context;
@@ -292,6 +295,55 @@ template <int dim> CUDA_CALLABLE inline uint32_t morton3(float x, float y, float
     uint32_t uz = clamp(int(z * dim), 0, dim - 1);
 
     return (part1by2(uz) << 2) | (part1by2(uy) << 1) | part1by2(ux);
+}
+
+// Spreads the low 21 bits of n so that two zero bits follow each of them (one axis of a 63-bit Morton code)
+CUDA_CALLABLE inline uint64_t part1by2_64(uint64_t n)
+{
+    n &= 0x1fffffull;
+    n = (n | (n << 32)) & 0x001f00000000ffffull;
+    n = (n | (n << 16)) & 0x001f0000ff0000ffull;
+    n = (n | (n << 8)) & 0x100f00f00f00f00full;
+    n = (n | (n << 4)) & 0x10c30c30c30c30c3ull;
+    n = (n | (n << 2)) & 0x1249249249249249ull;
+    return n;
+}
+
+// Takes values in the range [0, 1] and returns a Morton code with `bits` (at most 21) bits per axis, 3 * bits in total
+CUDA_CALLABLE inline uint64_t morton3_64(float x, float y, float z, int bits)
+{
+    const int dim = 1 << bits;
+    const uint64_t ux = clamp(int(x * float(dim)), 0, dim - 1);
+    const uint64_t uy = clamp(int(y * float(dim)), 0, dim - 1);
+    const uint64_t uz = clamp(int(z * float(dim)), 0, dim - 1);
+
+    return (part1by2_64(uz) << 2) | (part1by2_64(uy) << 1) | part1by2_64(ux);
+}
+
+// Layout of the 64-bit LBVH sort key: the Morton code occupies the low 3 * morton_bits bits, the group id (if any)
+// the bits above it, so the sort order is group-major. The group id field is sized from the largest group id
+// (as uint32_t, 0 when the tree has no groups) and the Morton code gets all the remaining bits, 10 to 21 per axis.
+// A tree with 0xFFFFFFFF as its largest group id keeps the 32-bit group field, hence 10 bits per axis.
+struct LBVHKeyLayout {
+    int morton_bits;
+    int group_shift;
+};
+
+CUDA_CALLABLE inline LBVHKeyLayout lbvh_key_layout(uint32_t max_group)
+{
+#ifdef __CUDA_ARCH__
+    const int group_bits = 32 - __clz(static_cast<int>(max_group));
+#else
+    const int group_bits = 32 - clz(static_cast<int>(max_group));
+#endif
+    int morton_bits = (64 - group_bits) / 3;
+    if (morton_bits > 21)
+        morton_bits = 21;
+
+    LBVHKeyLayout layout;
+    layout.morton_bits = morton_bits;
+    layout.group_shift = 3 * morton_bits;
+    return layout;
 }
 
 // making the class accessible from python
@@ -745,6 +797,7 @@ void bvh_create_device(
     int constructor_type,
     int* groups,
     int leaf_size,
+    int adaptive_world_id_width,
     BVH& bvh_device_on_host
 );
 void bvh_destroy_device(BVH& bvh);

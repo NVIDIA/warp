@@ -6114,6 +6114,7 @@ class Bvh:
         constructor: BvhConstructor | str | None = None,
         groups: array | None = None,
         leaf_size: int = 1,
+        adaptive_world_id_width: builtins.bool = True,
     ):
         """Class representing a bounding volume hierarchy.
 
@@ -6135,6 +6136,13 @@ class Bvh:
               use case. For intersection queries (e.g., AABB query), a small value like 1 (the default) is generally
               recommended for optimal performance. For closest point queries, a larger value like 4 or 8 can be more
               performant. This is an intrinsic parameter which does not impact the return value of the query method.
+            adaptive_world_id_width: Only used by the ``"lbvh"`` constructor on CUDA. The LBVH sorts primitives by a
+              64-bit key that holds the group id above a Morton code of the primitive's centroid. When ``True``
+              (the default), the group id field is sized from the largest group id and the Morton code gets all
+              the remaining bits: 21 bits per axis without groups, 18 bits per axis with up to 1024 groups, and
+              never fewer than 10. When ``False``, the group id keeps a 32-bit field and the Morton code 10 bits
+              per axis, as in Warp 1.18 and earlier. Finer Morton codes matter for meshes that mix very different
+              scales, where many primitives would otherwise share one code and the tree would degrade.
 
         Note:
             **Explanation of BVH constructors:**
@@ -6272,9 +6280,11 @@ class Bvh:
                 constructor,
                 get_data(groups),
                 leaf_size,
+                int(adaptive_world_id_width),
             )
 
         self._constructor = constructor
+        self.adaptive_world_id_width = adaptive_world_id_width
         if not self.id:
             raise RuntimeError(f"Failed to create BVH: {self.runtime.get_error_string()}")
 
@@ -6414,6 +6424,7 @@ class Mesh:
         bvh_constructor: BvhConstructor | str | None = None,
         bvh_leaf_size: int | None = None,
         groups: array | None = None,
+        adaptive_world_id_width: builtins.bool = True,
     ):
         """Class representing a triangle mesh.
 
@@ -6439,6 +6450,9 @@ class Mesh:
               value based on the ``bvh_constructor`` will be used.
             groups: Optional array of triangle group indices of data type :class:`warp.int32`.
               Should be a 1D array with shape ``(num_tris)``.
+            adaptive_world_id_width: Size the group id field of the LBVH sort key from the largest group id and
+              give the remaining bits to the Morton code (see the docstring of :class:`Bvh`). ``True`` by default;
+              ``False`` keeps the 32-bit group id field and 10-bit Morton codes of Warp 1.18 and earlier.
         """
         if points.device != indices.device:
             raise RuntimeError("Mesh points and indices must live on the same device")
@@ -6527,6 +6541,7 @@ class Mesh:
                 bvh_constructor,
                 ctypes.c_void_p(groups.ptr) if groups else ctypes.c_void_p(0),
                 bvh_leaf_size,
+                int(adaptive_world_id_width),
             )
 
         if not self.id:
