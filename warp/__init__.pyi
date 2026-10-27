@@ -2056,7 +2056,16 @@ def dot(a: Vector[Scalar, Any], b: Vector[Scalar, Any]) -> Scalar:
 
 @over
 def dot(a: Quaternion[Float], b: Quaternion[Float]) -> Float:
-    """Compute the dot product."""
+    """Return the dot product of the four components of ``a`` and ``b``.
+
+    Args:
+        a: First quaternion.
+        b: Second quaternion.
+
+    Returns:
+        The scalar dot product. For unit quaternions, ``abs(dot(a, b))`` is the cosine of half the
+        angle of the rotation from ``a`` to ``b``, and a negative value means that ``-b`` is closer to
+        ``a`` than ``b`` is."""
     ...
 
 def ddot(a: Matrix[Scalar, Any, Any], b: Matrix[Scalar, Any, Any]) -> Scalar:
@@ -2128,7 +2137,7 @@ def normalize(a: Vector[Float, Any]) -> Vector[Float, Any]:
 def normalize(a: Quaternion[Float]) -> Quaternion[Float]:
     """Compute the normalized value of ``a``.
 
-    If ``length(a)`` is 0, the zero quaternion is returned."""
+    If ``length(a)`` is 0, the identity quaternion ``(0, 0, 0, 1)`` is returned."""
     ...
 
 def transpose(a: Matrix[Scalar, Any, Any]) -> Matrix[Scalar, Any, Any]:
@@ -2761,122 +2770,351 @@ def eig3(
 
 @over
 def quaternion() -> Quaternion[Float]:
-    """Construct a quaternion.
+    """Construct a zero-initialized quaternion.
 
-    Zero-initialize the quaternion. Quaternions are laid out as
-    ``[ix, iy, iz, r]``, where ``ix``, ``iy``, ``iz`` are the imaginary part, and ``r`` the real part."""
+    Quaternions store their components in ``(x, y, z, w)`` order, where ``x``, ``y``, and ``z`` form
+    the vector (imaginary) part and ``w`` is the scalar (real) part. For the identity rotation, use
+    :func:`~warp.quat_identity`.
+
+    Args:
+        dtype: Scalar type of the components. Defaults to ``float32``.
+
+    Returns:
+        The quaternion ``(0, 0, 0, 0)``."""
     ...
 
 @over
 def quaternion(dtype: type[DTypeFloat]) -> Quaternion[DTypeFloat]:
-    """Construct a quaternion.
+    """Construct a zero-initialized quaternion.
 
-    Zero-initialize the quaternion. Quaternions are laid out as
-    ``[ix, iy, iz, r]``, where ``ix``, ``iy``, ``iz`` are the imaginary part, and ``r`` the real part."""
+    Quaternions store their components in ``(x, y, z, w)`` order, where ``x``, ``y``, and ``z`` form
+    the vector (imaginary) part and ``w`` is the scalar (real) part. For the identity rotation, use
+    :func:`~warp.quat_identity`.
+
+    Args:
+        dtype: Scalar type of the components. Defaults to ``float32``.
+
+    Returns:
+        The quaternion ``(0, 0, 0, 0)``."""
     ...
 
 @over
 def quaternion(quat: Quaternion[Float]) -> Quaternion[Float]:
-    """Construct a quaternion.
+    """Construct a copy of a quaternion, optionally converting its scalar type.
 
-    Convert ``quat`` to the specified ``dtype``."""
+    Args:
+        quat: Quaternion to copy.
+        dtype: Scalar type of the result. Defaults to the scalar type of ``quat``.
+
+    Returns:
+        A quaternion with the components of ``quat``, converted to ``dtype``."""
     ...
 
 @over
 def quaternion(quat: Quaternion[Float], dtype: type[DTypeFloat]) -> Quaternion[DTypeFloat]:
-    """Construct a quaternion.
+    """Construct a copy of a quaternion, optionally converting its scalar type.
 
-    Convert ``quat`` to the specified ``dtype``."""
+    Args:
+        quat: Quaternion to copy.
+        dtype: Scalar type of the result. Defaults to the scalar type of ``quat``.
+
+    Returns:
+        A quaternion with the components of ``quat``, converted to ``dtype``."""
     ...
 
 @over
 def quaternion(ijk: Vector[Float, Literal[3]], real: Float) -> Quaternion[Float]:
-    """Construct a quaternion.
+    """Construct a quaternion from its vector and scalar parts.
 
-    Use the supplied vector/scalar (type inferred from scalar type)."""
+    All arguments must have the same scalar type, which must match ``dtype`` when it is given.
+
+    Args:
+        ijk: Vector (imaginary) part, stored as the ``x``, ``y``, and ``z`` components.
+        real: Scalar (real) part, stored as the ``w`` component.
+        dtype: Scalar type of the components, inferred from the other arguments when omitted.
+
+    Returns:
+        The quaternion ``(ijk[0], ijk[1], ijk[2], real)``."""
     ...
 
 @over
 def quaternion(ijk: Vector[Float, Literal[3]], real: Float, dtype: type[DTypeFloat]) -> Quaternion[DTypeFloat]:
-    """Construct a quaternion.
+    """Construct a quaternion from its vector and scalar parts.
 
-    Use the supplied vector/scalar (type inferred from scalar type)."""
+    All arguments must have the same scalar type, which must match ``dtype`` when it is given.
+
+    Args:
+        ijk: Vector (imaginary) part, stored as the ``x``, ``y``, and ``z`` components.
+        real: Scalar (real) part, stored as the ``w`` component.
+        dtype: Scalar type of the components, inferred from the other arguments when omitted.
+
+    Returns:
+        The quaternion ``(ijk[0], ijk[1], ijk[2], real)``."""
     ...
 
 @over
 def quaternion(x: Float, y: Float, z: Float, w: Float) -> Quaternion[Float]:
-    """Construct a quaternion.
+    """Construct a quaternion from its components.
 
-    Use the supplied components (type inferred from component type)."""
+    All arguments must have the same scalar type, which must match ``dtype`` when it is given.
+
+    Args:
+        x: ``x`` component of the vector (imaginary) part.
+        y: ``y`` component of the vector (imaginary) part.
+        z: ``z`` component of the vector (imaginary) part.
+        w: Scalar (real) part.
+        dtype: Scalar type of the components, inferred from the other arguments when omitted.
+
+    Returns:
+        The quaternion ``(x, y, z, w)``."""
     ...
 
 @over
 def quaternion(x: Float, y: Float, z: Float, w: Float, dtype: type[DTypeFloat]) -> Quaternion[DTypeFloat]:
-    """Construct a quaternion.
+    """Construct a quaternion from its components.
 
-    Use the supplied components (type inferred from component type)."""
+    All arguments must have the same scalar type, which must match ``dtype`` when it is given.
+
+    Args:
+        x: ``x`` component of the vector (imaginary) part.
+        y: ``y`` component of the vector (imaginary) part.
+        z: ``z`` component of the vector (imaginary) part.
+        w: Scalar (real) part.
+        dtype: Scalar type of the components, inferred from the other arguments when omitted.
+
+    Returns:
+        The quaternion ``(x, y, z, w)``."""
     ...
 
 @over
 def quat_identity() -> quatf:
-    """Construct an identity quaternion with zero imaginary part and real part of 1.0."""
+    """Construct the identity quaternion.
+
+    Args:
+        dtype: Scalar type of the components. Defaults to ``float32``.
+
+    Returns:
+        The quaternion ``(0, 0, 0, 1)``."""
     ...
 
 @over
 def quat_identity(dtype: type[DTypeFloat]) -> Quaternion[DTypeFloat]:
-    """Construct an identity quaternion with zero imaginary part and real part of 1.0."""
+    """Construct the identity quaternion.
+
+    Args:
+        dtype: Scalar type of the components. Defaults to ``float32``.
+
+    Returns:
+        The quaternion ``(0, 0, 0, 1)``."""
     ...
 
 def quat_from_axis_angle(axis: Vector[Float, Literal[3]], angle: Float) -> Quaternion[Float]:
-    """Construct a quaternion representing a rotation of angle radians around the given axis."""
+    """Return the quaternion for a rotation of ``angle`` radians about ``axis``.
+
+    Positive angles follow the right-hand rule: a rotation of ``pi / 2`` about the ``z`` axis maps
+    the ``x`` axis onto the ``y`` axis.
+
+    Args:
+        axis: Rotation axis, with unit length.
+        angle: Rotation angle in radians.
+
+    Returns:
+        The quaternion ``(axis * sin(angle / 2), cos(angle / 2))`` in ``(x, y, z, w)`` order."""
     ...
 
 @over
 def quat_to_axis_angle(quat: Quaternion[Float]) -> tuple[Vector[Float, Literal[3]], Float]:
-    """Extract the rotation axis and angle radians a quaternion represents."""
+    """Return the rotation axis and angle in radians represented by ``quat``.
+
+    Args:
+        quat: Rotation quaternion to convert.
+
+    Returns:
+        A tuple ``(axis, angle)`` such that ``quat_from_axis_angle(axis, angle)`` equals
+        ``normalize(quat)`` or ``-normalize(quat)``. ``angle`` is in radians, in ``[0, pi]``. ``axis``
+        is unspecified when ``angle`` is zero, and its sign is unspecified when ``angle`` is ``pi``."""
     ...
 
 @over
 def quat_to_axis_angle(quat: Quaternion[Float], axis: Vector[Float, Literal[3]], angle: Float) -> None:
-    """Extract the rotation axis and angle radians a quaternion represents."""
+    """Compute the rotation axis and angle in radians represented by ``quat`` and store them in
+    caller-provided output arguments.
+
+    Args:
+        quat: Rotation quaternion to convert.
+        axis: Output rotation axis. It is unspecified when ``angle`` is zero, and its sign is
+            unspecified when ``angle`` is ``pi``.
+        angle: Output rotation angle in radians, in ``[0, pi]``."""
     ...
 
 @over
 def quat_from_matrix(mat: Matrix[Float, Literal[3], Literal[3]]) -> Quaternion[Float]:
-    """Construct a quaternion from a matrix.
+    """Return the rotation quaternion of the rotation matrix ``mat``.
 
-    If the matrix is not a pure rotation, but for example includes scaling or skewing, the result is undefined."""
+    Args:
+        mat: Rotation matrix that rotates column vectors as ``mat @ v``. It must be orthonormal with a
+            determinant of ``+1``; otherwise, the result is unspecified. Matrices using row-vector
+            conventions must be transposed first.
+
+    Returns:
+        A unit quaternion ``q`` such that ``quat_to_matrix(q)`` equals ``mat``. The sign of ``q`` is
+        unspecified."""
     ...
 
 @over
 def quat_from_matrix(mat: Matrix[Float, Literal[4], Literal[4]]) -> Quaternion[Float]:
-    """Construct a quaternion from a matrix.
+    """Return the rotation quaternion of the top-left 3x3 block of ``mat``.
 
-    If the top-left 3x3 block of the matrix is not a pure rotation, but for example includes scaling or skewing, the result is undefined."""
+    Args:
+        mat: Transformation matrix whose top-left 3x3 block rotates column vectors. That block must be
+            orthonormal with a determinant of ``+1``; otherwise, the result is unspecified. The
+            remaining entries, such as a translation, are ignored.
+
+    Returns:
+        A unit quaternion ``q`` such that ``quat_to_matrix(q)`` equals the top-left 3x3 block of
+        ``mat``. The sign of ``q`` is unspecified."""
     ...
 
 def quat_rpy(roll: Float, pitch: Float, yaw: Float) -> Quaternion[Float]:
-    """Construct a quaternion representing a combined roll (z), pitch (x), yaw rotations (y) in radians."""
+    """Return the rotation quaternion for the given roll, pitch, and yaw angles in radians.
+
+    The rotations are applied in the order roll, pitch, yaw about the fixed axes (extrinsic x-y-z),
+    which is equivalent to applying yaw, pitch, and then roll about the rotating axes
+    (intrinsic z-y'-x'').
+
+    Args:
+        roll: Rotation angle about the ``x`` axis, in radians.
+        pitch: Rotation angle about the ``y`` axis, in radians.
+        yaw: Rotation angle about the ``z`` axis, in radians.
+
+    Returns:
+        The unit quaternion ``qz * qy * qx``, where ``qx``, ``qy``, and ``qz`` are the rotations of
+        ``roll``, ``pitch``, and ``yaw`` about their axes.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def orient(points: wp.array[wp.vec3], out: wp.array[wp.vec3]):
+                i = wp.tid()
+                # quarter turn about x (roll), then a quarter turn about z (yaw)
+                q = wp.quat_rpy(wp.pi / 2.0, 0.0, wp.pi / 2.0)
+                out[i] = wp.quat_rotate(q, points[i])
+
+            # roll maps (1, 2, 3) to (1, -3, 2), then yaw maps that to (3, 1, 2)
+            points = wp.array([wp.vec3(1.0, 2.0, 3.0)], dtype=wp.vec3)
+            out = wp.empty(1, dtype=wp.vec3)
+            wp.launch(orient, dim=1, inputs=[points], outputs=[out])
+            print(np.round(out.numpy(), 3))
+
+        .. testoutput::
+
+            [[3. 1. 2.]]"""
     ...
 
 def quat_inverse(quat: Quaternion[Float]) -> Quaternion[Float]:
-    """Compute quaternion conjugate."""
+    """Return the conjugate of ``quat``, which is its inverse when ``quat`` has unit length.
+
+    For a nonzero quaternion without unit length, the multiplicative inverse is
+    ``quat_inverse(quat) / length_sq(quat)``.
+
+    Args:
+        quat: Quaternion to conjugate.
+
+    Returns:
+        The quaternion ``(-quat[0], -quat[1], -quat[2], quat[3])``."""
     ...
 
 def quat_rotate(quat: Quaternion[Float], vec: Vector[Float, Literal[3]]) -> Vector[Float, Literal[3]]:
-    """Rotate a vector by a quaternion."""
+    """Return ``vec`` rotated by the rotation that ``quat`` represents.
+
+    Quaternion products apply rotations from right to left, so ``quat_rotate(a * b, vec)`` equals
+    ``quat_rotate(a, quat_rotate(b, vec))``.
+
+    Args:
+        quat: Rotation quaternion, with unit length. Gradient updates do not preserve its unit
+            length, so re-normalize it after each update.
+        vec: Vector to rotate.
+
+    Returns:
+        The rotated vector, equal to ``quat_to_matrix(quat) @ vec``."""
     ...
 
 def quat_rotate_inv(quat: Quaternion[Float], vec: Vector[Float, Literal[3]]) -> Vector[Float, Literal[3]]:
-    """Rotate a vector by the inverse of a quaternion."""
+    """Return ``vec`` rotated by the inverse of the rotation that ``quat`` represents.
+
+    For example, if ``quat`` rotates vectors from a body's local frame into world space, this maps a
+    world-space vector into the body's local frame.
+
+    Args:
+        quat: Rotation quaternion, with unit length. Gradient updates do not preserve its unit
+            length, so re-normalize it after each update.
+        vec: Vector to rotate.
+
+    Returns:
+        The rotated vector, equal to ``quat_rotate(quat_inverse(quat), vec)``."""
     ...
 
 def quat_slerp(a: Quaternion[Float], b: Quaternion[Float], t: Float) -> Quaternion[Float]:
-    """Linearly interpolate between two quaternions."""
+    """Return the spherical linear interpolation (slerp) between the rotations ``a`` and ``b``.
+
+    The result follows the shortest arc between the two rotations at a constant angular rate. When
+    ``dot(a, b)`` is zero, the rotations differ by 180 degrees and the shortest arc is not unique.
+    Near that case, small changes to the inputs can reverse the direction of the interpolation.
+
+    Args:
+        a: Rotation at ``t = 0``, with unit length. Gradient updates do not preserve its unit length,
+            so re-normalize it after each update.
+        b: Rotation at ``t = 1``, nonzero.
+        t: Interpolation parameter in ``[0, 1]``.
+
+    Returns:
+        The interpolated unit quaternion. It equals ``a`` at ``t = 0``. At ``t = 1``, it equals
+        ``normalize(b)`` when ``dot(a, b) >= 0`` and ``-normalize(b)`` otherwise.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def interpolate(a: wp.quat, b: wp.quat, t: wp.array[float], out: wp.array[wp.quat]):
+                i = wp.tid()
+                out[i] = wp.quat_slerp(a, b, t[i])
+
+            # identity to a quarter turn about z
+            a = wp.quat_identity()
+            b = wp.quat_from_axis_angle(wp.vec3(0.0, 0.0, 1.0), wp.pi / 2.0)
+            t = wp.array([0.0, 0.5, 1.0], dtype=float)
+            out = wp.empty(3, dtype=wp.quat)
+
+            wp.launch(interpolate, dim=3, inputs=[a, b, t], outputs=[out])
+            print(np.round(out.numpy(), 3))
+
+            # -b is the same rotation as b, so the interpolation is unchanged
+            wp.launch(interpolate, dim=3, inputs=[a, -b, t], outputs=[out])
+            print(np.round(out.numpy(), 3))
+
+        .. testoutput::
+
+            [[0.    0.    0.    1.   ]
+             [0.    0.    0.383 0.924]
+             [0.    0.    0.707 0.707]]
+            [[0.    0.    0.    1.   ]
+             [0.    0.    0.383 0.924]
+             [0.    0.    0.707 0.707]]"""
     ...
 
 def quat_to_matrix(quat: Quaternion[Float]) -> Matrix[Float, Literal[3], Literal[3]]:
-    """Convert a quaternion to a 3x3 rotation matrix."""
+    """Return the 3x3 rotation matrix of the rotation that ``quat`` represents.
+
+    Args:
+        quat: Rotation quaternion, with unit length. Gradient updates do not preserve its unit
+            length, so re-normalize it after each update.
+
+    Returns:
+        The rotation matrix ``m`` that rotates column vectors, such that ``m @ v`` equals
+        ``quat_rotate(quat, v)``."""
     ...
 
 @over
@@ -10661,7 +10899,12 @@ def invert(a: Int) -> Int:
 def mul(a: Quaternion[Float], b: Quaternion[Float]) -> Quaternion[Float]:
     """Multiply two values.
 
-    Compute the Hamilton product of two quaternions."""
+    Compute the Hamilton product ``a * b`` of two quaternions. For rotation quaternions, the product
+    applies ``b`` first and then ``a``, so ``quat_rotate(a * b, v)`` equals
+    ``quat_rotate(a, quat_rotate(b, v))``.
+
+    When composing many unit rotation quaternions, rounding errors accumulate over the successive
+    products, so re-normalize the result periodically."""
     ...
 
 @over
