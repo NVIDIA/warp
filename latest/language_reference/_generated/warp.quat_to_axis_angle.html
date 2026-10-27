@@ -562,7 +562,17 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.15)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><span class="pre">Vector</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../api_reference/_generated/warp.Float.html#warp.Float" title="warp.Float"><span class="pre">Float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="m"><span class="pre">3</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="../../api_reference/_generated/warp.Float.html#warp.Float" title="warp.Float"><span class="pre">Float</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#warp._src.lang.quat_to_axis_angle" title="Link to this definition">#</a></dt>
-<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag" data-wp-tag="python" data-wp-value="true"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Extract the rotation axis and angle radians a quaternion represents.</p>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag" data-wp-tag="python" data-wp-value="true"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Return the rotation axis and angle in radians represented by <code class="docutils literal notranslate"><span class="pre">quat</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>quat</strong> – Rotation quaternion to convert.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A tuple <code class="docutils literal notranslate"><span class="pre">(axis,</span> <span class="pre">angle)</span></code> such that <code class="docutils literal notranslate"><span class="pre">quat_from_axis_angle(axis,</span> <span class="pre">angle)</span></code> equals
+<code class="docutils literal notranslate"><span class="pre">normalize(quat)</span></code> or <code class="docutils literal notranslate"><span class="pre">-normalize(quat)</span></code>. <code class="docutils literal notranslate"><span class="pre">angle</span></code> is in radians, in <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">pi]</span></code>. <code class="docutils literal notranslate"><span class="pre">axis</span></code>
+is unspecified when <code class="docutils literal notranslate"><span class="pre">angle</span></code> is zero, and its sign is unspecified when <code class="docutils literal notranslate"><span class="pre">angle</span></code> is <code class="docutils literal notranslate"><span class="pre">pi</span></code>.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -576,7 +586,18 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a></span></span></dt>
-<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Extract the rotation axis and angle radians a quaternion represents.</p>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Compute the rotation axis and angle in radians represented by <code class="docutils literal notranslate"><span class="pre">quat</span></code> and store them in
+caller-provided output arguments.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>quat</strong> – Rotation quaternion to convert.</p></li>
+<li><p><strong>axis</strong> – Output rotation axis. It is unspecified when <code class="docutils literal notranslate"><span class="pre">angle</span></code> is zero, and its sign is
+unspecified when <code class="docutils literal notranslate"><span class="pre">angle</span></code> is <code class="docutils literal notranslate"><span class="pre">pi</span></code>.</p></li>
+<li><p><strong>angle</strong> – Output rotation angle in radians, in <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">pi]</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
 </dd></dl>
 
 </section>

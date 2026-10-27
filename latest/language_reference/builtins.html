@@ -809,55 +809,55 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.quat_from_axis_angle.html#warp._src.lang.quat_from_axis_angle" title="warp._src.lang.quat_from_axis_angle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_from_axis_angle</span></code></a></p></td>
-<td><p>Construct a quaternion representing a rotation of angle radians around the given axis.</p></td>
+<td><p>Return the quaternion for a rotation of <code class="docutils literal notranslate"><span class="pre">angle</span></code> radians about <code class="docutils literal notranslate"><span class="pre">axis</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.quat_from_euler.html#warp._src.lang.quat_from_euler" title="warp._src.lang.quat_from_euler"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_from_euler</span></code></a></p></td>
-<td><p>Construct a quaternion from Euler angles and an axis sequence.</p></td>
+<td><p>Return the rotation quaternion for Euler angles in radians and an axis sequence.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.quat_from_matrix.html#warp._src.lang.quat_from_matrix" title="warp._src.lang.quat_from_matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_from_matrix</span></code></a></p></td>
-<td><p>Construct a quaternion from a matrix.</p></td>
+<td><p>Return the rotation quaternion of the rotation matrix <code class="docutils literal notranslate"><span class="pre">mat</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.quat_identity.html#warp._src.lang.quat_identity" title="warp._src.lang.quat_identity"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_identity</span></code></a></p></td>
-<td><p>Construct an identity quaternion with zero imaginary part and real part of 1.0.</p></td>
+<td><p>Construct the identity quaternion.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.quat_inverse.html#warp._src.lang.quat_inverse" title="warp._src.lang.quat_inverse"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_inverse</span></code></a></p></td>
-<td><p>Compute quaternion conjugate.</p></td>
+<td><p>Return the conjugate of <code class="docutils literal notranslate"><span class="pre">quat</span></code>, which is its inverse when <code class="docutils literal notranslate"><span class="pre">quat</span></code> has unit length.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.quat_rotate.html#warp._src.lang.quat_rotate" title="warp._src.lang.quat_rotate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_rotate</span></code></a></p></td>
-<td><p>Rotate a vector by a quaternion.</p></td>
+<td><p>Return <code class="docutils literal notranslate"><span class="pre">vec</span></code> rotated by the rotation that <code class="docutils literal notranslate"><span class="pre">quat</span></code> represents.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.quat_rotate_inv.html#warp._src.lang.quat_rotate_inv" title="warp._src.lang.quat_rotate_inv"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_rotate_inv</span></code></a></p></td>
-<td><p>Rotate a vector by the inverse of a quaternion.</p></td>
+<td><p>Return <code class="docutils literal notranslate"><span class="pre">vec</span></code> rotated by the inverse of the rotation that <code class="docutils literal notranslate"><span class="pre">quat</span></code> represents.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.quat_rpy.html#warp._src.lang.quat_rpy" title="warp._src.lang.quat_rpy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_rpy</span></code></a></p></td>
-<td><p>Construct a quaternion representing a combined roll (z), pitch (x), yaw rotations (y) in radians.</p></td>
+<td><p>Return the rotation quaternion for the given roll, pitch, and yaw angles in radians.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.quat_slerp.html#warp._src.lang.quat_slerp" title="warp._src.lang.quat_slerp"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_slerp</span></code></a></p></td>
-<td><p>Linearly interpolate between two quaternions.</p></td>
+<td><p>Return the spherical linear interpolation (slerp) between the rotations <code class="docutils literal notranslate"><span class="pre">a</span></code> and <code class="docutils literal notranslate"><span class="pre">b</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.quat_to_axis_angle.html#warp._src.lang.quat_to_axis_angle" title="warp._src.lang.quat_to_axis_angle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_to_axis_angle</span></code></a></p></td>
-<td><p>Extract the rotation axis and angle radians a quaternion represents.</p></td>
+<td><p>Return the rotation axis and angle in radians represented by <code class="docutils literal notranslate"><span class="pre">quat</span></code>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.quat_to_euler.html#warp._src.lang.quat_to_euler" title="warp._src.lang.quat_to_euler"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_to_euler</span></code></a></p></td>
-<td><p>Convert a quaternion into Euler angles for an axis sequence.</p></td>
+<td><p>Return the Euler angles in radians of the rotation <code class="docutils literal notranslate"><span class="pre">q</span></code> for an axis sequence.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.quat_to_matrix.html#warp._src.lang.quat_to_matrix" title="warp._src.lang.quat_to_matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_to_matrix</span></code></a></p></td>
-<td><p>Convert a quaternion to a 3x3 rotation matrix.</p></td>
+<td><p>Return the 3x3 rotation matrix of the rotation that <code class="docutils literal notranslate"><span class="pre">quat</span></code> represents.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.quat_to_rpy.html#warp._src.lang.quat_to_rpy" title="warp._src.lang.quat_to_rpy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_to_rpy</span></code></a></p></td>
-<td><p>Convert a quaternion to roll-pitch-yaw angles (ZYX convention).</p></td>
+<td><p>Return the roll, pitch, and yaw angles in radians of the rotation <code class="docutils literal notranslate"><span class="pre">q</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.quat_twist.html#warp._src.lang.quat_twist" title="warp._src.lang.quat_twist"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_twist</span></code></a></p></td>
-<td><p>Extract the twist quaternion of <code class="docutils literal notranslate"><span class="pre">q</span></code> around <code class="docutils literal notranslate"><span class="pre">axis</span></code>.</p></td>
+<td><p>Return the twist component of <code class="docutils literal notranslate"><span class="pre">q</span></code> about <code class="docutils literal notranslate"><span class="pre">axis</span></code>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.quat_twist_angle.html#warp._src.lang.quat_twist_angle" title="warp._src.lang.quat_twist_angle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_twist_angle</span></code></a></p></td>
-<td><p>Return the unsigned twist magnitude of <code class="docutils literal notranslate"><span class="pre">q</span></code> around <code class="docutils literal notranslate"><span class="pre">axis</span></code>.</p></td>
+<td><p>Return the unsigned twist magnitude in radians of <code class="docutils literal notranslate"><span class="pre">q</span></code> around <code class="docutils literal notranslate"><span class="pre">axis</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.quat_twist_angle_signed.html#warp._src.lang.quat_twist_angle_signed" title="warp._src.lang.quat_twist_angle_signed"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_twist_angle_signed</span></code></a></p></td>
-<td><p>Return the signed twist angle of <code class="docutils literal notranslate"><span class="pre">q</span></code> around <code class="docutils literal notranslate"><span class="pre">axis</span></code>.</p></td>
+<td><p>Return the signed twist angle in radians of <code class="docutils literal notranslate"><span class="pre">q</span></code> around <code class="docutils literal notranslate"><span class="pre">axis</span></code>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.quaternion.html#warp._src.lang.quaternion" title="warp._src.lang.quaternion"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quaternion</span></code></a></p></td>
-<td><p>Construct a quaternion.</p></td>
+<td><p>Construct a zero-initialized quaternion.</p></td>
 </tr>
 </tbody>
 </table>

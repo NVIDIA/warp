@@ -9,6 +9,22 @@
       :kernel: true
       :python: unknown
       :differentiable: unknown
-      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/utils.py#L38-L46
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/utils.py#L38-L63
 
-   Compute the quaternion that rotates vector ``a`` to vector ``b``.
+   Return the rotation quaternion that rotates the direction of ``a`` onto the direction of ``b``.
+   
+   Currently, opposite directions are not handled. This condition is not
+   checked, and such inputs can produce an incorrect rotation.
+   
+   For opposite directions, use :func:`warp.quat_from_axis_angle` instead,
+   with any unit axis perpendicular to ``a`` and an angle of ``pi`` radians.
+   The resulting 180-degree rotation maps ``normalize(a)`` onto
+   ``normalize(b)``.
+   
+   :param a: Source direction, of any nonzero length.
+   :param b: Target direction, of any nonzero length.
+   
+   :returns: Shortest-arc unit rotation quaternion ``q`` such that ``quat_rotate(q, normalize(a))``
+             equals ``normalize(b)``.
+   :rtype: warp.quat
+   

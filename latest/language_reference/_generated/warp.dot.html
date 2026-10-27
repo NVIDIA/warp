@@ -562,7 +562,20 @@
 <dl class="py function">
 <dt class="sig sig-object py">
 <span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">dot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Quaternion</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../api_reference/_generated/warp.Float.html#warp.Float" title="warp.Float"><span class="pre">Float</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Quaternion</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../api_reference/_generated/warp.Float.html#warp.Float" title="warp.Float"><span class="pre">Float</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../../api_reference/_generated/warp.Float.html#warp.Float" title="warp.Float"><span class="pre">Float</span></a></span></span></dt>
-<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag" data-wp-tag="python" data-wp-value="true"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Compute the dot product.</p>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag" data-wp-tag="python" data-wp-value="true"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Return the dot product of the four components of <code class="docutils literal notranslate"><span class="pre">a</span></code> and <code class="docutils literal notranslate"><span class="pre">b</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>a</strong> – First quaternion.</p></li>
+<li><p><strong>b</strong> – Second quaternion.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The scalar dot product. For unit quaternions, <code class="docutils literal notranslate"><span class="pre">abs(dot(a,</span> <span class="pre">b))</span></code> is the cosine of half the
+angle of the rotation from <code class="docutils literal notranslate"><span class="pre">a</span></code> to <code class="docutils literal notranslate"><span class="pre">b</span></code>, and a negative value means that <code class="docutils literal notranslate"><span class="pre">-b</span></code> is closer to
+<code class="docutils literal notranslate"><span class="pre">a</span></code> than <code class="docutils literal notranslate"><span class="pre">b</span></code> is.</p>
+</dd>
+</dl>
 </dd></dl>
 
 </section>

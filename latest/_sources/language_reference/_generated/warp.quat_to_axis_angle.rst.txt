@@ -10,7 +10,14 @@
       :python: true
       :differentiable: true
 
-   Extract the rotation axis and angle radians a quaternion represents.
+   Return the rotation axis and angle in radians represented by ``quat``.
+   
+   :param quat: Rotation quaternion to convert.
+   
+   :returns: A tuple ``(axis, angle)`` such that ``quat_from_axis_angle(axis, angle)`` equals
+             ``normalize(quat)`` or ``-normalize(quat)``. ``angle`` is in radians, in ``[0, pi]``. ``axis``
+             is unspecified when ``angle`` is zero, and its sign is unspecified when ``angle`` is ``pi``.
+   
 
 .. function:: quat_to_axis_angle(quat: Quaternion[Float], axis: Vector[Float, Literal[3]], angle: Float) -> None
    :noindex:
@@ -20,4 +27,11 @@
       :python: false
       :differentiable: true
 
-   Extract the rotation axis and angle radians a quaternion represents.
+   Compute the rotation axis and angle in radians represented by ``quat`` and store them in
+   caller-provided output arguments.
+   
+   :param quat: Rotation quaternion to convert.
+   :param axis: Output rotation axis. It is unspecified when ``angle`` is zero, and its sign is
+                unspecified when ``angle`` is ``pi``.
+   :param angle: Output rotation angle in radians, in ``[0, pi]``.
+   

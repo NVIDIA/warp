@@ -10,9 +10,15 @@
       :python: true
       :differentiable: true
 
-   Construct a quaternion from a matrix.
+   Return the rotation quaternion of the rotation matrix ``mat``.
    
-   If the matrix is not a pure rotation, but for example includes scaling or skewing, the result is undefined.
+   :param mat: Rotation matrix that rotates column vectors as ``mat @ v``. It must be orthonormal with a
+               determinant of ``+1``; otherwise, the result is unspecified. Matrices using row-vector
+               conventions must be transposed first.
+   
+   :returns: A unit quaternion ``q`` such that ``quat_to_matrix(q)`` equals ``mat``. The sign of ``q`` is
+             unspecified.
+   
 
 .. function:: quat_from_matrix(mat: Matrix[Float, Literal[4], Literal[4]]) -> Quaternion[Float]
    :noindex:
@@ -22,6 +28,12 @@
       :python: true
       :differentiable: true
 
-   Construct a quaternion from a matrix.
+   Return the rotation quaternion of the top-left 3x3 block of ``mat``.
    
-   If the top-left 3x3 block of the matrix is not a pure rotation, but for example includes scaling or skewing, the result is undefined.
+   :param mat: Transformation matrix whose top-left 3x3 block rotates column vectors. That block must be
+               orthonormal with a determinant of ``+1``; otherwise, the result is unspecified. The
+               remaining entries, such as a translation, are ignored.
+   
+   :returns: A unit quaternion ``q`` such that ``quat_to_matrix(q)`` equals the top-left 3x3 block of
+             ``mat``. The sign of ``q`` is unspecified.
+   

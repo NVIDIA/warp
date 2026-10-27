@@ -9,7 +9,7 @@
       :kernel: true
       :python: true
       :differentiable: true
-      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/math.py#L676-L726
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/math.py#L689-L739
 
    Decompose a 4x4 transformation matrix into 3D position, quaternion orientation, and 3D scale.
    
@@ -41,7 +41,7 @@
       :kernel: true
       :python: true
       :differentiable: true
-      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/math.py#L676-L726
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/math.py#L689-L739
 
    Decompose a 4x4 transformation matrix into 3D position, quaternion orientation, and 3D scale.
    
@@ -73,7 +73,7 @@
       :kernel: true
       :python: true
       :differentiable: true
-      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/math.py#L676-L726
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/math.py#L689-L739
 
    Decompose a 4x4 transformation matrix into 3D position, quaternion orientation, and 3D scale.
    

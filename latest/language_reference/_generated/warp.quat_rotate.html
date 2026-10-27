@@ -563,7 +563,21 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Vector</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../api_reference/_generated/warp.Float.html#warp.Float" title="warp.Float"><span class="pre">Float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="m"><span class="pre">3</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#warp._src.lang.quat_rotate" title="Link to this definition">#</a></dt>
-<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag" data-wp-tag="python" data-wp-value="true"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Rotate a vector by a quaternion.</p>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag" data-wp-tag="python" data-wp-value="true"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Return <code class="docutils literal notranslate"><span class="pre">vec</span></code> rotated by the rotation that <code class="docutils literal notranslate"><span class="pre">quat</span></code> represents.</p>
+<p>Quaternion products apply rotations from right to left, so <code class="docutils literal notranslate"><span class="pre">quat_rotate(a</span> <span class="pre">*</span> <span class="pre">b,</span> <span class="pre">vec)</span></code> equals
+<code class="docutils literal notranslate"><span class="pre">quat_rotate(a,</span> <span class="pre">quat_rotate(b,</span> <span class="pre">vec))</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>quat</strong> – Rotation quaternion, with unit length. Gradient updates do not preserve its unit
+length, so re-normalize it after each update.</p></li>
+<li><p><strong>vec</strong> – Vector to rotate.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The rotated vector, equal to <code class="docutils literal notranslate"><span class="pre">quat_to_matrix(quat)</span> <span class="pre">&#64;</span> <span class="pre">vec</span></code>.</p>
+</dd>
+</dl>
 </dd></dl>
 
 </section>

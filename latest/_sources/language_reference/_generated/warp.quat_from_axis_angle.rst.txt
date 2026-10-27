@@ -10,4 +10,13 @@
       :python: true
       :differentiable: true
 
-   Construct a quaternion representing a rotation of angle radians around the given axis.
+   Return the quaternion for a rotation of ``angle`` radians about ``axis``.
+   
+   Positive angles follow the right-hand rule: a rotation of ``pi / 2`` about the ``z`` axis maps
+   the ``x`` axis onto the ``y`` axis.
+   
+   :param axis: Rotation axis, with unit length.
+   :param angle: Rotation angle in radians.
+   
+   :returns: The quaternion ``(axis * sin(angle / 2), cos(angle / 2))`` in ``(x, y, z, w)`` order.
+   

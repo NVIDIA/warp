@@ -556,7 +556,17 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="warp._src.lang.quat_inverse">
 <span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">quat_inverse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">quat</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Quaternion</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../api_reference/_generated/warp.Float.html#warp.Float" title="warp.Float"><span class="pre">Float</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Quaternion</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../api_reference/_generated/warp.Float.html#warp.Float" title="warp.Float"><span class="pre">Float</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#warp._src.lang.quat_inverse" title="Link to this definition">#</a></dt>
-<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag" data-wp-tag="python" data-wp-value="true"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Compute quaternion conjugate.</p>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag" data-wp-tag="python" data-wp-value="true"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Return the conjugate of <code class="docutils literal notranslate"><span class="pre">quat</span></code>, which is its inverse when <code class="docutils literal notranslate"><span class="pre">quat</span></code> has unit length.</p>
+<p>For a nonzero quaternion without unit length, the multiplicative inverse is
+<code class="docutils literal notranslate"><span class="pre">quat_inverse(quat)</span> <span class="pre">/</span> <span class="pre">length_sq(quat)</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>quat</strong> – Quaternion to conjugate.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The quaternion <code class="docutils literal notranslate"><span class="pre">(-quat[0],</span> <span class="pre">-quat[1],</span> <span class="pre">-quat[2],</span> <span class="pre">quat[3])</span></code>.</p>
+</dd>
+</dl>
 </dd></dl>
 
 </section>
