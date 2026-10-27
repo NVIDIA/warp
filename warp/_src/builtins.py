@@ -2255,7 +2255,10 @@ add_builtin(
     input_types={"axis": vector(length=3, dtype=Float), "angle": Float},
     value_func=lambda arg_types, arg_values: quaternion(dtype=float_infer_type(arg_types)),
     group="Quaternion Math",
-    doc="Construct a quaternion representing a rotation of angle radians around the given axis.",
+    doc="""Construct a quaternion representing a rotation of ``angle`` radians around the given ``axis``.
+
+    The axis is expected to be normalized. It is not normalized here, so a non-unit axis produces a quaternion that is not unit length. A negative angle rotates about the same axis in the opposite direction.
+    """,
 )
 
 
@@ -2272,7 +2275,12 @@ add_builtin(
     input_types={"quat": quaternion(dtype=Float)},
     value_func=quat_to_axis_angle_value_func,
     group="Quaternion Math",
-    doc="Extract the rotation axis and angle radians a quaternion represents.",
+    doc="""Extract the rotation axis and angle in radians that a quaternion represents.
+
+    The angle is the magnitude of the rotation, in ``[0, pi]``, so the shorter arc is always reported. The axis is a unit vector whose sign is chosen so that the axis and angle together describe that shorter rotation.
+
+    A zero rotation has no meaningful axis, and a half turn has no unique one, because a half turn about an axis is the same half turn about the opposite axis.
+    """,
 )
 
 add_builtin(
@@ -2280,7 +2288,12 @@ add_builtin(
     input_types={"quat": quaternion(dtype=Float), "axis": vector(length=3, dtype=Float), "angle": Float},
     value_type=None,
     group="Quaternion Math",
-    doc="Extract the rotation axis and angle radians a quaternion represents.",
+    doc="""Extract the rotation axis and angle in radians that a quaternion represents.
+
+    The angle is the magnitude of the rotation, in ``[0, pi]``, so the shorter arc is always reported. The axis is a unit vector whose sign is chosen so that the axis and angle together describe that shorter rotation.
+
+    A zero rotation has no meaningful axis, and a half turn has no unique one, because a half turn about an axis is the same half turn about the opposite axis.
+    """,
     export=False,
 )
 
@@ -2308,35 +2321,72 @@ add_builtin(
     input_types={"roll": Float, "pitch": Float, "yaw": Float},
     value_func=lambda arg_types, arg_values: quaternion(dtype=float_infer_type(arg_types)),
     group="Quaternion Math",
-    doc="Construct a quaternion representing a combined roll (z), pitch (x), yaw rotations (y) in radians.",
+    doc="""Construct a quaternion from roll-pitch-yaw Euler angles.
+
+    The angles are ``(roll, pitch, yaw)`` in radians, using extrinsic rotations about X, Y, and Z respectively. The rotations compose as ``yaw * pitch * roll``. See :func:`warp.quat_to_rpy` for the inverse conversion and :func:`warp.quat_from_euler` for the axis-indexed form.
+
+    Args:
+        roll: Roll angle in radians about X.
+        pitch: Pitch angle in radians about Y.
+        yaw: Yaw angle in radians about Z.
+
+    Returns:
+        Unit quaternion in ``(x, y, z, w)`` layout.
+    """,
 )
 add_builtin(
     "quat_inverse",
     input_types={"quat": quaternion(dtype=Float)},
     value_func=lambda arg_types, arg_values: quaternion(dtype=float_infer_type(arg_types)),
     group="Quaternion Math",
-    doc="Compute quaternion conjugate.",
+    doc="""Compute the conjugate of a quaternion.
+
+    The conjugate equals the inverse only for unit-length quaternions. Normalize ``quat`` with :func:`warp.normalize` first if needed.
+
+    Args:
+        quat: Input quaternion. Must have unit length for a true inverse.
+
+    Returns:
+        Conjugate ``(-x, -y, -z, w)``.
+    """,
 )
 add_builtin(
     "quat_rotate",
     input_types={"quat": quaternion(dtype=Float), "vec": vector(length=3, dtype=Float)},
     value_func=lambda arg_types, arg_values: vector(length=3, dtype=float_infer_type(arg_types)),
     group="Quaternion Math",
-    doc="Rotate a vector by a quaternion.",
+    doc="""Rotate a vector by a quaternion.
+
+    The quaternion is expected to be a unit quaternion describing a rotation. Normalize it with :func:`warp.normalize` first if needed.
+    """,
 )
 add_builtin(
     "quat_rotate_inv",
     input_types={"quat": quaternion(dtype=Float), "vec": vector(length=3, dtype=Float)},
     value_func=lambda arg_types, arg_values: vector(length=3, dtype=float_infer_type(arg_types)),
     group="Quaternion Math",
-    doc="Rotate a vector by the inverse of a quaternion.",
+    doc="""Rotate a vector by the inverse of a quaternion.
+
+    The quaternion is expected to be a unit quaternion describing a rotation. Normalize it with :func:`warp.normalize` first if needed.
+    """,
 )
 add_builtin(
     "quat_slerp",
     input_types={"a": quaternion(dtype=Float), "b": quaternion(dtype=Float), "t": Float},
     value_func=lambda arg_types, arg_values: quaternion(dtype=float_infer_type(arg_types)),
     group="Quaternion Math",
-    doc="Linearly interpolate between two quaternions.",
+    doc="""Spherically interpolate between two quaternions.
+
+    Follow the shortest arc from ``a`` to ``b``. Both inputs should be unit length. ``q`` and ``-q`` denote the same rotation, so the result can differ by sign without changing orientation.
+
+    Args:
+        a: Start quaternion (unit length).
+        b: End quaternion (unit length).
+        t: Blend factor, where ``0`` returns ``a`` and ``1`` returns a quaternion equivalent to ``b``. The result may use either sign representation.
+
+    Returns:
+        Interpolated unit quaternion on the slerp path, in ``(x, y, z, w)`` layout.
+    """,
     require_original_output_arg=True,
 )
 add_builtin(
@@ -2344,7 +2394,10 @@ add_builtin(
     input_types={"quat": quaternion(dtype=Float)},
     value_func=lambda arg_types, arg_values: matrix(shape=(3, 3), dtype=float_infer_type(arg_types)),
     group="Quaternion Math",
-    doc="Convert a quaternion to a 3x3 rotation matrix.",
+    doc="""Convert a quaternion to a 3x3 rotation matrix.
+
+    The quaternion is expected to be a unit quaternion describing a rotation. Normalize it with :func:`warp.normalize` first if needed.
+    """,
 )
 
 add_builtin(
