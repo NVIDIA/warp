@@ -51,10 +51,10 @@ variables:
   UV_TRIXIE_SLIM_ARM_IMAGE: "ghcr.io/astral-sh/uv:0.13.6-trixie-slim@sha256:5a40d6e9bd4271bcbd38d3e9c3101cfca630334d5ec5ec94496553946db18c5f"
   MINIFORGE_IMAGE: "condaforge/miniforge3:25.11.0-0@sha256:d2fadb08950045962fd1cfb1eeb6224442027f03095862e725f4c1c7b17a3caf"
   # Warp builder images are pinned per architecture for supply chain security.
-  WARP_BUILDER_IMAGE_CU12_X86_64: "${CI_REGISTRY_IMAGE}/warp-builder:manylinux_2_28-cuda12.9.2-uv0.13.0-x86_64@sha256:307f7df167be451ae0d11ee2f0cbe6fe64760e56401f0f1ff79e60d1bc554fc4"
-  WARP_BUILDER_IMAGE_CU12_AARCH64: "${CI_REGISTRY_IMAGE}/warp-builder:manylinux_2_34-cuda12.9.2-uv0.13.0-aarch64@sha256:a8d4283b40dc10483ec5924cfb7562606eb678c0a715de13677b9e9a820f99ea"
-  WARP_BUILDER_IMAGE_CU13_X86_64: "${CI_REGISTRY_IMAGE}/warp-builder:manylinux_2_28-cuda13.4.2-uv0.13.0-x86_64@sha256:2ca3e21378e007f5b723e662028767f260e8c0b5801f634e6ec833ee050247cf"
-  WARP_BUILDER_IMAGE_CU13_AARCH64: "${CI_REGISTRY_IMAGE}/warp-builder:manylinux_2_34-cuda13.4.2-uv0.13.0-aarch64@sha256:5b80bad3d36d87206707c6ff11f364dd6fbfa2a58326a6690a13100c52e9f196"
+  WARP_BUILDER_IMAGE_CU12_X86_64: "${CI_REGISTRY_IMAGE}/warp-builder:manylinux_2_28-cuda12.9.2-uv0.13.6-x86_64@sha256:d2966c9e898d00b30b2514ecca1d6ef3533d7485e45ed9bafd946849930a5a2d"
+  WARP_BUILDER_IMAGE_CU12_AARCH64: "${CI_REGISTRY_IMAGE}/warp-builder:manylinux_2_34-cuda12.9.2-uv0.13.6-aarch64@sha256:97978756b55901c6794c29652c48d672b1164bface4aba87b428bc847cdd0982"
+  WARP_BUILDER_IMAGE_CU13_X86_64: "${CI_REGISTRY_IMAGE}/warp-builder:manylinux_2_28-cuda13.4.2-uv0.13.6-x86_64@sha256:a04d0592e2e8c4dc30e15295e7b01bfd7beda42343025881dd09bdbb0bb92b1d"
+  WARP_BUILDER_IMAGE_CU13_AARCH64: "${CI_REGISTRY_IMAGE}/warp-builder:manylinux_2_34-cuda13.4.2-uv0.13.6-aarch64@sha256:d4806e01bae87b50dd180f4357272fb8edace1ab77cb15b9013f4cce1925cd5e"
   
   UV_PYTHON:
     value: "3.12"
@@ -900,7 +900,7 @@ linux-x86_64 cu13 python-matrix test:
 # Ensure cpp examples compile and run
 linux-x86_64 cu13 cpp-examples test:
   stage: test
-  image: ${CI_REGISTRY_IMAGE}/warp-cpp-test-env:cuda13.4.2-ubuntu24.04-4d47b4236db8@sha256:466a150a2694ed5fba6dbfb01773eb5a44cfb0440f8d103face04c8a3dae8986
+  image: ${CI_REGISTRY_IMAGE}/warp-cpp-test-env:cuda13.4.2-ubuntu24.04-e3d68d7bf4f0@sha256:ed661d6f792416356d28f2e0650f774046e9c58f87732cb1865cfd961adf9807
   needs: [linux-x86_64 cu13 build]
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
