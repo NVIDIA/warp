@@ -1029,6 +1029,7 @@ def _bsr_try_native_compress_inplace(src: BsrMatrix, prune_numerical_zeros: bool
     with wp.ScopedDevice(src.device):
         native_func(
             src.nrow,
+            src.ncol,
             src.block_size,
             type_size_in_bytes(src.scalar_type),
             scalar_type_code,
@@ -1089,6 +1090,7 @@ def _bsr_try_native_compress_indices_inplace(
     with wp.ScopedDevice(src.device):
         native_func(
             src.nrow,
+            src.ncol,
             block_size,
             scalar_size,
             scalar_type_code,
@@ -1845,7 +1847,8 @@ def bsr_compress(
 ) -> BsrMatrix[BlockType[Rows, Cols, Scalar]]:
     """Compress the active blocks of ``src`` and return ``src``.
 
-    Slack entries outside ``offsets[row]:offsets[row] + row_counts[row]`` are ignored. When
+    Slack entries outside ``offsets[row]:offsets[row] + row_counts[row]`` are ignored, as are
+    blocks whose column index is negative or not less than ``src.ncol``. When
     ``inplace=False``, the topology is rebuilt natively from active row and
     column data, and values are accumulated with differentiable Warp kernels.
     When ``inplace=True``, entries are sorted and coalesced independently

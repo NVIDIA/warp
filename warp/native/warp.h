@@ -638,6 +638,7 @@ WP_API void wp_bsr_transpose_device(
 
 WP_API void wp_bsr_compress_inplace_host(
     int row_count,
+    int col_count,
     int block_size,
     int scalar_size_in_bytes,
     int scalar_type,
@@ -653,6 +654,7 @@ WP_API void wp_bsr_compress_inplace_host(
 );
 WP_API void wp_bsr_compress_inplace_device(
     int row_count,
+    int col_count,
     int block_size,
     int scalar_size_in_bytes,
     int scalar_type,

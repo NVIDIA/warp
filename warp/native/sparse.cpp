@@ -30,6 +30,7 @@ bool bsr_block_is_zero(int block_idx, int block_size, const void* values, const 
 template <typename T, bool CompressValues>
 void bsr_compress_inplace_host_impl(
     int row_count,
+    int col_count,
     int block_size,
     int nnz_upper_bound,
     bool prune_numerical_zeros,
@@ -58,8 +59,8 @@ void bsr_compress_inplace_host_impl(
 
     for (int row = 0; row < row_count; ++row) {
         bsr_compress_inplace_row<T, CompressValues>(
-            row, block_size, bsr_offsets, bsr_row_counts, out_row_counts, bsr_columns, values, values_to_prune,
-            prune_zero_mask
+            row, col_count, block_size, bsr_offsets, bsr_row_counts, out_row_counts, bsr_columns, values,
+            values_to_prune, prune_zero_mask
         );
     }
 
@@ -504,6 +505,7 @@ WP_API void wp_bsr_transpose_host(
 
 WP_API void wp_bsr_compress_inplace_host(
     int row_count,
+    int col_count,
     int block_size,
     int scalar_size_in_bytes,
     int scalar_type,
@@ -527,7 +529,8 @@ WP_API void wp_bsr_compress_inplace_host(
 
     if (values_to_write == nullptr && !prune_from_input_values) {
         bsr_compress_inplace_host_impl<wp::float32, false>(
-            row_count, 0, nnz_upper_bound, false, make_compact, bsr_offsets, bsr_row_counts, bsr_columns, nullptr, 0
+            row_count, col_count, 0, nnz_upper_bound, false, make_compact, bsr_offsets, bsr_row_counts, bsr_columns,
+            nullptr, 0
         );
         return;
     }
@@ -536,25 +539,25 @@ WP_API void wp_bsr_compress_inplace_host(
         switch (scalar_size_in_bytes) {
         case sizeof(uint8_t):
             bsr_compress_inplace_host_impl<uint8_t, false>(
-                row_count, block_size, nnz_upper_bound, prune_numerical_zeros, make_compact, bsr_offsets,
+                row_count, col_count, block_size, nnz_upper_bound, prune_numerical_zeros, make_compact, bsr_offsets,
                 bsr_row_counts, bsr_columns, bsr_values, scalar_zero_mask
             );
             break;
         case sizeof(uint16_t):
             bsr_compress_inplace_host_impl<uint16_t, false>(
-                row_count, block_size, nnz_upper_bound, prune_numerical_zeros, make_compact, bsr_offsets,
+                row_count, col_count, block_size, nnz_upper_bound, prune_numerical_zeros, make_compact, bsr_offsets,
                 bsr_row_counts, bsr_columns, bsr_values, scalar_zero_mask
             );
             break;
         case sizeof(uint32_t):
             bsr_compress_inplace_host_impl<uint32_t, false>(
-                row_count, block_size, nnz_upper_bound, prune_numerical_zeros, make_compact, bsr_offsets,
+                row_count, col_count, block_size, nnz_upper_bound, prune_numerical_zeros, make_compact, bsr_offsets,
                 bsr_row_counts, bsr_columns, bsr_values, scalar_zero_mask
             );
             break;
         case sizeof(uint64_t):
             bsr_compress_inplace_host_impl<uint64_t, false>(
-                row_count, block_size, nnz_upper_bound, prune_numerical_zeros, make_compact, bsr_offsets,
+                row_count, col_count, block_size, nnz_upper_bound, prune_numerical_zeros, make_compact, bsr_offsets,
                 bsr_row_counts, bsr_columns, bsr_values, scalar_zero_mask
             );
             break;
@@ -566,14 +569,14 @@ WP_API void wp_bsr_compress_inplace_host(
     case BSR_SCALAR_FLOAT32:
         if (scalar_size_in_bytes == sizeof(wp::float32))
             bsr_compress_inplace_host_impl<wp::float32, true>(
-                row_count, block_size, nnz_upper_bound, prune_numerical_zeros, make_compact, bsr_offsets,
+                row_count, col_count, block_size, nnz_upper_bound, prune_numerical_zeros, make_compact, bsr_offsets,
                 bsr_row_counts, bsr_columns, values_to_write, 0
             );
         break;
     case BSR_SCALAR_FLOAT64:
         if (scalar_size_in_bytes == sizeof(wp::float64))
             bsr_compress_inplace_host_impl<wp::float64, true>(
-                row_count, block_size, nnz_upper_bound, prune_numerical_zeros, make_compact, bsr_offsets,
+                row_count, col_count, block_size, nnz_upper_bound, prune_numerical_zeros, make_compact, bsr_offsets,
                 bsr_row_counts, bsr_columns, values_to_write, 0
             );
         break;
@@ -623,6 +626,7 @@ WP_API void wp_bsr_transpose_device(
 
 WP_API void wp_bsr_compress_inplace_device(
     int row_count,
+    int col_count,
     int block_size,
     int scalar_size_in_bytes,
     int scalar_type,
