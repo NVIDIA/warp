@@ -49,11 +49,8 @@ def density_kernel(xyz: wp.vec3, smoothing_length: float):
 def diff_pressure_kernel(
     xyz: wp.vec3, pressure: float, neighbor_pressure: float, neighbor_rho: float, smoothing_length: float
 ):
-    # calculate distance
     distance = wp.sqrt(wp.dot(xyz, xyz))
-
     if distance < smoothing_length:
-        # calculate terms of kernel
         term_1 = -xyz / distance
         term_2 = (neighbor_pressure + pressure) / (2.0 * neighbor_rho)
         term_3 = square(smoothing_length - distance)
@@ -64,10 +61,7 @@ def diff_pressure_kernel(
 
 @wp.func
 def diff_viscous_kernel(xyz: wp.vec3, v: wp.vec3, neighbor_v: wp.vec3, neighbor_rho: float, smoothing_length: float):
-    # calculate distance
     distance = wp.sqrt(wp.dot(xyz, xyz))
-
-    # calculate terms of kernel
     if distance < smoothing_length:
         term_1 = (neighbor_v - v) / neighbor_rho
         term_2 = smoothing_length - distance
@@ -110,7 +104,7 @@ def compute_density(
     particle_rho[i] = density_normalization * rho
 
 
-@wp.kernel
+@wp.kernel(grid_stride=False, launch_bounds=(256, 4))
 def get_acceleration(
     grid: wp.uint64,
     particle_x: wp.array[wp.vec3],
@@ -124,50 +118,40 @@ def get_acceleration(
     viscous_normalization: float,
     smoothing_length: float,
 ):
-    tid = wp.tid()
-
-    # order threads by cell
-    i = wp.hash_grid_point_id(grid, tid)
-
-    # get local particle variables
-    x = particle_x[i]
-    v = particle_v[i]
-    rho = particle_rho[i]
-    pressure = isotropic_exp * (rho - base_density)
-
-    # store forces
+    thread_index = wp.tid()
+    particle_index = wp.hash_grid_point_id(grid, thread_index)
+    position = particle_x[particle_index]
+    velocity = particle_v[particle_index]
+    density = particle_rho[particle_index]
+    pressure = isotropic_exp * (density - base_density)
     pressure_force = wp.vec3()
     viscous_force = wp.vec3()
-
-    # particle contact
-    neighbors = wp.hash_grid_query(grid, x, smoothing_length)
-
-    # loop through neighbors to compute acceleration
-    for index in neighbors:
-        if index != i:
-            # get neighbor velocity
-            neighbor_v = particle_v[index]
-
-            # get neighbor density and pressures
-            neighbor_rho = particle_rho[index]
-            neighbor_pressure = isotropic_exp * (neighbor_rho - base_density)
-
-            # compute relative position
-            relative_position = particle_x[index] - x
-
-            # calculate pressure force
-            pressure_force += diff_pressure_kernel(
-                relative_position, pressure, neighbor_pressure, neighbor_rho, smoothing_length
-            )
-
-            # compute kernel derivative
-            viscous_force += diff_viscous_kernel(relative_position, v, neighbor_v, neighbor_rho, smoothing_length)
-
-    # sum all forces
+    neighbors = wp.hash_grid_query(grid, position, smoothing_length)
+    neighbor_index = int(0)
+    valid_neighbor = wp.hash_grid_query_next(neighbors, neighbor_index)
+    neighbor_position = wp.vec3()
+    if valid_neighbor:
+        neighbor_position = particle_x[neighbor_index]
+    while valid_neighbor:
+        current_index = neighbor_index
+        relative_position = neighbor_position - position
+        valid_neighbor = wp.hash_grid_query_next(neighbors, neighbor_index)
+        if valid_neighbor:
+            neighbor_position = particle_x[neighbor_index]
+        if current_index != particle_index:
+            if wp.abs(relative_position[1]) < smoothing_length:
+                if wp.abs(relative_position[0]) < smoothing_length and wp.abs(relative_position[2]) < smoothing_length:
+                    neighbor_density = particle_rho[current_index]
+                    neighbor_pressure = isotropic_exp * (neighbor_density - base_density)
+                    neighbor_velocity = particle_v[current_index]
+                    pressure_force += diff_pressure_kernel(
+                        relative_position, pressure, neighbor_pressure, neighbor_density, smoothing_length
+                    )
+                    viscous_force += diff_viscous_kernel(
+                        relative_position, velocity, neighbor_velocity, neighbor_density, smoothing_length
+                    )
     force = pressure_normalization * pressure_force + viscous_normalization * viscous_force
-
-    # add external potential
-    particle_a[i] = force / rho + wp.vec3(0.0, gravity, 0.0)
+    particle_a[particle_index] = force / density + wp.vec3(0.0, gravity, 0.0)
 
 
 @wp.kernel
