@@ -1693,9 +1693,10 @@ In the case of FFT operations, using more threads per block may help (see the
 Building with MathDx
 --------------------
 
-Most tile operations described in `Linear Algebra`_ require Warp to be built with the MathDx library.
-Starting with Warp 1.5.0, PyPI distributions will come with out-of-the-box support for tile operations
-leveraging MathDx APIs.
+Most tile operations described in `Linear Algebra`_ use the MathDx library when Warp is built with it.
+Without MathDx, they use Warp's built-in implementations, which can be slower and, for FFTs, support fewer sizes.
+Since Warp 1.5.0, the PyPI wheels for Linux and Windows x86-64 include MathDx.
+The Windows on Arm wheel currently does not; see :ref:`windows-on-arm`.
 
 When building Warp locally using ``build_lib.py``, the script will attempt to automatically download ``libmathdx``
 from the `cuBLASDx Downloads Page <https://developer.nvidia.com/cublasdx-downloads>`__.
