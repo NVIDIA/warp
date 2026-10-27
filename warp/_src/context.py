@@ -8065,6 +8065,7 @@ class Runtime:
 
             bsr_compress_inplace_argtypes = [
                 ctypes.c_int,  # row_count
+                ctypes.c_int,  # col_count
                 ctypes.c_int,  # block_size
                 ctypes.c_int,  # scalar size in bytes
                 ctypes.c_int,  # scalar type code

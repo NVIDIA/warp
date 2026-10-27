@@ -1598,6 +1598,72 @@ def test_bsr_compress_trailing_capacity_capturability(test, device):
             _assert_bsr_ignores_trailing_capacity(test, matrix)
 
 
+def test_bsr_compress_out_of_range_columns(test, device):
+    """Test that BSR compression drops negative and out-of-range columns."""
+
+    rng = np.random.default_rng(2162)
+    int32_max = np.iinfo(np.int32).max
+    invalid_columns = np.array([-1, -5, 0, 1, int32_max], dtype=np.int32)
+
+    # (row lengths, block shape): short rows exercise the CUDA serial kernel, longer rows and
+    # larger blocks the shared-memory kernel, and one very long distinct-column row its global fallback.
+    cases = (
+        ([3, 4, 2, 5], (1, 1)),
+        ([40, 25, 33], (1, 1)),
+        ([6, 7, 5, 8], (3, 3)),
+        ([600] + [1] * 63, (2, 2)),
+    )
+
+    for row_lengths, block_shape in cases:
+        nrow = len(row_lengths)
+        ncol = 700 if row_lengths[0] == 600 else 9
+        invalid_columns[2:4] = (ncol, ncol + 3)
+
+        offsets = np.concatenate(([0], np.cumsum(row_lengths))).astype(np.int32)
+        nnz = int(offsets[-1])
+        if row_lengths[0] == 600:
+            columns = np.concatenate([rng.permutation(ncol)[:600]] + [rng.integers(0, ncol, 1) for _ in range(63)])
+        else:
+            columns = rng.integers(0, ncol, nnz)
+        columns = columns.astype(np.int32)
+        invalid = rng.random(nnz) < 0.3
+        columns[invalid] = rng.choice(invalid_columns, int(invalid.sum()))
+        columns[0] = ncol
+        columns[-1] = int32_max
+
+        values = rng.uniform(1.0, 2.0, size=(nnz, *block_shape))
+
+        expected = np.zeros((nrow, ncol, *block_shape))
+        for row in range(nrow):
+            for block in range(offsets[row], offsets[row + 1]):
+                col = columns[block]
+                if 0 <= col < ncol:
+                    expected[row, col] += values[block]
+        expected = expected.transpose(0, 2, 1, 3).reshape(nrow * block_shape[0], ncol * block_shape[1])
+
+        for scalar_type in (wp.float32, wp.float64):
+            block_type = scalar_type if block_shape == (1, 1) else wp.types.matrix(shape=block_shape, dtype=scalar_type)
+            for inplace in (False, True):
+                with test.subTest(
+                    row_lengths=row_lengths[:4], block_shape=block_shape, dtype=scalar_type, inplace=inplace
+                ):
+                    A = bsr_zeros(nrow, ncol, block_type, device=device)
+                    A.nnz = nnz
+                    A.offsets = wp.array(offsets, dtype=int, device=device)
+                    A.columns = wp.array(columns, dtype=int, device=device)
+                    A.values = wp.array(
+                        values.squeeze() if block_shape == (1, 1) else values, dtype=block_type, device=device
+                    )
+
+                    bsr_compress(A, prune_numerical_zeros=False, inplace=inplace)
+
+                    active_columns = A.columns.numpy()[: A.nnz_sync()]
+                    test.assertTrue(np.all((active_columns >= 0) & (active_columns < ncol)))
+                    np.testing.assert_allclose(
+                        _bsr_to_dense(A), expected, rtol=1.0e-5 if scalar_type == wp.float32 else 1.0e-12
+                    )
+
+
 def test_bsr_compress_compact_capturability(test, device):
     """Test that native compact BSR compression is graph-capturable."""
 
@@ -2033,6 +2099,12 @@ add_function_test(
     "test_bsr_compress_trailing_capacity_capturability",
     test_bsr_compress_trailing_capacity_capturability,
     devices=cuda_test_devices_with_mempool,
+)
+add_function_test(
+    TestSparse,
+    "test_bsr_compress_out_of_range_columns",
+    test_bsr_compress_out_of_range_columns,
+    devices=devices,
 )
 add_function_test(
     TestSparse,
