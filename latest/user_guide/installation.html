@@ -550,7 +550,7 @@
                   
   <section id="installation">
 <h1>Installation<a class="headerlink" href="#installation" title="Link to this heading">#</a></h1>
-<p>Warp requires Python 3.10 or newer. We publish <code class="docutils literal notranslate"><span class="pre">warp-lang</span></code> wheels on PyPI for Windows (x86-64), Linux (x86-64 and AArch64), and macOS (Apple Silicon). The Windows x86-64 and Linux wheels support CPU execution and CUDA acceleration. The macOS wheels support CPU execution but not Metal acceleration.</p>
+<p>Warp requires Python 3.11 or newer. We publish <code class="docutils literal notranslate"><span class="pre">warp-lang</span></code> wheels on PyPI for Windows (x86-64), Linux (x86-64 and AArch64), and macOS (Apple Silicon). The Windows x86-64 and Linux wheels support CPU execution and CUDA acceleration. The macOS wheels support CPU execution but not Metal acceleration.</p>
 <p>Starting with Warp 1.19.0, PyPI releases and release candidates also include an experimental Windows on Arm wheel.
 See <a class="reference internal" href="#windows-on-arm"><span class="std std-ref">Windows on Arm</span></a>.</p>
 <p>PyPI and nightly wheels for Linux and Windows use CUDA Toolkit 13.4. They require an
@@ -686,7 +686,7 @@ CUDA 13.x requires Turing (<code class="docutils literal notranslate"><span clas
 </section>
 <section id="dependencies">
 <h2>Dependencies<a class="headerlink" href="#dependencies" title="Link to this heading">#</a></h2>
-<p>Warp supports Python versions 3.10 onwards. Note that <a class="reference internal" href="#conda"><span class="std std-ref">some optional dependencies may not support the latest version of Python</span></a>.</p>
+<p>Warp supports Python versions 3.11 onwards. Note that <a class="reference internal" href="#conda"><span class="std std-ref">some optional dependencies may not support the latest version of Python</span></a>.</p>
 <p><a class="reference external" href="https://numpy.org">NumPy</a> must be installed.</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">warp-lang[examples]</span></code> extra installs dependencies used by many Warp examples. Install it with:</p>
 <div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">"warp-lang[examples]"</span>
@@ -763,7 +763,7 @@ letting CMake and the selected generator handle parallel and incremental
 rebuilds.
 The commands shown below require CMake 3.24 or newer (4.4 or newer for CUDA builds on
 Windows on Arm) and Ninja. CMake also uses
-a Python 3.10+ environment with NumPy installed to regenerate derived native
+a Python 3.11+ environment with NumPy installed to regenerate derived native
 headers. By default, CMake may fetch LLVM and <code class="docutils literal notranslate"><span class="pre">libmathdx</span></code> through Packman
 unless explicit paths are provided or the corresponding features are disabled
 (<code class="docutils literal notranslate"><span class="pre">-DWARP_BUILD_CLANG=OFF</span></code> for LLVM, <code class="docutils literal notranslate"><span class="pre">-DWARP_USE_LIBMATHDX=OFF</span></code> for

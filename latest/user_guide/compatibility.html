@@ -621,7 +621,7 @@ See <a class="reference internal" href="installation.html#windows-on-arm"><span 
 <section id="runtime-requirements">
 <h3>Runtime requirements<a class="headerlink" href="#runtime-requirements" title="Link to this heading">#</a></h3>
 <p>The following requirements apply when running Warp:</p>
-<p><strong>Python</strong>: Version 3.10 or newer</p>
+<p><strong>Python</strong>: Version 3.11 or newer</p>
 <p><strong>Dependencies</strong>: <a class="reference external" href="https://numpy.org">NumPy</a> (required)</p>
 <p><strong>Operating Systems</strong>:</p>
 <ul class="simple">
@@ -689,7 +689,7 @@ the target memory.</p></li>
 </ul>
 <p><strong>Core Tools:</strong></p>
 <ul class="simple">
-<li><p>Python 3.10+</p></li>
+<li><p>Python 3.11+</p></li>
 <li><p><a class="reference external" href="https://git-lfs.com">Git LFS</a> (for assets used in tests, examples, and documentation)</p></li>
 <li><p>NumPy</p></li>
 </ul>
@@ -933,8 +933,8 @@ it will result in a <code class="docutils literal notranslate"><span class="pre"
 flags the upcoming removal in the next release.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">v1.12.0</span></code> (month 4): Feature is removed. Using it will result in an error.</p></li>
 </ul>
-<p>While we strive to abide by the above deprecation timeline, there may be circumstances in which a feature is removed
-with a briefer or longer deprecation period.</p>
+<p>Python versions that have already reached end-of-life may follow a shorter announced deprecation
+schedule. Other circumstances may also require a briefer or longer deprecation period.</p>
 </section>
 <section id="how-deprecations-are-communicated">
 <h3>How deprecations are communicated<a class="headerlink" href="#how-deprecations-are-communicated" title="Link to this heading">#</a></h3>
@@ -965,8 +965,8 @@ the upcoming removal.</p>
 <li><p>Check the <strong>Deprecated</strong> section of <a class="reference internal" href="../project/changelog.html"><span class="doc">Changelog</span></a> to find the release in which the
 deprecation was first announced. Combined with the deprecation timeline above, this tells you
 roughly when the feature will be removed.</p></li>
-<li><p>Migrate your code to the replacement API. The deprecated feature will remain functional for at
-least 4 months, giving you multiple feature releases to complete the migration.</p></li>
+<li><p>Migrate your code to the replacement API. Deprecated features typically remain functional for at
+least 4 months, unless a different removal timeline is explicitly announced.</p></li>
 <li><p>If migration is blocked by a gap in the replacement, raise a <a class="reference external" href="https://github.com/NVIDIA/warp/issues">GitHub issue</a>.</p></li>
 </ol>
 <p>Your installed Warp version is available via <code class="docutils literal notranslate"><span class="pre">warp.config.version</span></code> (or <code class="docutils literal notranslate"><span class="pre">warp.__version__</span></code>).</p>
@@ -1010,9 +1010,10 @@ to the <a class="reference external" href="https://devguide.python.org/versions/
 <p>Support for newly released Python versions is added in the next Warp feature release after the
 Python version’s stable release (e.g., if Python 3.15.0 is released during the Warp 1.10.x series,
 support will be added in Warp 1.11.0).</p>
-<p>When a Python version reaches end-of-life, we follow the deprecation timeline described above
-before dropping support, allowing users time to migrate.</p>
-<p>Python 3.10 is deprecated as of Warp 1.19 and will be removed in Warp 1.20.</p>
+<p>Once a Python version has reached end-of-life, Warp may deprecate and remove support on a shorter
+announced schedule than the usual four-month period. These versions no longer receive upstream
+security fixes. The deprecation notice states the Warp release targeted for removal, and deprecations
+and removals still occur only in feature releases.</p>
 </section>
 <section id="dependencies">
 <h4>Dependencies<a class="headerlink" href="#dependencies" title="Link to this heading">#</a></h4>

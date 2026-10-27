@@ -1,7 +1,7 @@
 Installation
 ============
 
-Warp requires Python 3.10 or newer. We publish ``warp-lang`` wheels on PyPI for Windows (x86-64), Linux (x86-64 and AArch64), and macOS (Apple Silicon). The Windows x86-64 and Linux wheels support CPU execution and CUDA acceleration. The macOS wheels support CPU execution but not Metal acceleration.
+Warp requires Python 3.11 or newer. We publish ``warp-lang`` wheels on PyPI for Windows (x86-64), Linux (x86-64 and AArch64), and macOS (Apple Silicon). The Windows x86-64 and Linux wheels support CPU execution and CUDA acceleration. The macOS wheels support CPU execution but not Metal acceleration.
 
 Starting with Warp 1.19.0, PyPI releases and release candidates also include an experimental Windows on Arm wheel.
 See :ref:`windows-on-arm`.
@@ -172,7 +172,7 @@ CUDA 13.x requires Turing (``sm_75``) or newer for CUDA acceleration on all plat
 Dependencies
 ------------
 
-Warp supports Python versions 3.10 onwards. Note that :ref:`some optional dependencies may not support the latest version of Python<conda>`.
+Warp supports Python versions 3.11 onwards. Note that :ref:`some optional dependencies may not support the latest version of Python<conda>`.
 
 `NumPy <https://numpy.org>`_ must be installed.
 
@@ -279,7 +279,7 @@ letting CMake and the selected generator handle parallel and incremental
 rebuilds.
 The commands shown below require CMake 3.24 or newer (4.4 or newer for CUDA builds on
 Windows on Arm) and Ninja. CMake also uses
-a Python 3.10+ environment with NumPy installed to regenerate derived native
+a Python 3.11+ environment with NumPy installed to regenerate derived native
 headers. By default, CMake may fetch LLVM and ``libmathdx`` through Packman
 unless explicit paths are provided or the corresponding features are disabled
 (``-DWARP_BUILD_CLANG=OFF`` for LLVM, ``-DWARP_USE_LIBMATHDX=OFF`` for
