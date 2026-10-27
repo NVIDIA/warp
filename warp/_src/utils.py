@@ -37,7 +37,24 @@ def transform_expand(t):
 
 @wp.func
 def quat_between_vectors(a: wp.vec3, b: wp.vec3) -> wp.quat:
-    """Compute the quaternion that rotates vector ``a`` to vector ``b``."""
+    """Return the rotation quaternion that rotates the direction of ``a`` onto the direction of ``b``.
+
+    Currently, opposite directions are not handled. This condition is not
+    checked, and such inputs can produce an incorrect rotation.
+
+    For opposite directions, use :func:`warp.quat_from_axis_angle` instead,
+    with any unit axis perpendicular to ``a`` and an angle of ``pi`` radians.
+    The resulting 180-degree rotation maps ``normalize(a)`` onto
+    ``normalize(b)``.
+
+    Args:
+        a: Source direction, of any nonzero length.
+        b: Target direction, of any nonzero length.
+
+    Returns:
+        wp.quat: Shortest-arc unit rotation quaternion ``q`` such that ``quat_rotate(q, normalize(a))``
+        equals ``normalize(b)``.
+    """
     a = wp.normalize(a)
     b = wp.normalize(b)
     c = wp.cross(a, b)

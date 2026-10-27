@@ -150,17 +150,18 @@ def velocity_at_point(qd: wp.spatial_vector, r: wp.vec3) -> wp.vec3:
 
 @wp.func
 def quat_twist(axis: wp.vec3, q: wp.quat) -> wp.quat:
-    """Extract the twist quaternion of ``q`` around ``axis``.
+    """Return the twist component of ``q`` about ``axis``.
 
-    This performs a swing-twist decomposition and returns the component of
-    rotation in ``q`` whose rotation axis is parallel to ``axis``.
+    A swing-twist decomposition splits a rotation into a twist about ``axis`` and a swing about an
+    axis perpendicular to ``axis``.
 
     Args:
-        axis: Twist axis (expected to be normalized).
-        q: Input quaternion in ``(x, y, z, w)`` layout.
+        axis: Twist axis, with unit length.
+        q: Rotation quaternion.
 
     Returns:
-        wp.quat: Unit twist quaternion.
+        wp.quat: Unit twist quaternion. It is unspecified when ``q`` is a rotation of 180 degrees
+        about an axis perpendicular to ``axis``.
     """
     a = wp.vec3(q[0], q[1], q[2])
     proj = wp.dot(a, axis)
@@ -170,23 +171,23 @@ def quat_twist(axis: wp.vec3, q: wp.quat) -> wp.quat:
 
 @wp.func
 def quat_twist_angle(axis: wp.vec3, q: wp.quat) -> float:
-    """Return the unsigned twist magnitude of ``q`` around ``axis``.
+    """Return the unsigned twist magnitude in radians of ``q`` around ``axis``.
 
     This discards the sign of the twist, so rotations by ``+theta`` and
     ``-theta`` around ``axis`` return the same value. Use
     :func:`quat_twist_angle_signed` when the direction of rotation around
     ``axis`` matters.
 
-    The result follows the quaternion branch supplied by ``q``. For
-    canonicalized quaternions, the result is in ``[0, pi]``. Noncanonicalized
-    inputs may return values in ``[0, 2*pi]``.
-
     Args:
-        axis: Twist axis. Expected to be normalized by the caller.
-        q: Input quaternion.
+        axis: Twist axis, with unit length.
+        q: Rotation quaternion.
 
     Returns:
-        float: Unsigned twist angle in radians.
+        float: Unsigned twist angle in radians, in ``[0, pi]`` if ``q[3] >= 0`` and
+        in ``(pi, 2*pi]`` otherwise, so ``q`` and ``-q`` can return different
+        angles even though they represent the same rotation. It is unspecified
+        when ``q`` is a rotation of 180 degrees about an axis perpendicular to
+        ``axis``.
     """
     vector = wp.vec3(q[0], q[1], q[2])
     sin_half = wp.abs(wp.dot(axis, vector))
@@ -195,22 +196,22 @@ def quat_twist_angle(axis: wp.vec3, q: wp.quat) -> float:
 
 @wp.func
 def quat_twist_angle_signed(axis: wp.vec3, q: wp.quat) -> float:
-    """Return the signed twist angle of ``q`` around ``axis``.
+    """Return the signed twist angle in radians of ``q`` around ``axis``.
 
     Unlike :func:`quat_twist_angle`, this preserves the sign of the twist, so
     rotations by ``+theta`` and ``-theta`` around ``axis`` return opposite
-    values.
-
-    The result follows the quaternion branch supplied by ``q``. Since ``q`` and
-    ``-q`` represent the same orientation but different quaternion branches,
-    they may produce signed angles that differ by ``2*pi``.
+    values. Positive angles follow the right-hand rule about ``axis``.
 
     Args:
-        axis: Twist axis. Expected to be normalized by the caller.
-        q: Input quaternion in ``(x, y, z, w)`` layout.
+        axis: Twist axis, with unit length.
+        q: Rotation quaternion.
 
     Returns:
-        float: Signed twist angle in radians in ``[-2*pi, 2*pi]``.
+        float: Signed twist angle in radians, in ``[-pi, pi]`` if ``q[3] >= 0`` and
+        in ``[-2*pi, 2*pi]`` otherwise, so ``q`` and ``-q`` can return different
+        angles even though they represent the same rotation. It is unspecified
+        when ``q`` is a rotation of 180 degrees about an axis perpendicular to
+        ``axis``.
     """
     vector = wp.vec3(q[0], q[1], q[2])
     sin_half = wp.dot(axis, vector)
@@ -219,16 +220,21 @@ def quat_twist_angle_signed(axis: wp.vec3, q: wp.quat) -> float:
 
 @wp.func
 def quat_to_rpy(q: wp.quat) -> wp.vec3:
-    """Convert a quaternion to roll-pitch-yaw angles (ZYX convention).
+    """Return the roll, pitch, and yaw angles in radians of the rotation ``q``.
 
-    The output is ``(roll, pitch, yaw)`` in radians using extrinsic rotations
-    about X, Y, and Z respectively.
+    This is the inverse of :func:`~warp.quat_rpy`, which applies roll, pitch, and yaw in that order
+    about the fixed ``x``, ``y``, and ``z`` axes (extrinsic x-y-z).
+
+    Near gimbal lock, where pitch approaches ``pi/2`` or ``-pi/2``, the returned roll and yaw are
+    inaccurate and might not reproduce ``q``. ``quat_to_euler(q, 0, 1, 2)`` uses the same
+    convention and handles gimbal lock.
 
     Args:
-        q: Input quaternion in ``(x, y, z, w)`` order.
+        q: Rotation quaternion, with unit length.
 
     Returns:
-        wp.vec3: ``(roll, pitch, yaw)`` in radians.
+        wp.vec3: ``(roll, pitch, yaw)`` in radians, with roll and yaw in ``[-pi, pi]`` and pitch in
+        ``[-pi/2, pi/2]``.
     """
 
     x = q[0]
@@ -252,34 +258,35 @@ def quat_to_rpy(q: wp.quat) -> wp.vec3:
 
 @wp.func
 def quat_to_euler(q: wp.quat, i: int, j: int, k: int) -> wp.vec3:
-    """Convert a quaternion into Euler angles for an axis sequence.
+    """Return the Euler angles in radians of the rotation ``q`` for an axis sequence.
 
-    The integers ``i``, ``j``, and ``k`` are axis indices in ``{0, 1, 2}``
-    with ``i != j`` and ``j != k``. Axis-indexed output (suitable for
-    :func:`quat_from_euler`) is supported for Tait-Bryan sequences
-    (``i != k``).
+    The result uses the same conventions as :func:`quat_from_euler`:
+    rotations about the fixed axes ``i``, ``j``, and ``k``, in that order. For
+    Tait-Bryan sequences (``i != k``),
+    ``quat_from_euler(quat_to_euler(q, i, j, k), i, j, k)`` represents the same
+    rotation as ``q``, including at gimbal lock, where the angles about ``i``
+    and ``k`` are not unique.
 
     .. caution::
 
-        This function returns an axis-indexed vector where ``e[0]`` is the
-        angle about X, ``e[1]`` about Y, and ``e[2]`` about Z.
-
-        That layout is only unambiguous for Tait-Bryan sequences
-        (``i != k``), where all three rotations use distinct axis slots.
-
-        For proper Euler sequences (``i == k``), the first and third
-        rotations are both about the same axis. In that case, two different
-        sequence positions must share one output slot, so the mapping loses
-        information and cannot be a clean inverse of :func:`quat_from_euler`.
+        For proper Euler sequences (``i == k``), :func:`quat_from_euler` cannot
+        invert the result: it reads both the first and the third angle from
+        ``e[i]``, but this function stores the third angle in another slot.
 
     Args:
-        q: Input quaternion.
-        i: Index of the first axis.
-        j: Index of the second axis.
-        k: Index of the third axis.
+        q: Rotation quaternion.
+        i: Index of the first axis, in ``{0, 1, 2}``.
+        j: Index of the second axis, in ``{0, 1, 2}`` and different from ``i``.
+        k: Index of the third axis, in ``{0, 1, 2}`` and different from ``j``.
 
     Returns:
-        wp.vec3: Euler angles in radians.
+        wp.vec3: Euler angles ``e`` in radians. For Tait-Bryan sequences, ``e``
+        is indexed by axis: ``e[0]`` is the angle about X, ``e[1]`` about Y, and
+        ``e[2]`` about Z. For proper Euler sequences, ``e[i]`` holds the first
+        angle, ``e[j]`` the second, and ``e[3 - i - j]`` the third, which is
+        also about axis ``i``. The second angle is in ``[-pi/2, pi/2]`` for
+        Tait-Bryan sequences and in ``[0, pi]`` for proper Euler sequences. The
+        first and third angles are in ``[-2*pi, 2*pi]``.
     """
     # The conversion formula below is derived for scalar-first quaternions
     # q = (w, x, y, z). Warp stores quaternions as (x, y, z, w), so remap
@@ -388,21 +395,27 @@ def quat_to_euler(q: wp.quat, i: int, j: int, k: int) -> wp.vec3:
 
 @wp.func
 def quat_from_euler(e: wp.vec3, i: int, j: int, k: int) -> wp.quat:
-    """Construct a quaternion from Euler angles and an axis sequence.
+    """Return the rotation quaternion for Euler angles in radians and an axis sequence.
+
+    The rotations about axes ``i``, ``j``, and ``k`` are applied in that order
+    about the fixed axes (extrinsic), which is equivalent to applying them in
+    the order ``k``, ``j``, ``i`` about the rotating axes (intrinsic). For
+    example, ``quat_from_euler(e, 0, 1, 2)`` equals
+    ``quat_rpy(e[0], e[1], e[2])``.
+
+    For proper Euler sequences (``i == k``), ``e[i]`` is used for both the
+    first and the third rotation.
 
     Args:
-        e: Euler angles in radians.
-        i: Index of the first axis in ``{0, 1, 2}``.
-        j: Index of the second axis in ``{0, 1, 2}``.
-        k: Index of the third axis in ``{0, 1, 2}``.
-
-    Notes:
-        Angles are read by axis index (``e[0]``=X, ``e[1]``=Y, ``e[2]``=Z),
-        so use distinct axes ``(i, j, k)`` for an unambiguous inverse with
-        :func:`quat_to_euler`.
+        e: Euler angles in radians, indexed by axis, not by sequence position:
+            ``e[0]`` is the angle about X, ``e[1]`` about Y, and ``e[2]`` about Z.
+        i: Index of the first axis, in ``{0, 1, 2}``.
+        j: Index of the second axis, in ``{0, 1, 2}`` and different from ``i``.
+        k: Index of the third axis, in ``{0, 1, 2}`` and different from ``j``.
 
     Returns:
-        wp.quat: Quaternion in ``(x, y, z, w)`` layout.
+        wp.quat: Unit quaternion ``qk * qj * qi``, where ``qi`` is the rotation
+        of ``e[i]`` about axis ``i``, and similarly for ``qj`` and ``qk``.
     """
     ei = e[i]
     ej = e[j]
