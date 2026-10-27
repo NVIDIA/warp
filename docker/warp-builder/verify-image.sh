@@ -47,7 +47,6 @@ if [[ "$actual_uv_version" != "uv ${expected_uv_version} "* ]]; then
 fi
 
 python_requests=(
-    "3.10:3.10.21:gil"
     "3.11:3.11.16:gil"
     "3.12:3.12.14:gil"
     "3.13:3.13.15:gil"

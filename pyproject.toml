@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "warp-lang"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 authors = [{ name = "NVIDIA Corporation", email = "warp-python@nvidia.com" }]
 description = "A Python framework for high-performance simulation and graphics programming"
 license = { text = "Apache-2.0" }
@@ -16,7 +16,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "Natural Language :: English",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -47,7 +46,7 @@ docs = [
 ]
 benchmark = [
     "usd-core>=25.5 ; (sys_platform != 'linux' or platform_machine != 'aarch64') and (sys_platform != 'win32' or (platform_machine != 'ARM64' and platform_machine != 'arm64' and platform_machine != 'aarch64'))",
-    "usd-exchange>=2.2 ; python_version >= '3.10' and python_version < '3.13' and sys_platform == 'linux' and platform_machine == 'aarch64'",
+    "usd-exchange>=2.2 ; python_version < '3.13' and sys_platform == 'linux' and platform_machine == 'aarch64'",
 ]
 examples = [
     "blosc>=1.11.1 ; sys_platform != 'win32' or (platform_machine != 'ARM64' and platform_machine != 'arm64' and platform_machine != 'aarch64')",
@@ -57,7 +56,7 @@ examples = [
     "psutil>=7.1.0",
     "pyglet>=2.1.9",
     "usd-core>=25.5 ; (sys_platform != 'linux' or platform_machine != 'aarch64') and (sys_platform != 'win32' or (platform_machine != 'ARM64' and platform_machine != 'arm64' and platform_machine != 'aarch64'))",
-    "usd-exchange>=2.2 ; python_version >= '3.10' and python_version < '3.13' and sys_platform == 'linux' and platform_machine == 'aarch64'",
+    "usd-exchange>=2.2 ; python_version < '3.13' and sys_platform == 'linux' and platform_machine == 'aarch64'",
 ]
 torch-cu12 = [
     "warp-lang[examples]",
@@ -71,7 +70,7 @@ dev = [
     "warp-lang[examples]",
     "warp-lang[docs]",
     "nvtx>=0.2.16",
-    "coverage[toml]",
+    "coverage",
     "ml-dtypes>=0.5.4",
 ]
 

@@ -25,7 +25,7 @@ The image contains:
 - An architecture-specific, digest-pinned manylinux base.
 - One CUDA Toolkit assembled from `tools/ci/cuda_toolkit_lock.json` and installed in `/opt/cuda`.
 - uv 0.13.6, copied from a digest-pinned official uv image.
-- uv-managed CPython 3.10.21, 3.11.16, 3.12.14, 3.13.15, 3.14.7, and 3.14.7t.
+- uv-managed CPython 3.11.16, 3.12.14, 3.13.15, 3.14.7, and 3.14.7t.
 - The compiler and utilities already supplied by the manylinux base.
 
 The image sets:

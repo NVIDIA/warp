@@ -1270,7 +1270,7 @@ jobs:
           show: "fail"
         if: always()
 
-  test-warp-gpu-linux-mgpu-python310:
+  test-warp-gpu-linux-mgpu-python311:
     runs-on: linux-amd64-gpu-rtxpro6000-latest-2
     needs: [build-warp, gpu-changes]
     if: |
@@ -1290,8 +1290,8 @@ jobs:
       env:
         NVIDIA_VISIBLE_DEVICES: ${{ env.NVIDIA_VISIBLE_DEVICES }}
     env:
-      UV_PYTHON: "3.10"
-      WARP_CACHE_PATH: /tmp/warp-cache-${{ github.run_id }}-${{ github.run_attempt }}-mgpu-python310
+      UV_PYTHON: "3.11"
+      WARP_CACHE_PATH: /tmp/warp-cache-${{ github.run_id }}-${{ github.run_attempt }}-mgpu-python311
     timeout-minutes: 60
     steps:
       - name: Display GPU information
@@ -1353,7 +1353,7 @@ jobs:
           disable_search: true
           files: ./rspec.xml
           report_type: test_results
-          flags: test-warp-gpu-linux-mgpu-python310
+          flags: test-warp-gpu-linux-mgpu-python311
           token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Upload coverage reports to Codecov
@@ -1363,7 +1363,7 @@ jobs:
         with:
           disable_search: true
           files: ./coverage.xml
-          flags: test-warp-gpu-linux-mgpu-python310
+          flags: test-warp-gpu-linux-mgpu-python311
           token: ${{ secrets.CODECOV_TOKEN }}
 
   test-warp-gpu-windows:

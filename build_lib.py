@@ -1,5 +1,5 @@
 # /// script
-# requires-python = ">=3.10"
+# requires-python = ">=3.11"
 # dependencies = [
 #     "numpy",
 # ]
@@ -24,7 +24,6 @@ import shutil
 import subprocess
 import sys
 import time
-import warnings
 
 import build_llvm
 import warp._src.build_dll as build_dll
@@ -253,14 +252,6 @@ def lib_name(name: str) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    if sys.version_info < (3, 11):
-        warnings.warn(
-            f"Support for Python {sys.version_info.major}.{sys.version_info.minor} is deprecated and "
-            "will be removed in Warp 1.20. Please upgrade to Python 3.11 or newer.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
     parser = argparse.ArgumentParser(
         description="Build Warp native libraries with optional CUDA, LLVM, and MathDx support",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,

@@ -138,7 +138,7 @@ These examples are designed to run from within the Warp repository.
 
 ### Requirements
 
-- **Python 3.10+**
+- **Python 3.11+**
 - **CUDA Toolkit and NVIDIA GPU** for examples `00`, `01`, and `02`:
   - `00_cubin_launch` and `02_apic_visualization`: **12.0+**
   - `01_source_include`: **12.8+** (required for `sm_120` compilation)

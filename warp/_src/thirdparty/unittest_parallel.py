@@ -160,7 +160,7 @@ def main(argv=None):
     group_parallel.add_argument(
         "--isolate-test-processes",
         action="store_true",
-        help="Run each test suite in a fresh process (requires Python 3.11 or newer).",
+        help="Run each test suite in a fresh process.",
     )
     group_parallel.add_argument(
         "--serial-fallback",
@@ -204,8 +204,6 @@ def main(argv=None):
     group_warp.add_argument("--warp-debug", action="store_true", help="Set warp.config.mode to 'debug'")
     args = parser.parse_args(args=argv)
 
-    if args.isolate_test_processes and sys.version_info < (3, 11):
-        parser.error("--isolate-test-processes requires Python 3.11 or newer")
     if args.isolate_test_processes and args.serial_fallback:
         parser.error("--isolate-test-processes cannot be used with --serial-fallback")
     if args.timeout <= 0:
@@ -495,7 +493,7 @@ def main(argv=None):
         if args.coverage:
             # Combine the coverage files
             cov_options = {}
-            cov_options["config_file"] = True  # Grab configuration from pyproject.toml (must install coverage[toml])
+            cov_options["config_file"] = True  # Read configuration from pyproject.toml.
             cov = coverage.Coverage(**cov_options)
             cov.combine(data_paths=[os.path.join(temp_dir, x) for x in os.listdir(temp_dir)])
 
@@ -537,7 +535,7 @@ def _coverage(args, temp_dir):
             "data_file": coverage_file.name,
             # NVIDIA Modification removed unneeded options
         }
-        cov_options["config_file"] = True  # Grab configuration from pyproject.toml (must install coverage[toml])
+        cov_options["config_file"] = True  # Read configuration from pyproject.toml.
         cov = coverage.Coverage(**cov_options)
         try:
             # Start measuring code coverage

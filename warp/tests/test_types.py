@@ -1,8 +1,6 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-import sys
-import types
 import unittest
 from enum import IntEnum
 from typing import get_origin
@@ -839,13 +837,13 @@ class TestTypes(unittest.TestCase):
                 np.testing.assert_array_equal(inferred.numpy(), source)
 
     def test_tuple_type_code_generation(self):
-        """Test that tuple type annotations generate correct type codes, especially on Python 3.10."""
+        """Test that tuple type annotations generate correct type codes."""
         # Test basic tuple types
         tuple_float_float = tuple[float, float]
         result = wp._src.types.get_type_code(tuple_float_float)
         self.assertEqual(result, "tpl2f4f4", "tuple[float, float] should generate 'tpl2f4f4'")
 
-        # Test tuple with Warp vector types - the problematic case from Python 3.10
+        # Test tuple with Warp vector types
         tuple_mixed = tuple[float, wp.vec3f, wp.vec3f]
         result = wp._src.types.get_type_code(tuple_mixed)
         self.assertEqual(result, "tpl3f4v3f4v3f4", "tuple[float, vec3f, vec3f] should generate 'tpl3f4v3f4v3f4'")
@@ -865,19 +863,7 @@ class TestTypes(unittest.TestCase):
         result = wp._src.types.get_type_code(tuple_multi_warp)
         self.assertEqual(result, "tpl3v3f4m33f4qf4", "tuple[vec3f, mat33f, quatf] should generate 'tpl3v3f4m33f4qf4'")
 
-        # Verify the fix works on Python 3.10 specifically
-        if sys.version_info < (3, 11) and hasattr(types, "GenericAlias"):
-            # On Python 3.10, tuple[...] creates types.GenericAlias
-            self.assertIsInstance(
-                tuple_mixed, types.GenericAlias, "On Python 3.10, tuple[...] should create types.GenericAlias"
-            )
-            self.assertIs(tuple_mixed.__origin__, tuple, "GenericAlias origin should be tuple")
-
-            # Verify our fix catches this case
-            self.assertEqual(get_origin(tuple_mixed), tuple, "get_origin should return tuple")
-        elif sys.version_info >= (3, 11):
-            # On Python 3.11+, the existing code path should handle it
-            self.assertEqual(get_origin(tuple_mixed), tuple, "get_origin should return tuple on Python 3.11+")
+        self.assertEqual(get_origin(tuple_mixed), tuple, "get_origin should return tuple")
 
         # Test that the fix doesn't break existing functionality
         # Test with built-in Python types

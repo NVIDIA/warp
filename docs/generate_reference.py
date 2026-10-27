@@ -170,7 +170,7 @@ VALUE_TYPES = (
     float,
     set,
     Mapping,
-    type(None),  # NoneType is only available in types module from Python 3.10+
+    type(None),
     Sequence,
     *wp._src.types.scalar_types,
     *wp._src.types.vector_types,

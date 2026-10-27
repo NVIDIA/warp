@@ -112,7 +112,7 @@ function(warp_set_default_cuda_architectures)
 endfunction()
 
 function(warp_find_python)
-    find_package(Python3 3.10 COMPONENTS Interpreter REQUIRED)
+    find_package(Python3 3.11 COMPONENTS Interpreter REQUIRED)
     set(WARP_PYTHON_EXECUTABLE "${Python3_EXECUTABLE}" PARENT_SCOPE)
 endfunction()
 

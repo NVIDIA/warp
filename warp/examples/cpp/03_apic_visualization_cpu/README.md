@@ -36,7 +36,7 @@ the CPU, but it still needs the `warp-clang` library and the companion
 
 ### Prerequisites
 
-- **Python 3.10+** with Warp installed
+- **Python 3.11+** with Warp installed
 - **CMake 3.20+**
 - **OpenGL 3.3** support
 - **Warp native library** (`warp.dll` and `warp.lib` on Windows, `warp.so` on

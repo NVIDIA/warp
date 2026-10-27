@@ -281,8 +281,8 @@ autodoc_inherit_docstrings = False
 # unindented "alias of" line runs into the preceding ``.. autosummary::``
 # block and docutils reports "Explicit markup ends without a blank line".
 # Prepend a blank line so the generated reST stays well-formed. The private
-# ``_generate`` module was added in Sphinx 9, while Python <3.11 docs builds
-# still resolve to Sphinx 8 from ``uv.lock``.
+# ``_generate`` module was added in Sphinx 9. Keep the guard for environments
+# using an older Sphinx release.
 try:
     import sphinx.ext.autodoc._generate as _autodoc_generate
 except ModuleNotFoundError as e:

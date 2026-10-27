@@ -2180,10 +2180,8 @@ class TestCodeGen(unittest.TestCase):
         """Verify ``get_arg_type`` returns ``Any`` for generic parameters.
 
         ``Any`` marks an unspecialized generic parameter and must be returned
-        as-is, both when passed directly and when carried on a ``Var``. Before
-        Python 3.11 ``Any`` is a ``typing._SpecialForm`` instance rather than a
-        ``type``, so a regressed implementation falls through to ``type(arg)``
-        and yields ``typing._SpecialForm``, which has no type code.
+        as-is, both when passed directly and when carried on a ``Var``, so
+        downstream signature logic can treat it as generic.
         """
         self.assertIs(codegen.get_arg_type(Any), Any)
         self.assertIs(codegen.get_arg_type(codegen.Var("coords", Any)), Any)

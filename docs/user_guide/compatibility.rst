@@ -48,7 +48,7 @@ Runtime requirements
 
 The following requirements apply when running Warp:
 
-**Python**: Version 3.10 or newer
+**Python**: Version 3.11 or newer
 
 **Dependencies**: `NumPy <https://numpy.org>`__ (required)
 
@@ -110,7 +110,7 @@ To build Warp from source, you need:
 
 **Core Tools:**
 
-* Python 3.10+
+* Python 3.11+
 * `Git LFS <https://git-lfs.com>`__ (for assets used in tests, examples, and documentation)
 * NumPy
 
@@ -368,8 +368,8 @@ only in feature releases, never in bugfix releases.
   flags the upcoming removal in the next release.
 * ``v1.12.0`` (month 4): Feature is removed. Using it will result in an error.
 
-While we strive to abide by the above deprecation timeline, there may be circumstances in which a feature is removed
-with a briefer or longer deprecation period.
+Python versions that have already reached end-of-life may follow a shorter announced deprecation
+schedule. Other circumstances may also require a briefer or longer deprecation period.
 
 How deprecations are communicated
 ---------------------------------
@@ -404,8 +404,8 @@ What to do when you see a deprecation warning
 2. Check the **Deprecated** section of :doc:`/project/changelog` to find the release in which the
    deprecation was first announced. Combined with the deprecation timeline above, this tells you
    roughly when the feature will be removed.
-3. Migrate your code to the replacement API. The deprecated feature will remain functional for at
-   least 4 months, giving you multiple feature releases to complete the migration.
+3. Migrate your code to the replacement API. Deprecated features typically remain functional for at
+   least 4 months, unless a different removal timeline is explicitly announced.
 4. If migration is blocked by a gap in the replacement, raise a `GitHub issue
    <https://github.com/NVIDIA/warp/issues>`__.
 
@@ -457,10 +457,10 @@ Support for newly released Python versions is added in the next Warp feature rel
 Python version's stable release (e.g., if Python 3.15.0 is released during the Warp 1.10.x series,
 support will be added in Warp 1.11.0).
 
-When a Python version reaches end-of-life, we follow the deprecation timeline described above
-before dropping support, allowing users time to migrate.
-
-Python 3.10 is deprecated as of Warp 1.19 and will be removed in Warp 1.20.
+Once a Python version has reached end-of-life, Warp may deprecate and remove support on a shorter
+announced schedule than the usual four-month period. These versions no longer receive upstream
+security fixes. The deprecation notice states the Warp release targeted for removal, and deprecations
+and removals still occur only in feature releases.
 
 Dependencies
 ~~~~~~~~~~~~

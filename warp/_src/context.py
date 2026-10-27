@@ -37,6 +37,7 @@ from typing import (
     Literal,
     NamedTuple,
     NoReturn,
+    ParamSpec,
     Protocol,
     TypeVar,
     get_args,
@@ -50,17 +51,8 @@ from typing import (
 from warp._src.build_architecture import machine_architecture
 
 if TYPE_CHECKING:
-    from typing import ParamSpec
-
     from warp._src.apic.capture import APICapture
     from warp._src.deterministic import DeterministicMeta
-else:
-    try:
-        from typing import ParamSpec
-    except ImportError:
-
-        def ParamSpec(name):
-            return TypeVar(name)
 
 
 import numpy as np
@@ -6743,13 +6735,6 @@ class Runtime:
                 "Warp no longer supports Intel-based macOS (x86_64). "
                 "Please use Warp 1.9.x or earlier for Intel Mac support, "
                 "or upgrade to Apple Silicon hardware (ARM64)."
-            )
-
-        if sys.version_info < (3, 11):
-            log_warning(
-                f"Support for Python {sys.version_info.major}.{sys.version_info.minor} is deprecated and "
-                "will be removed in Warp 1.20. Please upgrade to Python 3.11 or newer.",
-                category=FutureWarning,
             )
 
         bin_path = os.path.join(warp_home, "bin")

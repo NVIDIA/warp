@@ -59,11 +59,11 @@ variables:
   UV_PYTHON:
     value: "3.12"
     options:
+      - "3.15"
       - "3.14"
       - "3.13"
       - "3.12"
       - "3.11"
-      - "3.10"
     description: "The default UV Python version used in the main testing jobs."
 
   # NVCARPS skill validation and signing
@@ -429,7 +429,7 @@ cppcheck:
 #
 # Comprehensive test suite across multiple platforms (Linux x86_64/aarch64,
 # Windows, specialized hardware like Orin/Thor/Blackwell), Python versions
-# (3.10-3.15), and optional integrations (MuJoCo, JAX, PyTorch). Some jobs
+# (3.11-3.15), and optional integrations (MuJoCo, JAX, PyTorch). Some jobs
 # compute code coverage, others focus on compatibility and performance (ASV).
 # ==============================================================================
 
@@ -884,7 +884,7 @@ linux-x86_64 cu13 python-matrix test:
     - .basic_test_changes_rules
   parallel:
     matrix:
-      - UV_PYTHON: "3.10"
+      - UV_PYTHON: "3.11"
       - UV_PYTHON: "3.13"
       - UV_PYTHON: "3.14"
   before_script:
