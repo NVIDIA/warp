@@ -99,32 +99,34 @@ def draw(cam_pos: wp.vec3, cam_rot: wp.quat, width: int, height: int, pixels: wp
     x = tid % width
     y = tid // width
 
-    # compute pixel coordinates
     sx = (2.0 * float(x) - float(width)) / float(height)
     sy = (2.0 * float(y) - float(height)) / float(height)
 
-    # compute view ray
     ro = cam_pos
     rd = wp.quat_rotate(cam_rot, wp.normalize(wp.vec3(sx, sy, -2.0)))
 
     t = float(0.0)
 
-    # ray march
+    d = float(0.0)
+    march_stable = bool(False)
     for iteration in range(128):
-        march_point = ro + rd * t
-        plane_distance = sdf_plane(march_point, wp.vec4(0.0, 1.0, 0.0, 1.0))
-        if plane_distance <= 0.25:
-            d = plane_distance
-        else:
-            box_bound = wp.max(
-                wp.abs(march_point[0]) - 1.0,
-                wp.max(wp.abs(march_point[1]) - 0.5, wp.abs(march_point[2]) - 0.5),
-            )
-            if plane_distance <= box_bound:
+        if not march_stable:
+            march_point = ro + rd * t
+            plane_distance = sdf_plane(march_point, wp.vec4(0.0, 1.0, 0.0, 1.0))
+            if plane_distance <= 0.25:
                 d = plane_distance
             else:
-                d = sdf(march_point)
-        t = t + d
+                box_bound = wp.max(
+                    wp.abs(march_point[0]) - 1.0,
+                    wp.max(wp.abs(march_point[1]) - 0.5, wp.abs(march_point[2]) - 0.5),
+                )
+                if plane_distance <= box_bound:
+                    d = plane_distance
+                else:
+                    d = sdf(march_point)
+        next_t = t + d
+        march_stable = next_t == t
+        t = next_t
 
     if d < 0.01:
         p = ro + rd * t
@@ -139,7 +141,6 @@ def draw(cam_pos: wp.vec3, cam_rot: wp.quat, width: int, height: int, pixels: wp
             n = normal(p)
         l = wp.normalize(wp.vec3(0.6, 0.4, 0.5))
 
-        # half-vector
         h = wp.normalize(l - rd)
 
         diffuse = wp.dot(n, l)
@@ -176,7 +177,6 @@ def draw(cam_pos: wp.vec3, cam_rot: wp.quat, width: int, height: int, pixels: wp
             * intensity
         )
 
-        # gamma
         pixels[tid] = wp.vec3(
             wp.clamp(result[0] ** 2.2, 0.0, 1.0),
             wp.clamp(result[1] ** 2.2, 0.0, 1.0),
