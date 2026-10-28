@@ -5639,12 +5639,19 @@ class Adjoint:
 
         # handle the case where we are assigning multiple output variables
         if isinstance(lhs, ast.Tuple):
-            subtype = getattr(rhs, "type", None)
+            subtype = strip_reference(getattr(rhs, "type", None))
 
             if isinstance(subtype, warp._src.types.tuple_t):
-                if len(rhs.type.types) != len(lhs.elts):
+                if len(subtype.types) != len(lhs.elts):
                     raise WarpCodegenError(
-                        f"Invalid number of values to unpack (expected {len(lhs.elts)}, got {len(rhs.type.types)})."
+                        f"Invalid number of values to unpack (expected {len(lhs.elts)}, got {len(subtype.types)})."
+                    )
+                rhs = tuple(adj.add_builtin_call("extract", (rhs, adj.add_constant(i))) for i in range(len(lhs.elts)))
+            elif get_origin(subtype) is tuple:
+                tuple_args = get_args(subtype)
+                if Ellipsis in tuple_args or len(tuple_args) != len(lhs.elts):
+                    raise WarpCodegenError(
+                        f"Invalid number of values to unpack (expected {len(lhs.elts)}, got {len(tuple_args)})."
                     )
                 rhs = tuple(adj.add_builtin_call("extract", (rhs, adj.add_constant(i))) for i in range(len(lhs.elts)))
 

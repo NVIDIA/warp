@@ -7,7 +7,7 @@ import builtins
 import functools
 import math
 from collections.abc import Callable, Mapping, Sequence
-from typing import Any
+from typing import Any, get_args, get_origin
 
 import numpy as np
 
@@ -20430,7 +20430,12 @@ add_builtin(
 
 def tuple_extract_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     tuple_type = arg_types["a"]
-    elements = tuple_type.types if is_tuple(tuple_type) else tuple_type
+    if is_tuple(tuple_type):
+        elements = tuple_type.types
+    elif get_origin(tuple_type) is tuple:
+        elements = get_args(tuple_type)
+    else:
+        elements = tuple_type
 
     if "i" not in arg_values:
         raise RuntimeError("Tuple index must be a compile time expression.")
