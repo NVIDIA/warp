@@ -4988,7 +4988,7 @@ class Module:
         # workflows. APIC reads this file only when source fallback is requested.
         source_code_path = os.path.join(build_dir, f"{module_name_short}.{source_code_ext}")
         try:
-            with open(source_code_path, "w") as source_file:
+            with open(source_code_path, "w", encoding="utf-8") as source_file:
                 source_file.write(source_str)
         except FileNotFoundError as e:
             # Same reasoning as the native build below: record whichever error the caller
