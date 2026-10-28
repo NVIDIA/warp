@@ -110,13 +110,30 @@ def draw(cam_pos: wp.vec3, cam_rot: wp.quat, width: int, height: int, pixels: wp
     t = float(0.0)
 
     # ray march
-    for _ in range(128):
-        d = sdf(ro + rd * t)
+    for iteration in range(128):
+        march_point = ro + rd * t
+        plane_distance = sdf_plane(march_point, wp.vec4(0.0, 1.0, 0.0, 1.0))
+        box_bound = wp.max(
+            wp.abs(march_point[0]) - 1.0,
+            wp.max(wp.abs(march_point[1]) - 0.5, wp.abs(march_point[2]) - 0.5),
+        )
+        if plane_distance <= box_bound and wp.isfinite(march_point):
+            d = plane_distance
+        else:
+            d = sdf(march_point)
         t = t + d
 
     if d < 0.01:
         p = ro + rd * t
-        n = normal(p)
+        normal_eps = 1.0e-5
+        normal_top = p + wp.vec3(0.0, normal_eps, 0.0)
+        if normal_top[1] <= -0.75 and wp.isfinite(p):
+            normal_dx = sdf_plane(p + wp.vec3(normal_eps, 0.0, 0.0), wp.vec4(0.0, 1.0, 0.0, 1.0)) - sdf_plane(p - wp.vec3(normal_eps, 0.0, 0.0), wp.vec4(0.0, 1.0, 0.0, 1.0))
+            normal_dy = sdf_plane(normal_top, wp.vec4(0.0, 1.0, 0.0, 1.0)) - sdf_plane(p - wp.vec3(0.0, normal_eps, 0.0), wp.vec4(0.0, 1.0, 0.0, 1.0))
+            normal_dz = sdf_plane(p + wp.vec3(0.0, 0.0, normal_eps), wp.vec4(0.0, 1.0, 0.0, 1.0)) - sdf_plane(p - wp.vec3(0.0, 0.0, normal_eps), wp.vec4(0.0, 1.0, 0.0, 1.0))
+            n = wp.normalize(wp.vec3(normal_dx, normal_dy, normal_dz))
+        else:
+            n = normal(p)
         l = wp.normalize(wp.vec3(0.6, 0.4, 0.5))
 
         # half-vector
@@ -127,10 +144,29 @@ def draw(cam_pos: wp.vec3, cam_rot: wp.quat, width: int, height: int, pixels: wp
         fresnel = 0.04 + 0.96 * wp.clamp(1.0 - wp.dot(h, l), 0.0, 1.0) ** 5.0
 
         intensity = 2.0
+        shadow_t = float(0.0)
+        shadow_factor = float(1.0)
+        for shadow_iteration in range(64):
+            shadow_point = p + shadow_t * l
+            shadow_plane = sdf_plane(shadow_point, wp.vec4(0.0, 1.0, 0.0, 1.0))
+            shadow_bound = wp.max(
+                wp.abs(shadow_point[0]) - 1.0,
+                wp.max(wp.abs(shadow_point[1]) - 0.5, wp.abs(shadow_point[2]) - 0.5),
+            )
+            if shadow_plane <= shadow_bound and wp.isfinite(shadow_point):
+                shadow_distance = shadow_plane
+            else:
+                shadow_distance = sdf(shadow_point)
+            shadow_t = shadow_t + wp.clamp(shadow_distance, 0.0001, 2.0)
+            shadow_h = wp.clamp(4.0 * shadow_distance / shadow_t, 0.0, 1.0)
+            shadow_factor = wp.min(shadow_factor, shadow_h * shadow_h * (3.0 - 2.0 * shadow_h))
+            if shadow_t > 8.0:
+                shadow_factor = 1.0
+                break
         result = (
             wp.vec3(0.85, 0.9, 0.95)
             * (diffuse * (1.0 - fresnel) + specular * fresnel * 10.0)
-            * shadow(p, l)
+            * shadow_factor
             * intensity
         )
 
