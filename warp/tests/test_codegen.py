@@ -1937,6 +1937,18 @@ def test_unary_minus_on_64bit_constant(test, device):
     np.testing.assert_array_equal(out_i64.numpy(), [-7 * 2])
 
 
+@wp.kernel(module="unique")
+def _non_ascii_source_kernel(out: wp.array[int]):
+    out[0] = 1  # Copied into the generated source: λ → ═
+
+
+def test_non_ascii_source(test, device):
+    # The generated source must be written as UTF-8 regardless of the locale encoding.
+    out = wp.zeros(1, dtype=int, device=device)
+    wp.launch(_non_ascii_source_kernel, dim=1, inputs=[out], device=device)
+    np.testing.assert_array_equal(out.numpy(), [1])
+
+
 class TestCodeGen(unittest.TestCase):
     def _codegen_cuda_source(self, kernel):
         module = kernel.module
@@ -3117,6 +3129,7 @@ add_function_test(
     test_unary_minus_on_64bit_constant,
     devices=devices,
 )
+add_function_test(TestCodeGen, "test_non_ascii_source", test_non_ascii_source, devices=devices)
 
 
 if __name__ == "__main__":
